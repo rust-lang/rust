@@ -62,7 +62,7 @@ mod should_lint {
         impl T1 for S {}
     }
 
-    mod multiply_conflicit_trait {
+    mod multiple_conflicting_traits {
         use crate::{T1, T2};
 
         struct S;

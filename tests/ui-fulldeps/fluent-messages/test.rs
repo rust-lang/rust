@@ -3,8 +3,8 @@
 #![feature(rustc_private)]
 #![crate_type = "lib"]
 
-extern crate rustc_macros;
-use rustc_macros::fluent_messages;
+extern crate rustc_fluent_macro;
+use rustc_fluent_macro::fluent_messages;
 
 /// Copy of the relevant `DiagnosticMessage` variant constructed by `fluent_messages` as it
 /// expects `crate::DiagnosticMessage` to exist.

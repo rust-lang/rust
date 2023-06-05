@@ -13,11 +13,12 @@ pub use self::MethodError::*;
 use crate::errors::OpMethodGenericParams;
 use crate::FnCtxt;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diagnostic, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
+use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitableExt};
@@ -28,7 +29,7 @@ use rustc_trait_selection::traits::{self, NormalizeExt};
 
 use self::probe::{IsSuggestion, ProbeScope};
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     probe::provide(providers);
 }
 
@@ -129,7 +130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_method_call(
         &self,
         err: &mut Diagnostic,
-        msg: &str,
+        msg: impl Into<SubdiagnosticMessage> + std::fmt::Debug,
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'tcx>,
@@ -300,8 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
-    ) -> (traits::Obligation<'tcx, ty::Predicate<'tcx>>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>)
-    {
+    ) -> (traits::PredicateObligation<'tcx>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>) {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
@@ -317,7 +317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.var_for_def(cause.span, param)
         });
 
-        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, substs);
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);

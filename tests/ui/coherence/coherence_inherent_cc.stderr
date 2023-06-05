@@ -7,7 +7,7 @@ LL |         s.the_fn();
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL |     use coherence_inherent_cc_lib::TheTrait;
+LL +     use coherence_inherent_cc_lib::TheTrait;
    |
 
 error: aborting due to previous error

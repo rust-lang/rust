@@ -45,7 +45,6 @@ o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ f
 o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
 o("rpath", "rust.rpath", "build rpaths into rustc itself")
 o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests")
-o("option-checking", None, "complain about unrecognized options in this configure script")
 o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
 o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")
 o("vendor", "build.vendor", "enable usage of vendored Rust crates")
@@ -139,6 +138,10 @@ v("musl-root-mips64", "target.mips64-unknown-linux-muslabi64.musl-root",
   "mips64-unknown-linux-muslabi64 install directory")
 v("musl-root-mips64el", "target.mips64el-unknown-linux-muslabi64.musl-root",
   "mips64el-unknown-linux-muslabi64 install directory")
+v("musl-root-riscv32gc", "target.riscv32gc-unknown-linux-musl.musl-root",
+  "riscv32gc-unknown-linux-musl install directory")
+v("musl-root-riscv64gc", "target.riscv64gc-unknown-linux-musl.musl-root",
+  "riscv64gc-unknown-linux-musl install directory")
 v("qemu-armhf-rootfs", "target.arm-unknown-linux-gnueabihf.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
 v("qemu-aarch64-rootfs", "target.aarch64-unknown-linux-gnu.qemu-rootfs",
@@ -149,8 +152,7 @@ v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
 v("release-description", "rust.description", "optional descriptive string for version output")
-v("dist-compression-formats", None,
-  "comma-separated list of compression formats to use")
+v("dist-compression-formats", None, "List of compression formats to use")
 
 # Used on systems where "cc" is unavailable
 v("default-linker", "rust.default-linker", "the default linker")
@@ -164,9 +166,12 @@ o("extended", "build.extended", "build an extended rust tool set")
 v("tools", None, "List of extended tools will be installed")
 v("codegen-backends", None, "List of codegen backends to build")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
-v("host", None, "GNUs ./configure syntax LLVM host triples")
-v("target", None, "GNUs ./configure syntax LLVM target triples")
+v("host", None, "List of GNUs ./configure syntax LLVM host triples")
+v("target", None, "List of GNUs ./configure syntax LLVM target triples")
 
+# Options specific to this configure script
+o("option-checking", None, "complain about unrecognized options in this configure script")
+o("verbose-configure", None, "don't truncate options when printing them in this configure script")
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
 
@@ -178,6 +183,11 @@ def err(msg):
     print("configure: error: " + msg)
     sys.exit(1)
 
+def is_value_list(key):
+    for option in options:
+        if option.name == key and option.desc.startswith('List of'):
+            return True
+    return False
 
 if '--help' in sys.argv or '-h' in sys.argv:
     print('Usage: ./configure [options]')
@@ -202,6 +212,8 @@ if '--help' in sys.argv or '-h' in sys.argv:
     print('Also note that all options which take `--enable` can similarly')
     print('be passed with `--disable-foo` to forcibly disable the option')
     sys.exit(0)
+
+VERBOSE = False
 
 # Parse all command line arguments into one of these three lists, handling
 # boolean and value-based options separately
@@ -263,6 +275,9 @@ def parse_args(args):
         if len(need_value_args) > 0:
             err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
 
+    global VERBOSE
+    VERBOSE = 'verbose-configure' in known_args
+
     config = {}
 
     set('build.configure-args', sys.argv[1:], config)
@@ -282,7 +297,7 @@ def set(key, value, config):
         value = [v for v in value if v]
 
     s = "{:20} := {}".format(key, value)
-    if len(s) < 70:
+    if len(s) < 70 or VERBOSE:
         p(s)
     else:
         p(s[:70] + " ...")
@@ -291,6 +306,8 @@ def set(key, value, config):
     parts = key.split('.')
     for i, part in enumerate(parts):
         if i == len(parts) - 1:
+            if is_value_list(part) and isinstance(value, str):
+                value = value.split(',')
             arr[part] = value
         else:
             if part not in arr:
@@ -361,7 +378,7 @@ def apply_args(known_args, option_checking, config):
             set('rust.lld', True, config)
             set('rust.llvm-tools', True, config)
             set('build.extended', True, config)
-        elif option.name == 'option-checking':
+        elif option.name in ['option-checking', 'verbose-configure']:
             # this was handled above
             pass
         elif option.name == 'dist-compression-formats':
@@ -417,6 +434,8 @@ def parse_example_config(known_args, config):
         # Avoid using quotes unless it's necessary.
         targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
 
+    if 'profile' not in config:
+        set('profile', 'user', config)
     configure_file(sections, top_level_keys, targets, config)
     return section_order, sections, targets
 
@@ -475,7 +494,7 @@ def configure_section(lines, config):
 def configure_top_level_key(lines, top_level_key, value):
     for i, line in enumerate(lines):
         if line.startswith('#' + top_level_key + ' = ') or line.startswith(top_level_key + ' = '):
-            lines[i] = "{} = {}".format(top_level_key, value)
+            lines[i] = "{} = {}".format(top_level_key, to_toml(value))
             return
 
     raise RuntimeError("failed to find config line for {}".format(top_level_key))
@@ -521,8 +540,14 @@ def write_config_toml(writer, section_order, targets, sections):
         else:
             writer = write_uncommented(sections[section], writer)
 
+def quit_if_file_exists(file):
+    if os.path.isfile(file):
+        err("Existing '" + file + "' detected.")
 
 if __name__ == "__main__":
+    # If 'config.toml' already exists, exit the script at this point
+    quit_if_file_exists('config.toml')
+
     p("processing command line")
     # Parse all known arguments into a configuration structure that reflects the
     # TOML we're going to write out

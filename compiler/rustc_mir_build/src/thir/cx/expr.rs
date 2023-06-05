@@ -5,7 +5,7 @@ use crate::thir::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
@@ -130,6 +130,7 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::Pointer { cast: PointerCast::Unsize, source: self.thir.exprs.push(expr) }
             }
             Adjust::Pointer(cast) => ExprKind::Pointer { cast, source: self.thir.exprs.push(expr) },
+            Adjust::NeverToAny if adjustment.target.is_never() => return expr,
             Adjust::NeverToAny => ExprKind::NeverToAny { source: self.thir.exprs.push(expr) },
             Adjust::Deref(None) => {
                 adjust_span(&mut expr);
@@ -332,7 +333,7 @@ impl<'tcx> Cx<'tcx> {
                         } else if let Some(box_item) = tcx.lang_items().owned_box() {
                             if let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, fn_path)) = fun.kind
                                 && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
-                                && path.res.opt_def_id().map_or(false, |did| did == box_item)
+                                && path.res.opt_def_id().is_some_and(|did| did == box_item)
                                 && fn_path.ident.name == sym::new
                                 && let [value] = args
                             {
@@ -664,6 +665,14 @@ impl<'tcx> Cx<'tcx> {
                 line_spans: asm.line_spans,
             })),
 
+            hir::ExprKind::OffsetOf(_, _) => {
+                let data = self.typeck_results.offset_of_data();
+                let &(container, ref indices) = data.get(expr.hir_id).unwrap();
+                let fields = tcx.mk_fields_from_iter(indices.iter().copied());
+
+                ExprKind::OffsetOf { container, fields }
+            }
+
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);
                 let did = anon_const.def_id.to_def_id();
@@ -947,7 +956,7 @@ impl<'tcx> Cx<'tcx> {
         let is_upvar = self
             .tcx
             .upvars_mentioned(self.body_owner)
-            .map_or(false, |upvars| upvars.contains_key(&var_hir_id));
+            .is_some_and(|upvars| upvars.contains_key(&var_hir_id));
 
         debug!(
             "convert_var({:?}): is_upvar={}, body_owner={:?}",

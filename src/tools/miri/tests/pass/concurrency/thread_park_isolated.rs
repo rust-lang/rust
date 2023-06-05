@@ -7,6 +7,6 @@ fn main() {
 
     thread::park_timeout(Duration::from_millis(200));
 
-    // Thanks to deterministic execution, this will wiat *exactly* 200ms (rounded to 1ms).
-    assert!((200..201).contains(&start.elapsed().as_millis()));
+    // Thanks to deterministic execution, this will wait *exactly* 200ms, plus the time for the surrounding code.
+    assert!((200..210).contains(&start.elapsed().as_millis()), "{}", start.elapsed().as_millis());
 }

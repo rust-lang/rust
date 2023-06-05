@@ -1,4 +1,4 @@
-// ignore-test
+// ignore-test (auxiliary, used by other tests)
 
 macro_rules! m {
     () => { include!("file.txt"); }

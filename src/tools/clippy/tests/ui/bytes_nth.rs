@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(clippy::unnecessary_operation)]
 #![warn(clippy::bytes_nth)]

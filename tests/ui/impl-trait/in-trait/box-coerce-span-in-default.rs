@@ -3,7 +3,6 @@
 // revisions: current next
 
 #![feature(return_position_impl_trait_in_trait)]
-//~^ WARN the feature `return_position_impl_trait_in_trait` is incomplete
 
 struct TestA {}
 struct TestB {}

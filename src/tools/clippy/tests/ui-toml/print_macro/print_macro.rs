@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 #![warn(clippy::print_stdout)]
 #![warn(clippy::print_stderr)]
 

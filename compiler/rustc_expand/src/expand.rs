@@ -657,8 +657,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
-                    let prev = self.cx.current_expansion.prior_type_ascription;
-                    self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
                     let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
@@ -666,7 +664,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.error_wrong_fragment_kind(fragment_kind, &mac, span);
                         fragment_kind.dummy(span)
                     };
-                    self.cx.current_expansion.prior_type_ascription = prev;
                     result
                 }
                 _ => unreachable!(),
@@ -725,7 +722,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     });
                                 }
                             };
-                            if fragment_kind == AstFragmentKind::Expr && items.is_empty() {
+                            if matches!(
+                                fragment_kind,
+                                AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
+                            ) && items.is_empty()
+                            {
                                 self.cx.emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span)
                             } else {
@@ -800,7 +801,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             &self.cx.sess.parse_sess,
             sym::proc_macro_hygiene,
             span,
-            &format!("custom attributes cannot be applied to {}", kind),
+            format!("custom attributes cannot be applied to {}", kind),
         )
         .emit();
     }
@@ -1598,7 +1599,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
                     break;
                 } else if attr_pos.is_none()
-                    && !name.map_or(false, rustc_feature::is_builtin_attr_name)
+                    && !name.is_some_and(rustc_feature::is_builtin_attr_name)
                 {
                     attr_pos = Some(pos); // a non-cfg attr found, still may find a cfg attr
                 }
@@ -1646,7 +1647,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
 
-            if attrs.peek().map_or(false, |next_attr| next_attr.doc_str().is_some()) {
+            if attrs.peek().is_some_and(|next_attr| next_attr.doc_str().is_some()) {
                 continue;
             }
 
@@ -1667,7 +1668,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         &UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
-                        &format!("unused attribute `{}`", attr_name),
+                        format!("unused attribute `{}`", attr_name),
                         BuiltinLintDiagnostics::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
@@ -1949,6 +1950,6 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 
     fn proc_macro_hygiene(&self) -> bool {
-        self.features.map_or(false, |features| features.proc_macro_hygiene)
+        self.features.is_some_and(|features| features.proc_macro_hygiene)
     }
 }

@@ -4,7 +4,6 @@
 
 #![feature(return_type_notation, async_fn_in_trait)]
 //~^ WARN the feature `return_type_notation` is incomplete
-//~| WARN the feature `async_fn_in_trait` is incomplete
 
 trait Foo {
     async fn method() -> Result<(), ()>;
@@ -18,7 +17,7 @@ async fn foo<T: Foo>() -> Result<(), ()> {
 fn is_send(_: impl Send) {}
 
 fn test<
-    #[cfg(with)] T: Foo<method(..): Send>,
+    #[cfg(with)] T: Foo<method(): Send>,
     #[cfg(without)] T: Foo,
 >() {
     is_send(foo::<T>());

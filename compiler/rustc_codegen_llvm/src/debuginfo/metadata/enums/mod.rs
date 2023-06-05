@@ -3,7 +3,7 @@ use rustc_codegen_ssa::debuginfo::{
     wants_c_like_enum_debuginfo,
 };
 use rustc_hir::def::CtorKind;
-use rustc_index::vec::IndexSlice;
+use rustc_index::IndexSlice;
 use rustc_middle::{
     bug,
     mir::{GeneratorLayout, GeneratorSavedLocal},

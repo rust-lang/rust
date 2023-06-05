@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   from the default rust toolchain. [#78513](https://github.com/rust-lang/rust/pull/78513)
 - Add options for enabling overflow checks, one for std (`overflow-checks-std`) and one for everything else (`overflow-checks`). Both default to false.
 - Add llvm option `enable-warnings` to have control on llvm compilation warnings. Default to false.
+- Add `rpath` option in `target` section to support set rpath option for each target independently. [#111242](https://github.com/rust-lang/rust/pull/111242)
 
 
 ## [Version 2] - 2020-09-25

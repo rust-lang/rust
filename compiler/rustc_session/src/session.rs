@@ -128,8 +128,6 @@ pub struct Limits {
     pub move_size_limit: Limit,
     /// The maximum length of types during monomorphization.
     pub type_length_limit: Limit,
-    /// The maximum blocks a const expression can evaluate.
-    pub const_eval_limit: Limit,
 }
 
 pub struct CompilerIO {
@@ -211,6 +209,9 @@ pub struct Session {
 
     /// Set of enabled features for the current target, including unstable ones.
     pub unstable_target_features: FxIndexSet<Symbol>,
+
+    /// The version of the rustc process, possibly including a commit hash and description.
+    pub cfg_version: &'static str,
 }
 
 pub struct PerfStats {
@@ -490,20 +491,6 @@ impl Session {
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_err_or_warn<S: Into<MultiSpan>>(
-        &self,
-        is_warning: bool,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) {
-        if is_warning {
-            self.span_warn(sp, msg);
-        } else {
-            self.span_err(sp, msg);
-        }
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -766,8 +753,28 @@ impl Session {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
 
+    pub fn is_sanitizer_cfi_canonical_jump_tables_disabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_canonical_jump_tables == Some(false)
+    }
+
+    pub fn is_sanitizer_cfi_canonical_jump_tables_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_canonical_jump_tables == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_generalize_pointers_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_generalize_pointers == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_normalize_integers_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
+    }
+
     pub fn is_sanitizer_kcfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
+    }
+
+    pub fn is_split_lto_unit_enabled(&self) -> bool {
+        self.opts.unstable_opts.split_lto_unit == Some(true)
     }
 
     /// Check whether this compile session and crate type use static crt.
@@ -811,7 +818,7 @@ impl Session {
     }
 
     pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
-        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.to_u64())
+        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
     }
 
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
@@ -1190,6 +1197,7 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
+    #[inline]
     pub fn threads(&self) -> usize {
         self.opts.unstable_opts.threads
     }
@@ -1359,6 +1367,7 @@ pub fn build_session(
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
+    cfg_version: &'static str,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1367,8 +1376,8 @@ pub fn build_session(
         .lint_opts
         .iter()
         .rfind(|&(key, _)| *key == "warnings")
-        .map_or(false, |&(_, level)| level == lint::Allow);
-    let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
+        .is_some_and(|&(_, level)| level == lint::Allow);
+    let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
     let sysroot = match &sopts.maybe_sysroot {
@@ -1379,10 +1388,10 @@ pub fn build_session(
     let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_error(sopts.error_format, &format!("Error loading host specification: {e}"))
+        early_error(sopts.error_format, format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
-        early_warn(sopts.error_format, &warning)
+        early_warn(sopts.error_format, warning)
     }
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
@@ -1424,7 +1433,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                early_warn(sopts.error_format, &format!("failed to create profiler: {e}"));
+                early_warn(sopts.error_format, format!("failed to create profiler: {e}"));
                 None
             }
         }
@@ -1503,6 +1512,7 @@ pub fn build_session(
         asm_arch,
         target_features: Default::default(),
         unstable_target_features: Default::default(),
+        cfg_version,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1581,22 +1591,58 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.emit_err(errors::CannotEnableCrtStaticLinux);
     }
 
-    // LLVM CFI and VFE both require LTO.
-    if sess.lto() != config::Lto::Fat {
-        if sess.is_sanitizer_cfi_enabled() {
-            sess.emit_err(errors::SanitizerCfiEnabled);
-        }
-        if sess.opts.unstable_opts.virtual_function_elimination {
-            sess.emit_err(errors::UnstableVirtualFunctionElimination);
-        }
+    // LLVM CFI requires LTO.
+    if sess.is_sanitizer_cfi_enabled()
+        && !(sess.lto() == config::Lto::Fat
+            || sess.lto() == config::Lto::Thin
+            || sess.opts.cg.linker_plugin_lto.enabled())
+    {
+        sess.emit_err(errors::SanitizerCfiRequiresLto);
     }
 
-    // LLVM CFI and KCFI are mutually exclusive
+    // LLVM CFI is incompatible with LLVM KCFI.
     if sess.is_sanitizer_cfi_enabled() && sess.is_sanitizer_kcfi_enabled() {
         sess.emit_err(errors::CannotMixAndMatchSanitizers {
             first: "cfi".to_string(),
             second: "kcfi".to_string(),
         });
+    }
+
+    // Canonical jump tables requires CFI.
+    if sess.is_sanitizer_cfi_canonical_jump_tables_disabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.emit_err(errors::SanitizerCfiCanonicalJumpTablesRequiresCfi);
+        }
+    }
+
+    // LLVM CFI pointer generalization requires CFI or KCFI.
+    if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+        if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
+            sess.emit_err(errors::SanitizerCfiGeneralizePointersRequiresCfi);
+        }
+    }
+
+    // LLVM CFI integer normalization requires CFI or KCFI.
+    if sess.is_sanitizer_cfi_normalize_integers_enabled() {
+        if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
+            sess.emit_err(errors::SanitizerCfiNormalizeIntegersRequiresCfi);
+        }
+    }
+
+    // LTO unit splitting requires LTO.
+    if sess.is_split_lto_unit_enabled()
+        && !(sess.lto() == config::Lto::Fat
+            || sess.lto() == config::Lto::Thin
+            || sess.opts.cg.linker_plugin_lto.enabled())
+    {
+        sess.emit_err(errors::SplitLtoUnitRequiresLto);
+    }
+
+    // VFE requires LTO.
+    if sess.lto() != config::Lto::Fat {
+        if sess.opts.unstable_opts.virtual_function_elimination {
+            sess.emit_err(errors::UnstableVirtualFunctionElimination);
+        }
     }
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {
@@ -1626,6 +1672,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
         sess.emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
+    }
+
+    if let Some(flavor) = sess.opts.cg.linker_flavor {
+        if let Some(compatible_list) = sess.target.linker_flavor.check_compatibility(flavor) {
+            let flavor = flavor.desc();
+            sess.emit_err(errors::IncompatibleLinkerFlavor { flavor, compatible_list });
+        }
     }
 }
 
@@ -1684,18 +1737,22 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
 
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> ErrorGuaranteed {
+#[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
+pub fn early_error_no_abort(
+    output: config::ErrorOutputType,
+    msg: impl Into<DiagnosticMessage>,
+) -> ErrorGuaranteed {
     early_error_handler(output).struct_err(msg).emit()
 }
 
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
+pub fn early_error(output: config::ErrorOutputType, msg: impl Into<DiagnosticMessage>) -> ! {
     early_error_handler(output).struct_fatal(msg).emit()
 }
 
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
+pub fn early_warn(output: config::ErrorOutputType, msg: impl Into<DiagnosticMessage>) {
     early_error_handler(output).struct_warn(msg).emit()
 }

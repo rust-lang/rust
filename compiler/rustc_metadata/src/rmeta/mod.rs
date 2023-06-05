@@ -2,26 +2,26 @@ use crate::creader::CrateMetadataRef;
 use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use table::TableBuilder;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ReprOptions, Ty, UnusedGenericParams};
 use rustc_middle::ty::{DeducedParamAttrs, GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
 use rustc_serialize::opaque::FileEncoder;
@@ -31,6 +31,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
+use rustc_target::abi::VariantIdx;
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use std::marker::PhantomData;
@@ -48,14 +49,14 @@ mod def_path_hash_map;
 mod encoder;
 mod table;
 
-pub(crate) fn rustc_version() -> String {
-    format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
+pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
+    format!("rustc {}", cfg_version)
 }
 
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 7;
+const METADATA_VERSION: u8 = 8;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
@@ -198,7 +199,27 @@ pub(crate) struct ProcMacroData {
     macros: LazyArray<DefIndex>,
 }
 
-/// Serialized metadata for a crate.
+/// Serialized crate metadata.
+///
+/// This contains just enough information to determine if we should load the `CrateRoot` or not.
+/// Prefer [`CrateRoot`] whenever possible to avoid ICEs when using `omit-git-hash` locally.
+/// See #76720 for more details.
+///
+/// If you do modify this struct, also bump the [`METADATA_VERSION`] constant.
+#[derive(MetadataEncodable, MetadataDecodable)]
+pub(crate) struct CrateHeader {
+    pub(crate) triple: TargetTriple,
+    pub(crate) hash: Svh,
+    pub(crate) name: Symbol,
+    /// Whether this is the header for a proc-macro crate.
+    ///
+    /// This is separate from [`ProcMacroData`] to avoid having to update [`METADATA_VERSION`] every
+    /// time ProcMacroData changes.
+    pub(crate) is_proc_macro_crate: bool,
+}
+
+/// Serialized `.rmeta` data for a crate.
+///
 /// When compiling a proc-macro crate, we encode many of
 /// the `LazyArray<T>` fields as `Lazy::empty()`. This serves two purposes:
 ///
@@ -216,10 +237,10 @@ pub(crate) struct ProcMacroData {
 /// to being unused.
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct CrateRoot {
-    name: Symbol,
-    triple: TargetTriple,
+    /// A header used to detect if this is the right crate to load.
+    header: CrateHeader,
+
     extra_filename: String,
-    hash: Svh,
     stable_crate_id: StableCrateId,
     required_panic_strategy: Option<PanicStrategy>,
     panic_in_drop_strategy: PanicStrategy,
@@ -245,7 +266,7 @@ pub(crate) struct CrateRoot {
     proc_macro_data: Option<ProcMacroData>,
 
     tables: LazyTables,
-    debugger_visualizers: LazyArray<rustc_span::DebuggerVisualizerFile>,
+    debugger_visualizers: LazyArray<DebuggerVisualizerFile>,
 
     exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
 
@@ -301,6 +322,7 @@ pub(crate) struct CrateDep {
     pub host_hash: Option<Svh>,
     pub kind: CrateDepKind,
     pub extra_filename: String,
+    pub is_private: bool,
 }
 
 #[derive(MetadataEncodable, MetadataDecodable)]
@@ -357,10 +379,18 @@ define_tables! {
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     unused_generic_params: Table<DefIndex, UnusedGenericParams>,
+    // Reexported names are not associated with individual `DefId`s,
+    // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
+    // That's why the encoded list needs to contain `ModChild` structures describing all the names
+    // individually instead of `DefId`s.
+    module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
-    children: Table<DefIndex, LazyArray<DefIndex>>,
+    // For non-reexported names in a module every name is associated with a separate `DefId`,
+    // so we can take their names, visibilities etc from other encoded tables.
+    module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
+    associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
     opt_def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
@@ -372,6 +402,9 @@ define_tables! {
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    // As an optimization, we only store this for trait aliases,
+    // since it's identical to super_predicates_of for traits.
+    implied_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<Ty<'static>>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::PolyFnSig<'static>>>>,
@@ -383,12 +416,11 @@ define_tables! {
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_generator_witnesses: Table<DefIndex, LazyValue<mir::GeneratorLayout<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
-    // FIXME(compiler-errors): Why isn't this a LazyArray?
-    thir_abstract_const: Table<DefIndex, LazyValue<ty::Const<'static>>>,
+    thir_abstract_const: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::Const<'static>>>>,
     impl_parent: Table<DefIndex, RawDefId>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
     constness: Table<DefIndex, hir::Constness>,
-    impl_defaultness: Table<DefIndex, hir::Defaultness>,
+    defaultness: Table<DefIndex, hir::Defaultness>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
@@ -412,15 +444,15 @@ define_tables! {
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
-    module_reexports: Table<DefIndex, LazyArray<ModChild>>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
-    trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
+    trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, ty::EarlyBinder<Ty<'static>>>>>,
     doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
 struct VariantData {
+    idx: VariantIdx,
     discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<(CtorKind, DefIndex)>,
@@ -454,6 +486,7 @@ trivially_parameterized_over_tcx! {
     RawDefId,
     TraitImpls,
     IncoherentImpls,
+    CrateHeader,
     CrateRoot,
     CrateDep,
     AttrFlags,

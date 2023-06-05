@@ -188,6 +188,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_variant(&mut self, v: &'ast Variant) {
         walk_variant(self, v)
     }
+    fn visit_variant_discr(&mut self, discr: &'ast AnonConst) {
+        self.visit_anon_const(discr);
+    }
     fn visit_label(&mut self, label: &'ast Label) {
         walk_label(self, label)
     }
@@ -380,7 +383,7 @@ where
     visitor.visit_ident(variant.ident);
     visitor.visit_vis(&variant.vis);
     visitor.visit_variant_data(&variant.data);
-    walk_list!(visitor, visit_anon_const, &variant.disr_expr);
+    walk_list!(visitor, visit_variant_discr, &variant.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.attrs);
 }
 
@@ -482,7 +485,6 @@ where
             walk_list!(visitor, visit_ty, &data.inputs);
             walk_fn_ret_ty(visitor, &data.output);
         }
-        GenericArgs::ReturnTypeNotation(_span) => {}
     }
 }
 
@@ -865,7 +867,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Async(_, body) => {
             visitor.visit_block(body);
         }
-        ExprKind::Await(expr) => visitor.visit_expr(expr),
+        ExprKind::Await(expr, _) => visitor.visit_expr(expr),
         ExprKind::Assign(lhs, rhs, _) => {
             visitor.visit_expr(lhs);
             visitor.visit_expr(rhs);
@@ -910,6 +912,12 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Paren(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(asm) => visitor.visit_inline_asm(asm),
         ExprKind::FormatArgs(f) => visitor.visit_format_args(f),
+        ExprKind::OffsetOf(container, fields) => {
+            visitor.visit_ty(container);
+            for &field in fields {
+                visitor.visit_ident(field);
+            }
+        }
         ExprKind::Yield(optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }

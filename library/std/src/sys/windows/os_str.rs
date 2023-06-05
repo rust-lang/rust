@@ -27,6 +27,7 @@ impl FromInner<Wtf8Buf> for Buf {
 }
 
 impl AsInner<Wtf8> for Buf {
+    #[inline]
     fn as_inner(&self) -> &Wtf8 {
         &self.inner
     }
@@ -150,6 +151,16 @@ impl Buf {
 }
 
 impl Slice {
+    #[inline]
+    pub fn as_os_str_bytes(&self) -> &[u8] {
+        self.inner.as_bytes()
+    }
+
+    #[inline]
+    pub unsafe fn from_os_str_bytes_unchecked(s: &[u8]) -> &Slice {
+        mem::transmute(Wtf8::from_bytes_unchecked(s))
+    }
+
     #[inline]
     pub fn from_str(s: &str) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }

@@ -16,6 +16,10 @@ note: the lifetime requirement is introduced here
    |
 LL | fn thing(x: impl FnOnce(&u32)) {}
    |                  ^^^^^^^^^^^^
+help: consider specifying the type of the closure parameters
+   |
+LL |     let f = |_: &_| ();
+   |             ~~~~~~~
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/issue-79187.rs:5:5

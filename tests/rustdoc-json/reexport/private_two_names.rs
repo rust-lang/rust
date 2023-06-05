@@ -8,15 +8,19 @@
 
 // @!has "$.index[*][?(@.name=='style')]"
 mod style {
-    // @set color_struct_id = "$.index[*][?(@.kind=='struct' && @.name=='Color')].id"
+    // @set color_struct_id = "$.index[*][?(@.inner.struct && @.name=='Color')].id"
     pub struct Color;
 }
 
-// @is "$.index[*][?(@.kind=='import' && @.inner.name=='Color')].inner.id" $color_struct_id
-// @set color_export_id = "$.index[*][?(@.kind=='import' && @.inner.name=='Color')].id"
+// @is "$.index[*][?(@.docs=='First re-export')].inner.import.id" $color_struct_id
+// @is "$.index[*][?(@.docs=='First re-export')].inner.import.name" \"Color\"
+// @set color_export_id = "$.index[*][?(@.docs=='First re-export')].id"
+/// First re-export
 pub use style::Color;
-// @is "$.index[*][?(@.kind=='import' && @.inner.name=='Colour')].inner.id" $color_struct_id
-// @set colour_export_id = "$.index[*][?(@.kind=='import' && @.inner.name=='Colour')].id"
+// @is "$.index[*][?(@.docs=='Second re-export')].inner.import.id" $color_struct_id
+// @is "$.index[*][?(@.docs=='Second re-export')].inner.import.name" \"Colour\"
+// @set colour_export_id = "$.index[*][?(@.docs=='Second re-export')].id"
+/// Second re-export
 pub use style::Color as Colour;
 
-// @ismany "$.index[*][?(@.name=='private_two_names')].inner.items[*]" $color_export_id $colour_export_id
+// @ismany "$.index[*][?(@.name=='private_two_names')].inner.module.items[*]" $color_export_id $colour_export_id

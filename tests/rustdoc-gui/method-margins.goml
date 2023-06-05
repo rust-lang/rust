@@ -1,5 +1,5 @@
 // This test ensures that the margins on methods are coherent inside an impl block.
-goto: "file://" + |DOC_PATH| + "/test_docs/trait_members/struct.HasTrait.html#impl-TraitMembers-for-HasTrait"
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait_members/struct.HasTrait.html#impl-TraitMembers-for-HasTrait"
 
 assert-count: ("#trait-implementations-list > .toggle", 1)
 

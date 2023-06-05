@@ -207,6 +207,12 @@ impl<'ty> FieldInnerTy<'ty> {
             FieldInnerTy::Plain(..) => quote! { #inner },
         }
     }
+
+    pub fn span(&self) -> proc_macro2::Span {
+        match self {
+            FieldInnerTy::Option(ty) | FieldInnerTy::Vec(ty) | FieldInnerTy::Plain(ty) => ty.span(),
+        }
+    }
 }
 
 /// Field information passed to the builder. Deliberately omits attrs to discourage the
@@ -591,14 +597,20 @@ pub(super) enum SubdiagnosticKind {
     },
 }
 
-impl SubdiagnosticKind {
-    /// Constructs a `SubdiagnosticKind` from a field or type attribute such as `#[note]`,
-    /// `#[error(parser::add_paren)]` or `#[suggestion(code = "...")]`. Returns the
+pub(super) struct SubdiagnosticVariant {
+    pub(super) kind: SubdiagnosticKind,
+    pub(super) slug: Option<Path>,
+    pub(super) no_span: bool,
+}
+
+impl SubdiagnosticVariant {
+    /// Constructs a `SubdiagnosticVariant` from a field or type attribute such as `#[note]`,
+    /// `#[error(parser::add_paren, no_span)]` or `#[suggestion(code = "...")]`. Returns the
     /// `SubdiagnosticKind` and the diagnostic slug, if specified.
     pub(super) fn from_attr(
         attr: &Attribute,
         fields: &impl HasFieldMap,
-    ) -> Result<Option<(SubdiagnosticKind, Option<Path>)>, DiagnosticDeriveError> {
+    ) -> Result<Option<SubdiagnosticVariant>, DiagnosticDeriveError> {
         // Always allow documentation comments.
         if is_doc_comment(attr) {
             return Ok(None);
@@ -673,7 +685,7 @@ impl SubdiagnosticKind {
                     | SubdiagnosticKind::Help
                     | SubdiagnosticKind::Warn
                     | SubdiagnosticKind::MultipartSuggestion { .. } => {
-                        return Ok(Some((kind, None)));
+                        return Ok(Some(SubdiagnosticVariant { kind, slug: None, no_span: false }));
                     }
                     SubdiagnosticKind::Suggestion { .. } => {
                         throw_span_err!(span, "suggestion without `code = \"...\"`")
@@ -690,11 +702,14 @@ impl SubdiagnosticKind {
 
         let mut first = true;
         let mut slug = None;
+        let mut no_span = false;
 
         list.parse_nested_meta(|nested| {
             if nested.input.is_empty() || nested.input.peek(Token![,]) {
                 if first {
                     slug = Some(nested.path);
+                } else if nested.path.is_ident("no_span") {
+                    no_span = true;
                 } else {
                     span_err(nested.input.span().unwrap(), "a diagnostic slug must be the first argument to the attribute").emit();
                 }
@@ -769,19 +784,19 @@ impl SubdiagnosticKind {
                 (_, SubdiagnosticKind::Suggestion { .. }) => {
                     span_err(path_span, "invalid nested attribute")
                         .help(
-                            "only `style`, `code` and `applicability` are valid nested attributes",
+                            "only `no_span`, `style`, `code` and `applicability` are valid nested attributes",
                         )
                         .emit();
                     has_errors = true;
                 }
                 (_, SubdiagnosticKind::MultipartSuggestion { .. }) => {
                     span_err(path_span, "invalid nested attribute")
-                        .help("only `style` and `applicability` are valid nested attributes")
+                        .help("only `no_span`, `style` and `applicability` are valid nested attributes")
                         .emit();
                     has_errors = true;
                 }
                 _ => {
-                    span_err(path_span, "invalid nested attribute").emit();
+                    span_err(path_span, "only `no_span` is a valid nested attribute").emit();
                     has_errors = true;
                 }
             }
@@ -825,7 +840,7 @@ impl SubdiagnosticKind {
             | SubdiagnosticKind::Warn => {}
         }
 
-        Ok(Some((kind, slug)))
+        Ok(Some(SubdiagnosticVariant { kind, slug, no_span }))
     }
 }
 
@@ -851,7 +866,8 @@ impl quote::IdentFragment for SubdiagnosticKind {
 /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
 /// call (like `span_label`).
 pub(super) fn should_generate_set_arg(field: &Field) -> bool {
-    field.attrs.is_empty()
+    // Perhaps this should be an exhaustive list...
+    field.attrs.iter().all(|attr| is_doc_comment(attr))
 }
 
 pub(super) fn is_doc_comment(attr: &Attribute) -> bool {

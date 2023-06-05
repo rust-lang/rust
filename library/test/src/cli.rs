@@ -404,13 +404,13 @@ fn get_format(
         Some("terse") => OutputFormat::Terse,
         Some("json") => {
             if !allow_unstable {
-                return Err("The \"json\" format is only accepted on the nightly compiler".into());
+                return Err("The \"json\" format is only accepted on the nightly compiler with -Z unstable-options".into());
             }
             OutputFormat::Json
         }
         Some("junit") => {
             if !allow_unstable {
-                return Err("The \"junit\" format is only accepted on the nightly compiler".into());
+                return Err("The \"junit\" format is only accepted on the nightly compiler with -Z unstable-options".into());
             }
             OutputFormat::Junit
         }

@@ -342,6 +342,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::DropTemps(_) |
             ExprKind::Err(_) |
             ExprKind::InlineAsm(_) |
+            ExprKind::OffsetOf(_, _) |
             ExprKind::Let(_) |
             ExprKind::Lit(_) |
             ExprKind::Loop(_, _, _, _) |

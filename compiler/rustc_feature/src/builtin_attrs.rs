@@ -24,6 +24,7 @@ pub type GatedCfg = (Symbol, Symbol, GateFn);
 /// `cfg(...)`'s that are feature gated.
 const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
+    (sym::overflow_checks, sym::cfg_overflow_checks, cfg_fn!(cfg_overflow_checks)),
     (sym::target_abi, sym::cfg_target_abi, cfg_fn!(cfg_target_abi)),
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (
@@ -355,10 +356,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     ungated!(type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     gated!(
-        const_eval_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
-        const_eval_limit, experimental!(const_eval_limit)
-    ),
-    gated!(
         move_size_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
         large_assignments, experimental!(move_size_limit)
     ),
@@ -403,15 +400,15 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk
     ),
 
+    // Debugging
+    ungated!(
+        debugger_visualizer, Normal,
+        template!(List: r#"natvis_file = "...", gdb_script_file = "...""#), DuplicatesOk
+    ),
+
     // ==========================================================================
     // Unstable attributes:
     // ==========================================================================
-
-    // RFC #3191: #[debugger_visualizer] support
-    gated!(
-        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...", gdb_script_file = "...""#),
-        DuplicatesOk, experimental!(debugger_visualizer)
-    ),
 
     // Linking:
     gated!(
@@ -493,6 +490,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // RFC 2397
     gated!(do_not_recommend, Normal, template!(Word), WarnFollowing, experimental!(do_not_recommend)),
+
+    // `#[cfi_encoding = ""]`
+    gated!(
+        cfi_encoding, Normal, template!(NameValueStr: "encoding"), ErrorPreceding,
+        experimental!(cfi_encoding)
+    ),
 
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
@@ -854,11 +857,11 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
 /// Whether this builtin attribute is only used in the local crate.
 /// If so, it is not encoded in the crate metadata.
 pub fn is_builtin_only_local(name: Symbol) -> bool {
-    BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
+    BUILTIN_ATTRIBUTE_MAP.get(&name).is_some_and(|attr| attr.only_local)
 }
 
 pub fn is_valid_for_get_attr(name: Symbol) -> bool {
-    BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| match attr.duplicates {
+    BUILTIN_ATTRIBUTE_MAP.get(&name).is_some_and(|attr| match attr.duplicates {
         WarnFollowing | ErrorFollowing | ErrorPreceding | FutureWarnFollowing
         | FutureWarnPreceding => true,
         DuplicatesOk | WarnFollowingWordOnly => false,

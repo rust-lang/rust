@@ -9,13 +9,13 @@ rustc_index::newtype_index! {
     ///
     /// [`DefId`]: rustc_span::def_id::DefId
     #[debug_format = "NodeId({})"]
-    pub struct NodeId {}
+    pub struct NodeId {
+        /// The [`NodeId`] used to represent the root of the crate.
+        const CRATE_NODE_ID = 0;
+    }
 }
 
 rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeMapEntry, NodeId);
-
-/// The [`NodeId`] used to represent the root of the crate.
-pub const CRATE_NODE_ID: NodeId = NodeId::from_u32(0);
 
 /// When parsing and at the beginning of doing expansions, we initially give all AST nodes
 /// this dummy AST [`NodeId`]. Then, during a later phase of expansion, we renumber them

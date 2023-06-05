@@ -4,6 +4,20 @@ error[E0080]: evaluation of constant value failed
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    |                   ^^^^^ attempt to compute `5_u32 - 6_u32`, which would overflow
 
+note: erroneous constant used
+  --> $DIR/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^
+
+note: erroneous constant used
+  --> $DIR/erroneous_const2.rs:LL:CC
+   |
+LL |     println!("{}", FOO);
+   |                    ^^^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

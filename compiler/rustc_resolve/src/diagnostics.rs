@@ -28,10 +28,10 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::ThinVec;
 
-use crate::errors as errs;
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
+use crate::{errors as errs, BindingKey};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
 use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{LexicalScopeBinding, NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
@@ -238,7 +238,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             },
         };
 
-        err.note(&format!(
+        err.note(format!(
             "`{}` must be defined only once in the {} namespace of this {}",
             name,
             ns.descr(),
@@ -663,15 +663,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Ident::with_dummy_span(name),
                         Namespace::ValueNS,
                         &parent_scope,
-                        &|res: Res| match res {
-                            Res::Def(
-                                DefKind::Ctor(CtorOf::Variant, CtorKind::Const)
-                                | DefKind::Ctor(CtorOf::Struct, CtorKind::Const)
-                                | DefKind::Const
-                                | DefKind::AssocConst,
-                                _,
-                            ) => true,
-                            _ => false,
+                        &|res: Res| {
+                            matches!(
+                                res,
+                                Res::Def(
+                                    DefKind::Ctor(CtorOf::Variant, CtorKind::Const)
+                                        | DefKind::Ctor(CtorOf::Struct, CtorKind::Const)
+                                        | DefKind::Const
+                                        | DefKind::AssocConst,
+                                    _,
+                                )
+                            )
                         },
                     );
 
@@ -681,7 +683,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                              making the path in the pattern qualified: `path::to::ModOrType::{}`",
                             name,
                         );
-                        err.span_help(span, &help_msg);
+                        err.span_help(span, help_msg);
                     }
                     show_candidates(
                         self.tcx,
@@ -781,10 +783,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
                     if suggestions.is_empty() {
-                        err.help(&msg);
+                        err.help(msg);
                         return err;
                     }
-                    err.multipart_suggestion(&msg, suggestions, applicability);
+                    err.multipart_suggestion(msg, suggestions, applicability);
                 }
 
                 err
@@ -862,18 +864,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ResolutionError::ForwardDeclaredGenericParam => {
                 self.tcx.sess.create_err(errs::ForwardDeclaredGenericParam { span })
             }
-            ResolutionError::ParamInTyOfConstParam(name) => {
-                self.tcx.sess.create_err(errs::ParamInTyOfConstParam { span, name })
-            }
-            ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
+            ResolutionError::ParamInTyOfConstParam { name, param_kind: is_type } => self
+                .tcx
+                .sess
+                .create_err(errs::ParamInTyOfConstParam { span, name, param_kind: is_type }),
+            ResolutionError::ParamInNonTrivialAnonConst { name, param_kind: is_type } => {
                 self.tcx.sess.create_err(errs::ParamInNonTrivialAnonConst {
                     span,
                     name,
-                    sub_is_type: if is_type {
-                        errs::ParamInNonTrivialAnonConstIsType::AType
-                    } else {
-                        errs::ParamInNonTrivialAnonConstIsType::NotAType { name }
-                    },
+                    param_kind: is_type,
                     help: self
                         .tcx
                         .sess
@@ -881,6 +880,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         .then_some(errs::ParamInNonTrivialAnonConstHelp),
                 })
             }
+            ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
+                .tcx
+                .sess
+                .create_err(errs::ParamInEnumDiscriminant { span, name, param_kind: is_type }),
             ResolutionError::SelfInGenericParamDefault => {
                 self.tcx.sess.create_err(errs::SelfInGenericParamDefault { span })
             }
@@ -928,7 +931,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } => {
                 let mut err = self.tcx.sess.struct_span_err_with_code(
                     span,
-                    &format!(
+                    format!(
                         "item `{}` is an associated {}, which doesn't match its trait `{}`",
                         name, kind, trait_path,
                     ),
@@ -944,6 +947,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .create_err(errs::TraitImplDuplicate { span, name, trait_item_span, old_span }),
             ResolutionError::InvalidAsmSym => {
                 self.tcx.sess.create_err(errs::InvalidAsmSym { span })
+            }
+            ResolutionError::LowercaseSelf => {
+                self.tcx.sess.create_err(errs::LowercaseSelf { span })
             }
         }
     }
@@ -1357,7 +1363,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
-            err.span_note(ident.span, &msg);
+            err.span_note(ident.span, msg);
             return;
         }
         if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
@@ -1417,7 +1423,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if !import.span.is_dummy() {
                         err.span_note(
                             import.span,
-                            &format!("`{}` is imported here, but it is {}", ident, desc),
+                            format!("`{}` is imported here, but it is {}", ident, desc),
                         );
                         // Silence the 'unused import' warning we might get,
                         // since this diagnostic already covers that import.
@@ -1425,7 +1431,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         return;
                     }
                 }
-                err.note(&format!("`{}` is in scope, but it is {}", ident, desc));
+                err.note(format!("`{}` is in scope, but it is {}", ident, desc));
                 return;
             }
         }
@@ -1472,7 +1478,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             err.span_label(
                 self.tcx.sess.source_map().guess_head_span(def_span),
-                &format!(
+                format!(
                     "{}{} `{}` defined here",
                     prefix,
                     suggestion.res.descr(),
@@ -1490,7 +1496,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 format!("maybe you meant this {}", suggestion.res.descr())
             }
         };
-        err.span_suggestion(span, &msg, suggestion.candidate, Applicability::MaybeIncorrect);
+        err.span_suggestion(span, msg, suggestion.candidate, Applicability::MaybeIncorrect);
         true
     }
 
@@ -1532,7 +1538,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut err = struct_span_err!(self.tcx.sess, ident.span, E0659, "`{ident}` is ambiguous");
         err.span_label(ident.span, "ambiguous name");
-        err.note(&format!("ambiguous because of {}", kind.descr()));
+        err.note(format!("ambiguous because of {}", kind.descr()));
 
         let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
@@ -1560,10 +1566,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
             }
 
-            err.span_note(b.span, &note_msg);
+            err.span_note(b.span, note_msg);
             for (i, help_msg) in help_msgs.iter().enumerate() {
                 let or = if i == 0 { "" } else { "or " };
-                err.help(&format!("{}{}", or, help_msg));
+                err.help(format!("{}{}", or, help_msg));
             }
         };
 
@@ -1606,7 +1612,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let descr = get_descr(binding);
         let mut err =
             struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
-        err.span_label(ident.span, &format!("private {}", descr));
+        err.span_label(ident.span, format!("private {}", descr));
 
         let mut non_exhaustive = None;
         // If an ADT is foreign and marked as `non_exhaustive`, then that's
@@ -1621,7 +1627,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             err.span_label(span, "a constructor is private if any of the fields is private");
             if let Res::Def(_, d) = res && let Some(fields) = self.field_visibility_spans.get(&d) {
                 err.multipart_suggestion_verbose(
-                    &format!(
+                    format!(
                         "consider making the field{} publicly accessible",
                         pluralize!(fields.len())
                     ),
@@ -1674,7 +1680,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     format!("cannot be constructed because it is `#[non_exhaustive]`"),
                 );
             }
-            err.span_note(note_span, &msg);
+            err.span_note(note_span, msg);
         }
 
         err.emit();
@@ -1826,8 +1832,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             (msg, None)
         } else if ident.name == kw::SelfUpper {
-            ("`Self` is only available in impls, traits, and type definitions".to_string(), None)
-        } else if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
+            // As mentioned above, `opt_ns` being `None` indicates a module path in import.
+            // We can use this to improve a confusing error for, e.g. `use Self::Variant` in an
+            // impl
+            if opt_ns.is_none() {
+                ("`Self` cannot be used in imports".to_string(), None)
+            } else {
+                (
+                    "`Self` is only available in impls, traits, and type definitions".to_string(),
+                    None,
+                )
+            }
+        } else if ident.name.as_str().chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
             // Check whether the name refers to an item in the value namespace.
             let binding = if let Some(ribs) = ribs {
                 self.resolve_ident_in_lexical_scope(
@@ -1867,15 +1883,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Some(LexicalScopeBinding::Item(name_binding)) => Some(name_binding.span),
                 _ => None,
             };
-            let suggestion = if let Some(span) = match_span {
-                Some((
+            let suggestion = match_span.map(|span| {
+                (
                     vec![(span, String::from(""))],
                     format!("`{}` is defined here, but is not a type", ident),
                     Applicability::MaybeIncorrect,
-                ))
-            } else {
-                None
-            };
+                )
+            });
 
             (format!("use of undeclared type `{}`", ident), suggestion)
         } else {
@@ -2077,7 +2091,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let resolutions = self.resolutions(crate_module).borrow();
-        let resolution = resolutions.get(&self.new_key(ident, MacroNS))?;
+        let binding_key = BindingKey::new(ident, MacroNS);
+        let resolution = resolutions.get(&binding_key)?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();
@@ -2150,7 +2165,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let is_definitely_crate = import
                     .module_path
                     .first()
-                    .map_or(false, |f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
+                    .is_some_and(|f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
 
                 // Add the import to the start, with a `{` if required.
                 let start_point = source_map.start_point(after_crate_name);
@@ -2444,7 +2459,7 @@ fn show_candidates(
         };
 
         for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
-            err.note(note);
+            err.note(note.clone());
         }
 
         if let Some(span) = use_placement_span {
@@ -2452,7 +2467,7 @@ fn show_candidates(
                 DiagnosticMode::Pattern => {
                     err.span_suggestions(
                         span,
-                        &msg,
+                        msg,
                         accessible_path_strings.into_iter().map(|a| a.0),
                         Applicability::MaybeIncorrect,
                     );
@@ -2471,7 +2486,7 @@ fn show_candidates(
 
             err.span_suggestions_with_style(
                 span,
-                &msg,
+                msg,
                 accessible_path_strings.into_iter().map(|a| a.0),
                 Applicability::MaybeIncorrect,
                 SuggestionStyle::ShowAlways,
@@ -2481,7 +2496,7 @@ fn show_candidates(
                 if sp.can_be_used_for_suggestions() {
                     err.span_suggestion_verbose(
                         sp,
-                        &format!("if you import `{}`, refer to it directly", last.ident),
+                        format!("if you import `{}`, refer to it directly", last.ident),
                         "",
                         Applicability::Unspecified,
                     );
@@ -2495,7 +2510,7 @@ fn show_candidates(
                 msg.push_str(&candidate.0);
             }
 
-            err.help(&msg);
+            err.help(msg);
         }
     } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());
@@ -2520,12 +2535,12 @@ fn show_candidates(
                 let span = tcx.sess.source_map().guess_head_span(span);
                 let mut multi_span = MultiSpan::from_span(span);
                 multi_span.push_span_label(span, "not accessible");
-                err.span_note(multi_span, &msg);
+                err.span_note(multi_span, msg);
             } else {
-                err.note(&msg);
+                err.note(msg);
             }
             if let Some(note) = (*note).as_deref() {
-                err.note(note);
+                err.note(note.to_string());
             }
         } else {
             let (_, descr_first, _, _) = &inaccessible_path_strings[0];
@@ -2566,10 +2581,10 @@ fn show_candidates(
             }
 
             for note in inaccessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
-                err.note(note);
+                err.note(note.clone());
             }
 
-            err.span_note(multi_span, &msg);
+            err.span_note(multi_span, msg);
         }
     }
 }

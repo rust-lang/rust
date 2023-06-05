@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: #110395
 #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const)]
 
 pub struct A;

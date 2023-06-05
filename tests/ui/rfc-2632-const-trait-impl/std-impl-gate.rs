@@ -1,7 +1,7 @@
 // This tests feature gates for const impls in the standard library.
 
 // revisions: stock gated
-//[gated] run-pass
+//[gated] known-bug: #110395
 
 #![cfg_attr(gated, feature(const_trait_impl, const_default_impls))]
 

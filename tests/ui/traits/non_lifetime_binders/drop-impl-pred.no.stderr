@@ -1,0 +1,24 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/drop-impl-pred.rs:6:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0367]: `Drop` impl requires `H: Foo` but the struct it is implemented for does not
+  --> $DIR/drop-impl-pred.rs:19:15
+   |
+LL |     for<H> H: Foo,
+   |               ^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/drop-impl-pred.rs:12:1
+   |
+LL | struct Bar<T>(T) where T: Foo;
+   | ^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0367`.

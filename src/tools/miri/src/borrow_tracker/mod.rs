@@ -238,7 +238,7 @@ pub enum BorrowTrackerMethod {
 }
 
 impl BorrowTrackerMethod {
-    pub fn instanciate_global_state(self, config: &MiriConfig) -> GlobalState {
+    pub fn instantiate_global_state(self, config: &MiriConfig) -> GlobalState {
         RefCell::new(GlobalStateInner::new(
             self,
             config.tracked_pointer_tags.clone(),
@@ -352,7 +352,7 @@ pub enum AllocState {
     TreeBorrows(Box<RefCell<tree_borrows::AllocState>>),
 }
 
-impl machine::AllocExtra {
+impl machine::AllocExtra<'_> {
     #[track_caller]
     pub fn borrow_tracker_sb(&self) -> &RefCell<stacked_borrows::AllocState> {
         match self.borrow_tracker {

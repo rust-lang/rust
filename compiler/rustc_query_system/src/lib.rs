@@ -16,7 +16,7 @@ extern crate rustc_data_structures;
 extern crate rustc_macros;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 pub mod cache;
 pub mod dep_graph;

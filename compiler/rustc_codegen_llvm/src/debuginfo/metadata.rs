@@ -20,7 +20,6 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use cstr::cstr;
 use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
 use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
@@ -29,7 +28,6 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, AdtKind, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
 };
@@ -807,14 +805,12 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     name_in_debuginfo.push(codegen_unit_name);
 
     debug!("build_compile_unit_di_node: {:?}", name_in_debuginfo);
-    let rustc_producer =
-        format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"),);
+    let rustc_producer = format!("rustc version {}", tcx.sess.cfg_version);
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let work_dir = tcx.sess.opts.working_dir.to_string_lossy(FileNameDisplayPreference::Remapped);
-    let flags = "\0";
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         output_filenames
@@ -851,7 +847,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             producer.as_ptr().cast(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
-            flags.as_ptr().cast(),
+            c"".as_ptr().cast(),
             0,
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
             // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
@@ -880,8 +876,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             );
             let val = llvm::LLVMMetadataAsValue(debug_context.llcontext, gcov_metadata);
 
-            let llvm_gcov_ident = cstr!("llvm.gcov");
-            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, llvm_gcov_ident.as_ptr(), val);
+            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, c"llvm.gcov".as_ptr(), val);
         }
 
         // Insert `llvm.ident` metadata on the wasm targets since that will
@@ -894,7 +889,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             );
             llvm::LLVMAddNamedMetadataOperand(
                 debug_context.llmod,
-                cstr!("llvm.ident").as_ptr(),
+                c"llvm.ident".as_ptr(),
                 llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
             );
         }
@@ -1182,12 +1177,12 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
             let names = get_parameter_names(cx, generics);
             let template_params: SmallVec<_> = iter::zip(substs, names)
                 .filter_map(|(kind, name)| {
-                    if let GenericArgKind::Type(ty) = kind.unpack() {
+                    kind.as_type().map(|ty| {
                         let actual_type =
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);
                         let name = name.as_str();
-                        Some(unsafe {
+                        unsafe {
                             llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                 DIB(cx),
                                 None,
@@ -1195,10 +1190,8 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
                                 name.len(),
                                 actual_type_di_node,
                             )
-                        })
-                    } else {
-                        None
-                    }
+                        }
+                    })
                 })
                 .collect();
 

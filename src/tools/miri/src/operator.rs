@@ -53,17 +53,6 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
                 (Scalar::from_bool(res), false, self.tcx.types.bool)
             }
 
-            Offset => {
-                assert!(left.layout.ty.is_unsafe_ptr());
-                let ptr = left.to_scalar().to_pointer(self)?;
-                let offset = right.to_scalar().to_target_isize(self)?;
-
-                let pointee_ty =
-                    left.layout.ty.builtin_deref(true).expect("Offset called on non-ptr type").ty;
-                let ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset)?;
-                (Scalar::from_maybe_pointer(ptr, self), false, left.layout.ty)
-            }
-
             // Some more operations are possible with atomics.
             // The return value always has the provenance of the *left* operand.
             Add | Sub | BitOr | BitAnd | BitXor => {

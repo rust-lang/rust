@@ -662,11 +662,18 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, Debug, Hash, Eq)]
-#[derive_const(PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialEq for TypeId {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.t == other.t
+    }
 }
 
 impl TypeId {
@@ -867,7 +874,7 @@ where
 ///
 /// A data provider provides values by calling this type's provide methods.
 #[unstable(feature = "provide_any", issue = "96024")]
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 pub struct Demand<'a>(dyn Erased<'a> + 'a);
 
 impl<'a> Demand<'a> {

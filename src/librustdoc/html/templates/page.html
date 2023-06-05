@@ -64,7 +64,7 @@
     </noscript> {# #}
     {% if layout.css_file_extension.is_some() %}
         <link rel="stylesheet" {#+ #}
-            href="{{static_root_path|safe}}theme{{page.resource_suffix}}.css"> {# #}
+            href="{{page.root_path|safe}}theme{{page.resource_suffix}}.css"> {# #}
     {% endif %}
     {% if !layout.favicon.is_empty() %}
         <link rel="icon" href="{{layout.favicon}}"> {# #}

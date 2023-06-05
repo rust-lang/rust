@@ -56,7 +56,7 @@ where
 #[cfg(feature = "rustc")]
 mod rustc {
     use super::*;
-    use crate::layout::tree::Err;
+    use crate::layout::tree::rustc::Err;
 
     use rustc_middle::ty::Ty;
     use rustc_middle::ty::TyCtxt;
@@ -71,19 +71,20 @@ mod rustc {
                 // representations. If these conversions fail, conclude that the transmutation is
                 // unacceptable; the layouts of both the source and destination types must be
                 // well-defined.
-                let src = Tree::from_ty(src, context).map_err(|err| match err {
-                    // Answer `Yes` here, because "Unknown Type" will already be reported by
-                    // rustc. No need to spam the user with more errors.
-                    Err::Unknown => Answer::Yes,
-                    Err::Unspecified => Answer::No(Reason::SrcIsUnspecified),
-                })?;
+                let src = Tree::from_ty(src, context);
+                let dst = Tree::from_ty(dst, context);
 
-                let dst = Tree::from_ty(dst, context).map_err(|err| match err {
-                    Err::Unknown => Answer::Yes,
-                    Err::Unspecified => Answer::No(Reason::DstIsUnspecified),
-                })?;
-
-                Ok((src, dst))
+                match (src, dst) {
+                    // Answer `Yes` here, because 'unknown layout' and type errors will already
+                    // be reported by rustc. No need to spam the user with more errors.
+                    (Err(Err::TypeError(_)), _) => Err(Answer::Yes),
+                    (_, Err(Err::TypeError(_))) => Err(Answer::Yes),
+                    (Err(Err::Unknown), _) => Err(Answer::Yes),
+                    (_, Err(Err::Unknown)) => Err(Answer::Yes),
+                    (Err(Err::Unspecified), _) => Err(Answer::No(Reason::SrcIsUnspecified)),
+                    (_, Err(Err::Unspecified)) => Err(Answer::No(Reason::DstIsUnspecified)),
+                    (Ok(src), Ok(dst)) => Ok((src, dst)),
+                }
             });
 
             match query_or_answer {

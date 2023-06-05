@@ -158,7 +158,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     fn subst_opt(self, tcx: TyCtxt<'tcx>, substs: ty::SubstsRef<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
-                let c = ty::EarlyBinder(c).subst(tcx, substs);
+                let c = ty::EarlyBinder::bind(c).subst(tcx, substs);
                 let pred = match c.kind().try_to_target_usize(tcx) {
                     Some(0) => Self::True,
                     Some(1..) => Self::False,
@@ -167,7 +167,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 Some(pred)
             }
             Self::GenericType(t) => {
-                Some(ty::EarlyBinder(t).subst(tcx, substs).inhabited_predicate(tcx))
+                Some(ty::EarlyBinder::bind(t).subst(tcx, substs).inhabited_predicate(tcx))
             }
             Self::And(&[a, b]) => match a.subst_opt(tcx, substs) {
                 None => b.subst_opt(tcx, substs).map(|b| a.and(tcx, b)),

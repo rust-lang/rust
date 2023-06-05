@@ -7,7 +7,7 @@
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_hir as ast;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 use std::iter;
@@ -123,8 +123,8 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     } else {
         let mutbl = a.mutbl;
         let (variance, info) = match mutbl {
-            ast::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
-            ast::Mutability::Mut => {
+            hir::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
+            hir::Mutability::Mut => {
                 (ty::Invariant, ty::VarianceDiagInfo::Invariant { ty: base_ty, param_index: 0 })
             }
         };
@@ -239,12 +239,12 @@ impl<'tcx> Relate<'tcx> for ty::BoundConstness {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ast::Unsafety {
+impl<'tcx> Relate<'tcx> for hir::Unsafety {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ast::Unsafety,
-        b: ast::Unsafety,
-    ) -> RelateResult<'tcx, ast::Unsafety> {
+        a: hir::Unsafety,
+        b: hir::Unsafety,
+    ) -> RelateResult<'tcx, hir::Unsafety> {
         if a != b {
             Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
         } else {
@@ -315,7 +315,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let substs = relate_substs(relation, a.substs, b.substs)?;
-            Ok(relation.tcx().mk_trait_ref(a.def_id, substs))
+            Ok(ty::TraitRef::new(relation.tcx(), a.def_id, substs))
         }
     }
 }
@@ -388,24 +388,24 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
     }
 }
 
-/// The main "type relation" routine. Note that this does not handle
-/// inference artifacts, so you should filter those out before calling
-/// it.
-pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
+/// Relates `a` and `b` structurally, calling the relation for all nested values.
+/// Any semantic equality, e.g. of projections, and inference variables have to be
+/// handled by the caller.
+pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
 ) -> RelateResult<'tcx, Ty<'tcx>> {
     let tcx = relation.tcx();
-    debug!("super_relate_tys: a={:?} b={:?}", a, b);
+    debug!("structurally_relate_tys: a={:?} b={:?}", a, b);
     match (a.kind(), b.kind()) {
         (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
             // The caller should handle these cases!
-            bug!("var types encountered in super_relate_tys")
+            bug!("var types encountered in structurally_relate_tys")
         }
 
         (ty::Bound(..), _) | (_, ty::Bound(..)) => {
-            bug!("bound types encountered in super_relate_tys")
+            bug!("bound types encountered in structurally_relate_tys")
         }
 
         (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(tcx.ty_error(guar)),
@@ -550,6 +550,11 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_projection(projection_ty.def_id, projection_ty.substs))
         }
 
+        (&ty::Alias(ty::Inherent, a_data), &ty::Alias(ty::Inherent, b_data)) => {
+            let alias_ty = relation.relate(a_data, b_data)?;
+            Ok(tcx.mk_alias(ty::Inherent, tcx.mk_alias_ty(alias_ty.def_id, alias_ty.substs)))
+        }
+
         (
             &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: a_substs, .. }),
             &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: b_substs, .. }),
@@ -570,34 +575,26 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
     }
 }
 
-/// The main "const relation" routine. Note that this does not handle
-/// inference artifacts, so you should filter those out before calling
-/// it.
-pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
+/// Relates `a` and `b` structurally, calling the relation for all nested values.
+/// Any semantic equality, e.g. of unevaluated consts, and inference variables have
+/// to be handled by the caller.
+///
+/// FIXME: This is not totally structual, which probably should be fixed.
+/// See the HACKs below.
+pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     mut a: ty::Const<'tcx>,
     mut b: ty::Const<'tcx>,
 ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-    debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
+    debug!("{}.structurally_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
-
-    // HACK(const_generics): We still need to eagerly evaluate consts when
-    // relating them because during `normalize_param_env_or_error`,
-    // we may relate an evaluated constant in a obligation against
-    // an unnormalized (i.e. unevaluated) const in the param-env.
-    // FIXME(generic_const_exprs): Once we always lazily unify unevaluated constants
-    // these `eval` calls can be removed.
-    if !tcx.features().generic_const_exprs {
-        a = a.eval(tcx, relation.param_env());
-        b = b.eval(tcx, relation.param_env());
-    }
 
     if tcx.features().generic_const_exprs {
         a = tcx.expand_abstract_consts(a);
         b = tcx.expand_abstract_consts(b);
     }
 
-    debug!("{}.super_relate_consts(normed_a = {:?}, normed_b = {:?})", relation.tag(), a, b);
+    debug!("{}.structurally_relate_consts(normed_a = {:?}, normed_b = {:?})", relation.tag(), a, b);
 
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
@@ -605,7 +602,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     let is_match = match (a.kind(), b.kind()) {
         (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
             // The caller should handle these cases!
-            bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
+            bug!("var types encountered in structurally_relate_consts: {:?} {:?}", a, b)
         }
 
         (ty::ConstKind::Error(_), _) => return Ok(a),

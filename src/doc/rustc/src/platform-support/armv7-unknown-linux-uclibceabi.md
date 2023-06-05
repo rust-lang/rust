@@ -66,7 +66,7 @@ After completing these steps you can use rust normally in a native environment.
 
 To cross compile, you'll need to:
 
-* Build the rust cross toochain using  [rust-bootstrap-armv7-unknown-linux-uclibceabi](https://github.com/lancethepants/rust-bootstrap-armv7-unknown-linux-uclibceabi) or your own built toolchain.
+* Build the rust cross toolchain using  [rust-bootstrap-armv7-unknown-linux-uclibceabi](https://github.com/lancethepants/rust-bootstrap-armv7-unknown-linux-uclibceabi) or your own built toolchain.
 * Link your built toolchain with
 
     ```text

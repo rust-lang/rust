@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![feature(never_type)]
 #![allow(unused_mut, unused_tuple_struct_fields, clippy::redundant_allocation)]
 #![warn(clippy::must_use_candidate)]

@@ -1,4 +1,4 @@
-// aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::toplevel_ref_arg)]
 #![allow(unused)]

@@ -39,7 +39,7 @@ fn dogfood_clippy() {
     assert!(
         failed_packages.is_empty(),
         "Dogfood failed for packages `{}`",
-        failed_packages.iter().format(", "),
+        failed_packages.iter().join(", "),
     );
 }
 

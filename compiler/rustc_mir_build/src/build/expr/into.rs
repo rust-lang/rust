@@ -163,13 +163,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // [block: If(lhs)] -true-> [else_block: dest = (rhs)]
                 //        | (false)
-                //  [shortcurcuit_block: dest = false]
+                //  [shortcircuit_block: dest = false]
                 //
                 // Or:
                 //
                 // [block: If(lhs)] -false-> [else_block: dest = (rhs)]
                 //        | (true)
-                //  [shortcurcuit_block: dest = true]
+                //  [shortcircuit_block: dest = true]
 
                 let (shortcircuit_block, mut else_block, join_block) = (
                     this.cfg.start_new_block(),
@@ -561,7 +561,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ZstLiteral { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
-            | ExprKind::StaticRef { .. } => {
+            | ExprKind::StaticRef { .. }
+            | ExprKind::OffsetOf { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
                     Category::Rvalue(RvalueFunc::Into) => false,

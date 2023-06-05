@@ -4,10 +4,10 @@ define-function: (
     "check-colors",
     (theme, color, code_header_color, focus_background_color, headings_color),
     block {
-        goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
         // This is needed so that the text color is computed.
         show-text: true
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (
             ".impl",
@@ -19,20 +19,20 @@ define-function: (
             {"color": |code_header_color|, "background-color": "rgba(0, 0, 0, 0)"},
             ALL,
         )
-        goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
         assert-css: (
             "#impl-Foo",
             {"color": |color|, "background-color": |focus_background_color|},
         )
-        goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
         assert-css: (
             "#method\.must_use",
             {"color": |color|, "background-color": |focus_background_color|},
             ALL,
         )
-        goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
         assert-css: (".small-section-header a", {"color": |color|}, ALL)
-        goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
         // We select headings (h2, h3, h...).
         assert-css: (".docblock > :not(p) > a", {"color": |headings_color|}, ALL)
     },

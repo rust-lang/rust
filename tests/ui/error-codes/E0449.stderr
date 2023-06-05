@@ -1,22 +1,26 @@
-error[E0449]: unnecessary visibility qualifier
+error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/E0449.rs:7:1
    |
 LL | pub impl Bar {}
-   | ^^^ `pub` not permitted here because it's implied
+   | ^^^
    |
    = note: place qualifiers on individual impl items instead
 
-error[E0449]: unnecessary visibility qualifier
+error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/E0449.rs:9:1
    |
 LL | pub impl Foo for Bar {
-   | ^^^ `pub` not permitted here because it's implied
+   | ^^^
+   |
+   = note: trait items always share the visibility of their trait
 
-error[E0449]: unnecessary visibility qualifier
+error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/E0449.rs:10:5
    |
 LL |     pub fn foo() {}
-   |     ^^^ `pub` not permitted here because it's implied
+   |     ^^^
+   |
+   = note: trait items always share the visibility of their trait
 
 error: aborting due to 3 previous errors
 

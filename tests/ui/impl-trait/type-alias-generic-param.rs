@@ -3,7 +3,7 @@
 // types in 'item' position when generic parameters are involved
 //
 // run-pass
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 trait Meow {
     type MeowType;

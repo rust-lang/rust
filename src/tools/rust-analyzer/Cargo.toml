@@ -1,6 +1,7 @@
 [workspace]
 members = ["xtask/", "lib/*", "crates/*"]
 exclude = ["crates/proc-macro-test/imp"]
+resolver = "2"
 
 [workspace.package]
 rust-version = "1.66"
@@ -74,5 +75,20 @@ toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
+line-index = { version = "0.1.0-pre.1", path = "./lib/line-index" }
+
 # non-local crates
-smallvec = { version = "1.10.0", features = ["const_new", "union", "const_generics"] }
+smallvec = { version = "1.10.0", features = [
+  "const_new",
+  "union",
+  "const_generics",
+] }
+smol_str = "0.2.0"
+nohash-hasher = "0.2.0"
+text-size = "1.1.0"
+# the following crates are pinned to prevent us from pulling in syn 2 until all our dependencies have moved
+serde = { version = "=1.0.156", features = ["derive"] }
+serde_json = "1.0.94"
+triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
+
+rustc_lexer = { version = "0.1.0", package = "ra-ap-rustc_lexer" }

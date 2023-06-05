@@ -705,7 +705,7 @@ fn test_move_rev_iterator() {
 }
 
 #[test]
-fn test_splitator() {
+fn test_split_iterator() {
     let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[1], &[3], &[5]];
@@ -725,7 +725,7 @@ fn test_splitator() {
 }
 
 #[test]
-fn test_splitator_inclusive() {
+fn test_split_iterator_inclusive() {
     let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[1, 2], &[3, 4], &[5]];
@@ -745,7 +745,7 @@ fn test_splitator_inclusive() {
 }
 
 #[test]
-fn test_splitator_inclusive_reverse() {
+fn test_split_iterator_inclusive_reverse() {
     let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[5], &[3, 4], &[1, 2]];
@@ -765,7 +765,7 @@ fn test_splitator_inclusive_reverse() {
 }
 
 #[test]
-fn test_splitator_mut_inclusive() {
+fn test_split_iterator_mut_inclusive() {
     let xs = &mut [1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[1, 2], &[3, 4], &[5]];
@@ -785,7 +785,7 @@ fn test_splitator_mut_inclusive() {
 }
 
 #[test]
-fn test_splitator_mut_inclusive_reverse() {
+fn test_split_iterator_mut_inclusive_reverse() {
     let xs = &mut [1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[5], &[3, 4], &[1, 2]];
@@ -805,7 +805,7 @@ fn test_splitator_mut_inclusive_reverse() {
 }
 
 #[test]
-fn test_splitnator() {
+fn test_splitn_iterator() {
     let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[1, 2, 3, 4, 5]];
@@ -821,7 +821,7 @@ fn test_splitnator() {
 }
 
 #[test]
-fn test_splitnator_mut() {
+fn test_splitn_iterator_mut() {
     let xs = &mut [1, 2, 3, 4, 5];
 
     let splits: &[&mut [_]] = &[&mut [1, 2, 3, 4, 5]];
@@ -837,7 +837,7 @@ fn test_splitnator_mut() {
 }
 
 #[test]
-fn test_rsplitator() {
+fn test_rsplit_iterator() {
     let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[5], &[3], &[1]];
@@ -855,7 +855,7 @@ fn test_rsplitator() {
 }
 
 #[test]
-fn test_rsplitnator() {
+fn test_rsplitn_iterator() {
     let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[1, 2, 3, 4, 5]];
@@ -932,7 +932,7 @@ fn test_split_iterators_size_hint() {
 }
 
 #[test]
-fn test_windowsator() {
+fn test_windows_iterator() {
     let v = &[1, 2, 3, 4];
 
     let wins: &[&[_]] = &[&[1, 2], &[2, 3], &[3, 4]];
@@ -948,13 +948,13 @@ fn test_windowsator() {
 
 #[test]
 #[should_panic]
-fn test_windowsator_0() {
+fn test_windows_iterator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.windows(0);
 }
 
 #[test]
-fn test_chunksator() {
+fn test_chunks_iterator() {
     let v = &[1, 2, 3, 4, 5];
 
     assert_eq!(v.chunks(2).len(), 3);
@@ -972,13 +972,13 @@ fn test_chunksator() {
 
 #[test]
 #[should_panic]
-fn test_chunksator_0() {
+fn test_chunks_iterator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.chunks(0);
 }
 
 #[test]
-fn test_chunks_exactator() {
+fn test_chunks_exact_iterator() {
     let v = &[1, 2, 3, 4, 5];
 
     assert_eq!(v.chunks_exact(2).len(), 2);
@@ -996,13 +996,13 @@ fn test_chunks_exactator() {
 
 #[test]
 #[should_panic]
-fn test_chunks_exactator_0() {
+fn test_chunks_exact_iterator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.chunks_exact(0);
 }
 
 #[test]
-fn test_rchunksator() {
+fn test_rchunks_iterator() {
     let v = &[1, 2, 3, 4, 5];
 
     assert_eq!(v.rchunks(2).len(), 3);
@@ -1020,13 +1020,13 @@ fn test_rchunksator() {
 
 #[test]
 #[should_panic]
-fn test_rchunksator_0() {
+fn test_rchunks_iterator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.rchunks(0);
 }
 
 #[test]
-fn test_rchunks_exactator() {
+fn test_rchunks_exact_iterator() {
     let v = &[1, 2, 3, 4, 5];
 
     assert_eq!(v.rchunks_exact(2).len(), 2);
@@ -1044,7 +1044,7 @@ fn test_rchunks_exactator() {
 
 #[test]
 #[should_panic]
-fn test_rchunks_exactator_0() {
+fn test_rchunks_exact_iterator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.rchunks_exact(0);
 }
@@ -1219,7 +1219,7 @@ fn test_ends_with() {
 }
 
 #[test]
-fn test_mut_splitator() {
+fn test_mut_split_iterator() {
     let mut xs = [0, 1, 0, 2, 3, 0, 0, 4, 5, 0];
     assert_eq!(xs.split_mut(|x| *x == 0).count(), 6);
     for slice in xs.split_mut(|x| *x == 0) {
@@ -1235,7 +1235,7 @@ fn test_mut_splitator() {
 }
 
 #[test]
-fn test_mut_splitator_rev() {
+fn test_mut_split_iterator_rev() {
     let mut xs = [1, 2, 0, 3, 4, 0, 0, 5, 6, 0];
     for slice in xs.split_mut(|x| *x == 0).rev().take(4) {
         slice.reverse();

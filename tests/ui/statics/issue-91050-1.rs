@@ -12,6 +12,8 @@
 //
 // In regular builds, the bad cast was UB, like "Invalid LLVMRustVisibility value!"
 
+#![allow(dropping_copy_types)]
+
 pub mod before {
     #[no_mangle]
     pub static GLOBAL1: [u8; 1] = [1];

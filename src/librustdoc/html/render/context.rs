@@ -122,9 +122,9 @@ pub(crate) struct SharedContext<'tcx> {
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
 
-    /// Correspondance map used to link types used in the source code pages to allow to click on
+    /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    pub(crate) span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
 
@@ -184,11 +184,8 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it
-            .doc_value()
-            .as_ref()
-            .map(|doc| plain_text_summary(doc, &it.link_names(&self.cache())));
-        let desc = if let Some(desc) = desc {
+        let desc = plain_text_summary(&it.doc_value(), &it.link_names(&self.cache()));
+        let desc = if !desc.is_empty() {
             desc
         } else if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
@@ -531,7 +528,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
-            span_correspondance_map: matches,
+            span_correspondence_map: matches,
             cache,
             call_locations,
         };
@@ -647,7 +644,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            You need to enable Javascript be able to update your settings.\
+                            You need to enable JavaScript be able to update your settings.\
                         </section>\
                      </noscript>\
                      <link rel=\"stylesheet\" \
@@ -709,7 +706,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      </div>\
                      <noscript>\
                         <section>\
-                            <p>You need to enable Javascript to use keyboard commands or search.</p>\
+                            <p>You need to enable JavaScript to use keyboard commands or search.</p>\
                             <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
                         </section>\
                      </noscript>",
@@ -746,7 +743,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
         let nb_errors =
-            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(&err).emit()).count();
+            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
         } else {

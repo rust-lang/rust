@@ -1,5 +1,3 @@
-#![feature(raw_dylib)]
-
 extern crate raw_dylib_test;
 extern crate raw_dylib_test_wrapper;
 

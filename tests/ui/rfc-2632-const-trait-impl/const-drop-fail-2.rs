@@ -1,4 +1,4 @@
-// revisions: stock precise
+// known-bug: #110395
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
@@ -29,15 +29,12 @@ impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
 const fn check<T: ~const Destruct>(_: T) {}
 
 const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
-    //~^ ERROR the trait bound
     ConstDropImplWithBounds(PhantomData)
-    //~^ ERROR the trait bound
 );
 
 struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
-//~^ ERROR `Drop` impl requires `T: ~const A` but the struct it is implemented for does not
     fn drop(&mut self) {
         T::a();
     }

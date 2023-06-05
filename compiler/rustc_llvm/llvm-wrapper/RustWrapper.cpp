@@ -234,6 +234,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
   case AllocAlign:
     return Attribute::AllocAlign;
 #endif
+  case SanitizeSafeStack:
+    return Attribute::SafeStack;
   }
   report_fatal_error("bad AttributeKind");
 }
@@ -828,6 +830,28 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       llvmSPFlags, TParams, unwrapDIPtr<DISubprogram>(Decl));
   if (MaybeFn)
     unwrap<Function>(MaybeFn)->setSubprogram(Sub);
+  return wrap(Sub);
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
+    const char *Name, size_t NameLen,
+    const char *LinkageName, size_t LinkageNameLen,
+    LLVMMetadataRef File, unsigned LineNo,
+    LLVMMetadataRef Ty, LLVMRustDIFlags Flags,
+    LLVMRustDISPFlags SPFlags, LLVMMetadataRef TParam) {
+  DITemplateParameterArray TParams =
+      DITemplateParameterArray(unwrap<MDTuple>(TParam));
+  DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
+  DINode::DIFlags llvmFlags = fromRust(Flags);
+  DISubprogram *Sub = Builder->createMethod(
+      unwrapDI<DIScope>(Scope),
+      StringRef(Name, NameLen),
+      StringRef(LinkageName, LinkageNameLen),
+      unwrapDI<DIFile>(File), LineNo,
+      unwrapDI<DISubroutineType>(Ty),
+      0, 0, nullptr, // VTable params aren't used
+      llvmFlags, llvmSPFlags, TParams);
   return wrap(Sub);
 }
 

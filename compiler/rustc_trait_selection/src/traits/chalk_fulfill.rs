@@ -40,13 +40,16 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.obligations.insert(obligation);
     }
 
-    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
+    fn collect_remaining_errors(
+        &mut self,
+        _infcx: &InferCtxt<'tcx>,
+    ) -> Vec<FulfillmentError<'tcx>> {
         // any remaining obligations are errors
         self.obligations
             .iter()
             .map(|obligation| FulfillmentError {
                 obligation: obligation.clone(),
-                code: FulfillmentErrorCode::CodeAmbiguity,
+                code: FulfillmentErrorCode::CodeAmbiguity { overflow: false },
                 // FIXME - does Chalk have a notation of 'root obligation'?
                 // This is just for diagnostics, so it's okay if this is wrong
                 root_obligation: obligation.clone(),

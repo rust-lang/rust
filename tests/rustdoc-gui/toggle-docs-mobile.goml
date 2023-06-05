@@ -1,7 +1,7 @@
 // Checks that the documentation toggles on mobile have the correct position, style and work
 // as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
-size: (433, 600)
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+set-window-size: (433, 600)
 assert-attribute: (".top-doc", {"open": ""})
 click: (4, 270) // This is the position of the top doc comment toggle
 assert-attribute-false: (".top-doc", {"open": ""})
@@ -22,7 +22,7 @@ assert-position: (
 )
 
 // Now we do the same but with a little bigger width
-size: (600, 600)
+set-window-size: (600, 600)
 assert-attribute: (".top-doc", {"open": ""})
 click: (4, 270) // New Y position since all search elements are back on one line.
 assert-attribute-false: (".top-doc", {"open": ""})

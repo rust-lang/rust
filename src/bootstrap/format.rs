@@ -40,7 +40,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
                         code, run `./x.py fmt` instead.",
                 cmd_debug,
             );
-            crate::detail_exit(1);
+            crate::detail_exit_macro!(1);
         }
         true
     }
@@ -145,10 +145,8 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             let untracked_paths = untracked_paths_output
                 .lines()
                 .filter(|entry| entry.starts_with("??"))
-                .filter_map(|entry| {
-                    let path =
-                        entry.split(' ').nth(1).expect("every git status entry should list a path");
-                    path.ends_with(".rs").then_some(path)
+                .map(|entry| {
+                    entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
             for untracked_path in untracked_paths {
                 println!("skip untracked path {} during rustfmt invocations", untracked_path);
@@ -198,7 +196,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
         eprintln!("./x.py fmt is not supported on this channel");
-        crate::detail_exit(1);
+        crate::detail_exit_macro!(1);
     });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();

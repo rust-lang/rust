@@ -1,7 +1,6 @@
 use super::{c, fill_utf16_buf, to_u16s};
 use crate::ffi::{OsStr, OsString};
 use crate::io;
-use crate::mem;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::ptr;
 
@@ -10,16 +9,6 @@ mod tests;
 
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
-
-/// # Safety
-///
-/// `bytes` must be a valid wtf8 encoded slice
-#[inline]
-unsafe fn bytes_as_os_str(bytes: &[u8]) -> &OsStr {
-    // &OsStr is layout compatible with &Slice, which is compatible with &Wtf8,
-    // which is compatible with &[u8].
-    mem::transmute(bytes)
-}
 
 #[inline]
 pub fn is_sep_byte(b: u8) -> bool {
@@ -33,12 +22,12 @@ pub fn is_verbatim_sep(b: u8) -> bool {
 
 /// Returns true if `path` looks like a lone filename.
 pub(crate) fn is_file_name(path: &OsStr) -> bool {
-    !path.bytes().iter().copied().any(is_sep_byte)
+    !path.as_os_str_bytes().iter().copied().any(is_sep_byte)
 }
 pub(crate) fn has_trailing_slash(path: &OsStr) -> bool {
-    let is_verbatim = path.bytes().starts_with(br"\\?\");
+    let is_verbatim = path.as_os_str_bytes().starts_with(br"\\?\");
     let is_separator = if is_verbatim { is_verbatim_sep } else { is_sep_byte };
-    if let Some(&c) = path.bytes().last() { is_separator(c) } else { false }
+    if let Some(&c) = path.as_os_str_bytes().last() { is_separator(c) } else { false }
 }
 
 /// Appends a suffix to a path.
@@ -60,7 +49,7 @@ impl<'a, const LEN: usize> PrefixParser<'a, LEN> {
     fn get_prefix(path: &OsStr) -> [u8; LEN] {
         let mut prefix = [0; LEN];
         // SAFETY: Only ASCII characters are modified.
-        for (i, &ch) in path.bytes().iter().take(LEN).enumerate() {
+        for (i, &ch) in path.as_os_str_bytes().iter().take(LEN).enumerate() {
             prefix[i] = if ch == b'/' { b'\\' } else { ch };
         }
         prefix
@@ -93,7 +82,7 @@ impl<'a> PrefixParserSlice<'a, '_> {
     }
 
     fn prefix_bytes(&self) -> &'a [u8] {
-        &self.path.bytes()[..self.index]
+        &self.path.as_os_str_bytes()[..self.index]
     }
 
     fn finish(self) -> &'a OsStr {
@@ -101,7 +90,7 @@ impl<'a> PrefixParserSlice<'a, '_> {
         // &[u8] and back. This is safe to do because (1) we only look at ASCII
         // contents of the encoding and (2) new &OsStr values are produced only
         // from ASCII-bounded slices of existing &OsStr values.
-        unsafe { bytes_as_os_str(&self.path.bytes()[self.index..]) }
+        unsafe { OsStr::from_os_str_bytes_unchecked(&self.path.as_os_str_bytes()[self.index..]) }
     }
 }
 
@@ -173,7 +162,7 @@ fn parse_drive(path: &OsStr) -> Option<u8> {
         drive.is_ascii_alphabetic()
     }
 
-    match path.bytes() {
+    match path.as_os_str_bytes() {
         [drive, b':', ..] if is_valid_drive_letter(drive) => Some(drive.to_ascii_uppercase()),
         _ => None,
     }
@@ -182,7 +171,7 @@ fn parse_drive(path: &OsStr) -> Option<u8> {
 // Parses a drive prefix exactly, e.g. "C:"
 fn parse_drive_exact(path: &OsStr) -> Option<u8> {
     // only parse two bytes: the drive letter and the drive separator
-    if path.bytes().get(2).map(|&x| is_sep_byte(x)).unwrap_or(true) {
+    if path.as_os_str_bytes().get(2).map(|&x| is_sep_byte(x)).unwrap_or(true) {
         parse_drive(path)
     } else {
         None
@@ -196,21 +185,26 @@ fn parse_drive_exact(path: &OsStr) -> Option<u8> {
 fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
     let separator = if verbatim { is_verbatim_sep } else { is_sep_byte };
 
-    match path.bytes().iter().position(|&x| separator(x)) {
+    match path.as_os_str_bytes().iter().position(|&x| separator(x)) {
         Some(separator_start) => {
             let separator_end = separator_start + 1;
 
-            let component = &path.bytes()[..separator_start];
+            let component = &path.as_os_str_bytes()[..separator_start];
 
             // Panic safe
             // The max `separator_end` is `bytes.len()` and `bytes[bytes.len()..]` is a valid index.
-            let path = &path.bytes()[separator_end..];
+            let path = &path.as_os_str_bytes()[separator_end..];
 
             // SAFETY: `path` is a valid wtf8 encoded slice and each of the separators ('/', '\')
             // is encoded in a single byte, therefore `bytes[separator_start]` and
             // `bytes[separator_end]` must be code point boundaries and thus
             // `bytes[..separator_start]` and `bytes[separator_end..]` are valid wtf8 slices.
-            unsafe { (bytes_as_os_str(component), bytes_as_os_str(path)) }
+            unsafe {
+                (
+                    OsStr::from_os_str_bytes_unchecked(component),
+                    OsStr::from_os_str_bytes_unchecked(path),
+                )
+            }
         }
         None => (path, OsStr::new("")),
     }
@@ -329,7 +323,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     // Verbatim paths should not be modified.
     if prefix.map(|x| x.is_verbatim()).unwrap_or(false) {
         // NULs in verbatim paths are rejected for consistency.
-        if path.bytes().contains(&0) {
+        if path.as_os_str_bytes().contains(&0) {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",

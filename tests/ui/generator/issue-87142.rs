@@ -4,7 +4,7 @@
 // Regression test for #87142
 // This test needs the above flags and the "lib" crate type.
 
-#![feature(type_alias_impl_trait, generator_trait, generators)]
+#![feature(impl_trait_in_assoc_type, generator_trait, generators)]
 #![crate_type = "lib"]
 
 use std::ops::Generator;

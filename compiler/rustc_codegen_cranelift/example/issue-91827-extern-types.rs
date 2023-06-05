@@ -40,10 +40,7 @@ impl<T, const N: usize> ListImpl<T, N> {
     }
 }
 
-pub static A: ListImpl<u128, 3> = ListImpl {
-    len: 3,
-    data: [5, 6, 7],
-};
+pub static A: ListImpl<u128, 3> = ListImpl { len: 3, data: [5, 6, 7] };
 pub static A_REF: &'static List<u128> = A.as_list();
 pub static A_TAIL_OFFSET: isize = tail_offset(A.as_list());
 

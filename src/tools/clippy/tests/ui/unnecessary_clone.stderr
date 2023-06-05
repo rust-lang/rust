@@ -44,63 +44,17 @@ error: using `clone` on type `Option<T>` which implements the `Copy` trait
 LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
-error: using `clone` on a double-reference; this will copy the reference of type `&Vec<i32>` instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:48:22
-   |
-LL |     let z: &Vec<_> = y.clone();
-   |                      ^^^^^^^^^
-   |
-   = note: `#[deny(clippy::clone_double_ref)]` on by default
-help: try dereferencing it
-   |
-LL |     let z: &Vec<_> = &(*y).clone();
-   |                      ~~~~~~~~~~~~~
-help: or try being explicit if you are sure, that you want to clone a reference
-   |
-LL |     let z: &Vec<_> = <&Vec<i32>>::clone(y);
-   |                      ~~~~~~~~~~~~~~~~~~~~~
-
 error: using `clone` on type `E` which implements the `Copy` trait
-  --> $DIR/unnecessary_clone.rs:84:20
+  --> $DIR/unnecessary_clone.rs:76:20
    |
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
-error: using `clone` on a double-reference; this will copy the reference of type `&[u8]` instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:89:22
-   |
-LL |         let _ = &mut encoded.clone();
-   |                      ^^^^^^^^^^^^^^^
-   |
-help: try dereferencing it
-   |
-LL |         let _ = &mut &(*encoded).clone();
-   |                      ~~~~~~~~~~~~~~~~~~~
-help: or try being explicit if you are sure, that you want to clone a reference
-   |
-LL |         let _ = &mut <&[u8]>::clone(encoded);
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~
-
-error: using `clone` on a double-reference; this will copy the reference of type `&[u8]` instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:90:18
-   |
-LL |         let _ = &encoded.clone();
-   |                  ^^^^^^^^^^^^^^^
-   |
-help: try dereferencing it
-   |
-LL |         let _ = &&(*encoded).clone();
-   |                  ~~~~~~~~~~~~~~~~~~~
-help: or try being explicit if you are sure, that you want to clone a reference
-   |
-LL |         let _ = &<&[u8]>::clone(encoded);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~
-
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:108:14
+  --> $DIR/unnecessary_clone.rs:95:14
    |
 LL |         Some(try_opt!(Some(rc)).clone())
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `Rc::<u8>::clone(&try_opt!(Some(rc)))`
 
-error: aborting due to 12 previous errors
+error: aborting due to 9 previous errors
 

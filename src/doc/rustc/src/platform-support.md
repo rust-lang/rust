@@ -88,6 +88,7 @@ target | notes
 `arm-unknown-linux-gnueabi` | ARMv6 Linux (kernel 3.2, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
 `armv7-unknown-linux-gnueabihf` | ARMv7 Linux, hardfloat (kernel 3.2, glibc 2.17)
+[`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19, glibc 2.36)
 `mips-unknown-linux-gnu` | MIPS Linux (kernel 4.4, glibc 2.23)
 `mips64-unknown-linux-gnuabi64` | MIPS64 Linux, n64 ABI (kernel 4.4, glibc 2.23)
 `mips64el-unknown-linux-gnuabi64` | MIPS64 (LE) Linux, n64 ABI (kernel 4.4, glibc 2.23)
@@ -296,7 +297,7 @@ target | std | host | notes
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
 `riscv32im-unknown-none-elf` | * |  | Bare RISC-V (RV32IM ISA)
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
-`riscv32imc-esp-espidf` | ✓ |  | RISC-V ESP-IDF
+[`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 `riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
 `riscv64gc-unknown-fuchsia` |   |   | RISC-V Fuchsia
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
@@ -326,5 +327,6 @@ target | std | host | notes
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
 `x86_64-wrs-vxworks` | ? |  |
+`x86_64h-apple-darwin` | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets

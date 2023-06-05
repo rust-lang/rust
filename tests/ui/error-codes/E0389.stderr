@@ -7,7 +7,7 @@ LL |     fancy_ref.num = 6;
 help: consider changing this to be a mutable reference
    |
 LL |     let fancy_ref = &mut (&mut fancy);
-   |                     ~~~~~~~~~~~~~~~~~
+   |                      +++
 
 error: aborting due to previous error
 

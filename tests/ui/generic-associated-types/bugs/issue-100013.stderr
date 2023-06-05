@@ -28,12 +28,12 @@ LL | |         async {}.await; // a yield point
 LL | |     }
    | |_____^
    |
-note: the lifetime defined here...
+note: the lifetime `'b` defined here...
   --> $DIR/issue-100013.rs:21:14
    |
 LL | fn call2<'a, 'b, I: FutureIterator>() -> impl Send {
    |              ^^
-note: ...must outlive the lifetime defined here
+note: ...must outlive the lifetime `'a` defined here
   --> $DIR/issue-100013.rs:21:10
    |
 LL | fn call2<'a, 'b, I: FutureIterator>() -> impl Send {
@@ -62,12 +62,12 @@ LL | |         async {}.await; // a yield point
 LL | |     }
    | |_____^
    |
-note: the lifetime defined here...
+note: the lifetime `'b` defined here...
   --> $DIR/issue-100013.rs:28:18
    |
 LL | fn call3<'a: 'b, 'b, I: FutureIterator>() -> impl Send {
    |                  ^^
-note: ...must outlive the lifetime defined here
+note: ...must outlive the lifetime `'a` defined here
   --> $DIR/issue-100013.rs:28:10
    |
 LL | fn call3<'a: 'b, 'b, I: FutureIterator>() -> impl Send {

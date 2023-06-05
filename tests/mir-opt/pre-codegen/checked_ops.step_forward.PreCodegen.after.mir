@@ -1,0 +1,64 @@
+// MIR for `step_forward` after PreCodegen
+
+fn step_forward(_1: u32, _2: usize) -> u32 {
+    debug x => _1;                       // in scope 0 at $DIR/checked_ops.rs:+0:21: +0:22
+    debug n => _2;                       // in scope 0 at $DIR/checked_ops.rs:+0:29: +0:30
+    let mut _0: u32;                     // return place in scope 0 at $DIR/checked_ops.rs:+0:42: +0:45
+    scope 1 (inlined <u32 as Step>::forward) { // at $DIR/checked_ops.rs:11:5: 11:35
+        debug start => _1;               // in scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        debug n => _2;                   // in scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        let _3: std::option::Option<u32>; // in scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        let mut _4: &std::option::Option<u32>; // in scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        let mut _7: bool;                // in scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        let mut _8: u32;                 // in scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        scope 2 {
+        }
+        scope 3 (inlined Option::<u32>::is_none) { // at $SRC_DIR/core/src/iter/range.rs:LL:COL
+            debug self => _4;            // in scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+            let mut _6: bool;            // in scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+            scope 4 (inlined Option::<u32>::is_some) { // at $SRC_DIR/core/src/option.rs:LL:COL
+                debug self => _4;        // in scope 4 at $SRC_DIR/core/src/option.rs:LL:COL
+                let mut _5: isize;       // in scope 4 at $SRC_DIR/core/src/option.rs:LL:COL
+            }
+        }
+        scope 5 (inlined core::num::<impl u32>::wrapping_add) { // at $SRC_DIR/core/src/iter/range.rs:LL:COL
+            debug self => _1;            // in scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+            debug rhs => _8;             // in scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        }
+    }
+
+    bb0: {
+        StorageLive(_7);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_4);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_3);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _3 = <u32 as Step>::forward_checked(_1, _2) -> bb1; // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // + literal: Const { ty: fn(u32, usize) -> Option<u32> {<u32 as Step>::forward_checked}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        _4 = &_3;                        // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_6);                 // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+        _5 = discriminant((*_4));        // scope 4 at $SRC_DIR/core/src/option.rs:LL:COL
+        _6 = Eq(_5, const 1_isize);      // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _7 = Not(move _6);               // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageDead(_6);                 // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageDead(_3);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_4);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        switchInt(move _7) -> [0: bb3, otherwise: bb2]; // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb2: {
+        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const _, const 1_u32) -> bb3; // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb3: {
+        StorageDead(_7);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_8);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _8 = _2 as u32 (IntToInt);       // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _0 = Add(_1, _8);                // scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageDead(_8);                 // scope 1 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        return;                          // scope 0 at $DIR/checked_ops.rs:+2:2: +2:2
+    }
+}

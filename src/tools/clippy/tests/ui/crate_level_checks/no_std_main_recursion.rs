@@ -1,5 +1,5 @@
-// compile-flags: -Clink-arg=-nostartfiles
-// ignore-macos
+//@compile-flags: -Clink-arg=-nostartfiles
+//@ignore-macos
 
 #![feature(lang_items, start, libc)]
 #![no_std]

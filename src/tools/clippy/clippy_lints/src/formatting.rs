@@ -10,7 +10,7 @@ use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of the non-existent `=*`, `=!` and `=-`
+    /// Checks for usage of the non-existent `=*`, `=!` and `=-`
     /// operators.
     ///
     /// ### Why is this bad?

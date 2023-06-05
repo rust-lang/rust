@@ -67,9 +67,6 @@ LL |             x == 5
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:44:18
    |
-LL |     if y = (Foo { foo: x }) {
-   |                        - here the type of `x` is inferred to be `usize`
-...
 LL |     if x == x && x = x && x == x {
    |        ------    ^ expected `bool`, found `usize`
    |        |
@@ -78,9 +75,6 @@ LL |     if x == x && x = x && x == x {
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:44:22
    |
-LL |     if y = (Foo { foo: x }) {
-   |                        - here the type of `x` is inferred to be `usize`
-...
 LL |     if x == x && x = x && x == x {
    |                      ^ expected `bool`, found `usize`
 
@@ -98,9 +92,6 @@ LL |     if x == x && x == x && x == x {
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:51:28
    |
-LL |     if y = (Foo { foo: x }) {
-   |                        - here the type of `x` is inferred to be `usize`
-...
 LL |     if x == x && x == x && x = x {
    |        ----------------    ^ expected `bool`, found `usize`
    |        |

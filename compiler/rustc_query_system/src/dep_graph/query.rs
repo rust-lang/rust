@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 
 use super::{DepKind, DepNode, DepNodeIndex};
 
@@ -24,10 +24,7 @@ impl<K: DepKind> DepGraphQuery<K> {
 
     pub fn push(&mut self, index: DepNodeIndex, node: DepNode<K>, edges: &[DepNodeIndex]) {
         let source = self.graph.add_node(node);
-        if index.index() >= self.dep_index_to_index.len() {
-            self.dep_index_to_index.resize(index.index() + 1, None);
-        }
-        self.dep_index_to_index[index] = Some(source);
+        self.dep_index_to_index.insert(index, source);
         self.indices.insert(node, source);
 
         for &target in edges.iter() {

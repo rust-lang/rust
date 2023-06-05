@@ -84,6 +84,7 @@ impl<'a> State<'a> {
             Node::ImplItem(a) => self.print_impl_item(a),
             Node::Variant(a) => self.print_variant(a),
             Node::AnonConst(a) => self.print_anon_const(a),
+            Node::ConstBlock(a) => self.print_inline_const(a),
             Node::Expr(a) => self.print_expr(a),
             Node::ExprField(a) => self.print_expr_field(&a),
             Node::Stmt(a) => self.print_stmt(a),
@@ -242,7 +243,7 @@ pub fn enum_def_to_string(
 impl<'a> State<'a> {
     pub fn bclose_maybe_open(&mut self, span: rustc_span::Span, close_box: bool) {
         self.maybe_print_comment(span.hi());
-        self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
+        self.break_offset_if_not_bol(1, -INDENT_UNIT);
         self.word("}");
         if close_box {
             self.end(); // close the outer-box
@@ -1095,10 +1096,10 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_anon_const(&mut self, anon_const: &hir::AnonConst) {
+    fn print_inline_const(&mut self, constant: &hir::ConstBlock) {
         self.ibox(INDENT_UNIT);
         self.word_space("const");
-        self.print_anon_const(anon_const);
+        self.ann.nested(self, Nested::Body(constant.body));
         self.end()
     }
 
@@ -1370,7 +1371,7 @@ impl<'a> State<'a> {
                 self.print_expr_vec(exprs);
             }
             hir::ExprKind::ConstBlock(ref anon_const) => {
-                self.print_expr_anon_const(anon_const);
+                self.print_inline_const(anon_const);
             }
             hir::ExprKind::Repeat(element, ref count) => {
                 self.print_expr_repeat(element, count);
@@ -1407,10 +1408,16 @@ impl<'a> State<'a> {
                 self.print_type(ty);
             }
             hir::ExprKind::Type(expr, ty) => {
-                let prec = AssocOp::Colon.precedence() as i8;
-                self.print_expr_maybe_paren(expr, prec);
-                self.word_space(":");
+                self.word("type_ascribe!(");
+                self.ibox(0);
+                self.print_expr(expr);
+
+                self.word(",");
+                self.space_if_not_bol();
                 self.print_type(ty);
+
+                self.end();
+                self.word(")");
             }
             hir::ExprKind::DropTemps(init) => {
                 // Print `{`:
@@ -1550,6 +1557,23 @@ impl<'a> State<'a> {
             hir::ExprKind::InlineAsm(asm) => {
                 self.word("asm!");
                 self.print_inline_asm(asm);
+            }
+            hir::ExprKind::OffsetOf(container, ref fields) => {
+                self.word("offset_of!(");
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+
+                self.word(")");
             }
             hir::ExprKind::Yield(expr, _) => {
                 self.word_space("yield");

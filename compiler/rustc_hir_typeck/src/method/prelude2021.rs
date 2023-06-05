@@ -118,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         lint.span_help(
                             sp,
-                            &format!("disambiguate the method call with `({})`", self_adjusted,),
+                            format!("disambiguate the method call with `({})`", self_adjusted,),
                         );
                     }
 
@@ -180,7 +180,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         lint.span_help(
                             sp,
-                            &format!(
+                            format!(
                                 "disambiguate the associated function with `{}::{}(...)`",
                                 trait_name, segment.ident,
                             ),

@@ -31,7 +31,7 @@ trait T {
     //~| ERROR a static item cannot be `default`
     pub(crate) default static TD: u8;
     //~^ ERROR associated `static` items are not allowed
-    //~| ERROR unnecessary visibility qualifier
+    //~| ERROR visibility qualifiers are not permitted here
     //~| ERROR a static item cannot be `default`
 }
 
@@ -47,6 +47,6 @@ impl T for S {
     pub default static TD: u8;
     //~^ ERROR associated `static` items are not allowed
     //~| ERROR associated constant in `impl` without body
-    //~| ERROR unnecessary visibility qualifier
+    //~| ERROR visibility qualifiers are not permitted here
     //~| ERROR a static item cannot be `default`
 }

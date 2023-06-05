@@ -3,7 +3,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
@@ -302,7 +302,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                         .iter()
                         .flatten()
                         .map(|r| r.impl_blocks.len() as isize - avg as isize)
-                        .map(|v| v.abs() as usize)
+                        .map(|v| v.unsigned_abs())
                         .sum::<usize>();
                     s / connected_regions.len()
                 },

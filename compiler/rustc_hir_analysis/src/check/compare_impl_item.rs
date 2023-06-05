@@ -25,6 +25,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
 };
+use std::borrow::Cow;
 use std::iter;
 
 /// Checks that a method from an impl conforms to the signature of
@@ -60,19 +61,21 @@ pub(super) fn compare_impl_method<'tcx>(
     };
 }
 
-/// This function is best explained by example. Consider a trait:
+/// This function is best explained by example. Consider a trait with it's implementation:
 ///
-///     trait Trait<'t, T> {
-///         // `trait_m`
-///         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
-///     }
+/// ```rust
+/// trait Trait<'t, T> {
+///     // `trait_m`
+///     fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
+/// }
 ///
-/// And an impl:
+/// struct Foo;
 ///
-///     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
-///          // `impl_m`
-///          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
-///     }
+/// impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
+///     // `impl_m`
+///     fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo { Foo }
+/// }
+/// ```
 ///
 /// We wish to decide if those two method types are compatible.
 /// For this we have to show that, assuming the bounds of the impl hold, the
@@ -82,7 +85,9 @@ pub(super) fn compare_impl_method<'tcx>(
 /// type parameters to impl type parameters. This is taken from the
 /// impl trait reference:
 ///
-///     trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
+/// ```rust,ignore (pseudo-Rust)
+/// trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
+/// ```
 ///
 /// We create a mapping `dummy_substs` that maps from the impl type
 /// parameters to fresh types and regions. For type parameters,
@@ -91,13 +96,17 @@ pub(super) fn compare_impl_method<'tcx>(
 /// regions (Note: but only early-bound regions, i.e., those
 /// declared on the impl or used in type parameter bounds).
 ///
-///     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
+/// ```rust,ignore (pseudo-Rust)
+/// impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
+/// ```
 ///
 /// Now we can apply `placeholder_substs` to the type of the impl method
 /// to yield a new function type in terms of our fresh, placeholder
 /// types:
 ///
-///     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
+/// ```rust,ignore (pseudo-Rust)
+/// <'b> fn(t: &'i0 U0, m: &'b) -> Foo
+/// ```
 ///
 /// We now want to extract and substitute the type of the *trait*
 /// method and compare it. To do so, we must create a compound
@@ -106,11 +115,15 @@ pub(super) fn compare_impl_method<'tcx>(
 /// type parameters. We extend the mapping to also include
 /// the method parameters.
 ///
-///     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+/// ```rust,ignore (pseudo-Rust)
+/// trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+/// ```
 ///
 /// Applying this to the trait method type yields:
 ///
-///     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
+/// ```rust,ignore (pseudo-Rust)
+/// <'a> fn(t: &'i0 U0, m: &'a) -> Foo
+/// ```
 ///
 /// This type is also the same but the name of the bound region (`'a`
 /// vs `'b`). However, the normal subtyping rules on fn types handle
@@ -332,10 +345,6 @@ fn compare_method_predicate_entailment<'tcx>(
         param_env,
         infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys.clone()),
     );
-    infcx.process_registered_region_obligations(
-        outlives_env.region_bound_pairs(),
-        outlives_env.param_env,
-    );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
         // FIXME(compiler-errors): This can be simplified when IMPLIED_BOUNDS_ENTAILMENT
@@ -463,7 +472,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::ReFree(fr) = *r {
-            self.tcx.mk_re_free(
+            ty::Region::new_free(
+                self.tcx,
                 fr.scope,
                 self.mapping.get(&fr.bound_region).copied().unwrap_or(fr.bound_region),
             )
@@ -583,7 +593,7 @@ fn compare_asyncness<'tcx>(
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
-) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
+) -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
@@ -676,7 +686,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 &cause,
                 hir.get_if_local(impl_m.def_id)
                     .and_then(|node| node.fn_decl())
-                    .map(|decl| (decl.output.span(), "return type in trait".to_owned())),
+                    .map(|decl| (decl.output.span(), Cow::from("return type in trait"))),
                 Some(infer::ValuePairs::Terms(ExpectedFound {
                     expected: trait_return_ty.into(),
                     found: impl_return_ty.into(),
@@ -722,18 +732,18 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         return Err(reported);
     }
 
+    let collected_types = collector.types;
+
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
-    let outlives_environment = OutlivesEnvironment::with_bounds(
+    let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
         infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys),
     );
-    infcx
-        .err_ctxt()
-        .check_region_obligations_and_report_errors(impl_m_def_id, &outlives_environment)?;
+    ocx.resolve_regions_and_report_errors(impl_m_def_id, &outlives_env)?;
 
     let mut collected_tys = FxHashMap::default();
-    for (def_id, (ty, substs)) in collector.types {
+    for (def_id, (ty, substs)) in collected_types {
         match infcx.fully_resolve(ty) {
             Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
@@ -777,23 +787,23 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     }
                     let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
                     else {
-                        return tcx.mk_re_error_with_message(return_span, "expected ReFree to map to ReEarlyBound")
+                        return ty::Region::new_error_with_message(tcx, return_span, "expected ReFree to map to ReEarlyBound")
                     };
-                    tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                    ty::Region::new_early_bound(tcx, ty::EarlyBoundRegion {
                         def_id: e.def_id,
                         name: e.name,
                         index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
                     })
                 });
                 debug!(%ty);
-                collected_tys.insert(def_id, ty);
+                collected_tys.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, tcx.ty_error(reported));
+                collected_tys.insert(def_id, ty::EarlyBinder::bind(tcx.ty_error(reported)));
             }
         }
     }
@@ -843,7 +853,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.def_id, (infer_ty, proj.substs));
             // Recurse into bounds
-            for (pred, pred_span) in self.interner().bound_explicit_item_bounds(proj.def_id).subst_iter_copied(self.interner(), proj.substs) {
+            for (pred, pred_span) in self.interner().explicit_item_bounds(proj.def_id).subst_iter_copied(self.interner(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -893,7 +903,7 @@ fn report_trait_method_mismatch<'tcx>(
             if trait_m.fn_has_self_parameter =>
         {
             let ty = trait_sig.inputs()[0];
-            let sugg = match ExplicitSelf::determine(ty, |_| ty == impl_trait_ref.self_ty()) {
+            let sugg = match ExplicitSelf::determine(ty, |ty| ty == impl_trait_ref.self_ty()) {
                 ExplicitSelf::ByValue => "self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
@@ -955,7 +965,7 @@ fn report_trait_method_mismatch<'tcx>(
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
-        trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
+        trait_err_span.map(|sp| (sp, Cow::from("type in trait"))),
         Some(infer::ValuePairs::Sigs(ExpectedFound { expected: trait_sig, found: impl_sig })),
         terr,
         false,
@@ -1167,7 +1177,7 @@ fn compare_self_type<'tcx>(
 /// as the number of generics on the respective assoc item in the trait definition.
 ///
 /// For example this code emits the errors in the following code:
-/// ```
+/// ```rust,compile_fail
 /// trait Trait {
 ///     fn foo();
 ///     type Assoc<T>;
@@ -1277,7 +1287,7 @@ fn compare_number_of_generics<'tcx>(
 
             let mut err = tcx.sess.struct_span_err_with_code(
                 spans,
-                &format!(
+                format!(
                     "{} `{}` has {} {kind} parameter{} but its trait \
                      declaration has {} {kind} parameter{}",
                     item_kind,
@@ -1321,7 +1331,7 @@ fn compare_number_of_generics<'tcx>(
                         impl_count,
                         kind,
                         pluralize!(impl_count),
-                        suffix.unwrap_or_else(String::new),
+                        suffix.unwrap_or_default(),
                     ),
                 );
             }
@@ -1551,7 +1561,7 @@ fn compare_synthetic_generics<'tcx>(
 /// the same kind as the respective generic parameter in the trait def.
 ///
 /// For example all 4 errors in the following code are emitted here:
-/// ```
+/// ```rust,ignore (pseudo-Rust)
 /// trait Foo {
 ///     fn foo<const N: u8>();
 ///     type bar<const N: u8>;
@@ -1723,7 +1733,7 @@ pub(super) fn compare_impl_const_raw(
         infcx.err_ctxt().note_type_err(
             &mut diag,
             &cause,
-            trait_c_span.map(|span| (span, "type in trait".to_owned())),
+            trait_c_span.map(|span| (span, Cow::from("type in trait"))),
             Some(infer::ValuePairs::Terms(ExpectedFound {
                 expected: trait_ty.into(),
                 found: impl_ty.into(),
@@ -1742,11 +1752,8 @@ pub(super) fn compare_impl_const_raw(
         return Err(infcx.err_ctxt().report_fulfillment_errors(&errors));
     }
 
-    let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx
-        .err_ctxt()
-        .check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment)?;
-    Ok(())
+    let outlives_env = OutlivesEnvironment::new(param_env);
+    ocx.resolve_regions_and_report_errors(impl_const_item_def, &outlives_env)
 }
 
 pub(super) fn compare_impl_ty<'tcx>(
@@ -1845,13 +1852,8 @@ fn compare_type_predicate_entailment<'tcx>(
 
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
-    let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx.err_ctxt().check_region_obligations_and_report_errors(
-        impl_ty.def_id.expect_local(),
-        &outlives_environment,
-    )?;
-
-    Ok(())
+    let outlives_env = OutlivesEnvironment::new(param_env);
+    ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
 }
 
 /// Validate that `ProjectionCandidate`s created for this associated type will
@@ -1932,7 +1934,8 @@ pub(super) fn check_type_bounds<'tcx>(
                 let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                 let bound_var = ty::BoundVariableKind::Region(kind);
                 bound_vars.push(bound_var);
-                tcx.mk_re_late_bound(
+                ty::Region::new_late_bound(
+                    tcx,
                     ty::INNERMOST,
                     ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
                 )
@@ -2035,7 +2038,7 @@ pub(super) fn check_type_bounds<'tcx>(
     };
 
     let obligations: Vec<_> = tcx
-        .bound_explicit_item_bounds(trait_ty.def_id)
+        .explicit_item_bounds(trait_ty.def_id)
         .subst_iter_copied(tcx, rebased_substs)
         .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
@@ -2063,14 +2066,8 @@ pub(super) fn check_type_bounds<'tcx>(
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_def_id, assumed_wf_types);
-    let outlives_environment = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-
-    infcx.err_ctxt().check_region_obligations_and_report_errors(
-        impl_ty.def_id.expect_local(),
-        &outlives_environment,
-    )?;
-
-    Ok(())
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
 }
 
 fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {

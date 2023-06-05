@@ -19,8 +19,8 @@ where
     // Here, the closure winds up being required to prove that `T:
     // 'a`.  In principle, it could know that, except that it is
     // type-checked in a fully generic way, and hence it winds up with
-    // a propagated requirement that `T: '_#2`, where `'_#2` appears
-    // in the return type. The caller makes the mapping from `'_#2` to
+    // a propagated requirement that `T: '?2`, where `'?2` appears
+    // in the return type. The caller makes the mapping from `'?2` to
     // `'a` (and subsequently reports an error).
 
     with_signature(x, |y| y)

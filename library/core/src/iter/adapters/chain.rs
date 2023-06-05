@@ -15,7 +15,7 @@ use crate::ops::Try;
 ///
 /// let a1 = [1, 2, 3];
 /// let a2 = [4, 5, 6];
-/// let iter: Chain<Iter<_>, Iter<_>> = a1.iter().chain(a2.iter());
+/// let iter: Chain<Iter<'_, _>, Iter<'_, _>> = a1.iter().chain(a2.iter());
 /// ```
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -273,7 +273,7 @@ where
 {
 }
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<A: Default, B: Default> Default for Chain<A, B> {
     /// Creates a `Chain` from the default values for `A` and `B`.
     ///

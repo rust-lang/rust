@@ -42,7 +42,7 @@ fn report_atomic_type_validation_error<'tcx>(
 ) {
     fx.tcx.sess.span_err(
         span,
-        &format!(
+        format!(
             "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
             intrinsic, ty
         ),
@@ -51,17 +51,13 @@ fn report_atomic_type_validation_error<'tcx>(
     fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
-pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
+pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
     let (element, count) = match layout.abi {
         Abi::Vector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
-    match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
-        // Cranelift currently only implements icmp for 128bit vectors.
-        Some(vector_ty) if vector_ty.bits() == 128 => Some(vector_ty),
-        _ => None,
-    }
+    scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()).unwrap()
 }
 
 fn simd_for_each_lane<'tcx>(
@@ -479,9 +475,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::unchecked_add
         | sym::unchecked_sub
         | sym::unchecked_mul
-        | sym::unchecked_div
         | sym::exact_div
-        | sym::unchecked_rem
         | sym::unchecked_shl
         | sym::unchecked_shr => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
@@ -491,8 +485,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 sym::unchecked_add => BinOp::Add,
                 sym::unchecked_sub => BinOp::Sub,
                 sym::unchecked_mul => BinOp::Mul,
-                sym::unchecked_div | sym::exact_div => BinOp::Div,
-                sym::unchecked_rem => BinOp::Rem,
+                sym::exact_div => BinOp::Div,
                 sym::unchecked_shl => BinOp::Shl,
                 sym::unchecked_shr => BinOp::Shr,
                 _ => unreachable!(),
@@ -534,7 +527,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         // The only difference between offset and arith_offset is regarding UB. Because Cranelift
         // doesn't have UB both are codegen'ed the same way
-        sym::offset | sym::arith_offset => {
+        sym::arith_offset => {
             intrinsic_args!(fx, args => (base, offset); intrinsic);
             let offset = offset.load_scalar(fx);
 
@@ -1107,8 +1100,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             fx.bcx.ins().call_indirect(f_sig, f, &[data]);
 
-            let layout = ret.layout();
-            let ret_val = CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
+            let layout = fx.layout_of(fx.tcx.types.i32);
+            let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 0), layout);
             ret.write_cvalue(fx, ret_val);
         }
 
@@ -1206,7 +1199,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         _ => {
             fx.tcx
                 .sess
-                .span_fatal(source_info.span, &format!("unsupported intrinsic {}", intrinsic));
+                .span_fatal(source_info.span, format!("unsupported intrinsic {}", intrinsic));
         }
     }
 

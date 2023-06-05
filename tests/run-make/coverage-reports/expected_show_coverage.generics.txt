@@ -11,15 +11,15 @@
    11|      3|        self.strength = new_strength;
    12|      3|    }
   ------------------
-  | <generics::Firework<i32>>::set_strength:
-  |   10|      1|    fn set_strength(&mut self, new_strength: T) {
-  |   11|      1|        self.strength = new_strength;
-  |   12|      1|    }
-  ------------------
   | <generics::Firework<f64>>::set_strength:
   |   10|      2|    fn set_strength(&mut self, new_strength: T) {
   |   11|      2|        self.strength = new_strength;
   |   12|      2|    }
+  ------------------
+  | <generics::Firework<i32>>::set_strength:
+  |   10|      1|    fn set_strength(&mut self, new_strength: T) {
+  |   11|      1|        self.strength = new_strength;
+  |   12|      1|    }
   ------------------
    13|       |}
    14|       |

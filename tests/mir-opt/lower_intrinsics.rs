@@ -1,7 +1,7 @@
 // unit-test: LowerIntrinsics
 // ignore-wasm32 compiled with panic=abort by default
 
-#![feature(core_intrinsics, intrinsics)]
+#![feature(core_intrinsics, intrinsics, rustc_attrs)]
 #![crate_type = "lib"]
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
@@ -9,6 +9,12 @@ pub fn wrapping(a: i32, b: i32) {
     let _x = core::intrinsics::wrapping_add(a, b);
     let _y = core::intrinsics::wrapping_sub(a, b);
     let _z = core::intrinsics::wrapping_mul(a, b);
+}
+
+// EMIT_MIR lower_intrinsics.unchecked.LowerIntrinsics.diff
+pub unsafe fn unchecked(a: i32, b: i32) {
+    let _x = core::intrinsics::unchecked_div(a, b);
+    let _y = core::intrinsics::unchecked_rem(a, b);
 }
 
 // EMIT_MIR lower_intrinsics.size_of.LowerIntrinsics.diff
@@ -87,6 +93,7 @@ pub fn discriminant<T>(t: T) {
 
 extern "rust-intrinsic" {
     // Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+    #[rustc_nounwind]
     fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 }
 
@@ -123,13 +130,22 @@ pub fn read_via_copy_uninhabited(r: &Never) -> Never {
     unsafe { core::intrinsics::read_via_copy(r) }
 }
 
+// EMIT_MIR lower_intrinsics.write_via_move_string.LowerIntrinsics.diff
+pub fn write_via_move_string(r: &mut String, v: String) {
+    unsafe { core::intrinsics::write_via_move(r, v) }
+}
+
 pub enum Never {}
 
 // EMIT_MIR lower_intrinsics.option_payload.LowerIntrinsics.diff
-#[cfg(not(bootstrap))]
 pub fn option_payload(o: &Option<usize>, p: &Option<String>) {
     unsafe {
         let _x = core::intrinsics::option_payload_ptr(o);
         let _y = core::intrinsics::option_payload_ptr(p);
     }
+}
+
+// EMIT_MIR lower_intrinsics.ptr_offset.LowerIntrinsics.diff
+pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
+    core::intrinsics::offset(p, d)
 }

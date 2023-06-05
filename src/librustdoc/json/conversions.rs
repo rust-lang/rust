@@ -4,7 +4,6 @@
 
 #![allow(rustc::default_hash_types)]
 
-use std::convert::From;
 use std::fmt;
 
 use rustc_ast::ast;
@@ -41,13 +40,8 @@ impl JsonRenderer<'_> {
                 (String::from(&**link), id_from_item_default(id.into(), self.tcx))
             })
             .collect();
-        let docs = item.attrs.collapsed_doc_value();
-        let attrs = item
-            .attrs
-            .other_attrs
-            .iter()
-            .map(rustc_ast_pretty::pprust::attribute_to_string)
-            .collect();
+        let docs = item.opt_doc_value();
+        let attrs = item.attributes(self.tcx, true);
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::Item { name, item_id, .. } = item;
@@ -539,6 +533,10 @@ pub(crate) fn from_trait_bound_modifier(
         None => TraitBoundModifier::None,
         Maybe => TraitBoundModifier::Maybe,
         MaybeConst => TraitBoundModifier::MaybeConst,
+        // FIXME(negative-bounds): This bound should be rendered negative, but
+        // since that's experimental, maybe let's not add it to the rustdoc json
+        // API just now...
+        Negative => TraitBoundModifier::None,
     }
 }
 
@@ -576,7 +574,7 @@ impl FromWithTcx<clean::Type> for Type {
                 name: assoc.name.to_string(),
                 args: Box::new(assoc.args.into_tcx(tcx)),
                 self_type: Box::new(self_type.into_tcx(tcx)),
-                trait_: trait_.into_tcx(tcx),
+                trait_: trait_.map(|trait_| trait_.into_tcx(tcx)),
             },
         }
     }
@@ -626,10 +624,7 @@ impl FromWithTcx<clean::FnDecl> for FnDecl {
                 .into_iter()
                 .map(|arg| (arg.name.to_string(), arg.type_.into_tcx(tcx)))
                 .collect(),
-            output: match output {
-                clean::FnRetTy::Return(t) => Some(t.into_tcx(tcx)),
-                clean::FnRetTy::DefaultReturn => None,
-            },
+            output: if output.is_unit() { None } else { Some(output.into_tcx(tcx)) },
             c_variadic,
         }
     }
@@ -666,7 +661,7 @@ impl FromWithTcx<clean::Impl> for Impl {
         let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
-            clean::ImplKind::Normal | clean::ImplKind::FakeVaradic => (false, None),
+            clean::ImplKind::Normal | clean::ImplKind::FakeVariadic => (false, None),
             clean::ImplKind::Auto => (true, None),
             clean::ImplKind::Blanket(ty) => (false, Some(*ty)),
         };
@@ -741,7 +736,7 @@ impl FromWithTcx<clean::Variant> for Variant {
 impl FromWithTcx<clean::Discriminant> for Discriminant {
     fn from_tcx(disr: clean::Discriminant, tcx: TyCtxt<'_>) -> Self {
         Discriminant {
-            // expr is only none if going through the inlineing path, which gets
+            // expr is only none if going through the inlining path, which gets
             // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),

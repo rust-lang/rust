@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::StatementKind::*;
 use rustc_middle::ty::Ty;
 

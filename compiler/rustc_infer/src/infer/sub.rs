@@ -1,4 +1,4 @@
-use super::combine::{CombineFields, RelationDir};
+use super::combine::CombineFields;
 use super::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
 
 use crate::traits::{Obligation, PredicateObligations};
@@ -108,11 +108,11 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 Ok(a)
             }
             (&ty::Infer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
+                self.fields.instantiate(b, ty::Contravariant, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
             (_, &ty::Infer(TyVar(b_id))) => {
-                self.fields.instantiate(a, RelationDir::SubtypeOf, b_id, self.a_is_expected)?;
+                self.fields.instantiate(a, ty::Covariant, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
@@ -131,7 +131,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
-                    && def_id.is_local() =>
+                    && def_id.is_local()
+                    && !self.tcx().trait_solver_next() =>
             {
                 self.fields.obligations.extend(
                     infcx
@@ -210,7 +211,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        // A binder is always a subtype of itself if it's structually equal to itself
+        // A binder is always a subtype of itself if it's structurally equal to itself
         if a == b {
             return Ok(a);
         }

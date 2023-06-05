@@ -65,8 +65,8 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
+use crate::{constrained_generic_params as cgp, errors};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -80,7 +80,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
+use rustc_trait_selection::traits::{self, translate_substs_with_cause, wf, ObligationCtxt};
 
 pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
@@ -100,12 +100,19 @@ fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Opti
         // Implementing a normal trait isn't a specialization.
         return None;
     }
+    if trait_def.is_marker {
+        // Overlapping marker implementations are not really specializations.
+        return None;
+    }
     Some(impl2_node)
 }
 
 /// Check that `impl1` is a sound specialization
 #[instrument(level = "debug", skip(tcx))]
 fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node) {
+    let span = tcx.def_span(impl1_def_id);
+    check_has_items(tcx, impl1_def_id, impl2_node, span);
+
     if let Some((impl1_substs, impl2_substs)) = get_impl_substs(tcx, impl1_def_id, impl2_node) {
         let impl2_def_id = impl2_node.def_id();
         debug!(?impl2_def_id, ?impl2_substs);
@@ -116,11 +123,17 @@ fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node
             unconstrained_parent_impl_substs(tcx, impl2_def_id, impl2_substs)
         };
 
-        let span = tcx.def_span(impl1_def_id);
         check_constness(tcx, impl1_def_id, impl2_node, span);
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
         check_predicates(tcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
+    }
+}
+
+fn check_has_items(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, span: Span) {
+    if let Node::Impl(impl2_id) = impl2_node && tcx.associated_item_def_ids(impl1_def_id).is_empty() {
+        let base_impl_span = tcx.def_span(impl2_id);
+        tcx.sess.emit_err(errors::EmptySpecialization { span, base_impl_span });
     }
 }
 
@@ -137,9 +150,7 @@ fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, 
 
     if let hir::Constness::Const = impl2_constness {
         if let hir::Constness::NotConst = impl1_constness {
-            tcx.sess
-                .struct_span_err(span, "cannot specialize on const impl with non-const impl")
-                .emit();
+            tcx.sess.emit_err(errors::ConstSpecialize { span });
         }
     }
 }
@@ -169,8 +180,21 @@ fn get_impl_substs(
         ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
     let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id);
-    let impl2_substs =
-        translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
+    let impl1_span = tcx.def_span(impl1_def_id);
+    let impl2_substs = translate_substs_with_cause(
+        infcx,
+        param_env,
+        impl1_def_id.to_def_id(),
+        impl1_substs,
+        impl2_node,
+        |_, span| {
+            traits::ObligationCause::new(
+                impl1_span,
+                impl1_def_id,
+                traits::ObligationCauseCode::BindingObligation(impl2_node.def_id(), span),
+            )
+        },
+    );
 
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
@@ -180,8 +204,7 @@ fn get_impl_substs(
 
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_def_id, assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-    let _ =
-        infcx.err_ctxt().check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
+    let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
         let span = tcx.def_span(impl1_def_id);
         tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
@@ -275,7 +298,7 @@ fn check_duplicate_params<'tcx>(
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_substs[duplicate.0 as usize];
         tcx.sess
-            .struct_span_err(span, &format!("specializing impl repeats parameter `{}`", param))
+            .struct_span_err(span, format!("specializing impl repeats parameter `{}`", param))
             .emit();
     }
 }
@@ -294,7 +317,7 @@ fn check_static_lifetimes<'tcx>(
     span: Span,
 ) {
     if tcx.any_free_region_meets(parent_substs, |r| r.is_static()) {
-        tcx.sess.struct_span_err(span, "cannot specialize on `'static` lifetime").emit();
+        tcx.sess.emit_err(errors::StaticSpecialize { span });
     }
 }
 
@@ -369,7 +392,7 @@ fn check_predicates<'tcx>(
             wf::obligations(infcx, tcx.param_env(impl1_def_id), impl1_def_id, 0, arg, span)
                 .unwrap();
 
-        assert!(!obligations.needs_infer());
+        assert!(!obligations.has_infer());
         impl2_predicates
             .extend(traits::elaborate(tcx, obligations).map(|obligation| obligation.predicate))
     }
@@ -439,7 +462,7 @@ fn trait_predicates_eq<'tcx>(
     // the one on the base.
     match (trait_pred2.constness, trait_pred1.constness) {
         (ty::BoundConstness::ConstIfConst, ty::BoundConstness::NotConst) => {
-            tcx.sess.struct_span_err(span, "missing `~const` qualifier for specialization").emit();
+            tcx.sess.emit_err(errors::MissingTildeConst { span });
         }
         _ => {}
     }
@@ -467,7 +490,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                 tcx.sess
                     .struct_span_err(
                         span,
-                        &format!(
+                        format!(
                             "cannot specialize on trait `{}`",
                             tcx.def_path_str(trait_ref.def_id),
                         ),
@@ -482,7 +505,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
             tcx.sess
                 .struct_span_err(
                     span,
-                    &format!("cannot specialize on associated type `{projection_ty} == {term}`",),
+                    format!("cannot specialize on associated type `{projection_ty} == {term}`",),
                 )
                 .emit();
         }
@@ -498,7 +521,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         }
         _ => {
             tcx.sess
-                .struct_span_err(span, &format!("cannot specialize on predicate `{}`", predicate))
+                .struct_span_err(span, format!("cannot specialize on predicate `{}`", predicate))
                 .emit();
         }
     }

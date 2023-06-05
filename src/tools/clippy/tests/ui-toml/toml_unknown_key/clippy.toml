@@ -1,6 +1,8 @@
 # that one is an error
 foobar = 42
+# so is this one
+barfoo = 53
 
-# that one is white-listed
+# that one is ignored
 [third-party]
 clippy-feature = "nightly"

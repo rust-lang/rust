@@ -1,5 +1,5 @@
 #!/bin/bash
-# A quick smoke test to make sure publish_tooolstate.py works.
+# A quick smoke test to make sure publish_toolstate.py works.
 
 set -euo pipefail
 IFS=$'\n\t'

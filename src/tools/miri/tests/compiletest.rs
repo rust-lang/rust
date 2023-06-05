@@ -1,8 +1,11 @@
 use colored::*;
 use regex::bytes::Regex;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
-use ui_test::{color_eyre::Result, Config, Mode, OutputConflictHandling};
+use ui_test::status_emitter::StatusEmitter;
+use ui_test::CommandBuilder;
+use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -43,42 +46,22 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
     so_file_path
 }
 
-fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let mut config = Config {
-        target: Some(target.to_owned()),
-        stderr_filters: STDERR.clone(),
-        stdout_filters: STDOUT.clone(),
-        root_dir: PathBuf::from(path),
-        mode,
-        program: miri_path(),
-        quiet: false,
-        ..Config::default()
-    };
-
-    let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
+fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) -> Config {
+    // Miri is rustc-like, so we create a default builder for rustc and modify it
+    let mut program = CommandBuilder::rustc();
+    program.program = miri_path();
 
     // Add some flags we always want.
-    config.args.push("--edition".into());
-    config.args.push("2018".into());
-    if in_rustc_test_suite {
-        // Less aggressive warnings to make the rustc toolstate management less painful.
-        // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        config.args.push("-Astable-features".into());
-        config.args.push("-Aunused".into());
-    } else {
-        config.args.push("-Dwarnings".into());
-        config.args.push("-Dunused".into());
-    }
+    program.args.push("-Dwarnings".into());
+    program.args.push("-Dunused".into());
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
-            config.args.push(flag.into());
+            program.args.push(flag.into());
         }
     }
-    config.args.push("-Zui-testing".into());
-    if let Some(target) = &config.target {
-        config.args.push("--target".into());
-        config.args.push(target.into());
-    }
+    program.args.push("-Zui-testing".into());
+    program.args.push("--target".into());
+    program.args.push(target.into());
 
     // If we're on linux, and we're testing the extern-so functionality,
     // then build the shared object file for testing external C function calls
@@ -87,28 +70,30 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         let so_file_path = build_so_for_c_ffi_tests();
         let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
         flag.push(so_file_path.into_os_string());
-        config.args.push(flag);
+        program.args.push(flag);
     }
 
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
-    config.output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
+    let output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
         (false, false) => OutputConflictHandling::Error,
         (true, false) => OutputConflictHandling::Bless,
         (false, true) => OutputConflictHandling::Ignore,
         (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
     };
 
-    // Handle command-line arguments.
-    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
-        match &**arg {
-            "--quiet" => {
-                config.quiet = true;
-                false
-            }
-            _ => true,
-        }
-    }));
+    let mut config = Config {
+        target: Some(target.to_owned()),
+        stderr_filters: STDERR.clone(),
+        stdout_filters: STDOUT.clone(),
+        root_dir: PathBuf::from(path),
+        mode,
+        program,
+        output_conflict_handling,
+        quiet: false,
+        edition: Some("2021".into()),
+        ..Config::default()
+    };
 
     let use_std = env::var_os("MIRI_NO_STD").is_none();
 
@@ -124,13 +109,50 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ];
     }
-    ui_test::run_tests(config)
+    config
+}
+
+fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
+    let mut config = test_config(target, path, mode, with_dependencies);
+
+    // Handle command-line arguments.
+    let mut after_dashdash = false;
+    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
+        if after_dashdash {
+            // Just propagate everything.
+            return true;
+        }
+        match &**arg {
+            "--quiet" => {
+                config.quiet = true;
+                false
+            }
+            "--" => {
+                after_dashdash = true;
+                false
+            }
+            s if s.starts_with('-') => {
+                panic!("unknown compiletest flag `{s}`");
+            }
+            _ => true,
+        }
+    }));
+
+    eprintln!("   Compiler: {}", config.program.display());
+    ui_test::run_tests_generic(
+        config,
+        // The files we're actually interested in (all `.rs` files).
+        |path| path.extension().is_some_and(|ext| ext == "rs"),
+        // This could be used to overwrite the `Config` on a per-test basis.
+        |_, _| None,
+        TextAndGha,
+    )
 }
 
 macro_rules! regexes {
     ($name:ident: $($regex:expr => $replacement:expr,)*) => {lazy_static::lazy_static! {
-        static ref $name: Vec<(Regex, &'static [u8])> = vec![
-            $((Regex::new($regex).unwrap(), $replacement.as_bytes()),)*
+        static ref $name: Vec<(Match, &'static [u8])> = vec![
+            $((Regex::new($regex).unwrap().into(), $replacement.as_bytes()),)*
         ];
     }};
 }
@@ -201,7 +223,17 @@ fn get_target() -> String {
 
 fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
+
     let target = get_target();
+
+    let mut args = std::env::args_os();
+
+    // Skip the program name and check whether this is a `./miri run-dep` invocation
+    if let Some(first) = args.nth(1) {
+        if first == "--miri-run-dep-mode" {
+            return run_dep_mode(target, args);
+        }
+    }
 
     // Add a test env var to do environment communication tests.
     env::set_var("MIRI_ENV_VAR_TEST", "0");
@@ -223,4 +255,60 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
+    let path = args.next().expect("./miri run-dep must be followed by a file name");
+    let mut config = test_config(&target, "", Mode::Yolo, /* with dependencies */ true);
+    config.program.args.remove(0); // remove the `--error-format=json` argument
+    config.program.args.push("--color".into());
+    config.program.args.push("always".into());
+    let mut cmd = ui_test::test_command(config, Path::new(&path))?;
+    // Separate the arguments to the `cargo miri` invocation from
+    // the arguments to the interpreted prog
+    cmd.arg("--");
+    cmd.args(args);
+    if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
+}
+
+/// This is a custom renderer for `ui_test` output that does not emit github actions
+/// `group`s, while still producing regular github actions messages on test failures.
+struct TextAndGha;
+impl StatusEmitter for TextAndGha {
+    fn failed_test<'a>(
+        &'a self,
+        revision: &'a str,
+        path: &'a Path,
+        cmd: &'a Command,
+        stderr: &'a [u8],
+    ) -> Box<dyn std::fmt::Debug + 'a> {
+        Box::new((
+            ui_test::status_emitter::Gha::<false>.failed_test(revision, path, cmd, stderr),
+            ui_test::status_emitter::Text.failed_test(revision, path, cmd, stderr),
+        ))
+    }
+
+    fn run_tests(&self, _config: &Config) -> Box<dyn ui_test::status_emitter::DuringTestRun> {
+        Box::new(TextAndGha)
+    }
+
+    fn finalize(
+        &self,
+        failures: usize,
+        succeeded: usize,
+        ignored: usize,
+        filtered: usize,
+    ) -> Box<dyn ui_test::status_emitter::Summary> {
+        Box::new((
+            ui_test::status_emitter::Gha::<false>.finalize(failures, succeeded, ignored, filtered),
+            ui_test::status_emitter::Text.finalize(failures, succeeded, ignored, filtered),
+        ))
+    }
+}
+
+impl ui_test::status_emitter::DuringTestRun for TextAndGha {
+    fn test_result(&mut self, path: &Path, revision: &str, result: &ui_test::TestResult) {
+        ui_test::status_emitter::Text.test_result(path, revision, result);
+        ui_test::status_emitter::Gha::<false>.test_result(path, revision, result);
+    }
 }

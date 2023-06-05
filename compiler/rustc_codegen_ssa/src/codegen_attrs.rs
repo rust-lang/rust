@@ -7,13 +7,14 @@ use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::{lang_items, weak_lang_items::WEAK_LANG_ITEMS, LangItem};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::{lint, parse::feature_err};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 use rustc_target::spec::{abi, SanitizerSet};
 
+use crate::errors;
 use crate::target_features::from_target_feature;
 use crate::{errors::ExpectedUsedSymbol, target_features::check_target_feature_trait_unsafe};
 
@@ -156,7 +157,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     None => {
                         // Unfortunately, unconditionally using `llvm.used` causes
                         // issues in handling `.init_array` with the gold linker,
-                        // but using `llvm.compiler.used` caused a nontrival amount
+                        // but using `llvm.compiler.used` caused a nontrivial amount
                         // of unintentional ecosystem breakage -- particularly on
                         // Mach-O targets.
                         //
@@ -300,7 +301,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 if let Some(val) = attr.value_str() {
                     if val.as_str().bytes().any(|b| b == 0) {
                         let msg = format!("illegal null byte in link_section value: `{}`", &val);
-                        tcx.sess.span_err(attr.span, &msg);
+                        tcx.sess.span_err(attr.span, msg);
                     } else {
                         codegen_fn_attrs.link_section = Some(val);
                     }
@@ -334,10 +335,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS
                             }
                             _ => {
-                                tcx.sess
-                                    .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                                    .note("expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
-                                    .emit();
+                                tcx.sess.emit_err(errors::InvalidNoSanitize { span: item.span() });
                             }
                         }
                     }
@@ -594,24 +592,12 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     use rustc_ast::{LitIntType, LitKind, MetaItemLit};
-    if !tcx.features().raw_dylib && tcx.sess.target.arch == "x86" {
-        feature_err(
-            &tcx.sess.parse_sess,
-            sym::raw_dylib,
-            attr.span,
-            "`#[link_ordinal]` is unstable on x86",
-        )
-        .emit();
-    }
     let meta_item_list = attr.meta_item_list();
     let meta_item_list = meta_item_list.as_deref();
     let sole_meta_list = match meta_item_list {
         Some([item]) => item.lit(),
         Some(_) => {
-            tcx.sess
-                .struct_span_err(attr.span, "incorrect number of arguments to `#[link_ordinal]`")
-                .note("the attribute requires exactly one argument")
-                .emit();
+            tcx.sess.emit_err(errors::InvalidLinkOrdinalNargs { span: attr.span });
             return None;
         }
         _ => None,
@@ -636,16 +622,13 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         } else {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.sess
-                .struct_span_err(attr.span, &msg)
+                .struct_span_err(attr.span, msg)
                 .note("the value may not exceed `u16::MAX`")
                 .emit();
             None
         }
     } else {
-        tcx.sess
-            .struct_span_err(attr.span, "illegal ordinal format in `link_ordinal`")
-            .note("an unsuffixed integer value, e.g., `1`, is expected")
-            .emit();
+        tcx.sess.emit_err(errors::InvalidLinkOrdinalFormat { span: attr.span });
         None
     }
 }

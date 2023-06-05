@@ -2,7 +2,7 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::infer::MemberConstraint;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -221,7 +221,7 @@ fn append_list(
 ) {
     let mut p = target_list;
     loop {
-        let mut r = &mut constraints[p];
+        let r = &mut constraints[p];
         match r.next_constraint {
             Some(q) => p = q,
             None => {

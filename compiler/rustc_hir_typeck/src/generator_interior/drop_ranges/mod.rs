@@ -20,7 +20,7 @@ use hir::{Body, HirId, HirIdMap, Node};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty;
@@ -193,7 +193,7 @@ impl DropRanges {
             .get(&TrackedValue::Temporary(hir_id))
             .or(self.tracked_value_map.get(&TrackedValue::Variable(hir_id)))
             .cloned()
-            .map_or(false, |tracked_value_id| {
+            .is_some_and(|tracked_value_id| {
                 self.expect_node(location.into()).drop_state.contains(tracked_value_id)
             })
     }
@@ -268,8 +268,7 @@ impl DropRangesBuilder {
 
     fn node_mut(&mut self, id: PostOrderId) -> &mut NodeInfo {
         let size = self.num_values();
-        self.nodes.ensure_contains_elem(id, || NodeInfo::new(size));
-        &mut self.nodes[id]
+        self.nodes.ensure_contains_elem(id, || NodeInfo::new(size))
     }
 
     fn add_control_edge(&mut self, from: PostOrderId, to: PostOrderId) {

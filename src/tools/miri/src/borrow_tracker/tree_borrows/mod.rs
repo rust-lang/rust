@@ -14,7 +14,7 @@ use rustc_middle::{
 
 use crate::*;
 
-mod diagnostics;
+pub mod diagnostics;
 mod perms;
 mod tree;
 mod unimap;
@@ -22,10 +22,6 @@ use perms::Permission;
 pub use tree::Tree;
 
 pub type AllocState = Tree;
-
-pub fn err_tb_ub<'tcx>(msg: String) -> InterpError<'tcx> {
-    err_machine_stop!(TerminationInfo::TreeBorrowsUb { msg })
-}
 
 impl<'tcx> Tree {
     /// Create a new allocation, i.e. a new tree
@@ -37,7 +33,8 @@ impl<'tcx> Tree {
         machine: &MiriMachine<'_, 'tcx>,
     ) -> Self {
         let tag = state.base_ptr_tag(id, machine); // Fresh tag for the root
-        Tree::new(tag, size)
+        let span = machine.current_span();
+        Tree::new(tag, size, span)
     }
 
     /// Check that an access on the entire range is permitted, and update
@@ -64,7 +61,8 @@ impl<'tcx> Tree {
             ProvenanceExtra::Wildcard => return Ok(()),
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
-        self.perform_access(access_kind, tag, range, global)
+        let span = machine.current_span();
+        self.perform_access(access_kind, tag, range, global, span)
     }
 
     /// Check that this pointer has permission to deallocate this range.
@@ -82,7 +80,8 @@ impl<'tcx> Tree {
             ProvenanceExtra::Wildcard => return Ok(()),
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
-        self.dealloc(tag, range, global)
+        let span = machine.current_span();
+        self.dealloc(tag, range, global, span)
     }
 
     pub fn expose_tag(&mut self, _tag: BorTag) {
@@ -265,6 +264,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 .insert(new_tag, protect);
         }
 
+        let span = this.machine.current_span();
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let range = alloc_range(base_offset, ptr_size);
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
@@ -272,18 +272,19 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         if new_perm.perform_read_access {
             // Count this reborrow as a read access
             let global = &this.machine.borrow_tracker.as_ref().unwrap();
-            tree_borrows.perform_access(AccessKind::Read, orig_tag, range, global)?;
+            let span = this.machine.current_span();
+            tree_borrows.perform_access(AccessKind::Read, orig_tag, range, global, span)?;
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
                 data_race.read(alloc_id, range, &this.machine)?;
             }
         }
 
         // Record the parent-child pair in the tree.
-        tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range)?;
+        tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
         Ok(Some((alloc_id, new_tag)))
     }
 
-    /// Retags an indidual pointer, returning the retagged version.
+    /// Retags an individual pointer, returning the retagged version.
     fn tb_retag_reference(
         &mut self,
         val: &ImmTy<'tcx, Provenance>,

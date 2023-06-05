@@ -7,7 +7,7 @@ LL |     buf.iter_mut();
 help: consider changing this to be a mutable reference
    |
 LL |     let mut buf = &mut [1, 2, 3, 4];
-   |                   ~~~~~~~~~~~~~~~~~
+   |                    +++
 
 error: aborting due to previous error
 

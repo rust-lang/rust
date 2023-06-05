@@ -16,7 +16,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir};
 use rustc_hir::{self, GeneratorKind};
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use rustc_ast::Mutability;
@@ -220,6 +220,11 @@ pub enum BorrowKind {
     /// immutable, but not aliasable. This solves the problem. For
     /// simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
+    ///
+    // FIXME(#112072): This is wrong. Unique borrows are mutable borrows except
+    // that they do not require their pointee to be marked as a mutable.
+    // They should still be treated as mutable borrows in every other way,
+    // e.g. for variance or overlap checking.
     Unique,
 
     /// Data is mutable and not aliasable.
@@ -251,7 +256,7 @@ pub enum StatementKind<'tcx> {
     /// **Needs clarification**: The implication of the above idea would be that assignment implies
     /// that the resulting value is initialized. I believe we could commit to this separately from
     /// committing to whatever part of the memory model we would need to decide on to make the above
-    /// paragragh precise. Do we want to?
+    /// paragraph precise. Do we want to?
     ///
     /// Assignments in which the types of the place and rvalue differ are not well-formed.
     ///
@@ -331,9 +336,8 @@ pub enum StatementKind<'tcx> {
     /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single
     /// `PlaceMention(PLACE)`.
     ///
-    /// When executed at runtime this is a nop.
-    ///
-    /// Disallowed after drop elaboration.
+    /// When executed at runtime, this computes the given place, but then discards
+    /// it without doing a load. It is UB if the place is not pointing to live memory.
     PlaceMention(Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
@@ -604,7 +608,11 @@ pub enum TerminatorKind<'tcx> {
     /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction },
+    ///
+    /// The `replace` flag indicates whether this terminator was created as part of an assignment.
+    /// This should only be used for diagnostic purposes, and does not have any operational
+    /// meaning.
+    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction, replace: bool },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.
@@ -652,7 +660,7 @@ pub enum TerminatorKind<'tcx> {
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
-        msg: AssertMessage<'tcx>,
+        msg: Box<AssertMessage<'tcx>>,
         target: BasicBlock,
         unwind: UnwindAction,
     },
@@ -750,6 +758,29 @@ pub enum TerminatorKind<'tcx> {
     },
 }
 
+impl TerminatorKind<'_> {
+    /// Returns a simple string representation of a `TerminatorKind` variant, independent of any
+    /// values it might hold (e.g. `TerminatorKind::Call` always returns `"Call"`).
+    pub const fn name(&self) -> &'static str {
+        match self {
+            TerminatorKind::Goto { .. } => "Goto",
+            TerminatorKind::SwitchInt { .. } => "SwitchInt",
+            TerminatorKind::Resume => "Resume",
+            TerminatorKind::Terminate => "Terminate",
+            TerminatorKind::Return => "Return",
+            TerminatorKind::Unreachable => "Unreachable",
+            TerminatorKind::Drop { .. } => "Drop",
+            TerminatorKind::Call { .. } => "Call",
+            TerminatorKind::Assert { .. } => "Assert",
+            TerminatorKind::Yield { .. } => "Yield",
+            TerminatorKind::GeneratorDrop => "GeneratorDrop",
+            TerminatorKind::FalseEdge { .. } => "FalseEdge",
+            TerminatorKind::FalseUnwind { .. } => "FalseUnwind",
+            TerminatorKind::InlineAsm { .. } => "InlineAsm",
+        }
+    }
+}
+
 /// Action to be taken when a stack unwind happens.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
@@ -770,7 +801,8 @@ pub enum UnwindAction {
 }
 
 /// Information about an assertion failure.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Hash, HashStable, PartialEq, Debug)]
+#[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
     Overflow(BinOp, O, O),
@@ -997,7 +1029,7 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 /// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
 /// something we can even decide without knowing more about Rust's memory model?
 ///
-/// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
+/// **Needs clarification:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
@@ -1115,7 +1147,7 @@ pub enum Rvalue<'tcx> {
     CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
-    NullaryOp(NullOp, Ty<'tcx>),
+    NullaryOp(NullOp<'tcx>, Ty<'tcx>),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
@@ -1211,12 +1243,14 @@ pub enum AggregateKind<'tcx> {
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum NullOp {
+#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+pub enum NullOp<'tcx> {
     /// Returns the size of a value of that type
     SizeOf,
     /// Returns the minimum alignment of a type
     AlignOf,
+    /// Returns the offset of a field
+    OffsetOf(&'tcx List<FieldIdx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1239,13 +1273,18 @@ pub enum BinOp {
     Mul,
     /// The `/` operator (division)
     ///
-    /// Division by zero is UB, because the compiler should have inserted checks
-    /// prior to this.
+    /// For integer types, division by zero is UB, as is `MIN / -1` for signed.
+    /// The compiler should have inserted checks prior to this.
+    ///
+    /// Floating-point division by zero is safe, and does not need guards.
     Div,
     /// The `%` operator (modulus)
     ///
-    /// Using zero as the modulus (second operand) is UB, because the compiler
-    /// should have inserted checks prior to this.
+    /// For integer types, using zero as the modulus (second operand) is UB,
+    /// as is `MIN % -1` for signed.
+    /// The compiler should have inserted checks prior to this.
+    ///
+    /// Floating-point remainder by zero is safe, and does not need guards.
     Rem,
     /// The `^` operator (bitwise xor)
     BitXor,

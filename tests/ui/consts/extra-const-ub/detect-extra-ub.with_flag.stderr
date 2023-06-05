@@ -1,11 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:9:20
+  --> $DIR/detect-extra-ub.rs:8:20
    |
 LL |     let _x: bool = transmute(3u8);
    |                    ^^^^^^^^^^^^^^ constructing invalid value: encountered 0x03, but expected a boolean
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:15:21
+  --> $DIR/detect-extra-ub.rs:14:21
    |
 LL |     let _x: usize = transmute(&3u8);
    |                     ^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -14,7 +14,7 @@ LL |     let _x: usize = transmute(&3u8);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:21:30
+  --> $DIR/detect-extra-ub.rs:20:30
    |
 LL |     let _x: (usize, usize) = transmute(x);
    |                              ^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -23,7 +23,7 @@ LL |     let _x: (usize, usize) = transmute(x);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:26:20
+  --> $DIR/detect-extra-ub.rs:25:20
    |
 LL |     let _x: &u32 = transmute(&[0u8; 4]);
    |                    ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required 4 byte alignment but found 1)

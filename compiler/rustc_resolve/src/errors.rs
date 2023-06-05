@@ -22,7 +22,7 @@ pub(crate) struct UnderscoreLifetimeNameCannotBeUsedHere(#[primary_span] pub(cra
 
 #[derive(Diagnostic)]
 #[diag(resolve_crate_may_not_be_imported)]
-pub(crate) struct CrateMayNotBeImprted(#[primary_span] pub(crate) Span);
+pub(crate) struct CrateMayNotBeImported(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
 #[diag(resolve_crate_root_imports_must_be_named_explicitly)]
@@ -326,6 +326,18 @@ pub(crate) struct ParamInTyOfConstParam {
     #[label]
     pub(crate) span: Span,
     pub(crate) name: Symbol,
+    #[subdiagnostic]
+    pub(crate) param_kind: Option<ParamKindInTyOfConstParam>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ParamKindInTyOfConstParam {
+    #[note(resolve_type_param_in_ty_of_const_param)]
+    Type,
+    #[note(resolve_const_param_in_ty_of_const_param)]
+    Const,
+    #[note(resolve_lifetime_param_in_ty_of_const_param)]
+    Lifetime,
 }
 
 #[derive(Diagnostic)]
@@ -344,7 +356,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) span: Span,
     pub(crate) name: Symbol,
     #[subdiagnostic]
-    pub(crate) sub_is_type: ParamInNonTrivialAnonConstIsType,
+    pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[subdiagnostic]
     pub(crate) help: Option<ParamInNonTrivialAnonConstHelp>,
 }
@@ -354,11 +366,13 @@ pub(crate) struct ParamInNonTrivialAnonConst {
 pub(crate) struct ParamInNonTrivialAnonConstHelp;
 
 #[derive(Subdiagnostic)]
-pub(crate) enum ParamInNonTrivialAnonConstIsType {
-    #[note(resolve_param_in_non_trivial_anon_const_sub_type)]
-    AType,
-    #[help(resolve_param_in_non_trivial_anon_const_sub_non_type)]
-    NotAType { name: Symbol },
+pub(crate) enum ParamKindInNonTrivialAnonConst {
+    #[note(resolve_type_param_in_non_trivial_anon_const)]
+    Type,
+    #[help(resolve_const_param_in_non_trivial_anon_const)]
+    Const { name: Symbol },
+    #[note(resolve_lifetime_param_in_non_trivial_anon_const)]
+    Lifetime,
 }
 
 #[derive(Diagnostic)]
@@ -429,6 +443,14 @@ pub(crate) struct InvalidAsmSym {
 }
 
 #[derive(Diagnostic)]
+#[diag(resolve_lowercase_self)]
+pub(crate) struct LowercaseSelf {
+    #[primary_span]
+    #[suggestion(code = "Self", applicability = "maybe-incorrect", style = "short")]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_trait_impl_duplicate, code = "E0201")]
 pub(crate) struct TraitImplDuplicate {
     #[primary_span]
@@ -481,3 +503,82 @@ pub(crate) struct ToolModuleImported {
 #[derive(Diagnostic)]
 #[diag(resolve_module_only)]
 pub(crate) struct ModuleOnly(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic, Default)]
+#[diag(resolve_macro_expected_found)]
+pub(crate) struct MacroExpectedFound<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) found: &'a str,
+    pub(crate) expected: &'a str,
+    pub(crate) macro_path: &'a str,
+    #[subdiagnostic]
+    pub(crate) remove_surrounding_derive: Option<RemoveSurroundingDerive>,
+    #[subdiagnostic]
+    pub(crate) add_as_non_derive: Option<AddAsNonDerive<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_remove_surrounding_derive)]
+pub(crate) struct RemoveSurroundingDerive {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_add_as_non_derive)]
+pub(crate) struct AddAsNonDerive<'a> {
+    pub(crate) macro_path: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_proc_macro_same_crate)]
+pub(crate) struct ProcMacroSameCrate {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[help]
+    pub(crate) is_test: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_imported_crate)]
+pub(crate) struct CrateImported {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_macro_use_extern_crate_self)]
+pub(crate) struct MacroUseExternCrateSelf {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_accessible_unsure)]
+#[note]
+pub(crate) struct CfgAccessibleUnsure {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_param_in_enum_discriminant)]
+pub(crate) struct ParamInEnumDiscriminant {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+    #[subdiagnostic]
+    pub(crate) param_kind: ParamKindInEnumDiscriminant,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ParamKindInEnumDiscriminant {
+    #[note(resolve_type_param_in_enum_discriminant)]
+    Type,
+    #[note(resolve_const_param_in_enum_discriminant)]
+    Const,
+    #[note(resolve_lifetime_param_in_enum_discriminant)]
+    Lifetime,
+}

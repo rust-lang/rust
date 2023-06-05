@@ -13,7 +13,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
-use thin_vec::ThinVec;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
@@ -137,7 +136,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.diagnostic().span_bug(
             p.span,
-            &format!(
+            format!(
                 "lower_qpath: no final extension segment in {}..{}",
                 proj_start,
                 p.segments.len()
@@ -219,18 +218,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }
                 },
-                &GenericArgs::ReturnTypeNotation(span) => {
-                    self.tcx.sess.emit_err(GenericTypeWithParentheses { span, sub: None });
-                    (
-                        self.lower_angle_bracketed_parameter_data(
-                            &AngleBracketedArgs { span, args: ThinVec::default() },
-                            param_mode,
-                            itctx,
-                        )
-                        .0,
-                        false,
-                    )
-                }
             }
         } else {
             (

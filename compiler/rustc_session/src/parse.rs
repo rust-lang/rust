@@ -84,12 +84,13 @@ impl SymbolGallery {
 
 /// Construct a diagnostic for a language feature error due to the given `span`.
 /// The `feature`'s `Symbol` is the one you used in `active.rs` and `rustc_span::symbols`.
-pub fn feature_err<'a>(
-    sess: &'a ParseSess,
+#[track_caller]
+pub fn feature_err(
+    sess: &ParseSess,
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
@@ -98,20 +99,21 @@ pub fn feature_err<'a>(
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
 #[track_caller]
-pub fn feature_err_issue<'a>(
-    sess: &'a ParseSess,
+pub fn feature_err_issue(
+    sess: &ParseSess,
     feature: Symbol,
     span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     let span = span.into();
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        sess.span_diagnostic
-            .steal_diagnostic(span, StashKey::EarlySyntaxWarning)
-            .map(|err| err.cancel());
+        if let Some(err) = sess.span_diagnostic.steal_diagnostic(span, StashKey::EarlySyntaxWarning)
+        {
+            err.cancel()
+        }
     }
 
     let mut err = sess.create_err(FeatureGateError { span, explain: explain.into() });
@@ -122,7 +124,7 @@ pub fn feature_err_issue<'a>(
 /// Construct a future incompatibility diagnostic for a feature gate.
 ///
 /// This diagnostic is only a warning and *does not cause compilation to fail*.
-pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &str) {
+pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &'static str) {
     feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
 }
 
@@ -139,7 +141,7 @@ pub fn feature_warn_issue(
     feature: Symbol,
     span: Span,
     issue: GateIssue,
-    explain: &str,
+    explain: &'static str,
 ) {
     let mut err = sess.span_diagnostic.struct_span_warn(span, explain);
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
@@ -213,8 +215,6 @@ pub struct ParseSess {
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
     /// File paths accessed during the build.
     pub file_depinfo: Lock<FxHashSet<Symbol>>,
-    /// All the type ascriptions expressions that have had a suggestion for likely path typo.
-    pub type_ascription_path_suggestions: Lock<FxHashSet<Span>>,
     /// Whether cfg(version) should treat the current release as incomplete
     pub assume_incomplete_release: bool,
     /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
@@ -257,7 +257,6 @@ impl ParseSess {
             reached_eof: AtomicBool::new(false),
             env_depinfo: Default::default(),
             file_depinfo: Default::default(),
-            type_ascription_path_suggestions: Default::default(),
             assume_incomplete_release: false,
             proc_macro_quoted_spans: Default::default(),
             attr_id_generator: AttrIdGenerator::new(),
@@ -291,7 +290,7 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
@@ -309,7 +308,7 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {

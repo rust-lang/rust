@@ -7,7 +7,7 @@ LL |             b.foo();
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL |         use a::A;
+LL +         use a::A;
    |
 
 error: aborting due to previous error

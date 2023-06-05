@@ -1,6 +1,8 @@
 //! A simple test for testing many permutations of allowedness of
 //! impl Trait
 #![feature(impl_trait_in_fn_trait_return)]
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
 use std::fmt::Debug;
 
 // Allowed
@@ -116,7 +118,7 @@ trait DummyTrait {
 }
 impl DummyTrait for () {
     type Out = impl Debug;
-    //~^ ERROR `impl Trait` in type aliases is unstable
+    //~^ ERROR `impl Trait` in associated types is unstable
 
     fn in_trait_impl_parameter(_: impl Debug) { }
     // Allowed

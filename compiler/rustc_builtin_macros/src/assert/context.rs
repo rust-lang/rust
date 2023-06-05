@@ -182,7 +182,6 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     delim: MacDelimiter::Parenthesis,
                     tokens: initial.into_iter().chain(captures).collect::<TokenStream>(),
                 }),
-                prior_type_ascription: None,
             })),
         )
     }
@@ -234,9 +233,18 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Cast(local_expr, _) => {
                 self.manage_cond_expr(local_expr);
             }
+            ExprKind::If(local_expr, _, _) => {
+                self.manage_cond_expr(local_expr);
+            }
             ExprKind::Index(prefix, suffix) => {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
+            }
+            ExprKind::Let(_, local_expr, _) => {
+                self.manage_cond_expr(local_expr);
+            }
+            ExprKind::Match(local_expr, _) => {
+                self.manage_cond_expr(local_expr);
             }
             ExprKind::MethodCall(call) => {
                 for arg in &mut call.args {
@@ -288,7 +296,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Assign(_, _, _)
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Async(_, _)
-            | ExprKind::Await(_)
+            | ExprKind::Await(_, _)
             | ExprKind::Block(_, _)
             | ExprKind::Break(_, _)
             | ExprKind::Closure(_)
@@ -296,16 +304,14 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Continue(_)
             | ExprKind::Err
             | ExprKind::Field(_, _)
-            | ExprKind::FormatArgs(_)
             | ExprKind::ForLoop(_, _, _, _)
-            | ExprKind::If(_, _, _)
+            | ExprKind::FormatArgs(_)
             | ExprKind::IncludedBytes(..)
             | ExprKind::InlineAsm(_)
-            | ExprKind::Let(_, _, _)
             | ExprKind::Lit(_)
             | ExprKind::Loop(_, _, _)
             | ExprKind::MacCall(_)
-            | ExprKind::Match(_, _)
+            | ExprKind::OffsetOf(_, _)
             | ExprKind::Path(_, _)
             | ExprKind::Ret(_)
             | ExprKind::Try(_)

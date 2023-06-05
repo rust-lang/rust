@@ -2,9 +2,15 @@
 // and is subject to change without notice. Knock yourself out.
 fn foo() -> i32 {
     let mut _0: i32;                     // return place in scope 0 at main.rs:4:19: 4:22
+    let mut _1: (i32, bool);             // in scope 0 at main.rs:5:5: 5:10
 
     bb0: {
-        _0 = const 11_i32;               // scope 0 at main.rs:5:5: 5:10
+        _1 = CheckedAdd(const 5_i32, const 6_i32); // scope 0 at main.rs:5:5: 5:10
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> bb1; // scope 0 at main.rs:5:5: 5:10
+    }
+
+    bb1: {
+        _0 = move (_1.0: i32);           // scope 0 at main.rs:5:5: 5:10
         return;                          // scope 0 at main.rs:6:2: 6:2
     }
 }

@@ -146,7 +146,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 );
                 err.help("consider using an extension trait instead");
                 if let ty::Ref(_, subty, _) = ty.kind() {
-                    err.note(&format!(
+                    err.note(format!(
                         "you could also try moving the reference to \
                             uses of `{}` (such as `self`) within the implementation",
                         subty

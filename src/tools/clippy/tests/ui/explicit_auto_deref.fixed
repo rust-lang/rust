@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(closure_lifetime_binder)]
 #![warn(clippy::explicit_auto_deref)]

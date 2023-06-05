@@ -5,7 +5,7 @@ use rustc_data_structures::sharded;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -136,7 +136,9 @@ where
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        self.cache.lock().as_ref().map(|value| f(&(), &value.0, value.1));
+        if let Some(value) = self.cache.lock().as_ref() {
+            f(&(), &value.0, value.1)
+        }
     }
 }
 

@@ -145,7 +145,7 @@ where
 /// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
 /// performance impact. Even improving performance in some cases.
 #[inline(never)]
-fn insertion_sort_shift_left<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
+pub(super) fn insertion_sort_shift_left<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -557,7 +557,7 @@ where
 ///
 /// 1. Number of elements smaller than `v[pivot]`.
 /// 2. True if `v` was already partitioned.
-fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
+pub(super) fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -612,7 +612,7 @@ where
 ///
 /// Returns the number of elements equal to the pivot. It is assumed that `v` does not contain
 /// elements smaller than the pivot.
-fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
+pub(super) fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -670,7 +670,7 @@ where
 /// Scatters some elements around in an attempt to break patterns that might cause imbalanced
 /// partitions in quicksort.
 #[cold]
-fn break_patterns<T>(v: &mut [T]) {
+pub(super) fn break_patterns<T>(v: &mut [T]) {
     let len = v.len();
     if len >= 8 {
         let mut seed = len;
@@ -719,7 +719,7 @@ fn break_patterns<T>(v: &mut [T]) {
 /// Chooses a pivot in `v` and returns the index and `true` if the slice is likely already sorted.
 ///
 /// Elements in `v` might be reordered in the process.
-fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
+pub(super) fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -897,138 +897,6 @@ where
     recurse(v, &mut is_less, None, limit);
 }
 
-fn partition_at_index_loop<'a, T, F>(
-    mut v: &'a mut [T],
-    mut index: usize,
-    is_less: &mut F,
-    mut pred: Option<&'a T>,
-) where
-    F: FnMut(&T, &T) -> bool,
-{
-    // Limit the amount of iterations and fall back to heapsort, similarly to `slice::sort_unstable`.
-    // This lowers the worst case running time from O(n^2) to O(n log n).
-    // FIXME: Investigate whether it would be better to use something like Median of Medians
-    // or Fast Deterministic Selection to guarantee O(n) worst case.
-    let mut limit = usize::BITS - v.len().leading_zeros();
-
-    // True if the last partitioning was reasonably balanced.
-    let mut was_balanced = true;
-
-    loop {
-        let len = v.len();
-
-        // For slices of up to this length it's probably faster to simply sort them.
-        const MAX_INSERTION: usize = 10;
-        if len <= MAX_INSERTION {
-            if len >= 2 {
-                insertion_sort_shift_left(v, 1, is_less);
-            }
-            return;
-        }
-
-        if limit == 0 {
-            heapsort(v, is_less);
-            return;
-        }
-
-        // If the last partitioning was imbalanced, try breaking patterns in the slice by shuffling
-        // some elements around. Hopefully we'll choose a better pivot this time.
-        if !was_balanced {
-            break_patterns(v);
-            limit -= 1;
-        }
-
-        // Choose a pivot
-        let (pivot, _) = choose_pivot(v, is_less);
-
-        // If the chosen pivot is equal to the predecessor, then it's the smallest element in the
-        // slice. Partition the slice into elements equal to and elements greater than the pivot.
-        // This case is usually hit when the slice contains many duplicate elements.
-        if let Some(p) = pred {
-            if !is_less(p, &v[pivot]) {
-                let mid = partition_equal(v, pivot, is_less);
-
-                // If we've passed our index, then we're good.
-                if mid > index {
-                    return;
-                }
-
-                // Otherwise, continue sorting elements greater than the pivot.
-                v = &mut v[mid..];
-                index = index - mid;
-                pred = None;
-                continue;
-            }
-        }
-
-        let (mid, _) = partition(v, pivot, is_less);
-        was_balanced = cmp::min(mid, len - mid) >= len / 8;
-
-        // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = v.split_at_mut(mid);
-        let (pivot, right) = right.split_at_mut(1);
-        let pivot = &pivot[0];
-
-        if mid < index {
-            v = right;
-            index = index - mid - 1;
-            pred = Some(pivot);
-        } else if mid > index {
-            v = left;
-        } else {
-            // If mid == index, then we're done, since partition() guaranteed that all elements
-            // after mid are greater than or equal to mid.
-            return;
-        }
-    }
-}
-
-/// Reorder the slice such that the element at `index` is at its final sorted position.
-pub fn partition_at_index<T, F>(
-    v: &mut [T],
-    index: usize,
-    mut is_less: F,
-) -> (&mut [T], &mut T, &mut [T])
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    use cmp::Ordering::Greater;
-    use cmp::Ordering::Less;
-
-    if index >= v.len() {
-        panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
-    }
-
-    if T::IS_ZST {
-        // Sorting has no meaningful behavior on zero-sized types. Do nothing.
-    } else if index == v.len() - 1 {
-        // Find max element and place it in the last position of the array. We're free to use
-        // `unwrap()` here because we know v must not be empty.
-        let (max_index, _) = v
-            .iter()
-            .enumerate()
-            .max_by(|&(_, x), &(_, y)| if is_less(x, y) { Less } else { Greater })
-            .unwrap();
-        v.swap(max_index, index);
-    } else if index == 0 {
-        // Find min element and place it in the first position of the array. We're free to use
-        // `unwrap()` here because we know v must not be empty.
-        let (min_index, _) = v
-            .iter()
-            .enumerate()
-            .min_by(|&(_, x), &(_, y)| if is_less(x, y) { Less } else { Greater })
-            .unwrap();
-        v.swap(min_index, index);
-    } else {
-        partition_at_index_loop(v, index, &mut is_less, None);
-    }
-
-    let (left, right) = v.split_at_mut(index);
-    let (pivot, right) = right.split_at_mut(1);
-    let pivot = &mut pivot[0];
-    (left, pivot, right)
-}
-
 /// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `buf` as temporary storage, and
 /// stores the result into `v[..]`.
 ///
@@ -1085,12 +953,12 @@ where
 
             // SAFETY: left and right must be valid and part of v same for out.
             unsafe {
-                let to_copy = if is_less(&*right, &**left) {
-                    get_and_increment(&mut right)
-                } else {
-                    get_and_increment(left)
-                };
-                ptr::copy_nonoverlapping(to_copy, get_and_increment(out), 1);
+                let is_l = is_less(&*right, &**left);
+                let to_copy = if is_l { right } else { *left };
+                ptr::copy_nonoverlapping(to_copy, *out, 1);
+                *out = out.add(1);
+                right = right.add(is_l as usize);
+                *left = left.add(!is_l as usize);
             }
         }
     } else {
@@ -1113,31 +981,17 @@ where
 
             // SAFETY: left and right must be valid and part of v same for out.
             unsafe {
-                let to_copy = if is_less(&*right.sub(1), &*left.sub(1)) {
-                    decrement_and_get(left)
-                } else {
-                    decrement_and_get(right)
-                };
-                ptr::copy_nonoverlapping(to_copy, decrement_and_get(&mut out), 1);
+                let is_l = is_less(&*right.sub(1), &*left.sub(1));
+                *left = left.sub(is_l as usize);
+                *right = right.sub(!is_l as usize);
+                let to_copy = if is_l { *left } else { *right };
+                out = out.sub(1);
+                ptr::copy_nonoverlapping(to_copy, out, 1);
             }
         }
     }
     // Finally, `hole` gets dropped. If the shorter run was not fully consumed, whatever remains of
     // it will now be copied into the hole in `v`.
-
-    unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
-        let old = *ptr;
-
-        // SAFETY: ptr.add(1) must still be a valid pointer and part of `v`.
-        *ptr = unsafe { ptr.add(1) };
-        old
-    }
-
-    unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
-        // SAFETY: ptr.sub(1) must still be a valid pointer and part of `v`.
-        *ptr = unsafe { ptr.sub(1) };
-        *ptr
-    }
 
     // When dropped, copies the range `start..end` into `dest..`.
     struct MergeHole<T> {
@@ -1456,7 +1310,6 @@ pub struct TimSortRun {
 
 /// Takes a range as denoted by start and end, that is already sorted and extends it to the right if
 /// necessary with sorts optimized for smaller ranges such as insertion sort.
-#[cfg(not(no_global_oom_handling))]
 fn provide_sorted_batch<T, F>(v: &mut [T], start: usize, mut end: usize, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,
@@ -1486,7 +1339,7 @@ where
 }
 
 /// Finds a streak of presorted elements starting at the beginning of the slice. Returns the first
-/// value that is not part of said streak, and a bool denoting wether the streak was reversed.
+/// value that is not part of said streak, and a bool denoting whether the streak was reversed.
 /// Streaks can be increasing or decreasing.
 fn find_streak<T, F>(v: &[T], is_less: &mut F) -> (usize, bool)
 where

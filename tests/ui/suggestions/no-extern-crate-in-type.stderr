@@ -6,7 +6,7 @@ LL | type Output = Option<Foo>;
    |
 help: consider importing this struct
    |
-LL | use foo::Foo;
+LL + use foo::Foo;
    |
 
 error: aborting due to previous error

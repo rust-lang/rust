@@ -24,7 +24,7 @@ fn generic_arg_mismatch_err(
     arg: &GenericArg<'_>,
     param: &GenericParamDef,
     possible_ordering_error: bool,
-    help: Option<&str>,
+    help: Option<String>,
 ) -> ErrorGuaranteed {
     let sess = tcx.sess;
     let mut err = struct_span_err!(
@@ -112,7 +112,7 @@ fn generic_arg_mismatch_err(
             if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body.value.kind
             {
                 if let Res::Def(DefKind::Fn { .. }, id) = path.res {
-                    err.help(&format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                    err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
                     err.help("function item types cannot be named directly");
                 }
             }
@@ -130,7 +130,7 @@ fn generic_arg_mismatch_err(
         } else {
             (arg.descr(), param.kind.descr())
         };
-        err.note(&format!("{} arguments must be provided before {} arguments", first, last));
+        err.note(format!("{} arguments must be provided before {} arguments", first, last));
         if let Some(help) = help {
             err.help(help);
         }
@@ -300,7 +300,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                                     arg,
                                     param,
                                     !args_iter.clone().is_sorted_by_key(|arg| arg.to_ord()),
-                                    Some(&format!(
+                                    Some(format!(
                                         "reorder the arguments: {}: `<{}>`",
                                         param_types_present
                                             .into_iter()

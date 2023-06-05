@@ -40,7 +40,7 @@ pub fn optimize_with_bolt(path: &Path, profile_path: &Path, output_path: &Path) 
         // Reorder functions within the binary
         .arg("-reorder-functions=hfsort+")
         // Split function code into hot and code regions
-        .arg("-split-functions=2")
+        .arg("-split-functions")
         // Split as many basic blocks as possible
         .arg("-split-all-cold")
         // Move jump tables to a separate section

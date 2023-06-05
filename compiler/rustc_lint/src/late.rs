@@ -16,7 +16,7 @@
 
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc_ast as ast;
-use rustc_data_structures::sync::join;
+use rustc_data_structures::sync::{join, DynSend};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit as hir_visit;
@@ -240,8 +240,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        lint_callback!(self, check_arm, a);
-        hir_visit::walk_arm(self, a);
+        self.with_lint_attrs(a.hir_id, |cx| {
+            lint_callback!(cx, check_arm, a);
+            hir_visit::walk_arm(cx, a);
+        })
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
@@ -429,7 +431,7 @@ fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
 /// Performs lint checking on a crate.
 pub fn check_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
-    builtin_lints: impl FnOnce() -> T + Send,
+    builtin_lints: impl FnOnce() -> T + Send + DynSend,
 ) {
     join(
         || {

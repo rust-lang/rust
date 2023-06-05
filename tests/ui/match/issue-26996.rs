@@ -4,7 +4,7 @@
 // where #54986 is implemented and #54987 is *not* implemented. For
 // now: just ignore it
 //
-// ignore-test
+// ignore-test (#54987)
 
 // This test is checking that the write to `c.0` (which has been moved out of)
 // won't overwrite the state in `c2`.

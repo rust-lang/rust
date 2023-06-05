@@ -1,6 +1,5 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-use crate::nll::ToRegionVid;
 use crate::path_utils::allow_two_phase_borrow;
 use crate::place_ext::PlaceExt;
 use crate::BorrowIndex;
@@ -31,7 +30,7 @@ pub struct BorrowSet<'tcx> {
     /// Map from local to all the borrows on that local.
     pub local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
 
-    pub(crate) locals_state_at_exit: LocalsStateAtExit,
+    pub locals_state_at_exit: LocalsStateAtExit,
 }
 
 impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
@@ -154,7 +153,7 @@ impl<'tcx> BorrowSet<'tcx> {
         self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.location_map.len()
     }
 
@@ -204,7 +203,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 return;
             }
 
-            let region = region.to_region_vid();
+            let region = region.as_var();
 
             let borrow = BorrowData {
                 kind,
@@ -279,7 +278,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             let borrow_data = &self.location_map[&location];
             assert_eq!(borrow_data.reserve_location, location);
             assert_eq!(borrow_data.kind, kind);
-            assert_eq!(borrow_data.region, region.to_region_vid());
+            assert_eq!(borrow_data.region, region.as_var());
             assert_eq!(borrow_data.borrowed_place, place);
         }
 

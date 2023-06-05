@@ -6,7 +6,7 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, print::TraitRefPrintOnlyTraitPath, Ty};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -102,6 +102,14 @@ pub struct MultipleRelaxedDefaultBounds {
 #[derive(Diagnostic)]
 #[diag(hir_analysis_copy_impl_on_non_adt, code = "E0206")]
 pub struct CopyImplOnNonAdt {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_param_ty_impl_on_non_adt)]
+pub struct ConstParamTyImplOnNonAdt {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -504,8 +512,20 @@ pub(crate) struct ReturnTypeNotationEqualityBound {
 pub(crate) struct ReturnTypeNotationMissingMethod {
     #[primary_span]
     pub span: Span,
-    pub trait_name: Symbol,
+    pub ty_name: String,
     pub assoc_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_return_type_notation_conflicting_bound)]
+#[note]
+pub(crate) struct ReturnTypeNotationConflictingBound<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty_name: String,
+    pub assoc_name: Symbol,
+    pub first_bound: ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+    pub second_bound: ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
 }
 
 #[derive(Diagnostic)]
@@ -630,4 +650,210 @@ pub(crate) struct SIMDFFIHighlyExperimental {
     #[primary_span]
     pub span: Span,
     pub snip: String,
+}
+
+#[derive(Diagnostic)]
+
+pub enum ImplNotMarkedDefault {
+    #[diag(hir_analysis_impl_not_marked_default, code = "E0520")]
+    #[note]
+    Ok {
+        #[primary_span]
+        #[label]
+        span: Span,
+        #[label(hir_analysis_ok_label)]
+        ok_label: Span,
+        ident: Symbol,
+    },
+    #[diag(hir_analysis_impl_not_marked_default_err, code = "E0520")]
+    #[note]
+    Err {
+        #[primary_span]
+        span: Span,
+        cname: Symbol,
+        ident: Symbol,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_missing_trait_item, code = "E0046")]
+pub(crate) struct MissingTraitItem {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub missing_trait_item_label: Vec<MissingTraitItemLabel>,
+    #[subdiagnostic]
+    pub missing_trait_item: Vec<MissingTraitItemSuggestion>,
+    #[subdiagnostic]
+    pub missing_trait_item_none: Vec<MissingTraitItemSuggestionNone>,
+    pub missing_items_msg: String,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_missing_trait_item_label)]
+pub(crate) struct MissingTraitItemLabel {
+    #[primary_span]
+    pub span: Span,
+    pub item: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_analysis_missing_trait_item_suggestion,
+    style = "tool-only",
+    applicability = "has-placeholders",
+    code = "{code}"
+)]
+pub(crate) struct MissingTraitItemSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub code: String,
+    pub snippet: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_analysis_missing_trait_item_suggestion,
+    style = "hidden",
+    applicability = "has-placeholders",
+    code = "{code}"
+)]
+pub(crate) struct MissingTraitItemSuggestionNone {
+    #[primary_span]
+    pub span: Span,
+    pub code: String,
+    pub snippet: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_missing_one_of_trait_item, code = "E0046")]
+pub(crate) struct MissingOneOfTraitItem {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note]
+    pub note: Option<Span>,
+    pub missing_items_msg: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_missing_trait_item_unstable, code = "E0046")]
+#[note]
+pub(crate) struct MissingTraitItemUnstable {
+    #[primary_span]
+    pub span: Span,
+    #[note(hir_analysis_some_note)]
+    pub some_note: bool,
+    #[note(hir_analysis_none_note)]
+    pub none_note: bool,
+    pub missing_item_name: Symbol,
+    pub feature: Symbol,
+    pub reason: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_transparent_enum_variant, code = "E0731")]
+pub(crate) struct TransparentEnumVariant {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_analysis_multi_label)]
+    pub spans: Vec<Span>,
+    #[label(hir_analysis_many_label)]
+    pub many: Option<Span>,
+    pub number: usize,
+    pub path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_transparent_non_zero_sized_enum, code = "E0690")]
+pub(crate) struct TransparentNonZeroSizedEnum<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_analysis_labels)]
+    pub spans: Vec<Span>,
+    pub field_count: usize,
+    pub desc: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_transparent_non_zero_sized, code = "E0690")]
+pub(crate) struct TransparentNonZeroSized<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_analysis_labels)]
+    pub spans: Vec<Span>,
+    pub field_count: usize,
+    pub desc: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_too_large_static)]
+pub(crate) struct TooLargeStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_specialization_trait)]
+#[help]
+pub(crate) struct SpecializationTrait {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_closure_implicit_hrtb)]
+pub(crate) struct ClosureImplicitHrtb {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[label]
+    pub for_sp: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_empty_specialization)]
+pub(crate) struct EmptySpecialization {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub base_impl_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_specialize)]
+pub(crate) struct ConstSpecialize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_static_specialize)]
+pub(crate) struct StaticSpecialize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_missing_tilde_const)]
+pub(crate) struct MissingTildeConst {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum DropImplPolarity {
+    #[diag(hir_analysis_drop_impl_negative)]
+    Negative {
+        #[primary_span]
+        span: Span,
+    },
+    #[diag(hir_analysis_drop_impl_reservation)]
+    Reservation {
+        #[primary_span]
+        span: Span,
+    },
 }

@@ -7,8 +7,9 @@ struct Foo<'a> {
 impl<'a> Foo<'a> {
     const fn spam(&mut self, baz: &mut Vec<u32>) {
         self.bar[0] = baz.len();
-        //~^ the trait bound `Vec<usize>: ~const Index<_>` is not satisfied
-        //~| the trait bound `Vec<usize>: ~const IndexMut<usize>` is not satisfied
+        //~^ ERROR: cannot call
+        //~| ERROR: cannot call
+        //~| ERROR: the trait bound
     }
 }
 

@@ -1,7 +1,17 @@
-// run-rustfix
+//@run-rustfix
+//@aux-build:macro_rules.rs
 
 #![allow(dead_code, unused_variables)]
 #![warn(clippy::string_lit_as_bytes)]
+
+#[macro_use]
+extern crate macro_rules;
+
+macro_rules! b {
+    ($b:literal) => {
+        const B: &[u8] = b"warning";
+    };
+}
 
 fn str_lit_as_bytes() {
     let bs = b"hello there";
@@ -10,6 +20,10 @@ fn str_lit_as_bytes() {
 
     let bs = b"lit to string".to_vec();
     let bs = b"lit to owned".to_vec();
+
+    b!("warning");
+
+    string_lit_as_bytes!("no warning");
 
     // no warning, because these cannot be written as byte string literals:
     let ubs = "☃".as_bytes();

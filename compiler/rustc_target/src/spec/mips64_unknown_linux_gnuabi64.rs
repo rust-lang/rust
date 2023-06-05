@@ -12,7 +12,7 @@ pub fn target() -> Target {
             endian: Endian::Big,
             // NOTE(mips64r2) matches C toolchain
             cpu: "mips64r2".into(),
-            features: "+mips64r2".into(),
+            features: "+mips64r2,+xgot".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
 

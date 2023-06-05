@@ -1,10 +1,8 @@
-#![feature(type_ascription)]
-
 fn main() {
-    println!("test"):
-    0; //~ ERROR expected type, found `0`
+    println!("test"): //~ ERROR statements are terminated with a semicolon
+    0;
 }
 
 fn foo() {
-    println!("test"): 0; //~ ERROR expected type, found `0`
+    println!("test"): 0; //~ ERROR expected one of
 }

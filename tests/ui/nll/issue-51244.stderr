@@ -7,7 +7,7 @@ LL |     *my_ref = 0;
 help: consider changing this to be a mutable reference
    |
 LL |     let ref mut my_ref @ _ = 0;
-   |         ~~~~~~~~~~~~~~
+   |             +++
 
 error: aborting due to previous error
 

@@ -285,15 +285,11 @@ pub trait Emitter: Translate {
                     format!(
                         "help: {}{}: `{}`",
                         &msg,
-                        if self
-                            .source_map()
-                            .map(|sm| is_case_difference(
-                                sm,
-                                substitution,
-                                sugg.substitutions[0].parts[0].span,
-                            ))
-                            .unwrap_or(false)
-                        {
+                        if self.source_map().is_some_and(|sm| is_case_difference(
+                            sm,
+                            substitution,
+                            sugg.substitutions[0].parts[0].span,
+                        )) {
                             " (notice the capitalization)"
                         } else {
                             ""
@@ -336,7 +332,7 @@ pub trait Emitter: Translate {
 
                     // Skip past non-macro entries, just in case there
                     // are some which do actually involve macros.
-                    ExpnKind::Inlined | ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+                    ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, name) => Some((macro_kind, name)),
                 }
@@ -371,7 +367,7 @@ pub trait Emitter: Translate {
 
                 children.push(SubDiagnostic {
                     level: Level::Note,
-                    message: vec![(DiagnosticMessage::Str(msg), Style::NoStyle)],
+                    message: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
                     render_span: None,
                 });
@@ -407,7 +403,7 @@ pub trait Emitter: Translate {
                     continue;
                 }
 
-                if always_backtrace && !matches!(trace.kind, ExpnKind::Inlined) {
+                if always_backtrace {
                     new_labels.push((
                         trace.def_site,
                         format!(
@@ -446,7 +442,6 @@ pub trait Emitter: Translate {
                             "this derive macro expansion".into()
                         }
                         ExpnKind::Macro(MacroKind::Bang, _) => "this macro invocation".into(),
-                        ExpnKind::Inlined => "this inlined function call".into(),
                         ExpnKind::Root => "the crate root".into(),
                         ExpnKind::AstPass(kind) => kind.descr().into(),
                         ExpnKind::Desugaring(kind) => {
@@ -601,7 +596,7 @@ impl Emitter for SilentEmitter {
         if d.level == Level::Fatal {
             let mut d = d.clone();
             if let Some(ref note) = self.fatal_note {
-                d.note(note);
+                d.note(note.clone());
             }
             self.fatal_handler.emit_diagnostic(&mut d);
         }
@@ -1336,6 +1331,7 @@ impl EmitterWriter {
         //                see?
         for (text, style) in msg.iter() {
             let text = self.translate_message(text, args).map_err(Report::new).unwrap();
+            let text = &normalize_whitespace(&text);
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
                 for (i, line) in lines.iter().enumerate() {
@@ -1407,7 +1403,7 @@ impl EmitterWriter {
                 // Account for newlines to align output to its label.
                 for (line, text) in normalize_whitespace(&text).lines().enumerate() {
                     buffer.append(
-                        0 + line,
+                        line,
                         &format!(
                             "{}{}",
                             if line == 0 { String::new() } else { " ".repeat(label_width) },
@@ -1832,6 +1828,12 @@ impl EmitterWriter {
             }
             let show_code_change = if has_deletion && !is_multiline {
                 DisplaySuggestion::Diff
+            } else if let [part] = &parts[..]
+                && part.snippet.ends_with('\n')
+                && part.snippet.trim() == complete.trim()
+            {
+                // We are adding a line(s) of code before code that was already there.
+                DisplaySuggestion::Add
             } else if (parts.len() != 1 || parts[0].snippet.trim() != complete.trim())
                 && !is_multiline
             {
@@ -1879,13 +1881,22 @@ impl EmitterWriter {
                 row_num += line_end - line_start;
             }
             let mut unhighlighted_lines = Vec::new();
+            let mut last_pos = 0;
+            let mut is_item_attribute = false;
             for (line_pos, (line, highlight_parts)) in lines.by_ref().zip(highlights).enumerate() {
+                last_pos = line_pos;
                 debug!(%line_pos, %line, ?highlight_parts);
 
                 // Remember lines that are not highlighted to hide them if needed
                 if highlight_parts.is_empty() {
                     unhighlighted_lines.push((line_pos, line));
                     continue;
+                }
+                if highlight_parts.len() == 1
+                    && line.trim().starts_with("#[")
+                    && line.trim().ends_with(']')
+                {
+                    is_item_attribute = true;
                 }
 
                 match unhighlighted_lines.len() {
@@ -1918,7 +1929,7 @@ impl EmitterWriter {
                         let last_line = unhighlighted_lines.pop();
                         let first_line = unhighlighted_lines.drain(..).next();
 
-                        first_line.map(|(p, l)| {
+                        if let Some((p, l)) = first_line {
                             self.draw_code_line(
                                 &mut buffer,
                                 &mut row_num,
@@ -1930,12 +1941,12 @@ impl EmitterWriter {
                                 &file_lines,
                                 is_multiline,
                             )
-                        });
+                        }
 
                         buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
                         row_num += 1;
 
-                        last_line.map(|(p, l)| {
+                        if let Some((p, l)) = last_line {
                             self.draw_code_line(
                                 &mut buffer,
                                 &mut row_num,
@@ -1947,7 +1958,7 @@ impl EmitterWriter {
                                 &file_lines,
                                 is_multiline,
                             )
-                        });
+                        }
                     }
                 }
 
@@ -1963,13 +1974,41 @@ impl EmitterWriter {
                     is_multiline,
                 )
             }
+            if let DisplaySuggestion::Add = show_code_change && is_item_attribute {
+                // The suggestion adds an entire line of code, ending on a newline, so we'll also
+                // print the *following* line, to provide context of what we're advising people to
+                // do. Otherwise you would only see contextless code that can be confused for
+                // already existing code, despite the colors and UI elements.
+                // We special case `#[derive(_)]\n` and other attribute suggestions, because those
+                // are the ones where context is most useful.
+                let file_lines = sm
+                    .span_to_lines(span.primary_span().unwrap().shrink_to_hi())
+                    .expect("span_to_lines failed when emitting suggestion");
+                let line_num = sm.lookup_char_pos(parts[0].span.lo()).line;
+                if let Some(line) = file_lines.file.get_line(line_num - 1) {
+                    let line = normalize_whitespace(&line);
+                    self.draw_code_line(
+                        &mut buffer,
+                        &mut row_num,
+                        &[],
+                        line_num + last_pos + 1,
+                        &line,
+                        DisplaySuggestion::None,
+                        max_line_num_len,
+                        &file_lines,
+                        is_multiline,
+                    )
+                }
+            }
 
             // This offset and the ones below need to be signed to account for replacement code
             // that is shorter than the original code.
             let mut offsets: Vec<(usize, isize)> = Vec::new();
             // Only show an underline in the suggestions if the suggestion is not the
             // entirety of the code being shown and the displayed code is not multiline.
-            if let DisplaySuggestion::Diff | DisplaySuggestion::Underline = show_code_change {
+            if let DisplaySuggestion::Diff | DisplaySuggestion::Underline | DisplaySuggestion::Add =
+                show_code_change
+            {
                 draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
                 for part in parts {
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
@@ -2247,6 +2286,10 @@ impl EmitterWriter {
                 }
             }
             buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+        } else if let DisplaySuggestion::Add = show_code_change {
+            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+            buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+            buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         } else {
             buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
             draw_col_separator(buffer, *row_num, max_line_num_len + 1);
@@ -2255,22 +2298,25 @@ impl EmitterWriter {
 
         // Colorize addition/replacements with green.
         for &SubstitutionHighlight { start, end } in highlight_parts {
-            // Account for tabs when highlighting (#87972).
-            let tabs: usize = line_to_add
-                .chars()
-                .take(start)
-                .map(|ch| match ch {
-                    '\t' => 3,
-                    _ => 0,
-                })
-                .sum();
-            buffer.set_style_range(
-                *row_num,
-                max_line_num_len + 3 + start + tabs,
-                max_line_num_len + 3 + end + tabs,
-                Style::Addition,
-                true,
-            );
+            // This is a no-op for empty ranges
+            if start != end {
+                // Account for tabs when highlighting (#87972).
+                let tabs: usize = line_to_add
+                    .chars()
+                    .take(start)
+                    .map(|ch| match ch {
+                        '\t' => 3,
+                        _ => 0,
+                    })
+                    .sum();
+                buffer.set_style_range(
+                    *row_num,
+                    max_line_num_len + 3 + start + tabs,
+                    max_line_num_len + 3 + end + tabs,
+                    Style::Addition,
+                    true,
+                );
+            }
         }
         *row_num += 1;
     }
@@ -2281,6 +2327,7 @@ enum DisplaySuggestion {
     Underline,
     Diff,
     None,
+    Add,
 }
 
 impl FileWithAnnotatedLines {

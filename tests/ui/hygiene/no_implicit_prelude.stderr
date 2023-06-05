@@ -10,7 +10,7 @@ LL |         Vec::new();
    = note: this error originates in the macro `::bar::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct
    |
-LL |     use std::vec::Vec;
+LL +     use std::vec::Vec;
    |
 
 error[E0599]: no method named `clone` found for unit type `()` in the current scope
@@ -26,7 +26,7 @@ LL |         ().clone()
    = note: this error originates in the macro `::bar::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL |     use std::clone::Clone;
+LL +     use std::clone::Clone;
    |
 
 error: aborting due to 2 previous errors

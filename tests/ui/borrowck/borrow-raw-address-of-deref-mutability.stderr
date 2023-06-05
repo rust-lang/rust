@@ -7,7 +7,7 @@ LL |     let q = &raw mut *x;
 help: consider changing this to be a mutable reference
    |
 LL |     let x = &mut 0;
-   |             ~~~~~~
+   |              +++
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `*const` pointer
   --> $DIR/borrow-raw-address-of-deref-mutability.rs:14:13
@@ -18,7 +18,7 @@ LL |     let q = &raw mut *x;
 help: consider changing this to be a mutable pointer
    |
 LL |     let x = &mut 0 as *const i32;
-   |             ~~~~~~
+   |              +++
 
 error: aborting due to 2 previous errors
 

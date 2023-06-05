@@ -27,31 +27,31 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:37:14
    |
 LL |     unsafe { ptr_offset_from(ptr, ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: null pointer is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:44:14
    |
 LL |     unsafe { ptr_offset_from(ptr2, ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: 0x8[noalloc] is a dangling pointer (it has no provenance)
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: 0x8[noalloc] is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:53:14
    |
 LL |     unsafe { ptr_offset_from(end_ptr, start_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc17 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: alloc17 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:62:14
    |
 LL |     unsafe { ptr_offset_from(start_ptr, end_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc20 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: alloc20 has size 4, so pointer to 10 bytes starting at offset 0 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:70:14
    |
 LL |     unsafe { ptr_offset_from(end_ptr, end_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc23 has size 4, so pointer at offset 10 is out-of-bounds
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: alloc23 has size 4, so pointer at offset 10 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:79:14
@@ -86,7 +86,7 @@ LL |     unsafe { ptr_offset_from_unsigned(ptr2, ptr1) }
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
+   = note: out-of-bounds `offset_from`: null pointer is a dangling pointer (it has no provenance)
    |
 note: inside `ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -99,7 +99,7 @@ LL |     unsafe { ptr2.offset_from(ptr1) }
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
+   = note: out-of-bounds `offset_from`: null pointer is a dangling pointer (it has no provenance)
    |
 note: inside `ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

@@ -12,7 +12,8 @@ note: required by a bound in `AssertParamIsEq`
    = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Error` with `#[derive(Eq)]`
    |
-LL | #[derive(Eq)]
+LL + #[derive(Eq)]
+LL | struct Error;
    |
 
 error: aborting due to previous error

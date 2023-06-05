@@ -1,4 +1,4 @@
-// ignore-test
+// ignore-test (auxiliary, used by other tests)
 
 // Tests saturating float->int casts. See u128-as-f32.rs for the opposite direction.
 //

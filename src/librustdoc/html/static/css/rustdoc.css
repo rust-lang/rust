@@ -384,6 +384,7 @@ img {
 	font-size: 0.875rem;
 	flex: 0 0 200px;
 	overflow-y: scroll;
+	overscroll-behavior: contain;
 	position: sticky;
 	height: 100vh;
 	top: 0;
@@ -1178,6 +1179,10 @@ a.test-arrow:hover {
 	position: relative;
 }
 
+.code-header a.tooltip:hover {
+	color: var(--link-color);
+}
+
 /* placeholder thunk so that the mouse can easily travel from "(i)" to popover
 	the resulting "hover tunnel" is a stepped triangle, approximating
 	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
@@ -1188,6 +1193,14 @@ a.tooltip:hover::after {
 	right: -15px;
 	height: 20px;
 	content: "\00a0";
+}
+
+/* This animation is layered onto the mistake-proofing delay for dismissing
+	a hovered tooltip, to ensure it feels responsive even with the delay.
+	*/
+.fade-out {
+	opacity: 0;
+	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
 }
 
 .popover.tooltip .content {
@@ -1256,6 +1269,10 @@ a.tooltip:hover::after {
 #search .error code {
 	border-radius: 3px;
 	background-color: var(--search-error-code-background-color);
+}
+
+.search-corrections {
+	font-weight: normal;
 }
 
 #src-sidebar-toggle {
@@ -1531,7 +1548,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in main.js
+in source-script.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,

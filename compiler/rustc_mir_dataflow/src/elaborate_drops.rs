@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::traits::Reveal;
@@ -237,6 +237,7 @@ where
                         place: self.place,
                         target: self.succ,
                         unwind: self.unwind.into_action(),
+                        replace: false,
                     },
                 );
             }
@@ -276,6 +277,7 @@ where
                 assert_eq!(self.elaborator.param_env().reveal(), Reveal::All);
                 let field_ty =
                     tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs));
+
                 (tcx.mk_place_field(base_place, field, field_ty), subpath)
             })
             .collect()
@@ -718,6 +720,7 @@ where
                 place: tcx.mk_place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_action(),
+                replace: false,
             },
         );
 
@@ -962,8 +965,12 @@ where
     }
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
-        let block =
-            TerminatorKind::Drop { place: self.place, target, unwind: unwind.into_action() };
+        let block = TerminatorKind::Drop {
+            place: self.place,
+            target,
+            unwind: unwind.into_action(),
+            replace: false,
+        };
         self.new_block(unwind, block)
     }
 

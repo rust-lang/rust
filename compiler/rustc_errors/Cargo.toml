@@ -10,6 +10,7 @@ tracing = "0.1"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_error_messages = { path = "../rustc_error_messages" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_macros = { path = "../rustc_macros" }
@@ -26,12 +27,11 @@ serde = { version = "1.0.125", features = [ "derive" ] }
 serde_json = "1.0.59"
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.46.0"
+version = "0.48.0"
 features = [
     "Win32_Foundation",
     "Win32_Security",
     "Win32_System_Threading",
-    "Win32_System_WindowsProgramming",
 ]
 
 [features]

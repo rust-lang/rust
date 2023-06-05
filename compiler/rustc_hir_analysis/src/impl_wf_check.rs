@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, Symbol};
 
@@ -76,7 +76,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
         // (#36836)
         tcx.sess.delay_span_bug(
             tcx.def_span(impl_def_id),
-            &format!(
+            format!(
                 "potentially unconstrained type parameters weren't evaluated: {:?}",
                 impl_self_ty,
             ),

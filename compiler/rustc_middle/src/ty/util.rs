@@ -2,7 +2,7 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
-use crate::ty::fast_reject::TreatProjections;
+use crate::query::Providers;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -11,13 +11,13 @@ use crate::ty::{
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_session::Limit;
 use rustc_span::sym;
@@ -35,9 +35,14 @@ pub struct Discr<'tcx> {
 
 /// Used as an input to [`TyCtxt::uses_unique_generic_params`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum IgnoreRegions {
-    Yes,
+pub enum CheckRegions {
     No,
+    /// Only permit early bound regions. This is useful for Adts which
+    /// can never have late bound regions.
+    OnlyEarlyBound,
+    /// Permit both late bound and early bound regions. Use this for functions,
+    /// which frequently have late bound regions.
+    Bound,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -124,7 +129,7 @@ impl IntTypeExt for IntegerType {
 impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
-    pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
+    pub fn type_id_hash(self, ty: Ty<'tcx>) -> Hash64 {
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound
         // regions, which is desirable too.
@@ -359,21 +364,29 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().coherent_trait(drop_trait);
 
         let ty = self.type_of(adt_did).subst_identity();
-        let (did, constness) = self.find_map_relevant_impl(
-            drop_trait,
-            ty,
-            // FIXME: This could also be some other mode, like "unexpected"
-            TreatProjections::ForLookup,
-            |impl_did| {
-                if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
-                    if validate(self, impl_did).is_ok() {
-                        return Some((*item_id, self.constness(impl_did)));
-                    }
-                }
-                None
-            },
-        )?;
+        let mut dtor_candidate = None;
+        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
+            if validate(self, impl_did).is_err() {
+                // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                return;
+            }
 
+            let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
+                self.sess.delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
+                return;
+            };
+
+            if let Some((old_item_id, _)) = dtor_candidate {
+                self.sess
+                    .struct_span_err(self.def_span(item_id), "multiple drop impls found")
+                    .span_note(self.def_span(old_item_id), "other impl here")
+                    .delay_as_bug();
+            }
+
+            dtor_candidate = Some((*item_id, self.constness(impl_did)));
+        });
+
+        let (did, constness) = dtor_candidate?;
         Some(ty::Destructor { did, constness })
     }
 
@@ -461,21 +474,28 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn uses_unique_generic_params(
         self,
         substs: SubstsRef<'tcx>,
-        ignore_regions: IgnoreRegions,
+        ignore_regions: CheckRegions,
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
+        let mut seen_late = FxHashSet::default();
         for arg in substs {
             match arg.unpack() {
-                GenericArgKind::Lifetime(lt) => {
-                    if ignore_regions == IgnoreRegions::No {
-                        let ty::ReEarlyBound(p) = lt.kind() else {
-                            return Err(NotUniqueParam::NotParam(lt.into()))
-                        };
+                GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
+                    (CheckRegions::Bound, ty::ReLateBound(di, reg)) => {
+                        if !seen_late.insert((di, reg)) {
+                            return Err(NotUniqueParam::DuplicateParam(lt.into()));
+                        }
+                    }
+                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, ty::ReEarlyBound(p)) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                }
+                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, _) => {
+                        return Err(NotUniqueParam::NotParam(lt.into()));
+                    }
+                    (CheckRegions::No, _) => {}
+                },
                 GenericArgKind::Type(t) => match t.kind() {
                     ty::Param(p) => {
                         if !seen.insert(p.index) {
@@ -487,6 +507,42 @@ impl<'tcx> TyCtxt<'tcx> {
                 GenericArgKind::Const(c) => match c.kind() {
                     ty::ConstKind::Param(p) => {
                         if !seen.insert(p.index) {
+                            return Err(NotUniqueParam::DuplicateParam(c.into()));
+                        }
+                    }
+                    _ => return Err(NotUniqueParam::NotParam(c.into())),
+                },
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Checks whether each generic argument is simply a unique generic placeholder.
+    ///
+    /// This is used in the new solver, which canonicalizes params to placeholders
+    /// for better caching.
+    pub fn uses_unique_placeholders_ignoring_regions(
+        self,
+        substs: SubstsRef<'tcx>,
+    ) -> Result<(), NotUniqueParam<'tcx>> {
+        let mut seen = GrowableBitSet::default();
+        for arg in substs {
+            match arg.unpack() {
+                // Ignore regions, since we can't resolve those in a canonicalized
+                // query in the trait solver.
+                GenericArgKind::Lifetime(_) => {}
+                GenericArgKind::Type(t) => match t.kind() {
+                    ty::Placeholder(p) => {
+                        if !seen.insert(p.bound.var) {
+                            return Err(NotUniqueParam::DuplicateParam(t.into()));
+                        }
+                    }
+                    _ => return Err(NotUniqueParam::NotParam(t.into())),
+                },
+                GenericArgKind::Const(c) => match c.kind() {
+                    ty::ConstKind::Placeholder(p) => {
+                        if !seen.insert(p.bound) {
                             return Err(NotUniqueParam::DuplicateParam(c.into()));
                         }
                     }
@@ -642,18 +698,18 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Return the set of types that should be taken into accound when checking
+    /// Return the set of types that should be taken into account when checking
     /// trait bounds on a generator's internal state.
     pub fn generator_hidden_types(
         self,
         def_id: DefId,
     ) -> impl Iterator<Item = ty::EarlyBinder<Ty<'tcx>>> {
-        let generator_layout = &self.mir_generator_witnesses(def_id);
+        let generator_layout = self.mir_generator_witnesses(def_id);
         generator_layout
-            .field_tys
-            .iter()
+            .as_ref()
+            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
             .filter(|decl| !decl.ignore_for_traits)
-            .map(|decl| ty::EarlyBinder(decl.ty))
+            .map(|decl| ty::EarlyBinder::bind(decl.ty))
     }
 
     /// Normalizes all opaque types in the given value, replacing them
@@ -692,24 +748,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
-    }
-
-    pub fn bound_return_position_impl_trait_in_trait_tys(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>> {
-        ty::EarlyBinder(self.collect_return_position_impl_trait_in_trait_tys(def_id))
-    }
-
-    pub fn bound_explicit_item_bounds(
-        self,
-        def_id: DefId,
-    ) -> ty::EarlyBinder<&'tcx [(ty::Predicate<'tcx>, rustc_span::Span)]> {
-        ty::EarlyBinder(self.explicit_item_bounds(def_id))
-    }
-
-    pub fn bound_impl_subject(self, def_id: DefId) -> ty::EarlyBinder<ty::ImplSubject<'tcx>> {
-        ty::EarlyBinder(self.impl_subject(def_id))
     }
 
     /// Returns names of captured upvars for closures and generators.
@@ -818,6 +856,26 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             _ => def_kind.article(),
         }
+    }
+
+    /// Return `true` if the supplied `CrateNum` is "user-visible," meaning either a [public]
+    /// dependency, or a [direct] private dependency. This is used to decide whether the crate can
+    /// be shown in `impl` suggestions.
+    ///
+    /// [public]: TyCtxt::is_private_dep
+    /// [direct]: rustc_session::cstore::ExternCrate::is_direct
+    pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
+        // | Private | Direct | Visible |                    |
+        // |---------|--------|---------|--------------------|
+        // | Yes     | Yes    | Yes     | !true || true   |
+        // | No      | Yes    | Yes     | !false || true  |
+        // | Yes     | No     | No      | !true || false  |
+        // | No      | No     | Yes     | !false || false |
+        !self.is_private_dep(key)
+            // If `extern_crate` is `None`, then the crate was injected (e.g., by the allocator).
+            // Treat that kind of crate as "indirect", since it's an implementation detail of
+            // the language.
+            || self.extern_crate(key.as_def_id()).map_or(false, |e| e.is_direct())
     }
 }
 
@@ -1162,7 +1220,7 @@ impl<'tcx> Ty<'tcx> {
                 // context, or *something* like that, but for now just avoid passing inference
                 // variables to queries that can't cope with them. Instead, conservatively
                 // return "true" (may change drop order).
-                if query_ty.needs_infer() {
+                if query_ty.has_infer() {
                     return true;
                 }
 
@@ -1264,7 +1322,7 @@ pub enum ExplicitSelf<'tcx> {
 
 impl<'tcx> ExplicitSelf<'tcx> {
     /// Categorizes an explicit self declaration like `self: SomeType`
-    /// into either `self`, `&self`, `&mut self`, `Box<self>`, or
+    /// into either `self`, `&self`, `&mut self`, `Box<Self>`, or
     /// `Other`.
     /// This is mainly used to require the arbitrary_self_types feature
     /// in the case of `Other`, to improve error messages in the common cases,
@@ -1406,7 +1464,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 }
 
 /// Does the equivalent of
-/// ```ignore (ilustrative)
+/// ```ignore (illustrative)
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
 /// folder.tcx().intern_*(&v)
 /// ```
@@ -1483,8 +1541,8 @@ pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
         is_doc_notable_trait,

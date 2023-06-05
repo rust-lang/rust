@@ -13,7 +13,7 @@ LL |     pub struct S;
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use m::Foo;
+LL + use m::Foo;
    |
 
 error: aborting due to previous error

@@ -662,6 +662,67 @@ pub struct ForLoopsOverFalliblesSuggestion<'a> {
     pub end_span: Span,
 }
 
+// drop_forget_useless.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_dropping_references)]
+#[note]
+pub struct DropRefDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_dropping_copy_types)]
+#[note]
+pub struct DropCopyDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_forgetting_references)]
+#[note]
+pub struct ForgetRefDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_forgetting_copy_types)]
+#[note]
+pub struct ForgetCopyDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+// invalid_from_utf8.rs
+#[derive(LintDiagnostic)]
+pub enum InvalidFromUtf8Diag {
+    #[diag(lint_invalid_from_utf8_unchecked)]
+    Unchecked {
+        method: String,
+        valid_up_to: usize,
+        #[label]
+        label: Span,
+    },
+    #[diag(lint_invalid_from_utf8_checked)]
+    Checked {
+        method: String,
+        valid_up_to: usize,
+        #[label]
+        label: Span,
+    },
+}
+
+// cast_ref_to_mut.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_cast_ref_to_mut)]
+pub struct CastRefToMutDiag;
+
 // hidden_unicode_codepoints.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_hidden_unicode_codepoints)]
@@ -806,9 +867,9 @@ pub struct TyQualified {
 pub struct LintPassByHand;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_non_existant_doc_keyword)]
+#[diag(lint_non_existent_doc_keyword)]
 #[help]
-pub struct NonExistantDocKeyword {
+pub struct NonExistentDocKeyword {
     pub keyword: Symbol,
 }
 
@@ -819,6 +880,10 @@ pub struct DiagOutOfImpl;
 #[derive(LintDiagnostic)]
 #[diag(lint_untranslatable_diag)]
 pub struct UntranslatableDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_trivial_untranslatable_diag)]
+pub struct UntranslatableDiagnosticTrivial;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_bad_opt_access)]
@@ -875,7 +940,7 @@ impl AddToDiagnostic for NonBindingLetSub {
 // levels.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_overruled_attribute)]
-pub struct OverruledAtributeLint<'a> {
+pub struct OverruledAttributeLint<'a> {
     #[label]
     pub overruled: Span,
     pub lint_level: &'a str,
@@ -947,7 +1012,7 @@ pub struct CStringPtr {
 
 // multiple_supertrait_upcastable.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_multple_supertrait_upcastable)]
+#[diag(lint_multiple_supertrait_upcastable)]
 pub struct MultipleSupertraitUpcastable {
     pub ident: Ident,
 }
@@ -1144,6 +1209,14 @@ pub struct NoopMethodCallDiag<'a> {
     pub receiver_ty: Ty<'a>,
     #[label]
     pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_suspicious_double_ref_op)]
+pub struct SuspiciousDoubleRefDiag<'a> {
+    pub call: Symbol,
+    pub ty: Ty<'a>,
+    pub op: &'static str,
 }
 
 // pass_by_value.rs
@@ -1422,7 +1495,7 @@ pub struct UnusedResult<'a> {
     pub ty: Ty<'a>,
 }
 
-// FIXME(davidtwco): this isn't properly translatable becauses of the
+// FIXME(davidtwco): this isn't properly translatable because of the
 // pre/post strings
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_closure)]
@@ -1433,7 +1506,7 @@ pub struct UnusedClosure<'a> {
     pub post: &'a str,
 }
 
-// FIXME(davidtwco): this isn't properly translatable becauses of the
+// FIXME(davidtwco): this isn't properly translatable because of the
 // pre/post strings
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_generator)]
@@ -1444,7 +1517,7 @@ pub struct UnusedGenerator<'a> {
     pub post: &'a str,
 }
 
-// FIXME(davidtwco): this isn't properly translatable becauses of the pre/post
+// FIXME(davidtwco): this isn't properly translatable because of the pre/post
 // strings
 pub struct UnusedDef<'a, 'b> {
     pub pre: &'a str,
@@ -1478,7 +1551,7 @@ impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
         diag.set_arg("def", self.cx.tcx.def_path_str(self.def_id));
         // check for #[must_use = "..."]
         if let Some(note) = self.note {
-            diag.note(note.as_str());
+            diag.note(note.to_string());
         }
         if let Some(sugg) = self.suggestion {
             diag.subdiagnostic(sugg);

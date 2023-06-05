@@ -11,6 +11,7 @@ allow-unauthenticated = [
     "S-*",
     "T-*",
     "WG-*",
+    "beta-nominated",
     "const-hack",
     "llvm-main",
     "needs-fcp",
@@ -189,6 +190,7 @@ trigger_files = [
     "src/stage0.json",
     "src/tools/compiletest",
     "src/tools/tidy",
+    "src/tools/rustdoc-gui-test",
 ]
 
 [autolabel."T-infra"]
@@ -344,11 +346,11 @@ message = "Some changes occurred in `const_evaluatable.rs`"
 cc = ["@BoxyUwU"]
 
 [mentions."compiler/rustc_middle/src/ty/abstract_const.rs"]
-message = "Some changes occured in `abstract_const.rs`"
+message = "Some changes occurred in `abstract_const.rs`"
 cc = ["@BoxyUwU"]
 
 [mentions."compiler/rustc_ty_utils/src/consts.rs"]
-message = "Some changes occured in `rustc_ty_utils::consts.rs`"
+message = "Some changes occurred in `rustc_ty_utils::consts.rs`"
 cc = ["@BoxyUwU"]
 
 [mentions."compiler/rustc_trait_selection/src/solve/"]
@@ -366,30 +368,17 @@ cc = ["@lcnr", "@compiler-errors"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 
-[mentions."library"]
+[mentions."compiler/rustc_mir_build/src/thir/pattern"]
+message = "Some changes might have occurred in exhaustiveness checking"
+cc = ["@Nadrieril"]
+
+[mentions."library/portable-simd"]
 message = """
-Hey! It looks like you've submitted a new PR for the library teams!
-
-If this PR contains changes to any `rust-lang/rust` public library APIs then \
-please comment with `@rustbot label +T-libs-api -T-libs` to tag it \
-appropriately. If this PR contains changes to any unstable APIs please edit \
-the PR description to add a link to the relevant [API Change \
-Proposal](https://std-dev-guide.rust-lang.org/feature-lifecycle/api-change-proposals.html) \
-or [create one](https://github.com/rust-lang/libs-team/issues/new?assignees=&labels=api-change-proposal%2C+T-libs-api&template=api-change-proposal.md&title=%28My+API+Change+Proposal%29) \
-if you haven't already. If you're unsure where your change falls no worries, \
-just leave it as is and the reviewer will take a look and make a decision to \
-forward on if necessary.
-
-Examples of `T-libs-api` changes:
-
-* Stabilizing library features
-* Introducing insta-stable changes such as new implementations of existing \
-  stable traits on existing stable types
-* Introducing new or changing existing unstable library APIs (excluding \
-  permanently unstable features / features without a tracking issue)
-* Changing public documentation in ways that create new stability guarantees
-* Changing observable runtime behavior of library APIs
+Portable SIMD is developed in its own repository. If possible, consider \
+making this change to [rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
+instead.
 """
+cc = ["@calebzulawski"]
 
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
@@ -404,6 +393,10 @@ cc = [
 
 [mentions."src/librustdoc/html/static/css/themes"]
 message = "Some changes occurred in HTML/CSS themes."
+cc = ["@GuillaumeGomez"]
+
+[mentions."tests/rustdoc-gui/"]
+message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
 [mentions."src/librustdoc/html/static/css/themes/ayu.css"]
@@ -470,10 +463,10 @@ cc = ["@rust-lang/style"]
 
 [mentions."Cargo.lock"]
 message = """
-These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs.
-This was probably unintentional and should be reverted before this PR is merged.
+These commits modify the `Cargo.lock` file. Unintentional changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs.
 
-If this was intentional then you can ignore this comment.
+If this was unintentional then you should revert the changes before this PR is merged.
+Otherwise, you can ignore this comment.
 """
 
 [mentions."src/tools/x"]
@@ -483,6 +476,14 @@ message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x
 message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
 [mentions."src/bootstrap/defaults/config.codegen.toml"]
 message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
+
+[mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
+message = "Changes to the code generated for builtin derived traits."
+cc = ["@nnethercote"]
+
+[mentions."tests/ui/stats/hir-stats.stderr"]
+message = "Changes to the size of AST and/or HIR nodes."
+cc = ["@nnethercote"]
 
 [assign]
 warn_non_default_branch = true
@@ -494,11 +495,11 @@ compiler-team = [
     "@petrochenkov",
     "@davidtwco",
     "@oli-obk",
-    "@lcnr",
     "@wesleywiser",
 ]
 compiler-team-contributors = [
     "@compiler-errors",
+    "@eholk",
     "@jackh726",
     "@TaKO8Ki",
     "@WaffleLapkin",
@@ -519,6 +520,7 @@ bootstrap = [
     "@Mark-Simulacrum",
     "@albertlarsan68",
     "@ozkanonur",
+    "@clubby789",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -603,6 +605,7 @@ style-team = [
 "/compiler/rustc_llvm" =                     ["@cuviper"]
 "/compiler/rustc_middle/src/mir" =           ["compiler", "mir"]
 "/compiler/rustc_middle/src/traits" =        ["compiler", "types"]
+"/compiler/rustc_middle/src/ty" =            ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" = ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/build" =      ["compiler", "mir"]
@@ -650,3 +653,4 @@ style-team = [
 "/src/tools/rustdoc-themes" =                ["rustdoc"]
 "/src/tools/tidy" =                          ["bootstrap"]
 "/src/tools/x" =                             ["bootstrap"]
+"/src/tools/rustdoc-gui-test" =              ["bootstrap", "@ozkanonur"]

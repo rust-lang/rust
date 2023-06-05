@@ -169,6 +169,7 @@ if [ "$SCCACHE_BUCKET" != "" ]; then
     args="$args --env SCCACHE_REGION"
     args="$args --env AWS_ACCESS_KEY_ID"
     args="$args --env AWS_SECRET_ACCESS_KEY"
+    args="$args --env AWS_REGION"
 else
     mkdir -p $HOME/.cache/sccache
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
@@ -263,6 +264,7 @@ docker \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
+  --env DIST_TRY_BUILD \
   --init \
   --rm \
   rust-ci \

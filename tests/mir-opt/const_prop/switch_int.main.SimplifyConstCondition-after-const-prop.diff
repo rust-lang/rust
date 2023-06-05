@@ -15,14 +15,14 @@
       bb1: {
           _0 = foo(const -1_i32) -> bb3;   // scope 0 at $DIR/switch_int.rs:+3:14: +3:21
                                            // mir::Constant
-                                           // + span: $DIR/switch_int.rs:10:14: 10:17
+                                           // + span: $DIR/switch_int.rs:12:14: 12:17
                                            // + literal: Const { ty: fn(i32) {foo}, val: Value(<ZST>) }
       }
   
       bb2: {
           _0 = foo(const 0_i32) -> bb3;    // scope 0 at $DIR/switch_int.rs:+2:14: +2:20
                                            // mir::Constant
-                                           // + span: $DIR/switch_int.rs:9:14: 9:17
+                                           // + span: $DIR/switch_int.rs:11:14: 11:17
                                            // + literal: Const { ty: fn(i32) {foo}, val: Value(<ZST>) }
       }
   

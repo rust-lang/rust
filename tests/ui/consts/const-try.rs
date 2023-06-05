@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: #110395
 
 // Demonstrates what's needed to make use of `?` in const contexts.
 

@@ -139,7 +139,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         return;
     }
 
-    // can't add `#[rustc_clean]` etc without opting in to this feature
+    // can't add `#[rustc_clean]` etc without opting into this feature
     if !tcx.features().rustc_attrs {
         return;
     }

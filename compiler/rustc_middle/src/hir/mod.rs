@@ -6,10 +6,11 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
-use crate::ty::query::Providers;
-use crate::ty::{ImplSubject, TyCtxt};
+use crate::query::Providers;
+use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_data_structures::sync::{par_for_each_in, DynSend, DynSync};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
@@ -77,19 +78,19 @@ impl ModuleItems {
         self.owners().map(|id| id.def_id)
     }
 
-    pub fn par_items(&self, f: impl Fn(ItemId) + Send + Sync) {
+    pub fn par_items(&self, f: impl Fn(ItemId) + DynSend + DynSync) {
         par_for_each_in(&self.items[..], |&id| f(id))
     }
 
-    pub fn par_trait_items(&self, f: impl Fn(TraitItemId) + Send + Sync) {
+    pub fn par_trait_items(&self, f: impl Fn(TraitItemId) + DynSend + DynSync) {
         par_for_each_in(&self.trait_items[..], |&id| f(id))
     }
 
-    pub fn par_impl_items(&self, f: impl Fn(ImplItemId) + Send + Sync) {
+    pub fn par_impl_items(&self, f: impl Fn(ImplItemId) + DynSend + DynSync) {
         par_for_each_in(&self.impl_items[..], |&id| f(id))
     }
 
-    pub fn par_foreign_items(&self, f: impl Fn(ForeignItemId) + Send + Sync) {
+    pub fn par_foreign_items(&self, f: impl Fn(ForeignItemId) + DynSend + DynSync) {
         par_for_each_in(&self.foreign_items[..], |&id| f(id))
     }
 }
@@ -104,11 +105,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.parent_module_from_def_id(id.owner.def_id)
     }
 
-    pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
-        self.impl_trait_ref(def_id)
-            .map(|t| t.subst_identity())
-            .map(ImplSubject::Trait)
-            .unwrap_or_else(|| ImplSubject::Inherent(self.type_of(def_id).subst_identity()))
+    pub fn impl_subject(self, def_id: DefId) -> EarlyBinder<ImplSubject<'tcx>> {
+        match self.impl_trait_ref(def_id) {
+            Some(t) => t.map_bound(ImplSubject::Trait),
+            None => self.type_of(def_id).map_bound(ImplSubject::Inherent),
+        }
+    }
+
+    /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
+    pub fn is_foreign_item(self, def_id: impl Into<DefId>) -> bool {
+        self.opt_parent(def_id.into())
+            .is_some_and(|parent| matches!(self.def_kind(parent), DefKind::ForeignMod))
     }
 }
 

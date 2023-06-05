@@ -1,7 +1,6 @@
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_node;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::sugg;
 use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
@@ -9,7 +8,6 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::{self, adjustment::Adjust, print::with_forced_trimmed_paths};
 use rustc_span::symbol::{sym, Symbol};
 
-use super::CLONE_DOUBLE_REF;
 use super::CLONE_ON_COPY;
 
 /// Checks for the `CLONE_ON_COPY` lint.
@@ -42,41 +40,7 @@ pub(super) fn check(
 
     let ty = cx.typeck_results().expr_ty(expr);
     if let ty::Ref(_, inner, _) = arg_ty.kind() {
-        if let ty::Ref(_, innermost, _) = inner.kind() {
-            span_lint_and_then(
-                cx,
-                CLONE_DOUBLE_REF,
-                expr.span,
-                &with_forced_trimmed_paths!(format!(
-                    "using `clone` on a double-reference; \
-                    this will copy the reference of type `{ty}` instead of cloning the inner type"
-                )),
-                |diag| {
-                    if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
-                        let mut ty = innermost;
-                        let mut n = 0;
-                        while let ty::Ref(_, inner, _) = ty.kind() {
-                            ty = inner;
-                            n += 1;
-                        }
-                        let refs = "&".repeat(n + 1);
-                        let derefs = "*".repeat(n);
-                        let explicit = with_forced_trimmed_paths!(format!("<{refs}{ty}>::clone({snip})"));
-                        diag.span_suggestion(
-                            expr.span,
-                            "try dereferencing it",
-                            with_forced_trimmed_paths!(format!("{refs}({derefs}{}).clone()", snip.deref())),
-                            Applicability::MaybeIncorrect,
-                        );
-                        diag.span_suggestion(
-                            expr.span,
-                            "or try being explicit if you are sure, that you want to clone a reference",
-                            explicit,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                },
-            );
+        if let ty::Ref(..) = inner.kind() {
             return; // don't report clone_on_copy
         }
     }

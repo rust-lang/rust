@@ -5,7 +5,7 @@ LL | /     for i in 0..x {
 LL | |
 LL | |
 LL | |
-...  |
+LL | |
 LL | |         sum += i;
 LL | |     }
    | |_____^
@@ -33,19 +33,6 @@ LL |     for i in 0..x {
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `std::ops::Range<usize>: Iterator` is not satisfied
-  --> $DIR/const-fn-error.rs:5:14
-   |
-LL |     for i in 0..x {
-   |              ^^^^ `std::ops::Range<usize>` is not an iterator
-   |
-   = help: the trait `~const Iterator` is not implemented for `std::ops::Range<usize>`
-note: the trait `Iterator` is implemented for `std::ops::Range<usize>`, but that implementation is not `const`
-  --> $DIR/const-fn-error.rs:5:14
-   |
-LL |     for i in 0..x {
-   |              ^^^^
-
 error[E0015]: cannot call non-const fn `<std::ops::Range<usize> as Iterator>::next` in constant functions
   --> $DIR/const-fn-error.rs:5:14
    |
@@ -55,7 +42,7 @@ LL |     for i in 0..x {
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0015, E0277, E0658.
+Some errors have detailed explanations: E0015, E0658.
 For more information about an error, try `rustc --explain E0015`.

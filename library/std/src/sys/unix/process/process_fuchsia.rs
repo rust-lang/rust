@@ -166,7 +166,6 @@ impl Process {
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
-        use crate::default::Default;
         use crate::sys::process::zircon::*;
 
         let mut proc_info: zx_info_process_t = Default::default();
@@ -199,7 +198,6 @@ impl Process {
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
-        use crate::default::Default;
         use crate::sys::process::zircon::*;
 
         let mut proc_info: zx_info_process_t = Default::default();

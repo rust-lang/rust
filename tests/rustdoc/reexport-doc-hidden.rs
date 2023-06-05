@@ -21,6 +21,5 @@ macro_rules! foo {
     () => {};
 }
 
-// This is a bug: https://github.com/rust-lang/rust/issues/59368
-// @!has - '//*[@id="reexport.Macro"]/code' 'pub use crate::foo as Macro;'
+// @has - '//*[@id="reexport.Macro"]/code' 'pub use crate::foo as Macro;'
 pub use crate::foo as Macro;

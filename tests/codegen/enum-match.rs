@@ -34,8 +34,11 @@ pub enum Enum1 {
 
 // CHECK: define noundef i8 @match1{{.*}}
 // CHECK-NEXT: start:
-// CHECK-NEXT: [[DISCR:%.*]] = {{.*}}call i8 @llvm.usub.sat.i8(i8 %0, i8 1)
-// CHECK-NEXT: switch i8 [[DISCR]], label {{.*}} [
+// CHECK-NEXT: %1 = add i8 %0, -2
+// CHECK-NEXT: %2 = zext i8 %1 to i64
+// CHECK-NEXT: %3 = icmp ult i8 %1, 2
+// CHECK-NEXT: %4 = add nuw nsw i64 %2, 1
+// CHECK-NEXT: %_2 = select i1 %3, i64 %4, i64 0
 #[no_mangle]
 pub fn match1(e: Enum1) -> u8 {
     use Enum1::*;

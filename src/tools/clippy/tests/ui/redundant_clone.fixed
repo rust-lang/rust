@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 // rustfix-only-machine-applicable
 #![feature(lint_reasons)]
 #![allow(clippy::drop_non_drop, clippy::implicit_clone, clippy::uninlined_format_args)]

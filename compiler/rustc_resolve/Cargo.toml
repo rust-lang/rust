@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = "1.2.1"
-pulldown-cmark = { version = "0.9.2", default-features = false }
+pulldown-cmark = { version = "0.9.3", default-features = false }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
@@ -16,6 +16,7 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }

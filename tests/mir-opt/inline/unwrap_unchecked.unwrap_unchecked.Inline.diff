@@ -34,7 +34,7 @@
 -                                          // + literal: Const { ty: unsafe fn(Option<T>) -> T {Option::<T>::unwrap_unchecked}, val: Value(<ZST>) }
 +         StorageLive(_3);                 // scope 0 at $DIR/unwrap_unchecked.rs:+1:9: +1:27
 +         _4 = discriminant(_2);           // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
-+         switchInt(move _4) -> [0: bb1, 1: bb2, otherwise: bb1]; // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
++         switchInt(move _4) -> [1: bb2, otherwise: bb1]; // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
       }
   
       bb1: {

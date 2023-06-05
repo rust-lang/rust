@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::all)]
 #![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
 #![allow(clippy::disallowed_names, unused_variables, dead_code)]

@@ -16,7 +16,7 @@ lints. For non-trivial lints, it often requires nested pattern matching of AST /
 HIR nodes. For example, testing that an expression is a boolean literal requires
 the following checks:
 
-```rust
+```rust,ignore
 if let ast::ExprKind::Lit(lit) = &expr.node {
     if let ast::LitKind::Bool(_) = &lit.node {
         ...
@@ -28,7 +28,7 @@ Writing this kind of matching code quickly becomes a complex task and the
 resulting code is often hard to comprehend. The code below shows a simplified
 version of the pattern matching required by the `collapsible_if` lint:
 
-```rust
+```rust,ignore
 // simplified version of the collapsible_if lint
 if let ast::ExprKind::If(check, then, None) = &expr.node {
     if then.stmts.len() == 1 {
@@ -111,7 +111,7 @@ expressions that are boolean literals with value `false`.
 
 The pattern can then be used to implement lints in the following way:
 
-```rust
+```rust,ignore
 ...
 
 impl EarlyLintPass for MyAwesomeLint {
@@ -139,7 +139,7 @@ whether the pattern matched.
 
 ## Pattern syntax
 
-The following examples demonstate the pattern syntax:
+The following examples demonstrate the pattern syntax:
 
 
 #### Any (`_`)
@@ -346,7 +346,7 @@ pattern!{
 one could get references to the nodes that matched the subpatterns in the
 following way:
 
-```rust
+```rust,ignore
 ...
 fn check_expr(expr: &syntax::ast::Expr) {
     if let Some(result) = my_pattern(expr) {
@@ -372,7 +372,7 @@ matches arrays that consist of any number of literal expressions. Because those
 expressions are named `foo`, the result struct contains a `foo` attribute which
 is a vector of expressions:
 
-```rust
+```rust,ignore
 ...
 if let Some(result) = my_pattern_seq(expr) {
     result.foo        // type: Vec<&syntax::ast::Expr>
@@ -394,7 +394,7 @@ In the pattern above, the `bar` name is only defined if the pattern matches a
 boolean literal. If it matches an integer literal, the name isn't set. To
 account for this, the result struct's `bar` attribute is an option type:
 
-```rust
+```rust,ignore
 ...
 if let Some(result) = my_pattern_alt(expr) {
     result.bar        // type: Option<&bool>
@@ -404,7 +404,7 @@ if let Some(result) = my_pattern_alt(expr) {
 It's also possible to use a name in multiple alternation branches if they have
 compatible types:
 
-```rust
+```rust,ignore
 pattern!{
     // matches if expression is a boolean or integer literal
     my_pattern_mult: Expr =
@@ -519,7 +519,7 @@ The `Alt`, `Seq` and `Opt` structs look like these:
 > Note: The current implementation can be found
 > [here](https://github.com/fkohlgrueber/pattern-matching/blob/dfb3bc9fbab69cec7c91e72564a63ebaa2ede638/pattern-match/src/matchers.rs#L35-L60).
 
-```rust
+```rust,ignore
 pub enum Alt<T> {
     Any,
     Elmt(Box<T>),
@@ -580,7 +580,7 @@ implementations is the `IsMatch` trait. It defines how to match *PatternTree*
 nodes against specific syntax tree nodes. A simplified implementation of the
 `IsMatch` trait is shown below:
 
-```rust
+```rust,ignore
 pub trait IsMatch<O> {
     fn is_match(&self, other: &'o O) -> bool;
 }
@@ -619,7 +619,7 @@ approach (matching against the coarse pattern first and checking for additional
 properties later) might be slower than the current practice of checking for
 structure and additional properties in one pass. For example, the following lint
 
-```rust
+```rust,ignore
 pattern!{
     pat_if_without_else: Expr =
         If(
@@ -644,7 +644,7 @@ first matches against the pattern and then checks that the `then` block doesn't
 start with a comment. Using clippy's current approach, it's possible to check
 for these conditions earlier:
 
-```rust
+```rust,ignore
 fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if_chain! {
         if let ast::ExprKind::If(ref check, ref then, None) = expr.node;
@@ -708,7 +708,7 @@ is similar to actual Rust syntax (probably like the `quote!` macro). For
 example, a pattern that matches `if` expressions that have `false` in their
 condition could look like this:
 
-```rust
+```rust,ignore
 if false {
     #[*]
 }
@@ -742,7 +742,7 @@ affects the structure of the resulting AST. `1 + 0 + 0` is parsed as `(1 + 0) +
 Another example of a problem would be named submatches. Take a look at this
 pattern:
 
-```rust
+```rust,ignore
 fn test() {
     1 #foo
 }
@@ -862,7 +862,7 @@ op b` and recommends changing it to `a op= b` requires that both occurrences of
 `a` are the same. Using `=#...` as syntax for backreferences, the lint could be
 implemented like this:
 
-```rust
+```rust,ignore
 pattern!{
     assign_op_pattern: Expr =
         Assign(_#target, Binary(_, =#target, _)

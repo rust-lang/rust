@@ -186,7 +186,7 @@ enum ArgumentType {
 /// Generates:
 ///
 /// ```text
-///     <core::fmt::ArgumentV1>::new_…(arg)
+///     <core::fmt::Argument>::new_…(arg)
 /// ```
 fn make_argument<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
@@ -220,19 +220,19 @@ fn make_argument<'hir>(
 /// Generates:
 ///
 /// ```text
-///     <core::fmt::rt::v1::Count>::Is(…)
+///     <core::fmt::rt::Count>::Is(…)
 /// ```
 ///
 /// or
 ///
 /// ```text
-///     <core::fmt::rt::v1::Count>::Param(…)
+///     <core::fmt::rt::Count>::Param(…)
 /// ```
 ///
 /// or
 ///
 /// ```text
-///     <core::fmt::rt::v1::Count>::Implied
+///     <core::fmt::rt::Count>::Implied
 /// ```
 fn make_count<'hir>(
     ctx: &mut LoweringContext<'_, 'hir>,
@@ -278,13 +278,13 @@ fn make_count<'hir>(
 /// Generates
 ///
 /// ```text
-///     <core::fmt::rt::v1::Argument::new(
+///     <core::fmt::rt::Placeholder::new(
 ///         …usize, // position
 ///         '…', // fill
-///         <core::fmt::rt::v1::Alignment>::…, // alignment
+///         <core::fmt::rt::Alignment>::…, // alignment
 ///         …u32, // flags
-///         <core::fmt::rt::v1::Count::…>, // width
-///         <core::fmt::rt::v1::Count::…>, // precision
+///         <core::fmt::rt::Count::…>, // width
+///         <core::fmt::rt::Count::…>, // precision
 ///     )
 /// ```
 fn make_format_spec<'hir>(
@@ -327,7 +327,7 @@ fn make_format_spec<'hir>(
             None => sym::Unknown,
         },
     );
-    // This needs to match `FlagV1` in library/core/src/fmt/mod.rs.
+    // This needs to match `Flag` in library/core/src/fmt/rt.rs.
     let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
         | ((sign == Some(FormatSign::Minus)) as u32) << 1
         | (alternate as u32) << 2
@@ -438,7 +438,7 @@ fn expand_format_args<'hir>(
     // If the args array contains exactly all the original arguments once,
     // in order, we can use a simple array instead of a `match` construction.
     // However, if there's a yield point in any argument except the first one,
-    // we don't do this, because an ArgumentV1 cannot be kept across yield points.
+    // we don't do this, because an Argument cannot be kept across yield points.
     //
     // This is an optimization, speeding up compilation about 1-2% in some cases.
     // See https://github.com/rust-lang/rust/pull/106770#issuecomment-1380790609
@@ -446,12 +446,35 @@ fn expand_format_args<'hir>(
         && argmap.iter().enumerate().all(|(i, (&(j, _), _))| i == j)
         && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
 
-    let args = if use_simple_array {
+    let args = if arguments.is_empty() {
+        // Generate:
+        //    &<core::fmt::Argument>::none()
+        //
+        // Note:
+        //     `none()` just returns `[]`. We use `none()` rather than `[]` to limit the lifetime.
+        //
+        //     This makes sure that this still fails to compile, even when the argument is inlined:
+        //
+        //     ```
+        //     let f = format_args!("{}", "a");
+        //     println!("{f}"); // error E0716
+        //     ```
+        //
+        //     Cases where keeping the object around is allowed, such as `format_args!("a")`,
+        //     are handled above by the `allow_const` case.
+        let none_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArgument,
+            sym::none,
+        ));
+        let none = ctx.expr_call(macsp, none_fn, &[]);
+        ctx.expr(macsp, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, none))
+    } else if use_simple_array {
         // Generate:
         //     &[
-        //         <core::fmt::ArgumentV1>::new_display(&arg0),
-        //         <core::fmt::ArgumentV1>::new_lower_hex(&arg1),
-        //         <core::fmt::ArgumentV1>::new_debug(&arg2),
+        //         <core::fmt::Argument>::new_display(&arg0),
+        //         <core::fmt::Argument>::new_lower_hex(&arg1),
+        //         <core::fmt::Argument>::new_debug(&arg2),
         //         …
         //     ]
         let elements: Vec<_> = arguments
@@ -477,9 +500,9 @@ fn expand_format_args<'hir>(
         // Generate:
         //     &match (&arg0, &arg1, &…) {
         //         args => [
-        //             <core::fmt::ArgumentV1>::new_display(args.0),
-        //             <core::fmt::ArgumentV1>::new_lower_hex(args.1),
-        //             <core::fmt::ArgumentV1>::new_debug(args.0),
+        //             <core::fmt::Argument>::new_display(args.0),
+        //             <core::fmt::Argument>::new_lower_hex(args.1),
+        //             <core::fmt::Argument>::new_debug(args.0),
         //             …
         //         ]
         //     }
@@ -583,7 +606,7 @@ fn may_contain_yield_point(e: &ast::Expr) -> bool {
 
     impl Visitor<'_> for MayContainYieldPoint {
         fn visit_expr(&mut self, e: &ast::Expr) {
-            if let ast::ExprKind::Await(_) | ast::ExprKind::Yield(_) = e.kind {
+            if let ast::ExprKind::Await(_, _) | ast::ExprKind::Yield(_) = e.kind {
                 self.0 = true;
             } else {
                 visit::walk_expr(self, e);

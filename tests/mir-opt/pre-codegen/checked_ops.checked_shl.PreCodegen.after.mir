@@ -1,0 +1,144 @@
+// MIR for `checked_shl` after PreCodegen
+
+fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
+    debug x => _1;                       // in scope 0 at $DIR/checked_ops.rs:+0:20: +0:21
+    debug rhs => _2;                     // in scope 0 at $DIR/checked_ops.rs:+0:28: +0:31
+    let mut _0: std::option::Option<u32>; // return place in scope 0 at $DIR/checked_ops.rs:+0:41: +0:52
+    scope 1 (inlined core::num::<impl u32>::checked_shl) { // at $DIR/checked_ops.rs:16:7: 16:23
+        debug self => _1;                // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        debug rhs => _2;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        let mut _11: u32;                // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        let mut _12: bool;               // in scope 1 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        scope 2 {
+            debug a => _11;              // in scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+            debug b => _10;              // in scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        }
+        scope 3 (inlined core::num::<impl u32>::overflowing_shl) { // at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+            debug self => _1;            // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+            debug rhs => _2;             // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+            let mut _9: u32;             // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+            let mut _10: bool;           // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+            scope 4 (inlined core::num::<impl u32>::wrapping_shl) { // at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                debug self => _1;        // in scope 4 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                debug rhs => _2;         // in scope 4 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                let mut _3: u32;         // in scope 4 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                let mut _4: u32;         // in scope 4 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                scope 5 {
+                    scope 6 (inlined core::num::<impl u32>::unchecked_shl) { // at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                        debug self => _1; // in scope 6 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                        debug rhs => _4; // in scope 6 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                        let mut _8: u32; // in scope 6 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                        scope 7 {
+                            scope 8 (inlined core::num::<impl u32>::unchecked_shl::conv) { // at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                debug x => _4; // in scope 8 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                let mut _5: std::result::Result<u32, std::convert::Infallible>; // in scope 8 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                let mut _7: std::option::Option<u32>; // in scope 8 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                scope 9 {
+                                    scope 10 (inlined <u32 as TryInto<u32>>::try_into) { // at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                        debug self => _4; // in scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                                        scope 11 (inlined <u32 as TryFrom<u32>>::try_from) { // at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                                            debug value => _4; // in scope 11 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                                            scope 12 (inlined <u32 as Into<u32>>::into) { // at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                                                debug self => _4; // in scope 12 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                                                scope 13 (inlined <u32 as From<u32>>::from) { // at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                                                    debug t => _4; // in scope 13 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                                                }
+                                            }
+                                        }
+                                    }
+                                    scope 14 (inlined Result::<u32, Infallible>::ok) { // at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                        debug self => _5; // in scope 14 at $SRC_DIR/core/src/result.rs:LL:COL
+                                        let _6: u32; // in scope 14 at $SRC_DIR/core/src/result.rs:LL:COL
+                                        scope 15 {
+                                            debug x => _6; // in scope 15 at $SRC_DIR/core/src/result.rs:LL:COL
+                                        }
+                                    }
+                                    scope 16 (inlined #[track_caller] Option::<u32>::unwrap_unchecked) { // at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                        debug self => _7; // in scope 16 at $SRC_DIR/core/src/option.rs:LL:COL
+                                        let mut _13: &std::option::Option<u32>; // in scope 16 at $SRC_DIR/core/src/option.rs:LL:COL
+                                        scope 17 {
+                                            debug val => _8; // in scope 17 at $SRC_DIR/core/src/option.rs:LL:COL
+                                        }
+                                        scope 18 {
+                                            scope 20 (inlined unreachable_unchecked) { // at $SRC_DIR/core/src/option.rs:LL:COL
+                                                scope 21 {
+                                                    scope 22 (inlined unreachable_unchecked::runtime) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        scope 19 (inlined Option::<u32>::is_some) { // at $SRC_DIR/core/src/option.rs:LL:COL
+                                            debug self => _13; // in scope 19 at $SRC_DIR/core/src/option.rs:LL:COL
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_10);                // scope 0 at $DIR/checked_ops.rs:+1:7: +1:23
+        StorageLive(_11);                // scope 0 at $DIR/checked_ops.rs:+1:7: +1:23
+        StorageLive(_9);                 // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageLive(_4);                 // scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageLive(_3);                 // scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _3 = const 31_u32;               // scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _4 = BitAnd(_2, move _3);        // scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageDead(_3);                 // scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageLive(_8);                 // scope 7 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        StorageLive(_7);                 // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        StorageLive(_5);                 // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        _5 = Result::<u32, Infallible>::Ok(_4); // scope 11 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+        StorageLive(_6);                 // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        _6 = move ((_5 as Ok).0: u32);   // scope 14 at $SRC_DIR/core/src/result.rs:LL:COL
+        _7 = Option::<u32>::Some(move _6); // scope 15 at $SRC_DIR/core/src/result.rs:LL:COL
+        StorageDead(_6);                 // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        StorageDead(_5);                 // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        StorageLive(_13);                // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        _8 = move ((_7 as Some).0: u32); // scope 16 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageDead(_13);                // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        StorageDead(_7);                 // scope 9 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        _9 = unchecked_shl::<u32>(_1, move _8) -> [return: bb1, unwind unreachable]; // scope 7 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32, u32) -> u32 {unchecked_shl::<u32>}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        StorageDead(_8);                 // scope 7 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageDead(_4);                 // scope 5 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _10 = Ge(_2, const _);           // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        _11 = move _9;                   // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageDead(_9);                 // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageLive(_12);                // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+        _12 = unlikely(_10) -> [return: bb2, unwind unreachable]; // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/num/mod.rs:LL:COL
+                                         // + literal: Const { ty: extern "rust-intrinsic" fn(bool) -> bool {unlikely}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        switchInt(move _12) -> [0: bb3, otherwise: bb4]; // scope 2 at $SRC_DIR/core/src/num/mod.rs:LL:COL
+    }
+
+    bb3: {
+        _0 = Option::<u32>::Some(_11);   // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        goto -> bb5;                     // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+    }
+
+    bb4: {
+        _0 = Option::<u32>::None;        // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        goto -> bb5;                     // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+    }
+
+    bb5: {
+        StorageDead(_12);                // scope 2 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
+        StorageDead(_11);                // scope 0 at $DIR/checked_ops.rs:+1:7: +1:23
+        StorageDead(_10);                // scope 0 at $DIR/checked_ops.rs:+1:7: +1:23
+        return;                          // scope 0 at $DIR/checked_ops.rs:+2:2: +2:2
+    }
+}

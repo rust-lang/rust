@@ -240,16 +240,12 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn invalid_visibility(&self, vis: &Visibility, note: Option<errors::InvalidVisibilityNote>) {
+    fn visibility_not_permitted(&self, vis: &Visibility, note: errors::VisibilityNotPermittedNote) {
         if let VisibilityKind::Inherited = vis.kind {
             return;
         }
 
-        self.session.emit_err(errors::InvalidVisibility {
-            span: vis.span,
-            implied: vis.kind.is_pub().then_some(vis.span),
-            note,
-        });
+        self.session.emit_err(errors::VisibilityNotPermitted { span: vis.span, note });
     }
 
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
@@ -352,7 +348,7 @@ impl<'a> AstValidator<'a> {
         let source_map = self.session.source_map();
         let end = source_map.end_point(sp);
 
-        if source_map.span_to_snippet(end).map(|s| s == ";").unwrap_or(false) {
+        if source_map.span_to_snippet(end).is_ok_and(|s| s == ";") {
             end
         } else {
             sp.shrink_to_hi()
@@ -691,7 +687,7 @@ fn validate_generic_param_order(
                 GenericParamKind::Lifetime => (),
                 GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
                     ordered_params += " = ";
-                    ordered_params += &pprust::expr_to_string(&*default.value);
+                    ordered_params += &pprust::expr_to_string(&default.value);
                 }
                 GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
             }
@@ -740,11 +736,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         this.visit_expr(&arm.body);
                         this.visit_pat(&arm.pat);
                         walk_list!(this, visit_attribute, &arm.attrs);
-                        if let Some(guard) = &arm.guard && let ExprKind::Let(_, guard_expr, _) = &guard.kind {
+                        if let Some(guard) = &arm.guard {
                             this.with_let_management(None, |this, _| {
-                                this.visit_expr(guard_expr)
+                                this.visit_expr(guard)
                             });
-                            return;
                         }
                     }
                 }
@@ -819,7 +814,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 items,
             }) => {
                 self.with_in_trait_impl(true, Some(*constness), |this| {
-                    this.invalid_visibility(&item.vis, None);
+                    this.visibility_not_permitted(
+                        &item.vis,
+                        errors::VisibilityNotPermittedNote::TraitImpl,
+                    );
                     if let TyKind::Err = self_ty.kind {
                         this.err_handler().emit_err(errors::ObsoleteAuto { span: item.span });
                     }
@@ -866,9 +864,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         only_trait: only_trait.then_some(()),
                     };
 
-                self.invalid_visibility(
+                self.visibility_not_permitted(
                     &item.vis,
-                    Some(errors::InvalidVisibilityNote::IndividualImplItems),
+                    errors::VisibilityNotPermittedNote::IndividualImplItems,
                 );
                 if let &Unsafe::Yes(span) = unsafety {
                     self.err_handler().emit_err(errors::InherentImplCannotUnsafe {
@@ -924,9 +922,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::ForeignMod(ForeignMod { abi, unsafety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
-                self.invalid_visibility(
+                self.visibility_not_permitted(
                     &item.vis,
-                    Some(errors::InvalidVisibilityNote::IndividualForeignItems),
+                    errors::VisibilityNotPermittedNote::IndividualForeignItems,
                 );
                 if let &Unsafe::Yes(span) = unsafety {
                     self.err_handler().emit_err(errors::UnsafeItem { span, kind: "extern block" });
@@ -940,9 +938,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(def, _) => {
                 for variant in &def.variants {
-                    self.invalid_visibility(&variant.vis, None);
+                    self.visibility_not_permitted(
+                        &variant.vis,
+                        errors::VisibilityNotPermittedNote::EnumVariant,
+                    );
                     for field in variant.data.fields() {
-                        self.invalid_visibility(&field.vis, None);
+                        self.visibility_not_permitted(
+                            &field.vis,
+                            errors::VisibilityNotPermittedNote::EnumVariant,
+                        );
                     }
                 }
             }
@@ -1075,7 +1079,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.with_impl_trait(None, |this| this.visit_ty(ty));
                 }
             }
-            GenericArgs::ReturnTypeNotation(_span) => {}
         }
     }
 
@@ -1164,9 +1167,24 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
                 (_, TraitBoundModifier::MaybeConstMaybe) => {
-                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span()});
+                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span(), modifier: "?" });
+                }
+                (_, TraitBoundModifier::MaybeConstNegative) => {
+                    self.err_handler().emit_err(errors::OptionalConstExclusive {span: bound.span(), modifier: "!" });
                 }
                 _ => {}
+            }
+        }
+
+        // Negative trait bounds are not allowed to have associated constraints
+        if let GenericBound::Trait(trait_ref, TraitBoundModifier::Negative) = bound
+            && let Some(segment) = trait_ref.trait_ref.path.segments.last()
+            && let Some(ast::GenericArgs::AngleBracketed(args)) = segment.args.as_deref()
+        {
+            for arg in &args.args {
+                if let ast::AngleBracketedArg::Constraint(constraint) = arg {
+                    self.err_handler().emit_err(errors::ConstraintOnNegativeBound { span: constraint.span });
+                }
             }
         }
 
@@ -1301,7 +1319,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {
-            self.invalid_visibility(&item.vis, None);
+            self.visibility_not_permitted(&item.vis, errors::VisibilityNotPermittedNote::TraitImpl);
             if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
             }
@@ -1386,7 +1404,6 @@ fn deny_equality_constraints(
                                     match &mut assoc_path.segments[len].args {
                                         Some(args) => match args.deref_mut() {
                                             GenericArgs::Parenthesized(_) => continue,
-                                            GenericArgs::ReturnTypeNotation(_span) => continue,
                                             GenericArgs::AngleBracketed(args) => {
                                                 args.args.push(arg);
                                             }

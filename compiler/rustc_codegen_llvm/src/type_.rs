@@ -291,8 +291,24 @@ impl<'ll, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn add_type_metadata(&self, function: &'ll Value, typeid: String) {
+        let typeid_metadata = self.typeid_metadata(typeid).unwrap();
+        let v = [self.const_usize(0), typeid_metadata];
+        unsafe {
+            llvm::LLVMRustGlobalAddMetadata(
+                function,
+                llvm::MD_type as c_uint,
+                llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
+                    self.llcx,
+                    v.as_ptr(),
+                    v.len() as c_uint,
+                )),
+            )
+        }
+    }
+
     fn set_type_metadata(&self, function: &'ll Value, typeid: String) {
-        let typeid_metadata = self.typeid_metadata(typeid);
+        let typeid_metadata = self.typeid_metadata(typeid).unwrap();
         let v = [self.const_usize(0), typeid_metadata];
         unsafe {
             llvm::LLVMGlobalSetMetadata(
@@ -307,12 +323,27 @@ impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn typeid_metadata(&self, typeid: String) -> &'ll Value {
-        unsafe {
+    fn typeid_metadata(&self, typeid: String) -> Option<&'ll Value> {
+        Some(unsafe {
             llvm::LLVMMDStringInContext(
                 self.llcx,
                 typeid.as_ptr() as *const c_char,
                 typeid.len() as c_uint,
+            )
+        })
+    }
+
+    fn add_kcfi_type_metadata(&self, function: &'ll Value, kcfi_typeid: u32) {
+        let kcfi_type_metadata = self.const_u32(kcfi_typeid);
+        unsafe {
+            llvm::LLVMRustGlobalAddMetadata(
+                function,
+                llvm::MD_kcfi_type as c_uint,
+                llvm::LLVMMDNodeInContext2(
+                    self.llcx,
+                    &llvm::LLVMValueAsMetadata(kcfi_type_metadata),
+                    1,
+                ),
             )
         }
     }

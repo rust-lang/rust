@@ -120,7 +120,7 @@ impl EnumSizeOpt {
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut alloc_cache = FxHashMap::default();
         let body_did = body.source.def_id();
-        let param_env = tcx.param_env(body_did);
+        let param_env = tcx.param_env_reveal_all_normalized(body_did);
 
         let blocks = body.basic_blocks.as_mut();
         let local_decls = &mut body.local_decls;

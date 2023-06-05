@@ -22,7 +22,7 @@ pub enum GitInfo {
     /// If the info should be used (`omit_git_hash` is false), this will be
     /// `Some`, otherwise it will be `None`.
     Present(Option<Info>),
-    /// This is not a git repostory, but the info can be fetched from the
+    /// This is not a git repository, but the info can be fetched from the
     /// `git-commit-info` file.
     RecordedForTarball(Info),
 }
@@ -139,7 +139,7 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
                 sha: sha.to_owned(),
                 short_sha: short_sha.to_owned(),
             },
-            _ => panic!("the `git-comit-info` file is malformed"),
+            _ => panic!("the `git-commit-info` file is malformed"),
         };
         Some(info)
     } else {

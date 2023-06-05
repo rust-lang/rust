@@ -4,7 +4,7 @@ use crate::os::unix::net::SocketAddr;
 use crate::sealed::Sealed;
 
 /// Platform-specific extensions to [`SocketAddr`].
-#[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 pub trait SocketAddrExt: Sealed {
     /// Creates a Unix socket address in the abstract namespace.
     ///
@@ -37,7 +37,7 @@ pub trait SocketAddrExt: Sealed {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     fn from_abstract_name<N>(name: N) -> crate::io::Result<SocketAddr>
     where
         N: AsRef<[u8]>;
@@ -59,6 +59,6 @@ pub trait SocketAddrExt: Sealed {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     fn as_abstract_name(&self) -> Option<&[u8]>;
 }

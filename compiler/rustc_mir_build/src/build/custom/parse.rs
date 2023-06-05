@@ -1,4 +1,4 @@
-use rustc_index::vec::IndexSlice;
+use rustc_index::IndexSlice;
 use rustc_middle::{mir::*, thir::*, ty::Ty};
 use rustc_span::Span;
 

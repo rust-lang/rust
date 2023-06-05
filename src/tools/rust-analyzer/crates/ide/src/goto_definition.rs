@@ -113,6 +113,7 @@ fn try_lookup_include_path(
         file_id,
         full_range: TextRange::new(0.into(), size),
         name: path.into(),
+        alias: None,
         focus_range: None,
         kind: None,
         container_name: None,
@@ -833,8 +834,7 @@ fn test() {
 #[rustc_builtin_macro]
 macro_rules! include {}
 
-  include!("foo.rs");
-//^^^^^^^^^^^^^^^^^^^
+include!("foo.rs");
 
 fn f() {
     foo$0();
@@ -846,6 +846,33 @@ mod confuse_index {
 
 //- /foo.rs
 fn foo() {}
+ //^^^
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_through_included_file_struct_with_doc_comment() {
+        check(
+            r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include {}
+
+include!("foo.rs");
+
+fn f() {
+    let x = Foo$0;
+}
+
+mod confuse_index {
+    pub struct Foo;
+}
+
+//- /foo.rs
+/// This is a doc comment
+pub struct Foo;
+         //^^^
         "#,
         );
     }
@@ -1466,6 +1493,29 @@ impl Twait for Stwuct {
 fn f() {
     let s = Stwuct;
     s.a$0();
+}
+        "#,
+            );
+        }
+        #[test]
+        fn method_call_inside_block() {
+            check(
+                r#"
+trait Twait {
+    fn a(&self);
+}
+
+fn outer() {
+    struct Stwuct;
+
+    impl Twait for Stwuct {
+        fn a(&self){}
+         //^
+    }
+    fn f() {
+        let s = Stwuct;
+        s.a$0();
+    }
 }
         "#,
             );

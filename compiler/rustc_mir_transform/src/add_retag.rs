@@ -59,7 +59,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         let basic_blocks = body.basic_blocks.as_mut();
         let local_decls = &body.local_decls;
         let needs_retag = |place: &Place<'tcx>| {
-            !place.has_deref() // we're not eally interested in stores to "outside" locations, they are hard to keep track of anyway
+            !place.has_deref() // we're not really interested in stores to "outside" locations, they are hard to keep track of anyway
                 && may_contain_reference(place.ty(&*local_decls, tcx).ty, /*depth*/ 3, tcx)
                 && !local_decls[place.local].is_deref_temp()
         };

@@ -1,6 +1,6 @@
 #[cfg(feature = "master")]
 use gccjit::FnAttribute;
-use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
+use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_middle::span_bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -16,21 +16,6 @@ use crate::context::CodegenCx;
 use crate::errors::InvalidMinimumAlignment;
 use crate::type_of::LayoutGccExt;
 
-impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
-        if value.get_type() == self.bool_type.make_pointer() {
-            if let Some(pointee) = typ.get_pointee() {
-                if pointee.dyncast_vector().is_some() {
-                    panic!()
-                }
-            }
-        }
-        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
-        // SIMD builtins require a constant value.
-        self.bitcast_if_needed(value, typ)
-    }
-}
-
 fn set_global_alignment<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, gv: LValue<'gcc>, mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
@@ -39,7 +24,7 @@ fn set_global_alignment<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, gv: LValue<'gcc>
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
-                cx.sess().emit_err(InvalidMinimumAlignment { err });
+                cx.sess().emit_err(InvalidMinimumAlignment { err: err.to_string() });
             }
         }
     }

@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let my_number = 1;
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub LET_WITH_TYPE_UNDERSCORE,
     complexity,
     "unneeded underscore type (`_`) in a variable declaration"

@@ -1,10 +1,10 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::transmutes_expressible_as_ptr_casts)]
 // These two warnings currently cover the cases transmutes_expressible_as_ptr_casts
 // would otherwise be responsible for
 #![warn(clippy::useless_transmute)]
 #![warn(clippy::transmute_ptr_to_ptr)]
-#![allow(dead_code, unused_unsafe, clippy::borrow_as_ptr)]
+#![allow(unused, clippy::borrow_as_ptr)]
 
 use std::mem::{size_of, transmute};
 
@@ -76,4 +76,10 @@ fn cannot_be_expressed_as_pointer_cast(in_param: Single) -> Pair {
     assert_eq!(size_of::<Single>(), size_of::<Pair>());
 
     unsafe { transmute::<Single, Pair>(in_param) }
+}
+
+fn issue_10449() {
+    fn f() {}
+
+    let _x: u8 = unsafe { *std::mem::transmute::<fn(), *const u8>(f) };
 }

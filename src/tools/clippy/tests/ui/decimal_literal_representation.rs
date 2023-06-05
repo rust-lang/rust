@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #[warn(clippy::decimal_literal_representation)]
 #[allow(unused_variables)]

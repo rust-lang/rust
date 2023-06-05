@@ -4,10 +4,10 @@ use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
@@ -291,10 +291,12 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.primary = true;
     }
 
+    /// The order of these items is non-determinstic.
     pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &self.items
     }
 
+    /// The order of these items is non-determinstic.
     pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &mut self.items
     }
@@ -313,8 +315,8 @@ impl<'tcx> CodegenUnit<'tcx> {
         // avoid collisions and is still reasonably short for filenames.
         let mut hasher = StableHasher::new();
         human_readable_name.hash(&mut hasher);
-        let hash: u128 = hasher.finish();
-        let hash = hash & ((1u128 << 80) - 1);
+        let hash: Hash128 = hasher.finish();
+        let hash = hash.as_u128() & ((1u128 << 80) - 1);
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
@@ -334,10 +336,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {
-        assert!(self.size_estimate.is_some());
-        if let Some(size_estimate) = self.size_estimate {
-            self.size_estimate = Some(size_estimate + delta);
-        }
+        *self.size_estimate.as_mut().unwrap() += delta;
     }
 
     pub fn contains_item(&self, item: &MonoItem<'tcx>) -> bool {
@@ -373,7 +372,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def) => def.did.as_local().map(Idx::index),
+                            InstanceDef::Item(def) => def.as_local().map(Idx::index),
                             InstanceDef::VTableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
@@ -505,22 +504,13 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
             // instantiating stuff for upstream crates.
             let local_crate_id = if cnum != LOCAL_CRATE {
                 let local_stable_crate_id = tcx.sess.local_stable_crate_id();
-                format!(
-                    "-in-{}.{:08x}",
-                    tcx.crate_name(LOCAL_CRATE),
-                    local_stable_crate_id.to_u64() as u32,
-                )
+                format!("-in-{}.{:08x}", tcx.crate_name(LOCAL_CRATE), local_stable_crate_id)
             } else {
                 String::new()
             };
 
             let stable_crate_id = tcx.sess.local_stable_crate_id();
-            format!(
-                "{}.{:08x}{}",
-                tcx.crate_name(cnum),
-                stable_crate_id.to_u64() as u32,
-                local_crate_id,
-            )
+            format!("{}.{:08x}{}", tcx.crate_name(cnum), stable_crate_id, local_crate_id)
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();

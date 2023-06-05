@@ -12,7 +12,7 @@ LL |     let _: ::u8;
    |
 help: consider importing this builtin type
    |
-LL | use std::primitive::u8;
+LL + use std::primitive::u8;
    |
 help: if you import `u8`, refer to it directly
    |

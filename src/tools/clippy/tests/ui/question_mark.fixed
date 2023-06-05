@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(unreachable_code)]
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]

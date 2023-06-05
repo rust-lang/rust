@@ -6,7 +6,7 @@ LL | impl Error for str::Utf8Error {
    |
 help: consider importing this trait
    |
-LL | use std::error::Error;
+LL + use std::error::Error;
    |
 
 error[E0223]: ambiguous associated type

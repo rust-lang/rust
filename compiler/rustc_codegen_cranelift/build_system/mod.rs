@@ -43,7 +43,7 @@ pub(crate) enum SysrootKind {
     Llvm,
 }
 
-pub fn main() {
+pub(crate) fn main() {
     if env::var("RUST_BACKTRACE").is_err() {
         env::set_var("RUST_BACKTRACE", "1");
     }

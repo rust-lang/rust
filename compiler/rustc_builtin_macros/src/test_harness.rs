@@ -19,6 +19,8 @@ use tracing::debug;
 
 use std::{iter, mem};
 
+use crate::errors;
+
 #[derive(Clone)]
 struct Test {
     span: Span,
@@ -230,7 +232,7 @@ fn generate_test_harness(
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::TestHarness,
-        &[sym::test, sym::rustc_attrs],
+        &[sym::test, sym::rustc_attrs, sym::no_coverage],
         None,
     );
     let def_site = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
@@ -311,6 +313,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // #[rustc_main]
     let main_attr = ecx.attr_word(sym::rustc_main, sp);
+    // #[no_coverage]
+    let no_coverage_attr = ecx.attr_word(sym::no_coverage, sp);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
@@ -340,7 +344,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let main = P(ast::Item {
         ident: main_id,
-        attrs: thin_vec![main_attr],
+        attrs: thin_vec![main_attr, no_coverage_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
@@ -385,11 +389,11 @@ fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast
         [single] => match single.meta_item() {
             Some(meta_item) if meta_item.is_word() => return Some(meta_item.path.clone()),
             _ => {
-                sd.struct_span_err(span, "`test_runner` argument must be a path").emit();
+                sd.emit_err(errors::TestRunnerInvalid { span });
             }
         },
         _ => {
-            sd.struct_span_err(span, "`#![test_runner(..)]` accepts exactly 1 argument").emit();
+            sd.emit_err(errors::TestRunnerNargs { span });
         }
     }
     None

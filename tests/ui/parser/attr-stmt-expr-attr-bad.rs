@@ -6,6 +6,7 @@ fn main() {}
 //~^ ERROR expected one of
 #[cfg(FALSE)] fn e() { let _ = foo(#![attr]); }
 //~^ ERROR an inner attribute is not permitted in this context
+//~| ERROR an inner attribute is not permitted in this context
 //~| ERROR expected expression, found `)`
 #[cfg(FALSE)] fn e() { let _ = x.foo(#![attr]); }
 //~^ ERROR an inner attribute is not permitted in this context

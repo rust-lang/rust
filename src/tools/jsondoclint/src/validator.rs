@@ -273,7 +273,9 @@ impl<'a> Validator<'a> {
             Type::QualifiedPath { name: _, args, self_type, trait_ } => {
                 self.check_generic_args(&**args);
                 self.check_type(&**self_type);
-                self.check_path(trait_, PathKind::Trait);
+                if let Some(trait_) = trait_ {
+                    self.check_path(trait_, PathKind::Trait);
+                }
             }
         }
     }

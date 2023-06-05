@@ -88,6 +88,14 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<c::FILETIME>,
     modified: Option<c::FILETIME>,
+    created: Option<c::FILETIME>,
+}
+
+impl fmt::Debug for c::FILETIME {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let time = ((self.dwHighDateTime as u64) << 32) | self.dwLowDateTime as u64;
+        f.debug_tuple("FILETIME").field(&time).finish()
+    }
 }
 
 #[derive(Debug)]
@@ -290,6 +298,7 @@ impl File {
                 ptr::null_mut(),
             )
         };
+        let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
         if let Ok(handle) = handle.try_into() {
             Ok(File { handle: Handle::from_inner(handle) })
         } else {
@@ -477,7 +486,7 @@ impl File {
     fn reparse_point(
         &self,
         space: &mut Align8<[MaybeUninit<u8>]>,
-    ) -> io::Result<(c::DWORD, *const c::REPARSE_DATA_BUFFER)> {
+    ) -> io::Result<(c::DWORD, *mut c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
             cvt({
@@ -496,32 +505,33 @@ impl File {
                 )
             })?;
             const _: () = assert!(core::mem::align_of::<c::REPARSE_DATA_BUFFER>() <= 8);
-            Ok((bytes, space.0.as_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
+            Ok((bytes, space.0.as_mut_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
         }
     }
 
     fn readlink(&self) -> io::Result<PathBuf> {
-        let mut space = Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let mut space =
+            Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
         let (_bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
-                    let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                        ptr::addr_of!((*buf).rest).cast();
+                    let info: *mut c::SYMBOLIC_LINK_REPARSE_BUFFER =
+                        ptr::addr_of_mut!((*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
+                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0,
                     )
                 }
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
-                    let info: *const c::MOUNT_POINT_REPARSE_BUFFER =
-                        ptr::addr_of!((*buf).rest).cast();
+                    let info: *mut c::MOUNT_POINT_REPARSE_BUFFER =
+                        ptr::addr_of_mut!((*buf).rest).cast();
                     assert!(info.is_aligned());
                     (
-                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
+                        ptr::addr_of_mut!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         false,
@@ -535,13 +545,20 @@ impl File {
                 }
             };
             let subst_ptr = path_buffer.add(subst_off.into());
-            let mut subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
+            let subst = slice::from_raw_parts_mut(subst_ptr, subst_len as usize);
             // Absolute paths start with an NT internal namespace prefix `\??\`
             // We should not let it leak through.
             if !relative && subst.starts_with(&[92u16, 63u16, 63u16, 92u16]) {
-                subst = &subst[4..];
+                // Turn `\??\` into `\\?\` (a verbatim path).
+                subst[1] = b'\\' as u16;
+                // Attempt to convert to a more user-friendly path.
+                let user = super::args::from_wide_to_user_path(
+                    subst.iter().copied().chain([0]).collect(),
+                )?;
+                Ok(PathBuf::from(OsString::from_wide(&user.strip_suffix(&[0]).unwrap_or(&user))))
+            } else {
+                Ok(PathBuf::from(OsString::from_wide(subst)))
             }
-            Ok(PathBuf::from(OsString::from_wide(subst)))
         }
     }
 
@@ -567,7 +584,10 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
-        if times.accessed.map_or(false, is_zero) || times.modified.map_or(false, is_zero) {
+        if times.accessed.map_or(false, is_zero)
+            || times.modified.map_or(false, is_zero)
+            || times.created.map_or(false, is_zero)
+        {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0",
@@ -575,14 +595,23 @@ impl File {
         }
         let is_max =
             |t: c::FILETIME| t.dwLowDateTime == c::DWORD::MAX && t.dwHighDateTime == c::DWORD::MAX;
-        if times.accessed.map_or(false, is_max) || times.modified.map_or(false, is_max) {
+        if times.accessed.map_or(false, is_max)
+            || times.modified.map_or(false, is_max)
+            || times.created.map_or(false, is_max)
+        {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
             ));
         }
         cvt(unsafe {
-            c::SetFileTime(self.as_handle(), None, times.accessed.as_ref(), times.modified.as_ref())
+            let created =
+                times.created.as_ref().map(|a| a as *const c::FILETIME).unwrap_or(ptr::null());
+            let accessed =
+                times.accessed.as_ref().map(|a| a as *const c::FILETIME).unwrap_or(ptr::null());
+            let modified =
+                times.modified.as_ref().map(|a| a as *const c::FILETIME).unwrap_or(ptr::null());
+            c::SetFileTime(self.as_raw_handle(), created, accessed, modified)
         })?;
         Ok(())
     }
@@ -611,9 +640,9 @@ impl File {
     /// then errors will be `ERROR_NOT_SUPPORTED` or `ERROR_INVALID_PARAMETER`.
     fn posix_delete(&self) -> io::Result<()> {
         let mut info = c::FILE_DISPOSITION_INFO_EX {
-            Flags: c::FILE_DISPOSITION_DELETE
-                | c::FILE_DISPOSITION_POSIX_SEMANTICS
-                | c::FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE,
+            Flags: c::FILE_DISPOSITION_FLAG_DELETE
+                | c::FILE_DISPOSITION_FLAG_POSIX_SEMANTICS
+                | c::FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE,
         };
         let size = mem::size_of_val(&info);
         cvt(unsafe {
@@ -784,15 +813,15 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
     // See https://docs.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntcreatefile
     unsafe {
         let mut handle = ptr::null_mut();
-        let mut io_status = c::IO_STATUS_BLOCK::default();
-        let name_str = c::UNICODE_STRING::from_ref(name);
+        let mut io_status = c::IO_STATUS_BLOCK::PENDING;
+        let mut name_str = c::UNICODE_STRING::from_ref(name);
         use crate::sync::atomic::{AtomicU32, Ordering};
         // The `OBJ_DONT_REPARSE` attribute ensures that we haven't been
         // tricked into following a symlink. However, it may not be available in
         // earlier versions of Windows.
         static ATTRIBUTES: AtomicU32 = AtomicU32::new(c::OBJ_DONT_REPARSE);
-        let object = c::OBJECT_ATTRIBUTES {
-            ObjectName: &name_str,
+        let mut object = c::OBJECT_ATTRIBUTES {
+            ObjectName: &mut name_str,
             RootDirectory: parent.as_raw_handle(),
             Attributes: ATTRIBUTES.load(Ordering::Relaxed),
             ..c::OBJECT_ATTRIBUTES::default()
@@ -800,7 +829,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
         let status = c::NtCreateFile(
             &mut handle,
             access,
-            &object,
+            &mut object,
             &mut io_status,
             crate::ptr::null_mut(),
             0,
@@ -832,6 +861,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
 }
 
 impl AsInner<Handle> for File {
+    #[inline]
     fn as_inner(&self) -> &Handle {
         &self.handle
     }
@@ -985,6 +1015,10 @@ impl FileTimes {
     pub fn set_modified(&mut self, t: SystemTime) {
         self.modified = Some(t.into_inner());
     }
+
+    pub fn set_created(&mut self, t: SystemTime) {
+        self.created = Some(t.into_inner());
+    }
 }
 
 impl FileType {
@@ -1132,26 +1166,29 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
                     &dir,
                     &name,
                     c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY,
-                )?;
-                dirlist.push(child_dir);
-            } else {
-                for i in 1..=MAX_RETRIES {
-                    let result = open_link_no_reparse(&dir, &name, c::SYNCHRONIZE | c::DELETE);
-                    match result {
-                        Ok(f) => delete(&f)?,
-                        // Already deleted, so skip.
-                        Err(e) if e.kind() == io::ErrorKind::NotFound => break,
-                        // Retry a few times if the file is locked or a delete is already in progress.
-                        Err(e)
-                            if i < MAX_RETRIES
-                                && (e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
-                                    || e.raw_os_error()
-                                        == Some(c::ERROR_SHARING_VIOLATION as _)) => {}
-                        // Otherwise return the error.
-                        Err(e) => return Err(e),
-                    }
-                    thread::yield_now();
+                );
+                // On success, add the handle to the queue.
+                // If opening the directory fails we treat it the same as a file
+                if let Ok(child_dir) = child_dir {
+                    dirlist.push(child_dir);
+                    continue;
                 }
+            }
+            for i in 1..=MAX_RETRIES {
+                let result = open_link_no_reparse(&dir, &name, c::SYNCHRONIZE | c::DELETE);
+                match result {
+                    Ok(f) => delete(&f)?,
+                    // Already deleted, so skip.
+                    Err(e) if e.kind() == io::ErrorKind::NotFound => break,
+                    // Retry a few times if the file is locked or a delete is already in progress.
+                    Err(e)
+                        if i < MAX_RETRIES
+                            && (e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
+                                || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _)) => {}
+                    // Otherwise return the error.
+                    Err(e) => return Err(e),
+                }
+                thread::yield_now();
             }
         }
         // If there were no more files then delete the directory.
@@ -1357,7 +1394,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         _dwCallbackReason: c::DWORD,
         _hSourceFile: c::HANDLE,
         _hDestinationFile: c::HANDLE,
-        lpData: c::LPVOID,
+        lpData: c::LPCVOID,
     ) -> c::DWORD {
         if dwStreamNumber == 1 {
             *(lpData as *mut i64) = StreamBytesTransferred;
@@ -1404,9 +1441,10 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let f = File::open(junction, &opts)?;
     let h = f.as_inner().as_raw_handle();
     unsafe {
-        let mut data = Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let mut data =
+            Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
         let data_ptr = data.0.as_mut_ptr();
-        let data_end = data_ptr.add(c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
+        let data_end = data_ptr.add(c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize);
         let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
         // Zero the header to ensure it's fully initialized, including reserved parameters.
         *db = mem::zeroed();

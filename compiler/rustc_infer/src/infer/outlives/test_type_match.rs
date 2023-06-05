@@ -13,9 +13,11 @@ use crate::infer::region_constraints::VerifyIfEq;
 
 /// Given a "verify-if-eq" type test like:
 ///
-///     exists<'a...> {
-///         verify_if_eq(some_type, bound_region)
-///     }
+/// ```rust,ignore (pseudo-Rust)
+/// exists<'a...> {
+///     verify_if_eq(some_type, bound_region)
+/// }
+/// ```
 ///
 /// and the type `test_ty` that the type test is being tested against,
 /// returns:
@@ -185,7 +187,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         } else if pattern == value {
             Ok(pattern)
         } else {
-            relate::super_relate_tys(self, pattern, value)
+            relate::structurally_relate_tys(self, pattern, value)
         }
     }
 
@@ -199,7 +201,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         if pattern == value {
             Ok(pattern)
         } else {
-            relate::super_relate_consts(self, pattern, value)
+            relate::structurally_relate_consts(self, pattern, value)
         }
     }
 

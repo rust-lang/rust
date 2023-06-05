@@ -237,7 +237,7 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
 
             // Serde json doesn't implement Ord or Hash for Value, so we must
             // use a Vec here. While in theory that makes setwize equality
-            // O(n^2), in practice n will never be large enought to matter.
+            // O(n^2), in practice n will never be large enough to matter.
             let expected_values =
                 values.iter().map(|v| string_to_value(v, cache)).collect::<Vec<_>>();
             if expected_values.len() != got_values.len() {

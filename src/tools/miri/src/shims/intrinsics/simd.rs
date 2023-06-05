@@ -421,14 +421,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
             #[rustfmt::skip]
-            "cast" | "as" => {
+            "cast" | "as" | "cast_ptr" | "expose_addr" | "from_exposed_addr" => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 
+                let unsafe_cast = intrinsic_name == "cast";
                 let safe_cast = intrinsic_name == "as";
+                let ptr_cast = intrinsic_name == "cast_ptr";
+                let expose_cast = intrinsic_name == "expose_addr";
+                let from_exposed_cast = intrinsic_name == "from_exposed_addr";
 
                 for i in 0..dest_len {
                     let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
@@ -436,19 +440,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                     let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
                         // Int-to-(int|float): always safe
-                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_)) =>
+                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_)) if safe_cast || unsafe_cast =>
                             this.int_to_int_or_float(&op, dest.layout.ty)?,
                         // Float-to-float: always safe
-                        (ty::Float(_), ty::Float(_)) =>
+                        (ty::Float(_), ty::Float(_)) if safe_cast || unsafe_cast =>
                             this.float_to_float_or_int(&op, dest.layout.ty)?,
                         // Float-to-int in safe mode
                         (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
                             this.float_to_float_or_int(&op, dest.layout.ty)?,
                         // Float-to-int in unchecked mode
-                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if !safe_cast =>
+                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if unsafe_cast =>
                             this.float_to_int_unchecked(op.to_scalar().to_f32()?, dest.layout.ty)?.into(),
-                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if !safe_cast =>
+                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast =>
                             this.float_to_int_unchecked(op.to_scalar().to_f64()?, dest.layout.ty)?.into(),
+                        // Ptr-to-ptr cast
+                        (ty::RawPtr(..), ty::RawPtr(..)) if ptr_cast => {
+                            this.ptr_to_ptr(&op, dest.layout.ty)?
+                        }
+                        // Ptr/Int casts
+                        (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) if expose_cast => {
+                            this.pointer_expose_address_cast(&op, dest.layout.ty)?
+                        }
+                        (ty::Int(_) | ty::Uint(_), ty::RawPtr(..)) if from_exposed_cast => {
+                            this.pointer_from_exposed_address_cast(&op, dest.layout.ty)?
+                        }
+                        // Error otherwise
                         _ =>
                             throw_unsup_format!(
                                 "Unsupported SIMD cast from element type {from_ty} to {to_ty}",
@@ -547,7 +563,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let bitmask_len = op_len.max(8);
 
-                assert!(dest.layout.ty.is_integral());
+                // Returns either an unsigned integer or array of `u8`.
+                assert!(
+                    dest.layout.ty.is_integral()
+                        || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
+                );
                 assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, dest.layout.size.bits());
                 let op_len = u32::try_from(op_len).unwrap();
@@ -561,7 +581,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             .unwrap();
                     }
                 }
-                this.write_int(res, dest)?;
+                // We have to force the place type to be an int so that we can write `res` into it.
+                let mut dest = this.force_allocation(dest)?;
+                dest.layout = this.machine.layouts.uint(dest.layout.size).unwrap();
+                this.write_int(res, &dest.into())?;
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),
@@ -585,11 +608,11 @@ fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<'_, bool> {
     })
 }
 
-fn simd_bitmask_index(idx: u32, vec_len: u32, endianess: Endian) -> u32 {
+fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {
     assert!(idx < vec_len);
-    match endianess {
+    match endianness {
         Endian::Little => idx,
-        #[allow(clippy::integer_arithmetic)] // idx < vec_len
+        #[allow(clippy::arithmetic_side_effects)] // idx < vec_len
         Endian::Big => vec_len - 1 - idx, // reverse order of bits
     }
 }

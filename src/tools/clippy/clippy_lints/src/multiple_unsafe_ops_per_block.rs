@@ -59,7 +59,7 @@ declare_clippy_lint! {
     ///     unsafe { char::from_u32_unchecked(int_value) }
     /// }
     /// ```
-    #[clippy::version = "1.68.0"]
+    #[clippy::version = "1.69.0"]
     pub MULTIPLE_UNSAFE_OPS_PER_BLOCK,
     restriction,
     "more than one unsafe operation per `unsafe` block"
@@ -138,7 +138,7 @@ fn collect_unsafe_exprs<'tcx>(
                     .type_dependent_def_id(expr.hir_id)
                     .map(|def_id| cx.tcx.fn_sig(def_id))
                 {
-                    if sig.0.unsafety() == Unsafety::Unsafe {
+                    if sig.skip_binder().unsafety() == Unsafety::Unsafe {
                         unsafe_ops.push(("unsafe method call occurs here", expr.span));
                     }
                 }

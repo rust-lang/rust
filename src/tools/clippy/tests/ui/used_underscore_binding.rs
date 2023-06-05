@@ -1,4 +1,4 @@
-// aux-build:proc_macro_derive.rs
+//@aux-build:proc_macro_derive.rs
 #![feature(rustc_private)]
 #![warn(clippy::all)]
 #![warn(clippy::used_underscore_binding)]

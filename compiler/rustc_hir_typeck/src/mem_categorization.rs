@@ -381,6 +381,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
         }
     }
@@ -410,7 +411,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             Res::Local(var_id) => {
-                if self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)) {
+                if self.upvars.is_some_and(|upvars| upvars.contains_key(&var_id)) {
                     self.cat_upvar(hir_id, var_id)
                 } else {
                     Ok(PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Local(var_id), Vec::new()))

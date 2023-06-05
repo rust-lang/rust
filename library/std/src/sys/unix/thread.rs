@@ -163,10 +163,9 @@ impl Thread {
     #[cfg(target_os = "netbsd")]
     pub fn set_name(name: &CStr) {
         unsafe {
-            let cname = CStr::from_bytes_with_nul_unchecked(b"%s\0".as_slice());
             let res = libc::pthread_setname_np(
                 libc::pthread_self(),
-                cname.as_ptr(),
+                c"%s".as_ptr(),
                 name.as_ptr() as *mut libc::c_void,
             );
             debug_assert_eq!(res, 0);
@@ -325,6 +324,25 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             }
         } else if #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))] {
             use crate::ptr;
+
+            #[cfg(target_os = "freebsd")]
+            {
+                let mut set: libc::cpuset_t = unsafe { mem::zeroed() };
+                unsafe {
+                    if libc::cpuset_getaffinity(
+                        libc::CPU_LEVEL_WHICH,
+                        libc::CPU_WHICH_PID,
+                        -1,
+                        mem::size_of::<libc::cpuset_t>(),
+                        &mut set,
+                    ) == 0 {
+                        let count = libc::CPU_COUNT(&set) as usize;
+                        if count > 0 {
+                            return Ok(NonZeroUsize::new_unchecked(count));
+                        }
+                    }
+                }
+            }
 
             let mut cpus: libc::c_uint = 0;
             let mut cpus_size = crate::mem::size_of_val(&cpus);

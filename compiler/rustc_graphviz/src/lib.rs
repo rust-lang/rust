@@ -167,7 +167,7 @@
 //!     fn node_label(&self, n: &Nd) -> dot::LabelText<'_> {
 //!         dot::LabelText::LabelStr(self.nodes[*n].into())
 //!     }
-//!     fn edge_label<'b>(&'b self, _: &Ed) -> dot::LabelText<'b> {
+//!     fn edge_label(&self, _: &Ed<'_>) -> dot::LabelText<'_> {
 //!         dot::LabelText::LabelStr("&sube;".into())
 //!     }
 //! }
@@ -177,8 +177,8 @@
 //!     type Edge = Ed<'a>;
 //!     fn nodes(&self) -> dot::Nodes<'a,Nd> { (0..self.nodes.len()).collect() }
 //!     fn edges(&'a self) -> dot::Edges<'a,Ed<'a>> { self.edges.iter().collect() }
-//!     fn source(&self, e: &Ed) -> Nd { let & &(s,_) = e; s }
-//!     fn target(&self, e: &Ed) -> Nd { let & &(_,t) = e; t }
+//!     fn source(&self, e: &Ed<'_>) -> Nd { let & &(s,_) = e; s }
+//!     fn target(&self, e: &Ed<'_>) -> Nd { let & &(_,t) = e; t }
 //! }
 //!
 //! # pub fn main() { render_to(&mut Vec::new()) }
@@ -226,11 +226,11 @@
 //!     fn node_id(&'a self, n: &Nd<'a>) -> dot::Id<'a> {
 //!         dot::Id::new(format!("N{}", n.0)).unwrap()
 //!     }
-//!     fn node_label<'b>(&'b self, n: &Nd<'b>) -> dot::LabelText<'b> {
+//!     fn node_label(&self, n: &Nd<'_>) -> dot::LabelText<'_> {
 //!         let &(i, _) = n;
 //!         dot::LabelText::LabelStr(self.nodes[i].into())
 //!     }
-//!     fn edge_label<'b>(&'b self, _: &Ed<'b>) -> dot::LabelText<'b> {
+//!     fn edge_label(&self, _: &Ed<'_>) -> dot::LabelText<'_> {
 //!         dot::LabelText::LabelStr("&sube;".into())
 //!     }
 //! }

@@ -4,13 +4,12 @@
 //! to help with the tedium.
 
 use crate::mir::interpret;
-use crate::mir::ProjectionKind;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_hir::def::Namespace;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_target::abi::TyAndLayout;
 
 use std::fmt;
@@ -89,13 +88,41 @@ impl fmt::Debug for ty::FreeRegion {
 
 impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:?}; c_variadic: {})->{:?}", self.inputs(), self.c_variadic, self.output())
+        let ty::FnSig { inputs_and_output: _, c_variadic, unsafety, abi } = self;
+
+        write!(f, "{}", unsafety.prefix_str())?;
+        match abi {
+            rustc_target::spec::abi::Abi::Rust => (),
+            abi => write!(f, "extern \"{abi:?}\" ")?,
+        };
+
+        write!(f, "fn(")?;
+        let inputs = self.inputs();
+        match inputs.len() {
+            0 if *c_variadic => write!(f, "...)")?,
+            0 => write!(f, ")")?,
+            _ => {
+                for ty in &self.inputs()[0..(self.inputs().len() - 1)] {
+                    write!(f, "{ty:?}, ")?;
+                }
+                write!(f, "{:?}", self.inputs().last().unwrap())?;
+                if *c_variadic {
+                    write!(f, "...")?;
+                }
+                write!(f, ")")?;
+            }
+        }
+
+        match self.output().kind() {
+            ty::Tuple(list) if list.is_empty() => Ok(()),
+            _ => write!(f, " -> {:?}", self.output()),
+        }
     }
 }
 
 impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}c", self.index)
+        write!(f, "?{}c", self.index)
     }
 }
 
@@ -193,11 +220,66 @@ impl<'tcx> fmt::Debug for AliasTy<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::InferConst<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InferConst::Var(var) => write!(f, "{var:?}"),
+            InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
+        }
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::Const<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This reflects what `Const` looked liked before `Interned` was
+        // introduced. We print it like this to avoid having to update expected
+        // output in a lot of tests.
+        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty(), self.kind())
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ConstKind<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use ty::ConstKind::*;
+        match self {
+            Param(param) => write!(f, "{param:?}"),
+            Infer(var) => write!(f, "{var:?}"),
+            Bound(debruijn, var) => rustc_type_ir::debug_bound_var(f, *debruijn, *var),
+            Placeholder(placeholder) => write!(f, "{placeholder:?}"),
+            Unevaluated(uv) => {
+                f.debug_tuple("Unevaluated").field(&uv.substs).field(&uv.def).finish()
+            }
+            Value(valtree) => write!(f, "{valtree:?}"),
+            Error(_) => write!(f, "{{const error}}"),
+            Expr(expr) => write!(f, "{expr:?}"),
+        }
+    }
+}
+
+impl fmt::Debug for ty::BoundTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            ty::BoundTyKind::Anon => write!(f, "{:?}", self.var),
+            ty::BoundTyKind::Param(_, sym) => write!(f, "{sym:?}"),
+        }
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for ty::Placeholder<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.universe == ty::UniverseIndex::ROOT {
+            write!(f, "!{:?}", self.bound)
+        } else {
+            write!(f, "!{}_{:?}", self.universe.index(), self.bound)
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
 // For things that don't carry any arena-allocated data (and are
-// copy...), just add them to one of these lists as appropriat.
+// copy...), just add them to one of these lists as appropriate.
 
 // For things for which the type library provides traversal implementations
 // for all Interners, we only need to provide a Lift implementation:
@@ -205,6 +287,7 @@ CloneLiftImpls! {
     (),
     bool,
     usize,
+    u8,
     u16,
     u32,
     u64,
@@ -256,6 +339,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::AliasRelationDirection,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
+    crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
     crate::ty::InferTy,
@@ -272,13 +356,10 @@ TrivialTypeTraversalAndLiftImpls! {
     interpret::Scalar,
     rustc_target::abi::Size,
     ty::BoundVar,
-    ty::Placeholder<ty::BoundVar>,
 }
 
 TrivialTypeTraversalAndLiftImpls! {
-    for<'tcx> {
-        ty::ValTree<'tcx>,
-    }
+    ty::ValTree<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -375,16 +456,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 
-/// AdtDefs are basically the same as a DefId.
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
         &self,
@@ -444,15 +515,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v))
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ProjectionKind> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_projs(v))
     }
 }
 
@@ -580,24 +642,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_region(*self)
-    }
-}
-
-impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        _visitor: &mut V,
-    ) -> ControlFlow<V::BreakTy> {
-        ControlFlow::Continue(())
     }
 }
 

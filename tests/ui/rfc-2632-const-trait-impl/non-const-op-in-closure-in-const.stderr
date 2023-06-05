@@ -1,0 +1,8 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/non-const-op-in-closure-in-const.rs:10:51
+   |
+LL | impl<A, B> const Convert<B> for A where B: ~const From<A> {
+   |                                                   ^^^^^^^
+
+error: aborting due to previous error
+

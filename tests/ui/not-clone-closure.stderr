@@ -14,7 +14,8 @@ LL |     let hello = move || {
    |                 ^^^^^^^
 help: consider annotating `S` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct S(i32);
    |
 
 error: aborting due to previous error

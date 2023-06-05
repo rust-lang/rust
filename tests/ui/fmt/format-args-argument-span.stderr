@@ -29,7 +29,8 @@ LL |     println!("{x} {x:?} {x}");
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `DisplayOnly` with `#[derive(Debug)]`
    |
-LL | #[derive(Debug)]
+LL + #[derive(Debug)]
+LL | struct DisplayOnly;
    |
 
 error[E0277]: `DisplayOnly` doesn't implement `Debug`
@@ -43,7 +44,8 @@ LL |     println!("{x} {x:?} {x}", x = DisplayOnly);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `DisplayOnly` with `#[derive(Debug)]`
    |
-LL | #[derive(Debug)]
+LL + #[derive(Debug)]
+LL | struct DisplayOnly;
    |
 
 error: aborting due to 4 previous errors

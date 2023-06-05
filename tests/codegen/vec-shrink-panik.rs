@@ -5,6 +5,7 @@
 // [new]min-llvm-version: 17
 // compile-flags: -O
 // ignore-debug: the debug assertions get in the way
+// needs-unwind
 #![crate_type = "lib"]
 #![feature(shrink_to)]
 
@@ -25,7 +26,7 @@ pub fn issue71861(vec: Vec<u32>) -> Box<[u32]> {
 
     // Call to panic_cannot_unwind in case of double-panic is expected
     // on LLVM 16 and older, but other panics are not.
-    // CHECK: cleanup
+    // old: filter
     // old-NEXT: ; call core::panicking::panic_cannot_unwind
     // old-NEXT: panic_cannot_unwind
 
@@ -40,7 +41,7 @@ pub fn issue75636<'a>(iter: &[&'a str]) -> Box<[&'a str]> {
 
     // Call to panic_cannot_unwind in case of double-panic is expected,
     // on LLVM 16 and older, but other panics are not.
-    // CHECK: cleanup
+    // old: filter
     // old-NEXT: ; call core::panicking::panic_cannot_unwind
     // old-NEXT: panic_cannot_unwind
 

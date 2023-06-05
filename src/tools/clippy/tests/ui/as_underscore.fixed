@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::as_underscore)]
 

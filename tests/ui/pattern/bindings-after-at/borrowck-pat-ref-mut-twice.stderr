@@ -194,50 +194,6 @@ LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
    |                                     |
    |                                     value is mutably borrowed by `a` here
 
-error: cannot borrow value as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:8:11
-   |
-LL |     fn f1(ref mut a @ ref mut b: U) {}
-   |           ^^^^^^^^^   --------- value is mutably borrowed by `b` here
-   |           |
-   |           value is mutably borrowed by `a` here
-
-error: cannot borrow value as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:10:11
-   |
-LL |     fn f2(ref mut a @ ref mut b: U) {}
-   |           ^^^^^^^^^   --------- value is mutably borrowed by `b` here
-   |           |
-   |           value is mutably borrowed by `a` here
-
-error: cannot borrow value as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:13:9
-   |
-LL |         ref mut a @ [
-   |         ^^^^^^^^^ value is mutably borrowed by `a` here
-LL |
-LL |             [ref b @ .., _],
-   |              ----- value is borrowed by `b` here
-LL |             [_, ref mut mid @ ..],
-   |                 ----------- value is mutably borrowed by `mid` here
-
-error: cannot borrow value as mutable more than once at a time
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:21:22
-   |
-LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
-   |                      ^^^^^^^^^   ---------   - value is moved into `c` here
-   |                      |           |
-   |                      |           value is mutably borrowed by `b` here
-   |                      value is mutably borrowed by `a` here
-
-error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-ref-mut-twice.rs:21:34
-   |
-LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
-   |                                  ^^^^^^^^^   - value is moved into `c` here
-   |                                  |
-   |                                  value is mutably borrowed by `b` here
-
 error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:29:9
    |
@@ -303,6 +259,50 @@ LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
 ...
 LL |             drop(a);
    |                  - first borrow later used here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:8:11
+   |
+LL |     fn f1(ref mut a @ ref mut b: U) {}
+   |           ^^^^^^^^^   --------- value is mutably borrowed by `b` here
+   |           |
+   |           value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:10:11
+   |
+LL |     fn f2(ref mut a @ ref mut b: U) {}
+   |           ^^^^^^^^^   --------- value is mutably borrowed by `b` here
+   |           |
+   |           value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:13:9
+   |
+LL |         ref mut a @ [
+   |         ^^^^^^^^^ value is mutably borrowed by `a` here
+LL |
+LL |             [ref b @ .., _],
+   |              ----- value is borrowed by `b` here
+LL |             [_, ref mut mid @ ..],
+   |                 ----------- value is mutably borrowed by `mid` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:21:22
+   |
+LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
+   |                      ^^^^^^^^^   ---------   - value is moved into `c` here
+   |                      |           |
+   |                      |           value is mutably borrowed by `b` here
+   |                      value is mutably borrowed by `a` here
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/borrowck-pat-ref-mut-twice.rs:21:34
+   |
+LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
+   |                                  ^^^^^^^^^   - value is moved into `c` here
+   |                                  |
+   |                                  value is mutably borrowed by `b` here
 
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:21:34

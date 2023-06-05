@@ -1,11 +1,11 @@
 error: missing `~const` qualifier for specialization
-  --> $DIR/const-default-bound-non-const-specialized-bound.rs:28:8
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:32:8
    |
 LL |     T: Foo,
    |        ^^^
 
 error[E0119]: conflicting implementations of trait `Baz`
-  --> $DIR/const-default-bound-non-const-specialized-bound.rs:40:1
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:50:1
    |
 LL | impl<T> const Baz for T
    | ----------------------- first implementation here

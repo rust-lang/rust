@@ -20,8 +20,7 @@
       }
   
       bb1: {
--         _0 = opaque::<u8>(_3) -> bb2;    // scope 0 at $DIR/borrowed_local.rs:+12:13: +12:38
-+         _0 = opaque::<u8>(_1) -> bb2;    // scope 0 at $DIR/borrowed_local.rs:+12:13: +12:38
+          _0 = opaque::<u8>(_3) -> bb2;    // scope 0 at $DIR/borrowed_local.rs:+12:13: +12:38
                                            // mir::Constant
                                            // + span: $DIR/borrowed_local.rs:28:28: 28:34
                                            // + literal: Const { ty: fn(u8) -> bool {opaque::<u8>}, val: Value(<ZST>) }

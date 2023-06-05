@@ -196,6 +196,7 @@ pub enum AttributeKind {
     AllocSize = 37,
     AllocatedPointer = 38,
     AllocAlign = 39,
+    SanitizeSafeStack = 40,
 }
 
 /// LLVMIntPredicate
@@ -552,6 +553,7 @@ pub enum ArchiveKind {
     K_BSD,
     K_DARWIN,
     K_COFF,
+    K_AIXBIG,
 }
 
 // LLVMRustThinLTOData
@@ -679,7 +681,9 @@ pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_v
 pub mod coverageinfo {
     use super::coverage_map;
 
-    /// Aligns with [llvm::coverage::CounterMappingRegion::RegionKind](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L209-L230)
+    /// Corresponds to enum `llvm::coverage::CounterMappingRegion::RegionKind`.
+    ///
+    /// Must match the layout of `LLVMRustCounterMappingRegionKind`.
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub enum RegionKind {
@@ -713,7 +717,9 @@ pub mod coverageinfo {
     /// array", encoded separately), and source location (start and end positions of the represented
     /// code region).
     ///
-    /// Matches LLVMRustCounterMappingRegion.
+    /// Corresponds to struct `llvm::coverage::CounterMappingRegion`.
+    ///
+    /// Must match the layout of `LLVMRustCounterMappingRegion`.
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub struct CounterMappingRegion {
@@ -1986,6 +1992,21 @@ extern "C" {
         Decl: Option<&'a DIDescriptor>,
     ) -> &'a DISubprogram;
 
+    pub fn LLVMRustDIBuilderCreateMethod<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: &'a DIDescriptor,
+        Name: *const c_char,
+        NameLen: size_t,
+        LinkageName: *const c_char,
+        LinkageNameLen: size_t,
+        File: &'a DIFile,
+        LineNo: c_uint,
+        Ty: &'a DIType,
+        Flags: DIFlags,
+        SPFlags: DISPFlags,
+        TParam: &'a DIArray,
+    ) -> &'a DISubprogram;
+
     pub fn LLVMRustDIBuilderCreateBasicType<'a>(
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
@@ -2248,7 +2269,7 @@ extern "C" {
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
-    pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine);
+    pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine, cpu: *const c_char);
     pub fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
     pub fn LLVMRustGetTargetFeature(
         T: &TargetMachine,
@@ -2464,12 +2485,6 @@ extern "C" {
         len: usize,
         out_len: &mut usize,
     ) -> *const u8;
-    pub fn LLVMRustThinLTOGetDICompileUnit(
-        M: &Module,
-        CU1: &mut *mut c_void,
-        CU2: &mut *mut c_void,
-    );
-    pub fn LLVMRustThinLTOPatchDICompileUnit(M: &Module, CU: *mut c_void);
 
     pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(

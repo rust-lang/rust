@@ -14,7 +14,7 @@ static mut RECORD: usize = 0;
 static mut KEYS: [Key; 2] = [0; 2];
 static mut GLOBALS: [u64; 2] = [1, 0];
 
-static mut CANNARY: *mut u64 = ptr::null_mut(); // this serves as a cannary: if TLS dtors are not run properly, this will not get deallocated, making the test fail.
+static mut CANARY: *mut u64 = ptr::null_mut(); // this serves as a canary: if TLS dtors are not run properly, this will not get deallocated, making the test fail.
 
 pub unsafe fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
     let mut key = 0;
@@ -33,7 +33,7 @@ pub fn record(r: usize) {
 }
 
 unsafe extern "C" fn dtor(ptr: *mut u64) {
-    assert!(CANNARY != ptr::null_mut()); // make sure we do not get run too often
+    assert!(CANARY != ptr::null_mut()); // make sure we do not get run too often
     let val = *ptr;
 
     let which_key =
@@ -45,15 +45,15 @@ unsafe extern "C" fn dtor(ptr: *mut u64) {
         set(KEYS[which_key], ptr as *mut _);
     }
 
-    // Check if the records matches what we expect. If yes, clear the cannary.
-    // If the record is wrong, the cannary will never get cleared, leading to a leak -> test fails.
+    // Check if the records matches what we expect. If yes, clear the canary.
+    // If the record is wrong, the canary will never get cleared, leading to a leak -> test fails.
     // If the record is incomplete (i.e., more dtor calls happen), the check at the beginning of this function will fail -> test fails.
     // The correct sequence is: First key 0, then key 1, then key 0.
     // Note that this relies on dtor order, which is not specified by POSIX, but seems to be
     // consistent between Miri and Linux currently (as of Aug 2022).
     if RECORD == 0_1_0 {
-        drop(Box::from_raw(CANNARY));
-        CANNARY = ptr::null_mut();
+        drop(Box::from_raw(CANARY));
+        CANARY = ptr::null_mut();
     }
 }
 
@@ -67,7 +67,7 @@ fn main() {
             set(*key, global as *mut _ as *mut u8);
         }
 
-        // Initialize cannary
-        CANNARY = Box::into_raw(Box::new(0u64));
+        // Initialize canary
+        CANARY = Box::into_raw(Box::new(0u64));
     }
 }

@@ -1,5 +1,5 @@
 use crate::errors::{
-    AmbigousImpl, AmbigousReturn, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
+    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
 use crate::infer::error_reporting::TypeErrCtxt;
@@ -31,7 +31,7 @@ pub enum TypeAnnotationNeeded {
     /// ```
     E0282,
     /// An implementation cannot be chosen unambiguously because of lack of information.
-    /// ```compile_fail,E0283
+    /// ```compile_fail,E0790
     /// let _ = Default::default();
     /// ```
     E0283,
@@ -358,7 +358,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 bad_label,
             }
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0283 => AmbigousImpl {
+            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
                 source_name,
@@ -368,7 +368,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 bad_label,
             }
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0284 => AmbigousReturn {
+            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
                 span,
                 source_kind,
                 source_name,
@@ -563,7 +563,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 bad_label: None,
             }
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0283 => AmbigousImpl {
+            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
                 source_name: &name,
@@ -573,7 +573,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 bad_label: None,
             }
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0284 => AmbigousReturn {
+            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
                 span,
                 source_kind,
                 source_name: &name,
@@ -671,7 +671,7 @@ impl<'tcx> InferSource<'tcx> {
                 receiver.span.from_expansion()
             }
             InferSourceKind::ClosureReturn { data, should_wrap_expr, .. } => {
-                data.span().from_expansion() || should_wrap_expr.map_or(false, Span::from_expansion)
+                data.span().from_expansion() || should_wrap_expr.is_some_and(Span::from_expansion)
             }
         };
         source_from_expansion || self.span.from_expansion()
@@ -984,7 +984,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
         let tcx = self.infcx.tcx;
         let have_turbofish = path.segments.iter().any(|segment| {
-            segment.args.map_or(false, |args| args.args.iter().any(|arg| arg.is_ty_or_const()))
+            segment.args.is_some_and(|args| args.args.iter().any(|arg| arg.is_ty_or_const()))
         });
         // The last segment of a path often has `Res::Err` and the
         // correct `Res` is the one of the whole path.

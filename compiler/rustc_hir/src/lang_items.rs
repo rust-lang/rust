@@ -8,7 +8,6 @@
 //! * Functions called by the compiler itself.
 
 use crate::def_id::DefId;
-use crate::errors::LangItemError;
 use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
@@ -42,14 +41,7 @@ impl LanguageItems {
         self.items[item as usize] = Some(def_id);
     }
 
-    /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
-    /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
-    /// returns an error encapsulating the `LangItem`.
-    pub fn require(&self, it: LangItem) -> Result<DefId, LangItemError> {
-        self.get(it).ok_or_else(|| LangItemError(it))
-    }
-
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (LangItem, DefId)> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = (LangItem, DefId)> + '_ {
         self.items
             .iter()
             .enumerate()
@@ -226,6 +218,7 @@ language_item_table! {
 
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
+    CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
     // various panic cases with `match`. The `panic_bounds_check` item is for indexing arrays.
@@ -293,6 +286,8 @@ language_item_table! {
 
     PointerLike,             sym::pointer_like,        pointer_like,               Target::Trait,          GenericRequirement::Exact(0);
 
+    ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       Target::Trait,          GenericRequirement::Exact(0);
+
     Poll,                    sym::Poll,                poll,                       Target::Enum,           GenericRequirement::None;
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;
@@ -330,6 +325,7 @@ language_item_table! {
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
 
     String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
+    CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
 }
 
 pub enum GenericRequirement {

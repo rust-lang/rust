@@ -32,13 +32,13 @@ mod context;
 mod print_item;
 mod sidebar;
 mod span_map;
+mod type_layout;
 mod write_shared;
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
-use std::default::Default;
 use std::fmt::{self, Write};
 use std::fs;
 use std::iter::Peekable;
@@ -48,7 +48,6 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -469,7 +468,8 @@ fn document_short<'a, 'cx: 'a>(
         if !show_def_docs {
             return Ok(());
         }
-        if let Some(s) = item.doc_value() {
+        let s = item.doc_value();
+        if !s.is_empty() {
             let (mut summary_html, has_more_content) =
                 MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
@@ -512,7 +512,7 @@ fn document_full_inner<'a, 'cx: 'a>(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(move |f| {
-        if let Some(s) = item.collapsed_doc_value() {
+        if let Some(s) = item.opt_doc_value() {
             debug!("Doc block: =====\n{}\n=====", s);
             if is_collapsible {
                 write!(
@@ -787,10 +787,12 @@ fn assoc_type(
     indent: usize,
     cx: &Context<'_>,
 ) {
+    let tcx = cx.tcx();
     write!(
         w,
-        "{indent}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
+        "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
         indent = " ".repeat(indent),
+        vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         generics = generics.print(cx),
@@ -844,15 +846,15 @@ fn assoc_method(
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits = d.output.as_return().and_then(|output| notable_traits_button(output, cx));
+    let notable_traits = notable_traits_button(&d.output, cx);
 
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
         let indent_str = "    ";
-        write!(w, "{}", render_attributes_in_pre(meth, indent_str));
+        write!(w, "{}", render_attributes_in_pre(meth, indent_str, tcx));
         (4, indent_str, Ending::NoNewline)
     } else {
-        render_attributes_in_code(w, meth);
+        render_attributes_in_code(w, meth, tcx);
         (0, "", Ending::Newline)
     };
     w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
@@ -1021,36 +1023,15 @@ fn render_assoc_item(
     }
 }
 
-const ALLOWED_ATTRIBUTES: &[Symbol] =
-    &[sym::export_name, sym::link_section, sym::no_mangle, sym::repr, sym::non_exhaustive];
-
-fn attributes(it: &clean::Item) -> Vec<String> {
-    it.attrs
-        .other_attrs
-        .iter()
-        .filter_map(|attr| {
-            if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
-                Some(
-                    pprust::attribute_to_string(attr)
-                        .replace("\\\n", "")
-                        .replace('\n', "")
-                        .replace("  ", " "),
-                )
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
 // When an attribute is rendered inside a `<pre>` tag, it is formatted using
 // a whitespace prefix and newline.
-fn render_attributes_in_pre<'a>(
+fn render_attributes_in_pre<'a, 'b: 'a>(
     it: &'a clean::Item,
     prefix: &'a str,
-) -> impl fmt::Display + Captures<'a> {
+    tcx: TyCtxt<'b>,
+) -> impl fmt::Display + Captures<'a> + Captures<'b> {
     crate::html::format::display_fn(move |f| {
-        for a in attributes(it) {
+        for a in it.attributes(tcx, false) {
             writeln!(f, "{}{}", prefix, a)?;
         }
         Ok(())
@@ -1059,8 +1040,8 @@ fn render_attributes_in_pre<'a>(
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
-fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item) {
-    for a in attributes(it) {
+fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item, tcx: TyCtxt<'_>) {
+    for a in it.attributes(tcx, false) {
         write!(w, "<div class=\"code-attribute\">{}</div>", a);
     }
 }
@@ -1155,10 +1136,10 @@ fn render_assoc_items_inner(
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::html();
-        let (render_mode, id) = match what {
+        let (render_mode, id, class_html) = match what {
             AssocItemRender::All => {
                 write_impl_section_heading(&mut tmp_buf, "Implementations", "implementations");
-                (RenderMode::Normal, "implementations-list".to_owned())
+                (RenderMode::Normal, "implementations-list".to_owned(), "")
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 let id =
@@ -1175,7 +1156,11 @@ fn render_assoc_items_inner(
                     ),
                     &id,
                 );
-                (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
+                (
+                    RenderMode::ForDeref { mut_: deref_mut_ },
+                    cx.derive_id(id),
+                    r#" class="impl-items""#,
+                )
             }
         };
         let mut impls_buf = Buffer::html();
@@ -1199,7 +1184,7 @@ fn render_assoc_items_inner(
         }
         if !impls_buf.is_empty() {
             write!(w, "{}", tmp_buf.into_inner()).unwrap();
-            write!(w, "<div id=\"{}\">", id).unwrap();
+            write!(w, "<div id=\"{id}\"{class_html}>").unwrap();
             write!(w, "{}", impls_buf.into_inner()).unwrap();
             w.write_str("</div>").unwrap();
         }
@@ -1298,6 +1283,11 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
 
 pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> Option<String> {
     let mut has_notable_trait = false;
+
+    if ty.is_unit() {
+        // Very common fast path.
+        return None;
+    }
 
     let did = ty.def_id(cx.cache())?;
 
@@ -1494,7 +1484,7 @@ fn render_impl(
                     if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
-                        if item.doc_value().is_some() {
+                        if !item.doc_value().is_empty() {
                             document_item_info(cx, it, Some(parent))
                                 .render_into(&mut info_buffer)
                                 .unwrap();
@@ -1765,11 +1755,11 @@ fn render_impl(
             write!(w, "</summary>")
         }
 
-        if let Some(ref dox) = i.impl_item.collapsed_doc_value() {
+        if let Some(ref dox) = i.impl_item.opt_doc_value() {
             if trait_.is_none() && i.inner_impl().items.is_empty() {
                 w.write_str(
                     "<div class=\"item-info\">\
-                    <div class=\"stab empty-impl\">This impl block contains no items.</div>
+                    <div class=\"stab empty-impl\">This impl block contains no items.</div>\
                 </div>",
                 );
             }
@@ -1788,12 +1778,14 @@ fn render_impl(
                 .into_string()
             );
         }
+        if !default_impl_items.is_empty() || !impl_items.is_empty() {
+            w.write_str("<div class=\"impl-items\">");
+            close_tags.insert_str(0, "</div>");
+        }
     }
     if !default_impl_items.is_empty() || !impl_items.is_empty() {
-        w.write_str("<div class=\"impl-items\">");
         w.push_buffer(default_impl_items);
         w.push_buffer(impl_items);
-        close_tags.insert_str(0, "</div>");
     }
     w.write_str(&close_tags);
 }
@@ -2218,7 +2210,9 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
             }
             clean::Type::QPath(box clean::QPathData { self_type, trait_, .. }) => {
                 work.push_back(self_type);
-                process_path(trait_.def_id());
+                if let Some(trait_) = trait_ {
+                    process_path(trait_.def_id());
+                }
             }
             _ => {}
         }
@@ -2272,8 +2266,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             Ok(contents) => contents,
             Err(err) => {
                 let span = item.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner());
-                tcx.sess
-                    .span_err(span, &format!("failed to read file {}: {}", path.display(), err));
+                tcx.sess.span_err(span, format!("failed to read file {}: {}", path.display(), err));
                 return false;
             }
         };

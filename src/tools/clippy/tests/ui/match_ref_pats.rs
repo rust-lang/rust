@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::match_ref_pats)]
 #![allow(dead_code, unused_variables)]
 #![allow(clippy::enum_variant_names, clippy::equatable_if_let, clippy::uninlined_format_args)]

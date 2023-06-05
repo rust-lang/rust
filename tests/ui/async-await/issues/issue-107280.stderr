@@ -23,10 +23,10 @@ LL |     inner::<false>().await
    |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/issue-107280.rs:4:21
+  --> $DIR/issue-107280.rs:4:22
    |
 LL |     inner::<false>().await
-   |                     ^^^^^^
+   |                      ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/issue-107280.rs:4:5
@@ -35,10 +35,10 @@ LL |     inner::<false>().await
    |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/issue-107280.rs:4:21
+  --> $DIR/issue-107280.rs:4:22
    |
 LL |     inner::<false>().await
-   |                     ^^^^^^
+   |                      ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/issue-107280.rs:4:5
@@ -47,10 +47,10 @@ LL |     inner::<false>().await
    |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/issue-107280.rs:4:21
+  --> $DIR/issue-107280.rs:4:22
    |
 LL |     inner::<false>().await
-   |                     ^^^^^^
+   |                      ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/issue-107280.rs:4:5
@@ -59,10 +59,10 @@ LL |     inner::<false>().await
    |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/issue-107280.rs:4:21
+  --> $DIR/issue-107280.rs:4:22
    |
 LL |     inner::<false>().await
-   |                     ^^^^^^
+   |                      ^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/issue-107280.rs:4:5
@@ -71,10 +71,10 @@ LL |     inner::<false>().await
    |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/issue-107280.rs:4:21
+  --> $DIR/issue-107280.rs:4:22
    |
 LL |     inner::<false>().await
-   |                     ^^^^^^
+   |                      ^^^^^
 
 error: aborting due to 6 previous errors
 

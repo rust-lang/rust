@@ -9,8 +9,8 @@ pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField)
         "private-field",
         format!(
             "field `{}` of `{}` is private",
-            d.field.name(ctx.sema.db),
-            d.field.parent_def(ctx.sema.db).name(ctx.sema.db)
+            d.field.name(ctx.sema.db).display(ctx.sema.db),
+            d.field.parent_def(ctx.sema.db).name(ctx.sema.db).display(ctx.sema.db)
         ),
         ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
     )

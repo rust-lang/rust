@@ -99,12 +99,12 @@ mod variance;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_macros::fluent_messages;
 use rustc_middle::middle;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::{config::EntryFnType, parse::feature_err};
@@ -116,7 +116,7 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, 
 
 use std::ops::Not;
 
-use astconv::AstConv;
+use astconv::{AstConv, OnlySelfBounds};
 use bounds::Bounds;
 
 fluent_messages! { "../messages.ftl" }
@@ -496,8 +496,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
 
-    tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(()));
-
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
@@ -530,9 +528,11 @@ pub fn hir_trait_to_predicates<'tcx>(
         hir_trait,
         DUMMY_SP,
         ty::BoundConstness::NotConst,
+        ty::ImplPolarity::Positive,
         self_ty,
         &mut bounds,
         true,
+        OnlySelfBounds(false),
     );
 
     bounds

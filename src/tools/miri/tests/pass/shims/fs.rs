@@ -3,7 +3,6 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
-#![feature(is_terminal)]
 
 use std::collections::HashMap;
 use std::ffi::{c_char, OsString};
@@ -366,7 +365,7 @@ fn test_directory() {
 
     // Deleting the directory should succeed.
     remove_dir(&dir_path).unwrap();
-    // Reading the metadata of a non-existent directory should fail with a "not found" error.
+    // Reading the metadata of a nonexistent directory should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, check_metadata(&[], &dir_path).unwrap_err().kind());
 
     // To test remove_dir_all, re-create the directory with a file and a directory in it.

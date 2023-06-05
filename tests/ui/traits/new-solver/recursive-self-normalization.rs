@@ -9,7 +9,7 @@ fn needs_bar<S: Bar>() {}
 
 fn test<T: Foo<Assoc = <T as Foo>::Assoc>>() {
     needs_bar::<T::Assoc>();
-    //~^ ERROR type annotations needed
+    //~^ ERROR overflow evaluating the requirement `<T as Foo>::Assoc: Bar`
 }
 
 fn main() {}

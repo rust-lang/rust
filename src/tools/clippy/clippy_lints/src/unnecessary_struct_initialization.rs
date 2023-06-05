@@ -9,7 +9,7 @@ declare_clippy_lint! {
     /// any field.
     ///
     /// ### Why is this bad?
-    /// Readibility suffers from unnecessary struct building.
+    /// Readability suffers from unnecessary struct building.
     ///
     /// ### Example
     /// ```rust
@@ -25,9 +25,13 @@ declare_clippy_lint! {
     /// let a = S { s: String::from("Hello, world!") };
     /// let b = a;
     /// ```
+    ///
+    /// ### Known Problems
+    /// Has false positives when the base is a place expression that cannot be
+    /// moved out of, see [#10547](https://github.com/rust-lang/rust-clippy/issues/10547).
     #[clippy::version = "1.70.0"]
     pub UNNECESSARY_STRUCT_INITIALIZATION,
-    complexity,
+    nursery,
     "struct built from a base that can be written mode concisely"
 }
 declare_lint_pass!(UnnecessaryStruct => [UNNECESSARY_STRUCT_INITIALIZATION]);

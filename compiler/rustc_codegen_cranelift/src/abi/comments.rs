@@ -6,8 +6,6 @@ use std::borrow::Cow;
 use rustc_middle::mir;
 use rustc_target::abi::call::PassMode;
 
-use cranelift_codegen::entity::EntityRef;
-
 use crate::prelude::*;
 
 pub(super) fn add_args_header_comment(fx: &mut FunctionCx<'_, '_, '_>) {
@@ -91,35 +89,7 @@ pub(super) fn add_local_place_comments<'tcx>(
         largest_niche: _,
     } = layout.0.0;
 
-    let (kind, extra) = match *place.inner() {
-        CPlaceInner::Var(place_local, var) => {
-            assert_eq!(local, place_local);
-            ("ssa", Cow::Owned(format!(",var={}", var.index())))
-        }
-        CPlaceInner::VarPair(place_local, var1, var2) => {
-            assert_eq!(local, place_local);
-            ("ssa", Cow::Owned(format!("var=({}, {})", var1.index(), var2.index())))
-        }
-        CPlaceInner::VarLane(_local, _var, _lane) => unreachable!(),
-        CPlaceInner::Addr(ptr, meta) => {
-            let meta = if let Some(meta) = meta {
-                Cow::Owned(format!("meta={}", meta))
-            } else {
-                Cow::Borrowed("")
-            };
-            match ptr.debug_base_and_offset() {
-                (crate::pointer::PointerBase::Addr(addr), offset) => {
-                    ("reuse", format!("storage={}{}{}", addr, offset, meta).into())
-                }
-                (crate::pointer::PointerBase::Stack(stack_slot), offset) => {
-                    ("stack", format!("storage={}{}{}", stack_slot, offset, meta).into())
-                }
-                (crate::pointer::PointerBase::Dangling(align), offset) => {
-                    ("zst", format!("align={},offset={}", align.bytes(), offset).into())
-                }
-            }
-        }
-    };
+    let (kind, extra) = place.debug_comment();
 
     fx.add_global_comment(format!(
         "{:<5} {:5} {:30} {:4}b {}, {}{}{}",

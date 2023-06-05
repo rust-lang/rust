@@ -1,6 +1,6 @@
 use rustdoc_json_types::{Item, ItemEnum, ItemKind, ItemSummary};
 
-/// A univeral way to represent an [`ItemEnum`] or [`ItemKind`]
+/// A universal way to represent an [`ItemEnum`] or [`ItemKind`]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Kind {
     Module,
@@ -53,7 +53,7 @@ impl Kind {
             Primitive => true,
             ForeignType => true,
 
-            // FIXME(adotinthevoid): I'm not sure if these are corrent
+            // FIXME(adotinthevoid): I'm not sure if these are correct
             Keyword => false,
             OpaqueTy => false,
             ProcAttribute => false,

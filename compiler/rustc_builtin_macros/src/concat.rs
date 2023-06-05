@@ -4,6 +4,8 @@ use rustc_expand::base::{self, DummyResult};
 use rustc_session::errors::report_lit_error;
 use rustc_span::symbol::Symbol;
 
+use crate::errors;
+
 pub fn expand_concat(
     cx: &mut base::ExtCtxt<'_>,
     sp: rustc_span::Span,
@@ -30,8 +32,12 @@ pub fn expand_concat(
                 Ok(ast::LitKind::Bool(b)) => {
                     accumulator.push_str(&b.to_string());
                 }
+                Ok(ast::LitKind::CStr(..)) => {
+                    cx.span_err(e.span, "cannot concatenate a C string literal");
+                    has_errors = true;
+                }
                 Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
-                    cx.span_err(e.span, "cannot concatenate a byte string literal");
+                    cx.emit_err(errors::ConcatBytestr { span: e.span });
                     has_errors = true;
                 }
                 Ok(ast::LitKind::Err) => {
@@ -55,7 +61,7 @@ pub fn expand_concat(
                 }
             }
             ast::ExprKind::IncludedBytes(..) => {
-                cx.span_err(e.span, "cannot concatenate a byte string literal")
+                cx.emit_err(errors::ConcatBytestr { span: e.span });
             }
             ast::ExprKind::Err => {
                 has_errors = true;
@@ -67,9 +73,7 @@ pub fn expand_concat(
     }
 
     if !missing_literal.is_empty() {
-        let mut err = cx.struct_span_err(missing_literal, "expected a literal");
-        err.note("only literals (like `\"foo\"`, `-42` and `3.14`) can be passed to `concat!()`");
-        err.emit();
+        cx.emit_err(errors::ConcatMissingLiteral { spans: missing_literal });
         return DummyResult::any(sp);
     } else if has_errors {
         return DummyResult::any(sp);

@@ -3,7 +3,7 @@
 You may need following tooltips to catch up with common operations.
 
 - [Common tools for writing lints](#common-tools-for-writing-lints)
-  - [Retrieving the type of an expression](#retrieving-the-type-of-an-expression)
+  - [Retrieving the type of expression](#retrieving-the-type-of-expression)
   - [Checking if an expr is calling a specific method](#checking-if-an-expr-is-calling-a-specific-method)
   - [Checking for a specific type](#checking-for-a-specific-type)
   - [Checking if a type implements a specific trait](#checking-if-a-type-implements-a-specific-trait)
@@ -16,7 +16,7 @@ Useful Rustc dev guide links:
 - [Type checking](https://rustc-dev-guide.rust-lang.org/type-checking.html)
 - [Ty module](https://rustc-dev-guide.rust-lang.org/ty.html)
 
-## Retrieving the type of an expression
+## Retrieving the type of expression
 
 Sometimes you may want to retrieve the type `Ty` of an expression `Expr`, for
 example to answer following questions:
@@ -45,7 +45,7 @@ impl LateLintPass<'_> for MyStructLint {
 }
 ```
 
-Similarly in [`TypeckResults`][TypeckResults] methods, you have the
+Similarly, in [`TypeckResults`][TypeckResults] methods, you have the
 [`pat_ty()`][pat_ty] method to retrieve a type from a pattern.
 
 Two noticeable items here:
@@ -192,7 +192,7 @@ functions to deal with macros:
 - `span.from_expansion()`: detects if a span is from macro expansion or
   desugaring. Checking this is a common first step in a lint.
 
-   ```rust
+   ```rust,ignore
    if expr.span.from_expansion() {
        // just forget it
        return;
@@ -203,11 +203,11 @@ functions to deal with macros:
   if so, which macro call expanded it. It is sometimes useful to check if the
   context of two spans are equal.
 
-  ```rust
+  ```rust,ignore
   // expands to `1 + 0`, but don't lint
   1 + mac!()
   ```
-  ```rust
+  ```rust,ignore
   if left.span.ctxt() != right.span.ctxt() {
       // the coder most likely cannot modify this expression
       return;
@@ -246,7 +246,7 @@ functions to deal with macros:
   `macro_rules!` with `a == $b`, `$b` is expanded to some expression with a
   different context from `a`.
 
-   ```rust
+   ```rust,ignore
    macro_rules! m {
        ($a:expr, $b:expr) => {
            if $a.is_some() {

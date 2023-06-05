@@ -31,14 +31,7 @@ LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     fn ptr(self: Ptr<Self>);
    |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
-note: required for `Ptr<{integer}>` to implement `CoerceUnsized<Ptr<dyn Trait>>`
-  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:20:40
-   |
-LL | impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T> {}
-   |         ---------                      ^^^^^^^^^^^^^^^^^^^^^     ^^^^^^
-   |         |
-   |         unsatisfied trait bound introduced here
-   = note: required by cast to type `Ptr<dyn Trait>`
+   = note: required for the cast from `Ptr<{integer}>` to `Ptr<dyn Trait>`
 
 error: aborting due to 2 previous errors
 

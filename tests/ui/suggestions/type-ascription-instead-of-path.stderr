@@ -1,18 +1,10 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `io`
-  --> $DIR/type-ascription-instead-of-path.rs:2:9
+error: path separator must be a double colon
+  --> $DIR/type-ascription-instead-of-path.rs:2:8
    |
 LL |     std:io::stdin();
-   |         ^^ use of undeclared crate or module `io`
-
-error[E0423]: expected value, found crate `std`
-  --> $DIR/type-ascription-instead-of-path.rs:2:5
+   |        ^ help: use a double colon instead: `::`
    |
-LL |     std:io::stdin();
-   |     ^^^- help: maybe you meant to write a path separator here: `::`
-   |     |
-   |     not a value
+   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0423, E0433.
-For more information about an error, try `rustc --explain E0423`.

@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build: proc_macros.rs
+//@run-rustfix
+//@aux-build: proc_macros.rs
 #![warn(clippy::unnecessary_lazy_evaluations)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::bind_instead_of_map)]

@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes -Zshare-generics=yes
+// compile-flags: -C no-prepopulate-passes -Zshare-generics=yes -Zinline-mir=no
 
 // Check that local generics are internalized if they are in the same CGU
 

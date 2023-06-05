@@ -10,7 +10,7 @@ LL |         x.foobar();
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL |     use crate::foo::foobar::Foobar;
+LL +     use crate::foo::foobar::Foobar;
    |
 
 error[E0599]: no method named `bar` found for type `u32` in the current scope
@@ -25,7 +25,7 @@ LL |     x.bar();
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use crate::foo::Bar;
+LL + use crate::foo::Bar;
    |
 
 error[E0599]: no method named `baz` found for type `u32` in the current scope
@@ -43,7 +43,7 @@ LL |     let y = u32::from_str("33");
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use std::str::FromStr;
+LL + use std::str::FromStr;
    |
 help: there is an associated function with a similar name
    |

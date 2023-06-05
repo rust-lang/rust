@@ -14,7 +14,7 @@ macro_rules! bla {
     () => {
         x(123);
         //~^ ERROR mismatched types
-        //~| SUGGESTION &mut 123
+        //~| SUGGESTION &mut
     };
     ($v:expr) => {
         x($v)
@@ -25,5 +25,5 @@ fn main() {
     bla!();
     bla!(456);
     //~^ ERROR mismatched types
-    //~| SUGGESTION &mut 456
+    //~| SUGGESTION &mut
 }

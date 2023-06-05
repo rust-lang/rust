@@ -130,7 +130,7 @@ fn test_readlink() {
     let mut large_buf = vec![0xFF; expected_path.len() + 1];
     let res =
         unsafe { libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len()) };
-    // Check that the resovled path was properly written into the buf.
+    // Check that the resolved path was properly written into the buf.
     assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
     assert_eq!(large_buf.last(), Some(&0xFF));
     assert_eq!(res, large_buf.len() as isize - 1);

@@ -6,7 +6,7 @@ use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{error_code, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, MultiSpan};
 use rustc_macros::Diagnostic;
-use rustc_span::{Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
 #[derive(Diagnostic)]
@@ -111,8 +111,24 @@ pub struct CannotMixAndMatchSanitizers {
 pub struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
-#[diag(session_sanitizer_cfi_enabled)]
-pub struct SanitizerCfiEnabled;
+#[diag(session_sanitizer_cfi_requires_lto)]
+pub struct SanitizerCfiRequiresLto;
+
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_canonical_jump_tables_requires_cfi)]
+pub struct SanitizerCfiCanonicalJumpTablesRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_generalize_pointers_requires_cfi)]
+pub struct SanitizerCfiGeneralizePointersRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(session_sanitizer_cfi_normalize_integers_requires_cfi)]
+pub struct SanitizerCfiNormalizeIntegersRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(session_split_lto_unit_requires_lto)]
+pub struct SplitLtoUnitRequiresLto;
 
 #[derive(Diagnostic)]
 #[diag(session_unstable_virtual_function_elimination)]
@@ -307,6 +323,13 @@ pub(crate) struct BinaryFloatLiteralNotSupported {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(session_nul_in_c_str)]
+pub(crate) struct NulInCStr {
+    #[primary_span]
+    pub span: Span,
+}
+
 pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
     // Checks if `s` looks like i32 or u1234 etc.
     fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
@@ -385,6 +408,12 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
             };
             sess.emit_err(IntLiteralTooLarge { span, limit });
         }
+        LitError::NulInCStr(range) => {
+            let lo = BytePos(span.lo().0 + range.start as u32 + 2);
+            let hi = BytePos(span.lo().0 + range.end as u32 + 2);
+            let span = span.with_lo(lo).with_hi(hi);
+            sess.emit_err(NulInCStr { span });
+        }
     }
 }
 
@@ -392,4 +421,12 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
 #[diag(session_optimization_fuel_exhausted)]
 pub struct OptimisationFuelExhausted {
     pub msg: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_incompatible_linker_flavor)]
+#[note]
+pub struct IncompatibleLinkerFlavor {
+    pub flavor: &'static str,
+    pub compatible_list: String,
 }

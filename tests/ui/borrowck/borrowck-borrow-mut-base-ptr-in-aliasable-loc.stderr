@@ -27,8 +27,8 @@ LL |     let x:  &mut isize = &mut **t0;
    |
 help: consider changing this to be a mutable reference
    |
-LL | fn foo4(t0: &mut &mut isize) {
-   |             ~~~~~~~~~~~~~~~
+LL | fn foo4(t0: &mut  &mut isize) {
+   |              +++
 
 error: aborting due to 3 previous errors
 

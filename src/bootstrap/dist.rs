@@ -106,11 +106,7 @@ impl Step for JsonDocs {
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.ensure(crate::doc::Std {
-            stage: builder.top_stage,
-            target: host,
-            format: DocumentationFormat::JSON,
-        });
+        builder.ensure(crate::doc::Std::new(builder.top_stage, host, DocumentationFormat::JSON));
 
         let dest = "share/doc/rust/json";
 
@@ -822,6 +818,8 @@ fn copy_src_dirs(
             "llvm-project\\compiler-rt",
             "llvm-project/cmake",
             "llvm-project\\cmake",
+            "llvm-project/runtimes",
+            "llvm-project\\runtimes",
         ];
         if spath.contains("llvm-project")
             && !spath.ends_with("llvm-project")
@@ -895,6 +893,8 @@ impl Step for Src {
 
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+        builder.update_submodule(&Path::new("src/llvm-project"));
+
         let tarball = Tarball::new_targetless(builder, "rust-src");
 
         // A lot of tools expect the rust-src component to be entirely in this directory, so if you
@@ -974,6 +974,7 @@ impl Step for PlainSourceTarball {
             "config.example.toml",
             "Cargo.toml",
             "Cargo.lock",
+            ".gitmodules",
         ];
         let src_dirs = ["src", "compiler", "library", "tests"];
 
@@ -994,17 +995,23 @@ impl Step for PlainSourceTarball {
         // If we're building from git sources, we need to vendor a complete distribution.
         if builder.rust_info().is_managed_git_subrepository() {
             // Ensure we have the submodules checked out.
+            builder.update_submodule(Path::new("src/tools/cargo"));
             builder.update_submodule(Path::new("src/tools/rust-analyzer"));
 
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
                 .arg("--sync")
+                .arg(builder.src.join("./src/tools/cargo/Cargo.toml"))
+                .arg("--sync")
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
+                // Will read the libstd Cargo.toml
+                // which uses the unstable `public-dependency` feature.
+                .env("RUSTC_BOOTSTRAP", "1")
                 .current_dir(&plain_dst_src);
 
             let config = if !builder.config.dry_run() {
@@ -1063,7 +1070,11 @@ impl Step for Cargo {
 
         tarball.add_file(&cargo, "bin", 0o755);
         tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
-        tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
+        tarball.add_renamed_file(
+            etc.join("cargo.bashcomp.sh"),
+            "src/etc/bash_completion.d",
+            "cargo",
+        );
         tarball.add_dir(etc.join("man"), "share/man/man1");
         tarball.add_legal_and_readme_to("share/doc/cargo");
 
@@ -1488,7 +1499,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler", "miri"] {
+            for tool in &["rust-demangler", "miri", "rust-docs"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1585,11 +1596,10 @@ impl Step for Extended {
             prepare("rustc");
             prepare("cargo");
             prepare("rust-analysis");
-            prepare("rust-docs");
             prepare("rust-std");
             prepare("clippy");
             prepare("rust-analyzer");
-            for tool in &["rust-demangler", "miri"] {
+            for tool in &["rust-docs", "rust-demangler", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1624,23 +1634,25 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(exe.join("RustcGroup.wxs")),
             );
-            builder.run(
-                Command::new(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rust-docs")
-                    .args(&heat_flags)
-                    .arg("-cg")
-                    .arg("DocsGroup")
-                    .arg("-dr")
-                    .arg("Docs")
-                    .arg("-var")
-                    .arg("var.DocsDir")
-                    .arg("-out")
-                    .arg(exe.join("DocsGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/squash-components.xsl")),
-            );
+            if built_tools.contains("rust-docs") {
+                builder.run(
+                    Command::new(&heat)
+                        .current_dir(&exe)
+                        .arg("dir")
+                        .arg("rust-docs")
+                        .args(&heat_flags)
+                        .arg("-cg")
+                        .arg("DocsGroup")
+                        .arg("-dr")
+                        .arg("Docs")
+                        .arg("-var")
+                        .arg("var.DocsDir")
+                        .arg("-out")
+                        .arg(exe.join("DocsGroup.wxs"))
+                        .arg("-t")
+                        .arg(etc.join("msi/squash-components.xsl")),
+                );
+            }
             builder.run(
                 Command::new(&heat)
                     .current_dir(&exe)
@@ -1787,7 +1799,6 @@ impl Step for Extended {
                 cmd.current_dir(&exe)
                     .arg("-nologo")
                     .arg("-dRustcDir=rustc")
-                    .arg("-dDocsDir=rust-docs")
                     .arg("-dCargoDir=cargo")
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
@@ -1799,6 +1810,9 @@ impl Step for Extended {
                     .arg(&input);
                 add_env(builder, &mut cmd, target);
 
+                if built_tools.contains("rust-docs") {
+                    cmd.arg("-dDocsDir=rust-docs");
+                }
                 if built_tools.contains("rust-demangler") {
                     cmd.arg("-dRustDemanglerDir=rust-demangler");
                 }
@@ -1817,7 +1831,9 @@ impl Step for Extended {
             candle(&etc.join("msi/ui.wxs"));
             candle(&etc.join("msi/rustwelcomedlg.wxs"));
             candle("RustcGroup.wxs".as_ref());
-            candle("DocsGroup.wxs".as_ref());
+            if built_tools.contains("rust-docs") {
+                candle("DocsGroup.wxs".as_ref());
+            }
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
             candle("ClippyGroup.wxs".as_ref());
@@ -1854,7 +1870,6 @@ impl Step for Extended {
                 .arg("ui.wixobj")
                 .arg("rustwelcomedlg.wixobj")
                 .arg("RustcGroup.wixobj")
-                .arg("DocsGroup.wixobj")
                 .arg("CargoGroup.wixobj")
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
@@ -1869,6 +1884,9 @@ impl Step for Extended {
             }
             if built_tools.contains("rust-demangler") {
                 cmd.arg("RustDemanglerGroup.wixobj");
+            }
+            if built_tools.contains("rust-docs") {
+                cmd.arg("DocsGroup.wixobj");
             }
 
             if target.ends_with("windows-gnu") {

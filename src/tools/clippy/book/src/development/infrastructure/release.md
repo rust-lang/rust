@@ -44,7 +44,7 @@ $ git push origin backport_remerge  # This can be pushed to your fork
 ```
 
 After this, open a PR to the master branch. In this PR, the commit hash of the
-`HEAD` of the `beta` branch must exists. In addition to that, no files should be
+`HEAD` of the `beta` branch must exist. In addition to that, no files should be
 changed by this PR.
 
 ## Update the `beta` branch

@@ -11,6 +11,18 @@ LL -     println!("val='{}'", local_i32);
 LL +     println!("val='{local_i32}'");
    |
 
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args.rs:10:5
+   |
+LL |     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
+LL +     println!("Hello {} is {local_f64:.local_i32$}", "x");
+   |
+
 error: literal with an empty format string
   --> $DIR/uninlined_format_args.rs:10:35
    |
@@ -22,18 +34,6 @@ help: try this
    |
 LL -     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
 LL +     println!("Hello x is {:.*}", local_i32, local_f64);
-   |
-
-error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args.rs:10:5
-   |
-LL |     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: change this to
-   |
-LL -     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
-LL +     println!("Hello {} is {local_f64:.local_i32$}", "x");
    |
 
 error: variables can be used directly in the `format!` string

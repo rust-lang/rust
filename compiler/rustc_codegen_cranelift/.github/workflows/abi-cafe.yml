@@ -45,13 +45,6 @@ jobs:
       if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
-    - name: Use sparse cargo registry
-      run: |
-        cat >> ~/.cargo/config.toml <<EOF
-        [unstable]
-        sparse-registry = true
-        EOF
-
     - name: Prepare dependencies
       run: ./y.rs prepare
 

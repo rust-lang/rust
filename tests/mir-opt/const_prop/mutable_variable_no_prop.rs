@@ -1,5 +1,4 @@
-// unit-test
-// compile-flags: -O
+// unit-test: ConstProp
 
 static mut STATIC: u32 = 0x42424242;
 

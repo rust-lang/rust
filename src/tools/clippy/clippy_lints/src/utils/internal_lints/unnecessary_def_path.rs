@@ -20,7 +20,7 @@ use std::str;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of def paths when a diagnostic item or a `LangItem` could be used.
+    /// Checks for usage of def paths when a diagnostic item or a `LangItem` could be used.
     ///
     /// ### Why is this bad?
     /// The path for an item is subject to change and is less efficient to look up than a

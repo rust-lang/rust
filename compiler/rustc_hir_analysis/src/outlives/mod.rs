@@ -1,7 +1,7 @@
 use hir::Node;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_span::symbol::sym;
@@ -20,7 +20,8 @@ pub fn provide(providers: &mut Providers) {
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clause<'_>, Span)] {
     let id = tcx.hir().local_def_id_to_hir_id(item_def_id);
 
-    if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
+    if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst)
+        && tcx.features().generic_const_exprs
     {
         if tcx.hir().opt_const_param_default_param_def_id(id).is_some() {
             // In `generics_of` we set the generics' parent to be our parent's parent which means that
@@ -61,7 +62,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
 
                     let span = tcx.def_span(item_def_id);
                     let mut err = tcx.sess.struct_span_err(span, "rustc_outlives");
-                    for p in &pred {
+                    for p in pred {
                         err.note(p);
                     }
                     err.emit();
@@ -98,24 +99,27 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
     let predicates = global_inferred_outlives
         .iter()
         .map(|(&def_id, set)| {
-            let predicates = &*tcx.arena.alloc_from_iter(set.0.iter().filter_map(
-                |(ty::OutlivesPredicate(kind1, region2), &span)| {
-                    match kind1.unpack() {
-                        GenericArgKind::Type(ty1) => Some((
-                            ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
-                            span,
-                        )),
-                        GenericArgKind::Lifetime(region1) => Some((
-                            ty::Clause::RegionOutlives(ty::OutlivesPredicate(region1, *region2)),
-                            span,
-                        )),
-                        GenericArgKind::Const(_) => {
-                            // Generic consts don't impose any constraints.
-                            None
+            let predicates =
+                &*tcx.arena.alloc_from_iter(set.as_ref().skip_binder().iter().filter_map(
+                    |(ty::OutlivesPredicate(kind1, region2), &span)| {
+                        match kind1.unpack() {
+                            GenericArgKind::Type(ty1) => Some((
+                                ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
+                                span,
+                            )),
+                            GenericArgKind::Lifetime(region1) => Some((
+                                ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                                    region1, *region2,
+                                )),
+                                span,
+                            )),
+                            GenericArgKind::Const(_) => {
+                                // Generic consts don't impose any constraints.
+                                None
+                            }
                         }
-                    }
-                },
-            ));
+                    },
+                ));
             (def_id, predicates)
         })
         .collect();

@@ -1,5 +1,3 @@
-#![feature(c_unwind)]
-
 #[cfg_attr(not(windows), link(name = "bar"))]
 #[cfg_attr(windows, link(name = "bar.dll"))]
 extern "C-unwind" {

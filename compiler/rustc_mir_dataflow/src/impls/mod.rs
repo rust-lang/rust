@@ -3,7 +3,7 @@
 //! zero-sized structure.
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::visit::{MirVisitable, Visitor};
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
@@ -26,7 +26,7 @@ pub use self::borrowed_locals::borrowed_locals;
 pub use self::borrowed_locals::MaybeBorrowedLocals;
 pub use self::liveness::MaybeLiveLocals;
 pub use self::liveness::MaybeTransitiveLiveLocals;
-pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
+pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageDead, MaybeStorageLive};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow

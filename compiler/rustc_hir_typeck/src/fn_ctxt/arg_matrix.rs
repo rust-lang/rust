@@ -1,6 +1,6 @@
 use std::cmp;
 
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::error::TypeError;
 
 rustc_index::newtype_index! {

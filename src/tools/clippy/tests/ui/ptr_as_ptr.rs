@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:proc_macros.rs
+//@run-rustfix
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::ptr_as_ptr)]
 

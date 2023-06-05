@@ -51,6 +51,7 @@
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use crate::deref_separator::deref_finder;
+use crate::errors;
 use crate::simplify;
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -59,7 +60,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::GeneratorKind;
 use rustc_index::bit_set::{BitMatrix, BitSet, GrowableBitSet};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -865,7 +866,7 @@ fn sanitize_witness<'tcx>(
         _ => {
             tcx.sess.delay_span_bug(
                 body.span,
-                &format!("unexpected generator witness type {:?}", witness.kind()),
+                format!("unexpected generator witness type {:?}", witness.kind()),
             );
             return;
         }
@@ -1044,7 +1045,10 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
-            Terminator { source_info, kind: TerminatorKind::Drop { place, target, unwind } } => {
+            Terminator {
+                source_info,
+                kind: TerminatorKind::Drop { place, target, unwind, replace: _ },
+            } => {
                 if let Some(local) = place.as_local() {
                     if local == SELF_ARG {
                         (target, unwind, source_info)
@@ -1150,7 +1154,7 @@ fn insert_panic_block<'tcx>(
             literal: ConstantKind::from_bool(tcx, false),
         })),
         expected: true,
-        msg: message,
+        msg: Box::new(message),
         target: assert_block,
         unwind: UnwindAction::Continue,
     };
@@ -1303,6 +1307,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
         place: Place::from(SELF_ARG),
         target: return_block,
         unwind: UnwindAction::Continue,
+        replace: false,
     };
     let source_info = SourceInfo::outermost(body.span);
 
@@ -1396,10 +1401,10 @@ fn create_cases<'tcx>(
 pub(crate) fn mir_generator_witnesses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> GeneratorLayout<'tcx> {
+) -> Option<GeneratorLayout<'tcx>> {
     assert!(tcx.sess.opts.unstable_opts.drop_tracking_mir);
 
-    let (body, _) = tcx.mir_promoted(ty::WithOptConstParam::unknown(def_id));
+    let (body, _) = tcx.mir_promoted(def_id);
     let body = body.borrow();
     let body = &*body;
 
@@ -1409,6 +1414,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
     // Get the interior types and substs which typeck computed
     let movable = match *gen_ty.kind() {
         ty::Generator(_, _, movability) => movability == hir::Movability::Movable,
+        ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected generator type {}", gen_ty),
     };
 
@@ -1424,7 +1430,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
 
     check_suspend_tys(tcx, &generator_layout, &body);
 
-    generator_layout
+    Some(generator_layout)
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
@@ -1451,8 +1457,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 )
             }
             _ => {
-                tcx.sess
-                    .delay_span_bug(body.span, &format!("unexpected generator type {}", gen_ty));
+                tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {}", gen_ty));
                 return;
             }
         };
@@ -1555,6 +1560,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Update our MIR struct to reflect the changes we've made
         body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
+
+        // The original arguments to the function are no longer arguments, mark them as such.
+        // Otherwise they'll conflict with our new arguments, which although they don't have
+        // argument_index set, will get emitted as unnamed arguments.
+        for var in &mut body.var_debug_info {
+            var.argument_index = None;
+        }
 
         body.generator.as_mut().unwrap().yield_ty = None;
         body.generator.as_mut().unwrap().generator_layout = Some(layout);
@@ -1793,7 +1805,7 @@ fn check_must_not_suspend_ty<'tcx>(
         // FIXME: support adding the attribute to TAITs
         ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
             let mut has_emitted = false;
-            for &(predicate, _) in tcx.explicit_item_bounds(def) {
+            for &(predicate, _) in tcx.explicit_item_bounds(def).skip_binder() {
                 // We only look at the `DefId`, so it is safe to skip the binder here.
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(ref poly_trait_predicate)) =
                     predicate.kind().skip_binder()
@@ -1862,7 +1874,7 @@ fn check_must_not_suspend_ty<'tcx>(
                 },
             )
         }
-        // If drop tracking is enabled, we want to look through references, since the referrent
+        // If drop tracking is enabled, we want to look through references, since the referent
         // may not be considered live across the await point.
         ty::Ref(_region, ty, _mutability) => {
             let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);
@@ -1885,36 +1897,21 @@ fn check_must_not_suspend_def(
     data: SuspendCheckData<'_>,
 ) -> bool {
     if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
-        let msg = rustc_errors::DelayDm(|| {
-            format!(
-                "{}`{}`{} held across a suspend point, but should not be",
-                data.descr_pre,
-                tcx.def_path_str(def_id),
-                data.descr_post,
-            )
+        let reason = attr.value_str().map(|s| errors::MustNotSuspendReason {
+            span: data.source_span,
+            reason: s.as_str().to_string(),
         });
-        tcx.struct_span_lint_hir(
+        tcx.emit_spanned_lint(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,
             data.source_span,
-            msg,
-            |lint| {
-                // add span pointing to the offending yield/await
-                lint.span_label(data.yield_span, "the value is held across this suspend point");
-
-                // Add optional reason note
-                if let Some(note) = attr.value_str() {
-                    // FIXME(guswynn): consider formatting this better
-                    lint.span_note(data.source_span, note.as_str());
-                }
-
-                // Add some quick suggestions on what to do
-                // FIXME: can `drop` work as a suggestion here as well?
-                lint.span_help(
-                    data.source_span,
-                    "consider using a block (`{ ... }`) \
-                    to shrink the value's scope, ending before the suspend point",
-                )
+            errors::MustNotSupend {
+                yield_sp: data.yield_span,
+                reason,
+                src_sp: data.source_span,
+                pre: data.descr_pre,
+                def_path: tcx.def_path_str(def_id),
+                post: data.descr_post,
             },
         );
 

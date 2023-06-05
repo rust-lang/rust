@@ -2,10 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/issue-61106.rs:3:9
    |
 LL |     foo(x.clone());
-   |     --- ^^^^^^^^^
-   |     |   |
-   |     |   expected `&str`, found `String`
-   |     |   help: consider borrowing here: `&x`
+   |     --- ^^^^^^^^^ expected `&str`, found `String`
+   |     |
    |     arguments to this function are incorrect
    |
 note: function defined here
@@ -13,6 +11,10 @@ note: function defined here
    |
 LL | fn foo(_: &str) {}
    |    ^^^ -------
+help: consider borrowing here
+   |
+LL |     foo(&x.clone());
+   |         +
 
 error: aborting due to previous error
 

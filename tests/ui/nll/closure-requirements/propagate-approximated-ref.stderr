@@ -6,13 +6,13 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) &'_#2r u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>)),
+               for<Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) &'?2 u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>)),
                (),
            ]
-   = note: late-bound region is '_#3r
-   = note: late-bound region is '_#4r
+   = note: late-bound region is '?3
+   = note: late-bound region is '?4
    = note: number of external vids: 5
-   = note: where '_#1r: '_#2r
+   = note: where '?1: '?2
 
 note: no external requirements
   --> $DIR/propagate-approximated-ref.rs:42:1

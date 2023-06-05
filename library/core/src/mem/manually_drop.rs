@@ -146,8 +146,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-impl<T: ?Sized> const Deref for ManuallyDrop<T> {
+impl<T: ?Sized> Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline(always)]
     fn deref(&self) -> &T {
@@ -156,8 +155,7 @@ impl<T: ?Sized> const Deref for ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-impl<T: ?Sized> const DerefMut for ManuallyDrop<T> {
+impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.value

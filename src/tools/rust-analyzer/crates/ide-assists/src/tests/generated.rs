@@ -439,7 +439,7 @@ fn doctest_convert_match_to_let_else() {
         r#####"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) => it,
         None => return,
     };
@@ -489,6 +489,31 @@ impl Point {
     pub fn y(&self) -> f32 {
         self.1
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_convert_nested_function_to_closure() {
+    check_doc_test(
+        "convert_nested_function_to_closure",
+        r#####"
+fn main() {
+    fn fo$0o(label: &str, number: u64) {
+        println!("{}: {}", label, number);
+    }
+
+    foo("Bar", 100);
+}
+"#####,
+        r#####"
+fn main() {
+    let foo = |label: &str, number: u64| {
+        println!("{}: {}", label, number);
+    };
+
+    foo("Bar", 100);
 }
 "#####,
     )
@@ -1596,7 +1621,7 @@ fn doctest_introduce_named_generic() {
 fn foo(bar: $0impl Bar) {}
 "#####,
         r#####"
-fn foo<B: Bar>(bar: B) {}
+fn foo<$0B: Bar>(bar: B) {}
 "#####,
     )
 }
@@ -2116,7 +2141,7 @@ trait Foo {
 }
 
 struct Bar;
-$0impl Foo for Bar {
+$0impl Foo for Bar$0 {
     const B: u8 = 17;
     fn c() {}
     type A = String;
@@ -2314,6 +2339,19 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_named_generic_with_impl() {
+    check_doc_test(
+        "replace_named_generic_with_impl",
+        r#####"
+fn new<P$0: AsRef<Path>>(location: P) -> Self {}
+"#####,
+        r#####"
+fn new(location: impl AsRef<Path>) -> Self {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",
@@ -2352,7 +2390,7 @@ fn doctest_replace_try_expr_with_match() {
     check_doc_test(
         "replace_try_expr_with_match",
         r#####"
-//- minicore:option
+//- minicore: try, option
 fn handle() {
     let pat = Some(true)$0?;
 }

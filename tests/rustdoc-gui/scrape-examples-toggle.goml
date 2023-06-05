@@ -1,5 +1,5 @@
 // This tests checks that the "scraped examples" toggle is working as expected.
-goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 
 // Checking the color of the toggle line.
 show-text: true
@@ -7,7 +7,7 @@ define-function: (
     "check-color",
     (theme, toggle_line_color, toggle_line_hover_color),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
 
         // Clicking "More examples..." will open additional examples

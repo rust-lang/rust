@@ -224,7 +224,7 @@ impl<V: Eq + Hash> UnordSet<V> {
     }
 
     #[inline]
-    pub fn items<'a>(&'a self) -> UnordItems<&'a V, impl Iterator<Item = &'a V>> {
+    pub fn items(&self) -> UnordItems<&V, impl Iterator<Item = &V>> {
         UnordItems(self.inner.iter())
     }
 
@@ -415,7 +415,7 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     }
 
     #[inline]
-    pub fn items<'a>(&'a self) -> UnordItems<(&'a K, &'a V), impl Iterator<Item = (&'a K, &'a V)>> {
+    pub fn items(&self) -> UnordItems<(&K, &V), impl Iterator<Item = (&K, &V)>> {
         UnordItems(self.inner.iter())
     }
 

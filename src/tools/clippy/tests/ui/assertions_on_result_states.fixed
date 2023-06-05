@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::assertions_on_result_states)]
 
 use std::result::Result;

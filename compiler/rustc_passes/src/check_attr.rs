@@ -8,7 +8,6 @@ use crate::{errors, fluent_generated as fluent};
 use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, IntoDiagnosticArg, MultiSpan};
-use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -19,9 +18,9 @@ use rustc_hir::{
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
+use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
@@ -29,7 +28,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
@@ -101,12 +100,11 @@ impl CheckAttrVisitor<'_> {
         item: Option<ItemLike<'_>>,
     ) {
         let mut doc_aliases = FxHashMap::default();
-        let mut is_valid = true;
         let mut specified_inline = None;
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
-            let attr_is_valid = match attr.name_or_empty() {
+            match attr.name_or_empty() {
                 sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
                 sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
@@ -188,7 +186,6 @@ impl CheckAttrVisitor<'_> {
                 sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
                 _ => true,
             };
-            is_valid &= attr_is_valid;
 
             // lint-only checks
             match attr.name_or_empty() {
@@ -253,10 +250,6 @@ impl CheckAttrVisitor<'_> {
             }
 
             self.check_unused_attribute(hir_id, attr)
-        }
-
-        if !is_valid {
-            return;
         }
 
         self.check_repr(attrs, span, target, item, hir_id);
@@ -927,30 +920,18 @@ impl CheckAttrVisitor<'_> {
         hir_id: HirId,
     ) -> bool {
         if hir_id != CRATE_HIR_ID {
-            self.tcx.struct_span_lint_hir(
+            // insert a bang between `#` and `[...`
+            let bang_span = attr.span.lo() + BytePos(1);
+            let sugg = (attr.style == AttrStyle::Outer
+                && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID)
+                .then_some(errors::AttrCrateLevelOnlySugg {
+                    attr: attr.span.with_lo(bang_span).with_hi(bang_span),
+                });
+            self.tcx.emit_spanned_lint(
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
                 meta.span(),
-                fluent::passes_attr_crate_level,
-                |err| {
-                    if attr.style == AttrStyle::Outer
-                        && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID
-                    {
-                        if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
-                            src.insert(1, '!');
-                            err.span_suggestion_verbose(
-                                attr.span,
-                                fluent::passes_suggestion,
-                                src,
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            err.span_help(attr.span, fluent::passes_help);
-                        }
-                    }
-                    err.note(fluent::passes_note);
-                    err
-                },
+                errors::AttrCrateLevelOnly { sugg },
             );
             return false;
         }
@@ -1728,7 +1709,9 @@ impl CheckAttrVisitor<'_> {
                     }
                 }
                 sym::align => {
-                    if let (Target::Fn, false) = (target, self.tcx.features().fn_align) {
+                    if let (Target::Fn | Target::Method(MethodKind::Inherent), false) =
+                        (target, self.tcx.features().fn_align)
+                    {
                         feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::fn_align,
@@ -1739,10 +1722,14 @@ impl CheckAttrVisitor<'_> {
                     }
 
                     match target {
-                        Target::Struct | Target::Union | Target::Enum | Target::Fn => continue,
+                        Target::Struct
+                        | Target::Union
+                        | Target::Enum
+                        | Target::Fn
+                        | Target::Method(_) => continue,
                         _ => {
                             self.tcx.sess.emit_err(
-                                errors::AttrApplication::StructEnumFunctionUnion {
+                                errors::AttrApplication::StructEnumFunctionMethodUnion {
                                     hint_span: hint.span(),
                                     span,
                                 },
@@ -1829,7 +1816,7 @@ impl CheckAttrVisitor<'_> {
             || (is_simd && is_c)
             || (int_reprs == 1
                 && is_c
-                && item.map_or(false, |item| {
+                && item.is_some_and(|item| {
                     if let ItemLike::Item(item) = item {
                         return is_c_like_enum(item);
                     }
@@ -1928,6 +1915,10 @@ impl CheckAttrVisitor<'_> {
 
     /// Checks if the items on the `#[debugger_visualizer]` attribute are valid.
     fn check_debugger_visualizer(&self, attr: &Attribute, target: Target) -> bool {
+        // Here we only check that the #[debugger_visualizer] attribute is attached
+        // to nothing other than a module. All other checks are done in the
+        // `debugger_visualizer` query where they need to be done for decoding
+        // anyway.
         match target {
             Target::Mod => {}
             _ => {
@@ -1936,53 +1927,7 @@ impl CheckAttrVisitor<'_> {
             }
         }
 
-        let Some(hints) = attr.meta_item_list() else {
-            self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: attr.span });
-            return false;
-        };
-
-        let hint = match hints.len() {
-            1 => &hints[0],
-            _ => {
-                self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: attr.span });
-                return false;
-            }
-        };
-
-        let Some(meta_item) = hint.meta_item() else {
-            self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: attr.span });
-            return false;
-        };
-
-        let visualizer_path = match (meta_item.name_or_empty(), meta_item.value_str()) {
-            (sym::natvis_file, Some(value)) => value,
-            (sym::gdb_script_file, Some(value)) => value,
-            (_, _) => {
-                self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: meta_item.span });
-                return false;
-            }
-        };
-
-        let file =
-            match resolve_path(&self.tcx.sess.parse_sess, visualizer_path.as_str(), attr.span) {
-                Ok(file) => file,
-                Err(mut err) => {
-                    err.emit();
-                    return false;
-                }
-            };
-
-        match std::fs::File::open(&file) {
-            Ok(_) => true,
-            Err(error) => {
-                self.tcx.sess.emit_err(errors::DebugVisualizerUnreadable {
-                    span: meta_item.span,
-                    file: &file,
-                    error,
-                });
-                false
-            }
-        }
+        true
     }
 
     /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
@@ -2150,7 +2095,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::feature
                 | sym::repr
                 | sym::target_feature
-        ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
+        ) && attr.meta_item_list().is_some_and(|list| list.is_empty())
         {
             errors::UnusedNote::EmptyList { name: attr.name_or_empty() }
         } else if matches!(

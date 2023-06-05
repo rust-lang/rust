@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // ignore-wasm32 compiled with panic=abort by default
 // EMIT_MIR scalar_literal_propagation.main.ConstProp.diff
 fn main() {

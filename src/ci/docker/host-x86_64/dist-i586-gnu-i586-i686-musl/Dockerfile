@@ -21,17 +21,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng-1.24.sh /scripts/
-RUN sh /scripts/crosstool-ng-1.24.sh
+COPY scripts/crosstool-ng.sh /scripts/
+RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
 WORKDIR /tmp
 
-COPY host-x86_64/dist-i586-gnu-i586-i686-musl/i586-linux-gnu.config \
-     host-x86_64/dist-i586-gnu-i586-i686-musl/build-i586-gnu-toolchain.sh \
-     /tmp/
-RUN su rustbuild -c ./build-i586-gnu-toolchain.sh
+COPY scripts/crosstool-ng-build.sh /scripts/
+COPY host-x86_64/dist-i586-gnu-i586-i686-musl/i586-linux-gnu.defconfig /tmp/crosstool.defconfig
+RUN /scripts/crosstool-ng-build.sh
+
 ENV PATH=$PATH:/x-tools/i586-unknown-linux-gnu/bin
 ENV \
     CC_i586_unknown_linux_gnu=i586-unknown-linux-gnu-gcc \

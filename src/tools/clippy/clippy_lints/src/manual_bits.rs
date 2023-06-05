@@ -13,7 +13,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for uses of `std::mem::size_of::<T>() * 8` when
+    /// Checks for usage of `std::mem::size_of::<T>() * 8` when
     /// `T::BITS` is available.
     ///
     /// ### Why is this bad?

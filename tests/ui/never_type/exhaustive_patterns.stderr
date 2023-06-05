@@ -14,6 +14,7 @@ LL | enum Either<A, B> {
 LL |     A(A),
 LL |     B(inner::Wrapper<B>),
    |     - not covered
+   = note: pattern `Either::B(_)` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
    = note: the matched value is of type `Either<(), !>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |

@@ -466,7 +466,7 @@ impl<'a> StripUnconfigured<'a> {
         //
         // N.B., this is intentionally not part of the visit_expr() function
         //     in order for filter_map_expr() to be able to avoid this check
-        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(*a)) {
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             self.sess.emit_err(RemoveExprNotSupported { span: attr.span });
         }
 

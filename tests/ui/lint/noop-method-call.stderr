@@ -11,21 +11,41 @@ note: the lint level is defined here
 LL | #![warn(noop_method_call)]
    |         ^^^^^^^^^^^^^^^^
 
+warning: using `.clone()` on a double reference, which returns `&CloneType<u32>` instead of cloning the inner type
+  --> $DIR/noop-method-call.rs:23:63
+   |
+LL |     let clone_type_ref_clone: &CloneType<u32> = clone_type_ref.clone();
+   |                                                               ^^^^^^^^
+   |
+   = note: `#[warn(suspicious_double_ref_op)]` on by default
+
 warning: call to `.deref()` on a reference in this situation does nothing
-  --> $DIR/noop-method-call.rs:28:63
+  --> $DIR/noop-method-call.rs:27:63
    |
 LL |     let non_deref_type_deref: &PlainType<u32> = non_deref_type.deref();
    |                                                               ^^^^^^^^ unnecessary method call
    |
    = note: the type `&PlainType<u32>` which `deref` is being called on is the same as the type returned from `deref`, so the method call does not do anything and can be removed
 
+warning: using `.deref()` on a double reference, which returns `&PlainType<u32>` instead of dereferencing the inner type
+  --> $DIR/noop-method-call.rs:31:63
+   |
+LL |     let non_deref_type_deref: &PlainType<u32> = non_deref_type.deref();
+   |                                                               ^^^^^^^^
+
 warning: call to `.borrow()` on a reference in this situation does nothing
-  --> $DIR/noop-method-call.rs:36:66
+  --> $DIR/noop-method-call.rs:35:66
    |
 LL |     let non_borrow_type_borrow: &PlainType<u32> = non_borrow_type.borrow();
    |                                                                  ^^^^^^^^^ unnecessary method call
    |
    = note: the type `&PlainType<u32>` which `borrow` is being called on is the same as the type returned from `borrow`, so the method call does not do anything and can be removed
+
+warning: using `.clone()` on a double reference, which returns `&str` instead of cloning the inner type
+  --> $DIR/noop-method-call.rs:43:44
+   |
+LL |     let _v: Vec<&str> = xs.iter().map(|x| x.clone()).collect(); // could use `*x` instead
+   |                                            ^^^^^^^^
 
 warning: call to `.clone()` on a reference in this situation does nothing
   --> $DIR/noop-method-call.rs:48:19
@@ -43,5 +63,5 @@ LL |     non_clone_type.clone();
    |
    = note: the type `&PlainType<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
 
-warning: 5 warnings emitted
+warning: 8 warnings emitted
 

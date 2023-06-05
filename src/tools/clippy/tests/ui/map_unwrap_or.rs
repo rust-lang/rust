@@ -1,4 +1,4 @@
-// aux-build:option_helpers.rs
+//@aux-build:option_helpers.rs
 
 #![warn(clippy::map_unwrap_or)]
 #![allow(clippy::uninlined_format_args, clippy::unnecessary_lazy_evaluations)]

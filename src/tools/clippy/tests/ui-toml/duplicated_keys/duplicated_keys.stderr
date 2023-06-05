@@ -1,8 +1,8 @@
-error: error reading Clippy's configuration file `$DIR/clippy.toml`: duplicate field `cognitive_complexity_threshold` (provided as `cyclomatic_complexity_threshold`)
+error: error reading Clippy's configuration file: duplicate key `cognitive-complexity-threshold` in document root
+  --> $DIR/clippy.toml:2:1
+   |
+LL | cognitive-complexity-threshold = 4
+   | ^
 
-error: error reading Clippy's configuration file `$DIR/clippy.toml`: duplicate field `cognitive-complexity-threshold`
-
-warning: error reading Clippy's configuration file `$DIR/clippy.toml`: deprecated field `cyclomatic-complexity-threshold`. Please use `cognitive-complexity-threshold` instead
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error
 

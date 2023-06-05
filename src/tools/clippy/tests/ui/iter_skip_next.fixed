@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:option_helpers.rs
+//@run-rustfix
+//@aux-build:option_helpers.rs
 
 #![warn(clippy::iter_skip_next)]
 #![allow(clippy::disallowed_names)]

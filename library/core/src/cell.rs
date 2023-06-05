@@ -59,7 +59,7 @@
 //! [`borrow`](`RefCell::borrow`), and a mutable borrow (`&mut T`) can be obtained with
 //! [`borrow_mut`](`RefCell::borrow_mut`). When these functions are called, they first verify that
 //! Rust's borrow rules will be satisfied: any number of immutable borrows are allowed or a
-//! single immutable borrow is allowed, but never both. If a borrow is attempted that would violate
+//! single mutable borrow is allowed, but never both. If a borrow is attempted that would violate
 //! these rules, the thread will panic.
 //!
 //! The corresponding [`Sync`] version of `RefCell<T>` is [`RwLock<T>`].
@@ -115,7 +115,7 @@
 //!     let shared_map: Rc<RefCell<_>> = Rc::new(RefCell::new(HashMap::new()));
 //!     // Create a new block to limit the scope of the dynamic borrow
 //!     {
-//!         let mut map: RefMut<_> = shared_map.borrow_mut();
+//!         let mut map: RefMut<'_, _> = shared_map.borrow_mut();
 //!         map.insert("africa", 92388);
 //!         map.insert("kyoto", 11837);
 //!         map.insert("piccadilly", 11826);
@@ -247,7 +247,7 @@ mod once;
 
 #[unstable(feature = "lazy_cell", issue = "109736")]
 pub use lazy::LazyCell;
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 pub use once::OnceCell;
 
 /// A mutable memory location.
@@ -370,8 +370,7 @@ impl<T: Ord + Copy> Ord for Cell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<T> for Cell<T> {
+impl<T> From<T> for Cell<T> {
     /// Creates a new `Cell<T>` containing the given value.
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
@@ -1318,8 +1317,7 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<T> for RefCell<T> {
+impl<T> From<T> for RefCell<T> {
     /// Creates a new `RefCell<T>` containing the given value.
     fn from(t: T) -> RefCell<T> {
         RefCell::new(t)
@@ -1437,8 +1435,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// use std::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new((5, 'b'));
-    /// let b1: Ref<(u32, char)> = c.borrow();
-    /// let b2: Ref<u32> = Ref::map(b1, |t| &t.0);
+    /// let b1: Ref<'_, (u32, char)> = c.borrow();
+    /// let b2: Ref<'_, u32> = Ref::map(b1, |t| &t.0);
     /// assert_eq!(*b2, 5)
     /// ```
     #[stable(feature = "cell_map", since = "1.8.0")]
@@ -1466,8 +1464,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// use std::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new(vec![1, 2, 3]);
-    /// let b1: Ref<Vec<u32>> = c.borrow();
-    /// let b2: Result<Ref<u32>, _> = Ref::filter_map(b1, |v| v.get(1));
+    /// let b1: Ref<'_, Vec<u32>> = c.borrow();
+    /// let b2: Result<Ref<'_, u32>, _> = Ref::filter_map(b1, |v| v.get(1));
     /// assert_eq!(*b2.unwrap(), 2);
     /// ```
     #[stable(feature = "cell_filter_map", since = "1.63.0")]
@@ -1579,8 +1577,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// let c = RefCell::new((5, 'b'));
     /// {
-    ///     let b1: RefMut<(u32, char)> = c.borrow_mut();
-    ///     let mut b2: RefMut<u32> = RefMut::map(b1, |t| &mut t.0);
+    ///     let b1: RefMut<'_, (u32, char)> = c.borrow_mut();
+    ///     let mut b2: RefMut<'_, u32> = RefMut::map(b1, |t| &mut t.0);
     ///     assert_eq!(*b2, 5);
     ///     *b2 = 42;
     /// }
@@ -1614,8 +1612,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// let c = RefCell::new(vec![1, 2, 3]);
     ///
     /// {
-    ///     let b1: RefMut<Vec<u32>> = c.borrow_mut();
-    ///     let mut b2: Result<RefMut<u32>, _> = RefMut::filter_map(b1, |v| v.get_mut(1));
+    ///     let b1: RefMut<'_, Vec<u32>> = c.borrow_mut();
+    ///     let mut b2: Result<RefMut<'_, u32>, _> = RefMut::filter_map(b1, |v| v.get_mut(1));
     ///
     ///     if let Ok(mut b2) = b2 {
     ///         *b2 += 2;
@@ -2032,6 +2030,27 @@ impl<T> UnsafeCell<T> {
 }
 
 impl<T: ?Sized> UnsafeCell<T> {
+    /// Converts from `&mut T` to `&mut UnsafeCell<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(unsafe_cell_from_mut)]
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let mut val = 42;
+    /// let uc = UnsafeCell::from_mut(&mut val);
+    ///
+    /// *uc.get_mut() -= 1;
+    /// assert_eq!(*uc.get_mut(), 41);
+    /// ```
+    #[inline(always)]
+    #[unstable(feature = "unsafe_cell_from_mut", issue = "111645")]
+    pub const fn from_mut(value: &mut T) -> &mut UnsafeCell<T> {
+        // SAFETY: `UnsafeCell<T>` has the same memory layout as `T` due to #[repr(transparent)].
+        unsafe { &mut *(value as *mut T as *mut UnsafeCell<T>) }
+    }
+
     /// Gets a mutable pointer to the wrapped value.
     ///
     /// This can be cast to a pointer of any kind.
@@ -2102,6 +2121,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// let m = MaybeUninit::<UnsafeCell<i32>>::uninit();
     /// unsafe { UnsafeCell::raw_get(m.as_ptr()).write(5); }
+    /// // avoid below which references to uninitialized data
+    /// // unsafe { UnsafeCell::get(&*m.as_ptr()).write(5); }
     /// let uc = unsafe { m.assume_init() };
     ///
     /// assert_eq!(uc.into_inner(), 5);
@@ -2126,8 +2147,7 @@ impl<T: Default> Default for UnsafeCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<T> for UnsafeCell<T> {
+impl<T> From<T> for UnsafeCell<T> {
     /// Creates a new `UnsafeCell<T>` containing the given value.
     fn from(t: T) -> UnsafeCell<T> {
         UnsafeCell::new(t)
@@ -2226,8 +2246,7 @@ impl<T: Default> Default for SyncUnsafeCell<T> {
 }
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<T> for SyncUnsafeCell<T> {
+impl<T> From<T> for SyncUnsafeCell<T> {
     /// Creates a new `SyncUnsafeCell<T>` containing the given value.
     fn from(t: T) -> SyncUnsafeCell<T> {
         SyncUnsafeCell::new(t)

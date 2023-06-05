@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::uninlined_format_args)]
 
 fn main() {

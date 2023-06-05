@@ -6,8 +6,8 @@ pub mod foo {
 
 pub struct Foo {
   a: Vec<foo::bar:A>,
-  //~^ ERROR expected
-  //~| HELP path separator
+  //~^ ERROR path separator must be a double colon
+  //~| HELP use a double colon instead
 }
 
 fn main() {}

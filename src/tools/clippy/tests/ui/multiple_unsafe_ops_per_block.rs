@@ -1,8 +1,8 @@
-// aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs
 #![allow(unused)]
 #![allow(deref_nullptr)]
 #![allow(clippy::unnecessary_operation)]
-#![allow(clippy::drop_copy)]
+#![allow(dropping_copy_types)]
 #![warn(clippy::multiple_unsafe_ops_per_block)]
 
 extern crate proc_macros;

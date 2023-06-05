@@ -1,9 +1,9 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::explicit_deref_methods)]
 #![allow(unused_variables)]
 #![allow(
     clippy::borrow_deref_ref,
-    clippy::clone_double_ref,
+    suspicious_double_ref_op,
     clippy::explicit_auto_deref,
     clippy::needless_borrow,
     clippy::uninlined_format_args

@@ -7,7 +7,7 @@ LL |         a.push_str("bar");
 help: consider changing this to be a mutable reference
    |
 LL |     fn foo(mut a: &mut String) {
-   |                   ~~~~~~~~~~~
+   |                    +++
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:8:5
@@ -18,7 +18,7 @@ LL |     a.push_str("foo");
 help: consider changing this to be a mutable reference
    |
 LL | pub fn foo<'a>(mut a: &'a mut String) {
-   |                       ~~~~~~~~~~~~~~
+   |                           +++
 
 error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:15:9
@@ -29,7 +29,7 @@ LL |         a.push_str("foo");
 help: consider changing this to be a mutable reference
    |
 LL |     pub fn foo(mut a: &mut String) {
-   |                       ~~~~~~~~~~~
+   |                        +++
 
 error: aborting due to 3 previous errors
 

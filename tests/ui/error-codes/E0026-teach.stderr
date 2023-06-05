@@ -4,7 +4,7 @@ error[E0026]: struct `Thing` does not have a field named `z`
 LL |         Thing { x, y, z } => {}
    |                       ^ struct `Thing` does not have this field
    |
-   = note: This error indicates that a struct pattern attempted to extract a non-existent field from a struct. Struct fields are identified by the name used before the colon : so struct patterns should resemble the declaration of the struct type being matched.
+   = note: This error indicates that a struct pattern attempted to extract a nonexistent field from a struct. Struct fields are identified by the name used before the colon : so struct patterns should resemble the declaration of the struct type being matched.
            
            If you are using shorthand field patterns but want to refer to the struct field by a different name, you should rename it explicitly.
 

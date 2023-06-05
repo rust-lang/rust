@@ -6,8 +6,8 @@ LL |     f.s.push('x');
    |
 help: consider changing this to be a mutable reference
    |
-LL | fn f(x: usize, f: &mut Foo<'_>) {
-   |                   ~~~~~~~~~~~~
+LL | fn f(x: usize, f: &mut Foo) {
+   |                    +++
 
 error: aborting due to previous error
 

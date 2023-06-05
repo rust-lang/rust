@@ -1,7 +1,7 @@
 // check-pass
 // edition:2021
 
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 use std::future::Future;
 use std::marker::PhantomData;

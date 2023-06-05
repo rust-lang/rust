@@ -4,12 +4,10 @@ use rustc_errors::{self, AddToDiagnostic, Diagnostic, IntoDiagnosticArg, Subdiag
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
-#[derive(Default)]
 struct DescriptionCtx<'a> {
     span: Option<Span>,
     kind: &'a str,
     arg: String,
-    num_arg: u32,
 }
 
 impl<'a> DescriptionCtx<'a> {
@@ -18,19 +16,63 @@ impl<'a> DescriptionCtx<'a> {
         region: ty::Region<'tcx>,
         alt_span: Option<Span>,
     ) -> Option<Self> {
-        let mut me = DescriptionCtx::default();
-        me.span = alt_span;
-        match *region {
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                return Self::from_early_bound_and_free_regions(tcx, region);
+        let (span, kind, arg) = match *region {
+            ty::ReEarlyBound(ref br) => {
+                let scope = region.free_region_binding_scope(tcx).expect_local();
+                let span = if let Some(param) =
+                    tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+                {
+                    param.span
+                } else {
+                    tcx.def_span(scope)
+                };
+                if br.has_name() {
+                    (Some(span), "as_defined", br.name.to_string())
+                } else {
+                    (Some(span), "as_defined_anon", String::new())
+                }
             }
-            ty::ReStatic => {
-                me.kind = "restatic";
+            ty::ReFree(ref fr) => {
+                if !fr.bound_region.is_named()
+                    && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
+                {
+                    (Some(ty.span), "defined_here", String::new())
+                } else {
+                    let scope = region.free_region_binding_scope(tcx).expect_local();
+                    match fr.bound_region {
+                        ty::BoundRegionKind::BrNamed(_, name) => {
+                            let span = if let Some(param) = tcx
+                                .hir()
+                                .get_generics(scope)
+                                .and_then(|generics| generics.get_named(name))
+                            {
+                                param.span
+                            } else {
+                                tcx.def_span(scope)
+                            };
+                            if name == kw::UnderscoreLifetime {
+                                (Some(span), "as_defined_anon", String::new())
+                            } else {
+                                (Some(span), "as_defined", name.to_string())
+                            }
+                        }
+                        ty::BrAnon(span) => {
+                            let span = match span {
+                                Some(_) => span,
+                                None => Some(tcx.def_span(scope)),
+                            };
+                            (span, "defined_here", String::new())
+                        }
+                        _ => {
+                            (Some(tcx.def_span(scope)), "defined_here_reg", region.to_string())
+                        }
+                    }
+                }
             }
 
-            ty::RePlaceholder(_) => return None,
+            ty::ReStatic => (alt_span, "restatic", String::new()),
 
-            ty::ReError(_) => return None,
+            ty::RePlaceholder(_) | ty::ReError(_) => return None,
 
             // FIXME(#13998) RePlaceholder should probably print like
             // ReFree rather than dumping Debug output on the user.
@@ -38,82 +80,10 @@ impl<'a> DescriptionCtx<'a> {
             // We shouldn't really be having unification failures with ReVar
             // and ReLateBound though.
             ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-                me.kind = "revar";
-                me.arg = format!("{:?}", region);
+                (alt_span, "revar", format!("{:?}", region))
             }
         };
-        Some(me)
-    }
-
-    fn from_early_bound_and_free_regions<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        region: ty::Region<'tcx>,
-    ) -> Option<Self> {
-        let mut me = DescriptionCtx::default();
-        let scope = region.free_region_binding_scope(tcx).expect_local();
-        match *region {
-            ty::ReEarlyBound(ref br) => {
-                let mut sp = tcx.def_span(scope);
-                if let Some(param) =
-                    tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
-                {
-                    sp = param.span;
-                }
-                if br.has_name() {
-                    me.kind = "as_defined";
-                    me.arg = br.name.to_string();
-                } else {
-                    me.kind = "as_defined_anon";
-                };
-                me.span = Some(sp)
-            }
-            ty::ReFree(ref fr) => {
-                if !fr.bound_region.is_named()
-                    && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
-                {
-                    me.kind = "defined_here";
-                    me.span = Some(ty.span);
-                } else {
-                    match fr.bound_region {
-                        ty::BoundRegionKind::BrNamed(_, name) => {
-                            let mut sp = tcx.def_span(scope);
-                            if let Some(param) =
-                                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
-                            {
-                                sp = param.span;
-                            }
-                            if name == kw::UnderscoreLifetime {
-                                me.kind = "as_defined_anon";
-                            } else {
-                                me.kind = "as_defined";
-                                me.arg = name.to_string();
-                            };
-                            me.span = Some(sp);
-                        }
-                        ty::BrAnon(span) => {
-                            me.kind = "defined_here";
-                            me.span = match span {
-                                Some(_) => span,
-                                None => Some(tcx.def_span(scope)),
-                            }
-                        },
-                        _ => {
-                            me.kind = "defined_here_reg";
-                            me.arg = region.to_string();
-                            me.span = Some(tcx.def_span(scope));
-                        },
-                    }
-                }
-            }
-            _ => bug!(),
-        }
-        Some(me)
-    }
-
-    fn add_to(self, diag: &mut rustc_errors::Diagnostic) {
-        diag.set_arg("desc_kind", self.kind);
-        diag.set_arg("desc_arg", self.arg);
-        diag.set_arg("desc_num_arg", self.num_arg);
+        Some(DescriptionCtx { span, kind, arg })
     }
 }
 
@@ -198,10 +168,11 @@ impl AddToDiagnostic for RegionExplanation<'_> {
     {
         diag.set_arg("pref_kind", self.prefix);
         diag.set_arg("suff_kind", self.suffix);
-        let desc_span = self.desc.span;
-        self.desc.add_to(diag);
+        diag.set_arg("desc_kind", self.desc.kind);
+        diag.set_arg("desc_arg", self.desc.arg);
+
         let msg = f(diag, fluent::infer_region_explanation.into());
-        if let Some(span) = desc_span {
+        if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {
             diag.note(msg);

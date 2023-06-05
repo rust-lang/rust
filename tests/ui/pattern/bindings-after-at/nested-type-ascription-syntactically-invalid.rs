@@ -22,8 +22,7 @@ fn case_1() {
 #[cfg(FALSE)]
 fn case_2() {
     let a @ (b: u8);
-    //~^ ERROR expected one of `!`
-    //~| ERROR expected one of `)`
+    //~^ ERROR expected one of `)`
 }
 
 #[cfg(FALSE)]

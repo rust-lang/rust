@@ -27,8 +27,7 @@ pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
 }
 
 #[stable(feature = "char_convert", since = "1.13.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<char> for u32 {
+impl From<char> for u32 {
     /// Converts a [`char`] into a [`u32`].
     ///
     /// # Examples
@@ -47,8 +46,7 @@ impl const From<char> for u32 {
 }
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<char> for u64 {
+impl From<char> for u64 {
     /// Converts a [`char`] into a [`u64`].
     ///
     /// # Examples
@@ -69,8 +67,7 @@ impl const From<char> for u64 {
 }
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<char> for u128 {
+impl From<char> for u128 {
     /// Converts a [`char`] into a [`u128`].
     ///
     /// # Examples
@@ -123,8 +120,7 @@ impl TryFrom<char> for u8 {
 /// for a superset of Windows-1252 that fills the remaining blanks with corresponding
 /// C0 and C1 control codes.
 #[stable(feature = "char_convert", since = "1.13.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<u8> for char {
+impl From<u8> for char {
     /// Converts a [`u8`] into a [`char`].
     ///
     /// # Examples

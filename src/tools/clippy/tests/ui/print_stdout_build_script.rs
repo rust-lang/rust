@@ -1,4 +1,4 @@
-// compile-flags: --crate-name=build_script_build
+//@compile-flags: --crate-name=build_script_build
 
 #![warn(clippy::print_stdout)]
 

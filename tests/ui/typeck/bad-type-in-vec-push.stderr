@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/bad-type-in-vec-push.rs:11:17
    |
-LL |     vector.sort();
-   |     ------ here the type of `vector` is inferred to be `Vec<_>`
 LL |     result.push(vector);
    |            ---- ^^^^^^ expected integer, found `Vec<_>`
    |            |

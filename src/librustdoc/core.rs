@@ -46,6 +46,7 @@ pub(crate) struct DocContext<'tcx> {
     // for expanding type aliases at the HIR level:
     /// Table `DefId` of type, lifetime, or const parameter -> substituted type, lifetime, or const
     pub(crate) substs: DefIdMap<clean::SubstParam>,
+    pub(crate) current_type_aliases: DefIdMap<usize>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
@@ -82,13 +83,25 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
-    pub(crate) fn enter_alias<F, R>(&mut self, substs: DefIdMap<clean::SubstParam>, f: F) -> R
+    pub(crate) fn enter_alias<F, R>(
+        &mut self,
+        substs: DefIdMap<clean::SubstParam>,
+        def_id: DefId,
+        f: F,
+    ) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
         let old_substs = mem::replace(&mut self.substs, substs);
+        *self.current_type_aliases.entry(def_id).or_insert(0) += 1;
         let r = f(self);
         self.substs = old_substs;
+        if let Some(count) = self.current_type_aliases.get_mut(&def_id) {
+            *count -= 1;
+            if *count == 0 {
+                self.current_type_aliases.remove(&def_id);
+            }
+        }
         r
     }
 
@@ -258,8 +271,6 @@ pub(crate) fn create_config(
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
             providers.lint_mod = |_, _| {};
-            // Prevent `rustc_hir_analysis::check_crate` from calling `typeck` on all bodies.
-            providers.typeck_item_bodies = |_, _| {};
             // hack so that `used_trait_imports` won't try to call typeck
             providers.used_trait_imports = |_, _| {
                 static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);
@@ -329,6 +340,7 @@ pub(crate) fn run_global_ctxt(
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
         substs: Default::default(),
+        current_type_aliases: Default::default(),
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
@@ -355,7 +367,7 @@ pub(crate) fn run_global_ctxt(
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
-    if krate.module.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
+    if krate.module.doc_value().is_empty() {
         let help = format!(
             "The following guide may be of use:\n\
             {}/rustdoc/how-to-write-documentation.html",
@@ -371,7 +383,7 @@ pub(crate) fn run_global_ctxt(
 
     fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler, sp: Span) {
         let mut msg =
-            diag.struct_span_warn(sp, &format!("the `#![doc({})]` attribute is deprecated", name));
+            diag.struct_span_warn(sp, format!("the `#![doc({})]` attribute is deprecated", name));
         msg.note(
             "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
             for more information",

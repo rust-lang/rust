@@ -18,10 +18,8 @@ error[E0308]: mismatched types
   --> $DIR/suggest-ref-macro.rs:15:11
    |
 LL |         x(123);
-   |         - ^^^
-   |         | |
-   |         | expected `&mut i32`, found integer
-   |         | help: consider mutably borrowing here: `&mut 123`
+   |         - ^^^ expected `&mut i32`, found integer
+   |         |
    |         arguments to this function are incorrect
 ...
 LL |     bla!();
@@ -33,6 +31,10 @@ note: function defined here
 LL | fn x(_: &mut i32) {}
    |    ^ -----------
    = note: this error originates in the macro `bla` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider mutably borrowing here
+   |
+LL |         x(&mut 123);
+   |           ++++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-ref-macro.rs:26:10
@@ -41,16 +43,17 @@ LL |         x($v)
    |         - arguments to this function are incorrect
 ...
 LL |     bla!(456);
-   |          ^^^
-   |          |
-   |          expected `&mut i32`, found integer
-   |          help: consider mutably borrowing here: `&mut 456`
+   |          ^^^ expected `&mut i32`, found integer
    |
 note: function defined here
   --> $DIR/suggest-ref-macro.rs:11:4
    |
 LL | fn x(_: &mut i32) {}
    |    ^ -----------
+help: consider mutably borrowing here
+   |
+LL |     bla!(&mut 456);
+   |          ++++
 
 error: aborting due to 3 previous errors
 

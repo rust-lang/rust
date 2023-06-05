@@ -22,7 +22,7 @@ use {
     rustc_data_structures::fx::FxHashSet,
     rustc_data_structures::sync::Lock,
     rustc_data_structures::sync::Lrc,
-    rustc_data_structures::{jobserver, OnDrop},
+    rustc_data_structures::{defer, jobserver},
     rustc_span::DUMMY_SP,
     std::iter,
     std::process,
@@ -530,7 +530,7 @@ fn remove_cycle<D: DepKind>(
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
 pub fn deadlock<D: DepKind>(query_map: QueryMap<D>, registry: &rayon_core::Registry) {
-    let on_panic = OnDrop(|| {
+    let on_panic = defer(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();
     });
@@ -633,7 +633,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
         };
         let mut diag = Diagnostic::new(
             Level::FailureNote,
-            &format!("#{} [{:?}] {}", i, query_info.query.dep_kind, query_info.query.description),
+            format!("#{} [{:?}] {}", i, query_info.query.dep_kind, query_info.query.description),
         );
         diag.span = query_info.job.span.into();
         handler.force_print_diagnostic(diag);

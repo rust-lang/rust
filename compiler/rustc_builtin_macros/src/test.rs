@@ -1,3 +1,4 @@
+use crate::errors;
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
@@ -40,12 +41,7 @@ pub fn expand_test_case(
             unreachable!()
         },
         _ => {
-            ecx.struct_span_err(
-                anno_item.span(),
-                "`#[test_case]` attribute is only allowed on items",
-            )
-            .emit();
-
+            ecx.emit_err(errors::TestCaseNonItem { span: anno_item.span() });
             return vec![];
         }
     };
@@ -118,34 +114,22 @@ pub fn expand_test_or_bench(
             }
         }
         other => {
-            cx.struct_span_err(
-                other.span(),
-                "`#[test]` attribute is only allowed on non associated functions",
-            )
-            .emit();
+            not_testable_error(cx, attr_sp, None);
             return vec![other];
         }
     };
 
-    // Note: non-associated fn items are already handled by `expand_test_or_bench`
     let ast::ItemKind::Fn(fn_) = &item.kind else {
-        let diag = &cx.sess.parse_sess.span_diagnostic;
-        let msg = "the `#[test]` attribute may only be used on a non-associated function";
-        let mut err = match item.kind {
-            // These were a warning before #92959 and need to continue being that to avoid breaking
-            // stable user code (#94508).
-            ast::ItemKind::MacCall(_) => diag.struct_span_warn(attr_sp, msg),
-            // `.forget_guarantee()` needed to get these two arms to match types. Because of how
-            // locally close the `.emit()` call is I'm comfortable with it, but if it can be
-            // reworked in the future to not need it, it'd be nice.
-            _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
+        not_testable_error(cx, attr_sp, Some(&item));
+        return if is_stmt {
+            vec![Annotatable::Stmt(P(ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                span: item.span,
+                kind: ast::StmtKind::Item(item),
+            }))]
+        } else {
+            vec![Annotatable::Item(item)]
         };
-        err.span_label(attr_sp, "the `#[test]` macro causes a function to be run on a test and has no effect on non-functions")
-            .span_label(item.span, format!("expected a non-associated function, found {} {}", item.kind.article(), item.kind.descr()))
-            .span_suggestion(attr_sp, "replace with conditional compilation to make the item only exist when tests are being run", "#[cfg(test)]", Applicability::MaybeIncorrect)
-            .emit();
-
-        return vec![Annotatable::Item(item)];
     };
 
     // has_*_signature will report any errors in the type so compilation
@@ -398,6 +382,36 @@ pub fn expand_test_or_bench(
     }
 }
 
+fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>) {
+    let diag = &cx.sess.parse_sess.span_diagnostic;
+    let msg = "the `#[test]` attribute may only be used on a non-associated function";
+    let mut err = match item.map(|i| &i.kind) {
+        // These were a warning before #92959 and need to continue being that to avoid breaking
+        // stable user code (#94508).
+        Some(ast::ItemKind::MacCall(_)) => diag.struct_span_warn(attr_sp, msg),
+        // `.forget_guarantee()` needed to get these two arms to match types. Because of how
+        // locally close the `.emit()` call is I'm comfortable with it, but if it can be
+        // reworked in the future to not need it, it'd be nice.
+        _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
+    };
+    if let Some(item) = item {
+        err.span_label(
+            item.span,
+            format!(
+                "expected a non-associated function, found {} {}",
+                item.kind.article(),
+                item.kind.descr()
+            ),
+        );
+    }
+    err.span_label(attr_sp, "the `#[test]` macro causes a function to be run as a test and has no effect on non-functions")
+        .span_suggestion(attr_sp,
+            "replace with conditional compilation to make the item only exist when tests are being run",
+            "#[cfg(test)]",
+            Applicability::MaybeIncorrect)
+        .emit();
+}
+
 fn get_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> (Symbol, usize, usize, usize, usize) {
     let span = item.ident.span;
     let (source_file, lo_line, lo_col, hi_line, hi_col) =
@@ -515,15 +529,11 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     match &i.kind {
         ast::ItemKind::Fn(box ast::Fn { sig, generics, .. }) => {
             if let ast::Unsafe::Yes(span) = sig.header.unsafety {
-                sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
-                    .span_label(span, "`unsafe` because of this")
-                    .emit();
+                sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" });
                 return false;
             }
             if let ast::Async::Yes { span, .. } = sig.header.asyncness {
-                sd.struct_span_err(i.span, "async functions cannot be used for tests")
-                    .span_label(span, "`async` because of this")
-                    .emit();
+                sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" });
                 return false;
             }
 

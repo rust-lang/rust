@@ -6,19 +6,19 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) &'_#1r u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>)),
+               for<Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) &'?1 u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>)),
                (),
            ]
-   = note: late-bound region is '_#2r
-   = note: late-bound region is '_#3r
+   = note: late-bound region is '?2
+   = note: late-bound region is '?3
 
 error: lifetime may not live long enough
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:37:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |                                                ---------  - has type `&'_#7r Cell<&'1 u32>`
+   |                                                ---------  - has type `&'?7 Cell<&'1 u32>`
    |                                                |
-   |                                                has type `&'_#5r Cell<&'2 &'_#1r u32>`
+   |                                                has type `&'?5 Cell<&'2 &'?1 u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`

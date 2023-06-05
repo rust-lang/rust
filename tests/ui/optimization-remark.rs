@@ -13,7 +13,7 @@
 // [merge1] compile-flags: -Cremark=all    -Cremark=giraffe
 // [merge2] compile-flags: -Cremark=inline -Cremark=giraffe
 //
-// error-pattern: inline: 'f' not inlined into 'g'
+// error-pattern: inline (missed): 'f' not inlined into 'g'
 // dont-check-compiler-stderr
 
 #[no_mangle]

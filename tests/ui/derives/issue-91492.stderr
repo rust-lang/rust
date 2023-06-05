@@ -11,7 +11,8 @@ LL |     foo.extend_from_slice(bar);
            `NoDerives: Clone`
 help: consider annotating `NoDerives` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | pub struct NoDerives;
    |
 
 error[E0599]: the method `extend_from_slice` exists for mutable reference `&mut Vec<SomeDerives>`, but its trait bounds were not satisfied
@@ -27,7 +28,8 @@ LL |     foo.extend_from_slice(bar);
            `SomeDerives: Clone`
 help: consider annotating `SomeDerives` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | pub struct SomeDerives;
    |
 
 error[E0599]: the method `use_clone` exists for struct `Object<NoDerives, SomeDerives>`, but its trait bounds were not satisfied
@@ -51,7 +53,8 @@ LL | impl<T: Clone, A: Default> Object<T, A> {
    |         unsatisfied trait bound introduced here
 help: consider annotating `NoDerives` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | pub struct NoDerives;
    |
 
 error: aborting due to 3 previous errors

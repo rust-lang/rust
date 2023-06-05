@@ -233,6 +233,7 @@ impl<'a> ArArchiveBuilder<'a> {
             "bsd" => ArchiveKind::Bsd,
             "darwin" => ArchiveKind::Darwin,
             "coff" => ArchiveKind::Coff,
+            "aix_big" => ArchiveKind::AixBig,
             kind => {
                 self.sess.emit_fatal(UnknownArchiveKind { kind });
             }

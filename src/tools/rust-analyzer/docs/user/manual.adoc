@@ -172,26 +172,13 @@ $ cargo xtask install --server
 If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-lang/rust-analyzer/issues/1811[this issue].
 On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
 
-==== `rustup`
+==== rustup
 
 `rust-analyzer` is available in `rustup`:
 
 [source,bash]
 ----
 $ rustup component add rust-analyzer
-----
-
-However, in contrast to `component add clippy` or `component add rustfmt`, this does not actually place a `rust-analyzer` binary in `~/.cargo/bin`, see https://github.com/rust-lang/rustup/issues/2411[this issue]. You can find the path to the binary using:
-[source,bash]
-----
-$ rustup which --toolchain stable rust-analyzer
-----
-You can link to there from `~/.cargo/bin` or configure your editor to use the full path.
-
-Alternatively you might be able to configure your editor to start `rust-analyzer` using the command:
-[source,bash]
-----
-$ rustup run stable rust-analyzer
 ----
 
 ==== Arch Linux
@@ -589,7 +576,7 @@ Try **rust-analyzer: Show RA Version** in VS Code (using **Command Palette** fea
 If the date is more than a week ago, it's better to update rust-analyzer version.
 
 The next thing to check would be panic messages in rust-analyzer's log.
-Log messages are printed to stderr, in VS Code you can see then in the `Output > Rust Analyzer Language Server` tab of the panel.
+Log messages are printed to stderr, in VS Code you can see them in the `Output > Rust Analyzer Language Server` tab of the panel.
 To see more logs, set the `RA_LOG=info` environment variable, this can be done either by setting the environment variable manually or by using `rust-analyzer.server.extraEnv`, note that both of these approaches require the server to be restarted.
 
 To fully capture LSP messages between the editor and the server, set `"rust-analyzer.trace.server": "verbose"` config and check

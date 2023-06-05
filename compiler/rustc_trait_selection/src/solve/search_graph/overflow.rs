@@ -45,7 +45,7 @@ impl OverflowData {
     /// Updating the current limit when hitting overflow.
     fn deal_with_overflow(&mut self) {
         // When first hitting overflow we reduce the overflow limit
-        // for all future goals to prevent hangs if there's an exponental
+        // for all future goals to prevent hangs if there's an exponential
         // blowup.
         self.current_limit.0 = self.default_limit.0 / 8;
     }

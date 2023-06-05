@@ -11,7 +11,7 @@
 // 18px  1.125em
 // 16px  1rem
 // 14px  0.875rem
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 
 assert-css: (".main-heading h1", {"font-size": "24px"})
 
@@ -50,7 +50,7 @@ assert-css: ("h6#sub-heading-for-struct-impl-item-doc", {"font-size": "14px"})
 assert-css: ("h6#sub-heading-for-struct-impl-item-doc", {"border-bottom-width": "0px"})
 assert-css: ("h6#sub-sub-heading-for-struct-impl-item-doc", {"font-size": "14px"})
 
-goto: "file://" + |DOC_PATH| + "/test_docs/enum.HeavilyDocumentedEnum.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.HeavilyDocumentedEnum.html"
 
 assert-css: (".main-heading h1", {"font-size": "24px"})
 
@@ -109,7 +109,7 @@ assert-css: ("h6#sub-sub-heading-for-enum-impl-item-doc", {"border-bottom-width"
 assert-text: ("//ul[@class='block mod']/preceding-sibling::h3", "Modules")
 assert-css: ("//ul[@class='block mod']/preceding-sibling::h3", {"border-bottom-width": "0px"}, ALL)
 
-goto: "file://" + |DOC_PATH| + "/test_docs/union.HeavilyDocumentedUnion.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/union.HeavilyDocumentedUnion.html"
 
 assert-css: (".main-heading h1", {"font-size": "24px"})
 
@@ -141,7 +141,7 @@ assert-css: ("h5#title-for-union-impl-item-doc", {"border-bottom-width": "0px"})
 assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"font-size": "14px"})
 assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"border-bottom-width": "0px"})
 
-goto: "file://" + |DOC_PATH| + "/test_docs/macro.heavily_documented_macro.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/macro.heavily_documented_macro.html"
 
 assert-css: (".main-heading h1", {"font-size": "24px"})
 
@@ -152,13 +152,13 @@ assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
 
 // Needed to check colors
 show-text: true
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 
 define-function: (
     "check-colors",
     (theme, heading_color, small_heading_color, heading_border_color),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (
             ".top-doc .docblock h2",
@@ -222,13 +222,13 @@ define-function: (
     "check-since-color",
     (theme),
     block {
-        local-storage: {"rustdoc-theme": |theme|}
+        set-local-storage: {"rustdoc-theme": |theme|}
         reload:
         assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
     },
 )
 
-goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
+go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
 call-function: ("check-since-color", ("ayu"))
 call-function: ("check-since-color", ("dark"))
 call-function: ("check-since-color", ("light"))

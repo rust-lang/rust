@@ -82,14 +82,13 @@ pub fn expand_deriving_partial_eq(
 
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
-    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let methods = vec![MethodDef {
         name: sym::eq,
         generics: Bounds::empty(),
         explicit_self: true,
         nonself_args: vec![(self_ref(), sym::other)],
         ret_ty: Path(path_local!(bool)),
-        attributes: attrs,
+        attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(Box::new(|a, b, c| cs_eq(a, b, c))),
     }];

@@ -234,10 +234,7 @@ impl DefKind {
 
     #[inline]
     pub fn is_fn_like(self) -> bool {
-        match self {
-            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator => true,
-            _ => false,
-        }
+        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator)
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.

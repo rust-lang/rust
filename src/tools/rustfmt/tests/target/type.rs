@@ -129,7 +129,7 @@ fn issue3117() {
 fn issue3139() {
     assert_eq!(
         to_json_value(&None::<i32>).unwrap(),
-        json!({ "test": None::<i32> })
+        json!(  { "test": None  ::  <i32> }  )
     );
 }
 

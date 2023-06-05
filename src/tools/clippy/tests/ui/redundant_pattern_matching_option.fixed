@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
@@ -46,6 +46,8 @@ fn main() {
     let _ = if opt.is_some() { true } else { false };
 
     issue6067();
+    issue10726();
+    issue10803();
 
     let _ = if gen_opt().is_some() {
         1
@@ -54,6 +56,8 @@ fn main() {
     } else {
         3
     };
+
+    if gen_opt().is_some() {}
 }
 
 fn gen_opt() -> Option<()> {
@@ -85,4 +89,33 @@ const fn issue6067() {
 fn issue7921() {
     if (&None::<()>).is_none() {}
     if (&None::<()>).is_none() {}
+}
+
+fn issue10726() {
+    let x = Some(42);
+
+    x.is_some();
+
+    x.is_none();
+
+    x.is_none();
+
+    x.is_some();
+
+    // Don't lint
+    match x {
+        Some(21) => true,
+        _ => false,
+    };
+}
+
+fn issue10803() {
+    let x = Some(42);
+
+    let _ = x.is_some();
+
+    let _ = x.is_none();
+
+    // Don't lint
+    let _ = matches!(x, Some(16));
 }

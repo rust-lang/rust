@@ -2,6 +2,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, Binder, EarlyBinder, ImplTraitInTraitData, Predicate, PredicateKind, ToPredicate, Ty,
     TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
@@ -43,9 +44,7 @@ fn sized_constraint_for_ty<'tcx>(
             let adt_tys = adt.sized_constraint(tcx);
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
-                .0
-                .iter()
-                .map(|ty| adt_tys.rebind(*ty).subst(tcx, substs))
+                .subst_iter_copied(tcx, substs)
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }
@@ -62,9 +61,8 @@ fn sized_constraint_for_ty<'tcx>(
             // it on the impl.
 
             let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
-            let sized_predicate = ty::Binder::dummy(tcx.mk_trait_ref(sized_trait, [ty]))
-                .without_const()
-                .to_predicate(tcx);
+            let sized_predicate =
+                ty::TraitRef::new(tcx, sized_trait, [ty]).without_const().to_predicate(tcx);
             let predicates = tcx.predicates_of(adtdef.did()).predicates;
             if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }
         }
@@ -77,13 +75,13 @@ fn sized_constraint_for_ty<'tcx>(
     result
 }
 
-fn impl_defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
+fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
     match tcx.hir().get_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
         hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
         node => {
-            bug!("`impl_defaultness` called on {:?}", node);
+            bug!("`defaultness` called on {:?}", node);
         }
     }
 }
@@ -188,6 +186,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
                 kind: hir::TraitItemKind::Const(..), ..
             })
             | hir::Node::AnonConst(_)
+            | hir::Node::ConstBlock(_)
             | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
             | hir::Node::ImplItem(hir::ImplItem {
                 kind:
@@ -289,12 +288,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
                 if let ty::ReLateBound(index, bv) = re.kind() {
                     if depth != ty::INNERMOST {
-                        return self.tcx.mk_re_error_with_message(
+                        return ty::Region::new_error_with_message(
+                            self.tcx,
                             DUMMY_SP,
                             "we shouldn't walk non-predicate binders with `impl Trait`...",
                         );
                     }
-                    self.tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
+                    ty::Region::new_late_bound(self.tcx, index.shifted_out_to_binder(self.depth), bv)
                 } else {
                     re
                 }
@@ -508,7 +508,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
     if self_ty_matches {
         debug!("issue33140_self_ty - MATCHES!");
-        Some(EarlyBinder(self_ty))
+        Some(EarlyBinder::bind(self_ty))
     } else {
         debug!("issue33140_self_ty - non-matching self type");
         None
@@ -567,15 +567,15 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
     unsizing_params
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
         asyncness,
         adt_sized_constraint,
         param_env,
         param_env_reveal_all_normalized,
         instance_def_size_estimate,
         issue33140_self_ty,
-        impl_defaultness,
+        defaultness,
         unsizing_params_for_adt,
         ..*providers
     };

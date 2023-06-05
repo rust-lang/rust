@@ -6,7 +6,7 @@ error[E0080]: evaluation of constant value failed
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `_READ`
-  --> $DIR/out_of_bounds_read.rs:12:33
+  --> $DIR/out_of_bounds_read.rs:10:33
    |
 LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ note: inside `std::ptr::read::<u32>`
 note: inside `ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `_CONST_READ`
-  --> $DIR/out_of_bounds_read.rs:13:39
+  --> $DIR/out_of_bounds_read.rs:11:39
    |
 LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
    |                                       ^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ note: inside `std::ptr::read::<u32>`
 note: inside `ptr::mut_ptr::<impl *mut u32>::read`
   --> $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
 note: inside `_MUT_READ`
-  --> $DIR/out_of_bounds_read.rs:14:37
+  --> $DIR/out_of_bounds_read.rs:12:37
    |
 LL |     const _MUT_READ: u32 = unsafe { (PAST_END_PTR as *mut u32).read() };
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

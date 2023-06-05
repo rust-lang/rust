@@ -5,7 +5,7 @@
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::{CombinedSnapshot, InferOk};
+use crate::infer::InferOk;
 use crate::traits::outlives_bounds::InferCtxtExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_subject_and_oblig;
@@ -17,9 +17,10 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_infer::infer::{DefineOpaqueTypes, DefiningAnchor, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
@@ -61,6 +62,21 @@ pub fn add_placeholder_note(err: &mut Diagnostic) {
     );
 }
 
+#[derive(Debug, Clone, Copy)]
+enum TrackAmbiguityCauses {
+    Yes,
+    No,
+}
+
+impl TrackAmbiguityCauses {
+    fn is_yes(self) -> bool {
+        match self {
+            TrackAmbiguityCauses::Yes => true,
+            TrackAmbiguityCauses::No => false,
+        }
+    }
+}
+
 /// If there are types that satisfy both impls, returns `Some`
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, returns `None`.
@@ -96,29 +112,28 @@ pub fn overlapping_impls(
         return None;
     }
 
-    let infcx = tcx
-        .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
-        .intercrate(true)
-        .build();
-    let selcx = &mut SelectionContext::new(&infcx);
-    let overlaps =
-        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
-    if !overlaps {
-        return None;
-    }
+    let _overlap_with_bad_diagnostics = overlap(
+        tcx,
+        TrackAmbiguityCauses::No,
+        skip_leak_check,
+        impl1_def_id,
+        impl2_def_id,
+        overlap_mode,
+    )?;
 
     // In the case where we detect an error, run the check again, but
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
-    let infcx = tcx
-        .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
-        .intercrate(true)
-        .build();
-    let selcx = &mut SelectionContext::new(&infcx);
-    selcx.enable_tracking_intercrate_ambiguity_causes();
-    Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
+    let overlap = overlap(
+        tcx,
+        TrackAmbiguityCauses::Yes,
+        skip_leak_check,
+        impl1_def_id,
+        impl2_def_id,
+        overlap_mode,
+    )
+    .unwrap();
+    Some(overlap)
 }
 
 fn with_fresh_ty_vars<'cx, 'tcx>(
@@ -145,38 +160,32 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
-fn overlap<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
+#[instrument(level = "debug", skip(tcx))]
+fn overlap<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    track_ambiguity_causes: TrackAmbiguityCauses,
     skip_leak_check: SkipLeakCheck,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
 ) -> Option<OverlapResult<'tcx>> {
-    debug!(
-        "overlap(impl1_def_id={:?}, impl2_def_id={:?}, overlap_mode={:?})",
-        impl1_def_id, impl2_def_id, overlap_mode
-    );
-
-    selcx.infcx.probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
-        overlap_within_probe(selcx, impl1_def_id, impl2_def_id, overlap_mode, snapshot)
-    })
-}
-
-fn overlap_within_probe<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    impl1_def_id: DefId,
-    impl2_def_id: DefId,
-    overlap_mode: OverlapMode,
-    snapshot: &CombinedSnapshot<'tcx>,
-) -> Option<OverlapResult<'tcx>> {
-    let infcx = selcx.infcx;
-
     if overlap_mode.use_negative_impl() {
-        if negative_impl(infcx.tcx, impl1_def_id, impl2_def_id)
-            || negative_impl(infcx.tcx, impl2_def_id, impl1_def_id)
+        if negative_impl(tcx, impl1_def_id, impl2_def_id)
+            || negative_impl(tcx, impl2_def_id, impl1_def_id)
         {
             return None;
         }
+    }
+
+    let infcx = tcx
+        .infer_ctxt()
+        .with_opaque_type_inference(DefiningAnchor::Bubble)
+        .skip_leak_check(skip_leak_check.is_yes())
+        .intercrate(true)
+        .build();
+    let selcx = &mut SelectionContext::new(&infcx);
+    if track_ambiguity_causes.is_yes() {
+        selcx.enable_tracking_intercrate_ambiguity_causes();
     }
 
     // For the purposes of this check, we don't bring any placeholder
@@ -197,18 +206,23 @@ fn overlap_within_probe<'cx, 'tcx>(
         }
     }
 
-    // We disable the leak when creating the `snapshot` by using
-    // `infcx.probe_maybe_disable_leak_check`.
-    if infcx.leak_check(true, snapshot).is_err() {
+    // We toggle the `leak_check` by using `skip_leak_check` when constructing the
+    // inference context, so this may be a noop.
+    if infcx.leak_check(ty::UniverseIndex::ROOT, None).is_err() {
         debug!("overlap: leak check failed");
         return None;
     }
 
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
-
-    let involves_placeholder =
-        matches!(selcx.infcx.region_constraints_added_in_snapshot(snapshot), Some(true));
+    let involves_placeholder = infcx
+        .inner
+        .borrow_mut()
+        .unwrap_region_constraints()
+        .data()
+        .constraints
+        .iter()
+        .any(|c| c.0.involves_placeholders());
 
     let impl_header = selcx.infcx.resolve_vars_if_possible(impl1_header);
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
@@ -306,7 +320,7 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
         &infcx,
         ObligationCause::dummy(),
         impl_env,
-        tcx.impl_subject(impl1_def_id),
+        tcx.impl_subject(impl1_def_id).subst_identity(),
     ) {
         Ok(s) => s,
         Err(err) => {
@@ -322,7 +336,9 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
     let selcx = &mut SelectionContext::new(&infcx);
     let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
     let (subject2, obligations) =
-        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
+        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs, |_, _| {
+            ObligationCause::dummy()
+        });
 
     !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
 }
@@ -405,9 +421,6 @@ fn resolve_negative_obligation<'tcx>(
         param_env,
         infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
     );
-
-    infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
-
     infcx.resolve_regions(&outlives_env).is_empty()
 }
 
@@ -585,7 +598,7 @@ fn orphan_check_trait_ref<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
-    if trait_ref.needs_infer() && trait_ref.needs_subst() {
+    if trait_ref.has_infer() && trait_ref.has_param() {
         bug!(
             "can't orphan check a trait ref with both params and inference variables {:?}",
             trait_ref
@@ -676,7 +689,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
             | ty::RawPtr(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Alias(ty::Projection, ..) => self.found_non_local_ty(ty),
+            | ty::Alias(ty::Projection | ty::Inherent, ..) => self.found_non_local_ty(ty),
 
             ty::Param(..) => self.found_param_ty(ty),
 
@@ -707,7 +720,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
             }
             ty::Dynamic(tt, ..) => {
                 let principal = tt.principal().map(|p| p.def_id());
-                if principal.map_or(false, |p| self.def_id_is_local(p)) {
+                if principal.is_some_and(|p| self.def_id_is_local(p)) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {
                     self.found_non_local_ty(ty)

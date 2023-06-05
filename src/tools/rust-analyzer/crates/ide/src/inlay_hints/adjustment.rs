@@ -3,7 +3,11 @@
 //! let _: u32  = /* <never-to-any> */ loop {};
 //! let _: &u32 = /* &* */ &mut 0;
 //! ```
-use hir::{Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, PointerCast, Safety, Semantics};
+use either::Either;
+use hir::{
+    Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, OverloadedDeref, PointerCast, Safety,
+    Semantics,
+};
 use ide_db::RootDatabase;
 
 use stdx::never;
@@ -13,8 +17,8 @@ use syntax::{
 };
 
 use crate::{
-    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
-    InlayTooltip,
+    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintPosition,
+    InlayHintsConfig, InlayKind, InlayTooltip,
 };
 
 pub(super) fn hints(
@@ -60,22 +64,26 @@ pub(super) fn hints(
         mode_and_needs_parens_for_adjustment_hints(expr, config.adjustment_hints_mode);
 
     if needs_outer_parens {
-        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::opening_paren_before(
+            InlayKind::Adjustment,
+            expr.syntax().text_range(),
+        ));
     }
 
     if postfix && needs_inner_parens {
-        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
-        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::opening_paren_before(
+            InlayKind::Adjustment,
+            expr.syntax().text_range(),
+        ));
+        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
     }
 
-    let (mut tmp0, mut tmp1);
-    let iter: &mut dyn Iterator<Item = _> = if postfix {
-        tmp0 = adjustments.into_iter();
-        &mut tmp0
+    let mut iter = if postfix {
+        Either::Left(adjustments.into_iter())
     } else {
-        tmp1 = adjustments.into_iter().rev();
-        &mut tmp1
+        Either::Right(adjustments.into_iter().rev())
     };
+    let iter: &mut dyn Iterator<Item = _> = iter.as_mut().either(|it| it as _, |it| it as _);
 
     for Adjustment { source, target, kind } in iter {
         if source == target {
@@ -88,7 +96,13 @@ pub(super) fn hints(
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
                 ("<never-to-any>", "never to any")
             }
-            Adjust::Deref(_) => ("*", "dereference"),
+            Adjust::Deref(None) => ("*", "dereference"),
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => {
+                ("*", "`Deref` dereference")
+            }
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => {
+                ("*", "`DerefMut` dereference")
+            }
             Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => ("&", "borrow"),
             Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => ("&mut ", "unique borrow"),
             Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => {
@@ -125,7 +139,10 @@ pub(super) fn hints(
         };
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
-            kind: if postfix { InlayKind::AdjustmentPostfix } else { InlayKind::Adjustment },
+            pad_left: false,
+            pad_right: false,
+            position: if postfix { InlayHintPosition::After } else { InlayHintPosition::Before },
+            kind: InlayKind::Adjustment,
             label: InlayHintLabel::simple(
                 if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
                 Some(InlayTooltip::Markdown(format!(
@@ -135,19 +152,23 @@ pub(super) fn hints(
                 ))),
                 None,
             ),
+            text_edit: None,
         });
     }
     if !postfix && needs_inner_parens {
-        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
-        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::opening_paren_before(
+            InlayKind::Adjustment,
+            expr.syntax().text_range(),
+        ));
+        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
     }
     if needs_outer_parens {
-        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
     }
     Some(())
 }
 
-/// Returns whatever the hint should be postfix and if we need to add paretheses on the inside and/or outside of `expr`,
+/// Returns whatever the hint should be postfix and if we need to add parentheses on the inside and/or outside of `expr`,
 /// if we are going to add (`postfix`) adjustments hints to it.
 fn mode_and_needs_parens_for_adjustment_hints(
     expr: &ast::Expr,
@@ -182,7 +203,7 @@ fn mode_and_needs_parens_for_adjustment_hints(
     }
 }
 
-/// Returns whatever we need to add paretheses on the inside and/or outside of `expr`,
+/// Returns whatever we need to add parentheses on the inside and/or outside of `expr`,
 /// if we are going to add (`postfix`) adjustments hints to it.
 fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, bool) {
     // This is a very miserable pile of hacks...
@@ -193,10 +214,10 @@ fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, 
     // But we want to check what would happen if we add `*`/`.*` to the inner expression.
     // To check for inner we need `` expr.needs_parens_in(`*expr`) ``,
     // to check for outer we need `` `*expr`.needs_parens_in(parent) ``,
-    // where "expr" is the `expr` parameter, `*expr` is the editted `expr`,
+    // where "expr" is the `expr` parameter, `*expr` is the edited `expr`,
     // and "parent" is the parent of the original expression...
     //
-    // For this we utilize mutable mutable trees, which is a HACK, but it works.
+    // For this we utilize mutable trees, which is a HACK, but it works.
     //
     // FIXME: comeup with a better API for `needs_parens_in`, so that we don't have to do *this*
 
@@ -242,7 +263,7 @@ fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, 
     };
 
     // At this point
-    // - `parent`     is the parrent of the original expression
+    // - `parent`     is the parent of the original expression
     // - `dummy_expr` is the original expression wrapped in the operator we want (`*`/`.*`)
     // - `expr`       is the clone of the original expression (with `dummy_expr` as the parent)
 
@@ -264,7 +285,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
-//- minicore: coerce_unsized, fn, eq
+//- minicore: coerce_unsized, fn, eq, index
 fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
@@ -315,6 +336,8 @@ fn main() {
     (&Struct).consume();
    //^^^^^^^*
     (&Struct).by_ref();
+   //^^^^^^^&
+   //^^^^^^^*
 
     (&mut Struct).consume();
    //^^^^^^^^^^^*
@@ -322,6 +345,8 @@ fn main() {
    //^^^^^^^^^^^&
    //^^^^^^^^^^^*
     (&mut Struct).by_ref_mut();
+   //^^^^^^^^^^^&mut $
+   //^^^^^^^^^^^*
 
     // Check that block-like expressions don't duplicate hints
     let _: &mut [u32] = (&mut []);
@@ -360,6 +385,19 @@ fn main() {
     (()) == {()};
   // ^^&
          // ^^^^&
+    let closure: dyn Fn = || ();
+    closure();
+  //^^^^^^^(
+  //^^^^^^^&
+  //^^^^^^^)
+    Struct[0];
+  //^^^^^^(
+  //^^^^^^&
+  //^^^^^^)
+    &mut Struct[0];
+       //^^^^^^(
+       //^^^^^^&mut $
+       //^^^^^^)
 }
 
 #[derive(Copy, Clone)]
@@ -369,8 +407,13 @@ impl Struct {
     fn by_ref(&self) {}
     fn by_ref_mut(&mut self) {}
 }
+struct StructMut;
+impl core::ops::Index<usize> for Struct {
+    type Output = ();
+}
+impl core::ops::IndexMut for Struct {}
 "#,
-        )
+        );
     }
 
     #[test]
@@ -382,7 +425,7 @@ impl Struct {
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: coerce_unsized, fn, eq
+//- minicore: coerce_unsized, fn, eq, index
 fn main() {
 
     Struct.consume();
@@ -396,6 +439,10 @@ fn main() {
    //^^^^^^^)
    //^^^^^^^.*
     (&Struct).by_ref();
+   //^^^^^^^(
+   //^^^^^^^)
+   //^^^^^^^.*
+   //^^^^^^^.&
 
     (&mut Struct).consume();
    //^^^^^^^^^^^(
@@ -407,6 +454,10 @@ fn main() {
    //^^^^^^^^^^^.*
    //^^^^^^^^^^^.&
     (&mut Struct).by_ref_mut();
+   //^^^^^^^^^^^(
+   //^^^^^^^^^^^)
+   //^^^^^^^^^^^.*
+   //^^^^^^^^^^^.&mut
 
     // Check that block-like expressions don't duplicate hints
     let _: &mut [u32] = (&mut []);
@@ -457,6 +508,13 @@ fn main() {
     (()) == {()};
   // ^^.&
          // ^^^^.&
+    let closure: dyn Fn = || ();
+    closure();
+  //^^^^^^^.&
+    Struct[0];
+  //^^^^^^.&
+    &mut Struct[0];
+       //^^^^^^.&mut
 }
 
 #[derive(Copy, Clone)]
@@ -466,6 +524,11 @@ impl Struct {
     fn by_ref(&self) {}
     fn by_ref_mut(&mut self) {}
 }
+struct StructMut;
+impl core::ops::Index<usize> for Struct {
+    type Output = ();
+}
+impl core::ops::IndexMut for Struct {}
 "#,
         );
     }

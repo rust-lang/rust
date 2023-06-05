@@ -2,7 +2,7 @@ struct Foo<
     'a,
     const N: usize = {
         let x: &'a ();
-        //~^ ERROR use of non-static lifetime `'a` in const generic
+        //~^ ERROR generic parameters may not be used in const operations
         3
     },
 >(&'a ());

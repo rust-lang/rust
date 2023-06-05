@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             if expr1.span.ctxt() == ctxt;
             if clippy_utils::SpanlessEq::new(cx).eq_expr(l, target);
             if BinOpKind::Add == op1.node;
-            if let ExprKind::Lit(ref lit) = value.kind;
+            if let ExprKind::Lit(lit) = value.kind;
             if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
             if block.expr.is_none();
             then {
@@ -101,10 +101,10 @@ fn get_int_max(ty: Ty<'_>) -> Option<u128> {
 fn get_const<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<(u128, BinOpKind, &'tcx Expr<'tcx>)> {
     if let ExprKind::Binary(op, l, r) = expr.kind {
         let tr = cx.typeck_results();
-        if let Some((Constant::Int(c), _)) = constant(cx, tr, r) {
+        if let Some(Constant::Int(c)) = constant(cx, tr, r) {
             return Some((c, op.node, l));
         };
-        if let Some((Constant::Int(c), _)) = constant(cx, tr, l) {
+        if let Some(Constant::Int(c)) = constant(cx, tr, l) {
             return Some((c, invert_op(op.node)?, r));
         }
     }

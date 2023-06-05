@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// utility_macro!(expr);
     /// ```
-    #[clippy::version = "pre 1.29.0"]
+    #[clippy::version = "1.69.0"]
     pub QUESTION_MARK_USED,
     restriction,
     "complains if the question mark operator is used"

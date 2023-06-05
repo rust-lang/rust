@@ -88,6 +88,7 @@ use rustc_span::Span;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
+use std::rc::Rc;
 
 /// A unit within a matcher that a `MatcherPos` can refer to. Similar to (and derived from)
 /// `mbe::TokenTree`, but designed specifically for fast and easy traversal during matching.
@@ -257,10 +258,10 @@ struct MatcherPos {
     /// against the relevant metavar by the black box parser. An element will be a `MatchedSeq` if
     /// the corresponding metavar decl is within a sequence.
     ///
-    /// It is critical to performance that this is an `Lrc`, because it gets cloned frequently when
+    /// It is critical to performance that this is an `Rc`, because it gets cloned frequently when
     /// processing sequences. Mostly for sequence-ending possibilities that must be tried but end
     /// up failing.
-    matches: Lrc<Vec<NamedMatch>>,
+    matches: Rc<Vec<NamedMatch>>,
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -272,7 +273,7 @@ impl MatcherPos {
     /// and both are hot enough to be always worth inlining.
     #[inline(always)]
     fn push_match(&mut self, metavar_idx: usize, seq_depth: usize, m: NamedMatch) {
-        let matches = Lrc::make_mut(&mut self.matches);
+        let matches = Rc::make_mut(&mut self.matches);
         match seq_depth {
             0 => {
                 // We are not within a sequence. Just append `m`.
@@ -427,7 +428,7 @@ pub struct TtParser {
 
     /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
     /// that have no metavars.
-    empty_matches: Lrc<Vec<NamedMatch>>,
+    empty_matches: Rc<Vec<NamedMatch>>,
 }
 
 impl TtParser {
@@ -437,7 +438,7 @@ impl TtParser {
             cur_mps: vec![],
             next_mps: vec![],
             bb_mps: vec![],
-            empty_matches: Lrc::new(vec![]),
+            empty_matches: Rc::new(vec![]),
         }
     }
 
@@ -507,7 +508,7 @@ impl TtParser {
                         // Try zero matches of this sequence, by skipping over it.
                         self.cur_mps.push(MatcherPos {
                             idx: idx_first_after,
-                            matches: Lrc::clone(&mp.matches),
+                            matches: Rc::clone(&mp.matches),
                         });
                     }
 
@@ -521,7 +522,7 @@ impl TtParser {
                     // processed next time around the loop.
                     let ending_mp = MatcherPos {
                         idx: mp.idx + 1, // +1 skips the Kleene op
-                        matches: Lrc::clone(&mp.matches),
+                        matches: Rc::clone(&mp.matches),
                     };
                     self.cur_mps.push(ending_mp);
 
@@ -537,7 +538,7 @@ impl TtParser {
                     // will fail quietly when it is processed next time around the loop.
                     let ending_mp = MatcherPos {
                         idx: mp.idx + 2, // +2 skips the separator and the Kleene op
-                        matches: Lrc::clone(&mp.matches),
+                        matches: Rc::clone(&mp.matches),
                     };
                     self.cur_mps.push(ending_mp);
 
@@ -587,9 +588,9 @@ impl TtParser {
         if *token == token::Eof {
             Some(match eof_mps {
                 EofMatcherPositions::One(mut eof_mp) => {
-                    // Need to take ownership of the matches from within the `Lrc`.
-                    Lrc::make_mut(&mut eof_mp.matches);
-                    let matches = Lrc::try_unwrap(eof_mp.matches).unwrap().into_iter();
+                    // Need to take ownership of the matches from within the `Rc`.
+                    Rc::make_mut(&mut eof_mp.matches);
+                    let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
                     self.nameize(matcher, matches)
                 }
                 EofMatcherPositions::Multiple => {

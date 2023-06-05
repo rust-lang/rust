@@ -11,15 +11,9 @@ impl Drop for UnconstDrop {
     fn drop(&mut self) {}
 }
 
-struct NonDrop;
-
-impl !Drop for NonDrop {}
-
 fn main() {
     const {
         f(UnconstDrop);
-        //~^ ERROR can't drop
-        f(NonDrop);
         //~^ ERROR can't drop
     }
 }

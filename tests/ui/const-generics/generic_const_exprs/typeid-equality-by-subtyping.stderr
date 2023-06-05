@@ -1,0 +1,11 @@
+error: to use a constant of type `TypeId` in a pattern, `TypeId` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/typeid-equality-by-subtyping.rs:18:9
+   |
+LL |         WHAT_A_TYPE => 0,
+   |         ^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
+
+error: aborting due to previous error
+

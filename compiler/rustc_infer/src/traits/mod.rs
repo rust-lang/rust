@@ -89,10 +89,10 @@ impl<'tcx> PredicateObligation<'tcx> {
 impl<'tcx> TraitObligation<'tcx> {
     /// Returns `true` if the trait predicate is considered `const` in its ParamEnv.
     pub fn is_const(&self) -> bool {
-        match (self.predicate.skip_binder().constness, self.param_env.constness()) {
-            (ty::BoundConstness::ConstIfConst, hir::Constness::Const) => true,
-            _ => false,
-        }
+        matches!(
+            (self.predicate.skip_binder().constness, self.param_env.constness()),
+            (ty::BoundConstness::ConstIfConst, hir::Constness::Const)
+        )
     }
 
     pub fn derived_cause(
@@ -123,12 +123,16 @@ pub struct FulfillmentError<'tcx> {
 #[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only if it is already implemented.
-    CodeCycle(Vec<Obligation<'tcx, ty::Predicate<'tcx>>>),
+    CodeCycle(Vec<PredicateObligation<'tcx>>),
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
     CodeConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
-    CodeAmbiguity,
+    CodeAmbiguity {
+        /// Overflow reported from the new solver `-Ztrait-solver=next`, which will
+        /// be reported as an regular error as opposed to a fatal error.
+        overflow: bool,
+    },
 }
 
 impl<'tcx, O> Obligation<'tcx, O> {

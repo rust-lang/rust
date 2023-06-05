@@ -20,8 +20,8 @@ thread_local!(static A: Cell<u32> = const { Cell::new(1) });
 // CHECK-LABEL: @get
 #[no_mangle]
 fn get() -> u32 {
-    // CHECK: %0 = load i32, {{.*}}[[TLS]]{{.*}}
-    // CHECK-NEXT: ret i32 %0
+    // CHECK: [[RET_0:%.+]] = load i32, {{.*}}[[TLS]]{{.*}}
+    // CHECK-NEXT: ret i32 [[RET_0]]
     A.with(|a| a.get())
 }
 
@@ -36,8 +36,8 @@ fn set(v: u32) {
 // CHECK-LABEL: @get_aux
 #[no_mangle]
 fn get_aux() -> u64 {
-    // CHECK: %0 = load i64, {{.*}}[[TLS_AUX]]
-    // CHECK-NEXT: ret i64 %0
+    // CHECK: [[RET_1:%.+]] = load i64, {{.*}}[[TLS_AUX]]
+    // CHECK-NEXT: ret i64 [[RET_1]]
     aux::A.with(|a| a.get())
 }
 

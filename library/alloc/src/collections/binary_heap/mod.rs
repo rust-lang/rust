@@ -144,7 +144,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::fmt;
-use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
+use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
@@ -263,7 +263,6 @@ mod tests;
 /// more detailed analysis.
 ///
 /// [`core::cmp::Reverse`]: core::cmp::Reverse
-/// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 /// [push]: BinaryHeap::push
@@ -854,7 +853,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// assert_eq!(heap.into_sorted_vec(), [-10, 2, 4])
     /// ```
-    #[stable(feature = "binary_heap_retain", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "binary_heap_retain", since = "1.70.0")]
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
@@ -1418,7 +1417,6 @@ impl<T> FusedIterator for Iter<'_, T> {}
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: BinaryHeap::into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct IntoIter<T> {
@@ -1465,7 +1463,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for IntoIter<T> {
     /// Creates an empty `binary_heap::IntoIter`.
     ///

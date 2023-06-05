@@ -24,6 +24,7 @@ impl Socket {
 }
 
 impl AsInner<FileDesc> for Socket {
+    #[inline]
     fn as_inner(&self) -> &FileDesc {
         &self.inner
     }
@@ -220,6 +221,7 @@ impl TcpStream {
 }
 
 impl AsInner<Socket> for TcpStream {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }
@@ -304,6 +306,7 @@ impl TcpListener {
 }
 
 impl AsInner<Socket> for TcpListener {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }

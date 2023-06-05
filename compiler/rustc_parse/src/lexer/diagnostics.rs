@@ -21,7 +21,7 @@ pub struct TokenTreeDiagInfo {
     pub matching_block_spans: Vec<(Span, Span)>,
 }
 
-pub fn same_identation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> bool {
+pub fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> bool {
     match (sm.span_to_margin(open_sp), sm.span_to_margin(close_sp)) {
         (Some(open_padding), Some(close_padding)) => open_padding == close_padding,
         _ => false,
@@ -67,13 +67,13 @@ pub fn report_suspicious_mismatch_block(
     let mut matched_spans: Vec<(Span, bool)> = diag_info
         .matching_block_spans
         .iter()
-        .map(|&(open, close)| (open.with_hi(close.lo()), same_identation_level(sm, open, close)))
+        .map(|&(open, close)| (open.with_hi(close.lo()), same_indentation_level(sm, open, close)))
         .collect();
 
     // sort by `lo`, so the large block spans in the front
     matched_spans.sort_by_key(|(span, _)| span.lo());
 
-    // We use larger block whose identation is well to cover those inner mismatched blocks
+    // We use larger block whose indentation is well to cover those inner mismatched blocks
     // O(N^2) here, but we are on error reporting path, so it is fine
     for i in 0..matched_spans.len() {
         let (block_span, same_ident) = matched_spans[i];

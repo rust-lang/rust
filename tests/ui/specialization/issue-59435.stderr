@@ -11,7 +11,8 @@ LL |     type MyType: Default;
    |                  ^^^^^^^ required by this bound in `MyTrait::MyType`
 help: consider annotating `MyStruct` with `#[derive(Default)]`
    |
-LL | #[derive(Default)]
+LL + #[derive(Default)]
+LL | struct MyStruct {}
    |
 
 error: aborting due to previous error

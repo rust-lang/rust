@@ -84,11 +84,19 @@ Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 This flag controls whether or not the linker includes its default libraries.
 It takes one of the following values:
 
-* `y`, `yes`, `on`, `true` or no value: include default libraries (the default).
-* `n`, `no`, `off` or `false`: exclude default libraries.
+* `y`, `yes`, `on`, `true`: include default libraries.
+* `n`, `no`, `off` or `false` or no value: exclude default libraries (the default).
 
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.
+
+## dlltool
+
+On `windows-gnu` targets, this flag controls which dlltool `rustc` invokes to
+generate import libraries when using the [`raw-dylib` link kind](../../reference/items/external-blocks.md#the-link-attribute).
+It takes a path to [the dlltool executable](https://sourceware.org/binutils/docs/binutils/dlltool.html).
+If this flag is not specified, a dlltool executable will be inferred based on
+the host environment and target.
 
 ## embed-bitcode
 
@@ -574,7 +582,8 @@ change in the future.
 This instructs `rustc` to generate code specifically for a particular processor.
 
 You can run `rustc --print target-cpus` to see the valid options to pass
-here. Each target has a default base CPU. Special values include:
+and the default target CPU for the current buid target.
+Each target has a default base CPU. Special values include:
 
 * `native` can be passed to use the processor of the host machine.
 * `generic` refers to an LLVM target with minimal features but modern tuning.

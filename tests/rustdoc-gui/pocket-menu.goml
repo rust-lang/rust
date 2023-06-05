@@ -1,5 +1,5 @@
 // This test ensures that the "pocket menus" are working as expected.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // First we check that the help menu doesn't exist yet.
 assert-false: "#help-button .popover"
 // Then we display the help menu.
@@ -32,7 +32,7 @@ assert-css: ("#settings-menu .popover", {"display": "none"})
 // We check the borders color now:
 
 // Ayu theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "ayu",
     "rustdoc-use-system-theme": "false",
 }
@@ -47,7 +47,7 @@ compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-co
 compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
 
 // Dark theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
@@ -62,7 +62,7 @@ compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-co
 compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
 
 // Light theme
-local-storage: {
+set-local-storage: {
     "rustdoc-theme": "light",
     "rustdoc-use-system-theme": "false",
 }
@@ -77,7 +77,7 @@ compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-co
 compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
 
 // Opening the mobile sidebar should close the settings popover.
-size: (650, 600)
+set-window-size: (650, 600)
 click: "#settings-menu a"
 assert-css: ("#settings-menu .popover", {"display": "block"})
 click: ".sidebar-menu-toggle"

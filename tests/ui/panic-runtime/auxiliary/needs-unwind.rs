@@ -3,7 +3,6 @@
 
 #![crate_type = "rlib"]
 #![no_std]
-#![feature(c_unwind)]
 
 extern "C-unwind" fn foo() {}
 

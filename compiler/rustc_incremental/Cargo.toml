@@ -11,6 +11,7 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_fs_util = { path = "../rustc_fs_util" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_macros = { path = "../rustc_macros" }

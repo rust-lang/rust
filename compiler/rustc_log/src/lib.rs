@@ -40,7 +40,6 @@
 
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-#![feature(is_terminal)]
 
 use std::env::{self, VarError};
 use std::fmt::{self, Display};

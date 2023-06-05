@@ -1,23 +1,23 @@
 // huge_logo crate has a custom 712x860 logo
 // test to ensure the maximum size in the layout works correctly
-goto: "file://" + |DOC_PATH| + "/huge_logo/index.html"
+go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
 
-size: (1280, 1024)
+set-window-size: (1280, 1024)
 // offsetWidth = width of sidebar
 assert-property: (".sidebar .logo-container", {"offsetWidth": "200", "offsetHeight": 100})
 assert-property: (".sidebar .logo-container img", {"offsetWidth": "100", "offsetHeight": 100})
 
-size: (400, 600)
+set-window-size: (400, 600)
 // offset = size + margin
 assert-property: (".mobile-topbar .logo-container", {"offsetWidth": "55", "offsetHeight": 45})
 assert-property: (".mobile-topbar .logo-container img", {"offsetWidth": "35", "offsetHeight": 35})
 
-goto: "file://" + |DOC_PATH| + "/src/huge_logo/lib.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/huge_logo/lib.rs.html"
 
-size: (1280, 1024)
+set-window-size: (1280, 1024)
 assert-property: (".sub-logo-container", {"offsetWidth": "60", "offsetHeight": 60})
 
-size: (400, 600)
+set-window-size: (400, 600)
 // 43 because 35px + 8px of margin
 assert-css: (".sub-logo-container > img", {"margin-bottom": "8px"})
 assert-property: (".sub-logo-container", {"offsetWidth": "35", "offsetHeight": 43})

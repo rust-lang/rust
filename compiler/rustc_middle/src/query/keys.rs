@@ -26,7 +26,7 @@ pub trait Key: Sized {
     //
     //      ...But r-a doesn't support them yet and using a default here causes r-a to not infer
     //      return types of queries which is very annoying. Thus, until r-a support associated
-    //      type defaults, plese restrain from using them here <3
+    //      type defaults, please restrain from using them here <3
     //
     //      r-a issue: <https://github.com/rust-lang/rust-analyzer/issues/13693>
     type CacheSelector;
@@ -174,14 +174,6 @@ impl AsLocalKey for DefId {
     }
 }
 
-impl Key for ty::WithOptConstParam<LocalDefId> {
-    type CacheSelector = DefaultCacheSelector<Self>;
-
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        self.did.default_span(tcx)
-    }
-}
-
 impl Key for SimplifiedType {
     type CacheSelector = DefaultCacheSelector<Self>;
 
@@ -230,7 +222,7 @@ impl Key for (LocalDefId, LocalDefId) {
     }
 }
 
-impl Key for (DefId, Option<Ident>) {
+impl Key for (DefId, Ident) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -313,7 +305,7 @@ impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        (self.0).def.did.default_span(tcx)
+        (self.0).def.default_span(tcx)
     }
 }
 

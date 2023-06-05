@@ -1,7 +1,8 @@
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 fn main() {}
 
+#[rustfmt::skip]
 trait A<'a> {
     type B<'b>: Clone
     // FIXME(generic_associated_types): Remove one of the below bounds
@@ -18,4 +19,5 @@ impl<'a> A<'a> for C {
     type B<'b> = impl Clone;
 
     fn a(&'a self) -> Self::B<'a> {} //~ ERROR: non-defining opaque type use in defining scope
+    //~^ ERROR: mismatched types
 }

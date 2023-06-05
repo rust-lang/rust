@@ -68,13 +68,17 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
         }
 
         let mut hit = false;
-        let mut stop = false;
         backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
             hit = true;
+
+            // Any frames between `__rust_begin_short_backtrace` and `__rust_end_short_backtrace`
+            // are omitted from the backtrace in short mode, `__rust_end_short_backtrace` will be
+            // called before the panic hook, so we won't ignore any frames if there is no
+            // invoke of `__rust_begin_short_backtrace`.
             if print_fmt == PrintFmt::Short {
                 if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
                     if start && sym.contains("__rust_begin_short_backtrace") {
-                        stop = true;
+                        start = false;
                         return;
                     }
                     if sym.contains("__rust_end_short_backtrace") {
@@ -88,9 +92,6 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                 res = bt_fmt.frame().symbol(frame, symbol);
             }
         });
-        if stop {
-            return false;
-        }
         #[cfg(target_os = "nto")]
         if libc::__my_thread_exit as *mut libc::c_void == frame.ip() {
             if !hit && start {

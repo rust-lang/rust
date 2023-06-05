@@ -11,14 +11,13 @@
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
-use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::hint;
 use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::{PhantomData, Unpin, Unsize};
+use core::marker::{PhantomData, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw};
@@ -188,8 +187,6 @@ macro_rules! acquire {
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
 /// [atomic]: core::sync::atomic
-/// [`Send`]: core::marker::Send
-/// [`Sync`]: core::marker::Sync
 /// [deref]: core::ops::Deref
 /// [downgrade]: Arc::downgrade
 /// [upgrade]: Weak::upgrade
@@ -505,6 +502,7 @@ impl<T> Arc<T> {
     /// assert_eq!(*five, 5)
     /// ```
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
@@ -538,6 +536,7 @@ impl<T> Arc<T> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
@@ -796,7 +795,7 @@ impl<T> Arc<T> {
     /// y_thread.join().unwrap();
     /// ```
     #[inline]
-    #[stable(feature = "arc_into_inner", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "arc_into_inner", since = "1.70.0")]
     pub fn into_inner(this: Self) -> Option<T> {
         // Make sure that the ordinary `Drop` implementation isn’t called as well
         let mut this = mem::ManuallyDrop::new(this);
@@ -847,6 +846,7 @@ impl<T> Arc<[T]> {
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
@@ -874,6 +874,7 @@ impl<T> Arc<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
@@ -1241,7 +1242,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
-        unsafe { mem::drop(Arc::from_raw(ptr)) };
+        unsafe { drop(Arc::from_raw(ptr)) };
     }
 
     #[inline]
@@ -1303,10 +1304,10 @@ impl<T: ?Sized> Arc<T> {
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
         let layout = arcinner_layout_for_value_layout(value_layout);
-        unsafe {
-            Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-        }
+
+        let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+
+        unsafe { Self::initialize_arcinner(ptr, layout, mem_to_arcinner) }
     }
 
     /// Allocates an `ArcInner<T>` with sufficient space for
@@ -1324,7 +1325,16 @@ impl<T: ?Sized> Arc<T> {
 
         let ptr = allocate(layout)?;
 
-        // Initialize the ArcInner
+        let inner = unsafe { Self::initialize_arcinner(ptr, layout, mem_to_arcinner) };
+
+        Ok(inner)
+    }
+
+    unsafe fn initialize_arcinner(
+        ptr: NonNull<[u8]>,
+        layout: Layout,
+        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
+    ) -> *mut ArcInner<T> {
         let inner = mem_to_arcinner(ptr.as_non_null_ptr().as_ptr());
         debug_assert_eq!(unsafe { Layout::for_value(&*inner) }, layout);
 
@@ -1333,7 +1343,7 @@ impl<T: ?Sized> Arc<T> {
             ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
         }
 
-        Ok(inner)
+        inner
     }
 
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.
@@ -1404,7 +1414,7 @@ impl<T> Arc<[T]> {
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Arc<[T]> {
+    unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Arc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
         // into the new ArcInner will be dropped, then the memory freed.
@@ -2771,7 +2781,7 @@ where
     /// ```rust
     /// # use std::sync::Arc;
     /// # use std::borrow::Cow;
-    /// let cow: Cow<str> = Cow::Borrowed("eggplant");
+    /// let cow: Cow<'_, str> = Cow::Borrowed("eggplant");
     /// let shared: Arc<str> = Arc::from(cow);
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
@@ -2818,7 +2828,7 @@ impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_iter", since = "1.37.0")]
-impl<T> iter::FromIterator<T> for Arc<[T]> {
+impl<T> FromIterator<T> for Arc<[T]> {
     /// Takes each element in the `Iterator` and collects it into an `Arc<[T]>`.
     ///
     /// # Performance characteristics
@@ -2857,7 +2867,7 @@ impl<T> iter::FromIterator<T> for Arc<[T]> {
     /// let evens: Arc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         ToArcSlice::to_arc_slice(iter.into_iter())
     }
 }

@@ -6,7 +6,7 @@ use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
@@ -27,6 +27,7 @@ struct Cache {
     switch_sources: OnceCell<SwitchSources>,
     is_cyclic: OnceCell<bool>,
     postorder: OnceCell<Vec<BasicBlock>>,
+    dominators: OnceCell<Dominators<BasicBlock>>,
 }
 
 impl<'tcx> BasicBlocks<'tcx> {
@@ -41,8 +42,8 @@ impl<'tcx> BasicBlocks<'tcx> {
         *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
     }
 
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(&self)
+    pub fn dominators(&self) -> &Dominators<BasicBlock> {
+        self.cache.dominators.get_or_init(|| dominators(self))
     }
 
     /// Returns predecessors for each basic block.

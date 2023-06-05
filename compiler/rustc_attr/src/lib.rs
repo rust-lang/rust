@@ -12,7 +12,7 @@
 extern crate rustc_macros;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 mod builtin;
 mod session_diagnostics;

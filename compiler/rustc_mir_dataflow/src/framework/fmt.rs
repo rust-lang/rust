@@ -2,7 +2,7 @@
 //! analysis.
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use std::fmt;
 
 /// An extension to `fmt::Debug` for data that can be better printed with some auxiliary data `C`.

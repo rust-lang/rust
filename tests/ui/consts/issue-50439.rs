@@ -22,7 +22,9 @@ impl<T: Sized> PinDropInternal for Bears<T> {
     where
         Self: ReflectDrop,
     {
-        let _ = [(); 0 - !!(<Bears<T> as ReflectDrop>::REFLECT_DROP) as usize]; //~ ERROR constant expression depends on a generic parameter
+        let _ = [(); 0 - !!(<Bears<T> as ReflectDrop>::REFLECT_DROP) as usize];
+        //~^ ERROR constant expression depends on a generic parameter
+        //~| ERROR constant expression depends on a generic parameter
     }
 }
 

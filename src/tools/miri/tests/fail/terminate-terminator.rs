@@ -13,7 +13,6 @@ impl Drop for Foo {
 #[inline(always)]
 fn has_cleanup() {
     //~^ ERROR: panic in a function that cannot unwind
-    // FIXME(nbdd0121): The error should be reported at the call site.
     let _f = Foo;
     panic!();
 }

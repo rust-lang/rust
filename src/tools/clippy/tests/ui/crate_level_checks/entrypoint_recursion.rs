@@ -1,4 +1,4 @@
-// ignore-macos
+//@ignore-macos
 
 #![feature(rustc_attrs)]
 

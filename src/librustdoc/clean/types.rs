@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::default::Default;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -12,6 +11,7 @@ use arrayvec::ArrayVec;
 use thin_vec::ThinVec;
 
 use rustc_ast as ast;
+use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -21,7 +21,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
@@ -42,7 +42,6 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
-pub(crate) use self::FnRetTy::*;
 pub(crate) use self::ItemKind::*;
 pub(crate) use self::SelfTy::*;
 pub(crate) use self::Type::{
@@ -157,7 +156,7 @@ impl ExternalCrate {
     }
 
     /// Attempts to find where an external crate is located, given that we're
-    /// rendering in to the specified source destination.
+    /// rendering into the specified source destination.
     pub(crate) fn location(
         &self,
         extern_url: Option<&str>,
@@ -401,10 +400,16 @@ impl Item {
             .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
     }
 
-    /// Finds the `doc` attribute as a NameValue and returns the corresponding
-    /// value found.
-    pub(crate) fn doc_value(&self) -> Option<String> {
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    pub(crate) fn doc_value(&self) -> String {
         self.attrs.doc_value()
+    }
+
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
+    /// documentation but it is empty (e.g. `#[doc = ""]`).
+    pub(crate) fn opt_doc_value(&self) -> Option<String> {
+        self.attrs.opt_doc_value()
     }
 
     pub(crate) fn from_def_id_and_parts(
@@ -441,12 +446,6 @@ impl Item {
             cfg,
             inline_stmt_id: None,
         }
-    }
-
-    /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
-    /// with newlines.
-    pub(crate) fn collapsed_doc_value(&self) -> Option<String> {
-        self.attrs.collapsed_doc_value()
     }
 
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
@@ -687,7 +686,7 @@ impl Item {
                 return None;
             }
             // Variants always inherit visibility
-            VariantItem(..) => return None,
+            VariantItem(..) | ImplItem(..) => return None,
             // Trait items inherit the trait's visibility
             AssocConstItem(..) | TyAssocConstItem(..) | AssocTypeItem(..) | TyAssocTypeItem(..)
             | TyMethodItem(..) | MethodItem(..) => {
@@ -711,6 +710,78 @@ impl Item {
             None => def_id,
         };
         Some(tcx.visibility(def_id))
+    }
+
+    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, keep_as_is: bool) -> Vec<String> {
+        const ALLOWED_ATTRIBUTES: &[Symbol] =
+            &[sym::export_name, sym::link_section, sym::no_mangle, sym::repr, sym::non_exhaustive];
+
+        use rustc_abi::IntegerType;
+        use rustc_middle::ty::ReprFlags;
+
+        let mut attrs: Vec<String> = self
+            .attrs
+            .other_attrs
+            .iter()
+            .filter_map(|attr| {
+                if keep_as_is {
+                    Some(pprust::attribute_to_string(attr))
+                } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
+                    Some(
+                        pprust::attribute_to_string(attr)
+                            .replace("\\\n", "")
+                            .replace('\n', "")
+                            .replace("  ", " "),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if let Some(def_id) = self.item_id.as_def_id() &&
+            !def_id.is_local() &&
+            // This check is needed because `adt_def` will panic if not a compatible type otherwise...
+            matches!(self.type_(), ItemType::Struct | ItemType::Enum | ItemType::Union)
+        {
+            let repr = tcx.adt_def(def_id).repr();
+            let mut out = Vec::new();
+            if repr.flags.contains(ReprFlags::IS_C) {
+                out.push("C");
+            }
+            if repr.flags.contains(ReprFlags::IS_TRANSPARENT) {
+                out.push("transparent");
+            }
+            if repr.flags.contains(ReprFlags::IS_SIMD) {
+                out.push("simd");
+            }
+            let pack_s;
+            if let Some(pack) = repr.pack {
+                pack_s = format!("packed({})", pack.bytes());
+                out.push(&pack_s);
+            }
+            let align_s;
+            if let Some(align) = repr.align {
+                align_s = format!("align({})", align.bytes());
+                out.push(&align_s);
+            }
+            let int_s;
+            if let Some(int) = repr.int {
+                int_s = match int {
+                    IntegerType::Pointer(is_signed) => {
+                        format!("{}size", if is_signed { 'i' } else { 'u' })
+                    }
+                    IntegerType::Fixed(size, is_signed) => {
+                        format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
+                    }
+                };
+                out.push(&int_s);
+            }
+            if out.is_empty() {
+                return Vec::new();
+            }
+            attrs.push(format!("#[repr({})]", out.join(", ")));
+        }
+        attrs
     }
 }
 
@@ -752,7 +823,7 @@ pub(crate) enum ItemKind {
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
     TyAssocConstItem(Type),
-    /// An associated associated constant in a trait impl or a provided one in a trait declaration.
+    /// An associated constant in a trait impl or a provided one in a trait declaration.
     AssocConstItem(Type, ConstantKind),
     /// A required associated type in a trait declaration.
     ///
@@ -980,7 +1051,7 @@ pub(crate) trait NestedAttributesExt {
     /// Returns `true` if the attribute list contains a specific `word`
     fn has_word(self, word: Symbol) -> bool
     where
-        Self: std::marker::Sized,
+        Self: Sized,
     {
         <Self as NestedAttributesExt>::get_word_attr(self, word).is_some()
     }
@@ -994,17 +1065,6 @@ impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
     fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
         self.find(|attr| attr.is_word() && attr.has_name(word))
     }
-}
-
-/// Collapse a collection of [`DocFragment`]s into one string,
-/// handling indentation and newlines as needed.
-pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
-    let mut acc = String::new();
-    for frag in doc_strings {
-        add_doc_fragment(&mut acc, frag);
-    }
-    acc.pop();
-    acc
 }
 
 /// A link that has not yet been rendered.
@@ -1091,29 +1151,23 @@ impl Attributes {
         Attributes { doc_strings, other_attrs }
     }
 
-    /// Finds the `doc` attribute as a NameValue and returns the corresponding
-    /// value found.
-    pub(crate) fn doc_value(&self) -> Option<String> {
-        let mut iter = self.doc_strings.iter();
-
-        let ori = iter.next()?;
-        let mut out = String::new();
-        add_doc_fragment(&mut out, ori);
-        for new_frag in iter {
-            add_doc_fragment(&mut out, new_frag);
-        }
-        out.pop();
-        if out.is_empty() { None } else { Some(out) }
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    pub(crate) fn doc_value(&self) -> String {
+        self.opt_doc_value().unwrap_or_default()
     }
 
-    /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
-    /// with newlines.
-    pub(crate) fn collapsed_doc_value(&self) -> Option<String> {
-        if self.doc_strings.is_empty() {
-            None
-        } else {
-            Some(collapse_doc_fragments(&self.doc_strings))
-        }
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
+    /// documentation but it is empty (e.g. `#[doc = ""]`).
+    pub(crate) fn opt_doc_value(&self) -> Option<String> {
+        (!self.doc_strings.is_empty()).then(|| {
+            let mut res = String::new();
+            for frag in &self.doc_strings {
+                add_doc_fragment(&mut res, frag);
+            }
+            res.pop();
+            res
+        })
     }
 
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
@@ -1298,7 +1352,7 @@ pub(crate) struct Function {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct FnDecl {
     pub(crate) inputs: Arguments,
-    pub(crate) output: FnRetTy,
+    pub(crate) output: Type,
     pub(crate) c_variadic: bool,
 }
 
@@ -1316,18 +1370,16 @@ impl FnDecl {
     ///
     /// This function will panic if the return type does not match the expected sugaring for async
     /// functions.
-    pub(crate) fn sugared_async_return_type(&self) -> FnRetTy {
-        match &self.output {
-            FnRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
-                GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
-                    let bindings = trait_.bindings().unwrap();
-                    let ret_ty = bindings[0].term();
-                    let ty = ret_ty.ty().expect("Unexpected constant return term");
-                    FnRetTy::Return(ty.clone())
-                }
-                _ => panic!("unexpected desugaring of async function"),
-            },
-            _ => panic!("unexpected desugaring of async function"),
+    pub(crate) fn sugared_async_return_type(&self) -> Type {
+        if let Type::ImplTrait(v) = &self.output &&
+            let [GenericBound::TraitBound(PolyTrait { trait_, .. }, _ )] = &v[..]
+        {
+            let bindings = trait_.bindings().unwrap();
+            let ret_ty = bindings[0].term();
+            let ty = ret_ty.ty().expect("Unexpected constant return term");
+            ty.clone()
+        } else {
+            panic!("unexpected desugaring of async function")
         }
     }
 }
@@ -1366,21 +1418,6 @@ impl Argument {
                 Some(SelfBorrowed(lifetime.clone(), mutability))
             }
             _ => Some(SelfExplicit(self.type_.clone())),
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) enum FnRetTy {
-    Return(Type),
-    DefaultReturn,
-}
-
-impl FnRetTy {
-    pub(crate) fn as_return(&self) -> Option<&Type> {
-        match self {
-            Return(ret) => Some(ret),
-            DefaultReturn => None,
         }
     }
 }
@@ -1586,9 +1623,13 @@ impl Type {
         matches!(self, Type::ImplTrait(_))
     }
 
+    pub(crate) fn is_unit(&self) -> bool {
+        matches!(self, Type::Tuple(v) if v.is_empty())
+    }
+
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
         if let QPath(box QPathData { self_type, trait_, assoc, .. }) = self {
-            Some((self_type, trait_.def_id(), assoc.clone()))
+            Some((self_type, trait_.as_ref()?.def_id(), assoc.clone()))
         } else {
             None
         }
@@ -1632,7 +1673,7 @@ pub(crate) struct QPathData {
     pub self_type: Type,
     /// FIXME: compute this field on demand.
     pub should_show_cast: bool,
-    pub trait_: Path,
+    pub trait_: Option<Path>,
 }
 
 /// A primitive (aka, builtin) type.
@@ -2019,7 +2060,7 @@ impl Variant {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Discriminant {
-    // In the case of cross crate re-exports, we don't have the nessesary information
+    // In the case of cross crate re-exports, we don't have the necessary information
     // to reconstruct the expression of the discriminant, only the value.
     pub(super) expr: Option<BodyId>,
     pub(super) value: DefId,
@@ -2306,7 +2347,7 @@ impl Impl {
 pub(crate) enum ImplKind {
     Normal,
     Auto,
-    FakeVaradic,
+    FakeVariadic,
     Blanket(Box<Type>),
 }
 
@@ -2320,7 +2361,7 @@ impl ImplKind {
     }
 
     pub(crate) fn is_fake_variadic(&self) -> bool {
-        matches!(self, ImplKind::FakeVaradic)
+        matches!(self, ImplKind::FakeVariadic)
     }
 
     pub(crate) fn as_blanket_ty(&self) -> Option<&Type> {

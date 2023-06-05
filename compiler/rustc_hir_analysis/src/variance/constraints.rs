@@ -92,7 +92,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
     fn build_constraints_for_item(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
-        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id.to_def_id()));
+        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id));
 
         // Skip items with no generics - there's nothing to infer in them.
         if tcx.generics_of(def_id).count() == 0 {

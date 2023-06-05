@@ -643,7 +643,7 @@ Examples:
 ```rust
 match foo {
     foo => bar,
-    a_very_long_patten | another_pattern if an_expression() => {
+    a_very_long_pattern | another_pattern if an_expression() => {
         no_room_for_this_expression()
     }
     foo => {

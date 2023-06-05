@@ -7,5 +7,5 @@ fn main() {
     // Also not assigning directly as that's array initialization, not assignment.
     let zst_val = [1u8; 0];
     unsafe { std::ptr::null_mut::<[u8; 0]>().write(zst_val) };
-    //~^ERROR: memory access failed: null pointer is a dangling pointer
+    //~^ERROR: dereferencing pointer failed: null pointer is a dangling pointer
 }

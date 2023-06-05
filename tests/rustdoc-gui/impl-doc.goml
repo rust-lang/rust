@@ -1,5 +1,5 @@
 // A docblock on an impl must have a margin to separate it from the contents.
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.TypeWithImplDoc.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.TypeWithImplDoc.html"
 
 // The text is about 24px tall, so if there's a margin, then their position will be >24px apart
 compare-elements-position-near-false: (

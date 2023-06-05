@@ -10,6 +10,7 @@
 // ignore-s390x
 // ignore-sparc
 // ignore-sparc64
+// ignore-loongarch64
 
 #![warn(unused_attributes)]
 

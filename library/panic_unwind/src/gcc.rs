@@ -48,8 +48,8 @@ use unwind as uw;
 static CANARY: u8 = 0;
 
 // NOTE(nbdd0121)
-// Once `c_unwind` feature is stabilized, there will be ABI stability requirement
-// on this struct. The first two field must be `_Unwind_Exception` and `canary`,
+// There is an ABI stability requirement on this struct.
+// The first two field must be `_Unwind_Exception` and `canary`,
 // as it may be accessed by a different version of the std with a different compiler.
 #[repr(C)]
 struct Exception {

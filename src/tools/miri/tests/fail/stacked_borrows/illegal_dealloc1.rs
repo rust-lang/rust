@@ -1,4 +1,4 @@
-//@error-pattern: /deallocation .* tag does not exist in the borrow stack/
+//@error-in-other-file: /deallocation .* tag does not exist in the borrow stack/
 use std::alloc::{alloc, dealloc, Layout};
 
 fn main() {

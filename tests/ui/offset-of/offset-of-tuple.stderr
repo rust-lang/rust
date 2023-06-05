@@ -1,0 +1,37 @@
+error: expected identifier, found `+`
+  --> $DIR/offset-of-tuple.rs:9:35
+   |
+LL |     builtin # offset_of((u8, u8), +1);
+   |                                   ^ expected identifier
+
+error: no rules expected the token `1`
+  --> $DIR/offset-of-tuple.rs:6:38
+   |
+LL |     core::mem::offset_of!((u8, u8), +1);
+   |                                      ^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence start
+
+error: no rules expected the token `1`
+  --> $DIR/offset-of-tuple.rs:7:38
+   |
+LL |     core::mem::offset_of!((u8, u8), -1);
+   |                                      ^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence start
+
+error[E0609]: no field `_0` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:5:37
+   |
+LL |     core::mem::offset_of!((u8, u8), _0);
+   |                                     ^^
+
+error[E0609]: no field `_0` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:8:35
+   |
+LL |     builtin # offset_of((u8, u8), _0);
+   |                                   ^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

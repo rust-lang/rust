@@ -6,6 +6,7 @@
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since Diagnostic is strictly internal to the compiler
 // the test is just ignored on stable and beta:
+// ignore-stage1
 // ignore-beta
 // ignore-stable
 
@@ -16,8 +17,10 @@ extern crate rustc_span;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
+extern crate rustc_fluent_macro;
 extern crate rustc_macros;
-use rustc_macros::{fluent_messages, Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_fluent_macro::fluent_messages;
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
@@ -336,12 +339,12 @@ struct ErrorWithDefaultLabelAttr<'a> {
 }
 
 #[derive(Diagnostic)]
-//~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
 #[diag(no_crate_example, code = "E0123")]
 struct ArgFieldWithoutSkip {
     #[primary_span]
     span: Span,
     other: Hello,
+    //~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
 }
 
 #[derive(Diagnostic)]
@@ -518,7 +521,7 @@ struct BoolField {
     #[help]
     foo: bool,
     #[help(no_crate_help)]
-    //~^ ERROR the `#[help(...)]` attribute can only be applied to fields of type `Span`, `bool` or `()`
+    //~^ ERROR the `#[help(...)]` attribute can only be applied to fields of type
     // only allow plain 'bool' fields
     bar: Option<bool>,
 }
@@ -535,7 +538,7 @@ struct LabelWithTrailingPath {
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingNameValue {
     #[label(no_crate_label, foo = "...")]
-    //~^ ERROR invalid nested attribute
+    //~^ ERROR only `no_span` is a valid nested attribute
     span: Span,
 }
 
@@ -543,7 +546,7 @@ struct LabelWithTrailingNameValue {
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingList {
     #[label(no_crate_label, foo("..."))]
-    //~^ ERROR invalid nested attribute
+    //~^ ERROR only `no_span` is a valid nested attribute
     span: Span,
 }
 

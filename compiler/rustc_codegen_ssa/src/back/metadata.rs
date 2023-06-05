@@ -6,15 +6,15 @@ use std::path::Path;
 
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
-    elf, pe, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
-    SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
+    elf, pe, xcoff, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
+    ObjectSymbol, SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
 };
 
 use snap::write::FrameEncoder;
 
+use object::elf::NT_GNU_PROPERTY_TYPE_0;
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owned_slice::try_slice_owned;
-use rustc_data_structures::sync::MetadataRef;
+use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
@@ -35,10 +35,12 @@ use rustc_target::spec::{RelocModel, Target};
 #[derive(Debug)]
 pub struct DefaultMetadataLoader;
 
+static AIX_METADATA_SYMBOL_NAME: &'static str = "__aix_rust_metadata";
+
 fn load_metadata_with(
     path: &Path,
     f: impl for<'a> FnOnce(&'a [u8]) -> Result<&'a [u8], String>,
-) -> Result<MetadataRef, String> {
+) -> Result<OwnedSlice, String> {
     let file =
         File::open(path).map_err(|e| format!("failed to open file '{}': {}", path.display(), e))?;
 
@@ -48,7 +50,7 @@ fn load_metadata_with(
 }
 
 impl MetadataLoader for DefaultMetadataLoader {
-    fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
+    fn get_rlib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
                 .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
@@ -60,7 +62,11 @@ impl MetadataLoader for DefaultMetadataLoader {
                     let data = entry
                         .data(data)
                         .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
-                    return search_for_section(path, data, ".rmeta");
+                    if target.is_like_aix {
+                        return get_metadata_xcoff(path, data);
+                    } else {
+                        return search_for_section(path, data, ".rmeta");
+                    }
                 }
             }
 
@@ -68,8 +74,12 @@ impl MetadataLoader for DefaultMetadataLoader {
         })
     }
 
-    fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
-        load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
+    fn get_dylib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+        if target.is_like_aix {
+            load_metadata_with(path, |data| get_metadata_xcoff(path, data))
+        } else {
+            load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
+        }
     }
 }
 
@@ -91,6 +101,81 @@ pub(super) fn search_for_section<'a>(
         .ok_or_else(|| format!("no `{}` section in '{}'", section, path.display()))?
         .data()
         .map_err(|e| format!("failed to read {} section in '{}': {}", section, path.display(), e))
+}
+
+fn add_gnu_property_note(
+    file: &mut write::Object<'static>,
+    architecture: Architecture,
+    binary_format: BinaryFormat,
+    endianness: Endianness,
+) {
+    // check bti protection
+    if binary_format != BinaryFormat::Elf
+        || !matches!(architecture, Architecture::X86_64 | Architecture::Aarch64)
+    {
+        return;
+    }
+
+    let section = file.add_section(
+        file.segment_name(StandardSegment::Data).to_vec(),
+        b".note.gnu.property".to_vec(),
+        SectionKind::Note,
+    );
+    let mut data: Vec<u8> = Vec::new();
+    let n_namsz: u32 = 4; // Size of the n_name field
+    let n_descsz: u32 = 16; // Size of the n_desc field
+    let n_type: u32 = NT_GNU_PROPERTY_TYPE_0; // Type of note descriptor
+    let header_values = [n_namsz, n_descsz, n_type];
+    header_values.iter().for_each(|v| {
+        data.extend_from_slice(&match endianness {
+            Endianness::Little => v.to_le_bytes(),
+            Endianness::Big => v.to_be_bytes(),
+        })
+    });
+    data.extend_from_slice(b"GNU\0"); // Owner of the program property note
+    let pr_type: u32 = match architecture {
+        Architecture::X86_64 => 0xc0000002,
+        Architecture::Aarch64 => 0xc0000000,
+        _ => unreachable!(),
+    };
+    let pr_datasz: u32 = 4; //size of the pr_data field
+    let pr_data: u32 = 3; //program property descriptor
+    let pr_padding: u32 = 0;
+    let property_values = [pr_type, pr_datasz, pr_data, pr_padding];
+    property_values.iter().for_each(|v| {
+        data.extend_from_slice(&match endianness {
+            Endianness::Little => v.to_le_bytes(),
+            Endianness::Big => v.to_be_bytes(),
+        })
+    });
+    file.append_section_data(section, &data, 8);
+}
+
+pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a [u8], String> {
+    let Ok(file) = object::File::parse(data) else {
+        return Ok(data);
+    };
+    let info_data = search_for_section(path, data, ".info")?;
+    if let Some(metadata_symbol) =
+        file.symbols().find(|sym| sym.name() == Ok(AIX_METADATA_SYMBOL_NAME))
+    {
+        let offset = metadata_symbol.address() as usize;
+        if offset < 4 {
+            return Err(format!("Invalid metadata symbol offset: {}", offset));
+        }
+        // The offset specifies the location of rustc metadata in the comment section.
+        // The metadata is preceded by a 4-byte length field.
+        let len = u32::from_be_bytes(info_data[(offset - 4)..offset].try_into().unwrap()) as usize;
+        if offset + len > (info_data.len() as usize) {
+            return Err(format!(
+                "Metadata at offset {} with size {} is beyond .info section",
+                offset, len
+            ));
+        }
+        return Ok(&info_data[offset..(offset + len)]);
+    } else {
+        return Err(format!("Unable to find symbol {}", AIX_METADATA_SYMBOL_NAME));
+    };
 }
 
 pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
@@ -127,6 +212,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "msp430" => Architecture::Msp430,
         "hexagon" => Architecture::Hexagon,
         "bpf" => Architecture::Bpf,
+        "loongarch64" => Architecture::LoongArch64,
         // Unsupported architecture.
         _ => return None,
     };
@@ -134,11 +220,18 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         BinaryFormat::MachO
     } else if sess.target.is_like_windows {
         BinaryFormat::Coff
+    } else if sess.target.is_like_aix {
+        BinaryFormat::Xcoff
     } else {
         BinaryFormat::Elf
     };
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
+    if sess.target.is_like_osx {
+        if let Some(build_version) = macho_object_build_version_for_target(&sess.target) {
+            file.set_macho_build_version(build_version)
+        }
+    }
     let e_flags = match architecture {
         Architecture::Mips => {
             let arch = match sess.target.options.cpu.as_ref() {
@@ -190,6 +283,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             }
             e_flags
         }
+        Architecture::LoongArch64 => {
+            // Source: https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html#_e_flags_identifies_abi_type_and_version
+            elf::EF_LARCH_OBJABI_V1 | elf::EF_LARCH_ABI_DOUBLE_FLOAT
+        }
         _ => 0,
     };
     // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
@@ -200,8 +297,36 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         _ => elf::ELFOSABI_NONE,
     };
     let abi_version = 0;
+    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
+}
+
+/// Apple's LD, when linking for Mac Catalyst, requires object files to
+/// contain information about what they were built for (LC_BUILD_VERSION):
+/// the platform (macOS/watchOS etc), minimum OS version, and SDK version.
+/// This returns a `MachOBuildVersion` if necessary for the target.
+fn macho_object_build_version_for_target(
+    target: &Target,
+) -> Option<object::write::MachOBuildVersion> {
+    if !target.llvm_target.ends_with("-macabi") {
+        return None;
+    }
+    /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
+    /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
+    fn pack_version((major, minor): (u32, u32)) -> u32 {
+        (major << 16) | (minor << 8)
+    }
+
+    let platform = object::macho::PLATFORM_MACCATALYST;
+    let min_os = (14, 0);
+    let sdk = (16, 2);
+
+    let mut build_version = object::write::MachOBuildVersion::default();
+    build_version.platform = platform;
+    build_version.minos = pack_version(min_os);
+    build_version.sdk = pack_version(sdk);
+    Some(build_version)
 }
 
 pub enum MetadataPosition {
@@ -265,11 +390,15 @@ pub fn create_wrapper_file(
         // to add a case above.
         return (data.to_vec(), MetadataPosition::Last);
     };
-    let section = file.add_section(
-        file.segment_name(StandardSegment::Debug).to_vec(),
-        section_name,
-        SectionKind::Debug,
-    );
+    let section = if file.format() == BinaryFormat::Xcoff {
+        file.add_section(Vec::new(), b".info".to_vec(), SectionKind::Debug)
+    } else {
+        file.add_section(
+            file.segment_name(StandardSegment::Debug).to_vec(),
+            section_name,
+            SectionKind::Debug,
+        )
+    };
     match file.format() {
         BinaryFormat::Coff => {
             file.section_mut(section).flags =
@@ -278,6 +407,31 @@ pub fn create_wrapper_file(
         BinaryFormat::Elf => {
             file.section_mut(section).flags =
                 SectionFlags::Elf { sh_flags: elf::SHF_EXCLUDE as u64 };
+        }
+        BinaryFormat::Xcoff => {
+            // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text, no .data and no .bss.
+            file.add_section(Vec::new(), b".text".to_vec(), SectionKind::Text);
+            file.section_mut(section).flags =
+                SectionFlags::Xcoff { s_flags: xcoff::STYP_INFO as u32 };
+
+            let len = data.len() as u32;
+            let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
+            // Add a symbol referring to the data in .info section.
+            file.add_symbol(Symbol {
+                name: AIX_METADATA_SYMBOL_NAME.into(),
+                value: offset + 4,
+                size: 0,
+                kind: SymbolKind::Unknown,
+                scope: SymbolScope::Compilation,
+                weak: false,
+                section: SymbolSection::Section(section),
+                flags: SymbolFlags::Xcoff {
+                    n_sclass: xcoff::C_INFO,
+                    x_smtyp: xcoff::C_HIDEXT,
+                    x_smclas: xcoff::C_HIDEXT,
+                    containing_csect: None,
+                },
+            });
         }
         _ => {}
     };
@@ -315,6 +469,9 @@ pub fn create_compressed_metadata_file(
     let Some(mut file) = create_object_file(sess) else {
         return compressed.to_vec();
     };
+    if file.format() == BinaryFormat::Xcoff {
+        return create_compressed_metadata_file_for_xcoff(file, &compressed, symbol_name);
+    }
     let section = file.add_section(
         file.segment_name(StandardSegment::Data).to_vec(),
         b".rustc".to_vec(),
@@ -342,5 +499,63 @@ pub fn create_compressed_metadata_file(
         flags: SymbolFlags::None,
     });
 
+    file.write().unwrap()
+}
+
+/// * Xcoff - On AIX, custom sections are merged into predefined sections,
+///   so custom .rustc section is not preserved during linking.
+///   For this reason, we store metadata in predefined .info section, and
+///   define a symbol to reference the metadata. To preserve metadata during
+///   linking on AIX, we have to
+///   1. Create an empty .text section, a empty .data section.
+///   2. Define an empty symbol named `symbol_name` inside .data section.
+///   3. Define an symbol named `AIX_METADATA_SYMBOL_NAME` referencing
+///      data inside .info section.
+///   From XCOFF's view, (2) creates a csect entry in the symbol table, the
+///   symbol created by (3) is a info symbol for the preceding csect. Thus
+///   two symbols are preserved during linking and we can use the second symbol
+///   to reference the metadata.
+pub fn create_compressed_metadata_file_for_xcoff(
+    mut file: write::Object<'_>,
+    data: &[u8],
+    symbol_name: &str,
+) -> Vec<u8> {
+    assert!(file.format() == BinaryFormat::Xcoff);
+    // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text, no .data and no .bss.
+    file.add_section(Vec::new(), b".text".to_vec(), SectionKind::Text);
+    let data_section = file.add_section(Vec::new(), b".data".to_vec(), SectionKind::Data);
+    let section = file.add_section(Vec::new(), b".info".to_vec(), SectionKind::Debug);
+    file.add_file_symbol("lib.rmeta".into());
+    file.section_mut(section).flags = SectionFlags::Xcoff { s_flags: xcoff::STYP_INFO as u32 };
+    // Add a global symbol to data_section.
+    file.add_symbol(Symbol {
+        name: symbol_name.as_bytes().into(),
+        value: 0,
+        size: 0,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Dynamic,
+        weak: true,
+        section: SymbolSection::Section(data_section),
+        flags: SymbolFlags::None,
+    });
+    let len = data.len() as u32;
+    let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
+    // Add a symbol referring to the rustc metadata.
+    file.add_symbol(Symbol {
+        name: AIX_METADATA_SYMBOL_NAME.into(),
+        value: offset + 4, // The metadata is preceded by a 4-byte length field.
+        size: 0,
+        kind: SymbolKind::Unknown,
+        scope: SymbolScope::Dynamic,
+        weak: false,
+        section: SymbolSection::Section(section),
+        flags: SymbolFlags::Xcoff {
+            n_sclass: xcoff::C_INFO,
+            x_smtyp: xcoff::C_HIDEXT,
+            x_smclas: xcoff::C_HIDEXT,
+            containing_csect: None,
+        },
+    });
+    file.append_section_data(section, data, 1);
     file.write().unwrap()
 }

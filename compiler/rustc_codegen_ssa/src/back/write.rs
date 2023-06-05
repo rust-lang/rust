@@ -872,7 +872,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     let load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
         let source_file = in_incr_comp_dir(&incr_comp_session_dir, saved_path);
         debug!(
-            "copying pre-existing module `{}` from {:?} to {}",
+            "copying preexisting module `{}` from {:?} to {}",
             module.name,
             source_file,
             output_path.display()
@@ -1800,7 +1800,7 @@ impl SharedEmitterMain {
                     handler.emit_diagnostic(&mut d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
-                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg);
+                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
 
                     let mut err = match level {
                         Level::Error { lint: false } => sess.struct_err(msg).forget_guarantee(),
@@ -1821,9 +1821,15 @@ impl SharedEmitterMain {
                         let source = sess
                             .source_map()
                             .new_source_file(FileName::inline_asm_source_code(&buffer), buffer);
-                        let source_span = Span::with_root_ctxt(source.start_pos, source.end_pos);
-                        let spans: Vec<_> =
-                            spans.iter().map(|sp| source_span.from_inner(*sp)).collect();
+                        let spans: Vec<_> = spans
+                            .iter()
+                            .map(|sp| {
+                                Span::with_root_ctxt(
+                                    source.normalized_byte_pos(sp.start as u32),
+                                    source.normalized_byte_pos(sp.end as u32),
+                                )
+                            })
+                            .collect();
                         err.span_note(spans, "instantiated into assembly here");
                     }
 
@@ -1833,7 +1839,7 @@ impl SharedEmitterMain {
                     sess.abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::Fatal(msg)) => {
-                    sess.fatal(&msg);
+                    sess.fatal(msg);
                 }
                 Err(_) => {
                     break;

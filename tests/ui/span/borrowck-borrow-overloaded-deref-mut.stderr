@@ -18,7 +18,7 @@ LL |     &mut **x
 help: consider changing this to be a mutable reference
    |
 LL | fn deref_extend_mut1<'a>(x: &'a mut Own<isize>) -> &'a mut isize {
-   |                             ~~~~~~~~~~~~~~~~~~
+   |                                 +++
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:49:6
@@ -40,7 +40,7 @@ LL |     **x = 3;
 help: consider changing this to be a mutable reference
    |
 LL | fn assign2<'a>(x: &'a mut Own<isize>) {
-   |                   ~~~~~~~~~~~~~~~~~~
+   |                       +++
 
 error: aborting due to 4 previous errors
 

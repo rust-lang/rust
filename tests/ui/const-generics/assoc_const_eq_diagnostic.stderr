@@ -8,7 +8,7 @@ LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
    |                                   help: try using the variant's enum: `Mode`
 
 error[E0573]: expected type, found variant `Mode::Cool`
-  --> $DIR/assoc_const_eq_diagnostic.rs:15:17
+  --> $DIR/assoc_const_eq_diagnostic.rs:16:17
    |
 LL | fn no_help() -> Mode::Cool {}
    |                 ^^^^^^^^^^
@@ -28,6 +28,18 @@ note: associated constant defined here
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: expected associated constant bound, found type
+  --> $DIR/assoc_const_eq_diagnostic.rs:11:28
+   |
+LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
+   |                            ^^^^^^^^^^^^^^^^^ help: if equating a const, try wrapping with braces: `MODE = { const }`
+   |
+note: associated constant defined here
+  --> $DIR/assoc_const_eq_diagnostic.rs:8:5
+   |
+LL |     const MODE: Mode;
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0573`.

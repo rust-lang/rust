@@ -22,7 +22,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ExternCrate;
 use rustc_span::{symbol::kw::Empty, Span};
 
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 
 pub(crate) enum Duplicate {
     Plain,

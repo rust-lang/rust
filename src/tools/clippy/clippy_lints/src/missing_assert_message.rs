@@ -36,7 +36,7 @@ declare_clippy_lint! {
     ///     assert!(service.ready, "`service.poll_ready()` must be called first to ensure that service is ready to receive requests");
     /// }
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub MISSING_ASSERT_MESSAGE,
     restriction,
     "checks assertions without a custom panic message"

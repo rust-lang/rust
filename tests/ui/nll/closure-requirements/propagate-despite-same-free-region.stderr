@@ -6,12 +6,12 @@ LL |         |_outlives1, _outlives2, x, y| {
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) &'_#2r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>)),
+               for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) &'?2 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>)),
                (),
            ]
-   = note: late-bound region is '_#3r
+   = note: late-bound region is '?3
    = note: number of external vids: 4
-   = note: where '_#1r: '_#2r
+   = note: where '?1: '?2
 
 note: no external requirements
   --> $DIR/propagate-despite-same-free-region.rs:39:1

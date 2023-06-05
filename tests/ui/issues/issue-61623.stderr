@@ -7,7 +7,7 @@ LL |     f2(|| x.0, f1(x.1))
 help: consider changing this to be a mutable reference
    |
 LL | fn f3<'a>(x: &'a mut ((), &'a mut ())) {
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~
+   |                  +++
 
 error: aborting due to previous error
 

@@ -17,7 +17,7 @@ fn main() {
     let _ = format!("}");
     //~^ ERROR invalid format string: unmatched `}` found
     let _ = format!("{\\}");
-    //~^ ERROR invalid format string: expected `'}'`, found `'\\'`
+    //~^ ERROR invalid format string: expected `'}'`, found `'\'`
     let _ = format!("\n\n\n{\n\n\n");
     //~^ ERROR invalid format string
     let _ = format!(r###"

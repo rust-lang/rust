@@ -231,9 +231,8 @@ impl Layout {
     /// Returns an error if the combination of `self.size()` and the given
     /// `align` violates the conditions listed in [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
-    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub const fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
+    pub fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
         Layout::from_size_align(self.size(), cmp::max(self.align(), align))
     }
 
@@ -315,9 +314,8 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
-    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub const fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
+    pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
         // > must not overflow isize (i.e., the rounded value must be
@@ -376,9 +374,8 @@ impl Layout {
     /// # assert_eq!(repr_c(&[u64, u32, u16, u32]), Ok((s, vec![0, 8, 12, 16])));
     /// ```
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
-    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub const fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
+    pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
         let new_align = cmp::max(self.align, next.align);
         let pad = self.padding_needed_for(next.align());
 
@@ -403,9 +400,8 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
-    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub const fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
+    pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         let size = self.size().checked_mul(n).ok_or(LayoutError)?;
         // The safe constructor is called here to enforce the isize size limit.
         Layout::from_size_alignment(size, self.align)
@@ -418,9 +414,8 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
-    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub const fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
+    pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         let new_size = self.size().checked_add(next.size()).ok_or(LayoutError)?;
         // The safe constructor is called here to enforce the isize size limit.
         Layout::from_size_alignment(new_size, self.align)

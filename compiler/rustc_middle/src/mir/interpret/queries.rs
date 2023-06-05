@@ -1,9 +1,10 @@
 use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId};
 
 use crate::mir;
+use crate::query::{TyCtxtAt, TyCtxtEnsure};
 use crate::ty::subst::InternalSubsts;
 use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
+use crate::ty::{self, TyCtxt};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint;
@@ -42,7 +43,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
-        // variables. We reject those here since `resolve_opt_const_arg`
+        // variables. We reject those here since `resolve`
         // would fail otherwise.
         //
         // When trying to evaluate constants containing inference variables,
@@ -51,7 +52,7 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve_opt_const_arg(
+        match ty::Instance::resolve(
             self, param_env,
             // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
             ct.def, ct.substs,
@@ -61,7 +62,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.const_eval_global_id(param_env, cid, span)
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+            Err(err) => Err(ErrorHandled::Reported(err.into())),
         }
     }
 
@@ -73,7 +74,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
-        // variables. We reject those here since `resolve_opt_const_arg`
+        // variables. We reject those here since `resolve`
         // would fail otherwise.
         //
         // When trying to evaluate constants containing inference variables,
@@ -82,7 +83,7 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
+        match ty::Instance::resolve(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
                 self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
@@ -94,14 +95,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     // used generic parameters is a bug of evaluation, so checking for it
                     // here does feel somewhat sensible.
                     if !self.features().generic_const_exprs && ct.substs.has_non_region_param() {
-                        assert!(matches!(self.def_kind(ct.def.did), DefKind::AnonConst));
-                        let mir_body = self.mir_for_ctfe_opt_const_arg(ct.def);
+                        assert!(matches!(self.def_kind(ct.def), DefKind::AnonConst));
+                        let mir_body = self.mir_for_ctfe(ct.def);
                         if mir_body.is_polymorphic {
-                            let Some(local_def_id) = ct.def.did.as_local() else { return };
+                            let Some(local_def_id) = ct.def.as_local() else { return };
                             self.struct_span_lint_hir(
                                 lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                                 self.hir().local_def_id_to_hir_id(local_def_id),
-                                self.def_span(ct.def.did),
+                                self.def_span(ct.def),
                                 "cannot use constants which depend on generic parameters in types",
                                 |err| err,
                             )
@@ -110,7 +111,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+            Err(err) => Err(ErrorHandled::Reported(err.into())),
         }
     }
 

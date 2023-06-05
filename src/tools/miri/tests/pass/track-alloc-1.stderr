@@ -1,5 +1,0 @@
-note: tracking was triggered
-   |
-   = note: created extern static allocation of SIZE bytes (alignment ALIGN bytes) with id 1
-   = note: (no span available)
-

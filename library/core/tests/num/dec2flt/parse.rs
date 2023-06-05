@@ -32,7 +32,7 @@ fn invalid_chars() {
 }
 
 fn parse_positive(s: &[u8]) -> Option<Number> {
-    parse_number(s, false)
+    parse_number(s)
 }
 
 #[test]

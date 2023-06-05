@@ -1,21 +1,20 @@
-error[E0658]: a non-static lifetime is not allowed in a `const`
+error: generic parameters may not be used in const operations
   --> $DIR/forbid-non-static-lifetimes.rs:7:22
    |
 LL |     test::<{ let _: &'a (); 3 },>();
-   |                      ^^
+   |                      ^^ cannot perform const operation using `'a`
    |
-   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
-   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
+   = note: lifetime parameters may not be used in const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error[E0658]: a non-static lifetime is not allowed in a `const`
+error: generic parameters may not be used in const operations
   --> $DIR/forbid-non-static-lifetimes.rs:21:16
    |
 LL |     [(); (|_: &'a u8| (), 0).1];
-   |                ^^
+   |                ^^ cannot perform const operation using `'a`
    |
-   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
-   = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
+   = note: lifetime parameters may not be used in const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

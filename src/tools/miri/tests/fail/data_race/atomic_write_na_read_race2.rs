@@ -16,10 +16,12 @@ pub fn main() {
     let c = EvilSend(b);
     unsafe {
         let j1 = spawn(move || {
+            let c = c; // avoid field capturing
             let _val = *(c.0 as *mut usize);
         });
 
         let j2 = spawn(move || {
+            let c = c; // avoid field capturing
             (&*c.0).store(32, Ordering::SeqCst); //~ ERROR: Data race detected between (1) Read on thread `<unnamed>` and (2) Atomic Store on thread `<unnamed>`
         });
 

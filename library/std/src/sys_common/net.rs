@@ -2,7 +2,6 @@
 mod tests;
 
 use crate::cmp;
-use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
@@ -240,6 +239,7 @@ impl TcpStream {
         Ok(TcpStream { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -353,6 +353,7 @@ impl TcpStream {
 }
 
 impl AsInner<Socket> for TcpStream {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }
@@ -428,6 +429,7 @@ impl TcpListener {
         Ok(TcpListener { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
@@ -518,6 +520,7 @@ impl UdpSocket {
         Ok(UdpSocket { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }

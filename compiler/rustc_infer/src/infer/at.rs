@@ -30,8 +30,6 @@ use super::*;
 use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
-use std::cell::Cell;
-
 /// Whether we should define opaque types or just treat them opaquely.
 ///
 /// Currently only used to prevent predicate matching from matching anything
@@ -72,8 +70,8 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             defining_use_anchor: self.defining_use_anchor,
             considering_regions: self.considering_regions,
+            skip_leak_check: self.skip_leak_check,
             inner: self.inner.clone(),
-            skip_leak_check: self.skip_leak_check.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),
             selection_cache: self.selection_cache.clone(),
             evaluation_cache: self.evaluation_cache.clone(),
@@ -84,7 +82,6 @@ impl<'tcx> InferCtxt<'tcx> {
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),
             intercrate: self.intercrate,
-            inside_canonicalization_ctxt: Cell::new(self.inside_canonicalization_ctxt()),
         }
     }
 }

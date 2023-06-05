@@ -10,15 +10,10 @@ use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
-use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
-use std::cell::Cell;
 use std::iter;
-#[cfg(debug_assertions)]
-use std::ops::BitXor;
-#[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicU32, Ordering};
 use thin_vec::{thin_vec, ThinVec};
 
@@ -40,39 +35,16 @@ impl MarkedAttrs {
     }
 }
 
-pub struct AttrIdGenerator(WorkerLocal<Cell<u32>>);
-
-#[cfg(debug_assertions)]
-static MAX_ATTR_ID: AtomicU32 = AtomicU32::new(u32::MAX);
+pub struct AttrIdGenerator(AtomicU32);
 
 impl AttrIdGenerator {
     pub fn new() -> Self {
-        // We use `(index as u32).reverse_bits()` to initialize the
-        // starting value of AttrId in each worker thread.
-        // The `index` is the index of the worker thread.
-        // This ensures that the AttrId generated in each thread is unique.
-        AttrIdGenerator(WorkerLocal::new(|index| {
-            let index: u32 = index.try_into().unwrap();
-
-            #[cfg(debug_assertions)]
-            {
-                let max_id = ((index + 1).next_power_of_two() - 1).bitxor(u32::MAX).reverse_bits();
-                MAX_ATTR_ID.fetch_min(max_id, Ordering::Release);
-            }
-
-            Cell::new(index.reverse_bits())
-        }))
+        AttrIdGenerator(AtomicU32::new(0))
     }
 
     pub fn mk_attr_id(&self) -> AttrId {
-        let id = self.0.get();
-
-        // Ensure the assigned attr_id does not overlap the bits
-        // representing the number of threads.
-        #[cfg(debug_assertions)]
-        assert!(id <= MAX_ATTR_ID.load(Ordering::Acquire));
-
-        self.0.set(id + 1);
+        let id = self.0.fetch_add(1, Ordering::Relaxed);
+        assert!(id != u32::MAX);
         AttrId::from_u32(id)
     }
 }
@@ -177,7 +149,7 @@ impl Attribute {
     }
 
     pub fn may_have_doc_links(&self) -> bool {
-        self.doc_str().map_or(false, |s| comments::may_have_doc_links(s.as_str()))
+        self.doc_str().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
     }
 
     pub fn is_proc_macro_attr(&self) -> bool {
@@ -469,12 +441,12 @@ impl NestedMetaItem {
 
     /// Returns `true` if this list item is a MetaItem with a name of `name`.
     pub fn has_name(&self, name: Symbol) -> bool {
-        self.meta_item().map_or(false, |meta_item| meta_item.has_name(name))
+        self.meta_item().is_some_and(|meta_item| meta_item.has_name(name))
     }
 
     /// Returns `true` if `self` is a `MetaItem` and the meta item is a word.
     pub fn is_word(&self) -> bool {
-        self.meta_item().map_or(false, |meta_item| meta_item.is_word())
+        self.meta_item().is_some_and(|meta_item| meta_item.is_word())
     }
 
     /// Gets a list of inner meta items from a list `MetaItem` type.

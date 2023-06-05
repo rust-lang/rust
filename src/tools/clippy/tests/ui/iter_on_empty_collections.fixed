@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::iter_on_empty_collections)]
 #![allow(clippy::iter_next_slice, clippy::redundant_clone)]
 

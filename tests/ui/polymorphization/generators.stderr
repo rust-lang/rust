@@ -15,12 +15,6 @@ LL | pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + 
 LL |     || {
    |     ^^
 
-note: the above error was encountered while instantiating `fn finish::<[generator@$DIR/generators.rs:35:5: 35:7], u32, u32>`
-  --> $DIR/generators.rs:86:5
-   |
-LL |     finish(unused_type::<u32>());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: item has unused generic parameters
   --> $DIR/generators.rs:60:5
    |
@@ -28,12 +22,6 @@ LL | pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Retu
    |                     ------------ generic parameter `T` is unused
 LL |     || {
    |     ^^
-
-note: the above error was encountered while instantiating `fn finish::<[generator@$DIR/generators.rs:60:5: 60:7], u32, u32>`
-  --> $DIR/generators.rs:89:5
-   |
-LL |     finish(unused_const::<1u32>());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

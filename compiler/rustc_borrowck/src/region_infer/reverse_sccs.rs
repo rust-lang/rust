@@ -8,7 +8,6 @@ use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_middle::ty::RegionVid;
 use std::ops::Range;
-use std::rc::Rc;
 
 pub(crate) struct ReverseSccGraph {
     graph: VecGraph<ConstraintSccIndex>,
@@ -40,10 +39,10 @@ impl ReverseSccGraph {
 }
 
 impl RegionInferenceContext<'_> {
-    /// Compute and return the reverse SCC-based constraint graph (lazily).
-    pub(super) fn reverse_scc_graph(&mut self) -> Rc<ReverseSccGraph> {
-        if let Some(g) = &self.rev_scc_graph {
-            return g.clone();
+    /// Compute the reverse SCC-based constraint graph (lazily).
+    pub(super) fn compute_reverse_scc_graph(&mut self) {
+        if self.rev_scc_graph.is_some() {
+            return;
         }
 
         let graph = self.constraint_sccs.reverse();
@@ -63,8 +62,6 @@ impl RegionInferenceContext<'_> {
             start += group_size;
         }
 
-        let rev_graph = Rc::new(ReverseSccGraph { graph, scc_regions, universal_regions });
-        self.rev_scc_graph = Some(rev_graph.clone());
-        rev_graph
+        self.rev_scc_graph = Some(ReverseSccGraph { graph, scc_regions, universal_regions });
     }
 }

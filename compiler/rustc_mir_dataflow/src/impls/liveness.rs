@@ -197,9 +197,9 @@ impl DefUse {
                 | NonMutatingUseContext::Copy
                 | NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::Move
+                | NonMutatingUseContext::PlaceMention
                 | NonMutatingUseContext::ShallowBorrow
-                | NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::UniqueBorrow,
+                | NonMutatingUseContext::SharedBorrow,
             ) => Some(DefUse::Use),
 
             PlaceContext::MutatingUse(MutatingUseContext::Projection)

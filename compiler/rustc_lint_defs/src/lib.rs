@@ -496,7 +496,8 @@ pub enum BuiltinLintDiagnostics {
     BreakWithLabelAndLoop(Span),
     NamedAsmLabel(String),
     UnicodeTextFlow(Span, String),
-    UnexpectedCfg((Symbol, Span), Option<(Symbol, Span)>),
+    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
+    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, String),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
@@ -532,12 +533,22 @@ pub enum BuiltinLintDiagnostics {
     AmbiguousGlobReexports {
         /// The name for which collision(s) have occurred.
         name: String,
-        /// The name space for whihc the collision(s) occurred in.
+        /// The name space for which the collision(s) occurred in.
         namespace: String,
         /// Span where the name is first re-exported.
         first_reexport_span: Span,
         /// Span where the same name is also re-exported.
         duplicate_reexport_span: Span,
+    },
+    HiddenGlobReexports {
+        /// The name of the local binding which shadows the glob re-export.
+        name: String,
+        /// The namespace for which the shadowing occurred in.
+        namespace: String,
+        /// The glob reexport that is shadowed by the local binding.
+        glob_reexport_span: Span,
+        /// The local binding that shadows the glob reexport.
+        private_item_span: Span,
     },
 }
 

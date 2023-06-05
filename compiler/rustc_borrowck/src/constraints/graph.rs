@@ -1,5 +1,5 @@
 use rustc_data_structures::graph;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
 use rustc_span::DUMMY_SP;
@@ -13,7 +13,7 @@ use crate::{
 /// The construct graph organizes the constraints by their end-points.
 /// It can be used to view a `R1: R2` constraint as either an edge `R1
 /// -> R2` or `R2 -> R1` depending on the direction type `D`.
-pub(crate) struct ConstraintGraph<D: ConstraintGraphDirecton> {
+pub(crate) struct ConstraintGraph<D: ConstraintGraphDirection> {
     _direction: D,
     first_constraints: IndexVec<RegionVid, Option<OutlivesConstraintIndex>>,
     next_constraints: IndexVec<OutlivesConstraintIndex, Option<OutlivesConstraintIndex>>,
@@ -25,7 +25,7 @@ pub(crate) type ReverseConstraintGraph = ConstraintGraph<Reverse>;
 
 /// Marker trait that controls whether a `R1: R2` constraint
 /// represents an edge `R1 -> R2` or `R2 -> R1`.
-pub(crate) trait ConstraintGraphDirecton: Copy + 'static {
+pub(crate) trait ConstraintGraphDirection: Copy + 'static {
     fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid;
     fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid;
     fn is_normal() -> bool;
@@ -38,7 +38,7 @@ pub(crate) trait ConstraintGraphDirecton: Copy + 'static {
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Normal;
 
-impl ConstraintGraphDirecton for Normal {
+impl ConstraintGraphDirection for Normal {
     fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
         c.sup
     }
@@ -59,7 +59,7 @@ impl ConstraintGraphDirecton for Normal {
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Reverse;
 
-impl ConstraintGraphDirecton for Reverse {
+impl ConstraintGraphDirection for Reverse {
     fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
         c.sub
     }
@@ -73,7 +73,7 @@ impl ConstraintGraphDirecton for Reverse {
     }
 }
 
-impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
+impl<D: ConstraintGraphDirection> ConstraintGraph<D> {
     /// Creates a "dependency graph" where each region constraint `R1:
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
@@ -133,7 +133,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     }
 }
 
-pub(crate) struct Edges<'s, 'tcx, D: ConstraintGraphDirecton> {
+pub(crate) struct Edges<'s, 'tcx, D: ConstraintGraphDirection> {
     graph: &'s ConstraintGraph<D>,
     constraints: &'s OutlivesConstraintSet<'tcx>,
     pointer: Option<OutlivesConstraintIndex>,
@@ -141,7 +141,7 @@ pub(crate) struct Edges<'s, 'tcx, D: ConstraintGraphDirecton> {
     static_region: RegionVid,
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirecton> Iterator for Edges<'s, 'tcx, D> {
+impl<'s, 'tcx, D: ConstraintGraphDirection> Iterator for Edges<'s, 'tcx, D> {
     type Item = OutlivesConstraint<'tcx>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -174,13 +174,13 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> Iterator for Edges<'s, 'tcx, D> {
 /// This struct brings together a constraint set and a (normal, not
 /// reverse) constraint graph. It implements the graph traits and is
 /// usd for doing the SCC computation.
-pub(crate) struct RegionGraph<'s, 'tcx, D: ConstraintGraphDirecton> {
+pub(crate) struct RegionGraph<'s, 'tcx, D: ConstraintGraphDirection> {
     set: &'s OutlivesConstraintSet<'tcx>,
     constraint_graph: &'s ConstraintGraph<D>,
     static_region: RegionVid,
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirecton> RegionGraph<'s, 'tcx, D> {
+impl<'s, 'tcx, D: ConstraintGraphDirection> RegionGraph<'s, 'tcx, D> {
     /// Creates a "dependency graph" where each region constraint `R1:
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
@@ -202,11 +202,11 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> RegionGraph<'s, 'tcx, D> {
     }
 }
 
-pub(crate) struct Successors<'s, 'tcx, D: ConstraintGraphDirecton> {
+pub(crate) struct Successors<'s, 'tcx, D: ConstraintGraphDirection> {
     edges: Edges<'s, 'tcx, D>,
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirecton> Iterator for Successors<'s, 'tcx, D> {
+impl<'s, 'tcx, D: ConstraintGraphDirection> Iterator for Successors<'s, 'tcx, D> {
     type Item = RegionVid;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -214,23 +214,25 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> Iterator for Successors<'s, 'tcx, D> 
     }
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirecton> graph::DirectedGraph for RegionGraph<'s, 'tcx, D> {
+impl<'s, 'tcx, D: ConstraintGraphDirection> graph::DirectedGraph for RegionGraph<'s, 'tcx, D> {
     type Node = RegionVid;
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirecton> graph::WithNumNodes for RegionGraph<'s, 'tcx, D> {
+impl<'s, 'tcx, D: ConstraintGraphDirection> graph::WithNumNodes for RegionGraph<'s, 'tcx, D> {
     fn num_nodes(&self) -> usize {
         self.constraint_graph.first_constraints.len()
     }
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirecton> graph::WithSuccessors for RegionGraph<'s, 'tcx, D> {
+impl<'s, 'tcx, D: ConstraintGraphDirection> graph::WithSuccessors for RegionGraph<'s, 'tcx, D> {
     fn successors(&self, node: Self::Node) -> <Self as graph::GraphSuccessors<'_>>::Iter {
         self.outgoing_regions(node)
     }
 }
 
-impl<'s, 'tcx, D: ConstraintGraphDirecton> graph::GraphSuccessors<'_> for RegionGraph<'s, 'tcx, D> {
+impl<'s, 'tcx, D: ConstraintGraphDirection> graph::GraphSuccessors<'_>
+    for RegionGraph<'s, 'tcx, D>
+{
     type Item = RegionVid;
     type Iter = Successors<'s, 'tcx, D>;
 }

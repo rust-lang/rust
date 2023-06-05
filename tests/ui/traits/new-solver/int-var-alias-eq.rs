@@ -1,7 +1,7 @@
 // check-pass
 // compile-flags: -Ztrait-solver=next
 
-// HIR typeck ends up equating `<_#0i as Add>::Output == _#0i`.
+// HIR typeck ends up equating `<?0i as Add>::Output == ?0i`.
 // Want to make sure that we emit an alias-eq goal for this,
 // instead of treating it as a type error and bailing.
 

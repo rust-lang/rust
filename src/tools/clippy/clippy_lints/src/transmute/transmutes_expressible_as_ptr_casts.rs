@@ -2,8 +2,9 @@ use super::utils::check_cast;
 use super::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
+use rustc_ast::ExprPrecedence;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
+use rustc_hir::{Expr, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 
@@ -19,7 +20,7 @@ pub(super) fn check<'tcx>(
 ) -> bool {
     use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
     let mut app = Applicability::MachineApplicable;
-    let sugg = match check_cast(cx, e, from_ty, to_ty) {
+    let mut sugg = match check_cast(cx, e, from_ty, to_ty) {
         Some(PtrPtrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast) => {
             Sugg::hir_with_context(cx, arg, e.span.ctxt(), "..", &mut app)
                 .as_ty(to_ty.to_string())
@@ -38,6 +39,12 @@ pub(super) fn check<'tcx>(
         ),
         _ => return false,
     };
+
+    if let Node::Expr(parent) = cx.tcx.hir().get_parent(e.hir_id)
+        && parent.precedence().order() > ExprPrecedence::Cast.order()
+    {
+        sugg = format!("({sugg})");
+    }
 
     span_lint_and_sugg(
         cx,

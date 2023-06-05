@@ -226,7 +226,7 @@ pub(crate) fn append_arg(cmd: &mut Vec<u16>, arg: &Arg, force_quotes: bool) -> i
     // that it actually gets passed through on the command line or otherwise
     // it will be dropped entirely when parsed on the other end.
     ensure_no_nuls(arg)?;
-    let arg_bytes = arg.bytes();
+    let arg_bytes = arg.as_os_str_bytes();
     let (quote, escape) = match quote {
         Quote::Always => (true, true),
         Quote::Auto => {
@@ -297,7 +297,9 @@ pub(crate) fn make_bat_command_line(
         // * `|<>` pipe/redirect characters.
         const SPECIAL: &[u8] = b"\t &()[]{}^=;!'+,`~%|<>";
         let force_quotes = match arg {
-            Arg::Regular(arg) if !force_quotes => arg.bytes().iter().any(|c| SPECIAL.contains(c)),
+            Arg::Regular(arg) if !force_quotes => {
+                arg.as_os_str_bytes().iter().any(|c| SPECIAL.contains(c))
+            }
             _ => force_quotes,
         };
         append_arg(&mut cmd, arg, force_quotes)?;
@@ -313,6 +315,9 @@ pub(crate) fn make_bat_command_line(
 ///
 /// This is necessary because cmd.exe does not support verbatim paths.
 pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
+    from_wide_to_user_path(to_u16s(path)?)
+}
+pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
     use crate::ptr;
     use crate::sys::windows::fill_utf16_buf;
 
@@ -324,8 +329,6 @@ pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
     const U: u16 = b'U' as _;
     const N: u16 = b'N' as _;
     const C: u16 = b'C' as _;
-
-    let mut path = to_u16s(path)?;
 
     // Early return if the path is too long to remove the verbatim prefix.
     const LEGACY_MAX_PATH: usize = 260;

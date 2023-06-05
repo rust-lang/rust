@@ -39,11 +39,12 @@ impl<'a> LintExtractor<'a> {
     fn collect_groups(&self) -> Result<LintGroups, Box<dyn Error>> {
         let mut result = BTreeMap::new();
         let mut cmd = Command::new(self.rustc_path);
+        cmd.env_remove("LD_LIBRARY_PATH");
         cmd.arg("-Whelp");
         let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
         if !output.status.success() {
             return Err(format!(
-                "failed to collect lint info: {:?}\n--- stderr\n{}--- stdout\n{}\n",
+                "failed to collect lint info: failed to run {cmd:?}: {:?}\n--- stderr\n{}--- stdout\n{}\n",
                 output.status,
                 std::str::from_utf8(&output.stderr).unwrap(),
                 std::str::from_utf8(&output.stdout).unwrap(),

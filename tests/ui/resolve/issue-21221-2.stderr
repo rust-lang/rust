@@ -6,9 +6,9 @@ LL | impl T for Foo { }
    |
 help: consider importing one of these items
    |
-LL | use baz::T;
+LL + use baz::T;
    |
-LL | use foo::bar::T;
+LL + use foo::bar::T;
    |
 
 error: aborting due to previous error

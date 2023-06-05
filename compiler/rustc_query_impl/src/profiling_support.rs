@@ -1,23 +1,12 @@
-use crate::QueryCtxt;
 use measureme::{StringComponent, StringId};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_middle::ty::{TyCtxt, WithOptConstParam};
+use rustc_middle::query::plumbing::QueryKeyStringCache;
+use rustc_middle::ty::TyCtxt;
 use rustc_query_system::query::QueryCache;
 use std::fmt::Debug;
 use std::io::Write;
-
-pub(crate) struct QueryKeyStringCache {
-    def_id_cache: FxHashMap<DefId, StringId>,
-}
-
-impl QueryKeyStringCache {
-    fn new() -> QueryKeyStringCache {
-        QueryKeyStringCache { def_id_cache: Default::default() }
-    }
-}
 
 struct QueryKeyStringBuilder<'p, 'tcx> {
     profiler: &'p SelfProfiler,
@@ -151,37 +140,6 @@ impl SpecIntoSelfProfilingString for LocalDefId {
     }
 }
 
-impl<T: SpecIntoSelfProfilingString> SpecIntoSelfProfilingString for WithOptConstParam<T> {
-    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
-        // We print `WithOptConstParam` values as tuples to make them shorter
-        // and more readable, without losing information:
-        //
-        // "WithOptConstParam { did: foo::bar, const_param_did: Some(foo::baz) }"
-        // becomes "(foo::bar, foo::baz)" and
-        // "WithOptConstParam { did: foo::bar, const_param_did: None }"
-        // becomes "(foo::bar, _)".
-
-        let did = StringComponent::Ref(self.did.to_self_profile_string(builder));
-
-        let const_param_did = if let Some(const_param_did) = self.const_param_did {
-            let const_param_did = builder.def_id_to_string_id(const_param_did);
-            StringComponent::Ref(const_param_did)
-        } else {
-            StringComponent::Value("_")
-        };
-
-        let components = [
-            StringComponent::Value("("),
-            did,
-            StringComponent::Value(", "),
-            const_param_did,
-            StringComponent::Value(")"),
-        ];
-
-        builder.profiler.alloc_string(&components[..])
-    }
-}
-
 impl<T0, T1> SpecIntoSelfProfilingString for (T0, T1)
 where
     T0: SpecIntoSelfProfilingString,
@@ -231,7 +189,7 @@ pub(crate) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             // locked while doing so. Instead we copy out the
             // `(query_key, dep_node_index)` pairs and release the lock again.
             let mut query_keys_and_indices = Vec::new();
-            query_cache.iter(&mut |k, _, i| query_keys_and_indices.push((k.clone(), i)));
+            query_cache.iter(&mut |k, _, i| query_keys_and_indices.push((*k, i)));
 
             // Now actually allocate the strings. If allocating the strings
             // generates new entries in the query cache, we'll miss them but
@@ -284,9 +242,8 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
     }
 
     let mut string_cache = QueryKeyStringCache::new();
-    let queries = QueryCtxt::from_tcx(tcx);
 
-    for query in &queries.queries.query_structs {
-        (query.alloc_self_profile_query_strings)(tcx, &mut string_cache);
+    for alloc in super::ALLOC_SELF_PROFILE_QUERY_STRINGS.iter() {
+        alloc(tcx, &mut string_cache)
     }
 }

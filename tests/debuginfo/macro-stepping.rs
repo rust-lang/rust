@@ -79,22 +79,28 @@ extern crate macro_stepping; // exports new_scope!()
 // lldb-check:[...]#inc-loc2[...]
 // lldb-command:next
 // lldb-command:frame select
+// lldb-check:[...]#inc-loc1[...]
+// lldb-command:next
+// lldb-command:frame select
+// lldb-check:[...]#inc-loc2[...]
+// lldb-command:next
+// lldb-command:frame select
 // lldb-check:[...]#inc-loc3[...]
 
 macro_rules! foo {
     () => {
-        let a = 1;
-        let b = 2;
-        let c = 3;
-    }
+        let a = 1; opaque(a);
+        let b = 2; opaque(b);
+        let c = 3; opaque(c);
+    };
 }
 
 macro_rules! foo2 {
     () => {
         foo!();
-        let x = 1;
+        let x = 1; opaque(x);
         foo!();
-    }
+    };
 }
 
 fn main() {
@@ -117,5 +123,7 @@ fn main() {
 }
 
 fn zzz() {()}
+
+fn opaque(_: u32) {}
 
 include!("macro-stepping.inc");

@@ -9,13 +9,13 @@ help: consider introducing a named lifetime parameter
 LL | fn d<'a, const C: S<'a>>() {}
    |      +++           ++++
 
-error[E0771]: use of non-static lifetime `'a` in const generic
+error[E0770]: the type of const parameters must not depend on other generic parameters
   --> $DIR/unusual-rib-combinations.rs:29:22
    |
 LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
-   |                      ^^
+   |                      ^^ the type must not depend on the parameter `'a`
    |
-   = note: for more information, see issue #74052 <https://github.com/rust-lang/rust/issues/74052>
+   = note: lifetime parameters may not be used in the type of const parameters
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
   --> $DIR/unusual-rib-combinations.rs:7:16
@@ -74,5 +74,5 @@ LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
 
 error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0106, E0214, E0308, E0771.
+Some errors have detailed explanations: E0106, E0214, E0308, E0770.
 For more information about an error, try `rustc --explain E0106`.

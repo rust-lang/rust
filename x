@@ -7,9 +7,12 @@
 
 set -eu
 
+# syntax check
+sh -n $0
+
 realpath() {
     if [ -d "$1" ]; then
-        CDPATH='' command cd "$1" && pwd -P   
+        CDPATH='' command cd "$1" && pwd -P
     else
         echo "$(realpath "$(dirname "$1")")/$(basename "$1")"
     fi

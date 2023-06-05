@@ -1,5 +1,5 @@
 use super::ItemCtxt;
-use crate::astconv::AstConv;
+use crate::astconv::{AstConv, OnlySelfBounds};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -26,7 +26,7 @@ fn associated_type_bounds<'tcx>(
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
-    let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds);
+    let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds, OnlySelfBounds(false));
     // Associated types are implicitly sized unless a `?Sized` bound is found
     icx.astconv().add_implicitly_sized(&mut bounds, item_ty, ast_bounds, None, span);
 
@@ -67,7 +67,7 @@ fn opaque_type_bounds<'tcx>(
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
     ty::print::with_no_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
-        let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds);
+        let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds, OnlySelfBounds(false));
         // Opaque types are implicitly sized unless a `?Sized` bound is found
         icx.astconv().add_implicitly_sized(&mut bounds, item_ty, ast_bounds, None, span);
         debug!(?bounds);
@@ -79,14 +79,14 @@ fn opaque_type_bounds<'tcx>(
 pub(super) fn explicit_item_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> &'_ [(ty::Predicate<'_>, Span)] {
+) -> ty::EarlyBinder<&'_ [(ty::Predicate<'_>, Span)]> {
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
             let item = tcx.hir().get_by_def_id(opaque_def_id.expect_local()).expect_item();
             let opaque_ty = item.expect_opaque_ty();
-            return opaque_type_bounds(
+            return ty::EarlyBinder::bind(opaque_type_bounds(
                 tcx,
                 opaque_def_id.expect_local(),
                 opaque_ty.bounds,
@@ -95,7 +95,7 @@ pub(super) fn explicit_item_bounds(
                     ty::InternalSubsts::identity_for_item(tcx, def_id),
                 ),
                 item.span,
-            );
+            ));
         }
         // These should have been fed!
         Some(ty::ImplTraitInTraitData::Impl { .. }) => unreachable!(),
@@ -103,7 +103,7 @@ pub(super) fn explicit_item_bounds(
     }
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    match tcx.hir().get(hir_id) {
+    let bounds = match tcx.hir().get(hir_id) {
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),
             span,
@@ -123,16 +123,18 @@ pub(super) fn explicit_item_bounds(
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
         }
         _ => bug!("item_bounds called on {:?}", def_id),
-    }
+    };
+    ty::EarlyBinder::bind(bounds)
 }
 
 pub(super) fn item_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<&'_ ty::List<ty::Predicate<'_>>> {
-    let bounds = tcx.mk_predicates_from_iter(util::elaborate(
-        tcx,
-        tcx.explicit_item_bounds(def_id).iter().map(|&(bound, _span)| bound),
-    ));
-    ty::EarlyBinder(bounds)
+    tcx.explicit_item_bounds(def_id).map_bound(|bounds| {
+        tcx.mk_predicates_from_iter(util::elaborate(
+            tcx,
+            bounds.iter().map(|&(bound, _span)| bound),
+        ))
+    })
 }

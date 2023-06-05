@@ -11,7 +11,8 @@ LL |      Error
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Error` with `#[derive(PartialOrd)]`
    |
-LL | #[derive(PartialOrd)]
+LL + #[derive(PartialOrd)]
+LL | struct Error;
    |
 
 error: aborting due to previous error

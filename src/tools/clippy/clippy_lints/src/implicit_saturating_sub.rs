@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                 // Get the variable name
                 let var_name = ares_path.segments[0].ident.name.as_str();
                 match cond_num_val.kind {
-                    ExprKind::Lit(ref cond_lit) => {
+                    ExprKind::Lit(cond_lit) => {
                         // Check if the constant is zero
                         if let LitKind::Int(0, _) = cond_lit.node {
                             if cx.typeck_results().expr_ty(cond_left).is_signed() {

@@ -1,4 +1,5 @@
 // compile-flags: -O
+// min-llvm-version: 16.0
 #![crate_type = "lib"]
 
 pub fn foo(t: &mut Vec<usize>) {

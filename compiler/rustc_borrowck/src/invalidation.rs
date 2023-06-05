@@ -46,7 +46,7 @@ struct InvalidationGenerator<'cx, 'tcx> {
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
-    dominators: Dominators<BasicBlock>,
+    dominators: &'cx Dominators<BasicBlock>,
     borrow_set: &'cx BorrowSet<'tcx>,
 }
 
@@ -79,7 +79,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..)
-            // Only relevant for unsafeck
+            // Only relevant for liveness and unsafeck
             | StatementKind::PlaceMention(..)
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)
@@ -112,11 +112,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place: drop_place, target: _, unwind: _, replace } => {
+                let write_kind =
+                    if *replace { WriteKind::Replace } else { WriteKind::StorageDeadOrDrop };
                 self.access_place(
                     location,
                     *drop_place,
-                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    (AccessDepth::Drop, Write(write_kind)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
@@ -138,7 +140,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(location, cond);
                 use rustc_middle::mir::AssertKind;
-                if let AssertKind::BoundsCheck { len, index } = msg {
+                if let AssertKind::BoundsCheck { len, index } = &**msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);
                 }

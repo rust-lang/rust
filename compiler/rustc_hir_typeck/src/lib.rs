@@ -2,6 +2,7 @@
 #![feature(let_chains)]
 #![feature(try_blocks)]
 #![feature(never_type)]
+#![feature(box_patterns)]
 #![feature(min_specialization)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
@@ -59,6 +60,7 @@ use rustc_errors::{
     struct_span_err, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
     SubdiagnosticMessage,
 };
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -66,12 +68,10 @@ use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_macros::fluent_messages;
+use rustc_middle::query::Providers;
 use rustc_middle::traits;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
-use rustc_session::Session;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{sym, Span};
 
@@ -152,25 +152,9 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &*tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
-    tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
-}
-
-fn typeck_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
-) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(param_did).subst_identity();
-    typeck_with_fallback(tcx, did, fallback)
-}
-
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
-    if let Some(param_did) = tcx.opt_const_param_of(def_id) {
-        tcx.typeck_const_arg((def_id, param_did))
-    } else {
-        let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
-        typeck_with_fallback(tcx, def_id, fallback)
-    }
+    let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
+    typeck_with_fallback(tcx, def_id, fallback)
 }
 
 /// Used only to get `TypeckResults` for type inference during error recovery.
@@ -228,7 +212,7 @@ fn typeck_with_fallback<'tcx>(
         let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
         let fn_sig = fcx.normalize(body.value.span, fn_sig);
 
-        check_fn(&mut fcx, fn_sig, decl, def_id, body, None);
+        check_fn(&mut fcx, fn_sig, decl, def_id, body, None, tcx.features().unsized_fn_params);
     } else {
         let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
             Some(fcx.next_ty_var(TypeVariableOrigin {
@@ -237,12 +221,6 @@ fn typeck_with_fallback<'tcx>(
             }))
         } else if let Node::AnonConst(_) = node {
             match tcx.hir().get(tcx.hir().parent_id(id)) {
-                Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::ConstBlock(ref anon_const), ..
-                }) if anon_const.hir_id == id => Some(fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                })),
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), .. })
                     if anon_const.hir_id == id =>
                 {
@@ -280,7 +258,7 @@ fn typeck_with_fallback<'tcx>(
         // Gather locals in statics (because of block expressions).
         GatherLocalsVisitor::new(&fcx).visit_body(body);
 
-        fcx.check_expr_coercable_to_type(&body.value, expected_type, None);
+        fcx.check_expr_coercible_to_type(&body.value, expected_type, None);
 
         fcx.write_ty(id, expected_type);
     };
@@ -459,8 +437,8 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-fn fatally_break_rust(sess: &Session) {
-    let handler = sess.diagnostic();
+fn fatally_break_rust(tcx: TyCtxt<'_>) {
+    let handler = tcx.sess.diagnostic();
     handler.span_bug_no_panic(
         MultiSpan::new(),
         "It looks like you're trying to break rust; would you like some ICE?",
@@ -470,29 +448,21 @@ fn fatally_break_rust(sess: &Session) {
         "we would appreciate a joke overview: \
          https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
-    handler.note_without_error(&format!(
+    handler.note_without_error(format!(
         "rustc {} running on {}",
-        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+        tcx.sess.cfg_version,
         config::host_triple(),
     ));
 }
 
-fn has_expected_num_generic_args(
-    tcx: TyCtxt<'_>,
-    trait_did: Option<DefId>,
-    expected: usize,
-) -> bool {
-    trait_did.map_or(true, |trait_did| {
-        let generics = tcx.generics_of(trait_did);
-        generics.count() == expected + if generics.has_self { 1 } else { 0 }
-    })
+fn has_expected_num_generic_args(tcx: TyCtxt<'_>, trait_did: DefId, expected: usize) -> bool {
+    let generics = tcx.generics_of(trait_did);
+    generics.count() == expected + if generics.has_self { 1 } else { 0 }
 }
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
-        typeck_item_bodies,
-        typeck_const_arg,
         typeck,
         diagnostic_only_typeck,
         has_typeck_results,

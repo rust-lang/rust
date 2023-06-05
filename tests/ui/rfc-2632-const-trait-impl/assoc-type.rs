@@ -1,3 +1,5 @@
+// known-bug: #110395
+
 #![feature(const_trait_impl)]
 
 struct NonConstAdd(i32);
@@ -17,7 +19,6 @@ trait Foo {
 
 impl const Foo for NonConstAdd {
     type Bar = NonConstAdd;
-    //~^ ERROR: cannot add `NonConstAdd` to `NonConstAdd` in const contexts
 }
 
 #[const_trait]

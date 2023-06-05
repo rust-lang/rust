@@ -17,7 +17,7 @@ use super::ScalarInt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
-    pub def: ty::WithOptConstParam<DefId>,
+    pub def: DefId,
     pub substs: SubstsRef<'tcx>,
 }
 
@@ -36,16 +36,13 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-    ) -> UnevaluatedConst<'tcx> {
+    pub fn new(def: DefId, substs: SubstsRef<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, substs }
     }
 }
 
 /// Represents a constant in Rust.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 #[derive(derive_more::From)]
 pub enum ConstKind<'tcx> {
@@ -131,7 +128,7 @@ impl<'tcx> ConstKind<'tcx> {
 }
 
 /// An inference variable for a const, for use in const generics.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
 pub enum InferConst<'tcx> {
     /// Infer the value of the const.
     Var(ty::ConstVid<'tcx>),
@@ -224,9 +221,9 @@ impl<'tcx> ConstKind<'tcx> {
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
             let param_env_and = if (param_env, unevaluated).has_non_region_infer() {
-                tcx.param_env(unevaluated.def.did).and(ty::UnevaluatedConst {
+                tcx.param_env(unevaluated.def).and(ty::UnevaluatedConst {
                     def: unevaluated.def,
-                    substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
+                    substs: InternalSubsts::identity_for_item(tcx, unevaluated.def),
                 })
             } else {
                 tcx.erase_regions(param_env)
@@ -248,7 +245,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
                         Err(ErrorHandled::TooGeneric) => None,
-                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
                     }
                 }
                 EvalMode::Mir => {
@@ -259,7 +256,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
                         Err(ErrorHandled::TooGeneric) => None,
-                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
                     }
                 }
             }

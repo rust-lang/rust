@@ -48,7 +48,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             move || {
                 sess.time("incr_comp_persist_result_cache", || {
                     // Drop the memory map so that we can remove the file and write to it.
-                    if let Some(odc) = &tcx.on_disk_cache {
+                    if let Some(odc) = &tcx.query_system.on_disk_cache {
                         odc.drop_serialized_data(tcx);
                     }
 
@@ -164,7 +164,7 @@ pub fn build_dep_graph(
         }
     };
 
-    file_format::write_file_header(&mut encoder, sess.is_nightly_build());
+    file_format::write_file_header(&mut encoder, sess);
 
     // First encode the commandline arguments hash
     sess.opts.dep_tracking_hash(false).encode(&mut encoder);

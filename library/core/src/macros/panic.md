@@ -42,7 +42,7 @@ the successful result of some computation, `Ok(T)`, or error types that
 represent an anticipated runtime failure mode of that computation, `Err(E)`.
 `Result` is used alongside user defined types which represent the various
 anticipated runtime failure modes that the associated computation could
-encounter. `Result` must be propagated manually, often with the the help of the
+encounter. `Result` must be propagated manually, often with the help of the
 `?` operator and `Try` trait, and they must be reported manually, often with
 the help of the `Error` trait.
 

@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 use thin_vec::ThinVec;
 
@@ -44,7 +44,7 @@ where
         discard_positive_impl: bool,
     ) -> Option<Item> {
         let tcx = self.cx.tcx;
-        let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, [ty]));
+        let trait_ref = ty::Binder::dummy(ty::TraitRef::new(tcx, trait_def_id, [ty]));
         if !self.cx.generated_synthetics.insert((ty, trait_def_id)) {
             debug!("get_auto_trait_impl_for({:?}): already generated, aborting", trait_ref);
             return None;
@@ -141,7 +141,7 @@ where
         let f = auto_trait::AutoTraitFinder::new(tcx);
 
         debug!("get_auto_trait_impls({:?})", ty);
-        let auto_traits: Vec<_> = self.cx.auto_traits.iter().copied().collect();
+        let auto_traits: Vec<_> = self.cx.auto_traits.to_vec();
         let mut auto_traits: Vec<Item> = auto_traits
             .into_iter()
             .filter_map(|trait_def_id| {
@@ -556,7 +556,10 @@ where
                 WherePredicate::EqPredicate { lhs, rhs, bound_params } => {
                     match *lhs {
                         Type::QPath(box QPathData {
-                            ref assoc, ref self_type, ref trait_, ..
+                            ref assoc,
+                            ref self_type,
+                            trait_: Some(ref trait_),
+                            ..
                         }) => {
                             let ty = &*self_type;
                             let mut new_trait = trait_.clone();
@@ -740,10 +743,11 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionReplacer<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        (match *r {
-            ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
-            _ => None,
-        })
-        .unwrap_or_else(|| r.super_fold_with(self))
+        match *r {
+            // These are the regions that can be seen in the AST.
+            ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned().unwrap_or(r),
+            ty::ReEarlyBound(_) | ty::ReStatic | ty::ReLateBound(..) | ty::ReError(_) => r,
+            r => bug!("unexpected region: {r:?}"),
+        }
     }
 }

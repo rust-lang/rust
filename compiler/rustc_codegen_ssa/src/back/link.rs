@@ -9,6 +9,7 @@ use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{emit_wrapper_file, METADATA_FILENAME};
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
@@ -21,9 +22,8 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_span::DebuggerVisualizerFile;
 use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy};
+use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
 
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -40,7 +40,6 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use itertools::Itertools;
-use std::borrow::Borrow;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
@@ -54,7 +53,7 @@ use std::{env, fmt, fs, io, mem, str};
 pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
-            diag_handler.err(&format!("failed to remove {}: {}", path.display(), e));
+            diag_handler.err(format!("failed to remove {}: {}", path.display(), e));
         }
     }
 }
@@ -349,7 +348,10 @@ fn link_rlib<'a>(
         let NativeLibKind::Static { bundle: None | Some(true), whole_archive } = lib.kind else {
             continue;
         };
-        if whole_archive == Some(true) && !codegen_results.crate_info.feature_packed_bundled_libs {
+        if whole_archive == Some(true)
+            && flavor == RlibFlavor::Normal
+            && !codegen_results.crate_info.feature_packed_bundled_libs
+        {
             sess.emit_err(errors::IncompatibleLinkingModifiers);
         }
         if flavor == RlibFlavor::Normal && let Some(filename) = lib.filename {
@@ -544,10 +546,38 @@ fn link_staticlib<'a>(
 
     ab.build(out_filename);
 
-    if !all_native_libs.is_empty() {
-        if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
-            print_native_static_libs(sess, &all_native_libs);
+    let crates = codegen_results.crate_info.used_crates.iter();
+
+    let fmts = codegen_results
+        .crate_info
+        .dependency_formats
+        .iter()
+        .find_map(|&(ty, ref list)| if ty == CrateType::Staticlib { Some(list) } else { None })
+        .expect("no dependency formats for staticlib");
+
+    let mut all_rust_dylibs = vec![];
+    for &cnum in crates {
+        match fmts.get(cnum.as_usize() - 1) {
+            Some(&Linkage::Dynamic) => {}
+            _ => continue,
         }
+        let crate_name = codegen_results.crate_info.crate_name[&cnum];
+        let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
+        if let Some((path, _)) = &used_crate_source.dylib {
+            all_rust_dylibs.push(&**path);
+        } else {
+            if used_crate_source.rmeta.is_some() {
+                sess.emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
+            } else {
+                sess.emit_fatal(errors::LinkRlibError::NotFound { crate_name });
+            }
+        }
+    }
+
+    all_native_libs.extend_from_slice(&codegen_results.crate_info.used_libraries);
+
+    if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
+        print_native_static_libs(sess, &all_native_libs, &all_rust_dylibs);
     }
 
     Ok(())
@@ -573,17 +603,17 @@ fn link_dwarf_object<'a>(
 
     impl<Relocations> ThorinSession<Relocations> {
         fn alloc_mmap(&self, data: Mmap) -> &Mmap {
-            (*self.arena_mmap.alloc(data)).borrow()
+            &*self.arena_mmap.alloc(data)
         }
     }
 
     impl<Relocations> thorin::Session<Relocations> for ThorinSession<Relocations> {
         fn alloc_data(&self, data: Vec<u8>) -> &[u8] {
-            (*self.arena_data.alloc(data)).borrow()
+            &*self.arena_data.alloc(data)
         }
 
         fn alloc_relocation(&self, data: Relocations) -> &Relocations {
-            (*self.arena_relocations.alloc(data)).borrow()
+            &*self.arena_relocations.alloc(data)
         }
 
         fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {
@@ -857,13 +887,13 @@ fn link_natively<'a>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                let escaped_output = escape_string(&output);
+                let escaped_output = escape_linker_output(&output, flavor);
                 // FIXME: Add UI tests for this error.
                 let err = errors::LinkingFailed {
                     linker_path: &linker_path,
                     exit_status: prog.status,
                     command: &cmd,
-                    escaped_output: &escaped_output,
+                    escaped_output,
                 };
                 sess.diagnostic().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
@@ -923,7 +953,7 @@ fn link_natively<'a>(
             if sess.target.is_like_msvc && linker_not_found {
                 sess.emit_note(errors::MsvcMissingLinker);
                 sess.emit_note(errors::CheckInstalledVisualStudio);
-                sess.emit_note(errors::UnsufficientVSCodeProduct);
+                sess.emit_note(errors::InsufficientVSCodeProduct);
             }
             sess.abort_if_errors();
         }
@@ -1049,6 +1079,83 @@ fn escape_string(s: &[u8]) -> String {
     }
 }
 
+#[cfg(not(windows))]
+fn escape_linker_output(s: &[u8], _flavour: LinkerFlavor) -> String {
+    escape_string(s)
+}
+
+/// If the output of the msvc linker is not UTF-8 and the host is Windows,
+/// then try to convert the string from the OEM encoding.
+#[cfg(windows)]
+fn escape_linker_output(s: &[u8], flavour: LinkerFlavor) -> String {
+    // This only applies to the actual MSVC linker.
+    if flavour != LinkerFlavor::Msvc(Lld::No) {
+        return escape_string(s);
+    }
+    match str::from_utf8(s) {
+        Ok(s) => return s.to_owned(),
+        Err(_) => match win::locale_byte_str_to_string(s, win::oem_code_page()) {
+            Some(s) => s,
+            // The string is not UTF-8 and isn't valid for the OEM code page
+            None => format!("Non-UTF-8 output: {}", s.escape_ascii()),
+        },
+    }
+}
+
+/// Wrappers around the Windows API.
+#[cfg(windows)]
+mod win {
+    use windows::Win32::Globalization::{
+        GetLocaleInfoEx, MultiByteToWideChar, CP_OEMCP, LOCALE_IUSEUTF8LEGACYOEMCP,
+        LOCALE_NAME_SYSTEM_DEFAULT, LOCALE_RETURN_NUMBER, MB_ERR_INVALID_CHARS,
+    };
+
+    /// Get the Windows system OEM code page. This is most notably the code page
+    /// used for link.exe's output.
+    pub fn oem_code_page() -> u32 {
+        unsafe {
+            let mut cp: u32 = 0;
+            // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
+            // But the API requires us to pass the data as though it's a [u16] string.
+            let len = std::mem::size_of::<u32>() / std::mem::size_of::<u16>();
+            let data = std::slice::from_raw_parts_mut(&mut cp as *mut u32 as *mut u16, len);
+            let len_written = GetLocaleInfoEx(
+                LOCALE_NAME_SYSTEM_DEFAULT,
+                LOCALE_IUSEUTF8LEGACYOEMCP | LOCALE_RETURN_NUMBER,
+                Some(data),
+            );
+            if len_written as usize == len { cp } else { CP_OEMCP }
+        }
+    }
+    /// Try to convert a multi-byte string to a UTF-8 string using the given code page
+    /// The string does not need to be null terminated.
+    ///
+    /// This is implemented as a wrapper around `MultiByteToWideChar`.
+    /// See <https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar>
+    ///
+    /// It will fail if the multi-byte string is longer than `i32::MAX` or if it contains
+    /// any invalid bytes for the expected encoding.
+    pub fn locale_byte_str_to_string(s: &[u8], code_page: u32) -> Option<String> {
+        // `MultiByteToWideChar` requires a length to be a "positive integer".
+        if s.len() > isize::MAX as usize {
+            return None;
+        }
+        // Error if the string is not valid for the expected code page.
+        let flags = MB_ERR_INVALID_CHARS;
+        // Call MultiByteToWideChar twice.
+        // First to calculate the length then to convert the string.
+        let mut len = unsafe { MultiByteToWideChar(code_page, flags, s, None) };
+        if len > 0 {
+            let mut utf16 = vec![0; len as usize];
+            len = unsafe { MultiByteToWideChar(code_page, flags, s, Some(&mut utf16)) };
+            if len > 0 {
+                return utf16.get(..len as usize).map(String::from_utf16_lossy);
+            }
+        }
+        None
+    }
+}
+
 fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
     // On macOS the runtimes are distributed as dylibs which should be linked to
     // both executables and dynamic shared objects. Everywhere else the runtimes
@@ -1080,6 +1187,9 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
     }
     if sanitizer.contains(SanitizerSet::HWADDRESS) {
         link_sanitizer_runtime(sess, linker, "hwasan");
+    }
+    if sanitizer.contains(SanitizerSet::SAFESTACK) {
+        link_sanitizer_runtime(sess, linker, "safestack");
     }
 }
 
@@ -1192,44 +1302,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
                     sess.emit_fatal(errors::LinkerFileStem);
                 });
-
-                // Remove any version postfix.
-                let stem = stem
-                    .rsplit_once('-')
-                    .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
-                    .unwrap_or(stem);
-
-                // GCC/Clang can have an optional target prefix.
-                let flavor = if stem == "emcc" {
-                    LinkerFlavor::EmCc
-                } else if stem == "gcc"
-                    || stem.ends_with("-gcc")
-                    || stem == "g++"
-                    || stem.ends_with("-g++")
-                    || stem == "clang"
-                    || stem.ends_with("-clang")
-                    || stem == "clang++"
-                    || stem.ends_with("-clang++")
-                {
-                    LinkerFlavor::from_cli(LinkerFlavorCli::Gcc, &sess.target)
-                } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {
-                    LinkerFlavor::WasmLld(Cc::No)
-                } else if stem == "ld" || stem.ends_with("-ld") {
-                    LinkerFlavor::from_cli(LinkerFlavorCli::Ld, &sess.target)
-                } else if stem == "ld.lld" {
-                    LinkerFlavor::Gnu(Cc::No, Lld::Yes)
-                } else if stem == "link" {
-                    LinkerFlavor::Msvc(Lld::No)
-                } else if stem == "lld-link" {
-                    LinkerFlavor::Msvc(Lld::Yes)
-                } else if stem == "lld" || stem == "rust-lld" {
-                    let lld_flavor = sess.target.linker_flavor.lld_flavor();
-                    LinkerFlavor::from_cli(LinkerFlavorCli::Lld(lld_flavor), &sess.target)
-                } else {
-                    // fall back to the value in the target spec
-                    sess.target.linker_flavor
-                };
-
+                let flavor = sess.target.linker_flavor.with_linker_hints(stem);
                 Some((linker, flavor))
             }
             (None, None) => None,
@@ -1239,7 +1312,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
     let linker_flavor =
-        sess.opts.cg.linker_flavor.map(|flavor| LinkerFlavor::from_cli(flavor, &sess.target));
+        sess.opts.cg.linker_flavor.map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor));
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
         return ret;
     }
@@ -1291,8 +1364,12 @@ enum RlibFlavor {
     StaticlibBase,
 }
 
-fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
-    let lib_args: Vec<_> = all_native_libs
+fn print_native_static_libs(
+    sess: &Session,
+    all_native_libs: &[NativeLib],
+    all_rust_dylibs: &[&Path],
+) {
+    let mut lib_args: Vec<_> = all_native_libs
         .iter()
         .filter(|l| relevant_lib(sess, l))
         .filter_map(|lib| {
@@ -1322,11 +1399,46 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
             }
         })
         .collect();
+    for path in all_rust_dylibs {
+        // FIXME deduplicate with add_dynamic_crate
+
+        // Just need to tell the linker about where the library lives and
+        // what its name is
+        let parent = path.parent();
+        if let Some(dir) = parent {
+            let dir = fix_windows_verbatim_for_gcc(dir);
+            if sess.target.is_like_msvc {
+                let mut arg = String::from("/LIBPATH:");
+                arg.push_str(&dir.display().to_string());
+                lib_args.push(arg);
+            } else {
+                lib_args.push("-L".to_owned());
+                lib_args.push(dir.display().to_string());
+            }
+        }
+        let stem = path.file_stem().unwrap().to_str().unwrap();
+        // Convert library file-stem into a cc -l argument.
+        let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
+        let lib = &stem[prefix..];
+        let path = parent.unwrap_or_else(|| Path::new(""));
+        if sess.target.is_like_msvc {
+            // When producing a dll, the MSVC linker may not actually emit a
+            // `foo.lib` file if the dll doesn't actually export any symbols, so we
+            // check to see if the file is there and just omit linking to it if it's
+            // not present.
+            let name = format!("{}.dll.lib", lib);
+            if path.join(&name).exists() {
+                lib_args.push(name);
+            }
+        } else {
+            lib_args.push(format!("-l{}", lib));
+        }
+    }
     if !lib_args.is_empty() {
         sess.emit_note(errors::StaticLibraryNativeArtifacts);
         // Prefix for greppability
         // Note: This must not be translated as tools are allowed to depend on this exact string.
-        sess.note_without_error(&format!("native-static-libs: {}", &lib_args.join(" ")));
+        sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
     }
 }
 

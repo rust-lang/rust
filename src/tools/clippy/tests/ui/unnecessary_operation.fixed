@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(
     clippy::deref_addrof,

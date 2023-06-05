@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::option_if_let_else)]
 #![allow(
     unused_tuple_struct_fields,
@@ -33,7 +33,7 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
         *s += 1;
         s
     } else {
-        &mut 0
+        &0
     };
     let _ = if let Some(ref s) = num { s } else { &0 };
     let _ = if let Some(mut s) = num {
@@ -46,7 +46,7 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
         *s += 1;
         s
     } else {
-        &mut 0
+        &0
     };
 }
 
@@ -115,12 +115,21 @@ fn pattern_to_vec(pattern: &str) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+// #10335
+fn test_result_impure_else(variable: Result<u32, &str>) {
+    if let Ok(binding) = variable {
+        println!("Ok {binding}");
+    } else {
+        println!("Err");
+    }
+}
+
 enum DummyEnum {
     One(u8),
     Two,
 }
 
-// should not warn since there is a compled complex subpat
+// should not warn since there is a complex subpat
 // see #7991
 fn complex_subpat() -> DummyEnum {
     let x = Some(DummyEnum::One(1));
@@ -136,6 +145,7 @@ fn main() {
     unop_bad(&None, None);
     let _ = longer_body(None);
     test_map_or_else(None);
+    test_result_impure_else(Ok(42));
     let _ = negative_tests(None);
     let _ = impure_else(None);
 

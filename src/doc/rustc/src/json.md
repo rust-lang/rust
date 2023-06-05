@@ -61,7 +61,7 @@ Diagnostics have the following format:
             /* The file where the span is located.
                Note that this path may not exist. For example, if the path
                points to the standard library, and the rust src is not
-               available in the sysroot, then it may point to a non-existent
+               available in the sysroot, then it may point to a nonexistent
                file. Beware that this may also point to the source of an
                external crate.
             */

@@ -428,7 +428,7 @@ pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
         for early_lint in lints {
             sess.delay_span_bug(
                 early_lint.span,
-                &format!(
+                format!(
                     "failed to process buffered lint here (dummy = {})",
                     id == ast::DUMMY_NODE_ID
                 ),

@@ -117,7 +117,7 @@ $ ls formatjson5.profraw
 formatjson5.profraw
 ```
 
-If `LLVM_PROFILE_FILE` contains a path to a non-existent directory, the missing directory structure will be created. Additionally, the following special pattern strings are rewritten:
+If `LLVM_PROFILE_FILE` contains a path to a nonexistent directory, the missing directory structure will be created. Additionally, the following special pattern strings are rewritten:
 
 -   `%p` - The process ID.
 -   `%h` - The hostname of the machine running the program.

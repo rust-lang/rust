@@ -1,0 +1,4 @@
+error: the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to previous error
+

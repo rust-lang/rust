@@ -1,6 +1,8 @@
 // run-pass
 // needs-unwind
 
+#![allow(dropping_references, dropping_copy_types)]
+
 static mut CHECK: usize = 0;
 
 struct DropChecker(usize);

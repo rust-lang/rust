@@ -1,5 +1,5 @@
 // Checking the colors of the search tab headers.
-goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html?search=something"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html?search=something"
 show-text: true
 
 define-function: (
@@ -9,7 +9,7 @@ define-function: (
      border_top_hover),
     block {
         // Setting the theme.
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
 
         // These two commands are used to be sure the search will be run.

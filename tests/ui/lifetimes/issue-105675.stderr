@@ -1,0 +1,109 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-105675.rs:5:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ one type is more general than the other
+   |
+   = note: expected trait `for<'a, 'b> FnOnce<(&'a u32, &'b u32, u32)>`
+              found trait `for<'a> FnOnce<(&u32, &'a u32, u32)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-105675.rs:4:13
+   |
+LL |     let f = | _ , y: &u32 , z | ();
+   |             ^^^^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-105675.rs:1:18
+   |
+LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying the type of the closure parameters
+   |
+LL |     let f = |_: &_, y: &u32, z| ();
+   |             ~~~~~~~~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-105675.rs:5:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ one type is more general than the other
+   |
+   = note: expected trait `for<'a, 'b> FnOnce<(&'a u32, &'b u32, u32)>`
+              found trait `for<'a> FnOnce<(&u32, &'a u32, u32)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-105675.rs:4:13
+   |
+LL |     let f = | _ , y: &u32 , z | ();
+   |             ^^^^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-105675.rs:1:18
+   |
+LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ one type is more general than the other
+   |
+   = note: expected trait `for<'a, 'b> FnOnce<(&'a u32, &'b u32, u32)>`
+              found trait `FnOnce<(&u32, &u32, u32)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-105675.rs:8:13
+   |
+LL |     let f = | x, y: _  , z: u32 | ();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-105675.rs:1:18
+   |
+LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying the type of the closure parameters
+   |
+LL |     let f = |x: &_, y: &_, z: u32| ();
+   |             ~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ one type is more general than the other
+   |
+   = note: expected trait `for<'a, 'b> FnOnce<(&'a u32, &'b u32, u32)>`
+              found trait `FnOnce<(&u32, &u32, u32)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-105675.rs:8:13
+   |
+LL |     let f = | x, y: _  , z: u32 | ();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-105675.rs:1:18
+   |
+LL | fn thing(x: impl FnOnce(&u32, &u32, u32)) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying the type of the closure parameters
+   |
+LL |     let f = |x: &_, y: &_, z: u32| ();
+   |             ~~~~~~~~~~~~~~~~~~~~~~
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 u32, &u32, u32)` must implement `FnOnce<(&'1 u32, &u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&u32, &'2 u32, u32)` must implement `FnOnce<(&u32, &'1 u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&u32, &'2 u32, u32)>`, for some specific lifetime `'2`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -3,72 +3,72 @@
 fn foo(_1: Option<String>) -> i32 {
     debug s => _1;                       // in scope 0 at $DIR/string.rs:+0:12: +0:13
     let mut _0: i32;                     // return place in scope 0 at $DIR/string.rs:+0:34: +0:37
-    let mut _2: &std::string::String;    // in scope 0 at $DIR/string.rs:+2:14: +2:17
-    let mut _3: &str;                    // in scope 0 at $DIR/string.rs:+2:14: +2:17
-    let mut _4: bool;                    // in scope 0 at $DIR/string.rs:+2:14: +2:17
-    let mut _5: isize;                   // in scope 0 at $DIR/string.rs:+2:9: +2:18
-    let _6: std::option::Option<std::string::String>; // in scope 0 at $DIR/string.rs:+3:9: +3:10
-    let mut _7: bool;                    // in scope 0 at $DIR/string.rs:+5:1: +5:2
+    let mut _2: bool;                    // in scope 0 at $DIR/string.rs:+5:1: +5:2
+    let mut _3: isize;                   // in scope 0 at $DIR/string.rs:+2:9: +2:18
+    let mut _4: &std::string::String;    // in scope 0 at $DIR/string.rs:+2:14: +2:17
+    let mut _5: &str;                    // in scope 0 at $DIR/string.rs:+2:14: +2:17
+    let mut _6: bool;                    // in scope 0 at $DIR/string.rs:+2:14: +2:17
+    let _7: std::option::Option<std::string::String>; // in scope 0 at $DIR/string.rs:+3:9: +3:10
     scope 1 {
-        debug s => _6;                   // in scope 1 at $DIR/string.rs:+3:9: +3:10
+        debug s => _7;                   // in scope 1 at $DIR/string.rs:+3:9: +3:10
     }
 
     bb0: {
-        _7 = const false;                // scope 0 at $DIR/string.rs:+1:11: +1:12
-        _7 = const true;                 // scope 0 at $DIR/string.rs:+1:11: +1:12
-        _5 = discriminant(_1);           // scope 0 at $DIR/string.rs:+1:11: +1:12
-        switchInt(move _5) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/string.rs:+1:5: +1:12
+        _2 = const false;                // scope 0 at $DIR/string.rs:+1:11: +1:12
+        _2 = const true;                 // scope 0 at $DIR/string.rs:+1:11: +1:12
+        _3 = discriminant(_1);           // scope 0 at $DIR/string.rs:+1:11: +1:12
+        switchInt(move _3) -> [1: bb1, otherwise: bb5]; // scope 0 at $DIR/string.rs:+1:5: +1:12
     }
 
     bb1: {
-        StorageLive(_6);                 // scope 0 at $DIR/string.rs:+3:9: +3:10
-        _7 = const false;                // scope 0 at $DIR/string.rs:+3:9: +3:10
-        _6 = move _1;                    // scope 0 at $DIR/string.rs:+3:9: +3:10
-        _0 = const 4321_i32;             // scope 1 at $DIR/string.rs:+3:14: +3:18
-        drop(_6) -> [return: bb6, unwind unreachable]; // scope 0 at $DIR/string.rs:+3:17: +3:18
-    }
-
-    bb2: {
-        _2 = &((_1 as Some).0: std::string::String); // scope 0 at $DIR/string.rs:+2:14: +2:17
-        _3 = <String as Deref>::deref(move _2) -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/string.rs:+2:14: +2:17
+        _4 = &((_1 as Some).0: std::string::String); // scope 0 at $DIR/string.rs:+2:14: +2:17
+        _5 = <String as Deref>::deref(move _4) -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/string.rs:+2:14: +2:17
                                          // mir::Constant
                                          // + span: $DIR/string.rs:9:14: 9:17
                                          // + literal: Const { ty: for<'a> fn(&'a String) -> &'a <String as Deref>::Target {<String as Deref>::deref}, val: Value(<ZST>) }
     }
 
-    bb3: {
-        _4 = <str as PartialEq>::eq(_3, const "a") -> [return: bb4, unwind unreachable]; // scope 0 at $DIR/string.rs:+2:14: +2:17
+    bb2: {
+        _6 = <str as PartialEq>::eq(_5, const "a") -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/string.rs:+2:14: +2:17
                                          // mir::Constant
                                          // + span: $DIR/string.rs:9:14: 9:17
                                          // + literal: Const { ty: for<'a, 'b> fn(&'a str, &'b str) -> bool {<str as PartialEq>::eq}, val: Value(<ZST>) }
                                          // mir::Constant
                                          // + span: $DIR/string.rs:9:14: 9:17
-                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
+                                         // + literal: Const { ty: &str, val: Value(ValTree::Branch(..)) }
+    }
+
+    bb3: {
+        switchInt(move _6) -> [0: bb5, otherwise: bb4]; // scope 0 at $DIR/string.rs:+2:14: +2:17
     }
 
     bb4: {
-        switchInt(move _4) -> [0: bb1, otherwise: bb5]; // scope 0 at $DIR/string.rs:+2:14: +2:17
+        _0 = const 1234_i32;             // scope 0 at $DIR/string.rs:+2:22: +2:26
+        goto -> bb7;                     // scope 0 at $DIR/string.rs:+2:22: +2:26
     }
 
     bb5: {
-        _0 = const 1234_i32;             // scope 0 at $DIR/string.rs:+2:22: +2:26
-        goto -> bb9;                     // scope 0 at $DIR/string.rs:+2:22: +2:26
+        StorageLive(_7);                 // scope 0 at $DIR/string.rs:+3:9: +3:10
+        _2 = const false;                // scope 0 at $DIR/string.rs:+3:9: +3:10
+        _7 = move _1;                    // scope 0 at $DIR/string.rs:+3:9: +3:10
+        _0 = const 4321_i32;             // scope 1 at $DIR/string.rs:+3:14: +3:18
+        drop(_7) -> [return: bb6, unwind unreachable]; // scope 0 at $DIR/string.rs:+3:17: +3:18
     }
 
     bb6: {
-        StorageDead(_6);                 // scope 0 at $DIR/string.rs:+3:17: +3:18
-        goto -> bb9;                     // scope 0 at $DIR/string.rs:+3:17: +3:18
+        StorageDead(_7);                 // scope 0 at $DIR/string.rs:+3:17: +3:18
+        goto -> bb7;                     // scope 0 at $DIR/string.rs:+3:17: +3:18
     }
 
     bb7: {
-        return;                          // scope 0 at $DIR/string.rs:+5:2: +5:2
+        switchInt(_2) -> [0: bb9, otherwise: bb8]; // scope 0 at $DIR/string.rs:+5:1: +5:2
     }
 
     bb8: {
-        drop(_1) -> [return: bb7, unwind unreachable]; // scope 0 at $DIR/string.rs:+5:1: +5:2
+        drop(_1) -> [return: bb9, unwind unreachable]; // scope 0 at $DIR/string.rs:+5:1: +5:2
     }
 
     bb9: {
-        switchInt(_7) -> [0: bb7, otherwise: bb8]; // scope 0 at $DIR/string.rs:+5:1: +5:2
+        return;                          // scope 0 at $DIR/string.rs:+5:2: +5:2
     }
 }

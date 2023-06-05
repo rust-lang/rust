@@ -1,9 +1,9 @@
 // These tests verify that labels like "UNIX" and "Deprecated" stay on the same line as their symbol.
 // It also verifies the staggered layout on mobile.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // Desktop view
-size: (1080, 600)
+set-window-size: (1080, 600)
 assert: (".stab.deprecated")
 assert: (".stab.portability")
 
@@ -39,7 +39,7 @@ compare-elements-position: (
 
 
 // Mobile view
-size: (600, 600)
+set-window-size: (600, 600)
 // staggered layout with 2em spacing
 assert-css: (".desc.docblock-short", { "padding-left": "32px" })
 compare-elements-position-near: (

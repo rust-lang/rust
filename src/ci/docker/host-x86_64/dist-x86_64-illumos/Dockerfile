@@ -6,12 +6,13 @@ RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
 COPY scripts/cross-apt-packages.sh /tmp/
 RUN bash /tmp/cross-apt-packages.sh
 
-# Required for cross-build gcc
+# Required for cross-build gcc, and we install python2 to test general compatibility.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libgmp-dev \
     libmpfr-dev \
     libmpc-dev \
+    python2.7 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/illumos-toolchain.sh /tmp/
@@ -35,4 +36,4 @@ ENV \
 ENV HOSTS=x86_64-unknown-illumos
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

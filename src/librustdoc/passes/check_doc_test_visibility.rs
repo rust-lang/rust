@@ -34,9 +34,7 @@ pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -
 
 impl<'a, 'tcx> DocVisitor for DocTestVisibilityLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
-
-        look_for_tests(self.cx, &dox, item);
+        look_for_tests(self.cx, &item.doc_value(), item);
 
         self.visit_item_recur(item)
     }
@@ -95,7 +93,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     }
 
     if cx.tcx.is_doc_hidden(def_id.to_def_id())
-        || inherits_doc_hidden(cx.tcx, def_id)
+        || inherits_doc_hidden(cx.tcx, def_id, None)
         || cx.tcx.def_span(def_id.to_def_id()).in_derive_expansion()
     {
         return false;

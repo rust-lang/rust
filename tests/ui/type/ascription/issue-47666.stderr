@@ -1,16 +1,10 @@
-error: expected type, found `<[_]>::into_vec(#[rustc_box] ::alloc::boxed::Box::new([0, 1]))`
-  --> $DIR/issue-47666.rs:3:25
+error: path separator must be a double colon
+  --> $DIR/issue-47666.rs:3:19
    |
 LL |     let _ = Option:Some(vec![0, 1]);
-   |                   -     ^^^^^^^^^^
-   |                   |     |
-   |                   |     expected type
-   |                   |     in this macro invocation
-   |                   |     this macro call doesn't expand to a type
-   |                   help: maybe write a path separator here: `::`
+   |                   ^ help: use a double colon instead: `::`
    |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: this error originates in the macro `$crate::__rust_force_expr` which comes from the expansion of the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: aborting due to previous error
 

@@ -18,9 +18,9 @@ define-function: (
         assoc_type_color,
     ),
     block {
-        goto: "file://" + |DOC_PATH| + "/test_docs/struct.WithGenerics.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.WithGenerics.html"
         show-text: true
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (".item-decl .code-attribute", {"color": |attr_color|}, ALL)
         assert-css: (".item-decl .trait", {"color": |trait_color|}, ALL)
@@ -29,7 +29,7 @@ define-function: (
         assert-css: (".item-decl .enum", {"color": |enum_color|}, ALL)
         assert-css: (".item-decl .primitive", {"color": |primitive_color|}, ALL)
 
-        goto: "file://" + |DOC_PATH| + "/test_docs/trait.TraitWithoutGenerics.html"
+        go-to: "file://" + |DOC_PATH| + "/test_docs/trait.TraitWithoutGenerics.html"
         assert-css: (".item-decl .constant", {"color": |constant_color|}, ALL)
         assert-css: (".item-decl .fn", {"color": |fn_color|}, ALL)
         assert-css: (".item-decl .associatedtype", {"color": |assoc_type_color|}, ALL)

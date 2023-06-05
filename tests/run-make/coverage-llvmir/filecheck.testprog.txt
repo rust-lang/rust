@@ -36,7 +36,7 @@ CHECK-SAME:   section "llvm.metadata"
 CHECK:        [[DEFINE_INTERNAL]] { {{.*}} } @_R{{[a-zA-Z0-9_]+}}testprog14will_be_called() unnamed_addr #{{[0-9]+}} {
 CHECK-NEXT:   start:
 CHECK-NOT:    [[DEFINE_INTERNAL]]
-CHECK:        %pgocount = load i64, {{i64\*|ptr}}
+CHECK:        atomicrmw add ptr
 CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called,
 
 CHECK:        declare void @llvm.instrprof.increment({{i8\*|ptr}}, i64, i32, i32) #[[LLVM_INSTRPROF_INCREMENT_ATTR:[0-9]+]]

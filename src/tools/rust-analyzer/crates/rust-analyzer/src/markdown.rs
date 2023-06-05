@@ -28,7 +28,7 @@ pub(crate) fn format_docs(src: &str) -> String {
 
         if in_code_block {
             let trimmed = line.trim_start();
-            if trimmed.starts_with("##") {
+            if is_rust && trimmed.starts_with("##") {
                 line = &trimmed[1..];
             }
         }
@@ -153,5 +153,13 @@ let s = "foo
 ```"#;
 
         assert_eq!(format_docs(comment), "```rust\nlet s = \"foo\n# bar # baz\";\n```");
+    }
+
+    #[test]
+    fn test_format_docs_handles_double_hashes_non_rust() {
+        let comment = r#"```markdown
+## A second-level heading
+```"#;
+        assert_eq!(format_docs(comment), "```markdown\n## A second-level heading\n```");
     }
 }

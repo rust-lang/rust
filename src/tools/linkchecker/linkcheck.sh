@@ -16,14 +16,12 @@
 #
 # --all     Check all books. This can help make sure you don't break links
 #           from other books into your book.
+#
+# --path <book-path>
+#           Path to the root directory for the book. Default to the current
+#           working directory if omitted.
 
 set -e
-
-if [ ! -f book.toml ] && [ ! -f src/SUMMARY.md ]
-then
-    echo "Run command in root directory of the book."
-    exit 1
-fi
 
 html_dir="$(rustc +nightly --print sysroot)/share/doc/rust/html"
 
@@ -38,6 +36,8 @@ fi
 export MDBOOK_OUTPUT__HTML__INPUT_404=""
 
 book_name=""
+# Default to the current directory
+book_path="."
 # Iterative will avoid cleaning up, so you can quickly run it repeatedly.
 iterative=0
 # If "1", test all books, else only this book.
@@ -51,6 +51,10 @@ do
             ;;
         --all)
             all_books=1
+            ;;
+        --path)
+            book_path="${2:-.}"
+            shift
             ;;
         *)
             if [ -n "$book_name" ]
@@ -67,6 +71,12 @@ done
 if [ -z "$book_name" ]
 then
     echo "usage: $0 <name-of-book>"
+    exit 1
+fi
+
+if [ ! -f "$book_path/book.toml" ] && [ ! -f "$book_path/src/SUMMARY.md" ]
+then
+    echo "Run command in root directory of the book or provide a path to the book"
     exit 1
 fi
 
@@ -93,11 +103,11 @@ then
 fi
 
 echo "Building book \"$book_name\"..."
-mdbook build
+mdbook build "$book_path"
 
 cp -R "$html_dir" linkcheck
 rm -rf "linkcheck/$book_name"
-cp -R book "linkcheck/$book_name"
+cp -R "$book_path/book" "linkcheck/$book_name"
 
 if [ "$all_books" = "1" ]
 then

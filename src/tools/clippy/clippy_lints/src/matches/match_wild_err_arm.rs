@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{is_wild, peel_blocks_with_stmt};
+use clippy_utils::{in_constant, is_wild, peel_blocks_with_stmt};
 use rustc_hir::{Arm, Expr, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::{kw, sym};
@@ -10,6 +10,11 @@ use rustc_span::symbol::{kw, sym};
 use super::MATCH_WILD_ERR_ARM;
 
 pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'tcx>]) {
+    // `unwrap`/`expect` is not (yet) const, so we want to allow this in const contexts for now
+    if in_constant(cx, ex.hir_id) {
+        return;
+    }
+
     let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
     if is_type_diagnostic_item(cx, ex_ty, sym::Result) {
         for arm in arms {

@@ -224,6 +224,10 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
+    cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
+        cx.profiler.clone(),
+    )));
+
     tcx.prof.generic_activity("codegen and compile fn").run(|| {
         let _inst_guard =
             crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));

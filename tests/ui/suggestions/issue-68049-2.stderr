@@ -4,10 +4,10 @@ error[E0594]: cannot assign to `*input`, which is behind a `&` reference
 LL |       *input = self.0;
    |       ^^^^^^^^^^^^^^^ `input` is a `&` reference, so the data it refers to cannot be written
    |
-help: consider changing that to be a mutable reference
+help: consider changing this to be a mutable reference
    |
-LL |   fn example(&self, input: &mut i32); // should suggest here
-   |                            ~~~~~~~~
+LL |   fn example(&self, input: &mut i32) { // should not suggest here
+   |                             +++
 
 error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
   --> $DIR/issue-68049-2.rs:17:5
@@ -15,7 +15,7 @@ error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
 LL |     self.0 += *input;
    |     ^^^^^^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be written
    |
-help: consider changing that to be a mutable reference
+help: consider changing this to be a mutable reference
    |
 LL |   fn example(&mut self, input: &i32); // should suggest here
    |              ~~~~~~~~~

@@ -1,7 +1,10 @@
 // @generated
+#[clippy::msrv = "1.61"]
 mod fallback;
+#[clippy::msrv = "1.61"]
 mod list;
-use ::icu_provider::prelude::*;
+#[clippy::msrv = "1.61"]
+use icu_provider::prelude::*;
 /// Implement [`DataProvider<M>`] on the given struct using the data
 /// hardcoded in this module. This allows the struct to be used with
 /// `icu`'s `_unstable` constructors.
@@ -17,6 +20,7 @@ use ::icu_provider::prelude::*;
 #[allow(unused_macros)]
 macro_rules! impl_data_provider {
     ($ provider : path) => {
+        #[clippy::msrv = "1.61"]
         impl DataProvider<::icu_list::provider::AndListV1Marker> for $provider {
             fn load(&self, req: DataRequest) -> Result<DataResponse<::icu_list::provider::AndListV1Marker>, DataError> {
                 list::and_v1::lookup(&req.locale)
@@ -26,6 +30,7 @@ macro_rules! impl_data_provider {
                     .ok_or_else(|| DataErrorKind::MissingLocale.with_req(::icu_list::provider::AndListV1Marker::KEY, req))
             }
         }
+        #[clippy::msrv = "1.61"]
         impl DataProvider<::icu_provider_adapters::fallback::provider::CollationFallbackSupplementV1Marker> for $provider {
             fn load(
                 &self,
@@ -41,6 +46,7 @@ macro_rules! impl_data_provider {
                     })
             }
         }
+        #[clippy::msrv = "1.61"]
         impl DataProvider<::icu_provider_adapters::fallback::provider::LocaleFallbackLikelySubtagsV1Marker> for $provider {
             fn load(
                 &self,
@@ -56,6 +62,7 @@ macro_rules! impl_data_provider {
                     })
             }
         }
+        #[clippy::msrv = "1.61"]
         impl DataProvider<::icu_provider_adapters::fallback::provider::LocaleFallbackParentsV1Marker> for $provider {
             fn load(
                 &self,
@@ -87,6 +94,7 @@ macro_rules! impl_data_provider {
 #[allow(unused_macros)]
 macro_rules! impl_any_provider {
     ($ provider : path) => {
+        #[clippy::msrv = "1.61"]
         impl AnyProvider for $provider {
             fn load_any(&self, key: DataKey, req: DataRequest) -> Result<AnyResponse, DataError> {
                 const ANDLISTV1MARKER: ::icu_provider::DataKeyHash = ::icu_list::provider::AndListV1Marker::KEY.hashed();
@@ -109,5 +117,6 @@ macro_rules! impl_any_provider {
         }
     };
 }
+#[clippy::msrv = "1.61"]
 pub struct BakedDataProvider;
 impl_data_provider!(BakedDataProvider);

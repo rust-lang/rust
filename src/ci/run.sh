@@ -53,6 +53,7 @@ if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch 
     HAS_METRICS=1
 fi
 
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-verbose-configure"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-locked-deps"
@@ -143,7 +144,11 @@ if [ "$RUST_RELEASE_CHANNEL" = "nightly" ] || [ "$DIST_REQUIRE_ALL_TOOLS" = "" ]
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-missing-tools"
 fi
 
-export COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS=1
+# Unless we're using an older version of LLVM, check that all LLVM components
+# used by tests are available.
+if [ "$IS_NOT_LATEST_LLVM" = "" ]; then
+  export COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS=1
+fi
 
 # Print the date from the local machine and the date from an external source to
 # check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure

@@ -3,7 +3,6 @@
 // revisions: current next
 
 #![feature(async_fn_in_trait)]
-//~^ WARN the feature `async_fn_in_trait` is incomplete
 
 trait MyTrait {
     async fn bar(&abc self);

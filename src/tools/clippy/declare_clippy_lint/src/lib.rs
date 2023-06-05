@@ -6,16 +6,16 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
-use syn::{parse_macro_input, Attribute, Error, Ident, Lit, LitStr, Meta, Result, Token};
+use syn::{parse_macro_input, Attribute, Error, Expr, ExprLit, Ident, Lit, LitStr, Meta, Result, Token};
 
 fn parse_attr<const LEN: usize>(path: [&'static str; LEN], attr: &Attribute) -> Option<LitStr> {
-    if let Meta::NameValue(name_value) = attr.parse_meta().ok()? {
+    if let Meta::NameValue(name_value) = &attr.meta {
         let path_idents = name_value.path.segments.iter().map(|segment| &segment.ident);
 
         if itertools::equal(path_idents, path)
-            && let Lit::Str(lit) = name_value.lit
+            && let Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) = &name_value.value
         {
-            return Some(lit);
+            return Some(s.clone());
         }
     }
 

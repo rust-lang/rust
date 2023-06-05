@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused)]
 #![warn(clippy::unnecessary_struct_initialization)]

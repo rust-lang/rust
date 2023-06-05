@@ -1,6 +1,8 @@
 // check-pass
 // Check tautalogically false `Copy` bounds
+
 #![feature(trivial_bounds)]
+#![allow(dropping_references, dropping_copy_types)]
 
 fn copy_string(t: String) -> String where String: Copy { //~ WARNING trivial_bounds
     is_copy(&t);

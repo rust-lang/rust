@@ -3,7 +3,7 @@
 // Ensures that we don't ICE
 
 #![feature(trait_alias)]
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 trait Foo {
     type Bar: Baz<Self, Self>;

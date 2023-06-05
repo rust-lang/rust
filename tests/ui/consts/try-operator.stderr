@@ -1,0 +1,9 @@
+error[E0635]: unknown feature `const_convert`
+  --> $DIR/try-operator.rs:6:12
+   |
+LL | #![feature(const_convert)]
+   |            ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0635`.

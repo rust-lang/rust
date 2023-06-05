@@ -4,6 +4,7 @@ use std::{fmt, panic, thread};
 use ide::Cancelled;
 use lsp_server::ExtractError;
 use serde::{de::DeserializeOwned, Serialize};
+use stdx::thread::ThreadIntent;
 
 use crate::{
     global_state::{GlobalState, GlobalStateSnapshot},
@@ -87,7 +88,8 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    /// Dispatches the request onto thread pool
+    /// Dispatches a non-latency-sensitive request onto the thread pool
+    /// without retrying it if it panics.
     pub(crate) fn on_no_retry<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
@@ -102,7 +104,7 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn({
+        self.global_state.task_pool.handle.spawn(ThreadIntent::Worker, {
             let world = self.global_state.snapshot();
             move || {
                 let result = panic::catch_unwind(move || {
@@ -123,9 +125,47 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    /// Dispatches the request onto thread pool
+    /// Dispatches a non-latency-sensitive request onto the thread pool.
     pub(crate) fn on<R>(
         &mut self,
+        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+        R::Result: Serialize,
+    {
+        self.on_with_thread_intent::<R>(ThreadIntent::Worker, f)
+    }
+
+    /// Dispatches a latency-sensitive request onto the thread pool.
+    pub(crate) fn on_latency_sensitive<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+        R::Result: Serialize,
+    {
+        self.on_with_thread_intent::<R>(ThreadIntent::LatencySensitive, f)
+    }
+
+    pub(crate) fn finish(&mut self) {
+        if let Some(req) = self.req.take() {
+            tracing::error!("unknown request: {:?}", req);
+            let response = lsp_server::Response::new_err(
+                req.id,
+                lsp_server::ErrorCode::MethodNotFound as i32,
+                "unknown request".to_string(),
+            );
+            self.global_state.respond(response);
+        }
+    }
+
+    fn on_with_thread_intent<R>(
+        &mut self,
+        intent: ThreadIntent,
         f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
     ) -> &mut Self
     where
@@ -138,7 +178,7 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn({
+        self.global_state.task_pool.handle.spawn(intent, {
             let world = self.global_state.snapshot();
             move || {
                 let result = panic::catch_unwind(move || {
@@ -153,18 +193,6 @@ impl<'a> RequestDispatcher<'a> {
         });
 
         self
-    }
-
-    pub(crate) fn finish(&mut self) {
-        if let Some(req) = self.req.take() {
-            tracing::error!("unknown request: {:?}", req);
-            let response = lsp_server::Response::new_err(
-                req.id,
-                lsp_server::ErrorCode::MethodNotFound as i32,
-                "unknown request".to_string(),
-            );
-            self.global_state.respond(response);
-        }
     }
 
     fn parse<R>(&mut self) -> Option<(lsp_server::Request, R::Params, String)>

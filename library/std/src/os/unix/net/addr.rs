@@ -245,12 +245,12 @@ impl SocketAddr {
     }
 }
 
-#[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 impl Sealed for SocketAddr {}
 
 #[doc(cfg(any(target_os = "android", target_os = "linux")))]
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
-#[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "unix_socket_abstract", since = "1.70.0")]
 impl linux_ext::addr::SocketAddrExt for SocketAddr {
     fn as_abstract_name(&self) -> Option<&[u8]> {
         if let AddressKind::Abstract(name) = self.address() { Some(name) } else { None }

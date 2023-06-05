@@ -134,11 +134,13 @@ LL |     pub(crate) default static ID: u8;
    |                                     |
    |                                     help: provide a definition for the constant: `= <expr>;`
 
-error[E0449]: unnecessary visibility qualifier
+error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/assoc-static-semantic-fail.rs:32:5
    |
 LL |     pub(crate) default static TD: u8;
    |     ^^^^^^^^^^
+   |
+   = note: trait items always share the visibility of their trait
 
 error: associated constant in `impl` without body
   --> $DIR/assoc-static-semantic-fail.rs:41:5
@@ -156,11 +158,13 @@ LL |     pub default static TD: u8;
    |                              |
    |                              help: provide a definition for the constant: `= <expr>;`
 
-error[E0449]: unnecessary visibility qualifier
+error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/assoc-static-semantic-fail.rs:47:5
    |
 LL |     pub default static TD: u8;
-   |     ^^^ `pub` not permitted here because it's implied
+   |     ^^^
+   |
+   = note: trait items always share the visibility of their trait
 
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/assoc-static-semantic-fail.rs:3:12

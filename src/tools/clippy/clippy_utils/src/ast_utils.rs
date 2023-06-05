@@ -143,7 +143,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Paren(l), _) => eq_expr(l, r),
         (_, Paren(r)) => eq_expr(l, r),
         (Err, Err) => true,
-        (Try(l), Try(r)) | (Await(l), Await(r)) => eq_expr(l, r),
+        (Try(l), Try(r)) | (Await(l, _), Await(r, _)) => eq_expr(l, r),
         (Array(l), Array(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Repeat(le, ls), Repeat(re, rs)) => eq_expr(le, re) && eq_expr(&ls.value, &rs.value),
@@ -286,8 +286,30 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     match (l, r) {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
-        (Static(box ast::StaticItem { ty: lt, mutability: lm, expr: le}), Static(box ast::StaticItem { ty: rt, mutability: rm, expr: re})) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
-        (Const(box ast::ConstItem { defaultness: ld, ty: lt, expr: le}), Const(box ast::ConstItem { defaultness: rd, ty: rt, expr: re} )) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Static(box ast::StaticItem {
+                ty: lt,
+                mutability: lm,
+                expr: le,
+            }),
+            Static(box ast::StaticItem {
+                ty: rt,
+                mutability: rm,
+                expr: re,
+            }),
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Const(box ast::ConstItem {
+                defaultness: ld,
+                ty: lt,
+                expr: le,
+            }),
+            Const(box ast::ConstItem {
+                defaultness: rd,
+                ty: rt,
+                expr: re,
+            }),
+        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -451,7 +473,18 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
 pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
-        (Const(box ast::ConstItem { defaultness: ld, ty: lt, expr: le}), Const(box ast::ConstItem { defaultness: rd, ty: rt, expr: re})) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Const(box ast::ConstItem {
+                defaultness: ld,
+                ty: lt,
+                expr: le,
+            }),
+            Const(box ast::ConstItem {
+                defaultness: rd,
+                ty: rt,
+                expr: re,
+            }),
+        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,

@@ -2,7 +2,7 @@
 // This test also ensures that the checks are performed even inside private modules.
 
 #![feature(associated_type_defaults)]
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 mod m {
     struct Priv;

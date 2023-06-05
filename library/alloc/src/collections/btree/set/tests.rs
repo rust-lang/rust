@@ -4,7 +4,6 @@ use crate::testing::rng::DeterministicRng;
 use crate::vec::Vec;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 use std::ops::Bound::{Excluded, Included};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 

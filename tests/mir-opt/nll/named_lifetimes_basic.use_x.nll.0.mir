@@ -1,39 +1,39 @@
 // MIR for `use_x` 0 nll
 
 | Free Region Mapping
-| '_#0r | Global | ['_#2r, '_#1r, '_#0r, '_#4r, '_#3r]
-| '_#1r | Local | ['_#1r, '_#4r]
-| '_#2r | Local | ['_#2r, '_#1r, '_#4r]
-| '_#3r | Local | ['_#4r, '_#3r]
-| '_#4r | Local | ['_#4r]
+| '?0 | Global | ['?2, '?1, '?0, '?4, '?3]
+| '?1 | Local | ['?1, '?4]
+| '?2 | Local | ['?2, '?1, '?4]
+| '?3 | Local | ['?4, '?3]
+| '?4 | Local | ['?4]
 |
 | Inferred Region Values
-| '_#0r | U0 | {bb0[0..=1], '_#0r, '_#1r, '_#2r, '_#3r, '_#4r}
-| '_#1r | U0 | {bb0[0..=1], '_#1r}
-| '_#2r | U0 | {bb0[0..=1], '_#2r}
-| '_#3r | U0 | {bb0[0..=1], '_#3r}
-| '_#4r | U0 | {bb0[0..=1], '_#4r}
-| '_#5r | U0 | {bb0[0..=1], '_#1r}
-| '_#6r | U0 | {bb0[0..=1], '_#2r}
-| '_#7r | U0 | {bb0[0..=1], '_#1r}
-| '_#8r | U0 | {bb0[0..=1], '_#3r}
+| '?0 | U0 | {bb0[0..=1], '?0, '?1, '?2, '?3, '?4}
+| '?1 | U0 | {bb0[0..=1], '?1}
+| '?2 | U0 | {bb0[0..=1], '?2}
+| '?3 | U0 | {bb0[0..=1], '?3}
+| '?4 | U0 | {bb0[0..=1], '?4}
+| '?5 | U0 | {bb0[0..=1], '?1}
+| '?6 | U0 | {bb0[0..=1], '?2}
+| '?7 | U0 | {bb0[0..=1], '?1}
+| '?8 | U0 | {bb0[0..=1], '?3}
 |
 | Inference Constraints
-| '_#0r live at {bb0[0..=1]}
-| '_#1r live at {bb0[0..=1]}
-| '_#2r live at {bb0[0..=1]}
-| '_#3r live at {bb0[0..=1]}
-| '_#4r live at {bb0[0..=1]}
-| '_#1r: '_#5r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:26: 12:27) ($DIR/named_lifetimes_basic.rs:12:26: 12:27 (#0)
-| '_#1r: '_#7r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:54: 12:55) ($DIR/named_lifetimes_basic.rs:12:54: 12:55 (#0)
-| '_#2r: '_#6r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:42: 12:43) ($DIR/named_lifetimes_basic.rs:12:42: 12:43 (#0)
-| '_#3r: '_#8r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:66: 12:67) ($DIR/named_lifetimes_basic.rs:12:66: 12:67 (#0)
-| '_#5r: '_#1r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:26: 12:27) ($DIR/named_lifetimes_basic.rs:12:26: 12:27 (#0)
-| '_#6r: '_#2r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:42: 12:43) ($DIR/named_lifetimes_basic.rs:12:42: 12:43 (#0)
-| '_#7r: '_#1r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:54: 12:55) ($DIR/named_lifetimes_basic.rs:12:54: 12:55 (#0)
-| '_#8r: '_#3r due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:66: 12:67) ($DIR/named_lifetimes_basic.rs:12:66: 12:67 (#0)
+| '?0 live at {bb0[0..=1]}
+| '?1 live at {bb0[0..=1]}
+| '?2 live at {bb0[0..=1]}
+| '?3 live at {bb0[0..=1]}
+| '?4 live at {bb0[0..=1]}
+| '?1: '?5 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:26: 12:27) ($DIR/named_lifetimes_basic.rs:12:26: 12:27 (#0)
+| '?1: '?7 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:54: 12:55) ($DIR/named_lifetimes_basic.rs:12:54: 12:55 (#0)
+| '?2: '?6 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:42: 12:43) ($DIR/named_lifetimes_basic.rs:12:42: 12:43 (#0)
+| '?3: '?8 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:66: 12:67) ($DIR/named_lifetimes_basic.rs:12:66: 12:67 (#0)
+| '?5: '?1 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:26: 12:27) ($DIR/named_lifetimes_basic.rs:12:26: 12:27 (#0)
+| '?6: '?2 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:42: 12:43) ($DIR/named_lifetimes_basic.rs:12:42: 12:43 (#0)
+| '?7: '?1 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:54: 12:55) ($DIR/named_lifetimes_basic.rs:12:54: 12:55 (#0)
+| '?8: '?3 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:66: 12:67) ($DIR/named_lifetimes_basic.rs:12:66: 12:67 (#0)
 |
-fn use_x(_1: &'_#5r mut i32, _2: &'_#6r u32, _3: &'_#7r u32, _4: &'_#8r u32) -> bool {
+fn use_x(_1: &'?5 mut i32, _2: &'?6 u32, _3: &'?7 u32, _4: &'?8 u32) -> bool {
     debug w => _1;                       // in scope 0 at $DIR/named_lifetimes_basic.rs:+0:26: +0:27
     debug x => _2;                       // in scope 0 at $DIR/named_lifetimes_basic.rs:+0:42: +0:43
     debug y => _3;                       // in scope 0 at $DIR/named_lifetimes_basic.rs:+0:54: +0:55

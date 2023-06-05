@@ -1,4 +1,4 @@
-// aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs
 
 #![deny(clippy::implicit_hasher)]
 #![allow(unused)]

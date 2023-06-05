@@ -13,7 +13,7 @@ use crate::iter::{
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
-use crate::ptr::NonNull;
+use crate::ptr::{invalid, invalid_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
 
@@ -60,10 +60,15 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Iter<'a, T: 'a> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
-    // ptr == end is a quick test for the Iterator being empty, that works
-    // for both ZST and non-ZST.
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr::invalid(len)`.
+    end: *const T,
     _marker: PhantomData<&'a T>,
 }
 
@@ -85,10 +90,7 @@ impl<'a, T> Iter<'a, T> {
         let ptr = slice.as_ptr();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            assume(!ptr.is_null());
-
-            let end =
-                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
+            let end = if T::IS_ZST { invalid(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
         }
@@ -179,10 +181,15 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct IterMut<'a, T: 'a> {
+    /// The pointer to the next element to return, or the past-the-end location
+    /// if the iterator is empty.
+    ///
+    /// This address will be used for all ZST elements, never changed.
     ptr: NonNull<T>,
-    end: *mut T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
-    // ptr == end is a quick test for the Iterator being empty, that works
-    // for both ZST and non-ZST.
+    /// For non-ZSTs, the non-null pointer to the past-the-end element.
+    ///
+    /// For ZSTs, this is `ptr::invalid_mut(len)`.
+    end: *mut T,
     _marker: PhantomData<&'a mut T>,
 }
 
@@ -219,10 +226,7 @@ impl<'a, T> IterMut<'a, T> {
         // See the `next_unchecked!` and `is_empty!` macros as well as the
         // `post_inc_start` method for more information.
         unsafe {
-            assume(!ptr.is_null());
-
-            let end =
-                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
+            let end = if T::IS_ZST { invalid_mut(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
         }
@@ -685,7 +689,7 @@ where
             None
         } else {
             self.finished = true;
-            Some(mem::replace(&mut self.v, &mut []))
+            Some(mem::take(&mut self.v))
         }
     }
 }
@@ -749,7 +753,7 @@ where
         match idx_opt {
             None => self.finish(),
             Some(idx) => {
-                let tmp = mem::replace(&mut self.v, &mut []);
+                let tmp = mem::take(&mut self.v);
                 let (head, tail) = tmp.split_at_mut(idx);
                 self.v = head;
                 Some(&mut tail[1..])
@@ -830,7 +834,7 @@ where
         if idx == self.v.len() {
             self.finished = true;
         }
-        let tmp = mem::replace(&mut self.v, &mut []);
+        let tmp = mem::take(&mut self.v);
         let (head, tail) = tmp.split_at_mut(idx);
         self.v = tail;
         Some(head)
@@ -876,7 +880,7 @@ where
         if idx == 0 {
             self.finished = true;
         }
-        let tmp = mem::replace(&mut self.v, &mut []);
+        let tmp = mem::take(&mut self.v);
         let (head, tail) = tmp.split_at_mut(idx);
         self.v = head;
         Some(tail)

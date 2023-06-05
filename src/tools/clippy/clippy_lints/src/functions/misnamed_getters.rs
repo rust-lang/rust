@@ -40,7 +40,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
     };
 
     // Body must be &(mut) <self_data>.name
-    // self_data is not neccessarilly self, to also lint sub-getters, etc…
+    // self_data is not necessarily self, to also lint sub-getters, etc…
 
     let block_expr = if_chain! {
         if let ExprKind::Block(block,_) = body.value.kind;

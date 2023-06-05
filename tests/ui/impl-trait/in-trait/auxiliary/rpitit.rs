@@ -5,10 +5,10 @@
 use std::ops::Deref;
 
 pub trait Foo {
-    fn bar() -> impl Deref<Target = impl Sized>;
+    fn bar(self) -> impl Deref<Target = impl Sized>;
 }
 
 pub struct Foreign;
 impl Foo for Foreign {
-    fn bar() -> &'static () { &() }
+    fn bar(self) -> &'static () { &() }
 }

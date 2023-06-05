@@ -62,6 +62,7 @@ use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -144,12 +145,28 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
             let at = self.at(&self.cause, self.fcx.param_env);
-            if self.use_lub {
+
+            let res = if self.use_lub {
                 at.lub(DefineOpaqueTypes::Yes, b, a)
             } else {
                 at.sup(DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
+            };
+
+            // In the new solver, lazy norm may allow us to shallowly equate
+            // more types, but we emit possibly impossible-to-satisfy obligations.
+            // Filter these cases out to make sure our coercion is more accurate.
+            if self.tcx.trait_solver_next() {
+                if let Ok(res) = &res {
+                    for obligation in &res.obligations {
+                        if !self.predicate_may_hold(&obligation) {
+                            return Err(TypeError::Mismatch);
+                        }
+                    }
+                }
             }
+
+            res
         })
     }
 
@@ -601,7 +618,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.tcx,
             cause,
             self.fcx.param_env,
-            self.tcx.mk_trait_ref(coerce_unsized_did, [coerce_source, coerce_target])
+            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
         )];
 
         let mut has_unsized_tuple_coercion = false;
@@ -707,9 +724,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 &self.tcx.sess.parse_sess,
                 sym::trait_upcasting,
                 self.cause.span,
-                &format!("cannot cast `{sub}` to `{sup}`, trait upcasting coercion is experimental"),
+                format!("cannot cast `{sub}` to `{sup}`, trait upcasting coercion is experimental"),
             );
-            err.note(&format!("required when coercing `{source}` into `{target}`"));
+            err.note(format!("required when coercing `{source}` into `{target}`"));
             err.emit();
         }
 
@@ -764,8 +781,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.tcx,
             self.cause.clone(),
             self.param_env,
-            ty::Binder::dummy(
-                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerLike, [a]),
+            ty::TraitRef::from_lang_item(
+                self.tcx,
+                hir::LangItem::PointerLike,
+                self.cause.span,
+                [a],
             ),
         ));
 
@@ -788,6 +808,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
         self.commit_if_ok(|snapshot| {
+            let outer_universe = self.infcx.universe();
+
             let result = if let ty::FnPtr(fn_ty_b) = b.kind()
                 && let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
                     (fn_ty_a.unsafety(), fn_ty_b.unsafety())
@@ -804,7 +826,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // want the coerced type to be the actual supertype of these two,
             // but for now, we want to just error to ensure we don't lock
             // ourselves into a specific behavior with NLL.
-            self.leak_check(false, snapshot)?;
+            self.leak_check(outer_universe, Some(snapshot))?;
 
             result
         })
@@ -976,7 +998,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Attempt to coerce an expression to a type, and return the
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
-    /// The expressions *must not* have any pre-existing adjustments.
+    /// The expressions *must not* have any preexisting adjustments.
     pub fn try_coerce(
         &self,
         expr: &hir::Expr<'_>,
@@ -1340,7 +1362,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     }
 
     /// As an optimization, you can create a `CoerceMany` with a
-    /// pre-existing slice of expressions. In this case, you are
+    /// preexisting slice of expressions. In this case, you are
     /// expected to pass each element in the slice to `coerce(...)` in
     /// order. This is used with arrays in particular to avoid
     /// needlessly cloning the slice.
@@ -1573,7 +1595,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             Some(blk_id),
                         );
                         if !fcx.tcx.features().unsized_locals {
-                            unsized_return = self.is_return_ty_unsized(fcx, blk_id);
+                            unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                         if let Some(expression) = expression
                             && let hir::ExprKind::Loop(loop_blk, ..) = expression.kind {
@@ -1592,8 +1614,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             None,
                         );
                         if !fcx.tcx.features().unsized_locals {
-                            let id = fcx.tcx.hir().parent_id(id);
-                            unsized_return = self.is_return_ty_unsized(fcx, id);
+                            unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                     }
                     _ => {
@@ -1657,7 +1678,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             "the function expects a value to always be returned, but loops might run zero times",
         );
         if MAXITER < ret_exprs.len() {
-            err.note(&format!(
+            err.note(format!(
                 "if the loop doesn't execute, {} other values would never get returned",
                 ret_exprs.len() - MAXITER
             ));
@@ -1767,7 +1788,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         {
             err.span_note(
                 sp,
-                &format!(
+                format!(
                     "return type inferred to be `{}` here",
                     expected
                 ),
@@ -1811,7 +1832,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             .span_to_snippet(return_sp)
             .unwrap_or_else(|_| "dyn Trait".to_string());
         let mut snippet_iter = snippet.split_whitespace();
-        let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
+        let has_impl = snippet_iter.next().is_some_and(|s| s == "impl");
         // Only suggest `Box<dyn Trait>` if `Trait` in `impl Trait` is object safe.
         let mut is_object_safe = false;
         if let hir::FnRetTy::Return(ty) = fn_output
@@ -1831,7 +1852,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     bound
                         .trait_ref()
                         .and_then(|t| t.trait_def_id())
-                        .map_or(false, |def_id| {
+                        .is_some_and(|def_id| {
                             fcx.tcx.check_is_object_safe(def_id)
                         })
                 })
@@ -1864,7 +1885,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                err.help(&format!(
+                err.help(format!(
                     "if the trait `{}` were object safe, you could return a boxed trait object",
                     &snippet[5..]
                 ));
@@ -1874,15 +1895,24 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         err.help("you could instead create a new `enum` with a variant for each returned type");
     }
 
-    fn is_return_ty_unsized<'a>(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
-        if let Some((_, fn_decl, _)) = fcx.get_fn_decl(blk_id)
-            && let hir::FnRetTy::Return(ty) = fn_decl.output
-            && let ty = fcx.astconv().ast_ty_to_ty( ty)
-            && let ty::Dynamic(..) = ty.kind()
-        {
-            return true;
+    /// Checks whether the return type is unsized via an obligation, which makes
+    /// sure we consider `dyn Trait: Sized` where clauses, which are trivially
+    /// false but technically valid for typeck.
+    fn is_return_ty_definitely_unsized(&self, fcx: &FnCtxt<'_, 'tcx>) -> bool {
+        if let Some(sig) = fcx.body_fn_sig() {
+            !fcx.predicate_may_hold(&Obligation::new(
+                fcx.tcx,
+                ObligationCause::dummy(),
+                fcx.param_env,
+                ty::TraitRef::new(
+                    fcx.tcx,
+                    fcx.tcx.require_lang_item(hir::LangItem::Sized, None),
+                    [sig.output()],
+                ),
+            ))
+        } else {
+            false
         }
-        false
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {

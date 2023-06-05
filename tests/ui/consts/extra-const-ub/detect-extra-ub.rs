@@ -1,7 +1,6 @@
 // revisions: no_flag with_flag
 // [no_flag] check-pass
 // [with_flag] compile-flags: -Zextra-const-ub-checks
-#![feature(const_ptr_read)]
 
 use std::mem::transmute;
 

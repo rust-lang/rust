@@ -43,7 +43,7 @@ including automatic and blanket implementations that `rustdoc` knows about.
 Subheadings, variants, fields, and many other things in this documentation
 are anchors and can be clicked on and deep-linked to,
 which is a great way to communicate exactly what you're talking about.
-The typograpical character "§" appears next to lines with anchors on them
+The typographical character "§" appears next to lines with anchors on them
 when hovered or given keyboard focus.
 
 ## The Navigation Bar
@@ -68,7 +68,7 @@ Typing in the search bar instantly searches the available documentation for
 the string entered with a fuzzy matching algorithm that is tolerant of minor
 typos.
 
-By default, the search results give are "In Names",
+By default, the search results given are "In Names",
 meaning that the fuzzy match is made against the names of items.
 Matching names are shown on the left, and the first few words of their
 descriptions are given on the right.
@@ -94,10 +94,16 @@ can be matched with the following queries:
 * `trait:Iterator<primitive:u32> -> primitive:usize`
 * `Iterator -> usize`
 
-### Changing displayed theme
+Generics and function parameters are order-agnostic, but sensitive to nesting
+and number of matches. For example, a function with the signature
+`fn read_all(&mut self: impl Read) -> Result<Vec<u8>, Error>`
+will match these queries:
 
-You can change the displayed theme by opening the settings menu (the gear
-icon in the upper right) and then pick a new one from there.
+* `Read -> Result<Vec<u8>, Error>`
+* `Read -> Result<Error, Vec>`
+* `Read -> Result<Vec<u8>>`
+
+But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
 
 ### Shortcuts
 

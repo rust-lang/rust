@@ -21,7 +21,7 @@ use crate::channel;
 use crate::config::{Config, TargetSelection};
 use crate::util::get_clang_cl_resource_dir;
 use crate::util::{self, exe, output, t, up_to_date};
-use crate::{CLang, GitRepo};
+use crate::{CLang, GitRepo, Kind};
 
 use build_helper::ci::CiEnv;
 
@@ -185,6 +185,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         ("arm-unknown-linux-gnueabi", false),
         ("arm-unknown-linux-gnueabihf", false),
         ("armv7-unknown-linux-gnueabihf", false),
+        ("loongarch64-unknown-linux-gnu", false),
         ("mips-unknown-linux-gnu", false),
         ("mips64-unknown-linux-gnuabi64", false),
         ("mips64el-unknown-linux-gnuabi64", false),
@@ -271,7 +272,7 @@ impl Step for Llvm {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
-        builder.info(&format!("Building LLVM for {}", target));
+        let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
@@ -291,7 +292,7 @@ impl Step for Llvm {
         let llvm_targets = match &builder.config.llvm_targets {
             Some(s) => s,
             None => {
-                "AArch64;ARM;BPF;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                "AArch64;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;\
                      Sparc;SystemZ;WebAssembly;X86"
             }
         };
@@ -813,7 +814,7 @@ impl Step for Lld {
             return out_dir;
         }
 
-        builder.info(&format!("Building LLD for {}", target));
+        let _guard = builder.msg_unstaged(Kind::Build, "LLD", target);
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -831,6 +832,31 @@ impl Step for Lld {
                 let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
                 ldflags.push_all(&format!("/libpath:{}", clang_rt_dir.display()));
             }
+        }
+
+        // LLD is built as an LLVM tool, but is distributed outside of the `llvm-tools` component,
+        // which impacts where it expects to find LLVM's shared library. This causes #80703.
+        //
+        // LLD is distributed at "$root/lib/rustlib/$host/bin/rust-lld", but the `libLLVM-*.so` it
+        // needs is distributed at "$root/lib". The default rpath of "$ORIGIN/../lib" points at the
+        // lib path for LLVM tools, not the one for rust binaries.
+        //
+        // (The `llvm-tools` component copies the .so there for the other tools, and with that
+        // component installed, one can successfully invoke `rust-lld` directly without rustup's
+        // `LD_LIBRARY_PATH` overrides)
+        //
+        if builder.config.rpath_enabled(target)
+            && util::use_host_linker(target)
+            && builder.config.llvm_link_shared()
+            && target.contains("linux")
+        {
+            // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the
+            // expected parent `lib` directory.
+            //
+            // Be careful when changing this path, we need to ensure it's quoted or escaped:
+            // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
+            // cmake.
+            ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
         }
 
         configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
@@ -911,7 +937,7 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        builder.info(&format!("Building sanitizers for {}", self.target));
+        let _guard = builder.msg_unstaged(Kind::Build, "sanitizers", self.target);
         t!(stamp.remove());
         let _time = util::timeit(&builder);
 
@@ -1016,7 +1042,7 @@ fn supported_sanitizers(
         "x86_64-unknown-illumos" => common_libs("illumos", "x86_64", &["asan"]),
         "x86_64-pc-solaris" => common_libs("solaris", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnu" => {
-            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
+            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "safestack", "tsan"])
         }
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
@@ -1087,6 +1113,8 @@ impl Step for CrtBeginEnd {
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        builder.update_submodule(&Path::new("src/llvm-project"));
+
         let out_dir = builder.native_dir(self.target).join("crt");
 
         if builder.config.dry_run() {
@@ -1101,7 +1129,7 @@ impl Step for CrtBeginEnd {
             return out_dir;
         }
 
-        builder.info("Building crtbegin.o and crtend.o");
+        let _guard = builder.msg_unstaged(Kind::Build, "crtbegin.o and crtend.o", self.target);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cc::Build::new();
@@ -1151,8 +1179,10 @@ impl Step for Libunwind {
         run.builder.ensure(Libunwind { target: run.target });
     }
 
-    /// Build linunwind.a
+    /// Build libunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        builder.update_submodule(&Path::new("src/llvm-project"));
+
         if builder.config.dry_run() {
             return PathBuf::new();
         }
@@ -1164,7 +1194,7 @@ impl Step for Libunwind {
             return out_dir;
         }
 
-        builder.info(&format!("Building libunwind.a for {}", self.target.triple));
+        let _guard = builder.msg_unstaged(Kind::Build, "libunwind.a", self.target);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cc_cfg = cc::Build::new();

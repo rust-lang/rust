@@ -5,7 +5,7 @@ use super::FunctionCx;
 use crate::traits::*;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
@@ -84,7 +84,7 @@ impl DefLocation {
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
-    dominators: Dominators<mir::BasicBlock>,
+    dominators: &'mir Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
@@ -203,7 +203,9 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 self.assign(local, DefLocation::Body(location));
             }
 
-            PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
+            PlaceContext::NonUse(_)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention)
+            | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
@@ -232,7 +234,6 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::ShallowBorrow
                 | NonMutatingUseContext::AddressOf
                 | NonMutatingUseContext::Projection,

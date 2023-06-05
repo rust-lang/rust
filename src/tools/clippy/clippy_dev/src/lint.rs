@@ -1,17 +1,6 @@
-use crate::cargo_clippy_path;
-use std::process::{self, Command, ExitStatus};
-use std::{fs, io};
-
-fn exit_if_err(status: io::Result<ExitStatus>) {
-    match status.expect("failed to run command").code() {
-        Some(0) => {},
-        Some(n) => process::exit(n),
-        None => {
-            eprintln!("Killed by signal");
-            process::exit(1);
-        },
-    }
-}
+use crate::{cargo_clippy_path, exit_if_err};
+use std::fs;
+use std::process::{self, Command};
 
 pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
     let is_file = match fs::metadata(path) {

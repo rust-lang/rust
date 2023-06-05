@@ -1,5 +1,6 @@
 //! Diagnostics related methods for `Ty`.
 
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 use crate::ty::{
@@ -139,7 +140,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     // Suggest a where clause bound for a non-type parameter.
     err.span_suggestion_verbose(
         generics.tail_span_for_predicate_suggestion(),
-        &format!(
+        format!(
             "consider {} `where` clause, but there might be an alternative better way to express \
              this requirement",
             if generics.where_clause_span.is_empty() { "introducing a" } else { "extending the" },
@@ -242,7 +243,7 @@ pub fn suggest_constraining_type_params<'a>(
 
                 err.span_label(
                     param.span,
-                    &format!("this type parameter needs to be `{}`", constraint),
+                    format!("this type parameter needs to be `{}`", constraint),
                 );
                 suggest_removing_unsized_bound(generics, &mut suggestions, param, def_id);
             }
@@ -384,22 +385,18 @@ pub fn suggest_constraining_type_params<'a>(
 
     if suggestions.len() == 1 {
         let (span, suggestion, msg) = suggestions.pop().unwrap();
-
-        let s;
         let msg = match msg {
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
-                "consider further restricting this bound"
+                Cow::from("consider further restricting this bound")
             }
             SuggestChangingConstraintsMessage::RestrictType { ty } => {
-                s = format!("consider restricting type parameter `{}`", ty);
-                &s
+                Cow::from(format!("consider restricting type parameter `{}`", ty))
             }
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty } => {
-                s = format!("consider further restricting type parameter `{}`", ty);
-                &s
+                Cow::from(format!("consider further restricting type parameter `{}`", ty))
             }
             SuggestChangingConstraintsMessage::RemovingQSized => {
-                "consider removing the `?Sized` bound to make the type parameter `Sized`"
+                Cow::from("consider removing the `?Sized` bound to make the type parameter `Sized`")
             }
         };
 

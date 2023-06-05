@@ -24,13 +24,13 @@ LL |     fn new() -> Result<foo::MyEnum, String> {
    |
 help: consider importing one of these items instead
    |
-LL |     use std::fmt::Result;
+LL +     use std::fmt::Result;
    |
-LL |     use std::io::Result;
+LL +     use std::io::Result;
    |
-LL |     use std::result::Result;
+LL +     use std::result::Result;
    |
-LL |     use std::thread::Result;
+LL +     use std::thread::Result;
    |
 
 error[E0573]: expected type, found variant `Result`
@@ -41,13 +41,13 @@ LL | fn new() -> Result<foo::MyEnum, String> {
    |
 help: consider importing one of these items instead
    |
-LL | use std::fmt::Result;
+LL + use std::fmt::Result;
    |
-LL | use std::io::Result;
+LL + use std::io::Result;
    |
-LL | use std::result::Result;
+LL + use std::result::Result;
    |
-LL | use std::thread::Result;
+LL + use std::thread::Result;
    |
 
 error[E0573]: expected type, found variant `NoResult`

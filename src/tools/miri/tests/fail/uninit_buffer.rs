@@ -1,4 +1,6 @@
-//@error-pattern: memory is uninitialized at [0x4..0x10]
+//@error-in-other-file: memory is uninitialized at [0x4..0x10]
+
+#![allow(dropping_copy_types)]
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice::from_raw_parts;

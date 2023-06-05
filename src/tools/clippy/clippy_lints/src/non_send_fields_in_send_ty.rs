@@ -131,13 +131,13 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                             for field in non_send_fields {
                                 diag.span_note(
                                     field.def.span,
-                                    &format!("it is not safe to send field `{}` to another thread", field.def.ident.name),
+                                    format!("it is not safe to send field `{}` to another thread", field.def.ident.name),
                                 );
 
                                 match field.generic_params.len() {
                                     0 => diag.help("use a thread-safe type that implements `Send`"),
-                                    1 if is_ty_param(field.ty) => diag.help(&format!("add `{}: Send` bound in `Send` impl", field.ty)),
-                                    _ => diag.help(&format!(
+                                    1 if is_ty_param(field.ty) => diag.help(format!("add `{}: Send` bound in `Send` impl", field.ty)),
+                                    _ => diag.help(format!(
                                         "add bounds on type parameter{} `{}` that satisfy `{}: Send`",
                                         if field.generic_params.len() > 1 { "s" } else { "" },
                                         field.generic_params_string(),

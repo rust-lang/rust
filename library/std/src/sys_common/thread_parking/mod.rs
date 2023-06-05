@@ -18,10 +18,7 @@ cfg_if::cfg_if! {
     ))] {
         mod id;
         pub use id::Parker;
-    } else if #[cfg(any(windows, target_family = "unix"))] {
-        pub use crate::sys::thread_parking::Parker;
     } else {
-        mod generic;
-        pub use generic::Parker;
+        pub use crate::sys::thread_parking::Parker;
     }
 }

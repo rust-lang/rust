@@ -12,7 +12,7 @@ use rustc_session::config::OutputType;
 pub struct Marker(pub &'static str);
 
 impl<'tcx> MirPass<'tcx> for Marker {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         self.0
     }
 

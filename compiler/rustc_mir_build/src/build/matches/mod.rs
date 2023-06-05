@@ -2241,7 +2241,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.var_debug_info.push(VarDebugInfo {
             name,
             source_info: debug_source_info,
+            references: 0,
             value: VarDebugInfoContents::Place(for_arm_body.into()),
+            argument_index: None,
         });
         let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
@@ -2259,7 +2261,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info.push(VarDebugInfo {
                 name,
                 source_info: debug_source_info,
+                references: 0,
                 value: VarDebugInfoContents::Place(ref_for_guard.into()),
+                argument_index: None,
             });
             LocalsForNode::ForGuard { ref_for_guard, for_arm_body }
         } else {

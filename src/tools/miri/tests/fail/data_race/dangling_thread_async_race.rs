@@ -18,6 +18,7 @@ fn main() {
 
     let join = unsafe {
         spawn(move || {
+            let c = c; // capture `c`, not just its field.
             *c.0 = 32;
         })
     };
@@ -34,6 +35,7 @@ fn main() {
 
     let join2 = unsafe {
         spawn(move || {
+            let c = c; // capture `c`, not just its field.
             *c.0 = 64; //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Write on thread `<unnamed>`
         })
     };

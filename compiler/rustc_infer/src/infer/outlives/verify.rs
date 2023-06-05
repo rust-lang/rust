@@ -1,4 +1,4 @@
-use crate::infer::outlives::components::{compute_components_recursive, Component};
+use crate::infer::outlives::components::{compute_alias_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::VerifyBound;
@@ -130,7 +130,12 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_components_recursive(self.tcx, alias_ty_as_ty.into(), &mut components, visited);
+            compute_alias_components_recursive(
+                self.tcx,
+                alias_ty_as_ty.into(),
+                &mut components,
+                visited,
+            );
             self.bound_from_components(&components, visited)
         };
 
@@ -174,7 +179,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // this point it never will be
                 self.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
-                    &format!("unresolved inference variable in outlives: {:?}", v),
+                    format!("unresolved inference variable in outlives: {:?}", v),
                 );
                 // add a bound that never holds
                 VerifyBound::AnyBound(vec![])
@@ -272,7 +277,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// It will not, however, work for higher-ranked bounds like:
     ///
-    /// ```compile_fail,E0311
+    /// ```ignore(this does compile today, previously was marked as `compile_fail,E0311`)
     /// trait Foo<'a, 'b>
     /// where for<'x> <Self as Foo<'x, 'b>>::Bar: 'x
     /// {
@@ -288,7 +293,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
         let bounds = tcx.item_bounds(alias_ty.def_id);
-        trace!("{:#?}", bounds.0);
+        trace!("{:#?}", bounds.skip_binder());
         bounds
             .subst_iter(tcx, alias_ty.substs)
             .filter_map(|p| p.to_opt_type_outlives())

@@ -223,7 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
 
         if should_do_rust_2021_incompatible_closure_captures_analysis(self.tcx, closure_hir_id) {
-            self.perform_2229_migration_anaysis(closure_def_id, body_id, capture_clause, span);
+            self.perform_2229_migration_analysis(closure_def_id, body_id, capture_clause, span);
         }
 
         let after_feature_tys = self.final_upvar_tys(closure_def_id);
@@ -713,7 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 self.tcx.sess.delay_span_bug(
                     closure_span,
-                    &format!(
+                    format!(
                         "two identical projections: ({:?}, {:?})",
                         capture1.place.projections, capture2.place.projections
                     ),
@@ -731,7 +731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Perform the migration analysis for RFC 2229, and emit lint
     /// `disjoint_capture_drop_reorder` if needed.
-    fn perform_2229_migration_anaysis(
+    fn perform_2229_migration_analysis(
         &self,
         closure_def_id: LocalDefId,
         body_id: hir::BodyId,
@@ -863,7 +863,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let indent = line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
                             lint.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len())).shrink_to_lo(),
-                                &diagnostic_msg,
+                                diagnostic_msg,
                                 format!("\n{indent}{migration_string};"),
                                 Applicability::MachineApplicable,
                             );
@@ -874,7 +874,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // directly after the `{`.
                             lint.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos(1)).shrink_to_lo(),
-                                &diagnostic_msg,
+                                diagnostic_msg,
                                 format!(" {migration_string};"),
                                 Applicability::MachineApplicable,
                             );
@@ -882,7 +882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // This is a closure without braces around the body.
                             // We add braces to add the `let` before the body.
                             lint.multipart_suggestion(
-                                &diagnostic_msg,
+                                diagnostic_msg,
                                 vec![
                                     (closure_body_span.shrink_to_lo(), format!("{{ {migration_string}; ")),
                                     (closure_body_span.shrink_to_hi(), " }".to_string()),
@@ -893,7 +893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         lint.span_suggestion(
                             closure_span,
-                            &diagnostic_msg,
+                            diagnostic_msg,
                             migration_string,
                             Applicability::HasPlaceholders
                         );
@@ -972,15 +972,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut obligations_should_hold = Vec::new();
         // Checks if a root variable implements any of the auto traits
         for check_trait in auto_traits_def_id.iter() {
-            obligations_should_hold.push(
-                check_trait
-                    .map(|check_trait| {
-                        self.infcx
-                            .type_implements_trait(check_trait, [ty], self.param_env)
-                            .must_apply_modulo_regions()
-                    })
-                    .unwrap_or(false),
-            );
+            obligations_should_hold.push(check_trait.is_some_and(|check_trait| {
+                self.infcx
+                    .type_implements_trait(check_trait, [ty], self.param_env)
+                    .must_apply_modulo_regions()
+            }));
         }
 
         let mut problematic_captures = FxHashMap::default();
@@ -996,15 +992,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Checks if a capture implements any of the auto traits
             let mut obligations_holds_for_capture = Vec::new();
             for check_trait in auto_traits_def_id.iter() {
-                obligations_holds_for_capture.push(
-                    check_trait
-                        .map(|check_trait| {
-                            self.infcx
-                                .type_implements_trait(check_trait, [ty], self.param_env)
-                                .must_apply_modulo_regions()
-                        })
-                        .unwrap_or(false),
-                );
+                obligations_holds_for_capture.push(check_trait.is_some_and(|check_trait| {
+                    self.infcx
+                        .type_implements_trait(check_trait, [ty], self.param_env)
+                        .must_apply_modulo_regions()
+                }));
             }
 
             let mut capture_problems = FxHashSet::default();
@@ -1519,7 +1511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let span =
                     capture_info.path_expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
-                diag.span_note(span, &output_str);
+                diag.span_note(span, output_str);
             }
             diag.emit();
         }
@@ -1560,13 +1552,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             multi_span.push_span_label(path_span, path_label);
                             multi_span.push_span_label(capture_kind_span, capture_kind_label);
 
-                            diag.span_note(multi_span, &output_str);
+                            diag.span_note(multi_span, output_str);
                         } else {
                             let span = capture_info
                                 .path_expr_id
                                 .map_or(closure_span, |e| self.tcx.hir().span(e));
 
-                            diag.span_note(span, &output_str);
+                            diag.span_note(span, output_str);
                         };
                     }
                 }

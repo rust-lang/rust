@@ -2,14 +2,14 @@
 // Playground. That button is hidden until the user hovers over the code block.
 // This test checks that it is hidden, and that it shows on hover. It also
 // checks for its color.
-goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 show-text: true
 
 define-function: (
     "check-run-button",
     (theme, color, background, hover_color, hover_background),
     block {
-        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (".test-arrow", {"visibility": "hidden"})
         move-cursor-to: ".example-wrap"

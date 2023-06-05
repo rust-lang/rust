@@ -5,6 +5,7 @@ use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedM
 use rustc_ast_pretty::pprust;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
+use rustc_session::config::ExpectedValues;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
@@ -22,8 +23,7 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
 pub fn rust_version_symbol() -> Symbol {
-    let version = option_env!("CFG_VERSION").unwrap_or("<current>");
-    let version = version.split(' ').next().unwrap();
+    let version = option_env!("CFG_RELEASE").unwrap_or("<current>");
     Symbol::intern(&version)
 }
 
@@ -581,32 +581,32 @@ pub fn cfg_matches(
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg.name, cfg.span, sess, features);
-        if let Some(names_valid) = &sess.check_config.names_valid {
-            if !names_valid.contains(&cfg.name) {
+        match sess.check_config.expecteds.get(&cfg.name) {
+            Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
+                sess.buffer_lint_with_diagnostic(
+                    UNEXPECTED_CFGS,
+                    cfg.span,
+                    lint_node_id,
+                    "unexpected `cfg` condition value",
+                    BuiltinLintDiagnostics::UnexpectedCfgValue(
+                        (cfg.name, cfg.name_span),
+                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
+                    ),
+                );
+            }
+            None if sess.check_config.exhaustive_names => {
                 sess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
                     "unexpected `cfg` condition name",
-                    BuiltinLintDiagnostics::UnexpectedCfg((cfg.name, cfg.name_span), None),
+                    BuiltinLintDiagnostics::UnexpectedCfgName(
+                        (cfg.name, cfg.name_span),
+                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
+                    ),
                 );
             }
-        }
-        if let Some(value) = cfg.value {
-            if let Some(values) = &sess.check_config.values_valid.get(&cfg.name) {
-                if !values.contains(&value) {
-                    sess.buffer_lint_with_diagnostic(
-                        UNEXPECTED_CFGS,
-                        cfg.span,
-                        lint_node_id,
-                        "unexpected `cfg` condition value",
-                        BuiltinLintDiagnostics::UnexpectedCfg(
-                            (cfg.name, cfg.name_span),
-                            cfg.value_span.map(|vs| (value, vs)),
-                        ),
-                    );
-                }
-            }
+            _ => { /* not unexpected */ }
         }
         sess.config.contains(&(cfg.name, cfg.value))
     })
@@ -623,7 +623,7 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
         let explain = format!("`cfg({cfg})` is experimental and subject to change");
-        feature_err(sess, *feature, cfg_span, &explain).emit();
+        feature_err(sess, *feature, cfg_span, explain).emit();
     }
 }
 

@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
@@ -26,7 +26,7 @@ use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, Var
 
 bitflags! {
     #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct AdtFlags: u32 {
+    pub struct AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
         const IS_ENUM             = 1 << 0;
@@ -111,12 +111,30 @@ impl Ord for AdtDefData {
     }
 }
 
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `PartialEq` only based on `did`.
 impl PartialEq for AdtDefData {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.did == other.did
+        // There should be only one `AdtDefData` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `AdtDefData` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self { did: self_def_id, variants: _, flags: _, repr: _ } = self;
+        let Self { did: other_def_id, variants: _, flags: _, repr: _ } = other;
+
+        let res = self_def_id == other_def_id;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.flags == other.flags
+                && self.repr == other.repr
+                && self.variants == other.variants;
+            assert!(deep, "AdtDefData for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
@@ -188,7 +206,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,
     Union,
@@ -555,7 +573,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer (e.g., issue #31299).
     pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
-        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()))
+        ty::EarlyBinder::bind(tcx.adt_sized_constraint(self.did()))
     }
 }
 

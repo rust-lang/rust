@@ -91,7 +91,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
             ),
         },
         ConstantKind::Unevaluated(mir::UnevaluatedConst { def, .. }, _)
-            if fx.tcx.is_static(def.did) =>
+            if fx.tcx.is_static(def) =>
         {
             span_bug!(constant.span, "MIR constant refers to static");
         }
@@ -159,6 +159,8 @@ pub(crate) fn codegen_const_value<'tcx>(
                         _ => unreachable!(),
                     };
 
+                    // FIXME avoid this extra copy to the stack and directly write to the final
+                    // destination
                     let place = CPlace::new_stack_slot(fx, layout);
                     place.to_ptr().store(fx, val, MemFlags::trusted());
                     place.to_cvalue(fx)
@@ -306,7 +308,7 @@ fn data_id_for_static(
             attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
         ) {
             Ok(data_id) => data_id,
-            Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+            Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(format!(
                 "attempt to declare `{symbol_name}` as static, but it was already declared as function"
             )),
             Err(err) => Err::<_, _>(err).unwrap(),
@@ -354,7 +356,7 @@ fn data_id_for_static(
         attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
     ) {
         Ok(data_id) => data_id,
-        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(format!(
             "attempt to declare `{symbol_name}` as static, but it was already declared as function"
         )),
         Err(err) => Err::<_, _>(err).unwrap(),
@@ -402,7 +404,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 if let Some(names) = section_name.split_once(',') {
                     names
                 } else {
-                    tcx.sess.fatal(&format!(
+                    tcx.sess.fatal(format!(
                         "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
                         section_name
                     ));
@@ -447,7 +449,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {
-                        tcx.sess.fatal(&format!(
+                        tcx.sess.fatal(format!(
                             "Allocation {:?} contains reference to TLS value {:?}",
                             alloc_id, def_id
                         ));

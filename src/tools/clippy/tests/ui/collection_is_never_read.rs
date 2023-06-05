@@ -84,11 +84,16 @@ fn shadowing_2() {
 }
 
 #[allow(clippy::let_unit_value)]
-fn fake_read() {
-    let mut x = vec![1, 2, 3]; // Ok
+fn fake_read_1() {
+    let mut x = vec![1, 2, 3]; // WARNING
     x.reverse();
-    // `collection_is_never_read` gets fooled, but other lints should catch this.
     let _: () = x.clear();
+}
+
+fn fake_read_2() {
+    let mut x = vec![1, 2, 3]; // WARNING
+    x.reverse();
+    println!("{:?}", x.push(5));
 }
 
 fn assignment() {
@@ -162,4 +167,37 @@ fn function_argument() {
 
     let x = vec![1, 2, 3]; // Ok
     foo(&x);
+}
+
+fn supported_types() {
+    let mut x = std::collections::BTreeMap::new(); // WARNING
+    x.insert(true, 1);
+
+    let mut x = std::collections::BTreeSet::new(); // WARNING
+    x.insert(1);
+
+    let mut x = std::collections::BinaryHeap::new(); // WARNING
+    x.push(1);
+
+    let mut x = std::collections::HashMap::new(); // WARNING
+    x.insert(1, 2);
+
+    let mut x = std::collections::HashSet::new(); // WARNING
+    x.insert(1);
+
+    let mut x = std::collections::LinkedList::new(); // WARNING
+    x.push_front(1);
+
+    let mut x = Some(true); // WARNING
+    x.insert(false);
+
+    let mut x = String::from("hello"); // WARNING
+    x.push('!');
+
+    let mut x = Vec::new(); // WARNING
+    x.clear();
+    x.push(1);
+
+    let mut x = std::collections::VecDeque::new(); // WARNING
+    x.push_front(1);
 }

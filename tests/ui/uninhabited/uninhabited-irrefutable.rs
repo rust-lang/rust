@@ -16,7 +16,9 @@ struct NotSoSecretlyEmpty {
 }
 
 enum Foo {
+    //~^ NOTE `Foo` defined here
     A(foo::SecretlyEmpty),
+    //~^ NOTE not covered
     B(foo::NotSoSecretlyEmpty),
     C(NotSoSecretlyEmpty),
     D(u32, u32),
@@ -27,4 +29,9 @@ fn main() {
     let Foo::D(_y, _z) = x;
     //~^ ERROR refutable pattern in local binding
     //~| `Foo::A(_)` not covered
+    //~| NOTE `let` bindings require an "irrefutable pattern"
+    //~| NOTE for more information
+    //~| NOTE pattern `Foo::A(_)` is currently uninhabited
+    //~| NOTE the matched value is of type `Foo`
+    //~| HELP you might want to use `let else`
 }

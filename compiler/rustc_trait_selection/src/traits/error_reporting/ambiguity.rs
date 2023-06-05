@@ -87,7 +87,7 @@ pub fn recompute_applicable_impls<'tcx>(
         if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = kind.skip_binder()
             && param_env_candidate_may_apply(kind.rebind(trait_pred))
         {
-            if kind.rebind(trait_pred.trait_ref) == ty::TraitRef::identity(tcx, trait_pred.def_id()) {
+            if kind.rebind(trait_pred.trait_ref) == ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_pred.def_id())) {
                 ambiguities.push(Ambiguity::ParamEnv(tcx.def_span(trait_pred.def_id())))
             } else {
                 ambiguities.push(Ambiguity::ParamEnv(span))

@@ -28,9 +28,11 @@ use rustc_middle::{
     middle::exported_symbols::{
         ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
     },
-    ty::{query::ExternProviders, TyCtxt},
-    query::LocalCrate,
+    query::{ExternProviders, LocalCrate},
+    ty::TyCtxt,
 };
+use rustc_session::config::OptLevel;
+
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
@@ -61,7 +63,9 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         queries: &'tcx rustc_interface::Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            tcx.sess.abort_if_errors();
+            if tcx.sess.compile_status().is_err() {
+                tcx.sess.fatal("miri cannot be run on programs that fail compilation");
+            }
 
             init_late_loggers(tcx);
             if !tcx.sess.crate_types().contains(&CrateType::Executable) {
@@ -81,6 +85,21 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             // Adjust working directory for interpretation.
             if let Some(cwd) = env::var_os("MIRI_CWD") {
                 env::set_current_dir(cwd).unwrap();
+            }
+
+            if tcx.sess.opts.optimize != OptLevel::No {
+                tcx.sess.warn("Miri does not support optimizations. If you have enabled optimizations \
+                    by selecting a Cargo profile (such as --release) which changes other profile settings \
+                    such as whether debug assertions and overflow checks are enabled, those settings are \
+                    still applied.");
+            }
+            if tcx.sess.mir_opt_level() > 0 {
+                tcx.sess.warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
+                    which is to completely disable them. Any optimizations may hide UB that Miri would \
+                    otherwise detect, and it is not necessarily possible to predict what kind of UB will \
+                    be missed. If you are enabling optimizations to make Miri run faster, we advise using \
+                    cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR \
+                    optimizations is usually marginal at best.");
             }
 
             if let Some(return_code) = miri::eval_entry(tcx, entry_def_id, entry_type, config) {
@@ -103,7 +122,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
     fn config(&mut self, config: &mut Config) {
         if config.opts.prints.is_empty() && self.target_crate {
-            // Queries overriden here affect the data stored in `rmeta` files of dependencies,
+            // Queries overridden here affect the data stored in `rmeta` files of dependencies,
             // which will be used later in non-`MIRI_BE_RUSTC` mode.
             config.override_queries = Some(|_, local_providers, _| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
@@ -269,11 +288,10 @@ fn main() {
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
-    // Earliest rustc setup.
-    rustc_driver::install_ice_hook();
-
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
+        // Earliest rustc setup.
+        rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
         rustc_driver::init_rustc_env_logger();
 
         let target_crate = if crate_kind == "target" {
@@ -291,6 +309,9 @@ fn main() {
             &mut MiriBeRustCompilerCalls { target_crate },
         )
     }
+
+    // Add an ICE bug report hook.
+    rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
     init_early_loggers();
@@ -342,6 +363,8 @@ fn main() {
                 isolation_enabled = Some(false);
             }
             miri_config.isolated_op = miri::IsolatedOp::Allow;
+        } else if arg == "-Zmiri-disable-leak-backtraces" {
+            miri_config.collect_leak_backtraces = false;
         } else if arg == "-Zmiri-disable-weak-memory-emulation" {
             miri_config.weak_memory_emulation = false;
         } else if arg == "-Zmiri-track-weak-memory-loads" {
@@ -368,6 +391,7 @@ fn main() {
             };
         } else if arg == "-Zmiri-ignore-leaks" {
             miri_config.ignore_leaks = true;
+            miri_config.collect_leak_backtraces = false;
         } else if arg == "-Zmiri-panic-on-unsupported" {
             miri_config.panic_on_unsupported = true;
         } else if arg == "-Zmiri-tag-raw-pointers" {

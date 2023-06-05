@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(type_alias_impl_trait)]
 #![warn(clippy::from_over_into)]
@@ -32,7 +32,7 @@ struct SelfKeywords;
 
 impl From<X> for SelfKeywords {
     fn from(val: X) -> Self {
-        let _ = X::default();
+        let _ = X;
         let _ = X::FOO;
         let _: X = val;
 

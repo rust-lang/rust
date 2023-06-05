@@ -7,7 +7,6 @@ const fn f(x: usize) -> usize {
         //~| ERROR `for` is not allowed in a `const fn`
         //~| ERROR mutable references are not allowed in constant functions
         //~| ERROR cannot call non-const fn
-        //~| ERROR the trait bound
         sum += i;
     }
     sum

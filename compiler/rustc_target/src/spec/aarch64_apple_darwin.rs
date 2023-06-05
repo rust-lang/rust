@@ -4,7 +4,7 @@ use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 pub fn target() -> Target {
     let arch = Arch::Arm64;
     let mut base = opts("macos", arch);
-    base.cpu = "apple-a14".into();
+    base.cpu = "apple-m1".into();
     base.max_atomic_width = Some(128);
 
     // FIXME: The leak sanitizer currently fails the tests, see #88132.

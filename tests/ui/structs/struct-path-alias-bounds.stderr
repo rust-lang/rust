@@ -11,7 +11,8 @@ LL | struct S<T: Clone> { a: T }
    |             ^^^^^ required by this bound in `S`
 help: consider annotating `NoClone` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
+LL + #[derive(Clone)]
+LL | struct NoClone;
    |
 
 error: aborting due to previous error

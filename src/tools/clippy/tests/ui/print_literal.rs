@@ -38,4 +38,8 @@ fn main() {
     // named args shouldn't change anything either
     println!("{foo} {bar}", foo = "hello", bar = "world");
     println!("{bar} {foo}", foo = "hello", bar = "world");
+
+    // The string literal from `file!()` has a callsite span that isn't marked as coming from an
+    // expansion
+    println!("file: {}", file!());
 }

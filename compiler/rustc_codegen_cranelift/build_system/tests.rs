@@ -2,7 +2,6 @@ use super::build_sysroot;
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
-use super::rustc_info::get_host_triple;
 use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
 use super::SysrootKind;
 use std::env;
@@ -102,14 +101,14 @@ pub(crate) static RAND_REPO: GitRepo =
 pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand");
 
 pub(crate) static REGEX_REPO: GitRepo =
-    GitRepo::github("rust-lang", "regex", "a9b2e02352db92ce1f6e5b7ecd41b8bbffbe161a", "regex");
+    GitRepo::github("rust-lang", "regex", "32fed9429eafba0ae92a64b01796a0c5a75b88c8", "regex");
 
 pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex");
 
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
-    "9bd30e77b3a3c699af102ebb3df0f6110f8aa02e",
+    "ad8afa8c81273b3b49acbea38cd3bcf17a34cf2b",
     "portable-simd",
 );
 
@@ -186,7 +185,9 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
         if runner.is_native {
             let mut run_cmd = REGEX.test(&runner.target_compiler, &runner.dirs);
-            run_cmd.args(["--workspace", "--", "-q"]);
+            // regex-capi and regex-debug don't have any tests. Nor do they contain any code
+            // that is useful to test with cg_clif. Skip building them to reduce test time.
+            run_cmd.args(["-p", "regex", "-p", "regex-syntax", "--", "-q"]);
             spawn_and_wait(run_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
@@ -228,8 +229,11 @@ pub(crate) fn run_tests(
             target_triple.clone(),
         );
 
-        let runner =
-            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
+        let runner = TestRunner::new(
+            dirs.clone(),
+            target_compiler,
+            bootstrap_host_compiler.triple == target_triple,
+        );
 
         BUILD_EXAMPLE_OUT_DIR.ensure_fresh(dirs);
         runner.run_testsuite(NO_SYSROOT_SUITE);
@@ -250,8 +254,11 @@ pub(crate) fn run_tests(
             target_triple.clone(),
         );
 
-        let runner =
-            TestRunner::new(dirs.clone(), target_compiler, get_host_triple() == target_triple);
+        let runner = TestRunner::new(
+            dirs.clone(),
+            target_compiler,
+            bootstrap_host_compiler.triple == target_triple,
+        );
 
         if run_base_sysroot {
             runner.run_testsuite(BASE_SYSROOT_SUITE);
@@ -275,7 +282,7 @@ struct TestRunner {
 }
 
 impl TestRunner {
-    pub fn new(dirs: Dirs, mut target_compiler: Compiler, is_native: bool) -> Self {
+    fn new(dirs: Dirs, mut target_compiler: Compiler, is_native: bool) -> Self {
         if let Ok(rustflags) = env::var("RUSTFLAGS") {
             target_compiler.rustflags.push(' ');
             target_compiler.rustflags.push_str(&rustflags);
@@ -297,7 +304,7 @@ impl TestRunner {
         Self { is_native, jit_supported, dirs, target_compiler }
     }
 
-    pub fn run_testsuite(&self, tests: &[TestCase]) {
+    fn run_testsuite(&self, tests: &[TestCase]) {
         for TestCase { config, cmd } in tests {
             let (tag, testname) = config.split_once('.').unwrap();
             let tag = tag.to_uppercase();
@@ -382,7 +389,7 @@ impl TestRunner {
         spawn_and_wait(self.rustc_command(args));
     }
 
-    fn run_out_command<'a>(&self, name: &str, args: &[&str]) {
+    fn run_out_command(&self, name: &str, args: &[&str]) {
         let mut full_cmd = vec![];
 
         // Prepend the RUN_WRAPPER's

@@ -85,7 +85,7 @@ pub(super) fn parse(
                                                     frag.name
                                                 );
                                                 sess.span_diagnostic
-                                                    .struct_span_err(span, &msg)
+                                                    .struct_span_err(span, msg)
                                                     .help(VALID_FRAGMENT_NAMES_MSG)
                                                     .emit();
                                                 token::NonterminalKind::Ident
@@ -195,7 +195,7 @@ fn parse_tree(
                             _ => {
                                 let tok = pprust::token_kind_to_string(&token::OpenDelim(delim));
                                 let msg = format!("expected `(` or `{{`, found `{}`", tok);
-                                sess.span_diagnostic.span_err(delim_span.entire(), &msg);
+                                sess.span_diagnostic.span_err(delim_span.entire(), msg);
                             }
                         }
                     }
@@ -246,7 +246,7 @@ fn parse_tree(
                         "expected identifier, found `{}`",
                         pprust::token_to_string(&token),
                     );
-                    sess.span_diagnostic.span_err(token.span, &msg);
+                    sess.span_diagnostic.span_err(token.span, msg);
                     TokenTree::MetaVar(token.span, Ident::empty())
                 }
 
@@ -358,7 +358,7 @@ fn parse_sep_and_kleene_op(
 // For example, `macro_rules! foo { ( ${length()} ) => {} }`
 fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &ParseSess, token: &Token) {
     sess.span_diagnostic
-        .span_err(token.span, &format!("unexpected token: {}", pprust::token_to_string(token)));
+        .span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));
     sess.span_diagnostic.span_note_without_error(
         token.span,
         "`$$` and meta-variable expressions are not allowed inside macro parameter definitions",

@@ -46,7 +46,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.64.0"]
     pub MANUAL_RETAIN,
     perf,
-    "`retain()` is simpler and the same functionalitys"
+    "`retain()` is simpler and the same functionalities"
 }
 
 pub struct ManualRetain {

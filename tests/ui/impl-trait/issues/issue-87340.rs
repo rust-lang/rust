@@ -1,4 +1,4 @@
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 trait X {
     type I;
@@ -6,7 +6,7 @@ trait X {
 }
 
 impl<T> X for () {
-//~^ ERROR `T` is not constrained by the impl trait, self type, or predicates
+    //~^ ERROR `T` is not constrained by the impl trait, self type, or predicates
     type I = impl Sized;
     fn f() -> Self::I {}
 }

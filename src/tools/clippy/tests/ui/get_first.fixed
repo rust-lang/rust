@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::get_first)]
 use std::collections::BTreeMap;
 use std::collections::HashMap;

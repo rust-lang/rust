@@ -2,12 +2,12 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -69,7 +69,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             // of this function. Is this intentional?
             if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
-                let body = EarlyBinder(body.clone()).subst(tcx, substs);
+                let body = EarlyBinder::bind(body.clone()).subst(tcx, substs);
                 debug!("make_shim({:?}) = {:?}", instance, body);
                 return body;
             }
@@ -95,7 +95,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
             &deref_separator::Derefer,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &simplify::SimplifyCfg::new("make_shim"),
+            &simplify::SimplifyCfg::MakeShim,
             &add_call_guards::CriticalCallEdges,
             &abort_unwinding_calls::AbortUnwindingCalls,
         ],
@@ -355,7 +355,7 @@ fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'t
 fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
@@ -544,6 +544,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     place: dest_field,
                     target: unwind,
                     unwind: UnwindAction::Terminate,
+                    replace: false,
                 },
                 true,
             );
@@ -643,8 +644,11 @@ fn build_call_shim<'tcx>(
     let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
 
     assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
-    let mut sig =
-        if let Some(sig_substs) = sig_substs { sig.subst(tcx, &sig_substs) } else { sig.0 };
+    let mut sig = if let Some(sig_substs) = sig_substs {
+        sig.subst(tcx, &sig_substs)
+    } else {
+        sig.skip_binder()
+    };
 
     if let CallKind::Indirect(fnty) = call_kind {
         // `sig` determines our local decls, and thus the callee type in the `Call` terminator. This
@@ -800,6 +804,7 @@ fn build_call_shim<'tcx>(
                 place: rcvr_place(),
                 target: BasicBlock::new(2),
                 unwind: UnwindAction::Continue,
+                replace: false,
             },
             false,
         );
@@ -815,6 +820,7 @@ fn build_call_shim<'tcx>(
                 place: rcvr_place(),
                 target: BasicBlock::new(4),
                 unwind: UnwindAction::Terminate,
+                replace: false,
             },
             true,
         );
@@ -836,7 +842,7 @@ fn build_call_shim<'tcx>(
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let param_env = tcx.param_env(ctor_id);
+    let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
 
     // Normalize the sig.
     let sig = tcx

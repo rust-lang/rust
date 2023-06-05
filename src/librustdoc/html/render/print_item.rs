@@ -6,16 +6,16 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::stability;
-use rustc_middle::span_bug;
-use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{self, Adt, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{LayoutS, Primitive, TagEncoding, Variants};
+use std::borrow::Borrow;
+use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
 
+use super::type_layout::document_type_layout;
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
@@ -218,6 +218,53 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
+trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
+    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
+}
+
+fn item_template_document<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, mut cx) = templ.item_and_mut_cx();
+        let v = document(*cx, item, None, HeadingOffset::H2);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_document_type_layout<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, cx) = templ.item_and_mut_cx();
+        let def_id = item.item_id.expect_def_id();
+        let v = document_type_layout(*cx, def_id);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_render_attributes_in_pre<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, cx) = templ.item_and_mut_cx();
+        let tcx = cx.tcx();
+        let v = render_attributes_in_pre(item, "", tcx);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_render_assoc_items<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, mut cx) = templ.item_and_mut_cx();
+        let def_id = item.item_id.expect_def_id();
+        let v = render_assoc_items(*cx, item, def_id, AssocItemRender::All);
+        write!(f, "{v}")
+    })
+}
+
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     write!(w, "{}", document(cx, item, None, HeadingOffset::H2));
 
@@ -358,18 +405,18 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
             clean::ImportItem(ref import) => {
                 let stab_tags = if let Some(import_def_id) = import.source.did {
-                    let ast_attrs = cx.tcx().get_attrs_unchecked(import_def_id);
+                    let ast_attrs = tcx.get_attrs_unchecked(import_def_id);
                     let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs));
 
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item {
                         item_id: import_def_id.into(),
                         attrs: import_attrs,
-                        cfg: ast_attrs.cfg(cx.tcx(), &cx.cache().hidden_cfg),
+                        cfg: ast_attrs.cfg(tcx, &cx.cache().hidden_cfg),
                         ..myitem.clone()
                     };
 
-                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()).to_string());
+                    let stab_tags = Some(extra_info_tags(&import_item, item, tcx).to_string());
                     stab_tags
                 } else {
                     None
@@ -407,8 +454,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
                 let unsafety_flag = match *myitem.kind {
                     clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
-                        if myitem.fn_header(cx.tcx()).unwrap().unsafety
-                            == hir::Unsafety::Unsafe =>
+                        if myitem.fn_header(tcx).unwrap().unsafety == hir::Unsafety::Unsafe =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
                     }
@@ -422,9 +468,9 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     _ => "",
                 };
 
-                let doc_value = myitem.doc_value().unwrap_or_default();
                 w.write_str(ITEM_TABLE_ROW_OPEN);
-                let docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string();
+                let docs =
+                    MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
                 let (docs_before, docs_after) = if docs.is_empty() {
                     ("", "")
                 } else {
@@ -441,7 +487,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                      {docs_before}{docs}{docs_after}",
                     name = myitem.name.unwrap(),
                     visibility_emoji = visibility_emoji,
-                    stab_tags = extra_info_tags(myitem, item, cx.tcx()),
+                    stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
@@ -541,8 +587,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits =
-        f.decl.output.as_return().and_then(|output| notable_traits_button(output, cx));
+    let notable_traits = notable_traits_button(&f.decl.output, cx);
 
     wrap_item(w, |w| {
         w.reserve(header_len);
@@ -550,7 +595,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
             w,
             "{attrs}{vis}{constness}{asyncness}{unsafety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
-            attrs = render_attributes_in_pre(it, ""),
+            attrs = render_attributes_in_pre(it, "", tcx),
             vis = visibility,
             constness = constness,
             asyncness = asyncness,
@@ -591,7 +636,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             it.name.unwrap(),
             t.generics.print(cx),
             bounds,
-            attrs = render_attributes_in_pre(it, ""),
+            attrs = render_attributes_in_pre(it, "", tcx),
         );
 
         if !t.generics.where_predicates.is_empty() {
@@ -888,7 +933,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
 
             for implementor in foreign {
-                let provided_methods = implementor.inner_impl().provided_trait_methods(cx.tcx());
+                let provided_methods = implementor.inner_impl().provided_trait_methods(tcx);
                 let assoc_link =
                     AssocItemLink::GotoSource(implementor.impl_item.item_id, &provided_methods);
                 render_impl(
@@ -921,7 +966,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
         w.write_str("</div>");
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto(tcx) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -950,7 +995,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "<div id=\"implementors-list\"></div>",
         );
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto(tcx) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -1056,7 +1101,12 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     );
 }
 
-fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
+fn item_trait_alias(
+    w: &mut impl fmt::Write,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    t: &clean::TraitAlias,
+) {
     wrap_item(w, |w| {
         write!(
             w,
@@ -1065,17 +1115,18 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
             t.generics.print(cx),
             print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds(&t.bounds, true, cx),
-            attrs = render_attributes_in_pre(it, ""),
-        );
+            attrs = render_attributes_in_pre(it, "", cx.tcx()),
+        )
+        .unwrap();
     });
 
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
-
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
     write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
+        .unwrap();
 }
 
 fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
@@ -1087,7 +1138,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &cl
             t.generics.print(cx),
             where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds = bounds(&t.bounds, false, cx),
-            attrs = render_attributes_in_pre(it, ""),
+            attrs = render_attributes_in_pre(it, "", cx.tcx()),
         );
     });
 
@@ -1111,7 +1162,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
                 t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 type_ = t.type_.print(cx),
-                attrs = render_attributes_in_pre(it, ""),
+                attrs = render_attributes_in_pre(it, "", cx.tcx()),
             );
         });
     }
@@ -1133,51 +1184,22 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
     #[derive(Template)]
     #[template(path = "item_union.html")]
     struct ItemUnion<'a, 'cx> {
-        cx: std::cell::RefCell<&'a mut Context<'cx>>,
+        cx: RefCell<&'a mut Context<'cx>>,
         it: &'a clean::Item,
         s: &'a clean::Union,
     }
 
+    impl<'a, 'cx: 'a> ItemTemplate<'a, 'cx> for ItemUnion<'a, 'cx> {
+        fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>) {
+            (self.it, self.cx.borrow_mut())
+        }
+    }
+
     impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
-        fn render_assoc_items<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let def_id = self.it.item_id.expect_def_id();
-                let mut cx = self.cx.borrow_mut();
-                let v = render_assoc_items(*cx, self.it, def_id, AssocItemRender::All);
-                write!(f, "{v}")
-            })
-        }
-        fn document_type_layout<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let def_id = self.it.item_id.expect_def_id();
-                let cx = self.cx.borrow_mut();
-                let v = document_type_layout(*cx, def_id);
-                write!(f, "{v}")
-            })
-        }
         fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
                 let cx = self.cx.borrow_mut();
                 let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, *cx);
-                write!(f, "{v}")
-            })
-        }
-        fn render_attributes_in_pre<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let v = render_attributes_in_pre(self.it, "");
-                write!(f, "{v}")
-            })
-        }
-        fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let mut cx = self.cx.borrow_mut();
-                let v = document(*cx, self.it, None, HeadingOffset::H2);
                 write!(f, "{v}")
             })
         }
@@ -1220,7 +1242,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
         }
     }
 
-    ItemUnion { cx: std::cell::RefCell::new(cx), it, s }.render_into(w).unwrap();
+    ItemUnion { cx: RefCell::new(cx), it, s }.render_into(w).unwrap();
 }
 
 fn print_tuple_struct_fields<'a, 'cx: 'a>(
@@ -1246,13 +1268,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     let tcx = cx.tcx();
     let count_variants = e.variants().count();
     wrap_item(w, |mut w| {
+        render_attributes_in_code(w, it, tcx);
         write!(
             w,
-            "{attrs}{}enum {}{}",
+            "{}enum {}{}",
             visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             it.name.unwrap(),
             e.generics.print(cx),
-            attrs = render_attributes_in_pre(it, ""),
         );
         if !print_where_clause_and_check(w, &e.generics, cx) {
             // If there wasn't a `where` clause, we add a whitespace.
@@ -1339,7 +1361,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 clean::VariantKind::Tuple(fields) => {
                     // Documentation on tuple variant fields is rare, so to reduce noise we only emit
                     // the section if at least one field is documented.
-                    if fields.iter().any(|f| f.doc_value().is_some()) {
+                    if fields.iter().any(|f| !f.doc_value().is_empty()) {
                         Some(("Tuple Fields", fields))
                     } else {
                         None
@@ -1403,37 +1425,43 @@ fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
-fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
-    wrap_item(w, |w| {
+fn item_proc_macro(
+    w: &mut impl fmt::Write,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    m: &clean::ProcMacro,
+) {
+    let mut buffer = Buffer::new();
+    wrap_item(&mut buffer, |buffer| {
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                write!(w, "{}!() {{ /* proc-macro */ }}", name);
+                write!(buffer, "{}!() {{ /* proc-macro */ }}", name);
             }
             MacroKind::Attr => {
-                write!(w, "#[{}]", name);
+                write!(buffer, "#[{}]", name);
             }
             MacroKind::Derive => {
-                write!(w, "#[derive({})]", name);
+                write!(buffer, "#[derive({})]", name);
                 if !m.helpers.is_empty() {
-                    w.push_str("\n{\n");
-                    w.push_str("    // Attributes available to this derive:\n");
+                    buffer.push_str("\n{\n");
+                    buffer.push_str("    // Attributes available to this derive:\n");
                     for attr in &m.helpers {
-                        writeln!(w, "    #[{}]", attr);
+                        writeln!(buffer, "    #[{}]", attr);
                     }
-                    w.push_str("}\n");
+                    buffer.push_str("}\n");
                 }
             }
         }
     });
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
+    write!(w, "{}{}", buffer.into_inner(), document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
-fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
     let def_id = it.item_id.expect_def_id();
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
-        write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
+        write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All)).unwrap();
     } else {
         // We handle the "reference" primitive type on its own because we only want to list
         // implementations on generic types.
@@ -1447,7 +1475,7 @@ fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
 fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
     wrap_item(w, |w| {
         let tcx = cx.tcx();
-        render_attributes_in_code(w, it);
+        render_attributes_in_code(w, it, tcx);
 
         write!(
             w,
@@ -1494,7 +1522,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
 
 fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
     wrap_item(w, |w| {
-        render_attributes_in_code(w, it);
+        render_attributes_in_code(w, it, cx.tcx());
         render_struct(w, it, Some(&s.generics), s.ctor_kind, &s.fields, "", true, cx);
     });
 
@@ -1542,11 +1570,12 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
-fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
-    wrap_item(w, |w| {
-        render_attributes_in_code(w, it);
+fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
+    let mut buffer = Buffer::new();
+    wrap_item(&mut buffer, |buffer| {
+        render_attributes_in_code(buffer, it, cx.tcx());
         write!(
-            w,
+            buffer,
             "{vis}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
             mutability = s.mutability.print_with_space(),
@@ -1554,24 +1583,29 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             typ = s.type_.print(cx)
         );
     });
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
+
+    write!(w, "{}", buffer.into_inner()).unwrap();
+
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
-fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
-    wrap_item(w, |w| {
-        w.write_str("extern {\n");
-        render_attributes_in_code(w, it);
+fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
+    let mut buffer = Buffer::new();
+    wrap_item(&mut buffer, |buffer| {
+        buffer.write_str("extern {\n");
+        render_attributes_in_code(buffer, it, cx.tcx());
         write!(
-            w,
+            buffer,
             "    {}type {};\n}}",
             visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
             it.name.unwrap(),
         );
     });
 
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
+    write!(w, "{}{}", buffer.into_inner(), document(cx, it, None, HeadingOffset::H2)).unwrap();
 
     write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
+        .unwrap();
 }
 
 fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
@@ -1645,13 +1679,14 @@ fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>)
     bounds
 }
 
-fn wrap_item<F>(w: &mut Buffer, f: F)
+fn wrap_item<W, F>(w: &mut W, f: F)
 where
-    F: FnOnce(&mut Buffer),
+    W: fmt::Write,
+    F: FnOnce(&mut W),
 {
-    w.write_str(r#"<pre class="rust item-decl"><code>"#);
+    write!(w, r#"<pre class="rust item-decl"><code>"#).unwrap();
     f(w);
-    w.write_str("</code></pre>");
+    write!(w, "</code></pre>").unwrap();
 }
 
 #[derive(PartialEq, Eq)]
@@ -1796,10 +1831,11 @@ fn render_struct(
     }
     match ty {
         None => {
-            let where_diplayed = g.map(|g| print_where_clause_and_check(w, g, cx)).unwrap_or(false);
+            let where_displayed =
+                g.map(|g| print_where_clause_and_check(w, g, cx)).unwrap_or(false);
 
             // If there wasn't a `where` clause, we add a whitespace.
-            if !where_diplayed {
+            if !where_displayed {
                 w.write_str(" {");
             } else {
                 w.write_str("{");
@@ -1929,118 +1965,6 @@ fn document_non_exhaustive<'a>(item: &'a clean::Item) -> impl fmt::Display + 'a 
             f.write_str("</div></details>")?;
         }
         Ok(())
-    })
-}
-
-fn document_type_layout<'a, 'cx: 'a>(
-    cx: &'a Context<'cx>,
-    ty_def_id: DefId,
-) -> impl fmt::Display + 'a + Captures<'cx> {
-    fn write_size_of_layout(mut w: impl fmt::Write, layout: &LayoutS, tag_size: u64) {
-        if layout.abi.is_unsized() {
-            write!(w, "(unsized)").unwrap();
-        } else {
-            let size = layout.size.bytes() - tag_size;
-            write!(w, "{size} byte{pl}", pl = if size == 1 { "" } else { "s" }).unwrap();
-            if layout.abi.is_uninhabited() {
-                write!(
-                    w,
-                    " (<a href=\"https://doc.rust-lang.org/stable/reference/glossary.html#uninhabited\">uninhabited</a>)"
-                ).unwrap();
-            }
-        }
-    }
-
-    display_fn(move |mut f| {
-        if !cx.shared.show_type_layout {
-            return Ok(());
-        }
-
-        writeln!(
-            f,
-            "<h2 id=\"layout\" class=\"small-section-header\"> \
-            Layout<a href=\"#layout\" class=\"anchor\">§</a></h2>"
-        )?;
-        writeln!(f, "<div class=\"docblock\">")?;
-
-        let tcx = cx.tcx();
-        let param_env = tcx.param_env(ty_def_id);
-        let ty = tcx.type_of(ty_def_id).subst_identity();
-        match tcx.layout_of(param_env.and(ty)) {
-            Ok(ty_layout) => {
-                writeln!(
-                    f,
-                    "<div class=\"warning\"><p><strong>Note:</strong> Most layout information is \
-                    <strong>completely unstable</strong> and may even differ between compilations. \
-                    The only exception is types with certain <code>repr(...)</code> attributes. \
-                    Please see the Rust Reference’s \
-                    <a href=\"https://doc.rust-lang.org/reference/type-layout.html\">“Type Layout”</a> \
-                    chapter for details on type layout guarantees.</p></div>"
-                )?;
-                f.write_str("<p><strong>Size:</strong> ")?;
-                write_size_of_layout(&mut f, &ty_layout.layout.0, 0);
-                writeln!(f, "</p>")?;
-                if let Variants::Multiple { variants, tag, tag_encoding, .. } =
-                    &ty_layout.layout.variants()
-                {
-                    if !variants.is_empty() {
-                        f.write_str(
-                            "<p><strong>Size for each variant:</strong></p>\
-                                <ul>",
-                        )?;
-
-                        let Adt(adt, _) = ty_layout.ty.kind() else {
-                            span_bug!(tcx.def_span(ty_def_id), "not an adt")
-                        };
-
-                        let tag_size = if let TagEncoding::Niche { .. } = tag_encoding {
-                            0
-                        } else if let Primitive::Int(i, _) = tag.primitive() {
-                            i.size().bytes()
-                        } else {
-                            span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
-                        };
-
-                        for (index, layout) in variants.iter_enumerated() {
-                            let name = adt.variant(index).name;
-                            write!(&mut f, "<li><code>{name}</code>: ")?;
-                            write_size_of_layout(&mut f, layout, tag_size);
-                            writeln!(&mut f, "</li>")?;
-                        }
-                        f.write_str("</ul>")?;
-                    }
-                }
-            }
-            // This kind of layout error can occur with valid code, e.g. if you try to
-            // get the layout of a generic type such as `Vec<T>`.
-            Err(LayoutError::Unknown(_)) => {
-                writeln!(
-                    f,
-                    "<p><strong>Note:</strong> Unable to compute type layout, \
-                    possibly due to this type having generic parameters. \
-                    Layout can only be computed for concrete, fully-instantiated types.</p>"
-                )?;
-            }
-            // This kind of error probably can't happen with valid code, but we don't
-            // want to panic and prevent the docs from building, so we just let the
-            // user know that we couldn't compute the layout.
-            Err(LayoutError::SizeOverflow(_)) => {
-                writeln!(
-                    f,
-                    "<p><strong>Note:</strong> Encountered an error during type layout; \
-                    the type was too big.</p>"
-                )?;
-            }
-            Err(LayoutError::NormalizationFailure(_, _)) => {
-                writeln!(
-                    f,
-                    "<p><strong>Note:</strong> Encountered an error during type layout; \
-                    the type failed to be normalized.</p>"
-                )?;
-            }
-        }
-
-        writeln!(f, "</div>")
     })
 }
 

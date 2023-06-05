@@ -34,6 +34,7 @@ fn main() {
         || target.contains("espidf")
         || target.contains("solid")
         || target.contains("nintendo-3ds")
+        || target.contains("vita")
         || target.contains("nto")
     {
         // These platforms don't have any special requirements.

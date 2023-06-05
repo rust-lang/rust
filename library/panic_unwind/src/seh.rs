@@ -52,7 +52,7 @@ use core::mem::{self, ManuallyDrop};
 use core::ptr;
 use libc::{c_int, c_uint, c_void};
 
-// NOTE(nbdd0121): The `canary` field will be part of stable ABI after `c_unwind` stabilization.
+// NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
 struct Exception {
     // See `gcc.rs` on why this is present. We already have a static here so just use it.

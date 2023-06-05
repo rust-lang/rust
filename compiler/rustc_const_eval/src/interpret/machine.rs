@@ -104,7 +104,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type FrameExtra;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: Debug + Clone + 'static;
+    type AllocExtra: Debug + Clone + 'tcx;
 
     /// Type for the bytes of the allocation.
     type Bytes: AllocBytes + 'static;

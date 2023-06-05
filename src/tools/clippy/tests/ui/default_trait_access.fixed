@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build: proc_macros.rs
+//@run-rustfix
+//@aux-build: proc_macros.rs
 #![deny(clippy::default_trait_access)]
 #![allow(dead_code, unused_imports)]
 #![allow(clippy::uninlined_format_args)]

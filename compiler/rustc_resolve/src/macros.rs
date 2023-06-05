@@ -1,6 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
+use crate::errors::{self, AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -120,7 +121,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                     if let Some(old_ident) = registered_tools.replace(ident) {
                         let msg = format!("{} `{}` was already registered", "tool", ident);
                         tcx.sess
-                            .struct_span_err(ident.span, &msg)
+                            .struct_span_err(ident.span, msg)
                             .span_label(old_ident.span, "already registered here")
                             .emit();
                     }
@@ -129,7 +130,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                     let msg = format!("`{}` only accepts identifiers", sym::register_tool);
                     let span = nested_meta.span();
                     tcx.sess
-                        .struct_span_err(span, &msg)
+                        .struct_span_err(span, msg)
                         .span_label(span, "not an identifier")
                         .emit();
                 }
@@ -201,7 +202,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             self.tcx
                 .sess
                 .diagnostic()
-                .bug(&format!("built-in macro `{}` was already registered", name));
+                .bug(format!("built-in macro `{}` was already registered", name));
         }
     }
 
@@ -314,7 +315,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
-                &format!("unused macro definition: `{}`", ident.name),
+                format!("unused macro definition: `{}`", ident.name),
             );
         }
         for (&(def_id, arm_i), &(ident, rule_span)) in self.unused_macro_rules.iter() {
@@ -327,7 +328,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 UNUSED_MACRO_RULES,
                 node_id,
                 rule_span,
-                &format!(
+                format!(
                     "{} rule of macro `{}` is never used",
                     crate::diagnostics::ordinalize(arm_i + 1),
                     ident.name
@@ -435,9 +436,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
                     self.tcx.sess
-                        .struct_span_err(span, "not sure whether the path is accessible or not")
-                        .note("the type may have associated items, but we are currently not checking them")
-                        .emit();
+                        .emit_err(errors::CfgAccessibleUnsure { span });
 
                     // If we get a partially resolved NonModule in one namespace, we should get the
                     // same result in any other namespaces, so we can return early.
@@ -512,10 +511,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Some(def_id) = def_id.as_local() {
                     self.unused_macros.remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
-                        self.tcx.sess.span_err(
-                            path.span,
-                            "can't use a procedural macro from the same crate that defines it",
-                        );
+                        self.tcx.sess.emit_err(errors::ProcMacroSameCrate {
+                            span: path.span,
+                            is_test: self.tcx.sess.is_test_crate(),
+                        });
                     }
                 }
             }
@@ -543,12 +542,29 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
         if let Some((article, expected)) = unexpected_res {
             let path_str = pprust::path_to_string(path);
-            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path_str);
-            self.tcx
-                .sess
-                .struct_span_err(path.span, &msg)
-                .span_label(path.span, format!("not {} {}", article, expected))
-                .emit();
+
+            let mut err = MacroExpectedFound {
+                span: path.span,
+                expected,
+                found: res.descr(),
+                macro_path: &path_str,
+                ..Default::default() // Subdiagnostics default to None
+            };
+
+            // Suggest moving the macro out of the derive() if the macro isn't Derive
+            if !path.span.from_expansion()
+                && kind == MacroKind::Derive
+                && ext.macro_kind() != MacroKind::Derive
+            {
+                err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span });
+                err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
+            }
+
+            let mut err = self.tcx.sess.create_err(err);
+            err.span_label(path.span, format!("not {} {}", article, expected));
+
+            err.emit();
+
             return Ok((self.dummy_ext(kind), Res::Err));
         }
 
@@ -682,7 +698,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Segment::names_to_string(path)
                     );
                     let msg_note = "import resolution is stuck, try simplifying macro imports";
-                    this.tcx.sess.struct_span_err(span, &msg).note(msg_note).emit();
+                    this.tcx.sess.struct_span_err(span, msg).note(msg_note).emit();
                 }
             }
         };
@@ -772,7 +788,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Err(..) => {
                     let expected = kind.descr_expected();
                     let msg = format!("cannot find {} `{}` in this scope", expected, ident);
-                    let mut err = self.tcx.sess.struct_span_err(ident.span, &msg);
+                    let mut err = self.tcx.sess.struct_span_err(ident.span, msg);
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
                     err.emit();
                 }
@@ -807,12 +823,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let is_allowed = |feature| {
                     self.active_features.contains(&feature) || span.allows_unstable(feature)
                 };
-                let allowed_by_implication =
-                    implied_by.map(|feature| is_allowed(feature)).unwrap_or(false);
+                let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
                 if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =
-                        |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);
+                        |lint, span, msg: String| lint_buffer.buffer_lint(lint, node_id, span, msg);
                     stability::report_unstable(
                         self.tcx.sess,
                         feature,
@@ -831,7 +846,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let (message, lint) = stability::deprecation_message_and_lint(depr, "macro", &path);
             stability::early_report_deprecation(
                 &mut self.lint_buffer,
-                &message,
+                message,
                 depr.suggestion,
                 lint,
                 span,
@@ -850,9 +865,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
                 let msg =
                     format!("cannot use {} {} through an import", kind.article(), kind.descr());
-                let mut err = self.tcx.sess.struct_span_err(span, &msg);
+                let mut err = self.tcx.sess.struct_span_err(span, msg);
                 if let Some(binding) = binding {
-                    err.span_note(binding.span, &format!("the {} imported here", kind.descr()));
+                    err.span_note(binding.span, format!("the {} imported here", kind.descr()));
                 }
                 err.emit();
             }
@@ -867,7 +882,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
                 self.tcx.sess.span_err(
                     ident.span,
-                    &format!("name `{}` is reserved in attribute namespace", ident),
+                    format!("name `{}` is reserved in attribute namespace", ident),
                 );
             }
         }
@@ -911,7 +926,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             } else {
                 let msg = format!("cannot find a built-in macro with name `{}`", item.ident);
-                self.tcx.sess.span_err(item.span, &msg);
+                self.tcx.sess.span_err(item.span, msg);
             }
         }
 

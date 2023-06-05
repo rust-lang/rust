@@ -221,47 +221,6 @@ LL |     let ref mut a @ (ref b, ref c) = (U, U);
    |         |            value is borrowed by `b` here
    |         value is mutably borrowed by `a` here
 
-error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:22:11
-   |
-LL |     fn f1(ref a @ ref mut b: U) {}
-   |           ^^^^^   --------- value is mutably borrowed by `b` here
-   |           |
-   |           value is borrowed by `a` here
-
-error: cannot borrow value as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:24:11
-   |
-LL |     fn f2(ref mut a @ ref b: U) {}
-   |           ^^^^^^^^^   ----- value is borrowed by `b` here
-   |           |
-   |           value is mutably borrowed by `a` here
-
-error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:26:11
-   |
-LL |     fn f3(ref a @ [ref b, ref mut mid @ .., ref c]: [U; 4]) {}
-   |           ^^^^^           ----------- value is mutably borrowed by `mid` here
-   |           |
-   |           value is borrowed by `a` here
-
-error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:22
-   |
-LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
-   |                      ^^^^^   ---------   - value is moved into `c` here
-   |                      |       |
-   |                      |       value is mutably borrowed by `b` here
-   |                      value is borrowed by `a` here
-
-error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:30
-   |
-LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
-   |                              ^^^^^^^^^   - value is moved into `c` here
-   |                              |
-   |                              value is mutably borrowed by `b` here
-
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:8:31
    |
@@ -397,6 +356,47 @@ LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
 LL |
 LL |     *b = U;
    |     ------ mutable borrow later used here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:22:11
+   |
+LL |     fn f1(ref a @ ref mut b: U) {}
+   |           ^^^^^   --------- value is mutably borrowed by `b` here
+   |           |
+   |           value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:24:11
+   |
+LL |     fn f2(ref mut a @ ref b: U) {}
+   |           ^^^^^^^^^   ----- value is borrowed by `b` here
+   |           |
+   |           value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:26:11
+   |
+LL |     fn f3(ref a @ [ref b, ref mut mid @ .., ref c]: [U; 4]) {}
+   |           ^^^^^           ----------- value is mutably borrowed by `mid` here
+   |           |
+   |           value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:22
+   |
+LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
+   |                      ^^^^^   ---------   - value is moved into `c` here
+   |                      |       |
+   |                      |       value is mutably borrowed by `b` here
+   |                      value is borrowed by `a` here
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:30
+   |
+LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
+   |                              ^^^^^^^^^   - value is moved into `c` here
+   |                              |
+   |                              value is mutably borrowed by `b` here
 
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:30

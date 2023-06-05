@@ -160,6 +160,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 }
             }
         }
+        OffsetOf { container: _, fields: _ } => {}
         ThreadLocalRef(_) => {}
         Yield { value } => visitor.visit_expr(&visitor.thir()[value]),
     }

@@ -16,7 +16,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:+1:9: +1:14
           _1 = foo() -> bb1;               // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:+1:29: +1:34
                                            // mir::Constant
-                                           // + span: $DIR/mutable_variable_aggregate_partial_read.rs:7:29: 7:32
+                                           // + span: $DIR/mutable_variable_aggregate_partial_read.rs:6:29: 6:32
                                            // + literal: Const { ty: fn() -> (i32, i32) {foo}, val: Value(<ZST>) }
       }
   
@@ -26,6 +26,7 @@
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:+4:9: +4:10
 -         _2 = (_1.1: i32);                // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:+4:13: +4:16
 +         _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:+4:13: +4:16
+          _0 = const ();                   // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:+0:11: +5:2
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_partial_read.rs:+5:1: +5:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:+5:1: +5:2
           return;                          // scope 0 at $DIR/mutable_variable_aggregate_partial_read.rs:+5:2: +5:2

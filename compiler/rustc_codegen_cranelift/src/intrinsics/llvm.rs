@@ -42,7 +42,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         _ => {
             fx.tcx
                 .sess
-                .warn(&format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));
+                .warn(format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
             return;
         }

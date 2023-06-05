@@ -243,13 +243,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let note = format!("{title} is defined in an impl for the type `{impl_ty}`");
 
             if let Some(span) = note_span {
-                err.span_note(span, &note);
+                err.span_note(span, note);
             } else {
-                err.note(&note);
+                err.note(note);
             }
         }
         if candidates.len() > limit {
-            err.note(&format!("and {} others", candidates.len() - limit));
+            err.note(format!("and {} others", candidates.len() - limit));
         }
     }
 
@@ -303,7 +303,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "associated type `{name}` not found for `{self_ty}` in the current scope"
             );
             err.span_label(name.span, format!("associated item not found in `{self_ty}`"));
-            err.note(&format!(
+            err.note(format!(
                 "the associated type was found for\n{type_candidates}{additional_types}",
             ));
             add_def_label(&mut err);
@@ -390,10 +390,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut err = tcx.sess.struct_span_err(
             name.span,
-            &format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
+            format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
         );
         if !bounds.is_empty() {
-            err.note(&format!(
+            err.note(format!(
                 "the following trait bounds were not satisfied:\n{}",
                 bounds.join("\n")
             ));
@@ -409,7 +409,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
-            err.span_label(span, &msg);
+            err.span_label(span, msg);
         }
         add_def_label(&mut err);
         err.emit()
@@ -589,7 +589,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
         if !suggestions.is_empty() {
             err.multipart_suggestion(
-                &format!("specify the associated type{}", pluralize!(types_count)),
+                format!("specify the associated type{}", pluralize!(types_count)),
                 suggestions,
                 Applicability::HasPlaceholders,
             );

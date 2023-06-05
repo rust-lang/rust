@@ -146,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let reported = self
                     .tcx
                     .sess
-                    .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));
+                    .delay_span_bug(span, format!("`{:?}` should be sized but is not?", t));
                 return Err(reported);
             }
         })
@@ -270,7 +270,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx,
                 );
                 if self.cast_ty.is_integral() {
-                    err.help(&format!(
+                    err.help(format!(
                         "cast through {} first",
                         match e {
                             CastError::NeedViaPtr => "a raw pointer",
@@ -292,7 +292,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.cast_ty,
                     fcx,
                 )
-                .help(&format!(
+                .help(format!(
                     "cast through {} first",
                     match e {
                         CastError::NeedViaInt => "an integer",
@@ -465,7 +465,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         .sess
                         .source_map()
                         .span_to_snippet(self.expr_span)
-                        .map_or(false, |snip| snip.starts_with('('));
+                        .is_ok_and(|snip| snip.starts_with('('));
 
                     // Very crude check to see whether the expression must be wrapped
                     // in parentheses for the suggestion to work (issue #89497).
@@ -651,13 +651,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             );
                         }
                         Err(_) => {
-                            let msg = &format!("did you mean `&{}{}`?", mtstr, tstr);
+                            let msg = format!("did you mean `&{}{}`?", mtstr, tstr);
                             err.span_help(self.cast_span, msg);
                         }
                     }
                 } else {
                     let msg =
-                        &format!("consider using an implicit coercion to `&{mtstr}{tstr}` instead");
+                        format!("consider using an implicit coercion to `&{mtstr}{tstr}` instead");
                     err.span_help(self.span, msg);
                 }
             }
@@ -674,7 +674,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     Err(_) => {
                         err.span_help(
                             self.cast_span,
-                            &format!("you might have meant `Box<{tstr}>`"),
+                            format!("you might have meant `Box<{tstr}>`"),
                         );
                     }
                 }
@@ -689,8 +689,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
-        let type_asc_or =
-            if fcx.tcx.features().type_ascription { "type ascription or " } else { "" };
         let (adjective, lint) = if t_cast.is_numeric() && t_expr.is_numeric() {
             ("numeric ", lint::builtin::TRIVIAL_NUMERIC_CASTS)
         } else {
@@ -711,7 +709,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             |lint| {
                 lint.help(format!(
                     "cast can be replaced by coercion; this might \
-                     require {type_asc_or}a temporary variable"
+                     require a temporary variable"
                 ))
             },
         );

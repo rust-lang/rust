@@ -194,7 +194,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                     };
 
                     self.handler
-                        .struct_span_err(attr.span, &msg)
+                        .struct_span_err(attr.span, msg)
                         .span_label(prev_attr.span, "previous attribute here")
                         .emit();
 
@@ -219,7 +219,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 pprust::path_to_string(&attr.get_normal_item().path),
             );
 
-            self.handler.span_err(attr.span, &msg);
+            self.handler.span_err(attr.span, msg);
             return;
         }
 
@@ -233,7 +233,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 pprust::path_to_string(&attr.get_normal_item().path),
             );
 
-            self.handler.span_err(attr.span, &msg);
+            self.handler.span_err(attr.span, msg);
             return;
         }
 

@@ -1,13 +1,102 @@
-use rustc_data_structures::fx::FxHashMap;
-
 use std::fmt;
 use std::ops::Range;
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_span::{Span, SpanData};
+
 use crate::borrow_tracker::tree_borrows::{
-    err_tb_ub, perms::Permission, tree::LocationState, unimap::UniIndex,
+    perms::{PermTransition, Permission},
+    tree::LocationState,
+    unimap::UniIndex,
 };
 use crate::borrow_tracker::{AccessKind, ProtectorKind};
 use crate::*;
+
+/// Complete data for an event:
+#[derive(Clone, Debug)]
+pub struct Event {
+    /// Transformation of permissions that occured because of this event
+    pub transition: PermTransition,
+    /// Kind of the access that triggered this event
+    pub access_kind: AccessKind,
+    /// Relative position of the tag to the one used for the access
+    pub is_foreign: bool,
+    /// User-visible range of the access
+    pub access_range: AllocRange,
+    /// The transition recorded by this event only occured on a subrange of
+    /// `access_range`: a single access on `access_range` triggers several events,
+    /// each with their own mutually disjoint `transition_range`. No-op transitions
+    /// should not be recorded as events, so the union of all `transition_range` is not
+    /// necessarily the entire `access_range`.
+    ///
+    /// No data from any `transition_range` should ever be user-visible, because
+    /// both the start and end of `transition_range` are entirely dependent on the
+    /// internal representation of `RangeMap` which is supposed to be opaque.
+    /// What will be shown in the error message is the first byte `error_offset` of
+    /// the `TbError`, which should satisfy
+    /// `event.transition_range.contains(error.error_offset)`.
+    pub transition_range: Range<u64>,
+    /// Line of code that triggered this event
+    pub span: Span,
+}
+
+/// List of all events that affected a tag.
+/// NOTE: not all of these events are relevant for a particular location,
+/// the events should be filtered before the generation of diagnostics.
+/// Available filtering methods include `History::forget` and `History::extract_relevant`.
+#[derive(Clone, Debug)]
+pub struct History {
+    tag: BorTag,
+    created: (Span, Permission),
+    events: Vec<Event>,
+}
+
+/// History formatted for use by `src/diagnostics.rs`.
+///
+/// NOTE: needs to be `Send` because of a bound on `MachineStopType`, hence
+/// the use of `SpanData` rather than `Span`.
+#[derive(Debug, Clone, Default)]
+pub struct HistoryData {
+    pub events: Vec<(Option<SpanData>, String)>, // includes creation
+}
+
+impl History {
+    /// Record an additional event to the history.
+    pub fn push(&mut self, event: Event) {
+        self.events.push(event);
+    }
+}
+
+impl HistoryData {
+    // Format events from `new_history` into those recorded by `self`.
+    //
+    // NOTE: also converts `Span` to `SpanData`.
+    fn extend(&mut self, new_history: History, tag_name: &'static str, show_initial_state: bool) {
+        let History { tag, created, events } = new_history;
+        let this = format!("the {tag_name} tag {tag:?}");
+        let msg_initial_state = format!(", in the initial state {}", created.1);
+        let msg_creation = format!(
+            "{this} was created here{maybe_msg_initial_state}",
+            maybe_msg_initial_state = if show_initial_state { &msg_initial_state } else { "" },
+        );
+
+        self.events.push((Some(created.0.data()), msg_creation));
+        for &Event {
+            transition,
+            access_kind,
+            is_foreign,
+            access_range,
+            span,
+            transition_range: _,
+        } in &events
+        {
+            // NOTE: `transition_range` is explicitly absent from the error message, it has no significance
+            // to the user. The meaningful one is `access_range`.
+            self.events.push((Some(span.data()), format!("{this} later transitioned to {endpoint} due to a {rel} {access_kind} at offsets {access_range:?}", endpoint = transition.endpoint(), rel = if is_foreign { "foreign" } else { "child" })));
+            self.events.push((None, format!("this corresponds to {}", transition.summary())));
+        }
+    }
+}
 
 /// Some information that is irrelevant for the algorithm but very
 /// convenient to know about a tag for debugging and testing.
@@ -20,18 +109,29 @@ pub struct NodeDebugInfo {
     /// pointer in the source code.
     /// Helps match tag numbers to human-readable names.
     pub name: Option<String>,
+    /// Notable events in the history of this tag, used for
+    /// diagnostics.
+    ///
+    /// NOTE: by virtue of being part of `NodeDebugInfo`,
+    /// the history is automatically cleaned up by the GC.
+    /// NOTE: this is `!Send`, it needs to be converted before displaying
+    /// the actual diagnostics because `src/diagnostics.rs` requires `Send`.
+    pub history: History,
 }
+
 impl NodeDebugInfo {
-    /// New node info with a name.
-    pub fn new(tag: BorTag) -> Self {
-        Self { tag, name: None }
+    /// Information for a new node. By default it has no
+    /// name and an empty history.
+    pub fn new(tag: BorTag, initial: Permission, span: Span) -> Self {
+        let history = History { tag, created: (span, initial), events: Vec::new() };
+        Self { tag, name: None, history }
     }
 
     /// Add a name to the tag. If a same tag is associated to several pointers,
     /// it can have several names which will be separated by commas.
-    fn add_name(&mut self, name: &str) {
+    pub fn add_name(&mut self, name: &str) {
         if let Some(ref mut prev_name) = &mut self.name {
-            prev_name.push(',');
+            prev_name.push_str(", ");
             prev_name.push_str(name);
         } else {
             self.name = Some(String::from(name));
@@ -42,7 +142,7 @@ impl NodeDebugInfo {
 impl fmt::Display for NodeDebugInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref name) = self.name {
-            write!(f, "{tag:?} (also named '{name}')", tag = self.tag)
+            write!(f, "{tag:?} ({name})", tag = self.tag)
         } else {
             write!(f, "{tag:?}", tag = self.tag)
         }
@@ -86,7 +186,7 @@ impl<'tcx> Tree {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) enum TransitionError {
     /// This access is not allowed because some parent tag has insufficient permissions.
     /// For example, if a tag is `Frozen` and encounters a child write this will
@@ -96,63 +196,119 @@ pub(super) enum TransitionError {
     /// A protector was triggered due to an invalid transition that loses
     /// too much permissions.
     /// For example, if a protected tag goes from `Active` to `Frozen` due
-    /// to a foreign write this will produce a `ProtectedTransition(Active, Frozen)`.
+    /// to a foreign write this will produce a `ProtectedTransition(PermTransition(Active, Frozen))`.
     /// This kind of error can only occur on foreign accesses.
-    ProtectedTransition(Permission, Permission),
+    ProtectedTransition(PermTransition),
     /// Cannot deallocate because some tag in the allocation is strongly protected.
     /// This kind of error can only occur on deallocations.
     ProtectedDealloc,
+}
+
+impl History {
+    /// Keep only the tag and creation
+    fn forget(&self) -> Self {
+        History { events: Vec::new(), created: self.created, tag: self.tag }
+    }
+
+    /// Reconstruct the history relevant to `error_offset` by filtering
+    /// only events whose range contains the offset we are interested in.
+    fn extract_relevant(&self, error_offset: u64, error_kind: TransitionError) -> Self {
+        History {
+            events: self
+                .events
+                .iter()
+                .filter(|e| e.transition_range.contains(&error_offset))
+                .filter(|e| e.transition.is_relevant(error_kind))
+                .cloned()
+                .collect::<Vec<_>>(),
+            created: self.created,
+            tag: self.tag,
+        }
+    }
 }
 
 /// Failures that can occur during the execution of Tree Borrows procedures.
 pub(super) struct TbError<'node> {
     /// What failure occurred.
     pub error_kind: TransitionError,
+    /// The offset (into the allocation) at which the conflict occurred.
+    pub error_offset: u64,
     /// The tag on which the error was triggered.
     /// On protector violations, this is the tag that was protected.
     /// On accesses rejected due to insufficient permissions, this is the
     /// tag that lacked those permissions.
-    pub faulty_tag: &'node NodeDebugInfo,
+    pub conflicting_info: &'node NodeDebugInfo,
     /// Whether this was a Read or Write access. This field is ignored
     /// when the error was triggered by a deallocation.
     pub access_kind: AccessKind,
     /// Which tag the access that caused this error was made through, i.e.
     /// which tag was used to read/write/deallocate.
-    pub tag_of_access: &'node NodeDebugInfo,
+    pub accessed_info: &'node NodeDebugInfo,
 }
 
 impl TbError<'_> {
     /// Produce a UB error.
-    pub fn build<'tcx>(self) -> InterpErrorInfo<'tcx> {
+    pub fn build<'tcx>(self) -> InterpError<'tcx> {
         use TransitionError::*;
-        err_tb_ub(match self.error_kind {
+        let kind = self.access_kind;
+        let accessed = self.accessed_info;
+        let conflicting = self.conflicting_info;
+        let accessed_is_conflicting = accessed.tag == conflicting.tag;
+        let (title, details, conflicting_tag_name) = match self.error_kind {
             ChildAccessForbidden(perm) => {
-                format!(
-                    "{kind} through {initial} is forbidden because it is a child of {current} which is {perm}.",
-                    kind=self.access_kind,
-                    initial=self.tag_of_access,
-                    current=self.faulty_tag,
-                    perm=perm,
-                )
+                let conflicting_tag_name =
+                    if accessed_is_conflicting { "accessed" } else { "conflicting" };
+                let title = format!("{kind} through {accessed} is forbidden");
+                let mut details = Vec::new();
+                if !accessed_is_conflicting {
+                    details.push(format!(
+                        "the accessed tag {accessed} is a child of the conflicting tag {conflicting}"
+                    ));
+                }
+                details.push(format!(
+                    "the {conflicting_tag_name} tag {conflicting} has state {perm} which forbids child {kind}es"
+                ));
+                (title, details, conflicting_tag_name)
             }
-            ProtectedTransition(start, end) => {
-                format!(
-                    "{kind} through {initial} is forbidden because it is a foreign tag for {current}, which would hence change from {start} to {end}, but {current} is protected",
-                    current=self.faulty_tag,
-                    start=start,
-                    end=end,
-                    kind=self.access_kind,
-                    initial=self.tag_of_access,
-                )
+            ProtectedTransition(transition) => {
+                let conflicting_tag_name = "protected";
+                let title = format!("{kind} through {accessed} is forbidden");
+                let details = vec![
+                    format!(
+                        "the accessed tag {accessed} is foreign to the {conflicting_tag_name} tag {conflicting} (i.e., it is not a child)"
+                    ),
+                    format!(
+                        "the access would cause the {conflicting_tag_name} tag {conflicting} to transition {transition}"
+                    ),
+                    format!(
+                        "this is {loss}, which is not allowed for protected tags",
+                        loss = transition.summary(),
+                    ),
+                ];
+                (title, details, conflicting_tag_name)
             }
             ProtectedDealloc => {
-                format!(
-                    "the allocation of {initial} also contains {current} which is strongly protected, cannot deallocate",
-                    initial=self.tag_of_access,
-                    current=self.faulty_tag,
-                )
+                let conflicting_tag_name = "strongly protected";
+                let title = format!("deallocation through {accessed} is forbidden");
+                let details = vec![
+                    format!(
+                        "the allocation of the accessed tag {accessed} also contains the {conflicting_tag_name} tag {conflicting}"
+                    ),
+                    format!("the {conflicting_tag_name} tag {conflicting} disallows deallocations"),
+                ];
+                (title, details, conflicting_tag_name)
             }
-        }).into()
+        };
+        let mut history = HistoryData::default();
+        if !accessed_is_conflicting {
+            history.extend(self.accessed_info.history.forget(), "accessed", false);
+        }
+        history.extend(
+            self.conflicting_info.history.extract_relevant(self.error_offset, self.error_kind),
+            conflicting_tag_name,
+            true,
+        );
+        err_machine_stop!(TerminationInfo::TreeBorrowsUb { title, details, history })
     }
 }
 

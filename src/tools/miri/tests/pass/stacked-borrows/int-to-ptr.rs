@@ -23,17 +23,17 @@ fn example(variant: bool) {
         let mut c = 42u32;
 
         let x_unique1 = &mut c;
-        // [..., Unique(1)]
+        // stack: [..., Unique(1)]
 
         let x_raw2 = x_unique1 as *mut u32;
         let x_raw2_addr = x_raw2.expose_addr();
-        // [..., Unique(1), SharedRW(2)]
+        // stack: [..., Unique(1), SharedRW(2)]
 
         let x_unique3 = &mut *x_raw2;
-        // [.., Unique(1), SharedRW(2), Unique(3)]
+        // stack: [.., Unique(1), SharedRW(2), Unique(3)]
 
         assert_eq!(not_so_innocent(x_unique3), x_raw2_addr);
-        // [.., Unique(1), SharedRW(2), Unique(3), ..., SharedRW(4)]
+        // stack: [.., Unique(1), SharedRW(2), Unique(3), ..., SharedRW(4)]
 
         // Do an int2ptr cast. This can pick tag 2 or 4 (the two previously exposed tags).
         // 4 is the "obvious" choice (topmost tag, what we used to do with untagged pointers).

@@ -35,7 +35,7 @@ LL |         let _y1 = &mut *ref_x;
 help: consider changing this to be a mutable reference
    |
 LL |         let ref_x = &mut x;
-   |                     ~~~~~~
+   |                      +++
 
 error[E0596]: cannot borrow `*ptr_x` as mutable, as it is behind a `*const` pointer
   --> $DIR/borrowck-access-permissions.rs:39:23
@@ -46,7 +46,7 @@ LL |             let _y1 = &mut *ptr_x;
 help: consider changing this to be a mutable pointer
    |
 LL |         let ptr_x : *const _ = &mut x;
-   |                                ~~~~~~
+   |                                 +++
 
 error[E0596]: cannot borrow `*foo_ref.f` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-access-permissions.rs:48:18
@@ -57,7 +57,7 @@ LL |         let _y = &mut *foo_ref.f;
 help: consider changing this to be a mutable reference
    |
 LL |         let foo_ref = &mut foo;
-   |                       ~~~~~~~~
+   |                        +++
 
 error: aborting due to 6 previous errors
 

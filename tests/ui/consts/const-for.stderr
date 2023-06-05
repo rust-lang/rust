@@ -9,19 +9,6 @@ note: impl defined here, but it is not `const`
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `std::ops::Range<i32>: Iterator` is not satisfied
-  --> $DIR/const-for.rs:5:14
-   |
-LL |     for _ in 0..5 {}
-   |              ^^^^ `std::ops::Range<i32>` is not an iterator
-   |
-   = help: the trait `~const Iterator` is not implemented for `std::ops::Range<i32>`
-note: the trait `Iterator` is implemented for `std::ops::Range<i32>`, but that implementation is not `const`
-  --> $DIR/const-for.rs:5:14
-   |
-LL |     for _ in 0..5 {}
-   |              ^^^^
-
 error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
   --> $DIR/const-for.rs:5:14
    |
@@ -31,7 +18,6 @@ LL |     for _ in 0..5 {}
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0015, E0277.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

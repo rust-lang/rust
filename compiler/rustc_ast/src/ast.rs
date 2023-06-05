@@ -120,6 +120,12 @@ impl Path {
     pub fn is_global(&self) -> bool {
         !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
     }
+
+    /// If this path is a single identifier with no arguments, does not ensure
+    /// that the path resolves to a const param, the caller should check this.
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
+        self.segments.len() == 1 && self.segments[0].args.is_none()
+    }
 }
 
 /// A segment of a path: an identifier, an optional lifetime, and a set of types.
@@ -167,9 +173,6 @@ pub enum GenericArgs {
     AngleBracketed(AngleBracketedArgs),
     /// The `(A, B)` and `C` in `Foo(A, B) -> C`.
     Parenthesized(ParenthesizedArgs),
-    /// Associated return type bounds, like `T: Trait<method(..): Send>`
-    /// which applies the `Send` bound to the return-type of `method`.
-    ReturnTypeNotation(Span),
 }
 
 impl GenericArgs {
@@ -181,7 +184,6 @@ impl GenericArgs {
         match self {
             AngleBracketed(data) => data.span,
             Parenthesized(data) => data.span,
-            ReturnTypeNotation(span) => *span,
         }
     }
 }
@@ -291,11 +293,19 @@ pub enum TraitBoundModifier {
     /// No modifiers
     None,
 
+    /// `!Trait`
+    Negative,
+
     /// `?Trait`
     Maybe,
 
     /// `~const Trait`
     MaybeConst,
+
+    /// `~const !Trait`
+    //
+    // This parses but will be rejected during AST validation.
+    MaybeConstNegative,
 
     /// `~const ?Trait`
     //
@@ -1150,7 +1160,9 @@ impl Expr {
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
     /// `min_const_generics` as more complex expressions are not supported.
-    pub fn is_potential_trivial_const_param(&self) -> bool {
+    ///
+    /// Does not ensure that the path resolves to a const param, the caller should check this.
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = if let ExprKind::Block(block, None) = &self.kind
             && block.stmts.len() == 1
             && let StmtKind::Expr(expr) = &block.stmts[0].kind
@@ -1161,8 +1173,7 @@ impl Expr {
         };
 
         if let ExprKind::Path(None, path) = &this.kind
-            && path.segments.len() == 1
-            && path.segments[0].args.is_none()
+            && path.is_potential_trivial_const_arg()
         {
             true
         } else {
@@ -1275,6 +1286,7 @@ impl Expr {
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
             ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1302,17 +1314,17 @@ impl Expr {
 
     /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
-        match &self.peel_parens().kind {
+        matches!(
+            &self.peel_parens().kind,
             ExprKind::Array(_)
-            | ExprKind::Call(_, _)
-            | ExprKind::Tup(_)
-            | ExprKind::Lit(_)
-            | ExprKind::Range(_, _, _)
-            | ExprKind::Underscore
-            | ExprKind::Path(_, _)
-            | ExprKind::Struct(_) => true,
-            _ => false,
-        }
+                | ExprKind::Call(_, _)
+                | ExprKind::Tup(_)
+                | ExprKind::Lit(_)
+                | ExprKind::Range(_, _, _)
+                | ExprKind::Underscore
+                | ExprKind::Path(_, _)
+                | ExprKind::Struct(_)
+        )
     }
 }
 
@@ -1433,8 +1445,8 @@ pub enum ExprKind {
     /// The async block used to have a `NodeId`, which was removed in favor of
     /// using the parent `NodeId` of the parent `Expr`.
     Async(CaptureBy, P<Block>),
-    /// An await expression (`my_future.await`).
-    Await(P<Expr>),
+    /// An await expression (`my_future.await`). Span is of await keyword.
+    Await(P<Expr>, Span),
 
     /// A try block (`try { ... }`).
     TryBlock(P<Block>),
@@ -1472,6 +1484,9 @@ pub enum ExprKind {
 
     /// Output of the `asm!()` macro.
     InlineAsm(P<InlineAsm>),
+
+    /// Output of the `offset_of!()` macro.
+    OffsetOf(P<Ty>, P<[Ident]>),
 
     /// A macro invocation; pre-expansion.
     MacCall(P<MacCall>),
@@ -1589,7 +1604,6 @@ pub enum ClosureBinder {
 pub struct MacCall {
     pub path: Path,
     pub args: P<DelimArgs>,
-    pub prior_type_ascription: Option<(Span, bool)>,
 }
 
 impl MacCall {
@@ -1814,6 +1828,8 @@ pub enum LitKind {
     /// A byte string (`b"foo"`). Not stored as a symbol because it might be
     /// non-utf8, and symbols only allow utf8 strings.
     ByteStr(Lrc<[u8]>, StrStyle),
+    /// A C String (`c"foo"`). Guaranteed to only have `\0` at the end.
+    CStr(Lrc<[u8]>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -1868,6 +1884,7 @@ impl LitKind {
             // unsuffixed variants
             LitKind::Str(..)
             | LitKind::ByteStr(..)
+            | LitKind::CStr(..)
             | LitKind::Byte(..)
             | LitKind::Char(..)
             | LitKind::Int(_, LitIntType::Unsuffixed)
@@ -2374,10 +2391,10 @@ pub struct FnDecl {
 
 impl FnDecl {
     pub fn has_self(&self) -> bool {
-        self.inputs.get(0).map_or(false, Param::is_self)
+        self.inputs.get(0).is_some_and(Param::is_self)
     }
     pub fn c_variadic(&self) -> bool {
-        self.inputs.last().map_or(false, |arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+        self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
     }
 }
 
@@ -2445,6 +2462,16 @@ impl fmt::Debug for ImplPolarity {
             ImplPolarity::Negative(_) => "negative".fmt(f),
         }
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+pub enum BoundPolarity {
+    /// `Type: Trait`
+    Positive,
+    /// `Type: !Trait`
+    Negative(Span),
+    /// `Type: ?Trait`
+    Maybe(Span),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2976,7 +3003,7 @@ pub enum ItemKind {
 }
 
 impl ItemKind {
-    pub fn article(&self) -> &str {
+    pub fn article(&self) -> &'static str {
         use ItemKind::*;
         match self {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
@@ -2985,7 +3012,7 @@ impl ItemKind {
         }
     }
 
-    pub fn descr(&self) -> &str {
+    pub fn descr(&self) -> &'static str {
         match self {
             ItemKind::ExternCrate(..) => "extern crate",
             ItemKind::Use(..) => "`use` import",

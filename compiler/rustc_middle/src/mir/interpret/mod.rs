@@ -89,6 +89,30 @@ macro_rules! throw_machine_stop {
     ($($tt:tt)*) => { do yeet err_machine_stop!($($tt)*) };
 }
 
+#[macro_export]
+macro_rules! err_ub_custom {
+    ($msg:expr $(, $($name:ident = $value:expr),* $(,)?)?) => {{
+        $(
+            let ($($name,)*) = ($($value,)*);
+        )?
+        err_ub!(Custom(
+            rustc_middle::error::CustomSubdiagnostic {
+                msg: || $msg,
+                add_args: Box::new(move |mut set_arg| {
+                    $($(
+                        set_arg(stringify!($name).into(), rustc_errors::IntoDiagnosticArg::into_diagnostic_arg($name));
+                    )*)?
+                })
+            }
+        ))
+    }};
+}
+
+#[macro_export]
+macro_rules! throw_ub_custom {
+    ($($tt:tt)*) => { do yeet err_ub_custom!($($tt)*) };
+}
+
 mod allocation;
 mod error;
 mod pointer;
@@ -119,9 +143,10 @@ use crate::ty::{self, Instance, Ty, TyCtxt};
 
 pub use self::error::{
     struct_error, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult,
-    EvalToValTreeResult, InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo,
-    MachineStopType, ResourceExhaustionInfo, ScalarSizeMismatch, UndefinedBehaviorInfo,
-    UninitBytesAccess, UnsupportedOpInfo,
+    EvalToValTreeResult, ExpectedKind, InterpError, InterpErrorInfo, InterpResult, InvalidMetaKind,
+    InvalidProgramInfo, MachineStopType, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
+    ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
+    ValidationErrorInfo, ValidationErrorKind,
 };
 
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
@@ -227,7 +252,9 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
             // References to statics doesn't need to know about their allocations,
             // just about its `DefId`.
             AllocDiscriminant::Static.encode(encoder);
-            did.encode(encoder);
+            // Cannot use `did.encode(encoder)` because of a bug around
+            // specializations and method calls.
+            Encodable::<E>::encode(&did, encoder);
         }
     }
 }

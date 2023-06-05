@@ -1,7 +1,7 @@
 //! Errors emitted by ty_utils
 
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
@@ -95,8 +95,30 @@ pub struct OversizedSimdType<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ty_utils_non_primative_simd_type)]
+#[diag(ty_utils_non_primitive_simd_type)]
 pub struct NonPrimitiveSimdType<'tcx> {
     pub ty: Ty<'tcx>,
     pub e_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_impl_trait_duplicate_arg)]
+pub struct DuplicateArg<'tcx> {
+    pub arg: GenericArg<'tcx>,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note]
+    pub opaque_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ty_utils_impl_trait_not_param)]
+pub struct NotParam<'tcx> {
+    pub arg: GenericArg<'tcx>,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note]
+    pub opaque_span: Span,
 }

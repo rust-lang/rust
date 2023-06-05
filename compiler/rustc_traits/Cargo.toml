@@ -8,7 +8,6 @@ tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
-rustc_index = { path = "../rustc_index" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }

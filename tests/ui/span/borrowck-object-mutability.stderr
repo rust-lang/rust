@@ -7,7 +7,7 @@ LL |     x.borrowed_mut();
 help: consider changing this to be a mutable reference
    |
 LL | fn borrowed_receiver(x: &mut dyn Foo) {
-   |                         ~~~~~~~~~~~~
+   |                          +++
 
 error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
   --> $DIR/borrowck-object-mutability.rs:18:5

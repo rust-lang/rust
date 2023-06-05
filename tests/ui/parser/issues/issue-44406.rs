@@ -6,5 +6,4 @@ macro_rules! foo {
 
 fn main() {
     foo!(true);
-    //~^ ERROR expected identifier, found keyword
 }

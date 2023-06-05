@@ -45,11 +45,22 @@ pub fn raw_pointer(x: *const i32) -> *const i32 {
     })
 }
 
+// EMIT_MIR references.raw_pointer_offset.built.after.mir
+#[custom_mir(dialect = "built")]
+pub fn raw_pointer_offset(x: *const i32) -> *const i32 {
+    mir!({
+        RET = Offset(x, 1_isize);
+        Return()
+    })
+}
+
 fn main() {
     let mut x = 5;
+    let arr = [1, 2];
     assert_eq!(*mut_ref(&mut x), 5);
     assert_eq!(*immut_ref(&x), 5);
     unsafe {
         assert_eq!(*raw_pointer(addr_of!(x)), 5);
+        assert_eq!(*raw_pointer_offset(addr_of!(arr[0])), 2);
     }
 }

@@ -1,5 +1,5 @@
 error: incorrect number of arguments to `#[link_ordinal]`
-  --> $DIR/link-ordinal-missing-argument.rs:5:5
+  --> $DIR/link-ordinal-missing-argument.rs:3:5
    |
 LL |     #[link_ordinal()]
    |     ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     #[link_ordinal()]
    = note: the attribute requires exactly one argument
 
 error: incorrect number of arguments to `#[link_ordinal]`
-  --> $DIR/link-ordinal-missing-argument.rs:8:5
+  --> $DIR/link-ordinal-missing-argument.rs:6:5
    |
 LL |     #[link_ordinal()]
    |     ^^^^^^^^^^^^^^^^^

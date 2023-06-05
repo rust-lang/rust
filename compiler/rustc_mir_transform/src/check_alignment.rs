@@ -1,6 +1,7 @@
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
+use rustc_hir::lang_items::LangItem;
+use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::mir::{
     interpret::{ConstValue, Scalar},
@@ -17,6 +18,12 @@ impl<'tcx> MirPass<'tcx> for CheckAlignment {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // This pass emits new panics. If for whatever reason we do not have a panic
+        // implementation, running this pass may cause otherwise-valid code to not compile.
+        if tcx.lang_items().get(LangItem::PanicImpl).is_none() {
+            return;
+        }
+
         let basic_blocks = body.basic_blocks.as_mut();
         let local_decls = &mut body.local_decls;
 
@@ -68,6 +75,14 @@ struct PointerFinder<'tcx, 'a> {
 }
 
 impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        if let Rvalue::AddressOf(..) = rvalue {
+            // Ignore dereferences inside of an AddressOf
+            return;
+        }
+        self.super_rvalue(rvalue, location);
+    }
+
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         if let PlaceContext::NonUse(_) = context {
             return;
@@ -217,10 +232,10 @@ fn insert_alignment_check<'tcx>(
             cond: Operand::Copy(is_ok),
             expected: true,
             target: new_block,
-            msg: AssertKind::MisalignedPointerDereference {
+            msg: Box::new(AssertKind::MisalignedPointerDereference {
                 required: Operand::Copy(alignment),
                 found: Operand::Copy(addr),
-            },
+            }),
             unwind: UnwindAction::Terminate,
         },
     });

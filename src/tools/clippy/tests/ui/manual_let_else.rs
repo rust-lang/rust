@@ -8,6 +8,12 @@
 )]
 #![warn(clippy::manual_let_else)]
 
+enum Variant {
+    A(usize, usize),
+    B(usize),
+    C,
+}
+
 fn g() -> Option<()> {
     None
 }
@@ -135,6 +141,25 @@ fn fire() {
         };
     }
     create_binding_if_some!(w, g());
+
+    fn e() -> Variant {
+        Variant::A(0, 0)
+    }
+
+    let v = if let Variant::A(a, 0) = e() { a } else { return };
+
+    // `mut v` is inserted into the pattern
+    let mut v = if let Variant::B(b) = e() { b } else { return };
+
+    // Nesting works
+    let nested = Ok(Some(e()));
+    let v = if let Ok(Some(Variant::B(b))) | Err(Some(Variant::A(b, _))) = nested {
+        b
+    } else {
+        return;
+    };
+    // dot dot works
+    let v = if let Variant::A(.., a) = e() { a } else { return };
 }
 
 fn not_fire() {

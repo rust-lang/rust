@@ -12,7 +12,7 @@ LL |     println!("{}", circular_modules_main::hi_str());
    |
 help: consider importing this function
    |
-LL | use hi_str;
+LL + use hi_str;
    |
 help: if you import `hi_str`, refer to it directly
    |

@@ -16,7 +16,7 @@ define-function: (
     }
 )
 
-goto: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.Iterator.html"
+go-to: "file://" + |DOC_PATH| + "/lib2/scroll_traits/trait.Iterator.html"
 
 // We check that the setting is enabled by default and is working.
 call-function: ("check-setting", {

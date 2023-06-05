@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::is_digit_ascii_radix)]
 

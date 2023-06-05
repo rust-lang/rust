@@ -1,7 +1,6 @@
 // build-pass
 // needs-unwind
 
-#![feature(c_unwind)]
 #![warn(ffi_unwind_calls)]
 
 mod foo {

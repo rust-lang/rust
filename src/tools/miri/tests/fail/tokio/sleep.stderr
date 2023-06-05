@@ -1,0 +1,15 @@
+error: unsupported operation: returning ready events from epoll_wait is not yet implemented
+  --> CARGO_REGISTRY/.../epoll.rs:LL:CC
+   |
+LL | /         syscall!(epoll_wait(
+LL | |             self.ep,
+LL | |             events.as_mut_ptr(),
+LL | |             events.capacity() as i32,
+LL | |             timeout,
+LL | |         ))
+   | |__________^ returning ready events from epoll_wait is not yet implemented
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+
+error: aborting due to previous error
+

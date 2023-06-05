@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 pub trait Stream {
     type Item;
@@ -17,7 +17,9 @@ trait Yay<AdditionalValue> {
 
 impl<T> Yay<T> for () {
     type InnerStream<'s> = impl Stream<Item = i32> + 's;
-    fn foo<'s>() -> Self::InnerStream<'s> { () }
+    fn foo<'s>() -> Self::InnerStream<'s> {
+        ()
+    }
 }
 
 fn main() {}

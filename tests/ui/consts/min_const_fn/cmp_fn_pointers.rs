@@ -1,6 +1,6 @@
 const fn cmp(x: fn(), y: fn()) -> bool {
     unsafe { x == y }
-    //~^ ERROR can't compare
+    //~^ ERROR pointers cannot
 }
 
 fn main() {}

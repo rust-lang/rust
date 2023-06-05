@@ -14,6 +14,7 @@ use std::hash::Hash;
 use std::marker;
 use std::mem;
 use std::ops::Bound;
+use std::ops::Range;
 use std::panic;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
@@ -93,6 +94,7 @@ macro_rules! with_api {
                 fn source_file($self: $S::Span) -> $S::SourceFile;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
+                fn byte_range($self: $S::Span) -> Range<usize>;
                 fn start($self: $S::Span) -> LineColumn;
                 fn end($self: $S::Span) -> LineColumn;
                 fn before($self: $S::Span) -> $S::Span;
@@ -335,6 +337,8 @@ pub enum LitKind {
     StrRaw(u8),
     ByteStr,
     ByteStrRaw(u8),
+    CStr,
+    CStrRaw(u8),
     Err,
 }
 
@@ -348,6 +352,8 @@ rpc_encode_decode!(
         StrRaw(n),
         ByteStr,
         ByteStrRaw(n),
+        CStr,
+        CStrRaw(n),
         Err,
     }
 );
@@ -518,4 +524,8 @@ pub struct ExpnGlobals<Span> {
 
 compound_traits!(
     struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
+);
+
+compound_traits!(
+    struct Range<T> { start, end }
 );

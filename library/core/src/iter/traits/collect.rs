@@ -95,6 +95,16 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
+        _Self = "&[{A}]",
+        message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
+        label = "try explicitly collecting into a `Vec<{A}>`",
+    ),
+    on(
+        all(A = "{integer}", any(_Self = "&[{integral}]",)),
+        message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
+        label = "try explicitly collecting into a `Vec<{A}>`",
+    ),
+    on(
         _Self = "[{A}]",
         message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
@@ -228,7 +238,6 @@ pub trait FromIterator<A>: Sized {
 #[rustc_diagnostic_item = "IntoIterator"]
 #[rustc_skip_array_during_method_dispatch]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[const_trait]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -264,7 +273,7 @@ pub trait IntoIterator {
 
 #[rustc_const_unstable(feature = "const_intoiterator_identity", issue = "90603")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> const IntoIterator for I {
+impl<I: Iterator> IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
 

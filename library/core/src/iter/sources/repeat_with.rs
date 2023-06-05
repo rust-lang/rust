@@ -19,7 +19,6 @@ use crate::ops::Try;
 /// please open a GitHub issue explaining your use case.
 ///
 /// [`repeat()`]: crate::iter::repeat
-/// [`DoubleEndedIterator`]: crate::iter::DoubleEndedIterator
 ///
 /// # Examples
 ///

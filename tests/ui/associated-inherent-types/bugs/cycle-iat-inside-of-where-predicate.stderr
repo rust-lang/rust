@@ -1,0 +1,37 @@
+error[E0391]: cycle detected when computing predicates of `user`
+  --> $DIR/cycle-iat-inside-of-where-predicate.rs:8:1
+   |
+LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing predicates of `user`...
+  --> $DIR/cycle-iat-inside-of-where-predicate.rs:8:1
+   |
+LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing explicit predicates of `user`...
+  --> $DIR/cycle-iat-inside-of-where-predicate.rs:8:1
+   |
+LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing normalized predicates of `user`...
+  --> $DIR/cycle-iat-inside-of-where-predicate.rs:8:1
+   |
+LL | fn user<T>() where S<T>::P: std::fmt::Debug {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing predicates of `user`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/cycle-iat-inside-of-where-predicate.rs:3:1
+   |
+LL | / #![feature(inherent_associated_types)]
+LL | | #![allow(incomplete_features)]
+LL | |
+LL | | // FIXME(inherent_associated_types): This shouldn't lead to a cycle error.
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

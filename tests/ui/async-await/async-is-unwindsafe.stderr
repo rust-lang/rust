@@ -17,13 +17,13 @@ LL | |     });
    = help: within `[async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6]`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`
    = note: `UnwindSafe` is implemented for `&std::task::Context<'_>`, but not for `&mut std::task::Context<'_>`
 note: future does not implement `UnwindSafe` as this value is used across an await
-  --> $DIR/async-is-unwindsafe.rs:25:17
+  --> $DIR/async-is-unwindsafe.rs:25:18
    |
 LL |         let cx_ref = &mut cx;
    |             ------ has type `&mut Context<'_>` which does not implement `UnwindSafe`
 LL |
 LL |         async {}.await; // this needs an inner await point
-   |                 ^^^^^^ await occurs here, with `cx_ref` maybe used later
+   |                  ^^^^^ await occurs here, with `cx_ref` maybe used later
 ...
 LL |     });
    |     - `cx_ref` is later dropped here

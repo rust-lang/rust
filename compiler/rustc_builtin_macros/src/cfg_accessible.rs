@@ -1,5 +1,6 @@
 //! Implementation of the `#[cfg_accessible(path)]` attribute macro.
 
+use crate::errors;
 use rustc_ast as ast;
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
@@ -10,15 +11,22 @@ use rustc_span::Span;
 pub(crate) struct Expander;
 
 fn validate_input<'a>(ecx: &mut ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
+    use errors::CfgAccessibleInvalid::*;
     match mi.meta_item_list() {
         None => {}
-        Some([]) => ecx.span_err(mi.span, "`cfg_accessible` path is not specified"),
-        Some([_, .., l]) => ecx.span_err(l.span(), "multiple `cfg_accessible` paths are specified"),
+        Some([]) => {
+            ecx.emit_err(UnspecifiedPath(mi.span));
+        }
+        Some([_, .., l]) => {
+            ecx.emit_err(MultiplePaths(l.span()));
+        }
         Some([nmi]) => match nmi.meta_item() {
-            None => ecx.span_err(nmi.span(), "`cfg_accessible` path cannot be a literal"),
+            None => {
+                ecx.emit_err(LiteralPath(nmi.span()));
+            }
             Some(mi) => {
                 if !mi.is_word() {
-                    ecx.span_err(mi.span, "`cfg_accessible` path cannot accept arguments");
+                    ecx.emit_err(HasArguments(mi.span));
                 }
                 return Some(&mi.path);
             }
@@ -53,7 +61,7 @@ impl MultiItemModifier for Expander {
             Ok(true) => ExpandResult::Ready(vec![item]),
             Ok(false) => ExpandResult::Ready(Vec::new()),
             Err(Indeterminate) if ecx.force_mode => {
-                ecx.span_err(span, "cannot determine whether the path is accessible or not");
+                ecx.emit_err(errors::CfgAccessibleIndeterminate { span });
                 ExpandResult::Ready(vec![item])
             }
             Err(Indeterminate) => ExpandResult::Retry(item),

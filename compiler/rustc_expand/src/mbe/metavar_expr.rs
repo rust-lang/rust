@@ -41,7 +41,7 @@ impl MetaVarExpr {
         };
         check_trailing_token(&mut tts, sess)?;
         let mut iter = args.trees();
-        let rslt = match &*ident.as_str() {
+        let rslt = match ident.as_str() {
             "count" => parse_count(&mut iter, sess, ident.span)?,
             "ignore" => MetaVarExpr::Ignore(parse_ident(&mut iter, sess, ident.span)?),
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, sess, ident.span)?),
@@ -78,7 +78,7 @@ fn check_trailing_token<'sess>(
     if let Some(tt) = iter.next() {
         let mut diag = sess
             .span_diagnostic
-            .struct_span_err(tt.span(), &format!("unexpected token: {}", pprust::tt_to_string(tt)));
+            .struct_span_err(tt.span(), format!("unexpected token: {}", pprust::tt_to_string(tt)));
         diag.span_note(tt.span(), "meta-variable expression must not have trailing tokens");
         Err(diag)
     } else {
@@ -137,11 +137,11 @@ fn parse_ident<'sess>(
         let token_str = pprust::token_to_string(token);
         let mut err = sess.span_diagnostic.struct_span_err(
             span,
-            &format!("expected identifier, found `{}`", &token_str)
+            format!("expected identifier, found `{}`", &token_str)
         );
         err.span_suggestion(
             token.span,
-            &format!("try removing `{}`", &token_str),
+            format!("try removing `{}`", &token_str),
             "",
             Applicability::MaybeIncorrect,
         );

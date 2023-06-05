@@ -2,7 +2,6 @@ FROM ubuntu:22.10
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# NOTE: intentionally installs both python2 and python3 so we can test support for both.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   gcc-multilib \
@@ -11,7 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python2.7 \
   python3 \
   git \
   cmake \
@@ -40,6 +38,10 @@ RUN sh /scripts/sccache.sh
 # LLVM, rather than the typical src/llvm-project LLVM.
 ENV NO_DOWNLOAD_CI_LLVM 1
 
+# This is not the latest LLVM version, so some components required by tests may
+# be missing.
+ENV IS_NOT_LATEST_LLVM 1
+
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
@@ -63,6 +65,4 @@ ENV SCRIPT ../x.py --stage 2 test --exclude src/tools/tidy && \
            # work.
            #
            ../x.ps1 --stage 2 test tests/ui --pass=check \
-                             --host='' --target=i686-unknown-linux-gnu && \
-           # Run tidy at the very end, after all the other tests.
-           python2.7 ../x.py --stage 2 test src/tools/tidy
+                             --host='' --target=i686-unknown-linux-gnu

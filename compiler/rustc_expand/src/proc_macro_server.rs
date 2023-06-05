@@ -18,7 +18,7 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 use smallvec::{smallvec, SmallVec};
-use std::ops::Bound;
+use std::ops::{Bound, Range};
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -61,6 +61,8 @@ impl FromInternal<token::LitKind> for LitKind {
             token::StrRaw(n) => LitKind::StrRaw(n),
             token::ByteStr => LitKind::ByteStr,
             token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
+            token::CStr => LitKind::CStr,
+            token::CStrRaw(n) => LitKind::CStrRaw(n),
             token::Err => LitKind::Err,
             token::Bool => unreachable!(),
         }
@@ -78,6 +80,8 @@ impl ToInternal<token::LitKind> for LitKind {
             LitKind::StrRaw(n) => token::StrRaw(n),
             LitKind::ByteStr => token::ByteStr,
             LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
+            LitKind::CStr => token::CStr,
+            LitKind::CStrRaw(n) => token::CStrRaw(n),
             LitKind::Err => token::Err,
         }
     }
@@ -436,6 +440,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 | token::LitKind::StrRaw(_)
                 | token::LitKind::ByteStr
                 | token::LitKind::ByteStrRaw(_)
+                | token::LitKind::CStr
+                | token::LitKind::CStrRaw(_)
                 | token::LitKind::Err => return Err(()),
                 token::LitKind::Integer | token::LitKind::Float => {}
             }
@@ -632,6 +638,15 @@ impl server::Span for Rustc<'_, '_> {
 
     fn source(&mut self, span: Self::Span) -> Self::Span {
         span.source_callsite()
+    }
+
+    fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
+        let source_map = self.sess().source_map();
+
+        let relative_start_pos = source_map.lookup_byte_offset(span.lo()).pos;
+        let relative_end_pos = source_map.lookup_byte_offset(span.hi()).pos;
+
+        Range { start: relative_start_pos.0 as usize, end: relative_end_pos.0 as usize }
     }
 
     fn start(&mut self, span: Self::Span) -> LineColumn {

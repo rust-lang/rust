@@ -5,6 +5,6 @@
 #[macro_export]
 macro_rules! new_scope {
     () => {
-        let x = 1;
+        let x = 1; opaque(x);
     }
 }

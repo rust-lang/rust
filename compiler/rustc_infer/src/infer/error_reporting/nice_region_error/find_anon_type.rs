@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, Region, TyCtxt};
 /// br - the bound region corresponding to the above region which is of type `BrAnon(_)`
 ///
 /// # Example
-/// ```compile_fail,E0623
+/// ```compile_fail
 /// fn foo(x: &mut Vec<&u8>, y: &u8)
 ///    { x.push(y); }
 /// ```

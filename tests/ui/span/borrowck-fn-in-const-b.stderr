@@ -7,7 +7,7 @@ LL |         x.push(format!("this is broken"));
 help: consider changing this to be a mutable reference
    |
 LL |     fn broken(x: &mut Vec<String>) {
-   |                  ~~~~~~~~~~~~~~~~
+   |                   +++
 
 error: aborting due to previous error
 

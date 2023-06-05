@@ -15,3 +15,8 @@ pub struct OwO3 {
 pub enum OwO4 {
     UwU = 1,
 }
+
+#[repr(uwu)] //~ERROR: unrecognized representation hint
+#[doc(owo)]  //~WARN: unknown `doc` attribute
+             //~^ WARN: this was previously
+pub struct Owo5;

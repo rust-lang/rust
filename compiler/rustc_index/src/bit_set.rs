@@ -1,6 +1,3 @@
-use crate::vec::{Idx, IndexVec};
-use arrayvec::ArrayVec;
-use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -9,7 +6,12 @@ use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds
 use std::rc::Rc;
 use std::slice;
 
+use arrayvec::ArrayVec;
+use smallvec::{smallvec, SmallVec};
+
 use rustc_macros::{Decodable, Encodable};
+
+use crate::{Idx, IndexVec};
 
 use Chunk::*;
 
@@ -1542,7 +1544,7 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).map_or(false, |word| (word & mask) != 0)
+        self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
     }
 
     #[inline]
@@ -1816,7 +1818,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.row(row).map_or(false, |r| r.contains(column))
+        self.row(row).is_some_and(|r| r.contains(column))
     }
 
     /// Adds the bits from row `read` to the bits from row `write`, and
@@ -1850,7 +1852,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 

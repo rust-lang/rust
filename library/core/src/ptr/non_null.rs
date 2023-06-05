@@ -449,6 +449,19 @@ impl<T: ?Sized> NonNull<T> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }
+
+    /// See [`pointer::add`] for semantics and safety requirements.
+    #[inline]
+    pub(crate) const unsafe fn add(self, delta: usize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: We require that the delta stays in-bounds of the object, and
+        // thus it cannot become null, as that would require wrapping the
+        // address space, which no legal objects are allowed to do.
+        // And the caller promised the `delta` is sound to add.
+        unsafe { NonNull { pointer: self.pointer.add(delta) } }
+    }
 }
 
 impl<T> NonNull<[T]> {
@@ -473,7 +486,7 @@ impl<T> NonNull<[T]> {
     ///
     /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
-    #[stable(feature = "nonnull_slice_from_raw_parts", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonnull_slice_from_raw_parts", since = "1.70.0")]
     #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
     #[must_use]
     #[inline]
@@ -676,11 +689,10 @@ impl<T> NonNull<[T]> {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
+    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
     where
-        I: ~const SliceIndex<[T]>,
+        I: SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         // As a consequence, the resulting pointer cannot be null.
@@ -689,8 +701,7 @@ impl<T> NonNull<[T]> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-impl<T: ?Sized> const Clone for NonNull<T> {
+impl<T: ?Sized> Clone for NonNull<T> {
     #[inline(always)]
     fn clone(&self) -> Self {
         *self
@@ -756,8 +767,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized> const From<Unique<T>> for NonNull<T> {
+impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
         // SAFETY: A Unique pointer cannot be null, so the conditions for
@@ -767,8 +777,7 @@ impl<T: ?Sized> const From<Unique<T>> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized> const From<&mut T> for NonNull<T> {
+impl<T: ?Sized> From<&mut T> for NonNull<T> {
     /// Converts a `&mut T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.
@@ -780,8 +789,7 @@ impl<T: ?Sized> const From<&mut T> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized> const From<&T> for NonNull<T> {
+impl<T: ?Sized> From<&T> for NonNull<T> {
     /// Converts a `&T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.

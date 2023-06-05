@@ -1,4 +1,4 @@
-// compile-flags: -W clippy::restriction
+//@compile-flags: -W clippy::restriction
 
 #![warn(clippy::blanket_clippy_restriction_lints)]
 

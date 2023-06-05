@@ -5,6 +5,8 @@ LL | enum Foo {
    | ^^^^^^^^ needs exactly one variant, but has 2
 LL |     A(u8), B(u8),
    |     -      - too many variants in `Foo`
+   |     |
+   |     variant here
 
 error: aborting due to previous error
 

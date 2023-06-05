@@ -1,0 +1,24 @@
+- // MIR for `integer_transmutes` before InstSimplify
++ // MIR for `integer_transmutes` after InstSimplify
+  
+  fn integer_transmutes() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/combine_transmutes.rs:+0:36: +0:36
+      let mut _1: u32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _2: i64;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _3: i64;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _4: u32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _5: usize;                   // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+  
+      bb0: {
+-         _1 = const 1_i32 as u32 (Transmute); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
++         _1 = const 1_i32 as u32 (IntToInt); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+          _2 = const 1_i32 as i64 (Transmute); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+-         _3 = const 1_u64 as i64 (Transmute); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
++         _3 = const 1_u64 as i64 (IntToInt); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+          _4 = const 1_u64 as u32 (Transmute); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+-         _5 = const 1_isize as usize (Transmute); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
++         _5 = const 1_isize as usize (IntToInt); // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+          return;                          // scope 0 at $DIR/combine_transmutes.rs:+8:13: +8:21
+      }
+  }
+  

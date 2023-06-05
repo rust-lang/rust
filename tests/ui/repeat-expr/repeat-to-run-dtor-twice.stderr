@@ -7,7 +7,8 @@ LL |     let _ = [ a; 5 ];
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Foo` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | struct Foo {
    |
 
 error: aborting due to previous error

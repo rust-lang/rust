@@ -6,11 +6,11 @@ LL | impl Mul for Foo {
    |
 help: consider importing one of these items
    |
-LL | use mul1::Mul;
+LL + use mul1::Mul;
    |
-LL | use mul2::Mul;
+LL + use mul2::Mul;
    |
-LL | use std::ops::Mul;
+LL + use std::ops::Mul;
    |
 
 error[E0412]: cannot find type `Mul` in this scope
@@ -21,11 +21,11 @@ LL | fn getMul() -> Mul {
    |
 help: consider importing one of these items
    |
-LL | use mul1::Mul;
+LL + use mul1::Mul;
    |
-LL | use mul2::Mul;
+LL + use mul2::Mul;
    |
-LL | use std::ops::Mul;
+LL + use std::ops::Mul;
    |
 
 error[E0405]: cannot find trait `ThisTraitReallyDoesntExistInAnyModuleReally` in this scope
@@ -42,7 +42,7 @@ LL | impl Div for Foo {
    |
 help: consider importing this trait
    |
-LL | use std::ops::Div;
+LL + use std::ops::Div;
    |
 
 error: aborting due to 4 previous errors

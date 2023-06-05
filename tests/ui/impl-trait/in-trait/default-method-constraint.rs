@@ -5,7 +5,6 @@
 // This didn't work in the previous default RPITIT method hack attempt
 
 #![feature(return_position_impl_trait_in_trait)]
-//~^ WARN the feature `return_position_impl_trait_in_trait` is incomplete
 
 trait Foo {
     fn bar(x: bool) -> impl Sized {

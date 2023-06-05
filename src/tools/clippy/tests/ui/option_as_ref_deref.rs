@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(unused, clippy::redundant_clone)]
 #![warn(clippy::option_as_ref_deref)]

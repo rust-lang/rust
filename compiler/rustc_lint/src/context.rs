@@ -36,6 +36,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
+use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
@@ -48,9 +49,9 @@ use std::cell::Cell;
 use std::iter;
 use std::slice;
 
-type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync;
+type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync;
 type LateLintPassFactory =
-    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::Send + sync::Sync;
+    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync;
 
 /// Information about the registered lints.
 ///
@@ -168,7 +169,7 @@ impl LintStore {
 
     pub fn register_early_pass(
         &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
     ) {
         self.early_passes.push(Box::new(pass));
     }
@@ -181,7 +182,7 @@ impl LintStore {
     /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
     pub fn register_pre_expansion_pass(
         &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
     ) {
         self.pre_expansion_passes.push(Box::new(pass));
     }
@@ -190,8 +191,8 @@ impl LintStore {
         &mut self,
         pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
         + 'static
-        + sync::Send
-        + sync::Sync,
+        + sync::DynSend
+        + sync::DynSync,
     ) {
         self.late_passes.push(Box::new(pass));
     }
@@ -200,8 +201,8 @@ impl LintStore {
         &mut self,
         pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
         + 'static
-        + sync::Send
-        + sync::Sync,
+        + sync::DynSend
+        + sync::DynSync,
     ) {
         self.late_module_passes.push(Box::new(pass));
     }
@@ -616,7 +617,7 @@ pub trait LintContext: Sized {
                         1 => ("an ", ""),
                         _ => ("", "s"),
                     };
-                    db.span_label(span, &format!(
+                    db.span_label(span, format!(
                         "this comment contains {}invisible unicode text flow control codepoint{}",
                         an,
                         s,
@@ -680,12 +681,12 @@ pub trait LintContext: Sized {
                     );
                 }
                 BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
-                    db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+                    db.span_suggestion(span, note, sugg, Applicability::MaybeIncorrect);
                 }
                 BuiltinLintDiagnostics::UnusedImports(message, replaces, in_test_module) => {
                     if !replaces.is_empty() {
                         db.tool_only_multipart_suggestion(
-                            &message,
+                            message,
                             replaces,
                             Applicability::MachineApplicable,
                         );
@@ -720,13 +721,13 @@ pub trait LintContext: Sized {
                 }
                 BuiltinLintDiagnostics::MissingAbi(span, default_abi) => {
                     db.span_label(span, "ABI should be specified here");
-                    db.help(&format!("the default ABI is {}", default_abi.name()));
+                    db.help(format!("the default ABI is {}", default_abi.name()));
                 }
                 BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
                     db.span_label(span, "the attribute is introduced here");
                 }
                 BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
-                    db.note(&note);
+                    db.note(note);
                 }
                 BuiltinLintDiagnostics::OrPatternsBackCompat(span,suggestion) => {
                     db.span_suggestion(span, "use pat_param to preserve semantics", suggestion, Applicability::MachineApplicable);
@@ -747,13 +748,13 @@ pub trait LintContext: Sized {
                 } => {
                     db.span_note(
                         invoc_span,
-                        &format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
+                        format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
                     );
                 }
                 BuiltinLintDiagnostics::TrailingMacro(is_trailing, name) => {
                     if is_trailing {
                         db.note("macro invocations at the end of a block are treated as expressions");
-                        db.note(&format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
+                        db.note(format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
                     }
                 }
                 BuiltinLintDiagnostics::BreakWithLabelAndLoop(span) => {
@@ -765,25 +766,55 @@ pub trait LintContext: Sized {
                     );
                 }
                 BuiltinLintDiagnostics::NamedAsmLabel(help) => {
-                    db.help(&help);
+                    db.help(help);
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 },
-                BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), None) => {
-                    let Some(names_valid) = &sess.parse_sess.check_config.names_valid else {
-                        bug!("it shouldn't be possible to have a diagnostic on a name if name checking is not enabled");
-                    };
-                    let possibilities: Vec<Symbol> = names_valid.iter().map(|s| *s).collect();
+                BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
+                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().map(|s| *s).collect();
 
                     // Suggest the most probable if we found one
                     if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
-                        db.span_suggestion(name_span, "did you mean", best_match, Applicability::MaybeIncorrect);
+                        if let Some(ExpectedValues::Some(best_match_values)) =
+                            sess.parse_sess.check_config.expecteds.get(&best_match) {
+                            let mut possibilities = best_match_values.iter()
+                                .flatten()
+                                .map(Symbol::as_str)
+                                .collect::<Vec<_>>();
+                            possibilities.sort();
+
+                            if let Some((value, value_span)) = value {
+                                if best_match_values.contains(&Some(value)) {
+                                    db.span_suggestion(name_span, "there is a config with a similar name and value", best_match, Applicability::MaybeIncorrect);
+                                } else if best_match_values.contains(&None) {
+                                    db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and no value", best_match, Applicability::MaybeIncorrect);
+                                } else if let Some(first_value) = possibilities.first() {
+                                    db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and different values", format!("{best_match} = \"{first_value}\""), Applicability::MaybeIncorrect);
+                                } else {
+                                    db.span_suggestion(name_span.to(value_span), "there is a config with a similar name and different values", best_match, Applicability::MaybeIncorrect);
+                                };
+                            } else {
+                                db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
+                            }
+
+                            if !possibilities.is_empty() {
+                                let possibilities = possibilities.join("`, `");
+                                db.help(format!("expected values for `{best_match}` are: `{possibilities}`"));
+                            }
+                        } else {
+                            db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
+                        }
                     }
                 },
-                BuiltinLintDiagnostics::UnexpectedCfg((name, name_span), Some((value, value_span))) => {
-                    let Some(values) = &sess.parse_sess.check_config.values_valid.get(&name) else {
+                BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
+                    let Some(ExpectedValues::Some(values)) = &sess.parse_sess.check_config.expecteds.get(&name) else {
                         bug!("it shouldn't be possible to have a diagnostic on a value whose name is not in values");
                     };
-                    let possibilities: Vec<Symbol> = values.iter().map(|&s| s).collect();
+                    let mut have_none_possibility = false;
+                    let possibilities: Vec<Symbol> = values.iter()
+                        .inspect(|a| have_none_possibility |= a.is_none())
+                        .copied()
+                        .flatten()
+                        .collect();
 
                     // Show the full list if all possible values for a given name, but don't do it
                     // for names as the possibilities could be very long
@@ -792,17 +823,24 @@ pub trait LintContext: Sized {
                             let mut possibilities = possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
                             possibilities.sort();
 
-                            let possibilities = possibilities.join(", ");
-                            db.note(&format!("expected values for `{name}` are: {possibilities}"));
+                            let possibilities = possibilities.join("`, `");
+                            let none = if have_none_possibility { "(none), " } else { "" };
+
+                            db.note(format!("expected values for `{name}` are: {none}`{possibilities}`"));
                         }
 
-                        // Suggest the most probable if we found one
-                        if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                            db.span_suggestion(value_span, "did you mean", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
+                        if let Some((value, value_span)) = value {
+                            // Suggest the most probable if we found one
+                            if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
+                                db.span_suggestion(value_span, "there is a expected value with a similar name", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
+
+                            }
+                        } else if let &[first_possibility] = &possibilities[..] {
+                            db.span_suggestion(name_span.shrink_to_hi(), "specify a config value", format!(" = \"{first_possibility}\""), Applicability::MaybeIncorrect);
                         }
-                    } else {
-                        db.note(&format!("no expected value for `{name}`"));
-                        if name != sym::feature {
+                    } else if have_none_possibility {
+                        db.note(format!("no expected value for `{name}`"));
+                        if let Some((_value, value_span)) = value {
                             db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
                         }
                     }
@@ -913,6 +951,10 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::AmbiguousGlobReexports { name, namespace, first_reexport_span, duplicate_reexport_span } => {
                     db.span_label(first_reexport_span, format!("the name `{}` in the {} namespace is first re-exported here", name, namespace));
                     db.span_label(duplicate_reexport_span, format!("but the name `{}` in the {} namespace is also re-exported here", name, namespace));
+                }
+                BuiltinLintDiagnostics::HiddenGlobReexports { name, namespace, glob_reexport_span, private_item_span } => {
+                    db.span_label(glob_reexport_span, format!("the name `{}` in the {} namespace is supposed to be publicly re-exported here", name, namespace));
+                    db.span_label(private_item_span, "but the private item here shadows it");
                 }
             }
             // Rewrap `db`, and pass control to the user.

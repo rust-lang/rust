@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use rustc_ast::node_id::{NodeId, NodeMap};
-use rustc_ast::{ptr::P, Crate, Item, ItemKind, MacroDef, ModKind, UseTreeKind};
+use rustc_ast::visit::{walk_expr, Visitor};
+use rustc_ast::{ptr::P, Crate, Expr, ExprKind, Item, ItemKind, MacroDef, ModKind, Ty, TyKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -55,7 +56,7 @@ impl EarlyLintPass for SingleComponentPathImports {
             return;
         }
 
-        self.check_mod(cx, &krate.items);
+        self.check_mod(&krate.items);
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
@@ -84,8 +85,43 @@ impl EarlyLintPass for SingleComponentPathImports {
     }
 }
 
+#[derive(Default)]
+struct ImportUsageVisitor {
+    // keep track of imports reused with `self` keyword, such as `self::std` in the example below.
+    // Removing the `use std;` would make this a compile error (#10549)
+    // ```
+    // use std;
+    //
+    // fn main() {
+    //     let _ = self::std::io::stdout();
+    // }
+    // ```
+    imports_referenced_with_self: Vec<Symbol>,
+}
+
+impl<'tcx> Visitor<'tcx> for ImportUsageVisitor {
+    fn visit_expr(&mut self, expr: &Expr) {
+        if let ExprKind::Path(_, path) = &expr.kind
+            && path.segments.len() > 1
+            && path.segments[0].ident.name == kw::SelfLower
+        {
+            self.imports_referenced_with_self.push(path.segments[1].ident.name);
+        }
+        walk_expr(self, expr);
+    }
+
+    fn visit_ty(&mut self, ty: &Ty) {
+        if let TyKind::Path(_, path) = &ty.kind
+            && path.segments.len() > 1
+            && path.segments[0].ident.name == kw::SelfLower
+        {
+            self.imports_referenced_with_self.push(path.segments[1].ident.name);
+        }
+    }
+}
+
 impl SingleComponentPathImports {
-    fn check_mod(&mut self, cx: &EarlyContext<'_>, items: &[P<Item>]) {
+    fn check_mod(&mut self, items: &[P<Item>]) {
         // keep track of imports reused with `self` keyword, such as `self::crypto_hash` in the example
         // below. Removing the `use crypto_hash;` would make this a compile error
         // ```
@@ -108,18 +144,16 @@ impl SingleComponentPathImports {
         // ```
         let mut macros = Vec::new();
 
+        let mut import_usage_visitor = ImportUsageVisitor::default();
         for item in items {
-            self.track_uses(
-                cx,
-                item,
-                &mut imports_reused_with_self,
-                &mut single_use_usages,
-                &mut macros,
-            );
+            self.track_uses(item, &mut imports_reused_with_self, &mut single_use_usages, &mut macros);
+            import_usage_visitor.visit_item(item);
         }
 
         for usage in single_use_usages {
-            if !imports_reused_with_self.contains(&usage.name) {
+            if !imports_reused_with_self.contains(&usage.name)
+                && !import_usage_visitor.imports_referenced_with_self.contains(&usage.name)
+            {
                 self.found.entry(usage.item_id).or_default().push(usage);
             }
         }
@@ -127,7 +161,6 @@ impl SingleComponentPathImports {
 
     fn track_uses(
         &mut self,
-        cx: &EarlyContext<'_>,
         item: &Item,
         imports_reused_with_self: &mut Vec<Symbol>,
         single_use_usages: &mut Vec<SingleUse>,
@@ -139,7 +172,7 @@ impl SingleComponentPathImports {
 
         match &item.kind {
             ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) => {
-                self.check_mod(cx, items);
+                self.check_mod(items);
             },
             ItemKind::MacroDef(MacroDef { macro_rules: true, .. }) => {
                 macros.push(item.ident.name);

@@ -22,10 +22,9 @@ $ ./test.sh
 
 For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.rs`.
 
-Alternatively you can download a pre built version from [Github Actions]. It is listed in the artifacts section
-of workflow runs. Unfortunately due to GHA restrictions you need to be logged in to access it.
+Alternatively you can download a pre built version from the [releases] page.
 
-[Github Actions]: https://github.com/bjorn3/rustc_codegen_cranelift/actions?query=branch%3Amaster+event%3Apush+is%3Asuccess
+[releases]: https://github.com/bjorn3/rustc_codegen_cranelift/releases/tag/dev
 
 ## Usage
 
@@ -42,6 +41,32 @@ $ $cg_clif_dir/dist/cargo-clif build
 This will build your project with rustc_codegen_cranelift instead of the usual LLVM backend.
 
 For additional ways to use rustc_codegen_cranelift like the JIT mode see [usage.md](docs/usage.md).
+
+## Building and testing with changes in rustc code
+
+This is useful when changing code in `rustc_codegen_cranelift` as part of changing [main Rust repository](https://github.com/rust-lang/rust/).
+This can happen, for example, when you are implementing a new compiler intrinsic.
+
+Instruction below uses `$RustCheckoutDir` as substitute for any folder where you cloned Rust repository.
+
+You need to do this steps to successfully compile and use the cranelift backend with your changes in rustc code:
+
+1. `cd $RustCheckoutDir`
+2. Run `python x.py setup` and choose option for compiler (`b`).
+3. Build compiler and necessary tools: `python x.py build --stage=2 compiler library/std src/tools/rustdoc src/tools/rustfmt`
+   * (Optional) You can also build cargo by adding `src/tools/cargo` to previous command.
+4. Copy exectutable files from `./build/host/stage2-tools/<your hostname triple>/release`
+to `./build/host/stage2/bin/`. Note that you would need to do this every time you rebuilt `rust` repository.
+5. Copy cargo from another toolchain: `cp $(rustup which cargo) .build/<your hostname triple>/stage2/bin/cargo`
+   * Another option is to build it at step 3 and copy with other executables at step 4.
+6. Link your new `rustc` to toolchain: `rustup toolchain link stage2 ./build/host/stage2/`.
+7. (Windows only) compile y.rs: `rustc +stage2 -O y.rs`.
+8. You need to prefix every `./y.rs` (or `y` if you built `y.rs`) command by `rustup run stage2` to make cg_clif use your local changes in rustc.
+
+  * `rustup run stage2 ./y.rs prepare`
+  * `rustup run stage2 ./y.rs build`
+  * (Optional) run tests: `rustup run stage2 ./y.rs test`
+9. Now you can use your cg_clif build to compile other Rust programs, e.g. you can open any Rust crate and run commands like `$RustCheckoutDir/compiler/rustc_codegen_cranelift/dist/cargo-clif build --release`.
 
 ## Configuration
 

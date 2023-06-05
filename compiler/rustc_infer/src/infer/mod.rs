@@ -24,7 +24,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::select;
+use rustc_middle::traits::{select, DefiningAnchor};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -39,14 +39,12 @@ use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
-use std::ops::Drop;
 
 use self::combine::CombineFields;
 use self::error_reporting::TypeErrCtxt;
 use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
-use self::outlives::env::OutlivesEnvironment;
-use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
+use self::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use self::region_constraints::{
     RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
 };
@@ -60,6 +58,7 @@ pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod fudge;
+mod generalize;
 mod glb;
 mod higher_ranked;
 pub mod lattice;
@@ -232,17 +231,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DefiningAnchor {
-    /// `DefId` of the item.
-    Bind(LocalDefId),
-    /// When opaque types are not resolved, we `Bubble` up, meaning
-    /// return the opaque/hidden type pair from query, for caller of query to handle it.
-    Bubble,
-    /// Used to catch type mismatch errors when handling opaque types.
-    Error,
-}
-
 pub struct InferCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
@@ -263,14 +251,13 @@ pub struct InferCtxt<'tcx> {
     /// solving is left to borrowck instead.
     pub considering_regions: bool,
 
-    pub inner: RefCell<InferCtxtInner<'tcx>>,
-
     /// If set, this flag causes us to skip the 'leak check' during
     /// higher-ranked subtyping operations. This flag is a temporary one used
     /// to manage the removal of the leak-check: for the time being, we still run the
-    /// leak-check, but we issue warnings. This flag can only be set to true
-    /// when entering a snapshot.
-    skip_leak_check: Cell<bool>,
+    /// leak-check, but we issue warnings.
+    skip_leak_check: bool,
+
+    pub inner: RefCell<InferCtxtInner<'tcx>>,
 
     /// Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
@@ -343,11 +330,6 @@ pub struct InferCtxt<'tcx> {
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
     pub intercrate: bool,
-
-    /// Flag that is set when we enter canonicalization. Used for debugging to ensure
-    /// that we only collect region information for `BorrowckInferCtxt::reg_var_to_origin`
-    /// inside non-canonicalization contexts.
-    inside_canonicalization_ctxt: Cell<bool>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -560,6 +542,7 @@ pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
+    skip_leak_check: bool,
     /// Whether we are in coherence mode.
     intercrate: bool,
 }
@@ -574,6 +557,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             tcx: self,
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
+            skip_leak_check: false,
             intercrate: false,
         }
     }
@@ -601,6 +585,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         self
     }
 
+    pub fn skip_leak_check(mut self, skip_leak_check: bool) -> Self {
+        self.skip_leak_check = skip_leak_check;
+        self
+    }
+
     /// Given a canonical value `C` as a starting point, create an
     /// inference context that contains each of the bound values
     /// within instantiated as a fresh variable. The `f` closure is
@@ -622,11 +611,18 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn build(&mut self) -> InferCtxt<'tcx> {
-        let InferCtxtBuilder { tcx, defining_use_anchor, considering_regions, intercrate } = *self;
+        let InferCtxtBuilder {
+            tcx,
+            defining_use_anchor,
+            considering_regions,
+            skip_leak_check,
+            intercrate,
+        } = *self;
         InferCtxt {
             tcx,
             defining_use_anchor,
             considering_regions,
+            skip_leak_check,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: Default::default(),
@@ -636,10 +632,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
-            skip_leak_check: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
-            inside_canonicalization_ctxt: Cell::new(false),
         }
     }
 }
@@ -833,32 +827,9 @@ impl<'tcx> InferCtxt<'tcx> {
         r
     }
 
-    /// If `should_skip` is true, then execute `f` then unroll any bindings it creates.
-    #[instrument(skip(self, f), level = "debug")]
-    pub fn probe_maybe_skip_leak_check<R, F>(&self, should_skip: bool, f: F) -> R
-    where
-        F: FnOnce(&CombinedSnapshot<'tcx>) -> R,
-    {
-        let snapshot = self.start_snapshot();
-        let was_skip_leak_check = self.skip_leak_check.get();
-        if should_skip {
-            self.skip_leak_check.set(true);
-        }
-        let r = f(&snapshot);
-        self.rollback_to("probe", snapshot);
-        self.skip_leak_check.set(was_skip_leak_check);
-        r
-    }
-
-    /// Scan the constraints produced since `snapshot` began and returns:
-    ///
-    /// - `None` -- if none of them involves "region outlives" constraints.
-    /// - `Some(true)` -- if there are `'a: 'b` constraints where `'a` or `'b` is a placeholder.
-    /// - `Some(false)` -- if there are `'a: 'b` constraints but none involve placeholders.
-    pub fn region_constraints_added_in_snapshot(
-        &self,
-        snapshot: &CombinedSnapshot<'tcx>,
-    ) -> Option<bool> {
+    /// Scan the constraints produced since `snapshot` and check whether
+    /// we added any region constraints.
+    pub fn region_constraints_added_in_snapshot(&self, snapshot: &CombinedSnapshot<'tcx>) -> bool {
         self.inner
             .borrow_mut()
             .unwrap_region_constraints()
@@ -1083,7 +1054,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> ty::Region<'tcx> {
         let region_var =
             self.inner.borrow_mut().unwrap_region_constraints().new_region_var(universe, origin);
-        self.tcx.mk_re_var(region_var)
+        ty::Region::new_var(self.tcx, region_var)
     }
 
     /// Return the universe that the region `r` was created in. For
@@ -1213,95 +1184,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.tainted_by_errors.set(Some(e));
     }
 
-    pub fn skip_region_resolution(&self) {
-        let (var_infos, _) = {
-            let mut inner = self.inner.borrow_mut();
-            let inner = &mut *inner;
-            // Note: `inner.region_obligations` may not be empty, because we
-            // didn't necessarily call `process_registered_region_obligations`.
-            // This is okay, because that doesn't introduce new vars.
-            inner
-                .region_constraint_storage
-                .take()
-                .expect("regions already resolved")
-                .with_log(&mut inner.undo_log)
-                .into_infos_and_data()
-        };
-
-        let lexical_region_resolutions = LexicalRegionResolutions {
-            values: rustc_index::vec::IndexVec::from_elem_n(
-                crate::infer::lexical_region_resolve::VarValue::Value(self.tcx.lifetimes.re_erased),
-                var_infos.len(),
-            ),
-        };
-
-        let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
-        assert!(old_value.is_none());
-    }
-
-    /// Process the region constraints and return any errors that
-    /// result. After this, no more unification operations should be
-    /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions(
-        &self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Vec<RegionResolutionError<'tcx>> {
-        let (var_infos, data) = {
-            let mut inner = self.inner.borrow_mut();
-            let inner = &mut *inner;
-            assert!(
-                self.tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
-                "region_obligations not empty: {:#?}",
-                inner.region_obligations
-            );
-            inner
-                .region_constraint_storage
-                .take()
-                .expect("regions already resolved")
-                .with_log(&mut inner.undo_log)
-                .into_infos_and_data()
-        };
-
-        let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
-
-        let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(outlives_env.param_env, region_rels, var_infos, data);
-
-        let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
-        assert!(old_value.is_none());
-
-        errors
-    }
-    /// Obtains (and clears) the current set of region
-    /// constraints. The inference context is still usable: further
-    /// unifications will simply add new constraints.
-    ///
-    /// This method is not meant to be used with normal lexical region
-    /// resolution. Rather, it is used in the NLL mode as a kind of
-    /// interim hack: basically we run normal type-check and generate
-    /// region constraints as normal, but then we take them and
-    /// translate them into the form that the NLL solver
-    /// understands. See the NLL module for mode details.
-    pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
-        assert!(
-            self.inner.borrow().region_obligations.is_empty(),
-            "region_obligations not empty: {:#?}",
-            self.inner.borrow().region_obligations
-        );
-
-        self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_data()
-    }
-
-    /// Gives temporary access to the region constraint data.
-    pub fn with_region_constraints<R>(
-        &self,
-        op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
-    ) -> R {
-        let mut inner = self.inner.borrow_mut();
-        op(inner.unwrap_region_constraints().data())
-    }
-
     pub fn region_var_origin(&self, vid: ty::RegionVid) -> RegionVariableOrigin {
         let mut inner = self.inner.borrow_mut();
         let inner = &mut *inner;
@@ -1318,11 +1200,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// hence that `resolve_regions_and_report_errors` can never be
     /// called. This is used only during NLL processing to "hand off" ownership
     /// of the set of region variables into the NLL region context.
-    pub fn take_region_var_origins(&self) -> VarInfos {
+    pub fn get_region_var_origins(&self) -> VarInfos {
         let mut inner = self.inner.borrow_mut();
         let (var_infos, data) = inner
             .region_constraint_storage
-            .take()
+            .clone()
             .expect("regions already resolved")
             .with_log(&mut inner.undo_log)
             .into_infos_and_data();
@@ -1417,7 +1299,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if !value.needs_infer() {
+        if !value.has_infer() {
             return value; // Avoid duplicated subst-folding.
         }
         let mut r = InferenceLiteralEraser { tcx: self.tcx };
@@ -1455,7 +1337,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn fully_resolve<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> FixupResult<'tcx, T> {
         let value = resolve::fully_resolve(self, value);
         assert!(
-            value.as_ref().map_or(true, |value| !value.needs_infer()),
+            value.as_ref().map_or(true, |value| !value.has_infer()),
             "`{value:?}` is not fully resolved"
         );
         value
@@ -1590,7 +1472,7 @@ impl<'tcx> InferCtxt<'tcx> {
             Ok(Some(val)) => Ok(self.tcx.mk_const(val, ty)),
             Ok(None) => {
                 let tcx = self.tcx;
-                let def_id = unevaluated.def.did;
+                let def_id = unevaluated.def;
                 span_bug!(
                     tcx.def_span(def_id),
                     "unable to construct a constant value for the unevaluated constant {:?}",
@@ -1627,18 +1509,18 @@ impl<'tcx> InferCtxt<'tcx> {
         // variables
         let tcx = self.tcx;
         if substs.has_non_region_infer() {
-            if let Some(ct) = tcx.bound_abstract_const(unevaluated.def)? {
+            if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
                 let ct = tcx.expand_abstract_consts(ct.subst(tcx, substs));
                 if let Err(e) = ct.error_reported() {
-                    return Err(ErrorHandled::Reported(e));
+                    return Err(ErrorHandled::Reported(e.into()));
                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
                     return Err(ErrorHandled::TooGeneric);
                 } else {
                     substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
                 }
             } else {
-                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
-                param_env = tcx.param_env(unevaluated.def.did);
+                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def);
+                param_env = tcx.param_env(unevaluated.def);
             }
         }
 
@@ -1667,10 +1549,10 @@ impl<'tcx> InferCtxt<'tcx> {
             (TyOrConstInferVar::Ty(ty_var), Ok(inner)) => {
                 use self::type_variable::TypeVariableValue;
 
-                match inner.try_type_variables_probe_ref(ty_var) {
-                    Some(TypeVariableValue::Unknown { .. }) => true,
-                    _ => false,
-                }
+                matches!(
+                    inner.try_type_variables_probe_ref(ty_var),
+                    Some(TypeVariableValue::Unknown { .. })
+                )
             }
             _ => false,
         };
@@ -1726,84 +1608,9 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
     }
-
-    pub fn inside_canonicalization_ctxt(&self) -> bool {
-        self.inside_canonicalization_ctxt.get()
-    }
-
-    pub fn set_canonicalization_ctxt(&self) -> CanonicalizationCtxtGuard<'_, 'tcx> {
-        let prev_ctxt = self.inside_canonicalization_ctxt();
-        self.inside_canonicalization_ctxt.set(true);
-        CanonicalizationCtxtGuard { prev_ctxt, infcx: self }
-    }
-
-    fn set_canonicalization_ctxt_to(&self, ctxt: bool) {
-        self.inside_canonicalization_ctxt.set(ctxt);
-    }
-}
-
-pub struct CanonicalizationCtxtGuard<'cx, 'tcx> {
-    prev_ctxt: bool,
-    infcx: &'cx InferCtxt<'tcx>,
-}
-
-impl<'cx, 'tcx> Drop for CanonicalizationCtxtGuard<'cx, 'tcx> {
-    fn drop(&mut self) {
-        self.infcx.set_canonicalization_ctxt_to(self.prev_ctxt)
-    }
 }
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
-    /// Processes registered region obliations and resolves regions, reporting
-    /// any errors if any were raised. Prefer using this function over manually
-    /// calling `resolve_regions_and_report_errors`.
-    pub fn check_region_obligations_and_report_errors(
-        &self,
-        generic_param_scope: LocalDefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Result<(), ErrorGuaranteed> {
-        self.process_registered_region_obligations(
-            outlives_env.region_bound_pairs(),
-            outlives_env.param_env,
-        );
-
-        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
-    }
-
-    /// Process the region constraints and report any errors that
-    /// result. After this, no more unification operations should be
-    /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    ///
-    /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
-    /// first, or preferably use [`TypeErrCtxt::check_region_obligations_and_report_errors`]
-    /// to do both of these operations together.
-    pub fn resolve_regions_and_report_errors(
-        &self,
-        generic_param_scope: LocalDefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Result<(), ErrorGuaranteed> {
-        let errors = self.resolve_regions(outlives_env);
-
-        if let None = self.tainted_by_errors() {
-            // As a heuristic, just skip reporting region errors
-            // altogether if other errors have been reported while
-            // this infcx was in use. This is totally hokey but
-            // otherwise we have a hard time separating legit region
-            // errors from silly ones.
-            self.report_region_errors(generic_param_scope, &errors);
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(self
-                .tcx
-                .sess
-                .delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted"))
-        }
-    }
-
     // [Note-Type-error-reporting]
     // An invariant is that anytime the expected or actual type is Error (the special
     // error type, meaning that an error occurred when typechecking this expression),

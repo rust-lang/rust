@@ -8,7 +8,7 @@ LL |     If<{ FRAC <= 32 }>: True,
 help: consider enabling this feature
   --> $DIR/issue-94287.rs:1:1
    |
-LL | #![feature(generic_const_exprs)]
+LL + #![feature(generic_const_exprs)]
    |
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 // Regression test for #90400,
 // taken from https://github.com/rust-lang/rust/issues/90400#issuecomment-954927836
 
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 trait Bar {
     fn bar(&self);

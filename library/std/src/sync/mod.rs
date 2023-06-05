@@ -177,7 +177,7 @@ pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 #[unstable(feature = "lazy_cell", issue = "109736")]
 pub use self::lazy_lock::LazyLock;
-#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "once_cell", since = "1.70.0")]
 pub use self::once_lock::OnceLock;
 
 pub(crate) use self::remutex::{ReentrantMutex, ReentrantMutexGuard};

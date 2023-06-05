@@ -1,3 +1,6 @@
+// FIXME #110395
+// ignore-llvm-cov-show-diffs
+
 #![allow(unused_assignments, unused_variables)]
 
 // compile-flags: -C opt-level=3 # validates coverage now works with optimizations

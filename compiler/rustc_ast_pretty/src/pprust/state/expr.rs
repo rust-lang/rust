@@ -341,10 +341,16 @@ impl<'a> State<'a> {
                 self.print_type(ty);
             }
             ast::ExprKind::Type(expr, ty) => {
-                let prec = AssocOp::Colon.precedence() as i8;
-                self.print_expr_maybe_paren(expr, prec);
-                self.word_space(":");
+                self.word("type_ascribe!(");
+                self.ibox(0);
+                self.print_expr(expr);
+
+                self.word(",");
+                self.space_if_not_bol();
                 self.print_type(ty);
+
+                self.end();
+                self.word(")");
             }
             ast::ExprKind::Let(pat, scrutinee, _) => {
                 self.print_let(pat, scrutinee);
@@ -447,7 +453,7 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Await(expr) => {
+            ast::ExprKind::Await(expr, _) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word(".await");
             }
@@ -548,6 +554,25 @@ impl<'a> State<'a> {
                 }
                 self.end();
                 self.pclose();
+            }
+            ast::ExprKind::OffsetOf(container, fields) => {
+                self.word("builtin # offset_of");
+                self.popen();
+                self.rbox(0, Inconsistent);
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+                self.pclose();
+                self.end();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
             ast::ExprKind::Paren(e) => {

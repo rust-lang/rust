@@ -263,7 +263,7 @@ where
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Enumerate<I> {}
 
-#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters", since = "1.70.0")]
 impl<I: Default> Default for Enumerate<I> {
     /// Creates an `Enumerate` iterator from the default value of `I`
     /// ```

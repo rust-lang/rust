@@ -199,7 +199,7 @@ impl ExitStatus {
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
-        // procsss_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
+        // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
         match NonZero_c_int::try_from(self.0) {
             Ok(failure) => Err(ExitStatusError(failure)),
             Err(_) => Ok(()),

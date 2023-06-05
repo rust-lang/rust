@@ -4,6 +4,7 @@
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since Subdiagnostic is strictly internal to the compiler
 // the test is just ignored on stable and beta:
+// ignore-stage1
 // ignore-beta
 // ignore-stable
 
@@ -11,12 +12,14 @@
 #![crate_type = "lib"]
 
 extern crate rustc_errors;
+extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{Applicability, DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::{fluent_messages, Subdiagnostic};
+use rustc_fluent_macro::fluent_messages;
+use rustc_macros::Subdiagnostic;
 use rustc_span::Span;
 
 fluent_messages! { "./example.ftl" }
@@ -82,7 +85,7 @@ struct F {
 
 #[derive(Subdiagnostic)]
 #[label(bug = "...")]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 //~| ERROR diagnostic slug must be first argument
 struct G {
     #[primary_span]
@@ -101,7 +104,7 @@ struct H {
 
 #[derive(Subdiagnostic)]
 #[label(slug = 4)]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 //~| ERROR diagnostic slug must be first argument
 struct J {
     #[primary_span]
@@ -111,7 +114,7 @@ struct J {
 
 #[derive(Subdiagnostic)]
 #[label(slug("..."))]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 //~| ERROR diagnostic slug must be first argument
 struct K {
     #[primary_span]
@@ -140,7 +143,7 @@ struct M {
 
 #[derive(Subdiagnostic)]
 #[label(no_crate_example, code = "...")]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 struct N {
     #[primary_span]
     span: Span,
@@ -149,7 +152,7 @@ struct N {
 
 #[derive(Subdiagnostic)]
 #[label(no_crate_example, applicability = "machine-applicable")]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 struct O {
     #[primary_span]
     span: Span,
@@ -221,7 +224,7 @@ enum T {
 enum U {
     #[label(code = "...")]
     //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
-    //~| ERROR invalid nested attribute
+    //~| ERROR only `no_span` is a valid nested attribute
     A {
         #[primary_span]
         span: Span,

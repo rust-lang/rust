@@ -12,7 +12,7 @@ declare_clippy_lint! {
     /// Checks if a provided method is used implicitly by a trait
     /// implementation. A usage example would be a wrapper where every method
     /// should perform some operation before delegating to the inner type's
-    /// implemenation.
+    /// implementation.
     ///
     /// This lint should typically be enabled on a specific trait `impl` item
     /// rather than globally.

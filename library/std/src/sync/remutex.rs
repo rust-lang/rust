@@ -7,7 +7,7 @@ use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sys::locks as sys;
 
-/// A re-entrant mutual exclusion
+/// A reentrant mutual exclusion
 ///
 /// This mutex will block *other* threads waiting for the lock to become
 /// available. The thread which has already locked the mutex can lock it

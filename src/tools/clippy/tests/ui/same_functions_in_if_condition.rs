@@ -1,5 +1,5 @@
 #![feature(adt_const_params)]
-#![warn(clippy::same_functions_in_if_condition)]
+#![deny(clippy::same_functions_in_if_condition)]
 // ifs_same_cond warning is different from `ifs_same_cond`.
 // clippy::if_same_then_else, clippy::comparison_chain -- all empty blocks
 #![allow(incomplete_features)]
@@ -9,6 +9,8 @@
     clippy::ifs_same_cond,
     clippy::uninlined_format_args
 )]
+
+use std::marker::ConstParamTy;
 
 fn function() -> bool {
     true
@@ -96,7 +98,7 @@ fn main() {
     };
     println!("{}", os);
 
-    #[derive(PartialEq, Eq)]
+    #[derive(PartialEq, Eq, ConstParamTy)]
     enum E {
         A,
         B,

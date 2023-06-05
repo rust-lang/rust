@@ -130,8 +130,8 @@
 // cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
 
 // cdb-command: dx linkedlist
-// cdb-check:linkedlist       : { len=0x2 } [Type: alloc::collections::linked_list::LinkedList<i32>]
-// cdb-check:    [<Raw View>]     [Type: alloc::collections::linked_list::LinkedList<i32>]
+// cdb-check:linkedlist       : { len=0x2 } [Type: alloc::collections::linked_list::LinkedList<i32,alloc::alloc::Global>]
+// cdb-check:    [<Raw View>]     [Type: alloc::collections::linked_list::LinkedList<i32,alloc::alloc::Global>]
 // cdb-check:    [0x0]            : 128 [Type: int]
 // cdb-check:    [0x1]            : 42 [Type: int]
 

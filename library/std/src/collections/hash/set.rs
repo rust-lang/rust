@@ -1272,7 +1272,6 @@ pub struct Iter<'a, K: 'a> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
-/// [`IntoIterator`]: crate::iter::IntoIterator
 ///
 /// # Examples
 ///

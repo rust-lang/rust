@@ -8,7 +8,7 @@ pub fn expand_trace_macros(
     sp: Span,
     tt: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
-    let mut cursor = tt.into_trees();
+    let mut cursor = tt.trees();
     let mut err = false;
     let value = match &cursor.next() {
         Some(TokenTree::Token(token, _)) if token.is_keyword(kw::True) => true,

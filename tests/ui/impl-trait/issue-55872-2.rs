@@ -3,7 +3,7 @@
 // [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // edition:2018
 
-#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 pub trait Bar {
     type E: Send;

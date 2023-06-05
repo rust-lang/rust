@@ -77,7 +77,7 @@ if [ -z "$COMMAND" ]; then
 fi
 shift
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
-MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
+MIRIDIR=$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve().parent.as_posix())' "$0")
 # Used for rustc syncs.
 JOSH_FILTER=":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri"
 # Needed for `./miri bench`.
@@ -121,10 +121,10 @@ rustc-pull)
     # Update rust-version file. As a separate commit, since making it part of
     # the merge has confused the heck out of josh in the past.
     echo "$FETCH_COMMIT" > rust-version
-    git commit rust-version -m "Preparing for merge from rustc"
+    git commit rust-version -m "Preparing for merge from rustc" || (echo "FAILED to commit rust-version file, something went wrong"; exit 1)
     # Fetch given rustc commit and note down which one that was
-    git fetch http://localhost:8000/rust-lang/rust.git@$FETCH_COMMIT$JOSH_FILTER.git
-    git merge FETCH_HEAD --no-ff -m "Merge from rustc"
+    git fetch http://localhost:8000/rust-lang/rust.git@$FETCH_COMMIT$JOSH_FILTER.git || (echo "FAILED to fetch new commits, something went wrong"; exit 1)
+    git merge FETCH_HEAD --no-ff -m "Merge from rustc" || (echo "FAILED to merge new commits, something went wrong"; exit 1)
     exit 0
     ;;
 rustc-push)
@@ -184,6 +184,8 @@ many-seeds)
     exit 0
     ;;
 bench)
+    # The hyperfine to use
+    HYPERFINE=${HYPERFINE:-hyperfine -w 1 -m 5 --shell=none}
     # Make sure we have an up-to-date Miri installed
     "$0" install
     # Run the requested benchmarks
@@ -193,7 +195,7 @@ bench)
         BENCHES=("$@")
     fi
     for BENCH in "${BENCHES[@]}"; do
-        hyperfine -w 1 -m 5 --shell=none "cargo +$TOOLCHAIN miri run --manifest-path $MIRIDIR/bench-cargo-miri/$BENCH/Cargo.toml"
+        $HYPERFINE "cargo +$TOOLCHAIN miri run --manifest-path $MIRIDIR/bench-cargo-miri/$BENCH/Cargo.toml"
     done
     exit 0
     ;;
@@ -280,10 +282,9 @@ find_sysroot() {
 # Run command.
 case "$COMMAND" in
 install)
-    # "--locked" to respect the Cargo.lock file if it exists.
     # Install binaries to the miri toolchain's sysroot so they do not interact with other toolchains.
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --locked --root "$SYSROOT" "$@"
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked --root "$SYSROOT" "$@"
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --root "$SYSROOT" "$@"
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --root "$SYSROOT" "$@"
     ;;
 check)
     # Check, and let caller control flags.
@@ -306,7 +307,7 @@ test|bless)
     # Only in root project as `cargo-miri` has no tests.
     $CARGO test $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
     ;;
-run)
+run|run-dep)
     # Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
     # that we set the MIRI_SYSROOT up the right way.
     FOUND_TARGET_OPT=0
@@ -323,11 +324,17 @@ run)
         # Make sure Miri actually uses this target.
         MIRIFLAGS="$MIRIFLAGS --target $MIRI_TEST_TARGET"
     fi
+
     # First build and get a sysroot.
     $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
     # Then run the actual command.
-    exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
+    
+    if [ "$COMMAND" = "run-dep" ]; then
+        exec $CARGO test --test compiletest $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- --miri-run-dep-mode $MIRIFLAGS "$@"
+    else
+        exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
+    fi
     ;;
 fmt)
     find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \

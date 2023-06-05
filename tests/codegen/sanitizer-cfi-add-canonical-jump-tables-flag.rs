@@ -8,4 +8,4 @@
 pub fn foo() {
 }
 
-// CHECK: !{{[0-9]+}} = !{i32 2, !"CFI Canonical Jump Tables", i32 1}
+// CHECK: !{{[0-9]+}} = !{i32 4, !"CFI Canonical Jump Tables", i32 1}

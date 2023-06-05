@@ -6,7 +6,7 @@ LL |     a::bar();
    |
 help: consider importing this function
    |
-LL | use b::bar;
+LL + use b::bar;
    |
 help: if you import `bar`, refer to it directly
    |

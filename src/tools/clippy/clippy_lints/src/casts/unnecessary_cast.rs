@@ -141,9 +141,9 @@ fn lint_unnecessary_cast(
 
 fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
     match expr.kind {
-        ExprKind::Lit(ref lit) => Some(lit),
+        ExprKind::Lit(lit) => Some(lit),
         ExprKind::Unary(UnOp::Neg, e) => {
-            if let ExprKind::Lit(ref lit) = e.kind {
+            if let ExprKind::Lit(lit) = e.kind {
                 Some(lit)
             } else {
                 None

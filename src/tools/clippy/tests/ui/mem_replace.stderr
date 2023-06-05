@@ -122,5 +122,29 @@ error: replacing a value of type `T` with `T::default()` is better expressed usi
 LL |     let _ = std::mem::replace(&mut s, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
 
-error: aborting due to 20 previous errors
+error: replacing an `Option` with `None`
+  --> $DIR/mem_replace.rs:121:13
+   |
+LL |     let _ = std::mem::replace(&mut f.0, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `f.0.take()`
+
+error: replacing an `Option` with `None`
+  --> $DIR/mem_replace.rs:122:13
+   |
+LL |     let _ = std::mem::replace(&mut *f, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `(*f).take()`
+
+error: replacing an `Option` with `None`
+  --> $DIR/mem_replace.rs:123:13
+   |
+LL |     let _ = std::mem::replace(&mut b.opt, None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `b.opt.take()`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:125:13
+   |
+LL |     let _ = std::mem::replace(&mut b.val, String::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut b.val)`
+
+error: aborting due to 24 previous errors
 

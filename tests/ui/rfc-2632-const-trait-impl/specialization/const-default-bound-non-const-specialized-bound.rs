@@ -12,7 +12,9 @@ trait Specialize {}
 trait Foo {}
 
 #[const_trait]
-trait Bar {}
+trait Bar {
+    fn bar();
+}
 
 // bgr360: I was only able to exercise the code path that raises the
 // "missing ~const qualifier" error by making this base impl non-const, even
@@ -21,26 +23,36 @@ trait Bar {}
 impl<T> Bar for T
 where
     T: ~const Foo,
-{}
+{
+    default fn bar() {}
+}
 
 impl<T> Bar for T
 where
     T: Foo, //~ ERROR missing `~const` qualifier
     T: Specialize,
-{}
+{
+    fn bar() {}
+}
 
 #[const_trait]
-trait Baz {}
+trait Baz {
+    fn baz();
+}
 
 impl<T> const Baz for T
 where
     T: ~const Foo,
-{}
+{
+    default fn baz() {}
+}
 
 impl<T> const Baz for T //~ ERROR conflicting implementations of trait `Baz`
 where
     T: Foo,
     T: Specialize,
-{}
+{
+    fn baz() {}
+}
 
 fn main() {}

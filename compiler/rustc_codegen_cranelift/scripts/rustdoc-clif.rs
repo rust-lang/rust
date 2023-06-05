@@ -15,22 +15,24 @@ fn main() {
         env::consts::DLL_PREFIX.to_string() + "rustc_codegen_cranelift" + env::consts::DLL_SUFFIX,
     );
 
-    let mut args = std::env::args_os().skip(1).collect::<Vec<_>>();
+    let passed_args = std::env::args_os().skip(1).collect::<Vec<_>>();
+    let mut args = vec![];
     args.push(OsString::from("-Cpanic=abort"));
     args.push(OsString::from("-Zpanic-abort-tests"));
     let mut codegen_backend_arg = OsString::from("-Zcodegen-backend=");
     codegen_backend_arg.push(cg_clif_dylib_path);
     args.push(codegen_backend_arg);
-    if !args.contains(&OsString::from("--sysroot")) {
+    if !passed_args.contains(&OsString::from("--sysroot")) {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
     }
+    args.extend(passed_args);
 
     // Ensure that the right toolchain is used
     env::set_var("RUSTUP_TOOLCHAIN", env!("TOOLCHAIN_NAME"));
 
     #[cfg(unix)]
-    Command::new("rustdoc").args(args).exec();
+    panic!("Failed to spawn rustdoc: {}", Command::new("rustdoc").args(args).exec());
 
     #[cfg(not(unix))]
     std::process::exit(

@@ -369,9 +369,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                     }}
                     todo!();
                 }}
-           "#,
-            context_import = context_import,
-            name_upper = name_upper,
+           "#
         );
     } else {
         let _: fmt::Result = writedoc!(
@@ -385,9 +383,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                 pub(super) fn check(cx: &{context_import}) {{
                     todo!();
                 }}
-           "#,
-            context_import = context_import,
-            name_upper = name_upper,
+           "#
         );
     }
 

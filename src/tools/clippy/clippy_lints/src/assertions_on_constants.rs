@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
             _ => return,
         };
         let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn) else { return };
-        let Some((Constant::Bool(val), _)) = constant(cx, cx.typeck_results(), condition) else { return };
+        let Some(Constant::Bool(val)) = constant(cx, cx.typeck_results(), condition) else { return };
         if val {
             span_lint_and_help(
                 cx,

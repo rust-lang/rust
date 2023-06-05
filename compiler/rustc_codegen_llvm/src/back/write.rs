@@ -31,6 +31,7 @@ use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 
+use crate::llvm::diagnostic::OptimizationDiagnosticKind;
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
 use std::fs;
@@ -363,6 +364,15 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                     line: opt.line,
                     column: opt.column,
                     pass_name: &opt.pass_name,
+                    kind: match opt.kind {
+                        OptimizationDiagnosticKind::OptimizationRemark => "success",
+                        OptimizationDiagnosticKind::OptimizationMissed
+                        | OptimizationDiagnosticKind::OptimizationFailure => "missed",
+                        OptimizationDiagnosticKind::OptimizationAnalysis
+                        | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
+                        | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
+                        OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
+                    },
                     message: &opt.message,
                 });
             }
@@ -881,11 +891,11 @@ unsafe fn embed_bitcode(
         let llglobal = llvm::LLVMAddGlobal(
             llmod,
             common::val_ty(llconst),
-            "rustc.embedded.module\0".as_ptr().cast(),
+            c"rustc.embedded.module".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
 
-        let section = if is_apple { "__LLVM,__bitcode\0" } else { ".llvmbc\0" };
+        let section = if is_apple { c"__LLVM,__bitcode" } else { c".llvmbc" };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
@@ -894,10 +904,10 @@ unsafe fn embed_bitcode(
         let llglobal = llvm::LLVMAddGlobal(
             llmod,
             common::val_ty(llconst),
-            "rustc.embedded.cmdline\0".as_ptr().cast(),
+            c"rustc.embedded.cmdline".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section = if is_apple { "__LLVM,__cmdline\0" } else { ".llvmcmd\0" };
+        let section = if is_apple { c"__LLVM,__cmdline" } else { c".llvmcmd" };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     } else {

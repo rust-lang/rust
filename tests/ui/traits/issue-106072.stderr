@@ -1,5 +1,5 @@
 error[E0428]: the name `Foo` is defined multiple times
-  --> $DIR/issue-106072.rs:4:1
+  --> $DIR/issue-106072.rs:3:1
    |
 LL | struct Foo;
    | ----------- previous definition of the type `Foo` here
@@ -16,15 +16,7 @@ LL | #[derive(Clone)]
    |
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/issue-106072.rs:1:10
-   |
-LL | #[derive(Clone)]
-   |          ^^^^^
-   |
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0428, E0782.
 For more information about an error, try `rustc --explain E0428`.

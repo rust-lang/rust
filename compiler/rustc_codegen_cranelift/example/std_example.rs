@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, generators, generator_trait, is_sorted)]
+#![feature(core_intrinsics, generators, generator_trait, is_sorted, repr_simd)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -56,7 +56,10 @@ fn main() {
 
     assert_eq!(0b0000000000000000000000000010000010000000000000000000000000000000_0000000000100000000000000000000000001000000000000100000000000000u128.leading_zeros(), 26);
     assert_eq!(0b0000000000000000000000000010000000000000000000000000000000000000_0000000000000000000000000000000000001000000000000000000010000000u128.trailing_zeros(), 7);
-    assert_eq!(core::intrinsics::saturating_sub(0, -170141183460469231731687303715884105728i128), 170141183460469231731687303715884105727i128);
+    assert_eq!(
+        core::intrinsics::saturating_sub(0, -170141183460469231731687303715884105728i128),
+        170141183460469231731687303715884105727i128
+    );
 
     std::hint::black_box(std::hint::black_box(7571400400375753350092698930310845914i128) * 10);
     assert!(0i128.checked_div(2i128).is_some());
@@ -113,7 +116,9 @@ fn main() {
 
     Box::pin(move |mut _task_context| {
         yield ();
-    }).as_mut().resume(0);
+    })
+    .as_mut()
+    .resume(0);
 
     #[derive(Copy, Clone)]
     enum Nums {
@@ -148,11 +153,19 @@ fn main() {
 
         enum Never {}
     }
+
+    foo(I64X2(0, 0));
 }
 
 fn panic(_: u128) {
     panic!();
 }
+
+#[repr(simd)]
+struct I64X2(i64, i64);
+
+#[allow(improper_ctypes_definitions)]
+extern "C" fn foo(_a: I64X2) {}
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "sse2")]
@@ -168,7 +181,10 @@ unsafe fn test_simd() {
     let (zero0, zero1) = std::mem::transmute::<_, (u64, u64)>(x);
     assert_eq!((zero0, zero1), (0, 0));
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
-    assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_eq), [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]);
+    assert_eq!(
+        std::mem::transmute::<_, [u16; 8]>(cmp_eq),
+        [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]
+    );
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);
 
     test_mm_slli_si128();
@@ -182,6 +198,7 @@ unsafe fn test_simd() {
     test_mm_extract_epi8();
     test_mm_insert_epi16();
 
+    #[rustfmt::skip]
     let mask1 = _mm_movemask_epi8(dbg!(_mm_setr_epi8(255u8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
     assert_eq!(mask1, 1);
 }
@@ -343,7 +360,7 @@ fn test_checked_mul() {
 #[derive(PartialEq)]
 enum LoopState {
     Continue(()),
-    Break(())
+    Break(()),
 }
 
 pub enum Instruction {

@@ -21,6 +21,7 @@ use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, GeneratorLayout};
+use crate::query::Providers;
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
@@ -36,12 +37,12 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::Node;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
@@ -52,7 +53,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
-use rustc_type_ir::WithCachedTypeInfo;
 pub use subst::*;
 pub use vtable::*;
 
@@ -84,8 +84,7 @@ pub use self::consts::{
     Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
-    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, OnDiskCache, TyCtxt,
-    TyCtxtFeed,
+    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
 };
 pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
 pub use self::list::List;
@@ -122,7 +121,6 @@ pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
 pub mod print;
-pub mod query;
 pub mod relate;
 pub mod subst;
 pub mod trait_def;
@@ -146,6 +144,7 @@ mod opaque_types;
 mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
+#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod sty;
 mod typeck_results;
 
@@ -166,7 +165,7 @@ pub struct ResolverGlobalCtxt {
     pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
-    pub reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
+    pub module_children: LocalDefIdMap<Vec<ModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     pub main_def: Option<MainDefinition>,
     pub trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -765,7 +764,7 @@ impl<'tcx> Predicate<'tcx> {
         let shifted_pred =
             tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
+        let new = EarlyBinder::bind(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
             tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
@@ -859,6 +858,11 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     #[inline]
     pub fn is_const_if_const(self) -> bool {
         self.skip_binder().is_const_if_const()
+    }
+
+    #[inline]
+    pub fn polarity(self) -> ImplPolarity {
+        self.skip_binder().polarity
     }
 }
 
@@ -992,21 +996,15 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    /// This function returns the inner `AliasTy` if this term is a projection.
-    ///
-    /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
-    /// deal with constants.
-    pub fn to_projection_term(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+    /// This function returns the inner `AliasTy` for a `ty::Alias` or `ConstKind::Unevaluated`.
+    pub fn to_alias_ty(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
         match self.unpack() {
-            TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(kind, alias_ty) => match kind {
-                    AliasKind::Projection => Some(*alias_ty),
-                    AliasKind::Opaque => None,
-                },
+            TermKind::Ty(ty) => match *ty.kind() {
+                ty::Alias(_kind, alias_ty) => Some(alias_ty),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def.did, uv.substs)),
+                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def, uv.substs)),
                 _ => None,
             },
         }
@@ -1063,6 +1061,24 @@ impl ParamTerm {
             ParamTerm::Ty(ty) => ty.index as usize,
             ParamTerm::Const(ct) => ct.index as usize,
         }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum TermVid<'tcx> {
+    Ty(ty::TyVid),
+    Const(ty::ConstVid<'tcx>),
+}
+
+impl From<ty::TyVid> for TermVid<'_> {
+    fn from(value: ty::TyVid) -> Self {
+        TermVid::Ty(value)
+    }
+}
+
+impl<'tcx> From<ty::ConstVid<'tcx>> for TermVid<'tcx> {
+    fn from(value: ty::ConstVid<'tcx>) -> Self {
+        TermVid::Const(value)
     }
 }
 
@@ -1206,6 +1222,18 @@ impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef
     }
 }
 
+impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for TraitRef<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> PolyTraitPredicate<'tcx> {
+        ty::Binder::dummy(self).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for TraitPredicate<'tcx> {
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> PolyTraitPredicate<'tcx> {
+        ty::Binder::dummy(self)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::Trait(p))).to_predicate(tcx)
@@ -1227,6 +1255,12 @@ impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::Projection(p))).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for TraitPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::Clause(Clause::Trait(self)).to_predicate(tcx)
     }
 }
 
@@ -1399,14 +1433,26 @@ pub struct OpaqueHiddenType<'tcx> {
 }
 
 impl<'tcx> OpaqueHiddenType<'tcx> {
-    pub fn report_mismatch(&self, other: &Self, tcx: TyCtxt<'tcx>) -> ErrorGuaranteed {
+    pub fn report_mismatch(
+        &self,
+        other: &Self,
+        opaque_def_id: LocalDefId,
+        tcx: TyCtxt<'tcx>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        if let Some(diag) = tcx
+            .sess
+            .diagnostic()
+            .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
+        {
+            diag.cancel();
+        }
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
             TypeMismatchReason::ConflictType { span: self.span }
         } else {
             TypeMismatchReason::PreviousUse { span: self.span }
         };
-        tcx.sess.emit_err(OpaqueHiddenTypeMismatch {
+        tcx.sess.create_err(OpaqueHiddenTypeMismatch {
             self_ty: self.ty,
             other_ty: other.ty,
             other_span: other.span,
@@ -1450,7 +1496,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 /// another.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
@@ -1469,135 +1515,6 @@ pub struct BoundConst<'tcx> {
 }
 
 pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
-
-/// A `DefId` which, in case it is a const argument, is potentially bundled with
-/// the `DefId` of the generic parameter it instantiates.
-///
-/// This is used to avoid calls to `type_of` for const arguments during typeck
-/// which cause cycle errors.
-///
-/// ```rust
-/// struct A;
-/// impl A {
-///     fn foo<const N: usize>(&self) -> [u8; N] { [0; N] }
-///     //           ^ const parameter
-/// }
-/// struct B;
-/// impl B {
-///     fn foo<const M: u8>(&self) -> usize { 42 }
-///     //           ^ const parameter
-/// }
-///
-/// fn main() {
-///     let a = A;
-///     let _b = a.foo::<{ 3 + 7 }>();
-///     //               ^^^^^^^^^ const argument
-/// }
-/// ```
-///
-/// Let's look at the call `a.foo::<{ 3 + 7 }>()` here. We do not know
-/// which `foo` is used until we know the type of `a`.
-///
-/// We only know the type of `a` once we are inside of `typeck(main)`.
-/// We also end up normalizing the type of `_b` during `typeck(main)` which
-/// requires us to evaluate the const argument.
-///
-/// To evaluate that const argument we need to know its type,
-/// which we would get using `type_of(const_arg)`. This requires us to
-/// resolve `foo` as it can be either `usize` or `u8` in this example.
-/// However, resolving `foo` once again requires `typeck(main)` to get the type of `a`,
-/// which results in a cycle.
-///
-/// In short we must not call `type_of(const_arg)` during `typeck(main)`.
-///
-/// When first creating the `ty::Const` of the const argument inside of `typeck` we have
-/// already resolved `foo` so we know which const parameter this argument instantiates.
-/// This means that we also know the expected result of `type_of(const_arg)` even if we
-/// aren't allowed to call that query: it is equal to `type_of(const_param)` which is
-/// trivial to compute.
-///
-/// If we now want to use that constant in a place which potentially needs its type
-/// we also pass the type of its `const_param`. This is the point of `WithOptConstParam`,
-/// except that instead of a `Ty` we bundle the `DefId` of the const parameter.
-/// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
-/// to get the type of `did`.
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, TyEncodable, TyDecodable)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Hash, HashStable)]
-pub struct WithOptConstParam<T> {
-    pub did: T,
-    /// The `DefId` of the corresponding generic parameter in case `did` is
-    /// a const argument.
-    ///
-    /// Note that even if `did` is a const argument, this may still be `None`.
-    /// All queries taking `WithOptConstParam` start by calling `tcx.opt_const_param_of(def.did)`
-    /// to potentially update `param_did` in the case it is `None`.
-    pub const_param_did: Option<DefId>,
-}
-
-impl<T> WithOptConstParam<T> {
-    /// Creates a new `WithOptConstParam` setting `const_param_did` to `None`.
-    #[inline(always)]
-    pub fn unknown(did: T) -> WithOptConstParam<T> {
-        WithOptConstParam { did, const_param_did: None }
-    }
-}
-
-impl WithOptConstParam<LocalDefId> {
-    /// Returns `Some((did, param_did))` if `def_id` is a const argument,
-    /// `None` otherwise.
-    #[inline(always)]
-    pub fn try_lookup(did: LocalDefId, tcx: TyCtxt<'_>) -> Option<(LocalDefId, DefId)> {
-        tcx.opt_const_param_of(did).map(|param_did| (did, param_did))
-    }
-
-    /// In case `self` is unknown but `self.did` is a const argument, this returns
-    /// a `WithOptConstParam` with the correct `const_param_did`.
-    #[inline(always)]
-    pub fn try_upgrade(self, tcx: TyCtxt<'_>) -> Option<WithOptConstParam<LocalDefId>> {
-        if self.const_param_did.is_none() {
-            if let const_param_did @ Some(_) = tcx.opt_const_param_of(self.did) {
-                return Some(WithOptConstParam { did: self.did, const_param_did });
-            }
-        }
-
-        None
-    }
-
-    pub fn to_global(self) -> WithOptConstParam<DefId> {
-        WithOptConstParam { did: self.did.to_def_id(), const_param_did: self.const_param_did }
-    }
-
-    pub fn def_id_for_type_of(self) -> DefId {
-        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
-    }
-}
-
-impl WithOptConstParam<DefId> {
-    pub fn as_local(self) -> Option<WithOptConstParam<LocalDefId>> {
-        self.did
-            .as_local()
-            .map(|did| WithOptConstParam { did, const_param_did: self.const_param_did })
-    }
-
-    pub fn as_const_arg(self) -> Option<(LocalDefId, DefId)> {
-        if let Some(param_did) = self.const_param_did {
-            if let Some(did) = self.did.as_local() {
-                return Some((did, param_did));
-            }
-        }
-
-        None
-    }
-
-    pub fn is_local(self) -> bool {
-        self.did.is_local()
-    }
-
-    pub fn def_id_for_type_of(self) -> DefId {
-        self.const_param_did.unwrap_or(self.did)
-    }
-}
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
@@ -1625,27 +1542,12 @@ struct ParamTag {
     constness: hir::Constness,
 }
 
-unsafe impl rustc_data_structures::tagged_ptr::Tag for ParamTag {
-    const BITS: usize = 2;
-    #[inline]
-    fn into_usize(self) -> usize {
-        match self {
-            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst } => 0,
-            Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst } => 1,
-            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const } => 2,
-            Self { reveal: traits::Reveal::All, constness: hir::Constness::Const } => 3,
-        }
-    }
-    #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        match ptr {
-            0 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
-            1 => Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst },
-            2 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const },
-            3 => Self { reveal: traits::Reveal::All, constness: hir::Constness::Const },
-            _ => std::hint::unreachable_unchecked(),
-        }
-    }
+impl_tag! {
+    impl Tag for ParamTag;
+    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
+    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::NotConst },
+    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const    },
+    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::Const    },
 }
 
 impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
@@ -1849,12 +1751,6 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
         (self.param_env, self.value)
     }
-
-    #[inline]
-    pub fn without_const(mut self) -> Self {
-        self.param_env = self.param_env.without_const();
-        self
-    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
@@ -1867,7 +1763,7 @@ pub struct Destructor {
 
 bitflags! {
     #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct VariantFlags: u32 {
+    pub struct VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
         const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
@@ -1968,6 +1864,16 @@ impl VariantDef {
     pub fn ctor_def_id(&self) -> Option<DefId> {
         self.ctor.map(|(_, def_id)| def_id)
     }
+
+    /// Returns the one field in this variant.
+    ///
+    /// `panic!`s if there are no fields or multiple fields.
+    #[inline]
+    pub fn single_field(&self) -> &FieldDef {
+        assert!(self.fields.len() == 1);
+
+        &self.fields[FieldIdx::from_u32(0)]
+    }
 }
 
 impl PartialEq for VariantDef {
@@ -1982,7 +1888,20 @@ impl PartialEq for VariantDef {
 
         let Self { def_id: lhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
         let Self { def_id: rhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = other;
-        lhs_def_id == rhs_def_id
+
+        let res = lhs_def_id == rhs_def_id;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.ctor == other.ctor
+                && self.name == other.name
+                && self.discr == other.discr
+                && self.fields == other.fields
+                && self.flags == other.flags;
+            assert!(deep, "VariantDef for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
@@ -2037,7 +1956,15 @@ impl PartialEq for FieldDef {
 
         let Self { did: rhs_did, name: _, vis: _ } = other;
 
-        lhs_did == rhs_did
+        let res = lhs_did == rhs_did;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.name == other.name && self.vis == other.vis;
+            assert!(deep, "FieldDef for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
@@ -2244,10 +2171,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// See [`item_name`][Self::item_name] for more information.
     pub fn opt_item_ident(self, def_id: DefId) -> Option<Ident> {
         let def = self.opt_item_name(def_id)?;
-        let span = def_id
-            .as_local()
-            .and_then(|id| self.def_ident_span(id))
-            .unwrap_or(rustc_span::DUMMY_SP);
+        let span = self
+            .def_ident_span(def_id)
+            .unwrap_or_else(|| bug!("missing ident span for {def_id:?}"));
         Some(Ident::new(def, span))
     }
 
@@ -2288,8 +2214,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let impl_trait_ref2 = self.impl_trait_ref(def_id2);
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if impl_trait_ref1.map_or(false, |tr| tr.subst_identity().references_error())
-            || impl_trait_ref2.map_or(false, |tr| tr.subst_identity().references_error())
+        if impl_trait_ref1.is_some_and(|tr| tr.subst_identity().references_error())
+            || impl_trait_ref2.is_some_and(|tr| tr.subst_identity().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2310,7 +2236,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let is_marker_overlap = {
             let is_marker_impl = |trait_ref: Option<EarlyBinder<TraitRef<'_>>>| -> bool {
-                trait_ref.map_or(false, |tr| self.trait_def(tr.skip_binder().def_id).is_marker)
+                trait_ref.is_some_and(|tr| self.trait_def(tr.skip_binder().def_id).is_marker)
             };
             is_marker_impl(impl_trait_ref1) && is_marker_impl(impl_trait_ref2)
         };
@@ -2360,7 +2286,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match instance {
             ty::InstanceDef::Item(def) => {
                 debug!("calling def_kind on def: {:?}", def);
-                let def_kind = self.def_kind(def.did);
+                let def_kind = self.def_kind(def);
                 debug!("returned from def_kind: {:?}", def_kind);
                 match def_kind {
                     DefKind::Const
@@ -2368,13 +2294,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     | DefKind::AssocConst
                     | DefKind::Ctor(..)
                     | DefKind::AnonConst
-                    | DefKind::InlineConst => self.mir_for_ctfe_opt_const_arg(def),
+                    | DefKind::InlineConst => self.mir_for_ctfe(def),
                     // If the caller wants `mir_for_ctfe` of a function they should not be using
                     // `instance_mir`, so we'll assume const fn also wants the optimized version.
-                    _ => {
-                        assert_eq!(def.const_param_did, None);
-                        self.optimized_mir(def.did)
-                    }
+                    _ => self.optimized_mir(def),
                 }
             }
             ty::InstanceDef::VTableShim(..)
@@ -2565,9 +2488,7 @@ impl<'tcx> TyCtxt<'tcx> {
             && if self.features().collapse_debuginfo {
                 span.in_macro_expansion_with_collapse_debuginfo()
             } else {
-                // Inlined spans should not be collapsed as that leads to all of the
-                // inlined code being attributed to the inline callsite.
-                span.from_expansion() && !span.is_inlined()
+                span.from_expansion()
             }
     }
 
@@ -2596,6 +2517,18 @@ impl<'tcx> TyCtxt<'tcx> {
                 def_id
             }
         }
+    }
+
+    /// Returns the `DefId` of the item within which the `impl Trait` is declared.
+    /// For type-alias-impl-trait this is the `type` alias.
+    /// For impl-trait-in-assoc-type this is the assoc type.
+    /// For return-position-impl-trait this is the function.
+    pub fn impl_trait_parent(self, mut def_id: LocalDefId) -> LocalDefId {
+        // Find the surrounding item (type alias or assoc type)
+        while let DefKind::OpaqueTy = self.def_kind(def_id) {
+            def_id = self.local_parent(def_id);
+        }
+        def_id
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
@@ -2642,7 +2575,7 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<LocalDefId> 
                 hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
                     Some(parent)
                 }
-                hir::OpaqueTyOrigin::TyAlias => None,
+                hir::OpaqueTyOrigin::TyAlias { .. } => None,
             };
         }
     }
@@ -2700,7 +2633,7 @@ pub fn ast_uint_ty(uty: UintTy) -> ast::UintTy {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     closure::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
@@ -2709,7 +2642,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     print::provide(providers);
     super::util::bug::provide(providers);
     super::middle::provide(providers);
-    *providers = ty::query::Providers {
+    *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
         const_param_default: consts::const_param_default,

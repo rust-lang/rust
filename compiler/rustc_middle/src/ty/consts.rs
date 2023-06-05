@@ -6,7 +6,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
-use std::fmt;
 
 mod int;
 mod kind;
@@ -20,15 +19,6 @@ pub use valtree::*;
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, ConstData<'tcx>>);
-
-impl<'tcx> fmt::Debug for Const<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // This reflects what `Const` looked liked before `Interned` was
-        // introduced. We print it like this to avoid having to update expected
-        // output in a lot of tests.
-        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty(), self.kind())
-    }
-}
 
 /// Typed constant value.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
@@ -53,19 +43,12 @@ impl<'tcx> Const<'tcx> {
 
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
-    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
-    }
-
     #[instrument(skip(tcx), level = "debug")]
-    pub fn from_opt_const_arg_anon_const(
-        tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
-    ) -> Self {
-        let body_id = match tcx.hir().get_by_def_id(def.did) {
+    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
+        let body_id = match tcx.hir().get_by_def_id(def) {
             hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
-                tcx.def_span(def.did.to_def_id()),
+                tcx.def_span(def.to_def_id()),
                 "from_anon_const can only process anonymous constants"
             ),
         };
@@ -73,17 +56,14 @@ impl<'tcx> Const<'tcx> {
         let expr = &tcx.hir().body(body_id).value;
         debug!(?expr);
 
-        let ty = tcx
-            .type_of(def.def_id_for_type_of())
-            .no_bound_vars()
-            .expect("const parameter types cannot be generic");
+        let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(
                 ty::UnevaluatedConst {
-                    def: def.to_global(),
-                    substs: InternalSubsts::identity_for_item(tcx, def.did),
+                    def: def.to_def_id(),
+                    substs: InternalSubsts::identity_for_item(tcx, def.to_def_id()),
                 },
                 ty,
             ),
@@ -124,7 +104,7 @@ impl<'tcx> Const<'tcx> {
                 Err(e) => {
                     tcx.sess.delay_span_bug(
                         expr.span,
-                        &format!("Const::from_anon_const: couldn't lit_to_const {:?}", e),
+                        format!("Const::from_anon_const: couldn't lit_to_const {:?}", e),
                     );
                 }
             }
@@ -152,9 +132,7 @@ impl<'tcx> Const<'tcx> {
                         ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
                         param_ty,
                     )),
-                    Some(rbv::ResolvedArg::Error(guar)) => {
-                        Some(tcx.const_error_with_guaranteed(param_ty, guar))
-                    }
+                    Some(rbv::ResolvedArg::Error(guar)) => Some(tcx.const_error(param_ty, guar)),
                     arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
                 }
             }
@@ -238,7 +216,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => tcx.mk_const(val, self.ty()),
-                Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
+                Err(guar) => tcx.const_error(self.ty(), guar),
             }
         } else {
             // Either the constant isn't evaluatable or ValTree creation failed.
@@ -276,5 +254,5 @@ pub fn const_param_default(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBind
             "`const_param_default` expected a generic parameter with a constant"
         ),
     };
-    ty::EarlyBinder(Const::from_anon_const(tcx, default_def_id))
+    ty::EarlyBinder::bind(Const::from_anon_const(tcx, default_def_id))
 }

@@ -10,6 +10,7 @@
 // ignore-riscv64 see codegen/riscv-abi
 // ignore-s390x
 // ignore-windows
+// ignore-loongarch64
 // See repr-transparent.rs
 
 #![feature(transparent_unions)]

@@ -17,7 +17,12 @@
 pub mod bit_set;
 #[cfg(feature = "nightly")]
 pub mod interval;
-pub mod vec;
+
+mod idx;
+mod slice;
+mod vec;
+
+pub use {idx::Idx, slice::IndexSlice, vec::IndexVec};
 
 #[cfg(feature = "rustc_macros")]
 pub use rustc_macros::newtype_index;

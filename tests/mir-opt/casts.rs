@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-// EMIT_MIR casts.redundant.InstCombine.diff
+// EMIT_MIR casts.redundant.InstSimplify.diff
 // EMIT_MIR casts.redundant.PreCodegen.after.mir
 pub fn redundant<'a, 'b: 'a>(x: *const &'a u8) -> *const &'a u8 {
     generic_cast::<&'a u8, &'b u8>(x) as *const &'a u8

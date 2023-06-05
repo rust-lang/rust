@@ -26,13 +26,18 @@
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
+#![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(lint_reasons)]
 #![feature(unwrap_infallible)]
+#![feature(strict_provenance)]
+#![feature(ptr_alignment_type)]
+#![feature(macro_metavar_expr)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[macro_use]
 extern crate tracing;
@@ -73,6 +78,7 @@ pub mod sorted_map;
 pub mod stable_hasher;
 mod atomic_ref;
 pub mod fingerprint;
+pub mod marker;
 pub mod profiling;
 pub mod sharded;
 pub mod stack;
@@ -82,7 +88,9 @@ pub mod transitive_relation;
 pub mod vec_linked_list;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
+pub mod aligned;
 pub mod frozen;
+mod hashes;
 pub mod owned_slice;
 pub mod sso;
 pub mod steal;
@@ -94,21 +102,27 @@ pub mod unord;
 pub use ena::undo_log;
 pub use ena::unify;
 
-pub struct OnDrop<F: Fn()>(pub F);
+/// Returns a structure that calls `f` when dropped.
+pub fn defer<F: FnOnce()>(f: F) -> OnDrop<F> {
+    OnDrop(Some(f))
+}
 
-impl<F: Fn()> OnDrop<F> {
-    /// Forgets the function which prevents it from running.
-    /// Ensure that the function owns no memory, otherwise it will be leaked.
+pub struct OnDrop<F: FnOnce()>(Option<F>);
+
+impl<F: FnOnce()> OnDrop<F> {
+    /// Disables on-drop call.
     #[inline]
-    pub fn disable(self) {
-        std::mem::forget(self);
+    pub fn disable(mut self) {
+        self.0.take();
     }
 }
 
-impl<F: Fn()> Drop for OnDrop<F> {
+impl<F: FnOnce()> Drop for OnDrop<F> {
     #[inline]
     fn drop(&mut self) {
-        (self.0)();
+        if let Some(f) = self.0.take() {
+            f();
+        }
     }
 }
 

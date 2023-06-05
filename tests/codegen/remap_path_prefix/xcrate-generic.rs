@@ -7,7 +7,7 @@
 extern crate xcrate_generic;
 
 pub fn foo() {
-    xcrate_generic::foo::<u32>();
+    println!("{}", xcrate_generic::foo::<u32>());
 }
 
 // Here we check that local debuginfo is mapped correctly.

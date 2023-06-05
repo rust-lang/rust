@@ -1,15 +1,3 @@
-error: unused variable: `this_is_my_function`
-  --> $DIR/expect_nested_lint_levels.rs:48:9
-   |
-LL |     let this_is_my_function = 3;
-   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_this_is_my_function`
-   |
-note: the lint level is defined here
-  --> $DIR/expect_nested_lint_levels.rs:45:10
-   |
-LL | #[forbid(unused_variables)]
-   |          ^^^^^^^^^^^^^^^^
-
 warning: variable does not need to be mutable
   --> $DIR/expect_nested_lint_levels.rs:36:13
    |
@@ -24,6 +12,18 @@ note: the lint level is defined here
    |
 LL |         unused_mut,
    |         ^^^^^^^^^^
+
+error: unused variable: `this_is_my_function`
+  --> $DIR/expect_nested_lint_levels.rs:48:9
+   |
+LL |     let this_is_my_function = 3;
+   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_this_is_my_function`
+   |
+note: the lint level is defined here
+  --> $DIR/expect_nested_lint_levels.rs:45:10
+   |
+LL | #[forbid(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^
 
 warning: this lint expectation is unfulfilled
   --> $DIR/expect_nested_lint_levels.rs:7:5

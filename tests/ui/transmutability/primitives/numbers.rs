@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![crate_type = "lib"]
 #![feature(transmutability)]
 #![allow(dead_code)]

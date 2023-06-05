@@ -1,4 +1,5 @@
 use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use core::fmt::Debug;
 #[cfg(not(target_arch = "wasm32"))]
 use test::{black_box, Bencher};
 
@@ -199,6 +200,32 @@ fn since_epoch() {
     // Should give us ~70 years to fix this!
     let hundred_twenty_years = thirty_years * 4;
     assert!(a < hundred_twenty_years);
+}
+
+#[test]
+fn big_math() {
+    // Check that the same result occurs when adding/subtracting each duration one at a time as when
+    // adding/subtracting them all at once.
+    #[track_caller]
+    fn check<T: Eq + Copy + Debug>(start: Option<T>, op: impl Fn(&T, Duration) -> Option<T>) {
+        const DURATIONS: [Duration; 2] =
+            [Duration::from_secs(i64::MAX as _), Duration::from_secs(50)];
+        if let Some(start) = start {
+            assert_eq!(
+                op(&start, DURATIONS.into_iter().sum()),
+                DURATIONS.into_iter().try_fold(start, |t, d| op(&t, d))
+            )
+        }
+    }
+
+    check(SystemTime::UNIX_EPOCH.checked_sub(Duration::from_secs(100)), SystemTime::checked_add);
+    check(SystemTime::UNIX_EPOCH.checked_add(Duration::from_secs(100)), SystemTime::checked_sub);
+
+    let instant = Instant::now();
+    check(instant.checked_sub(Duration::from_secs(100)), Instant::checked_add);
+    check(instant.checked_sub(Duration::from_secs(i64::MAX as _)), Instant::checked_add);
+    check(instant.checked_add(Duration::from_secs(100)), Instant::checked_sub);
+    check(instant.checked_add(Duration::from_secs(i64::MAX as _)), Instant::checked_sub);
 }
 
 macro_rules! bench_instant_threaded {

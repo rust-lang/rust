@@ -29,8 +29,7 @@ LL |     fn foo<T>(&self, val: T);
 LL | trait Bar: Foo { }
    |       --- this trait cannot be made into an object...
    = help: consider moving `foo` to another trait
-   = note: required for `&mut Thing` to implement `CoerceUnsized<&mut dyn Bar>`
-   = note: required by cast to type `&mut dyn Bar`
+   = note: required for the cast from `&mut Thing` to `&mut dyn Bar`
 
 error: aborting due to 2 previous errors
 

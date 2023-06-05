@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: #110395
 
 #![feature(derive_const)]
 #![feature(const_trait_impl)]

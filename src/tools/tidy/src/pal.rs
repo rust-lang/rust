@@ -31,7 +31,6 @@
 //! this in the long term.
 
 use crate::walk::{filter_dirs, walk};
-use std::iter::Iterator;
 use std::path::Path;
 
 // Paths that may contain platform-specific code.

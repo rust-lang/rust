@@ -19,7 +19,7 @@ pub mod errors;
 extern crate tracing;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_macros::fluent_messages;
+use rustc_fluent_macro::fluent_messages;
 
 pub mod cgu_reuse_tracker;
 pub mod utils;

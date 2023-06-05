@@ -38,3 +38,27 @@ impl CiEnv {
         }
     }
 }
+
+pub mod gha {
+    /// All github actions log messages from this call to the Drop of the return value
+    /// will be grouped and hidden by default in logs. Note that nesting these does
+    /// not really work.
+    pub fn group(name: impl std::fmt::Display) -> Group {
+        if std::env::var_os("GITHUB_ACTIONS").is_some() {
+            eprintln!("::group::{name}");
+        }
+        Group(())
+    }
+
+    /// A guard that closes the current github actions log group on drop.
+    #[must_use]
+    pub struct Group(());
+
+    impl Drop for Group {
+        fn drop(&mut self) {
+            if std::env::var_os("GITHUB_ACTIONS").is_some() {
+                eprintln!("::endgroup::");
+            }
+        }
+    }
+}

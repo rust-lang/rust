@@ -16,7 +16,7 @@ use crate::MirPass;
 
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::sync::Lrc;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
@@ -514,7 +514,7 @@ fn make_code_region(
         // Extend an empty span by one character so the region will be counted.
         let CharPos(char_pos) = start_col;
         if span.hi() == body_span.hi() {
-            start_col = CharPos(char_pos - 1);
+            start_col = CharPos(char_pos.saturating_sub(1));
         } else {
             end_col = CharPos(char_pos + 1);
         }
@@ -577,5 +577,10 @@ fn get_body_span<'tcx>(
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
     // FIXME(cjgillot) Stop hashing HIR manually here.
     let owner = hir_body.id().hir_id.owner;
-    tcx.hir_owner_nodes(owner).unwrap().opt_hash_including_bodies.unwrap().to_smaller_hash()
+    tcx.hir_owner_nodes(owner)
+        .unwrap()
+        .opt_hash_including_bodies
+        .unwrap()
+        .to_smaller_hash()
+        .as_u64()
 }

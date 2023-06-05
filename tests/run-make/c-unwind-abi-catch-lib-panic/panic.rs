@@ -1,5 +1,4 @@
 #![crate_type = "staticlib"]
-#![feature(c_unwind)]
 
 /// This function will panic if `x` is greater than 10.
 ///

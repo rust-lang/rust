@@ -8,7 +8,7 @@
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
 use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithNumNodes, WithSuccessors};
-use rustc_index::vec::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use std::ops::Range;
 
 #[cfg(test)]

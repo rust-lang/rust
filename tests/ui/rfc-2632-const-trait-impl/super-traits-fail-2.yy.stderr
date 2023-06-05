@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `T: ~const Foo` is not satisfied
-  --> $DIR/super-traits-fail-2.rs:15:7
+  --> $DIR/super-traits-fail-2.rs:16:7
    |
 LL |     x.a();
    |       ^ the trait `~const Foo` is not implemented for `T`
    |
 note: the trait `Foo` is implemented for `T`, but that implementation is not `const`
-  --> $DIR/super-traits-fail-2.rs:15:5
+  --> $DIR/super-traits-fail-2.rs:16:5
    |
 LL |     x.a();
    |     ^

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(lint_reasons)]
 #![feature(yeet_expr)]
@@ -7,7 +7,8 @@
     clippy::if_same_then_else,
     clippy::single_match,
     clippy::needless_bool,
-    clippy::equatable_if_let
+    clippy::equatable_if_let,
+    clippy::needless_else
 )]
 #![warn(clippy::needless_return)]
 
@@ -239,8 +240,9 @@ fn needless_return_macro() -> String {
 }
 
 fn issue_9361() -> i32 {
-    #[allow(clippy::integer_arithmetic)]
-    return 1 + 2;
+    let n = 1;
+    #[allow(clippy::arithmetic_side_effects)]
+    return n + n;
 }
 
 fn issue8336(x: i32) -> bool {
@@ -315,6 +317,15 @@ mod issue10049 {
     fn multiple(b1: bool, b2: bool, b3: bool) -> u32 {
         return if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else { 5 };
     }
+}
+
+fn test_match_as_stmt() {
+    let x = 9;
+    match x {
+        1 => 2,
+        2 => return,
+        _ => 0,
+    };
 }
 
 fn main() {}

@@ -10,7 +10,8 @@ LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
    = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
 help: consider annotating `Bar` with `#[derive(Copy)]`
    |
-LL | #[derive(Copy)]
+LL + #[derive(Copy)]
+LL | struct Bar;
    |
 
 error: aborting due to previous error

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(type_alias_impl_trait)]
 #![warn(clippy::from_over_into)]
@@ -32,7 +32,7 @@ struct SelfKeywords;
 
 impl Into<SelfKeywords> for X {
     fn into(self) -> SelfKeywords {
-        let _ = Self::default();
+        let _ = Self;
         let _ = Self::FOO;
         let _: Self = self;
 

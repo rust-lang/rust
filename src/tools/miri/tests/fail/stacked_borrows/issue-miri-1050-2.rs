@@ -1,4 +1,4 @@
-//@error-pattern: is a dangling pointer
+//@error-in-other-file: is a dangling pointer
 use std::ptr::NonNull;
 
 fn main() {

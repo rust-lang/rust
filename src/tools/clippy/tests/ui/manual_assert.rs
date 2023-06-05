@@ -1,7 +1,7 @@
-// revisions: edition2018 edition2021
-//[edition2018] edition:2018
-//[edition2021] edition:2021
-// run-rustfix
+//@revisions: edition2018 edition2021
+//@[edition2018] edition:2018
+//@[edition2021] edition:2021
+//@run-rustfix
 
 #![warn(clippy::manual_assert)]
 #![allow(dead_code, unused_doc_comments)]

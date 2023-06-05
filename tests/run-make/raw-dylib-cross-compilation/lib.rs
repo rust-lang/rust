@@ -1,4 +1,3 @@
-#![feature(raw_dylib)]
 #![feature(no_core, lang_items)]
 #![no_std]
 #![no_core]

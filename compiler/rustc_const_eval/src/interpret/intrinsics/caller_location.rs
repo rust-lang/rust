@@ -77,7 +77,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         line: u32,
         col: u32,
     ) -> MPlaceTy<'tcx, M::Provenance> {
-        let loc_details = &self.tcx.sess.opts.unstable_opts.location_detail;
+        let loc_details = self.tcx.sess.opts.unstable_opts.location_detail;
         // This can fail if rustc runs out of memory right here. Trying to emit an error would be
         // pointless, since that would require allocating more memory than these short strings.
         let file = if loc_details.file {
@@ -111,11 +111,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         location
     }
 
-    pub(crate) fn location_triple_for_span(&self, mut span: Span) -> (Symbol, u32, u32) {
-        // Remove `Inlined` marks as they pollute `expansion_cause`.
-        while span.is_inlined() {
-            span.remove_mark();
-        }
+    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (

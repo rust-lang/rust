@@ -19,7 +19,7 @@ LL | fn print_x(_: &dyn Foo<Item=bool>, extra: &str) {
 help: consider borrowing here
    |
 LL |     print_x(&X);
-   |             ~~
+   |             +
 help: provide the argument
    |
 LL |     print_x(/* &dyn Foo<Item = bool> */, /* &str */);

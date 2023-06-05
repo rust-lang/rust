@@ -68,7 +68,7 @@ pub enum TreatParams {
 }
 
 /// During fast-rejection, we have the choice of treating projection types
-/// as either simplifyable or not, depending on whether we expect the projection
+/// as either simplifiable or not, depending on whether we expect the projection
 /// to be normalized/rigid.
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TreatProjections {

@@ -26,7 +26,6 @@ use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -240,9 +239,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                         snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
-                                                |x| Cow::from(format!("change `{x}` to")),
-                                            )
-                                            .as_ref(),
+                                                |x| format!("change `{x}` to"),
+                                            ),
                                         suggestion,
                                         Applicability::Unspecified,
                                     );
@@ -270,9 +268,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                         snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
-                                                |x| Cow::from(format!("change `{x}` to"))
-                                            )
-                                            .as_ref(),
+                                                |x| format!("change `{x}` to")
+                                            ),
                                         suggestion,
                                         Applicability::Unspecified,
                                     );

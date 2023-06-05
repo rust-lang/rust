@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::num::NonZeroU32;
 
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 
 use super::sync::EvalContextExtPriv as _;
 use super::thread::MachineCallback;
@@ -151,7 +151,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         assert_eq!(
             init_once.status,
             InitOnceStatus::Uninitialized,
-            "begining already begun or complete init once"
+            "beginning already begun or complete init once"
         );
         init_once.status = InitOnceStatus::Begun;
     }

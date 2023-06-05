@@ -79,7 +79,7 @@ use crate::error::Error;
 use crate::fmt;
 use crate::str::FromStr;
 
-use self::common::{BiasedFp, ByteSlice};
+use self::common::BiasedFp;
 use self::float::RawFloat;
 use self::lemire::compute_float;
 use self::parse::{parse_inf_nan, parse_number};
@@ -238,17 +238,18 @@ pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     };
     let negative = c == b'-';
     if c == b'-' || c == b'+' {
-        s = s.advance(1);
+        s = &s[1..];
     }
     if s.is_empty() {
         return Err(pfe_invalid());
     }
 
-    let num = match parse_number(s, negative) {
+    let mut num = match parse_number(s) {
         Some(r) => r,
         None if let Some(value) = parse_inf_nan(s, negative) => return Ok(value),
         None => return Err(pfe_invalid()),
     };
+    num.negative = negative;
     if let Some(value) = num.try_fast_path::<F>() {
         return Ok(value);
     }

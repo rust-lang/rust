@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:proc_macros.rs
+//@run-rustfix
+//@aux-build:proc_macros.rs
 
 #![allow(unused_variables, dead_code, clippy::derive_partial_eq_without_eq)]
 #![warn(clippy::equatable_if_let)]

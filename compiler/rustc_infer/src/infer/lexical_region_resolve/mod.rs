@@ -13,7 +13,7 @@ use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::PlaceholderRegion;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -102,6 +102,17 @@ pub enum RegionResolutionError<'tcx> {
     ),
 }
 
+impl<'tcx> RegionResolutionError<'tcx> {
+    pub fn origin(&self) -> &SubregionOrigin<'tcx> {
+        match self {
+            RegionResolutionError::ConcreteFailure(origin, _, _)
+            | RegionResolutionError::GenericBoundFailure(origin, _, _)
+            | RegionResolutionError::SubSupConflict(_, _, origin, _, _, _, _)
+            | RegionResolutionError::UpperBoundUniverseConflict(_, _, _, origin, _) => origin,
+        }
+    }
+}
+
 struct RegionAndOrigin<'tcx> {
     region: Region<'tcx>,
     origin: SubregionOrigin<'tcx>,
@@ -131,10 +142,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.dump_constraints();
         }
 
-        let graph = self.construct_graph();
         self.expansion(&mut var_data);
         self.collect_errors(&mut var_data, errors);
-        self.collect_var_errors(&var_data, &graph, errors);
+        self.collect_var_errors(&var_data, errors);
         var_data
     }
 
@@ -337,7 +347,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // name the placeholder, then the placeholder is
                     // larger; otherwise, the only ancestor is `'static`.
                     Err(placeholder) if empty_ui.can_name(placeholder.universe) => {
-                        self.tcx().mk_re_placeholder(placeholder)
+                        ty::Region::new_placeholder(self.tcx(), placeholder)
                     }
                     Err(_) => self.tcx().lifetimes.re_static,
                 };
@@ -622,7 +632,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn collect_var_errors(
         &self,
         var_data: &LexicalRegionResolutions<'tcx>,
-        graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
         debug!("collect_var_errors, var_data = {:#?}", var_data.values);
@@ -639,6 +648,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // regions of the graph, but not those that derive from
         // overlapping locations.
         let mut dup_vec = IndexVec::from_elem_n(None, self.num_vars());
+
+        // Only construct the graph when necessary, because it's moderately
+        // expensive.
+        let mut graph = None;
 
         for (node_vid, value) in var_data.values.iter_enumerated() {
             match *value {
@@ -672,7 +685,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // influence the constraints on this value for
                     // richer diagnostics in `static_impl_trait`.
 
-                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
+                    let g = graph.get_or_insert_with(|| self.construct_graph());
+                    self.collect_error_for_expanding_node(g, &mut dup_vec, node_vid, errors);
                 }
             }
         }
@@ -821,7 +835,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // resolution errors here; delay ICE in favor of those errors.
         self.tcx().sess.delay_span_bug(
             self.var_infos[node_idx].origin.span(),
-            &format!(
+            format!(
                 "collect_error_for_expanding_node() could not find \
                  error for var {:?} in universe {:?}, lower_bounds={:#?}, \
                  upper_bounds={:#?}",

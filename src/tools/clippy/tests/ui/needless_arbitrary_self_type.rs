@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::needless_arbitrary_self_type)]
 #![allow(unused_mut, clippy::needless_lifetimes)]

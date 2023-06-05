@@ -1,9 +1,8 @@
 //! Target dependent parameters needed for layouts
 
-use std::sync::Arc;
-
 use base_db::CrateId;
 use hir_def::layout::TargetDataLayout;
+use triomphe::Arc;
 
 use crate::db::HirDatabase;
 

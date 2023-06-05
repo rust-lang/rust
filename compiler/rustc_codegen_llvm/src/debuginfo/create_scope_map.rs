@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
 
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.
@@ -93,7 +93,7 @@ fn make_mir_scope<'ll, 'tcx>(
             let callee = cx.tcx.subst_and_normalize_erasing_regions(
                 instance.substs,
                 ty::ParamEnv::reveal_all(),
-                callee,
+                ty::EarlyBinder::bind(callee),
             );
             let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
             cx.dbg_scope_fn(callee, callee_fn_abi, None)

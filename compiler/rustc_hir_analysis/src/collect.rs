@@ -28,7 +28,7 @@ use rustc_hir::{GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -55,7 +55,6 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 pub fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
-        opt_const_param_of: type_of::opt_const_param_of,
         type_of: type_of::type_of,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
@@ -64,8 +63,9 @@ pub fn provide(providers: &mut Providers) {
         predicates_defined_on,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
         super_predicates_of: predicates_of::super_predicates_of,
-        super_predicates_that_define_assoc_type:
-            predicates_of::super_predicates_that_define_assoc_type,
+        implied_predicates_of: predicates_of::implied_predicates_of,
+        super_predicates_that_define_assoc_item:
+            predicates_of::super_predicates_that_define_assoc_item,
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
@@ -73,7 +73,6 @@ pub fn provide(providers: &mut Providers) {
         fn_sig,
         impl_trait_ref,
         impl_polarity,
-        is_foreign_item,
         generator_kind,
         collect_mod_item_types,
         is_type_alias_impl_trait,
@@ -386,8 +385,10 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
 
     fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         let ty = self.tcx.fold_regions(ty, |r, _| match *r {
-            ty::ReErased => self.tcx.lifetimes.re_static,
-            _ => r,
+            // This is never reached in practice. If it ever is reached,
+            // `ReErased` should be changed to `ReStatic`, and any other region
+            // left alone.
+            r => bug!("unexpected region: {r:?}"),
         });
         self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
     }
@@ -439,7 +440,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                     self.tcx.replace_late_bound_regions_uncached(
                                         poly_trait_ref,
                                         |_| {
-                                            self.tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                                            ty::Region::new_early_bound(self.tcx, ty::EarlyBoundRegion {
                                                 def_id: item_def_id,
                                                 index: 0,
                                                 name: Symbol::intern(&lt_name),
@@ -596,6 +597,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         }
         hir::ItemKind::TraitAlias(..) => {
             tcx.ensure().generics_of(def_id);
+            tcx.at(it.span).implied_predicates_of(def_id);
             tcx.at(it.span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
@@ -817,7 +819,7 @@ fn convert_variant(
         recovered,
         adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
             || variant_did
-                .map_or(false, |variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
+                .is_some_and(|variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
     )
 }
 
@@ -939,7 +941,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
-                        if !tcx.impl_defaultness(item.id.owner_id).has_value() {
+                        if !tcx.defaultness(item.id.owner_id).has_value() {
                             tcx.sess.emit_err(errors::FunctionNotHaveDefaultImplementation {
                                 span: item.span,
                                 note_span: attr_span,
@@ -1023,7 +1025,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
             is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
         }
         Path(hir::QPath::Resolved(ty_opt, hir::Path { segments, .. })) => {
-            ty_opt.map_or(false, is_suggestable_infer_ty)
+            ty_opt.is_some_and(is_suggestable_infer_ty)
                 || segments.iter().any(|segment| are_suggestable_generic_args(segment.args().args))
         }
         _ => false,
@@ -1122,7 +1124,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
     };
-    ty::EarlyBinder(output)
+    ty::EarlyBinder::bind(output)
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1145,8 +1147,14 @@ fn infer_return_ty_for_fn_sig<'tcx>(
 
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_ty(ty);
+
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
             let ret_ty = fn_sig.output();
+            // Don't leak types into signatures unless they're nameable!
+            // For example, if a function returns itself, we don't want that
+            // recursive function definition to leak out into the fn sig.
+            let mut should_recover = false;
+
             if let Some(ret_ty) = ret_ty.make_suggestable(tcx, false) {
                 diag.span_suggestion(
                     ty.span,
@@ -1154,15 +1162,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                     ret_ty,
                     Applicability::MachineApplicable,
                 );
-            } else if matches!(ret_ty.kind(), ty::FnDef(..))
-                && let Some(fn_sig) = ret_ty.fn_sig(tcx).make_suggestable(tcx, false)
-            {
-                diag.span_suggestion(
-                    ty.span,
-                    "replace with the correct return type",
-                    fn_sig,
-                    Applicability::MachineApplicable,
-                );
+                should_recover = true;
             } else if let Some(sugg) = suggest_impl_trait(tcx, ret_ty, ty.span, def_id) {
                 diag.span_suggestion(
                     ty.span,
@@ -1180,9 +1180,20 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                      https://doc.rust-lang.org/book/ch13-01-closures.html",
                 );
             }
-            diag.emit();
 
-            ty::Binder::dummy(fn_sig)
+            let guar = diag.emit();
+
+            if should_recover {
+                ty::Binder::dummy(fn_sig)
+            } else {
+                ty::Binder::dummy(tcx.mk_fn_sig(
+                    fn_sig.inputs().iter().copied(),
+                    tcx.ty_error(guar),
+                    fn_sig.c_variadic,
+                    fn_sig.unsafety,
+                    fn_sig.abi,
+                ))
+            }
         }
         None => icx.astconv().ty_of_fn(
             hir_id,
@@ -1301,7 +1312,7 @@ fn impl_trait_ref(
                 check_impl_constness(tcx, impl_.constness, ast_trait_ref),
             )
         })
-        .map(ty::EarlyBinder)
+        .map(ty::EarlyBinder::bind)
 }
 
 fn check_impl_constness(
@@ -1454,13 +1465,6 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     fty
 }
 
-fn is_foreign_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    match tcx.hir().get_by_def_id(def_id) {
-        Node::ForeignItem(..) => true,
-        _ => false,
-    }
-}
-
 fn generator_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::GeneratorKind> {
     match tcx.hir().get_by_def_id(def_id) {
         Node::Expr(&rustc_hir::Expr {
@@ -1474,7 +1478,7 @@ fn generator_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::GeneratorK
 fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     match tcx.hir().get_by_def_id(def_id) {
         Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. }) => {
-            matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias)
+            matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias { .. })
         }
         _ => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
     }

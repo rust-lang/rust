@@ -69,7 +69,7 @@ impl OngoingCodegen {
 
             let module_codegen_result = match module_codegen_result {
                 Ok(module_codegen_result) => module_codegen_result,
-                Err(err) => sess.fatal(&err),
+                Err(err) => sess.fatal(err),
             };
             let ModuleCodegenResult { module_regular, module_global_asm, existing_work_product } =
                 module_codegen_result;
@@ -324,6 +324,10 @@ fn module_codegen(
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         cx.profiler.clone().verbose_generic_activity_with_arg("compile functions", &*cgu_name).run(
             || {
+                cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
+                    cx.profiler.clone(),
+                )));
+
                 let mut cached_context = Context::new();
                 for codegened_func in codegened_functions {
                     crate::base::compile_fn(
@@ -407,7 +411,7 @@ pub(crate) fn run_aot(
                                     backend_config.clone(),
                                     global_asm_config.clone(),
                                     cgu.name(),
-                                    concurrency_limiter.acquire(),
+                                    concurrency_limiter.acquire(tcx.sess.diagnostic()),
                                 ),
                                 module_codegen,
                                 Some(rustc_middle::dep_graph::hash_result),
@@ -464,7 +468,7 @@ pub(crate) fn run_aot(
             let obj = create_compressed_metadata_file(tcx.sess, &metadata, &symbol_name);
 
             if let Err(err) = std::fs::write(&tmp_file, obj) {
-                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+                tcx.sess.fatal(format!("error writing metadata object file: {}", err));
             }
 
             (metadata_cgu_name, tmp_file)

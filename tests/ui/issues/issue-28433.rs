@@ -1,9 +1,9 @@
 enum Bird {
     pub Duck,
-    //~^ ERROR unnecessary visibility qualifier
+    //~^ ERROR visibility qualifiers are not permitted here
     Goose,
     pub(crate) Dove
-    //~^ ERROR unnecessary visibility qualifier
+    //~^ ERROR visibility qualifiers are not permitted here
 }
 
 

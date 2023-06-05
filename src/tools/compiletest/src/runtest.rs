@@ -32,6 +32,7 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 use std::sync::Arc;
 
+use anyhow::Context;
 use glob::glob;
 use once_cell::sync::Lazy;
 use tracing::*;
@@ -131,7 +132,11 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
     }
 
     let cx = TestCx { config: &config, props: &props, testpaths, revision };
-    create_dir_all(&cx.output_base_dir()).unwrap();
+    create_dir_all(&cx.output_base_dir())
+        .with_context(|| {
+            format!("failed to create output base directory {}", cx.output_base_dir().display())
+        })
+        .unwrap();
     if props.incremental {
         cx.init_incremental_test();
     }
@@ -224,6 +229,7 @@ enum Emit {
     Metadata,
     LlvmIr,
     Asm,
+    LinkArgsAsm,
 }
 
 impl<'test> TestCx<'test> {
@@ -1384,7 +1390,9 @@ impl<'test> TestCx<'test> {
         let actual_errors = json::parse_output(&diagnostic_file_name, &proc_res.stderr, proc_res);
         let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
-        for actual_error in &actual_errors {
+        for mut actual_error in actual_errors {
+            actual_error.msg = self.normalize_output(&actual_error.msg, &[]);
+
             let opt_index =
                 expected_errors.iter().enumerate().position(|(index, expected_error)| {
                     !found[index]
@@ -1403,7 +1411,8 @@ impl<'test> TestCx<'test> {
 
                 None => {
                     // If the test is a known bug, don't require that the error is annotated
-                    if self.is_unexpected_compiler_message(actual_error, expect_help, expect_note) {
+                    if self.is_unexpected_compiler_message(&actual_error, expect_help, expect_note)
+                    {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
                             file_name,
@@ -1479,7 +1488,16 @@ impl<'test> TestCx<'test> {
     }
 
     fn compile_test(&self, will_execute: WillExecute, emit: Emit) -> ProcRes {
-        self.compile_test_general(will_execute, emit, self.props.local_pass_mode())
+        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), Vec::new())
+    }
+
+    fn compile_test_with_passes(
+        &self,
+        will_execute: WillExecute,
+        emit: Emit,
+        passes: Vec<String>,
+    ) -> ProcRes {
+        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), passes)
     }
 
     fn compile_test_general(
@@ -1487,6 +1505,7 @@ impl<'test> TestCx<'test> {
         will_execute: WillExecute,
         emit: Emit,
         local_pm: Option<PassMode>,
+        passes: Vec<String>,
     ) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
         let output_file = match will_execute {
@@ -1523,6 +1542,7 @@ impl<'test> TestCx<'test> {
             emit,
             allow_unused,
             LinkToAux::Yes,
+            passes,
         );
 
         self.compose_and_run_compiler(rustc, None)
@@ -1570,7 +1590,7 @@ impl<'test> TestCx<'test> {
             rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
         }
 
-        if let Some(ref linker) = self.config.linker {
+        if let Some(ref linker) = self.config.target_linker {
             rustdoc.arg(format!("-Clinker={}", linker));
         }
 
@@ -1613,8 +1633,13 @@ impl<'test> TestCx<'test> {
                 test_client
                     .args(&["run", &support_libs.len().to_string(), &prog])
                     .args(support_libs)
-                    .args(args)
-                    .envs(env.clone());
+                    .args(args);
+
+                for key in &self.props.unset_exec_env {
+                    test_client.env_remove(key);
+                }
+                test_client.envs(env.clone());
+
                 self.compose_and_run(
                     test_client,
                     self.config.run_lib_path.to_str().unwrap(),
@@ -1626,7 +1651,13 @@ impl<'test> TestCx<'test> {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
                 let mut wr_run = Command::new("wr-run");
-                wr_run.args(&[&prog]).args(args).envs(env.clone());
+                wr_run.args(&[&prog]).args(args);
+
+                for key in &self.props.unset_exec_env {
+                    wr_run.env_remove(key);
+                }
+                wr_run.envs(env.clone());
+
                 self.compose_and_run(
                     wr_run,
                     self.config.run_lib_path.to_str().unwrap(),
@@ -1638,7 +1669,13 @@ impl<'test> TestCx<'test> {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
                 let mut program = Command::new(&prog);
-                program.args(args).current_dir(&self.output_base_dir()).envs(env.clone());
+                program.args(args).current_dir(&self.output_base_dir());
+
+                for key in &self.props.unset_exec_env {
+                    program.env_remove(key);
+                }
+                program.envs(env.clone());
+
                 self.compose_and_run(
                     program,
                     self.config.run_lib_path.to_str().unwrap(),
@@ -1756,6 +1793,7 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::No,
             LinkToAux::No,
+            Vec::new(),
         );
 
         for key in &aux_props.unset_rustc_env {
@@ -1887,6 +1925,7 @@ impl<'test> TestCx<'test> {
         emit: Emit,
         allow_unused: AllowUnused,
         link_to_aux: LinkToAux,
+        passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
     ) -> Command {
         let is_aux = input_file.components().map(|c| c.as_os_str()).any(|c| c == "auxiliary");
         let is_rustdoc = self.is_rustdoc() && !is_aux;
@@ -1899,6 +1938,23 @@ impl<'test> TestCx<'test> {
 
         // Use a single thread for efficiency and a deterministic error message order
         rustc.arg("-Zthreads=1");
+
+        // Hide libstd sources from ui tests to make sure we generate the stderr
+        // output that users will see.
+        // Without this, we may be producing good diagnostics in-tree but users
+        // will not see half the information.
+        //
+        // This also has the benefit of more effectively normalizing output between different
+        // compilers, so that we don't have to know the `/rustc/$sha` output to normalize after the
+        // fact.
+        rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
+        rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
+
+        // Optionally prevent default --sysroot if specified in test compile-flags.
+        if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot")) {
+            // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
+            rustc.arg("--sysroot").arg(&self.config.sysroot_base);
+        }
 
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags.iter().any(|x| x.starts_with("--target"));
@@ -1969,21 +2025,23 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Ccodegen-units=1");
                 // Hide line numbers to reduce churn
                 rustc.arg("-Zui-testing");
-                // Hide libstd sources from ui tests to make sure we generate the stderr
-                // output that users will see.
-                // Without this, we may be producing good diagnostics in-tree but users
-                // will not see half the information.
-                rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
-                rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
-
                 rustc.arg("-Zdeduplicate-diagnostics=no");
                 // FIXME: use this for other modes too, for perf?
                 rustc.arg("-Cstrip=debuginfo");
             }
             MirOpt => {
+                // We check passes under test to minimize the mir-opt test dump
+                // if files_for_miropt_test parses the passes, we dump only those passes
+                // otherwise we conservatively pass -Zdump-mir=all
+                let zdump_arg = if !passes.is_empty() {
+                    format!("-Zdump-mir={}", passes.join(" | "))
+                } else {
+                    "-Zdump-mir=all".to_string()
+                };
+
                 rustc.args(&[
                     "-Copt-level=1",
-                    "-Zdump-mir=all",
+                    &zdump_arg,
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                     "-Zmir-pretty-relative-line-numbers=yes",
@@ -1991,7 +2049,10 @@ impl<'test> TestCx<'test> {
                 if let Some(pass) = &self.props.mir_unit_test {
                     rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
                 } else {
-                    rustc.arg("-Zmir-opt-level=4");
+                    rustc.args(&[
+                        "-Zmir-opt-level=4",
+                        "-Zmir-enable-passes=+ReorderBasicBlocks,+ReorderLocals",
+                    ]);
                 }
 
                 let mir_dump_dir = self.get_mir_dump_dir();
@@ -2028,6 +2089,9 @@ impl<'test> TestCx<'test> {
             }
             Emit::Asm => {
                 rustc.args(&["--emit", "asm"]);
+            }
+            Emit::LinkArgsAsm => {
+                rustc.args(&["-Clink-args=--emit=asm"]);
             }
         }
 
@@ -2083,10 +2147,15 @@ impl<'test> TestCx<'test> {
 
         if self.props.force_host {
             self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);
+            if !is_rustdoc {
+                if let Some(ref linker) = self.config.host_linker {
+                    rustc.arg(format!("-Clinker={}", linker));
+                }
+            }
         } else {
             self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
             if !is_rustdoc {
-                if let Some(ref linker) = self.config.linker {
+                if let Some(ref linker) = self.config.target_linker {
                     rustc.arg(format!("-Clinker={}", linker));
                 }
             }
@@ -2298,6 +2367,7 @@ impl<'test> TestCx<'test> {
             Emit::LlvmIr,
             AllowUnused::No,
             LinkToAux::Yes,
+            Vec::new(),
         );
 
         self.compose_and_run_compiler(rustc, None)
@@ -2317,16 +2387,26 @@ impl<'test> TestCx<'test> {
                 emit = Emit::Asm;
             }
 
+            Some("bpf-linker") => {
+                emit = Emit::LinkArgsAsm;
+            }
+
             Some("ptx-linker") => {
                 // No extra flags needed.
             }
 
-            Some(_) => self.fatal("unknown 'assembly-output' header"),
+            Some(header) => self.fatal(&format!("unknown 'assembly-output' header: {header}")),
             None => self.fatal("missing 'assembly-output' header"),
         }
 
-        let rustc =
-            self.make_compile_args(input_file, output_file, emit, AllowUnused::No, LinkToAux::Yes);
+        let rustc = self.make_compile_args(
+            input_file,
+            output_file,
+            emit,
+            AllowUnused::No,
+            LinkToAux::Yes,
+            Vec::new(),
+        );
 
         (self.compose_and_run_compiler(rustc, None), output_path)
     }
@@ -2457,6 +2537,7 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::Yes,
             LinkToAux::Yes,
+            Vec::new(),
         );
         new_rustdoc.build_all_auxiliary(&mut rustc);
 
@@ -3039,7 +3120,7 @@ impl<'test> TestCx<'test> {
             cmd.env("NODE", node);
         }
 
-        if let Some(ref linker) = self.config.linker {
+        if let Some(ref linker) = self.config.target_linker {
             cmd.env("RUSTC_LINKER", linker);
         }
 
@@ -3233,17 +3314,35 @@ impl<'test> TestCx<'test> {
         match output_kind {
             TestOutput::Compile => {
                 if !self.props.dont_check_compiler_stdout {
-                    errors +=
-                        self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
+                    errors += self.compare_output(
+                        stdout_kind,
+                        &normalized_stdout,
+                        &expected_stdout,
+                        self.props.compare_output_lines_by_subset,
+                    );
                 }
                 if !self.props.dont_check_compiler_stderr {
-                    errors +=
-                        self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+                    errors += self.compare_output(
+                        stderr_kind,
+                        &normalized_stderr,
+                        &expected_stderr,
+                        self.props.compare_output_lines_by_subset,
+                    );
                 }
             }
             TestOutput::Run => {
-                errors += self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
-                errors += self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+                errors += self.compare_output(
+                    stdout_kind,
+                    &normalized_stdout,
+                    &expected_stdout,
+                    self.props.compare_output_lines_by_subset,
+                );
+                errors += self.compare_output(
+                    stderr_kind,
+                    &normalized_stderr,
+                    &expected_stderr,
+                    self.props.compare_output_lines_by_subset,
+                );
             }
         }
         errors
@@ -3253,7 +3352,8 @@ impl<'test> TestCx<'test> {
         if let Some(FailMode::Build) = self.props.fail_mode {
             // Make sure a build-fail test cannot fail due to failing analysis (e.g. typeck).
             let pm = Some(PassMode::Check);
-            let proc_res = self.compile_test_general(WillExecute::No, Emit::Metadata, pm);
+            let proc_res =
+                self.compile_test_general(WillExecute::No, Emit::Metadata, pm, Vec::new());
             self.check_if_test_should_compile(&proc_res, pm);
         }
 
@@ -3327,7 +3427,12 @@ impl<'test> TestCx<'test> {
                 )
             });
 
-            errors += self.compare_output("fixed", &fixed_code, &expected_fixed);
+            errors += self.compare_output(
+                "fixed",
+                &fixed_code,
+                &expected_fixed,
+                self.props.compare_output_lines_by_subset,
+            );
         } else if !expected_fixed.is_empty() {
             panic!(
                 "the `// run-rustfix` directive wasn't found but a `*.fixed` \
@@ -3417,6 +3522,7 @@ impl<'test> TestCx<'test> {
                 emit_metadata,
                 AllowUnused::No,
                 LinkToAux::Yes,
+                Vec::new(),
             );
             let res = self.compose_and_run_compiler(rustc, None);
             if !res.status.success() {
@@ -3435,13 +3541,13 @@ impl<'test> TestCx<'test> {
         let pm = self.pass_mode();
         let should_run = self.should_run(pm);
         let emit_metadata = self.should_emit_metadata(pm);
-        let proc_res = self.compile_test(should_run, emit_metadata);
+        let passes = self.get_passes();
 
+        let proc_res = self.compile_test_with_passes(should_run, emit_metadata, passes);
+        self.check_mir_dump();
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
-
-        self.check_mir_dump();
 
         if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();
@@ -3450,6 +3556,26 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
         }
+    }
+
+    fn get_passes(&self) -> Vec<String> {
+        let files = miropt_test_tools::files_for_miropt_test(
+            &self.testpaths.file,
+            self.config.get_pointer_width(),
+        );
+
+        let mut out = Vec::new();
+
+        for miropt_test_tools::MiroptTestFiles {
+            from_file: _,
+            to_file: _,
+            expected_file: _,
+            passes,
+        } in files
+        {
+            out.extend(passes);
+        }
+        out
     }
 
     fn check_mir_dump(&self) {
@@ -3481,8 +3607,9 @@ impl<'test> TestCx<'test> {
             &self.testpaths.file,
             self.config.get_pointer_width(),
         );
-
-        for miropt_test_tools::MiroptTestFiles { from_file, to_file, expected_file } in files {
+        for miropt_test_tools::MiroptTestFiles { from_file, to_file, expected_file, passes: _ } in
+            files
+        {
             let dumped_string = if let Some(after) = to_file {
                 self.diff_mir_files(from_file.into(), after.into())
             } else {
@@ -3609,28 +3736,13 @@ impl<'test> TestCx<'test> {
             normalize_path(&remapped_parent_dir, "$DIR");
         }
 
-        let source_bases = &[
-            // Source base on the current filesystem (calculated as parent of `tests/$suite`):
-            Some(self.config.src_base.parent().unwrap().parent().unwrap().into()),
-            // Source base on the sysroot (from the src components downloaded by `download-rustc`):
-            Some(self.config.sysroot_base.join("lib").join("rustlib").join("src").join("rust")),
-            // Virtual `/rustc/$sha` remapped paths (if `remap-debuginfo` is enabled):
-            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from),
-            // Virtual `/rustc/$sha` coming from download-rustc:
-            std::env::var_os("FAKE_DOWNLOAD_RUSTC_PREFIX").map(PathBuf::from),
-            // Tests using -Zsimulate-remapped-rust-src-base should use this fake path
-            Some("/rustc/FAKE_PREFIX".into()),
-        ];
-        for base_dir in source_bases {
-            if let Some(base_dir) = base_dir {
-                // Paths into the libstd/libcore
-                normalize_path(&base_dir.join("library"), "$SRC_DIR");
-                // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
-                // `rustc_macros`
-                // eg. /home/user/rust/compiler
-                normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
-            }
-        }
+        let base_dir = Path::new("/rustc/FAKE_PREFIX");
+        // Paths into the libstd/libcore
+        normalize_path(&base_dir.join("library"), "$SRC_DIR");
+        // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
+        // `rustc_macros`
+        // eg. /home/user/rust/compiler
+        normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
 
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
@@ -3785,10 +3897,37 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
+    fn compare_output(
+        &self,
+        kind: &str,
+        actual: &str,
+        expected: &str,
+        compare_output_by_lines: bool,
+    ) -> usize {
         if actual == expected {
             return 0;
         }
+
+        let tmp;
+        let (expected, actual): (&str, &str) = if compare_output_by_lines {
+            let actual_lines: HashSet<_> = actual.lines().collect();
+            let expected_lines: Vec<_> = expected.lines().collect();
+            let mut used = expected_lines.clone();
+            used.retain(|line| actual_lines.contains(line));
+            // check if `expected` contains a subset of the lines of `actual`
+            if used.len() == expected_lines.len() && (expected.is_empty() == actual.is_empty()) {
+                return 0;
+            }
+            if expected_lines.is_empty() {
+                // if we have no lines to check, force a full overwite
+                ("", actual)
+            } else {
+                tmp = (expected_lines.join("\n"), used.join("\n"));
+                (&tmp.0, &tmp.1)
+            }
+        } else {
+            (expected, actual)
+        };
 
         if !self.config.bless {
             if expected.is_empty() {

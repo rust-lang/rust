@@ -1,3 +1,5 @@
+// known-bug: #110395
+
 // revisions: stock precise
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
@@ -24,8 +26,6 @@ const fn check<T: ~const Destruct>(_: T) {}
 macro_rules! check_all {
     ($($exp:expr),*$(,)?) => {$(
         const _: () = check($exp);
-        //~^ ERROR can't drop
-        //~| ERROR can't drop
     )*};
 }
 

@@ -10,7 +10,7 @@
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::iter::{repeat_n, repeat_with, ByRefSized, FromIterator};
+use core::iter::{repeat_n, repeat_with, ByRefSized};
 use core::mem::{ManuallyDrop, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr;
@@ -2815,7 +2815,7 @@ impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     }
 
     #[inline]
-    fn extend_one(&mut self, &elem: &T) {
+    fn extend_one(&mut self, &elem: &'a T) {
         self.push_back(elem);
     }
 

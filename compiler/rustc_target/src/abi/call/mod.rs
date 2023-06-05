@@ -2,7 +2,6 @@ use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
-use std::fmt;
 use std::str::FromStr;
 
 mod aarch64;
@@ -28,7 +27,7 @@ mod x86;
 mod x86_64;
 mod x86_win64;
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
@@ -65,7 +64,7 @@ mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags::bitflags! {
         #[derive(Default, HashStable_Generic)]
-        pub struct ArgAttribute: u16 {
+        pub struct ArgAttribute: u8 {
             const NoAlias   = 1 << 1;
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
@@ -211,7 +210,7 @@ impl Uniform {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
     pub rest: Uniform,
@@ -458,7 +457,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
     pub mode: PassMode,
@@ -605,7 +604,7 @@ pub enum Conv {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
     pub args: Box<[ArgAbi<'a, Ty>]>,
@@ -631,16 +630,6 @@ pub struct FnAbi<'a, Ty> {
 pub enum AdjustForForeignAbiError {
     /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
     Unsupported { arch: Symbol, abi: spec::abi::Abi },
-}
-
-impl fmt::Display for AdjustForForeignAbiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unsupported { arch, abi } => {
-                write!(f, "target architecture {arch:?} does not support `extern {abi}` ABI")
-            }
-        }
-    }
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {
@@ -755,7 +744,7 @@ impl FromStr for Conv {
             "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
-            _ => Err(format!("'{s}' is not a valid value for entry function call convetion.")),
+            _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
         }
     }
 }

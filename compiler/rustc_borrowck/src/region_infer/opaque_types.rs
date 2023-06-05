@@ -2,9 +2,10 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
@@ -91,7 +92,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                     None => {
                         subst_regions.push(vid);
-                        infcx.tcx.mk_re_error_with_message(
+                        ty::Region::new_error_with_message(
+                            infcx.tcx,
                             concrete_type.span,
                             "opaque type with non-universal region substs",
                         )
@@ -152,8 +154,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
                         prev.report_mismatch(
                             &OpaqueHiddenType { ty, span: concrete_type.span },
+                            opaque_type_key.def_id,
                             infcx.tcx,
                         )
+                        .emit()
                     });
                     prev.ty = infcx.tcx.ty_error(guar);
                 }
@@ -265,7 +269,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
         // on stable and we'd break that.
-        let OpaqueTyOrigin::TyAlias = origin else {
+        let OpaqueTyOrigin::TyAlias { .. } = origin else {
             return definition_ty;
         };
         let def_id = opaque_type_key.def_id;
@@ -275,8 +279,18 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // HACK This bubble is required for this tests to pass:
         // nested-return-type2-tait2.rs
         // nested-return-type2-tait3.rs
-        let infcx =
-            self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
+        // FIXME(-Ztrait-solver=next): We probably should use `DefiningAnchor::Error`
+        // and prepopulate this `InferCtxt` with known opaque values, rather than
+        // using the `Bind` anchor here. For now it's fine.
+        let infcx = self
+            .tcx
+            .infer_ctxt()
+            .with_opaque_type_inference(if self.tcx.trait_solver_next() {
+                DefiningAnchor::Bind(def_id)
+            } else {
+                DefiningAnchor::Bubble
+            })
+            .build();
         let ocx = ObligationCtxt::new(&infcx);
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
@@ -360,7 +374,7 @@ fn check_opaque_type_parameter_valid(
         // which would error here on all of the `'static` args.
         OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return Ok(()),
         // Check these
-        OpaqueTyOrigin::TyAlias => {}
+        OpaqueTyOrigin::TyAlias { .. } => {}
     }
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
@@ -399,7 +413,7 @@ fn check_opaque_type_parameter_valid(
             return Err(tcx
                 .sess
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(spans, &format!("{} used multiple times", descr))
+                .span_note(spans, format!("{} used multiple times", descr))
                 .emit());
         }
     }

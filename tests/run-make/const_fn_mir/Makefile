@@ -1,3 +1,4 @@
+# needs-unwind -Cpanic=abort gives different MIR output
 include ../tools.mk
 
 all:

@@ -42,7 +42,7 @@ function parseOptions(args) {
         "executable_path": null,
         "no_sandbox": false,
     };
-    const correspondances = {
+    const correspondences = {
         "--doc-folder": "doc_folder",
         "--tests-folder": "tests_folder",
         "--debug": "debug",
@@ -73,7 +73,7 @@ function parseOptions(args) {
                 }
                 opts["jobs"] = parseInt(arg_value);
             } else if (arg !== "--file") {
-                opts[correspondances[arg]] = arg_value;
+                opts[correspondences[arg]] = arg_value;
             } else {
                 opts["files"].push(arg_value);
             }
@@ -82,9 +82,9 @@ function parseOptions(args) {
             process.exit(0);
         } else if (arg === "--no-sandbox") {
             console.log("`--no-sandbox` is being used. Be very careful!");
-            opts[correspondances[arg]] = true;
-        } else if (correspondances[arg]) {
-            opts[correspondances[arg]] = true;
+            opts[correspondences[arg]] = true;
+        } else if (correspondences[arg]) {
+            opts[correspondences[arg]] = true;
         } else {
             console.log("Unknown option `" + arg + "`.");
             console.log("Use `--help` to see the list of options");
@@ -143,7 +143,7 @@ async function runTests(opts, framework_options, files, results, status_bar, sho
     const tests_queue = [];
 
     for (const testPath of files) {
-        const callback = runTest(testPath, framework_options)
+        const callback = runTest(testPath, {"options": framework_options})
             .then(out => {
                 const [output, nb_failures] = out;
                 results[nb_failures === 0 ? "successful" : "failed"].push({
@@ -323,6 +323,7 @@ async function main(argv) {
     if (results.failed.length > 0 || results.errored.length > 0) {
         process.exit(1);
     }
+    process.exit(0);
 }
 
 main(process.argv);

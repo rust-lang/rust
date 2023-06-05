@@ -4,6 +4,8 @@ use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync;
 use rustc_errors::registry::Registry;
 use rustc_parse::validate_attr;
 use rustc_session as session;
@@ -86,7 +88,7 @@ pub fn create_session(
     ) {
         Ok(bundle) => bundle,
         Err(e) => {
-            early_error(sopts.error_format, &format!("failed to load fluent bundle: {e}"));
+            early_error(sopts.error_format, format!("failed to load fluent bundle: {e}"));
         }
     };
 
@@ -102,6 +104,7 @@ pub fn create_session(
         lint_caps,
         file_loader,
         target_override,
+        rustc_version_str().unwrap_or("unknown"),
     );
 
     codegen_backend.init(&sess);
@@ -168,8 +171,10 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 ) -> R {
     use rustc_data_structures::jobserver;
     use rustc_middle::ty::tls;
-    use rustc_query_impl::{deadlock, QueryContext, QueryCtxt};
+    use rustc_query_impl::QueryCtxt;
+    use rustc_query_system::query::{deadlock, QueryContext};
 
+    let registry = sync::Registry::new(threads);
     let mut builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
@@ -179,7 +184,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
             let query_map = tls::with(|tcx| {
-                QueryCtxt::from_tcx(tcx)
+                QueryCtxt::new(tcx)
                     .try_collect_active_jobs()
                     .expect("active jobs shouldn't be locked in deadlock handler")
             });
@@ -200,6 +205,9 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
                 .build_scoped(
                     // Initialize each new worker thread when created.
                     move |thread: rayon::ThreadBuilder| {
+                        // Register the thread for use with the `WorkerLocal` type.
+                        registry.register();
+
                         rustc_span::set_session_globals_then(session_globals, || thread.run())
                     },
                     // Run `f` on the first thread in the thread pool.
@@ -213,13 +221,13 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 fn load_backend_from_dylib(path: &Path) -> MakeBackendFn {
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {path:?}: {err}");
-        early_error(ErrorOutputType::default(), &err);
+        early_error(ErrorOutputType::default(), err);
     });
 
     let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
         .unwrap_or_else(|e| {
             let err = format!("couldn't load codegen backend: {e}");
-            early_error(ErrorOutputType::default(), &err);
+            early_error(ErrorOutputType::default(), err);
         });
 
     // Intentionally leak the dynamic library. We can't ever unload it
@@ -313,7 +321,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
             "failed to find a `codegen-backends` folder \
                            in the sysroot candidates:\n* {candidates}"
         );
-        early_error(ErrorOutputType::default(), &err);
+        early_error(ErrorOutputType::default(), err);
     });
     info!("probing {} for a codegen backend", sysroot.display());
 
@@ -324,7 +332,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
             sysroot.display(),
             e
         );
-        early_error(ErrorOutputType::default(), &err);
+        early_error(ErrorOutputType::default(), err);
     });
 
     let mut file: Option<PathBuf> = None;
@@ -352,7 +360,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
                 prev.display(),
                 path.display()
             );
-            early_error(ErrorOutputType::default(), &err);
+            early_error(ErrorOutputType::default(), err);
         }
         file = Some(path.clone());
     }
@@ -361,7 +369,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
         Some(ref s) => load_backend_from_dylib(s),
         None => {
             let err = format!("unsupported builtin codegen backend `{backend_name}`");
-            early_error(ErrorOutputType::default(), &err);
+            early_error(ErrorOutputType::default(), err);
         }
     }
 }

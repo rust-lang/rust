@@ -152,7 +152,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _maxevents = this.read_scalar(maxevents)?.to_i32()?;
         let _timeout = this.read_scalar(timeout)?.to_i32()?;
 
-        let numevents = 0;
         if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
             let _epfd = epfd
                 .as_any_mut()
@@ -160,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
             // FIXME return number of events ready when scheme for marking events ready exists
-            Ok(Scalar::from_i32(numevents))
+            throw_unsup_format!("returning ready events from epoll_wait is not yet implemented");
         } else {
             Ok(Scalar::from_i32(this.handle_not_found()?))
         }

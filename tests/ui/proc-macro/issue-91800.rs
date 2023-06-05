@@ -5,7 +5,7 @@ extern crate issue_91800_macro;
 
 #[derive(MyTrait)]
 //~^ ERROR macros that expand to items must be delimited with braces or followed by a semicolon
-//~| ERROR proc-macro derive produced unparseable tokens
+//~| ERROR proc-macro derive produced unparsable tokens
 #[attribute_macro]
 //~^ ERROR macros that expand to items must be delimited with braces or followed by a semicolon
 struct MyStruct;

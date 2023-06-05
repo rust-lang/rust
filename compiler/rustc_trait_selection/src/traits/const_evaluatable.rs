@@ -44,7 +44,7 @@ pub fn is_const_evaluatable<'tcx>(
         let ct = tcx.expand_abstract_consts(unexpanded_ct);
 
         let is_anon_ct = if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-            tcx.def_kind(uv.def.did) == DefKind::AnonConst
+            tcx.def_kind(uv.def) == DefKind::AnonConst
         } else {
             false
         };
@@ -79,7 +79,7 @@ pub fn is_const_evaluatable<'tcx>(
                             "Missing value for constant, but no error reported?",
                         )))
                     }
-                    Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+                    Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
                     Ok(_) => Ok(()),
                 }
             }
@@ -119,7 +119,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.sess
                     .struct_span_fatal(
                         // Slightly better span than just using `span` alone
-                        if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def.did) } else { span },
+                        if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def) } else { span },
                         "failed to evaluate generic const expression",
                     )
                     .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
@@ -147,7 +147,7 @@ pub fn is_const_evaluatable<'tcx>(
 
                 Err(err)
             }
-            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
             Ok(_) => Ok(()),
         }
     }

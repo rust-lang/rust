@@ -1,5 +1,5 @@
 // This test checks links colors.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This is needed so that the text color is computed.
 show-text: true
@@ -9,7 +9,7 @@ define-function: (
     (theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
      sidebar, sidebar_current, sidebar_current_background),
     block {
-        local-storage: {
+        set-local-storage: {
             "rustdoc-theme": |theme|,
             "rustdoc-use-system-theme": "false",
         }

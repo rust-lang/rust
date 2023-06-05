@@ -176,14 +176,14 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::Alias(ty::Projection, data) => {
-                self.add_flags(TypeFlags::HAS_TY_PROJECTION);
-                self.add_projection_ty(data);
-            }
+            &ty::Alias(kind, data) => {
+                self.add_flags(match kind {
+                    ty::Projection => TypeFlags::HAS_TY_PROJECTION,
+                    ty::Inherent => TypeFlags::HAS_TY_INHERENT,
+                    ty::Opaque => TypeFlags::HAS_TY_OPAQUE,
+                });
 
-            &ty::Alias(ty::Opaque, ty::AliasTy { substs, .. }) => {
-                self.add_flags(TypeFlags::HAS_TY_OPAQUE);
-                self.add_substs(substs);
+                self.add_alias_ty(data);
             }
 
             &ty::Dynamic(obj, r, _) => {
@@ -267,7 +267,7 @@ impl FlagComputation {
                 projection_ty,
                 term,
             })) => {
-                self.add_projection_ty(projection_ty);
+                self.add_alias_ty(projection_ty);
                 self.add_term(term);
             }
             ty::PredicateKind::WellFormed(arg) => {
@@ -372,8 +372,8 @@ impl FlagComputation {
         }
     }
 
-    fn add_projection_ty(&mut self, projection_ty: ty::AliasTy<'_>) {
-        self.add_substs(projection_ty.substs);
+    fn add_alias_ty(&mut self, alias_ty: ty::AliasTy<'_>) {
+        self.add_substs(alias_ty.substs);
     }
 
     fn add_substs(&mut self, substs: &[GenericArg<'_>]) {

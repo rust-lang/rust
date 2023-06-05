@@ -12,7 +12,6 @@ use rustc_span::{Span, DUMMY_SP};
 
 use crate::{
     constraints::OutlivesConstraint,
-    nll::ToRegionVid,
     region_infer::TypeTest,
     type_check::{Locations, MirTypeckRegionConstraints},
     universal_regions::UniversalRegions,
@@ -198,7 +197,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
         if let ty::RePlaceholder(placeholder) = *r {
-            self.constraints.placeholder_region(self.infcx, placeholder).to_region_vid()
+            self.constraints.placeholder_region(self.infcx, placeholder).as_var()
         } else {
             self.universal_regions.to_region_vid(r)
         }

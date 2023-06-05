@@ -72,4 +72,13 @@ fn main() {
     } else {
         &0
     };
+
+    #[derive(PartialEq, Eq)]
+    struct Foo;
+    let foo = Foo;
+    let bar = &Foo;
+
+    if foo == bar {
+    //~^ ERROR mismatched types
+    }
 }

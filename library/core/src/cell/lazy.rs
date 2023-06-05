@@ -63,6 +63,34 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         LazyCell { state: UnsafeCell::new(State::Uninit(f)) }
     }
 
+    /// Consumes this `LazyCell` returning the stored value.
+    ///
+    /// Returns `Ok(value)` if `Lazy` is initialized and `Err(f)` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lazy_cell)]
+    /// #![feature(lazy_cell_consume)]
+    ///
+    /// use std::cell::LazyCell;
+    ///
+    /// let hello = "Hello, World!".to_string();
+    ///
+    /// let lazy = LazyCell::new(|| hello.to_uppercase());
+    ///
+    /// assert_eq!(&*lazy, "HELLO, WORLD!");
+    /// assert_eq!(LazyCell::into_inner(lazy).ok(), Some("HELLO, WORLD!".to_string()));
+    /// ```
+    #[unstable(feature = "lazy_cell_consume", issue = "109736")]
+    pub fn into_inner(this: Self) -> Result<T, F> {
+        match this.state.into_inner() {
+            State::Init(data) => Ok(data),
+            State::Uninit(f) => Err(f),
+            State::Poisoned => panic!("LazyCell instance has previously been poisoned"),
+        }
+    }
+
     /// Forces the evaluation of this lazy value and returns a reference to
     /// the result.
     ///

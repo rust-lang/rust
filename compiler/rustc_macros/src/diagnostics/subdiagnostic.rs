@@ -4,16 +4,17 @@ use crate::diagnostics::error::{
     invalid_attr, span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    build_field_mapping, is_doc_comment, new_code_ident,
-    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span, FieldInfo,
-    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    build_field_mapping, build_suggestion_code, is_doc_comment, new_code_ident,
+    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
+    should_generate_set_arg, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap,
+    HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
-use super::utils::{build_suggestion_code, AllowMultipleAlternatives};
+use super::utils::SubdiagnosticVariant;
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
 pub(crate) struct SubdiagnosticDeriveBuilder {
@@ -181,11 +182,13 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
 }
 
 impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
-    fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
+    fn identify_kind(
+        &mut self,
+    ) -> Result<Vec<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some((kind, slug)) = SubdiagnosticKind::from_attr(attr, self)? else {
+            let Some(SubdiagnosticVariant { kind, slug, no_span }) = SubdiagnosticVariant::from_attr(attr, self)? else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
                 // subdiagnostics.
                 continue;
@@ -203,26 +206,27 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 );
             };
 
-            kind_slugs.push((kind, slug));
+            kind_slugs.push((kind, slug, no_span));
         }
 
         Ok(kind_slugs)
     }
 
     /// Generates the code for a field with no attributes.
-    fn generate_field_set_arg(&mut self, binding: &BindingInfo<'_>) -> TokenStream {
-        let ast = binding.ast();
-        assert_eq!(ast.attrs.len(), 0, "field with attribute used as diagnostic arg");
-
+    fn generate_field_set_arg(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
         let diag = &self.parent.diag;
-        let ident = ast.ident.as_ref().unwrap();
-        // strip `r#` prefix, if present
-        let ident = format_ident!("{}", ident);
+
+        let field = binding_info.ast();
+        let mut field_binding = binding_info.binding.clone();
+        field_binding.set_span(field.ty.span());
+
+        let ident = field.ident.as_ref().unwrap();
+        let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {
             #diag.set_arg(
                 stringify!(#ident),
-                #binding
+                #field_binding
             );
         }
     }
@@ -399,7 +403,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         clone_suggestion_code: bool,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let span = attr.span().unwrap();
-        let ident = &list.path.segments.last().unwrap().ident;
+        let mut ident = list.path.segments.last().unwrap().ident.clone();
+        ident.set_span(info.ty.span());
         let name = ident.to_string();
         let name = name.as_str();
 
@@ -486,7 +491,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             }
         };
 
-        let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
+        let kind_stats: KindsStatistics =
+            kind_slugs.iter().map(|(kind, _slug, _no_span)| kind).collect();
 
         let init = if kind_stats.has_multipart_suggestion {
             quote! { let mut suggestions = Vec::new(); }
@@ -498,7 +504,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .variant
             .bindings()
             .iter()
-            .filter(|binding| !binding.ast().attrs.is_empty())
+            .filter(|binding| !should_generate_set_arg(binding.ast()))
             .map(|binding| self.generate_field_attr_code(binding, kind_stats))
             .collect();
 
@@ -507,13 +513,17 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let diag = &self.parent.diag;
         let f = &self.parent.f;
         let mut calls = TokenStream::new();
-        for (kind, slug) in kind_slugs {
+        for (kind, slug, no_span) in kind_slugs {
             let message = format_ident!("__message");
             calls.extend(
                 quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
             );
 
-            let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
+            let name = format_ident!(
+                "{}{}",
+                if span_field.is_some() && !no_span { "span_" } else { "" },
+                kind
+            );
             let call = match kind {
                 SubdiagnosticKind::Suggestion {
                     suggestion_kind,
@@ -565,7 +575,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     }
                 }
                 _ => {
-                    if let Some(span) = span_field {
+                    if let Some(span) = span_field && !no_span {
                         quote! { #diag.#name(#span, #message); }
                     } else {
                         quote! { #diag.#name(#message); }
@@ -580,7 +590,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .variant
             .bindings()
             .iter()
-            .filter(|binding| binding.ast().attrs.is_empty())
+            .filter(|binding| should_generate_set_arg(binding.ast()))
             .map(|binding| self.generate_field_set_arg(binding))
             .collect();
 

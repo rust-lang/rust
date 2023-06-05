@@ -22,7 +22,7 @@ pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]
                 if arms.len() == 2 {
                     // no guards
                     let exprs = if let PatKind::Lit(arm_bool) = arms[0].pat.kind {
-                        if let ExprKind::Lit(ref lit) = arm_bool.kind {
+                        if let ExprKind::Lit(lit) = arm_bool.kind {
                             match lit.node {
                                 LitKind::Bool(true) => Some((arms[0].body, arms[1].body)),
                                 LitKind::Bool(false) => Some((arms[1].body, arms[0].body)),

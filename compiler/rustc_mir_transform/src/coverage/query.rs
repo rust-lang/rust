@@ -2,7 +2,7 @@ use super::*;
 
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, Body, Coverage, CoverageInfo};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
@@ -164,7 +164,6 @@ fn is_inlined(body: &Body<'_>, statement: &Statement<'_>) -> bool {
 /// whether that means const mir or runtime mir. For `const fn` this opts for runtime
 /// mir.
 fn mir_body(tcx: TyCtxt<'_>, def_id: DefId) -> &mir::Body<'_> {
-    let id = ty::WithOptConstParam::unknown(def_id);
-    let def = ty::InstanceDef::Item(id);
+    let def = ty::InstanceDef::Item(def_id);
     tcx.instance_mir(def)
 }

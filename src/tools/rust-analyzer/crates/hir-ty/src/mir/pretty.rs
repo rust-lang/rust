@@ -1,38 +1,24 @@
 //! A pretty-printer for MIR.
 
-use std::fmt::{Display, Write};
+use std::{
+    fmt::{Debug, Display, Write},
+    mem,
+};
 
-use hir_def::{body::Body, expr::BindingId};
+use hir_def::{body::Body, hir::BindingId};
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
 
 use crate::{
     db::HirDatabase,
-    display::HirDisplay,
-    mir::{PlaceElem, ProjectionElem, StatementKind, Terminator},
+    display::{ClosureStyle, HirDisplay},
+    mir::{PlaceElem, ProjectionElem, StatementKind, TerminatorKind},
+    ClosureId,
 };
 
 use super::{
     AggregateKind, BasicBlockId, BorrowKind, LocalId, MirBody, Operand, Place, Rvalue, UnOp,
 };
-
-impl MirBody {
-    pub fn pretty_print(&self, db: &dyn HirDatabase) -> String {
-        let hir_body = db.body(self.owner);
-        let mut ctx = MirPrettyCtx::new(self, &hir_body, db);
-        ctx.for_body();
-        ctx.result
-    }
-}
-
-struct MirPrettyCtx<'a> {
-    body: &'a MirBody,
-    hir_body: &'a Body,
-    db: &'a dyn HirDatabase,
-    result: String,
-    ident: String,
-    local_to_binding: ArenaMap<LocalId, BindingId>,
-}
 
 macro_rules! w {
     ($dst:expr, $($arg:tt)*) => {
@@ -47,6 +33,57 @@ macro_rules! wln {
     ($dst:expr, $($arg:tt)*) => {
         { let _ = writeln!($dst, $($arg)*); }
     };
+}
+
+impl MirBody {
+    pub fn pretty_print(&self, db: &dyn HirDatabase) -> String {
+        let hir_body = db.body(self.owner);
+        let mut ctx = MirPrettyCtx::new(self, &hir_body, db);
+        ctx.for_body(|this| match ctx.body.owner {
+            hir_def::DefWithBodyId::FunctionId(id) => {
+                let data = db.function_data(id);
+                w!(this, "fn {}() ", data.name.display(db.upcast()));
+            }
+            hir_def::DefWithBodyId::StaticId(id) => {
+                let data = db.static_data(id);
+                w!(this, "static {}: _ = ", data.name.display(db.upcast()));
+            }
+            hir_def::DefWithBodyId::ConstId(id) => {
+                let data = db.const_data(id);
+                w!(
+                    this,
+                    "const {}: _ = ",
+                    data.name.as_ref().unwrap_or(&Name::missing()).display(db.upcast())
+                );
+            }
+            hir_def::DefWithBodyId::VariantId(id) => {
+                let data = db.enum_data(id.parent);
+                w!(this, "enum {} = ", data.name.display(db.upcast()));
+            }
+        });
+        ctx.result
+    }
+
+    // String with lines is rendered poorly in `dbg` macros, which I use very much, so this
+    // function exists to solve that.
+    pub fn dbg(&self, db: &dyn HirDatabase) -> impl Debug {
+        struct StringDbg(String);
+        impl Debug for StringDbg {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        StringDbg(self.pretty_print(db))
+    }
+}
+
+struct MirPrettyCtx<'a> {
+    body: &'a MirBody,
+    hir_body: &'a Body,
+    db: &'a dyn HirDatabase,
+    result: String,
+    indent: String,
+    local_to_binding: ArenaMap<LocalId, BindingId>,
 }
 
 impl Write for MirPrettyCtx<'_> {
@@ -66,31 +103,62 @@ enum LocalName {
     Binding(Name, LocalId),
 }
 
-impl Display for LocalName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl HirDisplay for LocalName {
+    fn hir_fmt(
+        &self,
+        f: &mut crate::display::HirFormatter<'_>,
+    ) -> Result<(), crate::display::HirDisplayError> {
         match self {
             LocalName::Unknown(l) => write!(f, "_{}", u32::from(l.into_raw())),
-            LocalName::Binding(n, l) => write!(f, "{n}_{}", u32::from(l.into_raw())),
+            LocalName::Binding(n, l) => {
+                write!(f, "{}_{}", n.display(f.db.upcast()), u32::from(l.into_raw()))
+            }
         }
     }
 }
 
 impl<'a> MirPrettyCtx<'a> {
-    fn for_body(&mut self) {
+    fn for_body(&mut self, name: impl FnOnce(&mut MirPrettyCtx<'_>)) {
+        name(self);
         self.with_block(|this| {
             this.locals();
             wln!(this);
             this.blocks();
         });
+        for &closure in &self.body.closures {
+            self.for_closure(closure);
+        }
+    }
+
+    fn for_closure(&mut self, closure: ClosureId) {
+        let body = match self.db.mir_body_for_closure(closure) {
+            Ok(x) => x,
+            Err(e) => {
+                wln!(self, "// error in {closure:?}: {e:?}");
+                return;
+            }
+        };
+        let result = mem::take(&mut self.result);
+        let indent = mem::take(&mut self.indent);
+        let mut ctx = MirPrettyCtx {
+            body: &body,
+            local_to_binding: body.binding_locals.iter().map(|(x, y)| (*y, x)).collect(),
+            result,
+            indent,
+            ..*self
+        };
+        ctx.for_body(|this| wln!(this, "// Closure: {:?}", closure));
+        self.result = ctx.result;
+        self.indent = ctx.indent;
     }
 
     fn with_block(&mut self, f: impl FnOnce(&mut MirPrettyCtx<'_>)) {
-        self.ident += "    ";
+        self.indent += "    ";
         wln!(self, "{{");
         f(self);
         for _ in 0..4 {
             self.result.pop();
-            self.ident.pop();
+            self.indent.pop();
         }
         wln!(self, "}}");
     }
@@ -101,7 +169,7 @@ impl<'a> MirPrettyCtx<'a> {
             body,
             db,
             result: String::new(),
-            ident: String::new(),
+            indent: String::new(),
             local_to_binding,
             hir_body,
         }
@@ -109,7 +177,7 @@ impl<'a> MirPrettyCtx<'a> {
 
     fn write_line(&mut self) {
         self.result.push('\n');
-        self.result += &self.ident;
+        self.result += &self.indent;
     }
 
     fn write(&mut self, line: &str) {
@@ -118,7 +186,12 @@ impl<'a> MirPrettyCtx<'a> {
 
     fn locals(&mut self) {
         for (id, local) in self.body.locals.iter() {
-            wln!(self, "let {}: {};", self.local_name(id), local.ty.display(self.db));
+            wln!(
+                self,
+                "let {}: {};",
+                self.local_name(id).display(self.db),
+                self.hir_display(&local.ty)
+            );
         }
     }
 
@@ -147,10 +220,10 @@ impl<'a> MirPrettyCtx<'a> {
                             wln!(this, ";");
                         }
                         StatementKind::StorageDead(p) => {
-                            wln!(this, "StorageDead({})", this.local_name(*p));
+                            wln!(this, "StorageDead({})", this.local_name(*p).display(self.db));
                         }
                         StatementKind::StorageLive(p) => {
-                            wln!(this, "StorageLive({})", this.local_name(*p));
+                            wln!(this, "StorageLive({})", this.local_name(*p).display(self.db));
                         }
                         StatementKind::Deinit(p) => {
                             w!(this, "Deinit(");
@@ -161,11 +234,11 @@ impl<'a> MirPrettyCtx<'a> {
                     }
                 }
                 match &block.terminator {
-                    Some(terminator) => match terminator {
-                        Terminator::Goto { target } => {
+                    Some(terminator) => match &terminator.kind {
+                        TerminatorKind::Goto { target } => {
                             wln!(this, "goto 'bb{};", u32::from(target.into_raw()))
                         }
-                        Terminator::SwitchInt { discr, targets } => {
+                        TerminatorKind::SwitchInt { discr, targets } => {
                             w!(this, "switch ");
                             this.operand(discr);
                             w!(this, " ");
@@ -176,7 +249,7 @@ impl<'a> MirPrettyCtx<'a> {
                                 wln!(this, "_ => {},", this.basic_block_id(targets.otherwise()));
                             });
                         }
-                        Terminator::Call { func, args, destination, target, .. } => {
+                        TerminatorKind::Call { func, args, destination, target, .. } => {
                             w!(this, "Call ");
                             this.with_block(|this| {
                                 w!(this, "func: ");
@@ -208,7 +281,7 @@ impl<'a> MirPrettyCtx<'a> {
         fn f(this: &mut MirPrettyCtx<'_>, local: LocalId, projections: &[PlaceElem]) {
             let Some((last, head)) = projections.split_last() else {
                 // no projection
-                w!(this, "{}", this.local_name(local));
+                w!(this, "{}", this.local_name(local).display(this.db));
                 return;
             };
             match last {
@@ -226,21 +299,26 @@ impl<'a> MirPrettyCtx<'a> {
                             f(this, local, head);
                             let variant_name =
                                 &this.db.enum_data(e.parent).variants[e.local_id].name;
-                            w!(this, " as {}).{}", variant_name, name);
+                            w!(
+                                this,
+                                " as {}).{}",
+                                variant_name.display(this.db.upcast()),
+                                name.display(this.db.upcast())
+                            );
                         }
                         hir_def::VariantId::StructId(_) | hir_def::VariantId::UnionId(_) => {
                             f(this, local, head);
-                            w!(this, ".{name}");
+                            w!(this, ".{}", name.display(this.db.upcast()));
                         }
                     }
                 }
-                ProjectionElem::TupleField(x) => {
+                ProjectionElem::TupleOrClosureField(x) => {
                     f(this, local, head);
                     w!(this, ".{}", x);
                 }
                 ProjectionElem::Index(l) => {
                     f(this, local, head);
-                    w!(this, "[{}]", this.local_name(*l));
+                    w!(this, "[{}]", this.local_name(*l).display(this.db));
                 }
                 x => {
                     f(this, local, head);
@@ -258,7 +336,8 @@ impl<'a> MirPrettyCtx<'a> {
                 // equally. Feel free to change it.
                 self.place(p);
             }
-            Operand::Constant(c) => w!(self, "Const({})", c.display(self.db)),
+            Operand::Constant(c) => w!(self, "Const({})", self.hir_display(c)),
+            Operand::Static(s) => w!(self, "Static({:?})", s),
         }
     }
 
@@ -284,8 +363,18 @@ impl<'a> MirPrettyCtx<'a> {
                 self.operand_list(x);
                 w!(self, "]");
             }
+            Rvalue::Repeat(op, len) => {
+                w!(self, "[");
+                self.operand(op);
+                w!(self, "; {}]", len.display(self.db));
+            }
             Rvalue::Aggregate(AggregateKind::Adt(_, _), x) => {
                 w!(self, "Adt(");
+                self.operand_list(x);
+                w!(self, ")");
+            }
+            Rvalue::Aggregate(AggregateKind::Closure(_), x) => {
+                w!(self, "Closure(");
                 self.operand_list(x);
                 w!(self, ")");
             }
@@ -300,9 +389,9 @@ impl<'a> MirPrettyCtx<'a> {
                 w!(self, ")");
             }
             Rvalue::Cast(ck, op, ty) => {
-                w!(self, "Discriminant({ck:?}");
+                w!(self, "Cast({ck:?}, ");
                 self.operand(op);
-                w!(self, "{})", ty.display(self.db));
+                w!(self, ", {})", self.hir_display(ty));
             }
             Rvalue::CheckedBinaryOp(b, o1, o2) => {
                 self.operand(o1);
@@ -322,6 +411,7 @@ impl<'a> MirPrettyCtx<'a> {
                 self.place(p);
                 w!(self, ")");
             }
+            Rvalue::ShallowInitBoxWithAlloc(_) => w!(self, "ShallowInitBoxWithAlloc"),
             Rvalue::ShallowInitBox(op, _) => {
                 w!(self, "ShallowInitBox(");
                 self.operand(op);
@@ -344,5 +434,9 @@ impl<'a> MirPrettyCtx<'a> {
                 self.operand(op);
             }
         }
+    }
+
+    fn hir_display<T: HirDisplay>(&self, ty: &'a T) -> impl Display + 'a {
+        ty.display(self.db).with_closure_style(ClosureStyle::ClosureWithSubst)
     }
 }

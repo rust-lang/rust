@@ -7,7 +7,7 @@ LL |     ***p = 2;
 help: consider changing this to be a mutable reference
    |
 LL |     let p = &mut y;
-   |             ~~~~~~
+   |              +++
 
 error[E0506]: cannot assign to `**y` because it is borrowed
   --> $DIR/borrowck-issue-14498.rs:25:5

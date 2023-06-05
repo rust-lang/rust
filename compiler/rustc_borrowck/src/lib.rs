@@ -20,14 +20,14 @@ extern crate tracing;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
-    DefiningAnchor, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
+    InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
-use rustc_macros::fluent_messages;
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
     Place, PlaceElem, PlaceRef, VarDebugInfoContents,
@@ -35,7 +35,8 @@ use rustc_middle::mir::{
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
@@ -43,7 +44,6 @@ use rustc_target::abi::FieldIdx;
 
 use either::Either;
 use smallvec::SmallVec;
-use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -62,7 +62,7 @@ use crate::session_diagnostics::VarNeedNotMut;
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
-use facts::AllFacts;
+use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 
 use self::path_utils::*;
 
@@ -88,13 +88,14 @@ mod session_diagnostics;
 mod type_check;
 mod universal_regions;
 mod used_muts;
+mod util;
 
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;
 
 use borrow_set::{BorrowData, BorrowSet};
 use dataflow::{BorrowIndex, BorrowckFlowState as Flows, BorrowckResults, Borrows};
-use nll::{PoloniusOutput, ToRegionVid};
+use nll::PoloniusOutput;
 use place_ext::PlaceExt;
 use places_conflict::{places_conflict, PlaceConflictBias};
 use region_infer::RegionInferenceContext;
@@ -118,24 +119,12 @@ impl<'tcx> TyCtxtConsts<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        mir_borrowck: |tcx, did| {
-            if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
-                tcx.mir_borrowck_const_arg(def)
-            } else {
-                mir_borrowck(tcx, ty::WithOptConstParam::unknown(did))
-            }
-        },
-        mir_borrowck_const_arg: |tcx, (did, param_did)| {
-            mir_borrowck(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
-        },
-        ..*providers
-    };
+    *providers = Providers { mir_borrowck, ..*providers };
 }
 
-fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &BorrowCheckResult<'_> {
+fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
     let (input_body, promoted) = tcx.mir_promoted(def);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
+    debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
 
     if input_body.borrow().should_skip() {
         debug!("Skipping borrowck because of injected body");
@@ -149,13 +138,13 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Bor
         return tcx.arena.alloc(result);
     }
 
-    let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
+    let hir_owner = tcx.hir().local_def_id_to_hir_id(def).owner;
 
     let infcx =
         tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
     let input_body: &Body<'_> = &input_body.borrow();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, false).0;
+    let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, None).0;
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(opt_closure_req)
@@ -163,22 +152,22 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Bor
 
 /// Perform the actual borrow checking.
 ///
-/// If `return_body_with_facts` is true, then return the body with non-erased
-/// region ids on which the borrow checking was performed together with Polonius
-/// facts.
-#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.with_opt_param().as_local().unwrap()), level = "debug")]
+/// Use `consumer_options: None` for the default behavior of returning
+/// [`BorrowCheckResult`] only. Otherwise, return [`BodyWithBorrowckFacts`] according
+/// to the given [`ConsumerOptions`].
+#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
 fn do_mir_borrowck<'tcx>(
     infcx: &InferCtxt<'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexSlice<Promoted, Body<'tcx>>,
-    return_body_with_facts: bool,
+    consumer_options: Option<ConsumerOptions>,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
-    let def = input_body.source.with_opt_param().as_local().unwrap();
+    let def = input_body.source.def_id().expect_local();
     debug!(?def);
 
     let tcx = infcx.tcx;
     let infcx = BorrowckInferCtxt::new(infcx);
-    let param_env = tcx.param_env(def.did);
+    let param_env = tcx.param_env(def);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -206,7 +195,7 @@ fn do_mir_borrowck<'tcx>(
         errors.set_tainted_by_errors(e);
     }
     let upvars: Vec<_> = tcx
-        .closure_captures(def.did)
+        .closure_captures(def)
         .iter()
         .map(|&captured_place| {
             let capture = captured_place.info.capture_kind;
@@ -248,11 +237,9 @@ fn do_mir_borrowck<'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
 
-    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def.did).is_fn_or_closure();
+    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
-
-    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.unstable_opts.polonius;
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
@@ -273,7 +260,7 @@ fn do_mir_borrowck<'tcx>(
         &mdpe.move_data,
         &borrow_set,
         &upvars,
-        use_polonius,
+        consumer_options,
     );
 
     // Dump MIR results into a file, if that is enabled. This let us
@@ -342,7 +329,6 @@ fn do_mir_borrowck<'tcx>(
                 used_mut: Default::default(),
                 used_mut_upvars: SmallVec::new(),
                 borrow_set: Rc::clone(&borrow_set),
-                dominators: Default::default(),
                 upvars: Vec::new(),
                 local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
                 region_names: RefCell::default(),
@@ -371,7 +357,6 @@ fn do_mir_borrowck<'tcx>(
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: Rc::clone(&borrow_set),
-        dominators: Default::default(),
         upvars,
         local_names,
         region_names: RefCell::default(),
@@ -455,13 +440,16 @@ fn do_mir_borrowck<'tcx>(
         tainted_by_errors,
     };
 
-    let body_with_facts = if return_body_with_facts {
-        let output_facts = mbcx.polonius_output.expect("Polonius output was not computed");
+    let body_with_facts = if consumer_options.is_some() {
+        let output_facts = mbcx.polonius_output;
         Some(Box::new(BodyWithBorrowckFacts {
             body: body_owned,
-            input_facts: *polonius_input.expect("Polonius input facts were not generated"),
+            promoted,
+            borrow_set,
+            region_inference_context: regioncx,
+            location_table: polonius_input.as_ref().map(|_| location_table_owned),
+            input_facts: polonius_input,
             output_facts,
-            location_table: location_table_owned,
         }))
     } else {
         None
@@ -470,22 +458,6 @@ fn do_mir_borrowck<'tcx>(
     debug!("do_mir_borrowck: result = {:#?}", result);
 
     (result, body_with_facts)
-}
-
-/// A `Body` with information computed by the borrow checker. This struct is
-/// intended to be consumed by compiler consumers.
-///
-/// We need to include the MIR body here because the region identifiers must
-/// match the ones in the Polonius facts.
-pub struct BodyWithBorrowckFacts<'tcx> {
-    /// A mir body that contains region identifiers.
-    pub body: Body<'tcx>,
-    /// Polonius input facts.
-    pub input_facts: AllFacts,
-    /// Polonius output facts.
-    pub output_facts: Rc<self::nll::PoloniusOutput>,
-    /// The table that maps Polonius points to locations in the table.
-    pub location_table: LocationTable,
 }
 
 pub struct BorrowckInferCtxt<'cx, 'tcx> {
@@ -507,15 +479,13 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         F: Fn() -> RegionCtxt,
     {
         let next_region = self.infcx.next_region_var(origin);
-        let vid = next_region
-            .as_var()
-            .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
+        let vid = next_region.as_var();
 
-        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
+        if cfg!(debug_assertions) {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            var_to_origin.insert(vid, ctxt);
+            assert_eq!(var_to_origin.insert(vid, ctxt), None);
         }
 
         next_region
@@ -530,16 +500,14 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
     where
         F: Fn() -> RegionCtxt,
     {
-        let next_region = self.infcx.next_nll_region_var(origin.clone());
-        let vid = next_region
-            .as_var()
-            .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
+        let next_region = self.infcx.next_nll_region_var(origin);
+        let vid = next_region.as_var();
 
-        if cfg!(debug_assertions) && !self.inside_canonicalization_ctxt() {
+        if cfg!(debug_assertions) {
             debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
             let ctxt = get_ctxt_fn();
             let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-            var_to_origin.insert(vid, ctxt);
+            assert_eq!(var_to_origin.insert(vid, ctxt), None);
         }
 
         next_region
@@ -605,9 +573,6 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 
     /// The set of borrows extracted from the MIR
     borrow_set: Rc<BorrowSet<'tcx>>,
-
-    /// Dominators for MIR
-    dominators: OnceCell<Dominators<BasicBlock>>,
 
     /// Information about upvars not necessarily preserved in types or MIR
     upvars: Vec<Upvar<'tcx>>,
@@ -680,7 +645,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             }
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..)
-            // Only relevant for unsafeck
+            // Only relevant for liveness and unsafeck
             | StatementKind::PlaceMention(..)
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)
@@ -720,17 +685,19 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place, target: _, unwind: _, replace } => {
                 debug!(
                     "visit_terminator_drop \
                      loc: {:?} term: {:?} place: {:?} span: {:?}",
                     loc, term, place, span
                 );
 
+                let write_kind =
+                    if *replace { WriteKind::Replace } else { WriteKind::StorageDeadOrDrop };
                 self.access_place(
                     loc,
                     (*place, span),
-                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    (AccessDepth::Drop, Write(write_kind)),
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
@@ -753,7 +720,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
                 use rustc_middle::mir::AssertKind;
-                if let AssertKind::BoundsCheck { len, index } = msg {
+                if let AssertKind::BoundsCheck { len, index } = &**msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
                 }
@@ -920,6 +887,7 @@ enum ReadKind {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteKind {
     StorageDeadOrDrop,
+    Replace,
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
@@ -950,6 +918,7 @@ enum InitializationRequiringAction {
     PartialAssignment,
 }
 
+#[derive(Debug)]
 struct RootPlace<'tcx> {
     place_local: Local,
     place_projection: &'tcx [PlaceElem<'tcx>],
@@ -1166,12 +1135,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             this.buffer_error(err);
                         }
                         WriteKind::StorageDeadOrDrop => this
-                            .report_storage_dead_or_drop_of_borrowed(location, place_span, borrow),
+                            .report_borrowed_value_does_not_live_long_enough(
+                                location,
+                                borrow,
+                                place_span,
+                                Some(WriteKind::StorageDeadOrDrop),
+                            ),
                         WriteKind::Mutate => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
                         WriteKind::Move => {
                             this.report_move_out_while_borrowed(location, place_span, borrow)
+                        }
+                        WriteKind::Replace => {
+                            this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
                     }
                     Control::Break
@@ -1863,11 +1840,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // is allowed, remove this match arm.
                         ty::Adt(..) | ty::Tuple(..) => {
                             check_parent_of_field(self, location, place_base, span, flow_state);
-
-                            // rust-lang/rust#21232, #54499, #54986: during period where we reject
-                            // partial initialization, do not complain about unnecessary `mut` on
-                            // an attempt to do a partial initialization.
-                            self.used_mut.insert(place.local);
                         }
 
                         _ => {}
@@ -1955,6 +1927,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     (prefix, base, span),
                     mpi,
                 );
+
+                // rust-lang/rust#21232, #54499, #54986: during period where we reject
+                // partial initialization, do not complain about unnecessary `mut` on
+                // an attempt to do a partial initialization.
+                this.used_mut.insert(base.local);
             }
         }
     }
@@ -2016,12 +1993,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Reservation(
                 WriteKind::Move
+                | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
                 | WriteKind::MutableBorrow(BorrowKind::Shallow),
             )
             | Write(
                 WriteKind::Move
+                | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
                 | WriteKind::MutableBorrow(BorrowKind::Shallow),
@@ -2036,7 +2015,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // been emitted (#52262).
                     self.infcx.tcx.sess.delay_span_bug(
                         span,
-                        &format!(
+                        format!(
                             "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
                             place, kind,
                         ),
@@ -2283,7 +2262,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn dominators(&self) -> &Dominators<BasicBlock> {
-        self.dominators.get_or_init(|| self.body.basic_blocks.dominators())
+        // `BasicBlocks` computes dominators on-demand and caches them.
+        self.body.basic_blocks.dominators()
     }
 }
 
@@ -2397,7 +2377,7 @@ mod error {
             }
             for (_, (mut diag, count)) in std::mem::take(&mut self.errors.buffered_mut_errors) {
                 if count > 10 {
-                    diag.note(&format!("...and {} other attempted mutable borrows", count - 10));
+                    diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
                 diag.buffer(&mut self.errors.buffered);
             }

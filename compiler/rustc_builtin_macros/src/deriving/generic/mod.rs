@@ -162,7 +162,7 @@
 pub use StaticFields::*;
 pub use SubstructureFields::*;
 
-use crate::deriving;
+use crate::{deriving, errors};
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, BindingAnnotation, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
@@ -415,7 +415,7 @@ fn find_type_parameters(
         }
 
         fn visit_mac_call(&mut self, mac: &ast::MacCall) {
-            self.cx.span_err(mac.span(), "`derive` cannot be used on items with type macros");
+            self.cx.emit_err(errors::DeriveMacroCall { span: mac.span() });
         }
     }
 
@@ -488,7 +488,7 @@ impl<'a> TraitDef<'a> {
                                 is_packed,
                             )
                         } else {
-                            cx.span_err(mitem.span, "this trait cannot be derived for unions");
+                            cx.emit_err(errors::DeriveUnion { span: mitem.span });
                             return;
                         }
                     }
@@ -1038,7 +1038,7 @@ impl<'a> MethodDef<'a> {
     /// `&self.x` because that might cause an unaligned ref. So for any trait
     /// method that takes a reference, we use a local block to force a copy.
     /// This requires that the field impl `Copy`.
-    /// ```
+    /// ```rust,ignore (example)
     /// # struct A { x: u8, y: u8 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
@@ -1591,7 +1591,7 @@ impl<'a> TraitDef<'a> {
                                 BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
                                 sp,
                                 ast::CRATE_NODE_ID,
-                                &format!(
+                                format!(
                                     "{} slice in a packed struct that derives a built-in trait",
                                     ty
                                 ),

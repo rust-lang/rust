@@ -7,7 +7,6 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -83,7 +82,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // In MIR, argument N is stored in local N+1.
-            let local = Local::new(argument_index + 1);
+            let local = Local::from_usize(argument_index + 1);
 
             let mir_input_ty = body.local_decls[local].ty;
 
@@ -107,7 +106,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
             self.tcx().sess.delay_span_bug(
                 body.span,
-                &format!(
+                format!(
                     "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",
                     body.yield_ty(),
                     universal_regions.yield_ty,

@@ -1,5 +1,3 @@
-#![feature(raw_dylib)]
-
 #[link(name = "extern_1.dll", kind = "raw-dylib", modifiers = "+verbatim")]
 extern {
     fn extern_fn_1();

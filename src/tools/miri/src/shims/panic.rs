@@ -63,8 +63,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
         let payload = this.read_scalar(payload)?;
         let thread = this.active_thread_mut();
-        assert!(thread.panic_payload.is_none(), "the panic runtime should avoid double-panics");
-        thread.panic_payload = Some(payload);
+        thread.panic_payloads.push(payload);
 
         // Jump to the unwind block to begin unwinding.
         this.unwind_to_block(unwind)?;
@@ -146,7 +145,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             // The Thread's `panic_payload` holds what was passed to `miri_start_panic`.
             // This is exactly the second argument we need to pass to `catch_fn`.
-            let payload = this.active_thread_mut().panic_payload.take().unwrap();
+            let payload = this.active_thread_mut().panic_payloads.pop().unwrap();
 
             // Push the `catch_fn` stackframe.
             let f_instance = this.get_ptr_fn(catch_unwind.catch_fn)?.as_instance()?;
@@ -157,7 +156,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 &[catch_unwind.data.into(), payload.into()],
                 None,
                 // Directly return to caller of `try`.
-                StackPopCleanup::Goto { ret: Some(catch_unwind.ret), unwind: mir::UnwindAction::Continue },
+                StackPopCleanup::Goto {
+                    ret: Some(catch_unwind.ret),
+                    unwind: mir::UnwindAction::Continue,
+                },
             )?;
 
             // We pushed a new stack frame, the engine should not do any jumping now!
@@ -211,10 +213,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Abi::Rust,
                     &[index.into(), len.into()],
                     None,
-                    StackPopCleanup::Goto {
-                        ret: None,
-                        unwind,
-                    },
+                    StackPopCleanup::Goto { ret: None, unwind },
                 )?;
             }
             MisalignedPointerDereference { required, found } => {
@@ -235,19 +234,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Abi::Rust,
                     &[required.into(), found.into()],
                     None,
-                    StackPopCleanup::Goto {
-                        ret: None,
-                        unwind,
-                    },
+                    StackPopCleanup::Goto { ret: None, unwind },
                 )?;
             }
 
             _ => {
                 // Forward everything else to `panic` lang item.
-                this.start_panic(
-                    msg.description(),
-                    unwind,
-                )?;
+                this.start_panic(msg.description(), unwind)?;
             }
         }
         Ok(())

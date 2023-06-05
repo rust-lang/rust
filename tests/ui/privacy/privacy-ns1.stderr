@@ -13,7 +13,7 @@ LL |     Baz();
    |     ~~~
 help: consider importing this function instead
    |
-LL | use foo2::Bar;
+LL + use foo2::Bar;
    |
 
 error[E0425]: cannot find function, tuple struct or tuple variant `Bar` in this scope
@@ -31,7 +31,7 @@ LL |     Baz();
    |     ~~~
 help: consider importing this function
    |
-LL | use foo2::Bar;
+LL + use foo2::Bar;
    |
 
 error[E0412]: cannot find type `Bar` in this scope
@@ -49,7 +49,7 @@ LL |     let _x: Box<Baz>;
    |                 ~~~
 help: consider importing this trait
    |
-LL | use foo1::Bar;
+LL + use foo1::Bar;
    |
 
 error[E0747]: constant provided when a type was expected

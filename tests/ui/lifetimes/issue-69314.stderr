@@ -12,6 +12,8 @@ LL |     async fn f2(m: Msg<'_>) {}
 error[E0597]: `buf` does not live long enough
   --> $DIR/issue-69314.rs:14:19
    |
+LL |         let mut buf = [0; 512];
+   |             ------- binding `buf` declared here
 LL |         let m2 = &buf[..];
    |                   ^^^ borrowed value does not live long enough
 LL |         let m = Self::g(m2).await;

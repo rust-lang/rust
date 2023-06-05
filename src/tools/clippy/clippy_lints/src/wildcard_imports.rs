@@ -7,7 +7,7 @@ use rustc_hir::{
     def::{DefKind, Res},
     Item, ItemKind, PathSegment, UseKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::kw;
@@ -65,8 +65,9 @@ declare_clippy_lint! {
     /// This can lead to confusing error messages at best and to unexpected behavior at worst.
     ///
     /// ### Exceptions
-    /// Wildcard imports are allowed from modules named `prelude`. Many crates (including the standard library)
-    /// provide modules named "prelude" specifically designed for wildcard import.
+    /// Wildcard imports are allowed from modules that their name contains `prelude`. Many crates
+    /// (including the standard library) provide modules named "prelude" specifically designed
+    /// for wildcard import.
     ///
     /// `use super::*` is allowed in test modules. This is defined as any module with "test" in the name.
     ///
@@ -117,6 +118,10 @@ impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        if cx.sess().is_test_crate() {
+            return;
+        }
+
         if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
         }
@@ -208,7 +213,9 @@ impl WildcardImports {
 // Allow "...prelude::..::*" imports.
 // Many crates have a prelude, and it is imported as a glob by design.
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().any(|ps| ps.ident.name == sym::prelude)
+    segments
+        .iter()
+        .any(|ps| ps.ident.name.as_str().contains(sym::prelude.as_str()))
 }
 
 // Allow "super::*" imports in tests.

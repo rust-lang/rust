@@ -121,10 +121,11 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
     if has_safe_attr != is_in_list {
         tcx.sess.struct_span_err(
             tcx.def_span(intrinsic_id),
-            DiagnosticMessage::Str(format!(
-                    "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
-                    tcx.item_name(intrinsic_id)
-        ))).emit();
+            DiagnosticMessage::from(format!(
+                "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
+                tcx.item_name(intrinsic_id)
+            )
+        )).emit();
     }
 
     is_in_list
@@ -144,11 +145,13 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     ]);
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
-            let region = tcx.mk_re_late_bound(
+            let region = ty::Region::new_late_bound(
+                tcx,
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) },
             );
-            let env_region = tcx.mk_re_late_bound(
+            let env_region = ty::Region::new_late_bound(
+                tcx,
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
             );
@@ -198,7 +201,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => (1, Vec::new(), tcx.mk_unit()),
             sym::forget => (1, vec![param(0)], tcx.mk_unit()),
-            sym::transmute => (2, vec![param(0)], param(1)),
+            sym::transmute | sym::transmute_unchecked => (2, vec![param(0)], param(1)),
             sym::prefetch_read_data
             | sym::prefetch_write_data
             | sym::prefetch_read_instruction
@@ -215,7 +218,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::type_name => (1, Vec::new(), tcx.mk_static_str()),
             sym::type_id => (1, Vec::new(), tcx.types.u64),
-            sym::offset | sym::arith_offset => (
+            sym::offset => (2, vec![param(0), param(1)], param(0)),
+            sym::arith_offset => (
                 1,
                 vec![
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
@@ -380,6 +384,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::unlikely => (0, vec![tcx.types.bool], tcx.types.bool),
 
             sym::read_via_copy => (1, vec![tcx.mk_imm_ptr(param(0))], param(0)),
+            sym::write_via_move => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
 
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
@@ -390,7 +395,12 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) };
                 (
                     1,
-                    vec![tcx.mk_imm_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), param(0))],
+                    vec![
+                        tcx.mk_imm_ref(
+                            ty::Region::new_late_bound(tcx, ty::INNERMOST, br),
+                            param(0),
+                        ),
+                    ],
                     tcx.mk_projection(discriminant_def_id, tcx.mk_substs(&[param(0).into()])),
                 )
             }
@@ -440,7 +450,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::raw_eq => {
                 let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) };
-                let param_ty = tcx.mk_imm_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), param(0));
+                let param_ty =
+                    tcx.mk_imm_ref(ty::Region::new_late_bound(tcx, ty::INNERMOST, br), param(0));
                 (1, vec![param_ty; 2], tcx.types.bool)
             }
 
@@ -545,14 +556,14 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
                 Err(_) => {
                     let msg =
                         format!("unrecognized platform-specific intrinsic function: `{name}`");
-                    tcx.sess.struct_span_err(it.span, &msg).emit();
+                    tcx.sess.struct_span_err(it.span, msg).emit();
                     return;
                 }
             }
         }
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
-            tcx.sess.struct_span_err(it.span, &msg).emit();
+            tcx.sess.struct_span_err(it.span, msg).emit();
             return;
         }
     };

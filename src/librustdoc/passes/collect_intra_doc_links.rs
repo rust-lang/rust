@@ -8,12 +8,12 @@ use rustc_data_structures::{
     fx::{FxHashMap, FxHashSet},
     intern::Interned,
 };
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticMessage};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
-use rustc_middle::ty::{fast_reject::TreatProjections, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
 use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
@@ -24,13 +24,14 @@ use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
+use std::fmt::Display;
 use std::mem;
 use std::ops::Range;
 
 use crate::clean::{self, utils::find_nearest_parent_module};
 use crate::clean::{Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
-use crate::html::markdown::{markdown_links, MarkdownLink};
+use crate::html::markdown::{markdown_links, MarkdownLink, MarkdownLinkRange};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 use crate::visit::DocVisitor;
@@ -148,7 +149,7 @@ impl TryFrom<ResolveRes> for Res {
             Def(kind, id) => Ok(Res::Def(kind, id)),
             PrimTy(prim) => Ok(Res::Primitive(PrimitiveType::from_hir(prim))),
             // e.g. `#[derive]`
-            NonMacroAttr(..) | Err => Result::Err(()),
+            ToolMod | NonMacroAttr(..) | Err => Result::Err(()),
             other => bug!("unrecognized res {:?}", other),
         }
     }
@@ -204,7 +205,7 @@ impl UrlFragment {
             &UrlFragment::Item(def_id) => {
                 let kind = match tcx.def_kind(def_id) {
                     DefKind::AssocFn => {
-                        if tcx.impl_defaultness(def_id).has_value() {
+                        if tcx.defaultness(def_id).has_value() {
                             "method."
                         } else {
                             "tymethod."
@@ -247,7 +248,7 @@ struct DiagnosticInfo<'a> {
     item: &'a Item,
     dox: &'a str,
     ori_link: &'a str,
-    link_range: Range<usize>,
+    link_range: MarkdownLinkRange,
 }
 
 struct LinkCollector<'a, 'tcx> {
@@ -722,7 +723,7 @@ fn resolve_associated_trait_item<'a>(
         .iter()
         .flat_map(|&(impl_, trait_)| {
             filter_assoc_items_by_name_and_namespace(
-                cx.tcx,
+                tcx,
                 trait_,
                 Ident::with_dummy_span(item_name),
                 ns,
@@ -772,11 +773,10 @@ fn trait_impls_for<'a>(
     module: DefId,
 ) -> FxHashSet<(DefId, DefId)> {
     let tcx = cx.tcx;
-    let iter = tcx.doc_link_traits_in_scope(module).iter().flat_map(|&trait_| {
-        trace!("considering explicit impl for trait {:?}", trait_);
+    let mut impls = FxHashSet::default();
 
-        // Look at each trait implementation to see if it's an impl for `did`
-        tcx.find_map_relevant_impl(trait_, ty, TreatProjections::ForLookup, |impl_| {
+    for &trait_ in tcx.doc_link_traits_in_scope(module) {
+        tcx.for_each_relevant_impl(trait_, ty, |impl_| {
             let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();
@@ -800,10 +800,13 @@ fn trait_impls_for<'a>(
                     _ => false,
                 };
 
-            if saw_impl { Some((impl_, trait_)) } else { None }
-        })
-    });
-    iter.collect()
+            if saw_impl {
+                impls.insert((impl_, trait_));
+            }
+        });
+    }
+
+    impls
 }
 
 /// Check for resolve collisions between a trait and its derive.
@@ -830,7 +833,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
 enum PreprocessingError {
     /// User error: `[std#x#y]` is not valid
     MultipleAnchors,
-    Disambiguator(Range<usize>, String),
+    Disambiguator(MarkdownLinkRange, String),
     MalformedGenerics(MalformedGenerics, String),
 }
 
@@ -839,7 +842,7 @@ impl PreprocessingError {
         match self {
             PreprocessingError::MultipleAnchors => report_multiple_anchors(cx, diag_info),
             PreprocessingError::Disambiguator(range, msg) => {
-                disambiguator_error(cx, diag_info, range.clone(), msg)
+                disambiguator_error(cx, diag_info, range.clone(), msg.clone())
             }
             PreprocessingError::MalformedGenerics(err, path_str) => {
                 report_malformed_generics(cx, diag_info, *err, path_str)
@@ -870,6 +873,7 @@ pub(crate) struct PreprocessedMarkdownLink(
 /// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents ignored.
 fn preprocess_link(
     ori_link: &MarkdownLink,
+    dox: &str,
 ) -> Option<Result<PreprocessingInfo, PreprocessingError>> {
     // [] is mostly likely not supposed to be a link
     if ori_link.link.is_empty() {
@@ -903,9 +907,15 @@ fn preprocess_link(
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
             if !should_ignore_link_with_disambiguators(link) {
-                let no_backticks_range = range_between_backticks(ori_link);
-                let disambiguator_range = (no_backticks_range.start + relative_range.start)
-                    ..(no_backticks_range.start + relative_range.end);
+                let disambiguator_range = match range_between_backticks(&ori_link.range, dox) {
+                    MarkdownLinkRange::Destination(no_backticks_range) => {
+                        MarkdownLinkRange::Destination(
+                            (no_backticks_range.start + relative_range.start)
+                                ..(no_backticks_range.start + relative_range.end),
+                        )
+                    }
+                    mdlr @ MarkdownLinkRange::WholeLink(_) => mdlr,
+                };
                 return Some(Err(PreprocessingError::Disambiguator(disambiguator_range, err_msg)));
             } else {
                 return None;
@@ -944,7 +954,7 @@ fn preprocess_link(
 
 fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
     markdown_links(s, |link| {
-        preprocess_link(&link).map(|pp_link| PreprocessedMarkdownLink(pp_link, link))
+        preprocess_link(&link, s).map(|pp_link| PreprocessedMarkdownLink(pp_link, link))
     })
 }
 
@@ -1057,22 +1067,12 @@ impl LinkCollector<'_, '_> {
                     // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
                     // for discussion on the matter.
                     let kind = self.cx.tcx.def_kind(id);
-                    self.verify_disambiguator(
-                        path_str,
-                        ori_link,
-                        kind,
-                        id,
-                        disambiguator,
-                        item,
-                        &diag_info,
-                    )?;
+                    self.verify_disambiguator(path_str, kind, id, disambiguator, item, &diag_info)?;
                 } else {
                     match disambiguator {
                         Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
                         Some(other) => {
-                            self.report_disambiguator_mismatch(
-                                path_str, ori_link, other, res, &diag_info,
-                            );
+                            self.report_disambiguator_mismatch(path_str, other, res, &diag_info);
                             return None;
                         }
                     }
@@ -1093,7 +1093,6 @@ impl LinkCollector<'_, '_> {
                 };
                 self.verify_disambiguator(
                     path_str,
-                    ori_link,
                     kind_for_dis,
                     id_for_dis,
                     disambiguator,
@@ -1115,7 +1114,6 @@ impl LinkCollector<'_, '_> {
     fn verify_disambiguator(
         &self,
         path_str: &str,
-        ori_link: &MarkdownLink,
         kind: DefKind,
         id: DefId,
         disambiguator: Option<Disambiguator>,
@@ -1139,7 +1137,7 @@ impl LinkCollector<'_, '_> {
                 => {}
                 (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
                 (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
-                    self.report_disambiguator_mismatch(path_str,ori_link,specified, Res::Def(kind, id),diag_info);
+                    self.report_disambiguator_mismatch(path_str, specified, Res::Def(kind, id), diag_info);
                     return None;
                 }
             }
@@ -1161,14 +1159,13 @@ impl LinkCollector<'_, '_> {
     fn report_disambiguator_mismatch(
         &self,
         path_str: &str,
-        ori_link: &MarkdownLink,
         specified: Disambiguator,
         resolved: Res,
         diag_info: &DiagnosticInfo<'_>,
     ) {
         // The resolved item did not match the disambiguator; give a better error than 'not found'
         let msg = format!("incompatible link kind for `{}`", path_str);
-        let callback = |diag: &mut Diagnostic, sp: Option<rustc_span::Span>| {
+        let callback = |diag: &mut Diagnostic, sp: Option<rustc_span::Span>, link_range| {
             let note = format!(
                 "this link resolved to {} {}, which is not {} {}",
                 resolved.article(),
@@ -1177,18 +1174,28 @@ impl LinkCollector<'_, '_> {
                 specified.descr(),
             );
             if let Some(sp) = sp {
-                diag.span_label(sp, &note);
+                diag.span_label(sp, note);
             } else {
-                diag.note(&note);
+                diag.note(note);
             }
-            suggest_disambiguator(resolved, diag, path_str, &ori_link.link, sp);
+            suggest_disambiguator(resolved, diag, path_str, link_range, sp, diag_info);
         };
-        report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, diag_info, callback);
+        report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, diag_info, callback);
     }
 
-    fn report_rawptr_assoc_feature_gate(&self, dox: &str, ori_link: &Range<usize>, item: &Item) {
-        let span = super::source_span_for_markdown_range(self.cx.tcx, dox, ori_link, &item.attrs)
-            .unwrap_or_else(|| item.attr_span(self.cx.tcx));
+    fn report_rawptr_assoc_feature_gate(
+        &self,
+        dox: &str,
+        ori_link: &MarkdownLinkRange,
+        item: &Item,
+    ) {
+        let span = super::source_span_for_markdown_range(
+            self.cx.tcx,
+            dox,
+            ori_link.inner_range(),
+            &item.attrs,
+        )
+        .unwrap_or_else(|| item.attr_span(self.cx.tcx));
         rustc_session::parse::feature_err(
             &self.cx.tcx.sess.parse_sess,
             sym::intra_doc_pointers,
@@ -1293,7 +1300,8 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err])
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        return vec![];
                     }
                 }
             }
@@ -1329,13 +1337,14 @@ impl LinkCollector<'_, '_> {
                     .fold(0, |acc, res| if let Ok(res) = res { acc + res.len() } else { acc });
 
                 if len == 0 {
-                    return resolution_failure(
+                    resolution_failure(
                         self,
                         diag,
                         path_str,
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
+                    return vec![];
                 } else if len == 1 {
                     candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
                 } else {
@@ -1349,7 +1358,7 @@ impl LinkCollector<'_, '_> {
                         if has_derive_trait_collision {
                             candidates.macro_ns = None;
                         }
-                        candidates.into_iter().filter_map(|res| res).flatten().collect::<Vec<_>>()
+                        candidates.into_iter().flatten().flatten().collect::<Vec<_>>()
                     }
                 }
             }
@@ -1366,16 +1375,23 @@ impl LinkCollector<'_, '_> {
 /// [`Foo`]
 ///   ^^^
 /// ```
-fn range_between_backticks(ori_link: &MarkdownLink) -> Range<usize> {
-    let after_first_backtick_group = ori_link.link.bytes().position(|b| b != b'`').unwrap_or(0);
-    let before_second_backtick_group = ori_link
-        .link
+///
+/// This function does nothing if `ori_link.range` is a `MarkdownLinkRange::WholeLink`.
+fn range_between_backticks(ori_link_range: &MarkdownLinkRange, dox: &str) -> MarkdownLinkRange {
+    let range = match ori_link_range {
+        mdlr @ MarkdownLinkRange::WholeLink(_) => return mdlr.clone(),
+        MarkdownLinkRange::Destination(inner) => inner.clone(),
+    };
+    let ori_link_text = &dox[range.clone()];
+    let after_first_backtick_group = ori_link_text.bytes().position(|b| b != b'`').unwrap_or(0);
+    let before_second_backtick_group = ori_link_text
         .bytes()
         .skip(after_first_backtick_group)
         .position(|b| b == b'`')
-        .unwrap_or(ori_link.link.len());
-    (ori_link.range.start + after_first_backtick_group)
-        ..(ori_link.range.start + before_second_backtick_group)
+        .unwrap_or(ori_link_text.len());
+    MarkdownLinkRange::Destination(
+        (range.start + after_first_backtick_group)..(range.start + before_second_backtick_group),
+    )
 }
 
 /// Returns true if we should ignore `link` due to it being unlikely
@@ -1419,6 +1435,7 @@ impl Disambiguator {
         if let Some(idx) = link.find('@') {
             let (prefix, rest) = link.split_at(idx);
             let d = match prefix {
+                // If you update this list, please also update the relevant rustdoc book section!
                 "struct" => Kind(DefKind::Struct),
                 "enum" => Kind(DefKind::Enum),
                 "trait" => Kind(DefKind::Trait),
@@ -1437,6 +1454,7 @@ impl Disambiguator {
             Ok(Some((d, &rest[1..], &rest[1..])))
         } else {
             let suffixes = [
+                // If you update this list, please also update the relevant rustdoc book section!
                 ("!()", DefKind::Macro(MacroKind::Bang)),
                 ("!{}", DefKind::Macro(MacroKind::Bang)),
                 ("![]", DefKind::Macro(MacroKind::Bang)),
@@ -1523,14 +1541,23 @@ impl Suggestion {
         sp: rustc_span::Span,
     ) -> Vec<(rustc_span::Span, String)> {
         let inner_sp = match ori_link.find('(') {
+            Some(index) if index != 0 && ori_link.as_bytes()[index - 1] == b'\\' => {
+                sp.with_hi(sp.lo() + BytePos((index - 1) as _))
+            }
             Some(index) => sp.with_hi(sp.lo() + BytePos(index as _)),
             None => sp,
         };
         let inner_sp = match ori_link.find('!') {
+            Some(index) if index != 0 && ori_link.as_bytes()[index - 1] == b'\\' => {
+                sp.with_hi(sp.lo() + BytePos((index - 1) as _))
+            }
             Some(index) => inner_sp.with_hi(inner_sp.lo() + BytePos(index as _)),
             None => inner_sp,
         };
         let inner_sp = match ori_link.find('@') {
+            Some(index) if index != 0 && ori_link.as_bytes()[index - 1] == b'\\' => {
+                sp.with_hi(sp.lo() + BytePos((index - 1) as _))
+            }
             Some(index) => inner_sp.with_lo(inner_sp.lo() + BytePos(index as u32 + 1)),
             None => inner_sp,
         };
@@ -1575,9 +1602,9 @@ impl Suggestion {
 fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
-    msg: &str,
+    msg: impl Into<DiagnosticMessage> + Display,
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
-    decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>),
+    decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
     else {
@@ -1589,16 +1616,32 @@ fn report_diagnostic(
     let sp = item.attr_span(tcx);
 
     tcx.struct_span_lint_hir(lint, hir_id, sp, msg, |lint| {
-        let span =
-            super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs).map(|sp| {
-                if dox.as_bytes().get(link_range.start) == Some(&b'`')
-                    && dox.as_bytes().get(link_range.end - 1) == Some(&b'`')
-                {
-                    sp.with_lo(sp.lo() + BytePos(1)).with_hi(sp.hi() - BytePos(1))
-                } else {
-                    sp
-                }
-            });
+        let (span, link_range) = match link_range {
+            MarkdownLinkRange::Destination(md_range) => {
+                let mut md_range = md_range.clone();
+                let sp = super::source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs)
+                    .map(|mut sp| {
+                        while dox.as_bytes().get(md_range.start) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.start) == Some(&b'`')
+                        {
+                            md_range.start += 1;
+                            sp = sp.with_lo(sp.lo() + BytePos(1));
+                        }
+                        while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
+                        {
+                            md_range.end -= 1;
+                            sp = sp.with_hi(sp.hi() - BytePos(1));
+                        }
+                        sp
+                    });
+                (sp, MarkdownLinkRange::Destination(md_range))
+            }
+            MarkdownLinkRange::WholeLink(md_range) => (
+                super::source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs),
+                link_range.clone(),
+            ),
+        };
 
         if let Some(sp) = span {
             lint.set_span(sp);
@@ -1607,21 +1650,22 @@ fn report_diagnostic(
             //                       ^     ~~~~
             //                       |     link_range
             //                       last_new_line_offset
-            let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+            let md_range = link_range.inner_range().clone();
+            let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-            // Print the line containing the `link_range` and manually mark it with '^'s.
-            lint.note(&format!(
+            // Print the line containing the `md_range` and manually mark it with '^'s.
+            lint.note(format!(
                 "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
                 line = line,
                 indicator = "",
-                before = link_range.start - last_new_line_offset,
-                found = link_range.len(),
+                before = md_range.start - last_new_line_offset,
+                found = md_range.len(),
             ));
         }
 
-        decorate(lint, span);
+        decorate(lint, span, link_range);
 
         lint
     });
@@ -1638,15 +1682,14 @@ fn resolution_failure(
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
-) -> Vec<(Res, Option<DefId>)> {
+) {
     let tcx = collector.cx.tcx;
-    let mut recovered_res = None;
     report_diagnostic(
         tcx,
         BROKEN_INTRA_DOC_LINKS,
-        &format!("unresolved link to `{}`", path_str),
+        format!("unresolved link to `{}`", path_str),
         &diag_info,
-        |diag, sp| {
+        |diag, sp, link_range| {
             let item = |res: Res| format!("the {} `{}`", res.descr(), res.name(tcx),);
             let assoc_item_not_allowed = |res: Res| {
                 let name = res.name(tcx);
@@ -1700,7 +1743,7 @@ fn resolution_failure(
                             if let Ok(v_res) = collector.resolve(start, ns, item_id, module_id) {
                                 debug!("found partial_res={:?}", v_res);
                                 if !v_res.is_empty() {
-                                    *partial_res = Some(full_res(collector.cx.tcx, v_res[0]));
+                                    *partial_res = Some(full_res(tcx, v_res[0]));
                                     *unresolved = end.into();
                                     break 'outer;
                                 }
@@ -1725,26 +1768,32 @@ fn resolution_failure(
                             format!("no item named `{}` in scope", unresolved)
                         };
                         if let Some(span) = sp {
-                            diag.span_label(span, &note);
+                            diag.span_label(span, note);
                         } else {
-                            diag.note(&note);
+                            diag.note(note);
                         }
 
                         if !path_str.contains("::") {
                             if disambiguator.map_or(true, |d| d.ns() == MacroNS)
-                                && let Some(&res) = collector.cx.tcx.resolutions(()).all_macro_rules
-                                                             .get(&Symbol::intern(path_str))
+                                && collector
+                                    .cx
+                                    .tcx
+                                    .resolutions(())
+                                    .all_macro_rules
+                                    .get(&Symbol::intern(path_str))
+                                    .is_some()
                             {
                                 diag.note(format!(
                                     "`macro_rules` named `{path_str}` exists in this crate, \
                                      but it is not in scope at this link's location"
                                 ));
-                                recovered_res = res.try_into().ok().map(|res| (res, None));
                             } else {
                                 // If the link has `::` in it, assume it was meant to be an
                                 // intra-doc link. Otherwise, the `[]` might be unrelated.
-                                diag.help("to escape `[` and `]` characters, \
-                                           add '\\' before them like `\\[` or `\\]`");
+                                diag.help(
+                                    "to escape `[` and `]` characters, \
+                                           add '\\' before them like `\\[` or `\\]`",
+                                );
                             }
                         }
 
@@ -1776,9 +1825,9 @@ fn resolution_failure(
                                 let variant = res.name(tcx);
                                 let note = format!("variant `{variant}` has no such field");
                                 if let Some(span) = sp {
-                                    diag.span_label(span, &note);
+                                    diag.span_label(span, note);
                                 } else {
-                                    diag.note(&note);
+                                    diag.note(note);
                                 }
                                 return;
                             }
@@ -1801,9 +1850,9 @@ fn resolution_failure(
                             | InlineConst => {
                                 let note = assoc_item_not_allowed(res);
                                 if let Some(span) = sp {
-                                    diag.span_label(span, &note);
+                                    diag.span_label(span, note);
                                 } else {
-                                    diag.note(&note);
+                                    diag.note(note);
                                 }
                                 return;
                             }
@@ -1823,9 +1872,9 @@ fn resolution_failure(
                         unresolved,
                     );
                     if let Some(span) = sp {
-                        diag.span_label(span, &note);
+                        diag.span_label(span, note);
                     } else {
-                        diag.note(&note);
+                        diag.note(note);
                     }
 
                     continue;
@@ -1833,7 +1882,14 @@ fn resolution_failure(
                 let note = match failure {
                     ResolutionFailure::NotResolved { .. } => unreachable!("handled above"),
                     ResolutionFailure::WrongNamespace { res, expected_ns } => {
-                        suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
+                        suggest_disambiguator(
+                            res,
+                            diag,
+                            path_str,
+                            link_range.clone(),
+                            sp,
+                            &diag_info,
+                        );
 
                         format!(
                             "this link resolves to {}, which is not in the {} namespace",
@@ -1843,39 +1899,34 @@ fn resolution_failure(
                     }
                 };
                 if let Some(span) = sp {
-                    diag.span_label(span, &note);
+                    diag.span_label(span, note);
                 } else {
-                    diag.note(&note);
+                    diag.note(note);
                 }
             }
         },
     );
-
-    match recovered_res {
-        Some(r) => vec![r],
-        None => Vec::new(),
-    }
 }
 
 fn report_multiple_anchors(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
     let msg = format!("`{}` contains multiple anchors", diag_info.ori_link);
-    anchor_failure(cx, diag_info, &msg, 1)
+    anchor_failure(cx, diag_info, msg, 1)
 }
 
 fn report_anchor_conflict(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, def_id: DefId) {
     let (link, kind) = (diag_info.ori_link, Res::from_def_id(cx.tcx, def_id).descr());
     let msg = format!("`{link}` contains an anchor, but links to {kind}s are already anchored");
-    anchor_failure(cx, diag_info, &msg, 0)
+    anchor_failure(cx, diag_info, msg, 0)
 }
 
 /// Report an anchor failure.
 fn anchor_failure(
     cx: &DocContext<'_>,
     diag_info: DiagnosticInfo<'_>,
-    msg: &str,
+    msg: String,
     anchor_idx: usize,
 ) {
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, sp, _link_range| {
         if let Some(mut sp) = sp {
             if let Some((fragment_offset, _)) =
                 diag_info.ori_link.char_indices().filter(|(_, x)| *x == '#').nth(anchor_idx)
@@ -1891,16 +1942,16 @@ fn anchor_failure(
 fn disambiguator_error(
     cx: &DocContext<'_>,
     mut diag_info: DiagnosticInfo<'_>,
-    disambiguator_range: Range<usize>,
-    msg: &str,
+    disambiguator_range: MarkdownLinkRange,
+    msg: impl Into<DiagnosticMessage> + Display,
 ) {
     diag_info.link_range = disambiguator_range;
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp, _link_range| {
         let msg = format!(
             "see {}/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
             crate::DOC_RUST_LANG_ORG_CHANNEL
         );
-        diag.note(&msg);
+        diag.note(msg);
     });
 }
 
@@ -1913,9 +1964,9 @@ fn report_malformed_generics(
     report_diagnostic(
         cx.tcx,
         BROKEN_INTRA_DOC_LINKS,
-        &format!("unresolved link to `{}`", path_str),
+        format!("unresolved link to `{}`", path_str),
         &diag_info,
-        |diag, sp| {
+        |diag, sp, _link_range| {
             let note = match err {
                 MalformedGenerics::UnbalancedAngleBrackets => "unbalanced angle brackets",
                 MalformedGenerics::MissingType => "missing type for generic parameters",
@@ -1988,7 +2039,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, diag_info, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, diag_info, |diag, sp, link_range| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -1996,7 +2047,7 @@ fn ambiguity_error(
         }
 
         for res in kinds {
-            suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
+            suggest_disambiguator(res, diag, path_str, link_range.clone(), sp, diag_info);
         }
     });
     true
@@ -2008,22 +2059,28 @@ fn suggest_disambiguator(
     res: Res,
     diag: &mut Diagnostic,
     path_str: &str,
-    ori_link: &str,
+    link_range: MarkdownLinkRange,
     sp: Option<rustc_span::Span>,
+    diag_info: &DiagnosticInfo<'_>,
 ) {
     let suggestion = res.disambiguator_suggestion();
     let help = format!("to link to the {}, {}", res.descr(), suggestion.descr());
 
-    if let Some(sp) = sp {
+    let ori_link = match link_range {
+        MarkdownLinkRange::Destination(range) => Some(&diag_info.dox[range]),
+        MarkdownLinkRange::WholeLink(_) => None,
+    };
+
+    if let (Some(sp), Some(ori_link)) = (sp, ori_link) {
         let mut spans = suggestion.as_help_span(path_str, ori_link, sp);
         if spans.len() > 1 {
-            diag.multipart_suggestion(&help, spans, Applicability::MaybeIncorrect);
+            diag.multipart_suggestion(help, spans, Applicability::MaybeIncorrect);
         } else {
             let (sp, suggestion_text) = spans.pop().unwrap();
-            diag.span_suggestion_verbose(sp, &help, suggestion_text, Applicability::MaybeIncorrect);
+            diag.span_suggestion_verbose(sp, help, suggestion_text, Applicability::MaybeIncorrect);
         }
     } else {
-        diag.help(&format!("{}: {}", help, suggestion.as_help(path_str)));
+        diag.help(format!("{}: {}", help, suggestion.as_help(path_str)));
     }
 }
 
@@ -2040,7 +2097,7 @@ fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: 
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, diag_info, |diag, sp| {
+    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, msg, diag_info, |diag, sp, _link_range| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }

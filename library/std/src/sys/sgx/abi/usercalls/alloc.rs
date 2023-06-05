@@ -3,7 +3,6 @@
 use crate::arch::asm;
 use crate::cell::UnsafeCell;
 use crate::cmp;
-use crate::convert::TryInto;
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
 use crate::ptr::{self, NonNull};

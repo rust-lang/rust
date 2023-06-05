@@ -1,5 +1,5 @@
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-3.rs:15:24
+  --> $DIR/super-traits-fail-3.rs:16:24
    |
 LL | const fn foo<T: ~const Bar>(x: &T) {
    |                        ^^^

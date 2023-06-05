@@ -1,6 +1,7 @@
 // Check that closure captures for slice patterns are inferred correctly
 
 #![allow(unused_variables)]
+#![allow(dropping_references)]
 
 // run-pass
 

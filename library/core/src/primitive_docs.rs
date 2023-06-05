@@ -1,8 +1,7 @@
 // `library/{std,core}/src/primitive_docs.rs` should have the same contents.
 // These are different files so that relative links work properly without
 // having to have `CARGO_PKG_NAME` set, but conceptually they should always be the same.
-#[cfg_attr(bootstrap, doc(primitive = "bool"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "bool")]
+#[rustc_doc_primitive = "bool"]
 #[doc(alias = "true")]
 #[doc(alias = "false")]
 /// The boolean type.
@@ -64,8 +63,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_bool {}
 
-#[cfg_attr(bootstrap, doc(primitive = "never"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "never")]
+#[rustc_doc_primitive = "never"]
 #[doc(alias = "!")]
 //
 /// The `!` type, also called "never".
@@ -276,8 +274,7 @@ mod prim_bool {}
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
 
-#[cfg_attr(bootstrap, doc(primitive = "char"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "char")]
+#[rustc_doc_primitive = "char"]
 #[allow(rustdoc::invalid_rust_codeblocks)]
 /// A character type.
 ///
@@ -401,8 +398,7 @@ mod prim_never {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char {}
 
-#[cfg_attr(bootstrap, doc(primitive = "unit"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "unit")]
+#[rustc_doc_primitive = "unit"]
 #[doc(alias = "(")]
 #[doc(alias = ")")]
 #[doc(alias = "()")]
@@ -464,8 +460,7 @@ impl Copy for () {
     // empty
 }
 
-#[cfg_attr(bootstrap, doc(primitive = "pointer"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "pointer")]
+#[rustc_doc_primitive = "pointer"]
 #[doc(alias = "ptr")]
 #[doc(alias = "*")]
 #[doc(alias = "*const")]
@@ -555,6 +550,7 @@ impl Copy for () {
 ///
 /// ```
 /// # #![feature(rustc_private)]
+/// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
 /// use std::mem;
@@ -577,13 +573,11 @@ impl Copy for () {
 /// [`is_null`]: pointer::is_null
 /// [`offset`]: pointer::offset
 #[doc = concat!("[`into_raw`]: ", include_str!("../primitive_docs/box_into_raw.md"))]
-/// [`drop`]: mem::drop
 /// [`write`]: ptr::write
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
-#[cfg_attr(bootstrap, doc(primitive = "array"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "array")]
+#[rustc_doc_primitive = "array"]
 #[doc(alias = "[]")]
 #[doc(alias = "[T;N]")] // unfortunately, rustdoc doesn't have fuzzy search for aliases
 #[doc(alias = "[T; N]")]
@@ -616,6 +610,9 @@ mod prim_pointer {}
 /// Arrays of sizes from 0 to 32 (inclusive) implement the [`Default`] trait
 /// if the element type allows it. As a stopgap, trait implementations are
 /// statically generated up to size 32.
+///
+/// Arrays of sizes from 1 to 12 (inclusive) implement [`From<Tuple>`], where `Tuple`
+/// is a homogenous [prim@tuple] of appropriate length.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
@@ -677,6 +674,13 @@ mod prim_pointer {}
 /// let [john, roa] = ["John".to_string(), "Roa".to_string()];
 /// move_away(john);
 /// move_away(roa);
+/// ```
+///
+/// Arrays can be created from homogenous tuples of appropriate length:
+///
+/// ```
+/// let tuple: (u32, u32, u32) = (1, 2, 3);
+/// let array: [u32; 3] = tuple.into();
 /// ```
 ///
 /// # Editions
@@ -781,11 +785,11 @@ mod prim_pointer {}
 /// [`Borrow`]: borrow::Borrow
 /// [`BorrowMut`]: borrow::BorrowMut
 /// [slice pattern]: ../reference/patterns.html#slice-patterns
+/// [`From<Tuple>`]: convert::From
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array {}
 
-#[cfg_attr(bootstrap, doc(primitive = "slice"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "slice")]
+#[rustc_doc_primitive = "slice"]
 #[doc(alias = "[")]
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
@@ -877,8 +881,7 @@ mod prim_array {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice {}
 
-#[cfg_attr(bootstrap, doc(primitive = "str"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "str")]
+#[rustc_doc_primitive = "str"]
 /// String slices.
 ///
 /// *[See also the `std::str` module](crate::str).*
@@ -945,8 +948,7 @@ mod prim_slice {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str {}
 
-#[cfg_attr(bootstrap, doc(primitive = "tuple"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "tuple")]
+#[rustc_doc_primitive = "tuple"]
 #[doc(alias = "(")]
 #[doc(alias = ")")]
 #[doc(alias = "()")]
@@ -1010,7 +1012,9 @@ mod prim_str {}
 /// * [`Debug`]
 /// * [`Default`]
 /// * [`Hash`]
+/// * [`From<[T; N]>`][from]
 ///
+/// [from]: convert::From
 /// [`Debug`]: fmt::Debug
 /// [`Hash`]: hash::Hash
 ///
@@ -1026,7 +1030,6 @@ mod prim_str {}
 /// * [`UnwindSafe`]
 /// * [`RefUnwindSafe`]
 ///
-/// [`Unpin`]: marker::Unpin
 /// [`UnwindSafe`]: panic::UnwindSafe
 /// [`RefUnwindSafe`]: panic::RefUnwindSafe
 ///
@@ -1062,6 +1065,13 @@ mod prim_str {}
 /// assert_eq!(y, 5);
 /// ```
 ///
+/// Homogenous tuples can be created from arrays of appropriate length:
+///
+/// ```
+/// let array: [u32; 3] = [1, 2, 3];
+/// let tuple: (u32, u32, u32) = array.into();
+/// ```
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_tuple {}
 
@@ -1090,8 +1100,7 @@ impl<T: Copy> Copy for (T,) {
     // empty
 }
 
-#[cfg_attr(bootstrap, doc(primitive = "f32"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "f32")]
+#[rustc_doc_primitive = "f32"]
 /// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
 ///
 /// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
@@ -1157,8 +1166,7 @@ impl<T: Copy> Copy for (T,) {
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "f64"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "f64")]
+#[rustc_doc_primitive = "f64"]
 /// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`f32`], but has increased
@@ -1173,78 +1181,67 @@ mod prim_f32 {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "i8"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "i8")]
+#[rustc_doc_primitive = "i8"]
 //
 /// The 8-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "i16"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "i16")]
+#[rustc_doc_primitive = "i16"]
 //
 /// The 16-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "i32"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "i32")]
+#[rustc_doc_primitive = "i32"]
 //
 /// The 32-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "i64"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "i64")]
+#[rustc_doc_primitive = "i64"]
 //
 /// The 64-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "i128"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "i128")]
+#[rustc_doc_primitive = "i128"]
 //
 /// The 128-bit signed integer type.
 #[stable(feature = "i128", since = "1.26.0")]
 mod prim_i128 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "u8"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "u8")]
+#[rustc_doc_primitive = "u8"]
 //
 /// The 8-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u8 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "u16"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "u16")]
+#[rustc_doc_primitive = "u16"]
 //
 /// The 16-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u16 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "u32"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "u32")]
+#[rustc_doc_primitive = "u32"]
 //
 /// The 32-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u32 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "u64"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "u64")]
+#[rustc_doc_primitive = "u64"]
 //
 /// The 64-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u64 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "u128"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "u128")]
+#[rustc_doc_primitive = "u128"]
 //
 /// The 128-bit unsigned integer type.
 #[stable(feature = "i128", since = "1.26.0")]
 mod prim_u128 {}
 
-#[cfg_attr(bootstrap, doc(primitive = "isize"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "isize")]
+#[rustc_doc_primitive = "isize"]
 //
 /// The pointer-sized signed integer type.
 ///
@@ -1254,8 +1251,7 @@ mod prim_u128 {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_isize {}
 
-#[cfg_attr(bootstrap, doc(primitive = "usize"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "usize")]
+#[rustc_doc_primitive = "usize"]
 //
 /// The pointer-sized unsigned integer type.
 ///
@@ -1265,8 +1261,7 @@ mod prim_isize {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize {}
 
-#[cfg_attr(bootstrap, doc(primitive = "reference"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "reference")]
+#[rustc_doc_primitive = "reference"]
 #[doc(alias = "&")]
 #[doc(alias = "&mut")]
 //
@@ -1398,16 +1393,11 @@ mod prim_usize {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_ref {}
 
-#[cfg_attr(bootstrap, doc(primitive = "fn"))]
-#[cfg_attr(not(bootstrap), rustc_doc_primitive = "fn")]
+#[rustc_doc_primitive = "fn"]
 //
 /// Function pointers, like `fn(usize) -> bool`.
 ///
 /// *See also the traits [`Fn`], [`FnMut`], and [`FnOnce`].*
-///
-/// [`Fn`]: ops::Fn
-/// [`FnMut`]: ops::FnMut
-/// [`FnOnce`]: ops::FnOnce
 ///
 /// Function pointers are pointers that point to *code*, not data. They can be called
 /// just like functions. Like references, function pointers are, among other things, assumed to

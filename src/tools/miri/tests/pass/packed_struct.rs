@@ -36,7 +36,7 @@ fn test_basic() {
     let b = x.b;
     assert_eq!(a, 42);
     assert_eq!(b, 99);
-    assert_eq!(&x.fill, &0); // `fill` just requirs 1-byte-align, so this is fine
+    assert_eq!(&x.fill, &0); // `fill` just requires 1-byte-align, so this is fine
     // can't do `assert_eq!(x.a, 42)`, because `assert_eq!` takes a reference
     assert_eq!({ x.a }, 42);
     assert_eq!({ x.b }, 99);

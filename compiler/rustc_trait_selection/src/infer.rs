@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
-use rustc_middle::traits::query::Fallible;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::ty::{GenericArg, ToPredicate};
 use rustc_span::DUMMY_SP;
@@ -41,7 +41,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
-        if !(param_env, ty).needs_infer() {
+        if !(param_env, ty).has_infer() {
             return ty.is_copy_modulo_regions(self.tcx, param_env);
         }
 
@@ -66,7 +66,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult {
-        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, params);
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, params);
 
         let obligation = traits::Obligation {
             cause: traits::ObligationCause::dummy(),
@@ -82,8 +82,8 @@ pub trait InferCtxtBuilderExt<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, R>>
+        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Result<R, NoSolution>,
+    ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
     where
         K: TypeFoldable<TyCtxt<'tcx>>,
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -110,8 +110,8 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, R>>
+        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Result<R, NoSolution>,
+    ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
     where
         K: TypeFoldable<TyCtxt<'tcx>>,
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,

@@ -577,7 +577,7 @@ fn ident_difference_expr_with_base_location(
         | (AssignOp(_, _, _), AssignOp(_, _, _))
         | (Assign(_, _, _), Assign(_, _, _))
         | (TryBlock(_), TryBlock(_))
-        | (Await(_), Await(_))
+        | (Await(_, _), Await(_, _))
         | (Async(_, _), Async(_, _))
         | (Block(_, _), Block(_, _))
         | (Closure(_), Closure(_))

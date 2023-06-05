@@ -241,7 +241,7 @@ pub(crate) fn test_theme_against<P: AsRef<Path>>(
     {
         Ok(c) => c,
         Err(e) => {
-            diag.struct_err(&e).emit();
+            diag.struct_err(e).emit();
             return (false, vec![]);
         }
     };

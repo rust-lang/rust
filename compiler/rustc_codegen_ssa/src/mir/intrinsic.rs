@@ -135,13 +135,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .unwrap();
                 OperandRef::from_const(bx, value, ret_ty).immediate_or_packed_pair(bx)
             }
-            sym::offset => {
-                let ty = substs.type_at(0);
-                let layout = bx.layout_of(ty);
-                let ptr = args[0].immediate();
-                let offset = args[1].immediate();
-                bx.inbounds_gep(bx.backend_type(layout), ptr, &[offset])
-            }
             sym::arith_offset => {
                 let ty = substs.type_at(0);
                 let layout = bx.layout_of(ty);
@@ -218,8 +211,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args[1].val.unaligned_volatile_store(bx, dst);
                 return;
             }
-            | sym::unchecked_div
-            | sym::unchecked_rem
             | sym::unchecked_shl
             | sym::unchecked_shr
             | sym::unchecked_add
@@ -234,20 +225,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx.exactsdiv(args[0].immediate(), args[1].immediate())
                             } else {
                                 bx.exactudiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_div => {
-                            if signed {
-                                bx.sdiv(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.udiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_rem => {
-                            if signed {
-                                bx.srem(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.urem(args[0].immediate(), args[1].immediate())
                             }
                         }
                         sym::unchecked_shl => bx.shl(args[0].immediate(), args[1].immediate()),

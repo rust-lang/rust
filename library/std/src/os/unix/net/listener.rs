@@ -106,7 +106,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "unix_socket_abstract", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;

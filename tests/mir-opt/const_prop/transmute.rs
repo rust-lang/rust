@@ -1,5 +1,7 @@
 // unit-test: ConstProp
 // compile-flags: -O --crate-type=lib
+// ignore-endian-big
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 use std::mem::transmute;
 

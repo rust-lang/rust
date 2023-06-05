@@ -70,7 +70,6 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[doc(notable_trait)]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[const_trait]
 pub trait Iterator {
     /// The type of the elements being iterated over.
     #[rustc_diagnostic_item = "IteratorItem"]
@@ -764,7 +763,6 @@ pub trait Iterator {
     /// more idiomatic to use [`for`] than `map()`.
     ///
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-    /// [`FnMut`]: crate::ops::FnMut
     ///
     /// # Examples
     ///

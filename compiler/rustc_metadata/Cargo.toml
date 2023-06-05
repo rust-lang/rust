@@ -11,13 +11,13 @@ libloading = "0.7.1"
 odht = { version = "0.3.1", features = ["nightly"] }
 snap = "1"
 tracing = "0.1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }

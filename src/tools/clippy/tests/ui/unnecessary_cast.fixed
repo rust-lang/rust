@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::unnecessary_cast)]
 #![allow(
     unused_must_use,

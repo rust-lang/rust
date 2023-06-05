@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 //! Transmutations involving references are not yet supported.
 
 #![crate_type = "lib"]

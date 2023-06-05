@@ -165,15 +165,15 @@ extensions:
 ### Strikethrough
 
 Text may be rendered with a horizontal line through the center by wrapping the
-text with two tilde characters on each side:
+text with one or two tilde characters on each side:
 
 ```text
-An example of ~~strikethrough text~~.
+An example of ~~strikethrough text~~. You can also use ~single tildes~.
 ```
 
 This example will render as:
 
-> An example of ~~strikethrough text~~.
+> An example of ~~strikethrough text~~. You can also use ~single tildes~.
 
 This follows the [GitHub Strikethrough extension][strikethrough].
 

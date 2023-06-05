@@ -71,7 +71,7 @@ macro_rules! deref_ops {
 
                 #[inline]
                 #[must_use = "operator returns a new vector without mutating the inputs"]
-                fn $call(self, rhs: &$simd) -> Self::Output {
+                fn $call(self, rhs: &'rhs $simd) -> Self::Output {
                     (*self).$call(*rhs)
                 }
             }

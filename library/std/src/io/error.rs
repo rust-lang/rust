@@ -11,7 +11,6 @@ mod repr_unpacked;
 #[cfg(not(target_pointer_width = "64"))]
 use repr_unpacked::Repr;
 
-use crate::convert::From;
 use crate::error;
 use crate::fmt;
 use crate::result;

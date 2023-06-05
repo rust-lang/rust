@@ -139,6 +139,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Field(..)
             | hir::ExprKind::Index(..)
             | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Lit(..)
             | hir::ExprKind::Loop(..)
@@ -161,8 +162,9 @@ impl<'a> Sugg<'a> {
                 get_snippet(lhs.span),
                 get_snippet(rhs.span),
             ),
-            hir::ExprKind::Cast(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
-            hir::ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::Colon, get_snippet(lhs.span), get_snippet(ty.span)),
+            hir::ExprKind::Cast(lhs, ty) |
+            //FIXME(chenyukang), remove this after type ascription is removed from AST
+            hir::ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
         }
     }
 
@@ -197,6 +199,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::ForLoop(..)
             | ast::ExprKind::Index(..)
             | ast::ExprKind::InlineAsm(..)
+            | ast::ExprKind::OffsetOf(..)
             | ast::ExprKind::ConstBlock(..)
             | ast::ExprKind::Lit(..)
             | ast::ExprKind::IncludedBytes(..)
@@ -251,13 +254,10 @@ impl<'a> Sugg<'a> {
                 snippet_with_context(cx, lhs.span, ctxt, default, app).0,
                 snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
-            ast::ExprKind::Cast(ref lhs, ref ty) => Sugg::BinOp(
-                AssocOp::As,
-                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
-                snippet_with_context(cx, ty.span, ctxt, default, app).0,
-            ),
+            ast::ExprKind::Cast(ref lhs, ref ty) |
+            //FIXME(chenyukang), remove this after type ascription is removed from AST
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
-                AssocOp::Colon,
+                AssocOp::As,
                 snippet_with_context(cx, lhs.span, ctxt, default, app).0,
                 snippet_with_context(cx, ty.span, ctxt, default, app).0,
             ),
@@ -390,7 +390,6 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         AssocOp::As => format!("{lhs} as {rhs}"),
         AssocOp::DotDot => format!("{lhs}..{rhs}"),
         AssocOp::DotDotEq => format!("{lhs}..={rhs}"),
-        AssocOp::Colon => format!("{lhs}: {rhs}"),
     }
 }
 
@@ -600,13 +599,13 @@ enum Associativity {
 #[must_use]
 fn associativity(op: AssocOp) -> Associativity {
     use rustc_ast::util::parser::AssocOp::{
-        Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Colon, Divide, DotDot, DotDotEq, Equal, Greater,
-        GreaterEqual, LAnd, LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
+        Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Divide, DotDot, DotDotEq, Equal, Greater, GreaterEqual, LAnd,
+        LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
     };
 
     match op {
         Assign | AssignOp(_) => Associativity::Right,
-        Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As | Colon => Associativity::Both,
+        Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As => Associativity::Both,
         Divide | Equal | Greater | GreaterEqual | Less | LessEqual | Modulus | NotEqual | ShiftLeft | ShiftRight
         | Subtract => Associativity::Left,
         DotDot | DotDotEq => Associativity::None,
@@ -742,7 +741,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion(span, msg, format!("{attr}\n{indent}"), applicability);
+            self.span_suggestion(span, msg.to_string(), format!("{attr}\n{indent}"), applicability);
         }
     }
 
@@ -763,7 +762,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
                 })
                 .collect::<String>();
 
-            self.span_suggestion(span, msg, format!("{new_item}\n{indent}"), applicability);
+            self.span_suggestion(span, msg.to_string(), format!("{new_item}\n{indent}"), applicability);
         }
     }
 
@@ -780,7 +779,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
             }
         }
 
-        self.span_suggestion(remove_span, msg, "", applicability);
+        self.span_suggestion(remove_span, msg.to_string(), "", applicability);
     }
 }
 

@@ -21,15 +21,30 @@ fn lint_on_top_level() {
     let _ = |a: u8| 0; //~ ERROR unnecessary parentheses around pattern
 }
 
-fn _no_lint_attr() {
+fn no_lint_attr() {
     let _x = #[allow(dead_code)] (1 + 2);
 }
 
-fn _no_lint_yeet() -> Result<(), ()> {
+fn no_lint_yeet() -> Result<(), ()> {
     #[allow(unreachable_code)]
     if (do yeet) {}
 
     Ok(())
+}
+
+fn no_lint_ops() {
+    #![allow(unreachable_code, irrefutable_let_patterns)]
+    if ((..{}) == ..{}) {}
+    if (!return) {}
+    loop { match (() = () = () = break {}) {} }
+    while let () = (*&mut false |= true && return) {}
+}
+
+fn lint_break_if_not_followed_by_block() {
+    #![allow(unreachable_code)]
+    loop { if break {} } //~ ERROR unnecessary parentheses
+    loop { if break ({ println!("hello") }) {} } //~ ERROR unnecessary parentheses
+    loop { if (break { println!("hello") }) {} }
 }
 
 // Don't lint in these cases (#64106).

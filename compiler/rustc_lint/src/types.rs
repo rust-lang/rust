@@ -677,7 +677,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     let param_env = tcx.param_env(variant.def_id);
     variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did).subst_identity();
-        let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
+        let is_zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_zst());
         !is_zst
     })
 }
@@ -1119,14 +1119,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
-            ty::Param(..) | ty::Alias(ty::Projection, ..)
+            ty::Param(..) | ty::Alias(ty::Projection | ty::Inherent, ..)
                 if matches!(self.mode, CItemKind::Definition) =>
             {
                 FfiSafe
             }
 
             ty::Param(..)
-            | ty::Alias(ty::Projection, ..)
+            | ty::Alias(ty::Projection | ty::Inherent, ..)
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)

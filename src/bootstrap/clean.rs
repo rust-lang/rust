@@ -81,10 +81,14 @@ macro_rules! clean_crate_tree {
 
 clean_crate_tree! {
     Rustc, Mode::Rustc, "rustc-main";
-    Std, Mode::Std, "test";
+    Std, Mode::Std, "sysroot";
 }
 
 fn clean_default(build: &Build, all: bool) {
+    if build.config.dry_run() {
+        return;
+    }
+
     rm_rf("tmp".as_ref());
 
     if all {

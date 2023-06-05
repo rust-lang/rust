@@ -33,10 +33,10 @@ use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
@@ -123,15 +123,15 @@ impl ExpnHash {
     /// originates from.
     #[inline]
     pub fn stable_crate_id(self) -> StableCrateId {
-        StableCrateId(self.0.as_value().0)
+        StableCrateId(self.0.split().0)
     }
 
     /// Returns the crate-local part of the [ExpnHash].
     ///
     /// Used for tests.
     #[inline]
-    pub fn local_hash(self) -> u64 {
-        self.0.as_value().1
+    pub fn local_hash(self) -> Hash64 {
+        self.0.split().1
     }
 
     #[inline]
@@ -141,7 +141,7 @@ impl ExpnHash {
 
     /// Builds a new [ExpnHash] with the given [StableCrateId] and
     /// `local_hash`, where `local_hash` must be unique within its crate.
-    fn new(stable_crate_id: StableCrateId, local_hash: u64) -> ExpnHash {
+    fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> ExpnHash {
         ExpnHash(Fingerprint::new(stable_crate_id.0, local_hash))
     }
 }
@@ -320,7 +320,6 @@ impl ExpnId {
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
                 || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
-                || expn_data.kind == ExpnKind::Inlined
             {
                 break;
             }
@@ -350,7 +349,7 @@ pub struct HygieneData {
     /// would have collisions without a disambiguator.
     /// The keys of this map are always computed with `ExpnData.disambiguator`
     /// set to 0.
-    expn_data_disambiguators: FxHashMap<u64, u32>,
+    expn_data_disambiguators: FxHashMap<Hash64, u32>,
 }
 
 impl HygieneData {
@@ -1040,7 +1039,7 @@ impl ExpnData {
     }
 
     #[inline]
-    fn hash_expn(&self, ctx: &mut impl HashStableContext) -> u64 {
+    fn hash_expn(&self, ctx: &mut impl HashStableContext) -> Hash64 {
         let mut hasher = StableHasher::new();
         self.hash_stable(ctx, &mut hasher);
         hasher.finish()
@@ -1058,8 +1057,6 @@ pub enum ExpnKind {
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
     Desugaring(DesugaringKind),
-    /// MIR inlining
-    Inlined,
 }
 
 impl ExpnKind {
@@ -1073,7 +1070,6 @@ impl ExpnKind {
             },
             ExpnKind::AstPass(kind) => kind.descr().to_string(),
             ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
-            ExpnKind::Inlined => "inlined source".to_string(),
         }
     }
 }
@@ -1151,7 +1147,6 @@ pub enum DesugaringKind {
     Await,
     ForLoop,
     WhileLoop,
-    Replace,
 }
 
 impl DesugaringKind {
@@ -1167,7 +1162,6 @@ impl DesugaringKind {
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
-            DesugaringKind::Replace => "drop and replace",
         }
     }
 }
@@ -1207,7 +1201,7 @@ impl HygieneEncodeContext {
         // a `SyntaxContext` that we haven't seen before
         while !self.latest_ctxts.lock().is_empty() || !self.latest_expns.lock().is_empty() {
             debug!(
-                "encode_hygiene: Serializing a round of {:?} SyntaxContextDatas: {:?}",
+                "encode_hygiene: Serializing a round of {:?} SyntaxContextData: {:?}",
                 self.latest_ctxts.lock().len(),
                 self.latest_ctxts
             );
@@ -1294,7 +1288,7 @@ pub fn decode_expn_id(
     decode_data: impl FnOnce(ExpnId) -> (ExpnData, ExpnHash),
 ) -> ExpnId {
     if index == 0 {
-        debug!("decode_expn_id: deserialized root");
+        trace!("decode_expn_id: deserialized root");
         return ExpnId::root();
     }
 
@@ -1327,7 +1321,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 ) -> SyntaxContext {
     let raw_id: u32 = Decodable::decode(d);
     if raw_id == 0 {
-        debug!("decode_syntax_context: deserialized root");
+        trace!("decode_syntax_context: deserialized root");
         // The root is special
         return SyntaxContext::root();
     }

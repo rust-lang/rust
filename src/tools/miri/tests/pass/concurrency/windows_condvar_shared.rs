@@ -44,6 +44,8 @@ fn all_shared() {
     // waiters
     for i in 0..5 {
         handles.push(thread::spawn(move || {
+            let condvar_ptr = condvar_ptr; // avoid field capture
+            let lock_ptr = lock_ptr; // avoid field capture
             unsafe {
                 AcquireSRWLockShared(lock_ptr.0);
             }
@@ -71,6 +73,7 @@ fn all_shared() {
     // readers
     for i in 0..5 {
         handles.push(thread::spawn(move || {
+            let lock_ptr = lock_ptr; // avoid field capture
             unsafe {
                 AcquireSRWLockShared(lock_ptr.0);
             }
@@ -111,6 +114,8 @@ fn shared_sleep_and_exclusive_lock() {
     let mut waiters = Vec::with_capacity(5);
     for i in 0..5 {
         waiters.push(thread::spawn(move || {
+            let lock_ptr = lock_ptr; // avoid field capture
+            let condvar_ptr = condvar_ptr; // avoid field capture
             unsafe {
                 AcquireSRWLockShared(lock_ptr.0);
             }
@@ -170,6 +175,8 @@ fn exclusive_sleep_and_shared_lock() {
     let mut handles = Vec::with_capacity(10);
     for i in 0..5 {
         handles.push(thread::spawn(move || {
+            let lock_ptr = lock_ptr; // avoid field capture
+            let condvar_ptr = condvar_ptr; // avoid field capture
             unsafe {
                 AcquireSRWLockExclusive(lock_ptr.0);
             }
@@ -193,6 +200,7 @@ fn exclusive_sleep_and_shared_lock() {
 
     for i in 0..5 {
         handles.push(thread::spawn(move || {
+            let lock_ptr = lock_ptr; // avoid field capture
             unsafe {
                 AcquireSRWLockShared(lock_ptr.0);
             }

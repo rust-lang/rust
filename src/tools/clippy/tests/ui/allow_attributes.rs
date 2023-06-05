@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(unused)]
 #![warn(clippy::allow_attributes)]
 #![feature(lint_reasons)]

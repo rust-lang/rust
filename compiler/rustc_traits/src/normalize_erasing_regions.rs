@@ -1,6 +1,6 @@
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::query::Providers;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
@@ -47,7 +47,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
             // us a test case.
             debug_assert_eq!(normalized_value, resolved_value);
             let erased = infcx.tcx.erase_regions(resolved_value);
-            debug_assert!(!erased.needs_infer(), "{erased:?}");
+            debug_assert!(!erased.has_infer(), "{erased:?}");
             Ok(erased)
         }
         Err(NoSolution) => Err(NoSolution),

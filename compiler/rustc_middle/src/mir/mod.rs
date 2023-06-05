@@ -3,19 +3,19 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::interpret::{
-    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, LitToConstInput, Scalar,
+    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
 use rustc_data_structures::captures::Captures;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{self, GeneratorKind, ImplicitSelfKind};
@@ -27,7 +27,7 @@ use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::vec::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -36,7 +36,7 @@ use either::Either;
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{ControlFlow, Index, IndexMut};
+use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
 pub use self::query::*;
@@ -101,7 +101,7 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass<'tcx> {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         let name = std::any::type_name::<Self>();
         if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
@@ -191,18 +191,11 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource {
-            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
-            promoted: None,
-        }
+        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
     }
 
     pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
         MirSource { instance, promoted: None }
-    }
-
-    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
-        self.instance.with_opt_param()
     }
 
     #[inline]
@@ -483,7 +476,7 @@ impl<'tcx> Body<'tcx> {
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
     pub fn bound_return_ty(&self) -> ty::EarlyBinder<Ty<'tcx>> {
-        ty::EarlyBinder(self.local_decls[RETURN_PLACE].ty)
+        ty::EarlyBinder::bind(self.local_decls[RETURN_PLACE].ty)
     }
 
     /// Gets the location of the terminator for the given block.
@@ -714,9 +707,7 @@ pub enum BindingForm<'tcx> {
 }
 
 TrivialTypeTraversalAndLiftImpls! {
-    for<'tcx> {
-        BindingForm<'tcx>,
-    }
+    BindingForm<'tcx>,
 }
 
 mod binding_form_impl {
@@ -915,7 +906,7 @@ pub enum LocalInfo<'tcx> {
 
 impl<'tcx> LocalDecl<'tcx> {
     pub fn local_info(&self) -> &LocalInfo<'tcx> {
-        &**self.local_info.as_ref().assert_crate_local()
+        &self.local_info.as_ref().assert_crate_local()
     }
 
     /// Returns `true` only if local is a binding that can itself be
@@ -1115,6 +1106,15 @@ pub struct VarDebugInfo<'tcx> {
 
     /// Where the data for this user variable is to be found.
     pub value: VarDebugInfoContents<'tcx>,
+
+    /// When present, indicates what argument number this variable is in the function that it
+    /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
+    /// argument number in the original function before it was inlined.
+    pub argument_index: Option<u16>,
+
+    /// The data represents `name` dereferenced `references` times,
+    /// and not the direct value.
+    pub references: u8,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1371,55 +1371,61 @@ impl<O> AssertKind<O> {
             _ => write!(f, "\"{}\"", self.description()),
         }
     }
-}
 
-impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+        use crate::fluent_generated::*;
         use AssertKind::*;
+
         match self {
-            BoundsCheck { ref len, ref index } => write!(
-                f,
-                "index out of bounds: the length is {:?} but the index is {:?}",
-                len, index
-            ),
-            OverflowNeg(op) => write!(f, "attempt to negate `{:#?}`, which would overflow", op),
-            DivisionByZero(op) => write!(f, "attempt to divide `{:#?}` by zero", op),
-            RemainderByZero(op) => write!(
-                f,
-                "attempt to calculate the remainder of `{:#?}` with a divisor of zero",
-                op
-            ),
-            Overflow(BinOp::Add, l, r) => {
-                write!(f, "attempt to compute `{:#?} + {:#?}`, which would overflow", l, r)
+            BoundsCheck { .. } => middle_bounds_check,
+            Overflow(BinOp::Shl, _, _) => middle_assert_shl_overflow,
+            Overflow(BinOp::Shr, _, _) => middle_assert_shr_overflow,
+            Overflow(_, _, _) => middle_assert_op_overflow,
+            OverflowNeg(_) => middle_assert_overflow_neg,
+            DivisionByZero(_) => middle_assert_divide_by_zero,
+            RemainderByZero(_) => middle_assert_remainder_by_zero,
+            ResumedAfterReturn(GeneratorKind::Async(_)) => middle_assert_async_resume_after_return,
+            ResumedAfterReturn(GeneratorKind::Gen) => middle_assert_generator_resume_after_return,
+            ResumedAfterPanic(GeneratorKind::Async(_)) => middle_assert_async_resume_after_panic,
+            ResumedAfterPanic(GeneratorKind::Gen) => middle_assert_generator_resume_after_panic,
+
+            MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
+        }
+    }
+
+    pub fn add_args(self, adder: &mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>))
+    where
+        O: fmt::Debug,
+    {
+        use AssertKind::*;
+
+        macro_rules! add {
+            ($name: expr, $value: expr) => {
+                adder($name.into(), $value.into_diagnostic_arg());
+            };
+        }
+
+        match self {
+            BoundsCheck { len, index } => {
+                add!("len", format!("{len:?}"));
+                add!("index", format!("{index:?}"));
             }
-            Overflow(BinOp::Sub, l, r) => {
-                write!(f, "attempt to compute `{:#?} - {:#?}`, which would overflow", l, r)
+            Overflow(BinOp::Shl | BinOp::Shr, _, val)
+            | DivisionByZero(val)
+            | RemainderByZero(val)
+            | OverflowNeg(val) => {
+                add!("val", format!("{val:#?}"));
             }
-            Overflow(BinOp::Mul, l, r) => {
-                write!(f, "attempt to compute `{:#?} * {:#?}`, which would overflow", l, r)
+            Overflow(binop, left, right) => {
+                add!("op", binop.to_hir_binop().as_str());
+                add!("left", format!("{left:#?}"));
+                add!("right", format!("{right:#?}"));
             }
-            Overflow(BinOp::Div, l, r) => {
-                write!(f, "attempt to compute `{:#?} / {:#?}`, which would overflow", l, r)
-            }
-            Overflow(BinOp::Rem, l, r) => write!(
-                f,
-                "attempt to compute the remainder of `{:#?} % {:#?}`, which would overflow",
-                l, r
-            ),
-            Overflow(BinOp::Shr, _, r) => {
-                write!(f, "attempt to shift right by `{:#?}`, which would overflow", r)
-            }
-            Overflow(BinOp::Shl, _, r) => {
-                write!(f, "attempt to shift left by `{:#?}`, which would overflow", r)
-            }
+            ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
             MisalignedPointerDereference { required, found } => {
-                write!(
-                    f,
-                    "misaligned pointer dereference: address must be a multiple of {:?} but is {:?}",
-                    required, found
-                )
+                add!("required", format!("{required:#?}"));
+                add!("found", format!("{found:#?}"));
             }
-            _ => write!(f, "{}", self.description()),
         }
     }
 }
@@ -1528,6 +1534,19 @@ impl<V, T> ProjectionElem<V, T> {
         }
     }
 
+    /// Returns `true` if the target of this projection always refers to the same memory region
+    /// whatever the state of the program.
+    pub fn is_stable_offset(&self) -> bool {
+        match self {
+            Self::Deref | Self::Index(_) => false,
+            Self::Field(_, _)
+            | Self::OpaqueCast(_)
+            | Self::ConstantIndex { .. }
+            | Self::Subslice { .. }
+            | Self::Downcast(_, _) => true,
+        }
+    }
+
     /// Returns `true` if this is a `Downcast` projection with the given `VariantIdx`.
     pub fn is_downcast_to(&self, v: VariantIdx) -> bool {
         matches!(*self, Self::Downcast(_, x) if x == v)
@@ -1541,8 +1560,11 @@ impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if this is accepted inside `VarDebugInfoContents::Place`.
     pub fn can_use_in_debuginfo(&self) -> bool {
         match self {
-            Self::Deref | Self::Downcast(_, _) | Self::Field(_, _) => true,
-            Self::ConstantIndex { .. }
+            Self::ConstantIndex { from_end: false, .. }
+            | Self::Deref
+            | Self::Downcast(_, _)
+            | Self::Field(_, _) => true,
+            Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
             | Self::OpaqueCast(_)
             | Self::Subslice { .. } => false,
@@ -1630,18 +1652,7 @@ impl<'tcx> Place<'tcx> {
             return self;
         }
 
-        let mut v: Vec<PlaceElem<'tcx>>;
-
-        let new_projections = if self.projection.is_empty() {
-            more_projections
-        } else {
-            v = Vec::with_capacity(self.projection.len() + more_projections.len());
-            v.extend(self.projection);
-            v.extend(more_projections);
-            &v
-        };
-
-        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
+        self.as_ref().project_deeper(more_projections, tcx)
     }
 }
 
@@ -1711,6 +1722,27 @@ impl<'tcx> PlaceRef<'tcx> {
             let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
             (base, *proj)
         })
+    }
+
+    /// Generates a new place by appending `more_projections` to the existing ones
+    /// and interning the result.
+    pub fn project_deeper(
+        self,
+        more_projections: &[PlaceElem<'tcx>],
+        tcx: TyCtxt<'tcx>,
+    ) -> Place<'tcx> {
+        let mut v: Vec<PlaceElem<'tcx>>;
+
+        let new_projections = if self.projection.is_empty() {
+            more_projections
+        } else {
+            v = Vec::with_capacity(self.projection.len() + more_projections.len());
+            v.extend(self.projection);
+            v.extend(more_projections);
+            &v
+        };
+
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 }
 
@@ -2045,7 +2077,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
-            NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
+            NullaryOp(ref op, ref t) => match op {
+                NullOp::SizeOf => write!(fmt, "SizeOf({:?})", t),
+                NullOp::AlignOf => write!(fmt, "AlignOf({:?})", t),
+                NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({:?}, {:?})", t, fields),
+            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -2300,7 +2336,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
-                        Err(_) => Self::Ty(tcx.const_error(self.ty())),
+                        Err(guar) => Self::Ty(tcx.const_error(self.ty(), guar)),
                     }
                 } else {
                     self
@@ -2312,9 +2348,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric) => self,
-                    Err(ErrorHandled::Reported(guar)) => {
-                        Self::Ty(tcx.const_error_with_guaranteed(ty, guar))
-                    }
+                    Err(ErrorHandled::Reported(guar)) => Self::Ty(tcx.const_error(ty, guar.into())),
                 }
             }
         }
@@ -2435,75 +2469,17 @@ impl<'tcx> ConstantKind<'tcx> {
 
     /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly
     /// converted to a constant, everything else becomes `Unevaluated`.
+    #[instrument(skip(tcx), level = "debug", ret)]
     pub fn from_anon_const(
         tcx: TyCtxt<'tcx>,
-        def_id: LocalDefId,
+        def: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id), param_env)
-    }
-
-    #[instrument(skip(tcx), level = "debug", ret)]
-    pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let body_id = match tcx.hir().get(hir_id) {
+        let body_id = match tcx.hir().get_by_def_id(def) {
             hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def_id.to_def_id()),
-                "from_inline_const can only process anonymous constants"
-            ),
-        };
-        let expr = &tcx.hir().body(body_id).value;
-        let ty = tcx.typeck(def_id).node_type(hir_id);
-
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            match tcx.at(expr.span).lit_to_mir_constant(lit_input) {
-                Ok(c) => return c,
-                Err(_) => {}
+            _ => {
+                span_bug!(tcx.def_span(def), "from_anon_const can only process anonymous constants")
             }
-        }
-
-        let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
-        let parent_substs =
-            tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
-        let substs =
-            ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
-                .substs;
-
-        let uneval = UnevaluatedConst {
-            def: ty::WithOptConstParam::unknown(def_id).to_global(),
-            substs,
-            promoted: None,
-        };
-        debug_assert!(!uneval.has_free_regions());
-
-        Self::Unevaluated(uneval, ty)
-    }
-
-    #[instrument(skip(tcx), level = "debug", ret)]
-    fn from_opt_const_arg_anon_const(
-        tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
-        let body_id = match tcx.hir().get_by_def_id(def.did) {
-            hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def.did.to_def_id()),
-                "from_anon_const can only process anonymous constants"
-            ),
         };
 
         let expr = &tcx.hir().body(body_id).value;
@@ -2519,7 +2495,7 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!("expr.kind: {:?}", expr.kind);
 
-        let ty = tcx.type_of(def.def_id_for_type_of()).subst_identity();
+        let ty = tcx.type_of(def).subst_identity();
         debug!(?ty);
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
@@ -2546,7 +2522,7 @@ impl<'tcx> ConstantKind<'tcx> {
             _ => {}
         }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def);
         let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
             && let Some(parent_did) = parent_hir_id.as_owner()
         {
@@ -2556,15 +2532,14 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!(?parent_substs);
 
-        let did = def.did.to_def_id();
+        let did = def.to_def_id();
         let child_substs = InternalSubsts::identity_for_item(tcx, did);
         let substs =
             tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
         debug!(?substs);
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let span = tcx.hir().span(hir_id);
-        let uneval = UnevaluatedConst::new(def.to_global(), substs);
+        let span = tcx.def_span(def);
+        let uneval = UnevaluatedConst::new(did, substs);
         debug!(?span, ?param_env);
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
@@ -2578,8 +2553,8 @@ impl<'tcx> ConstantKind<'tcx> {
                 // new unevaluated const and error hard later in codegen
                 Self::Unevaluated(
                     UnevaluatedConst {
-                        def: def.to_global(),
-                        substs: InternalSubsts::identity_for_item(tcx, def.did),
+                        def: did,
+                        substs: InternalSubsts::identity_for_item(tcx, did),
                         promoted: None,
                     },
                     ty,
@@ -2604,7 +2579,7 @@ impl<'tcx> ConstantKind<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
-    pub def: ty::WithOptConstParam<DefId>,
+    pub def: DefId,
     pub substs: SubstsRef<'tcx>,
     pub promoted: Option<Promoted>,
 }
@@ -2620,10 +2595,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-    ) -> UnevaluatedConst<'tcx> {
+    pub fn new(def: DefId, substs: SubstsRef<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, substs, promoted: Default::default() }
     }
 }
@@ -2739,12 +2711,11 @@ impl<'tcx> UserTypeProjections {
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,
 }
-
-impl Copy for ProjectionKind {}
 
 impl UserTypeProjection {
     pub(crate) fn index(mut self) -> Self {
@@ -2779,28 +2750,6 @@ impl UserTypeProjection {
         ));
         self.projs.push(ProjectionElem::Field(field_index, ()));
         self
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(UserTypeProjection {
-            base: self.base.try_fold_with(folder)?,
-            projs: self.projs.try_fold_with(folder)?,
-        })
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut Vs,
-    ) -> ControlFlow<Vs::BreakTy> {
-        self.base.visit_with(visitor)
-        // Note: there's nothing in `self.proj` to visit.
     }
 }
 
@@ -3111,11 +3060,13 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(BasicBlockData<'_>, 136);
     static_assert_size!(LocalDecl<'_>, 40);
+    static_assert_size!(SourceScopeData<'_>, 72);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(Terminator<'_>, 112);
-    static_assert_size!(TerminatorKind<'_>, 96);
+    static_assert_size!(Terminator<'_>, 104);
+    static_assert_size!(TerminatorKind<'_>, 88);
+    static_assert_size!(VarDebugInfo<'_>, 80);
     // tidy-alphabetical-end
 }

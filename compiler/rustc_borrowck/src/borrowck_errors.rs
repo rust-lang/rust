@@ -469,6 +469,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub(crate) fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,

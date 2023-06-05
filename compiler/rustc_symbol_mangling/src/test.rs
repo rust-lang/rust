@@ -83,7 +83,7 @@ impl SymbolNamesTest<'_> {
             tcx.sess.emit_err(TestOutput {
                 span: attr.span,
                 kind: Kind::DefPath,
-                content: with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id())),
+                content: with_no_trimmed_paths!(tcx.def_path_str(def_id)),
             });
         }
     }

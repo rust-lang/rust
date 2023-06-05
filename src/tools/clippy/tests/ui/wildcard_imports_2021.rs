@@ -1,8 +1,8 @@
-// revisions: edition2018 edition2021
-//[edition2018] edition:2018
-//[edition2021] edition:2021
-// run-rustfix
-// aux-build:wildcard_imports_helper.rs
+//@revisions: edition2018 edition2021
+//@[edition2018] edition:2018
+//@[edition2021] edition:2021
+//@run-rustfix
+//@aux-build:wildcard_imports_helper.rs
 
 #![warn(clippy::wildcard_imports)]
 #![allow(unused, clippy::unnecessary_wraps, clippy::let_unit_value)]

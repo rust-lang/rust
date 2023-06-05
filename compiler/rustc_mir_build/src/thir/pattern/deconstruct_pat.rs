@@ -52,12 +52,12 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::captures::Captures;
 use rustc_hir::{HirId, RangeEnd};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
-use rustc_middle::{middle::stability::EvalResult, mir::interpret::ConstValue};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx, FIRST_VARIANT};
@@ -140,28 +140,17 @@ impl IntRange {
         value: mir::ConstantKind<'tcx>,
     ) -> Option<IntRange> {
         let ty = value.ty();
-        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
-            let val = if let mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) = value {
-                // For this specific pattern we can skip a lot of effort and go
-                // straight to the result, after doing a bit of checking. (We
-                // could remove this branch and just fall through, which
-                // is more general but much slower.)
-                scalar.to_bits_or_ptr_internal(target_size).unwrap().left()?
-            } else {
-                if let mir::ConstantKind::Ty(c) = value
-                    && let ty::ConstKind::Value(_) = c.kind()
-                {
-                    bug!("encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val");
-                }
+        let (target_size, bias) = Self::integral_size_and_signed_bias(tcx, ty)?;
+        let val = match value {
+            mir::ConstantKind::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
+                valtree.unwrap_leaf().to_bits(target_size).ok()
+            },
+            // This is a more general form of the previous case.
+            _ => value.try_eval_bits(tcx, param_env, ty),
+        }?;
 
-                // This is a more general form of the previous case.
-                value.try_eval_bits(tcx, param_env, ty)?
-            };
-            let val = val ^ bias;
-            Some(IntRange { range: val..=val, bias })
-        } else {
-            None
-        }
+        let val = val ^ bias;
+        Some(IntRange { range: val..=val, bias })
     }
 
     #[inline]
@@ -844,8 +833,8 @@ impl<'tcx> Constructor<'tcx> {
     }
 
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
-    /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
-    /// assumed to have been split from a wildcard.
+    /// assumed to be built from `matrix.head_ctors()` with wildcards and opaques filtered out,
+    /// and `self` is assumed to have been split from a wildcard.
     fn is_covered_by_any<'p>(
         &self,
         pcx: &PatCtxt<'_, 'p, 'tcx>,
@@ -894,7 +883,7 @@ impl<'tcx> Constructor<'tcx> {
 /// in `to_ctors`: in some cases we only return `Missing`.
 #[derive(Debug)]
 pub(super) struct SplitWildcard<'tcx> {
-    /// Constructors seen in the matrix.
+    /// Constructors (other than wildcards and opaques) seen in the matrix.
     matrix_ctors: Vec<Constructor<'tcx>>,
     /// All the constructors for this type
     all_ctors: SmallVec<[Constructor<'tcx>; 1]>,
@@ -1037,7 +1026,7 @@ impl<'tcx> SplitWildcard<'tcx> {
         // Since `all_ctors` never contains wildcards, this won't recurse further.
         self.all_ctors =
             self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx, ctors.clone())).collect();
-        self.matrix_ctors = ctors.filter(|c| !c.is_wildcard()).cloned().collect();
+        self.matrix_ctors = ctors.filter(|c| !matches!(c, Wildcard | Opaque)).cloned().collect();
     }
 
     /// Whether there are any value constructors for this type that are not present in the matrix.

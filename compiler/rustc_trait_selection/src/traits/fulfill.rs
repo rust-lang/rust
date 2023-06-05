@@ -116,6 +116,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
 }
 
 impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
+    #[inline]
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,
@@ -133,8 +134,15 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>> {
-        self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
+    fn collect_remaining_errors(
+        &mut self,
+        _infcx: &InferCtxt<'tcx>,
+    ) -> Vec<FulfillmentError<'tcx>> {
+        self.predicates
+            .to_errors(CodeAmbiguity { overflow: false })
+            .into_iter()
+            .map(to_fulfillment_error)
+            .collect()
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
@@ -533,8 +541,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         use ty::ConstKind::Unevaluated;
                         match (c1.kind(), c2.kind()) {
                             (Unevaluated(a), Unevaluated(b))
-                                if a.def.did == b.def.did
-                                    && tcx.def_kind(a.def.did) == DefKind::AssocConst =>
+                                if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
                             {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)
@@ -609,7 +616,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         (Err(ErrorHandled::Reported(reported)), _)
                         | (_, Err(ErrorHandled::Reported(reported))) => ProcessResult::Error(
                             CodeSelectionError(SelectionError::NotConstEvaluatable(
-                                NotConstEvaluatable::Error(reported),
+                                NotConstEvaluatable::Error(reported.into()),
                             )),
                         ),
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {

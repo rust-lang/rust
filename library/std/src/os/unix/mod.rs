@@ -73,6 +73,8 @@ mod platform {
     pub use crate::os::redox::*;
     #[cfg(target_os = "solaris")]
     pub use crate::os::solaris::*;
+    #[cfg(target_os = "vita")]
+    pub use crate::os::vita::*;
     #[cfg(target_os = "vxworks")]
     pub use crate::os::vxworks::*;
     #[cfg(target_os = "watchos")]

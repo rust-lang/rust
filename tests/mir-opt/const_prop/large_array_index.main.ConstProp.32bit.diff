@@ -18,17 +18,20 @@
           _2 = [const 0_u8; 5000];         // scope 0 at $DIR/large_array_index.rs:+2:17: +2:29
           StorageLive(_3);                 // scope 0 at $DIR/large_array_index.rs:+2:30: +2:31
           _3 = const 2_usize;              // scope 0 at $DIR/large_array_index.rs:+2:30: +2:31
-          _4 = const 5000_usize;           // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
+-         _4 = Len(_2);                    // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
 -         _5 = Lt(_3, _4);                 // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
 -         assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
++         _4 = const 5000_usize;           // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
 +         _5 = const true;                 // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
-+         assert(const true, "index out of bounds: the length is {} but the index is {}", const 5000_usize, const 2_usize) -> bb1; // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
++         assert(const true, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
       }
   
       bb1: {
-          _1 = _2[_3];                     // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
+-         _1 = _2[_3];                     // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
++         _1 = _2[2 of 3];                 // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
           StorageDead(_3);                 // scope 0 at $DIR/large_array_index.rs:+2:32: +2:33
           StorageDead(_2);                 // scope 0 at $DIR/large_array_index.rs:+2:32: +2:33
+          _0 = const ();                   // scope 0 at $DIR/large_array_index.rs:+0:11: +3:2
           StorageDead(_1);                 // scope 0 at $DIR/large_array_index.rs:+3:1: +3:2
           return;                          // scope 0 at $DIR/large_array_index.rs:+3:2: +3:2
       }

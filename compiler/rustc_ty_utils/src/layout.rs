@@ -1,8 +1,9 @@
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
+use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
@@ -22,8 +23,8 @@ use crate::errors::{
 };
 use crate::layout_sanity_check::sanity_check_layout;
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { layout_of, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { layout_of, ..*providers };
 }
 
 #[instrument(skip(tcx, query), level = "debug")]
@@ -322,7 +323,7 @@ fn layout_of_uncached<'tcx>(
                 if fi.ty(tcx, substs) != f0_ty {
                     tcx.sess.delay_span_bug(
                         DUMMY_SP,
-                        "#[repr(simd)] was applied to an ADT with hetrogeneous field type",
+                        "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
                     return Err(LayoutError::Unknown(ty));
                 }
@@ -609,7 +610,7 @@ fn generator_layout<'tcx>(
 ) -> Result<Layout<'tcx>, LayoutError<'tcx>> {
     use SavedLocalEligibility::*;
     let tcx = cx.tcx;
-    let subst_field = |ty: Ty<'tcx>| EarlyBinder(ty).subst(tcx, substs);
+    let subst_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).subst(tcx, substs);
 
     let Some(info) = tcx.generator_layout(def_id) else {
         return Err(LayoutError::Unknown(ty));

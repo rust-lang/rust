@@ -6,7 +6,6 @@ use std::rc::Rc;
 
 use crate::{
     def_use::{self, DefUse},
-    nll::ToRegionVid,
     region_infer::{Cause, RegionInferenceContext},
 };
 use rustc_data_structures::fx::FxIndexSet;
@@ -117,7 +116,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
 
         let mut found_it = false;
         self.tcx.for_each_free_region(&local_ty, |r| {
-            if r.to_region_vid() == self.region_vid {
+            if r.as_var() == self.region_vid {
                 found_it = true;
             }
         });

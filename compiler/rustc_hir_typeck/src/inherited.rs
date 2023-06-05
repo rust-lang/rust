@@ -4,7 +4,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
-use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
@@ -130,7 +131,7 @@ impl<'tcx> Inherited<'tcx> {
         // (*) binder skipped
         if let ty::PredicateKind::Clause(ty::Clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
             && let Some(ty) = self.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| self.root_var(t))
-            && self.tcx.lang_items().sized_trait().map_or(false, |st| st != tpred.trait_ref.def_id)
+            && self.tcx.lang_items().sized_trait().is_some_and(|st| st != tpred.trait_ref.def_id)
         {
             let new_self_ty = self.tcx.types.unit;
 

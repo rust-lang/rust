@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(dead_code)]
 #![warn(clippy::redundant_pub_crate)]
 

@@ -48,7 +48,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
         &self,
         mut err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        err.note(&format!(
+        err.note(format!(
             "certain types, like `{}`, must be casted before passing them to a \
                 variadic function, because of arcane ABI rules dictated by the C \
                 standard",

@@ -94,7 +94,7 @@ impl FormatArguments {
         }
         if !matches!(arg.kind, FormatArgumentKind::Captured(..)) {
             // This is an explicit argument.
-            // Make sure that all arguments so far are explcit.
+            // Make sure that all arguments so far are explicit.
             assert_eq!(
                 self.num_explicit_args,
                 self.arguments.len(),

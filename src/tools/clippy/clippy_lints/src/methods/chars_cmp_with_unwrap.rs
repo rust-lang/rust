@@ -18,7 +18,7 @@ pub(super) fn check(
 ) -> bool {
     if_chain! {
         if let Some(args) = method_chain_args(info.chain, chain_methods);
-        if let hir::ExprKind::Lit(ref lit) = info.other.kind;
+        if let hir::ExprKind::Lit(lit) = info.other.kind;
         if let ast::LitKind::Char(c) = lit.node;
         then {
             let mut applicability = Applicability::MachineApplicable;

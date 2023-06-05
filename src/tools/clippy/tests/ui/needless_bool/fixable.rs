@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::needless_bool)]
 #![allow(
@@ -99,6 +99,13 @@ fn main() {
     needless_bool2(x);
     needless_bool3(x);
     needless_bool_condition();
+
+    if a == b {
+        true
+    } else {
+        // Do not lint as this comment might be important
+        false
+    };
 }
 
 fn bool_ret3(x: bool) -> bool {

@@ -1,5 +1,5 @@
 // This test ensures that several clickable items actually have the pointer cursor.
-goto: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
 
 // the `[+]/[-]` button
 assert-css: ("#toggle-all-docs", {"cursor": "pointer"})
@@ -16,9 +16,9 @@ wait-for: "#search-tabs"
 assert-css: ("#search-tabs > button", {"cursor": "pointer"})
 
 // mobile sidebar toggle button
-size: (500, 700)
+set-window-size: (500, 700)
 assert-css: (".sidebar-menu-toggle", {"cursor": "pointer"})
 
 // the sidebar toggle button on the source code pages
-goto: "file://" + |DOC_PATH| + "/src/lib2/lib.rs.html"
+go-to: "file://" + |DOC_PATH| + "/src/lib2/lib.rs.html"
 assert-css: ("#src-sidebar-toggle > button", {"cursor": "pointer"})

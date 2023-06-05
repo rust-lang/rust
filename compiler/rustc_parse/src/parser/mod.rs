@@ -43,7 +43,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::errors::{
-    IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
+    self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
 };
 
 bitflags::bitflags! {
@@ -148,9 +148,6 @@ pub struct Parser<'a> {
     max_angle_bracket_count: u32,
 
     last_unexpected_token_span: Option<Span>,
-    /// Span pointing at the `:` for the last type ascription the parser has seen, and whether it
-    /// looked like it could have been a mistyped path or literal `Option:Some(42)`).
-    pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
     capture_state: CaptureState,
@@ -165,7 +162,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 288);
+rustc_data_structures::static_assert_size!(Parser<'_>, 272);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -470,7 +467,6 @@ impl<'a> Parser<'a> {
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             last_unexpected_token_span: None,
-            last_type_ascription: None,
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
@@ -540,7 +536,9 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token.kind) {
             // leave it in the input
             Ok(false)
-        } else if self.last_unexpected_token_span == Some(self.token.span) {
+        } else if self.token.kind != token::Eof
+            && self.last_unexpected_token_span == Some(self.token.span)
+        {
             FatalError.raise();
         } else {
             self.expected_one_of_not_found(edible, inedible)
@@ -663,15 +661,10 @@ impl<'a> Parser<'a> {
         if case == Case::Insensitive
         && let Some((ident, /* is_raw */ false)) = self.token.ident()
         && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
-            self
-                .struct_span_err(ident.span, format!("keyword `{kw}` is written in a wrong case"))
-                .span_suggestion(
-                    ident.span,
-                    "write it in the correct case",
-                    kw,
-                    Applicability::MachineApplicable
-                ).emit();
-
+            self.sess.emit_err(errors::KwBadCase {
+                span: ident.span,
+                kw: kw.as_str()
+            });
             self.bump();
             return true;
         }
@@ -914,7 +907,7 @@ impl<'a> Parser<'a> {
                                 expect_err
                                     .span_suggestion_verbose(
                                         self.prev_token.span.shrink_to_hi().until(self.token.span),
-                                        &msg,
+                                        msg,
                                         " @ ",
                                         Applicability::MaybeIncorrect,
                                     )
@@ -930,7 +923,7 @@ impl<'a> Parser<'a> {
                                     expect_err
                                         .span_suggestion_short(
                                             sp,
-                                            &format!("missing `{}`", token_str),
+                                            format!("missing `{}`", token_str),
                                             token_str,
                                             Applicability::MaybeIncorrect,
                                         )
@@ -946,10 +939,14 @@ impl<'a> Parser<'a> {
                                         // propagate the help message from sub error 'e' to main error 'expect_err;
                                         expect_err.children.push(xx.clone());
                                     }
-                                    expect_err.emit();
-
                                     e.cancel();
-                                    break;
+                                    if self.token == token::Colon {
+                                        // we will try to recover in `maybe_recover_struct_lit_bad_delims`
+                                        return Err(expect_err);
+                                    } else {
+                                        expect_err.emit();
+                                        break;
+                                    }
                                 }
                             }
                         }

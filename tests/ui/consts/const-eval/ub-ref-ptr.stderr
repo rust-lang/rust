@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:16:1
+  --> $DIR/ub-ref-ptr.rs:15:1
    |
 LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
    | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
@@ -10,7 +10,7 @@ LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:20:1
+  --> $DIR/ub-ref-ptr.rs:19:1
    |
 LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
@@ -21,7 +21,7 @@ LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:24:1
+  --> $DIR/ub-ref-ptr.rs:23:1
    |
 LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^ constructing invalid value: encountered a null reference
@@ -32,7 +32,7 @@ LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:27:1
+  --> $DIR/ub-ref-ptr.rs:26:1
    |
 LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a null box
@@ -43,7 +43,7 @@ LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-ref-ptr.rs:34:1
+  --> $DIR/ub-ref-ptr.rs:33:1
    |
 LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -52,7 +52,7 @@ LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-ref-ptr.rs:37:39
+  --> $DIR/ub-ref-ptr.rs:36:39
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -61,13 +61,13 @@ LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 note: erroneous constant used
-  --> $DIR/ub-ref-ptr.rs:37:38
+  --> $DIR/ub-ref-ptr.rs:36:38
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-ref-ptr.rs:40:86
+  --> $DIR/ub-ref-ptr.rs:39:86
    |
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
    |                                                                                      ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -76,13 +76,13 @@ LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[us
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 note: erroneous constant used
-  --> $DIR/ub-ref-ptr.rs:40:85
+  --> $DIR/ub-ref-ptr.rs:39:85
    |
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
    |                                                                                     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:43:1
+  --> $DIR/ub-ref-ptr.rs:42:1
    |
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (0x539[noalloc] has no provenance)
@@ -93,7 +93,7 @@ LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:46:1
+  --> $DIR/ub-ref-ptr.rs:45:1
    |
 LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling box (0x539[noalloc] has no provenance)
@@ -104,13 +104,13 @@ LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-ref-ptr.rs:49:41
+  --> $DIR/ub-ref-ptr.rs:48:41
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:53:1
+  --> $DIR/ub-ref-ptr.rs:52:1
    |
 LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered null pointer, but expected a function pointer
@@ -121,13 +121,13 @@ LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-ref-ptr.rs:55:38
+  --> $DIR/ub-ref-ptr.rs:54:38
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:58:1
+  --> $DIR/ub-ref-ptr.rs:57:1
    |
 LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0xd[noalloc], but expected a function pointer
@@ -138,7 +138,7 @@ LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:60:1
+  --> $DIR/ub-ref-ptr.rs:59:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
    | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered alloc41, but expected a function pointer
@@ -158,7 +158,7 @@ note: inside `std::ptr::read::<u32>`
 note: inside `ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `UNALIGNED_READ`
-  --> $DIR/ub-ref-ptr.rs:67:5
+  --> $DIR/ub-ref-ptr.rs:66:5
    |
 LL |     ptr.read();
    |     ^^^^^^^^^^

@@ -4,7 +4,7 @@
 //! are splitting the hir.
 
 use hir_def::{
-    expr::{BindingId, LabelId},
+    hir::{BindingId, LabelId},
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, GenericParamId,
     ModuleDefId, VariantId,
 };

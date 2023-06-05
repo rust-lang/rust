@@ -7,7 +7,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{FnRetTy, Function, Generics, ItemId, Type, WherePredicate};
+use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -28,9 +28,7 @@ pub(crate) fn build_index<'tcx>(
     // has since been learned.
     for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            let desc = item
-                .doc_value()
-                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
+            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap(),
@@ -45,10 +43,8 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    let crate_doc = krate
-        .module
-        .doc_value()
-        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(cache)));
+    let crate_doc =
+        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
 
     // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     // we need the alias element to have an array of items.
@@ -59,7 +55,7 @@ pub(crate) fn build_index<'tcx>(
         // `sort_unstable_by_key` produces lifetime errors
         let k1 = (&k1.path, k1.name.as_str(), &k1.ty, &k1.parent);
         let k2 = (&k2.path, k2.name.as_str(), &k2.ty, &k2.parent);
-        std::cmp::Ord::cmp(&k1, &k2)
+        Ord::cmp(&k1, &k2)
     });
 
     // Set up alias indexes.
@@ -391,12 +387,14 @@ fn get_index_type_id(clean_type: &clean::Type) -> Option<RenderTypeId> {
         clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
             get_index_type_id(type_)
         }
+        // The type parameters are converted to generics in `add_generics_and_bounds_as_types`
+        clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
+        clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
+        // Not supported yet
         clean::BareFunction(_)
         | clean::Generic(_)
         | clean::ImplTrait(_)
         | clean::Tuple(_)
-        | clean::Slice(_)
-        | clean::Array(_, _)
         | clean::QPath { .. }
         | clean::Infer => None,
     }
@@ -563,6 +561,30 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
             }
         }
         insert_ty(res, arg.clone(), ty_generics);
+    } else if let Type::Slice(ref ty) = *arg {
+        let mut ty_generics = Vec::new();
+        add_generics_and_bounds_as_types(
+            self_,
+            generics,
+            &ty,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            cache,
+        );
+        insert_ty(res, arg.clone(), ty_generics);
+    } else if let Type::Array(ref ty, _) = *arg {
+        let mut ty_generics = Vec::new();
+        add_generics_and_bounds_as_types(
+            self_,
+            generics,
+            &ty,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            cache,
+        );
+        insert_ty(res, arg.clone(), ty_generics);
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
         // looking at `Option`, we enter this "else" condition, otherwise if it's `T`, we don't.
@@ -634,22 +656,9 @@ fn get_fn_inputs_and_outputs<'tcx>(
     }
 
     let mut ret_types = Vec::new();
-    match decl.output {
-        FnRetTy::Return(ref return_type) => {
-            add_generics_and_bounds_as_types(
-                self_,
-                generics,
-                return_type,
-                tcx,
-                0,
-                &mut ret_types,
-                cache,
-            );
-            if ret_types.is_empty() {
-                ret_types.push(get_index_type(return_type, vec![]));
-            }
-        }
-        _ => {}
-    };
+    add_generics_and_bounds_as_types(self_, generics, &decl.output, tcx, 0, &mut ret_types, cache);
+    if ret_types.is_empty() {
+        ret_types.push(get_index_type(&decl.output, vec![]));
+    }
     (all_types, ret_types)
 }

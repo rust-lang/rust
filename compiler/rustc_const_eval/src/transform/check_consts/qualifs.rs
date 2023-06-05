@@ -157,7 +157,7 @@ impl Qualif for NeedsNonConstDrop {
             cx.tcx,
             ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
-            ty::Binder::dummy(cx.tcx.at(cx.body.span).mk_trait_ref(LangItem::Destruct, [ty]))
+            ty::TraitRef::from_lang_item(cx.tcx, LangItem::Destruct, cx.body.span, [ty])
                 .with_constness(ty::BoundConstness::ConstIfConst),
         );
 
@@ -364,9 +364,8 @@ where
         assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
 
         // Don't peek inside trait associated constants.
-        if promoted.is_none() && cx.tcx.trait_of_item(def.did).is_none() {
-            assert_eq!(def.const_param_did, None, "expected associated const: {def:?}");
-            let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def.did);
+        if promoted.is_none() && cx.tcx.trait_of_item(def).is_none() {
+            let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
 
             if !Q::in_qualifs(&qualifs) {
                 return false;

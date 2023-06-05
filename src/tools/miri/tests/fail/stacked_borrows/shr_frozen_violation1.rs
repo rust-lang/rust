@@ -1,3 +1,5 @@
+#![allow(cast_ref_to_mut)]
+
 fn foo(x: &mut i32) -> i32 {
     *x = 5;
     unknown_code(&*x);

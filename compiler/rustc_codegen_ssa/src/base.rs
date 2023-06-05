@@ -17,28 +17,25 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-
-use rustc_data_structures::sync::par_iter;
-#[cfg(parallel_compiler)]
-use rustc_data_structures::sync::ParallelIterator;
+use rustc_data_structures::sync::par_map;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
+use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
-use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, FIRST_VARIANT};
 
 use std::collections::BTreeSet;
@@ -298,7 +295,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let (base, info) = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
                 OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
-                OperandValue::Ref(..) => bug!(),
+                OperandValue::Ref(..) | OperandValue::ZeroSized => bug!(),
             };
             OperandValue::Pair(base, info).store(bx, dst);
         }
@@ -494,7 +491,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             (rust_main, start_ty, vec![arg_argc, arg_argv])
         };
 
-        let result = bx.call(start_ty, None, start_fn, &args, None);
+        let result = bx.call(start_ty, None, None, start_fn, &args, None);
         let cast = bx.intcast(result, cx.type_int(), true);
         bx.ret(cast);
 
@@ -689,7 +686,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
-    let mut pre_compiled_cgus = if cfg!(parallel_compiler) {
+    let mut pre_compiled_cgus = if tcx.sess.threads() > 1 {
         tcx.sess.time("compile_first_CGU_batch", || {
             // Try to find one CGU to compile per thread.
             let cgus: Vec<_> = cgu_reuse
@@ -702,12 +699,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             // Compile the found CGUs in parallel.
             let start_time = Instant::now();
 
-            let pre_compiled_cgus = par_iter(cgus)
-                .map(|(i, _)| {
-                    let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                    (i, module)
-                })
-                .collect();
+            let pre_compiled_cgus = par_map(cgus, |(i, _)| {
+                let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                (i, module)
+            });
 
             total_codegen_time += start_time.elapsed();
 

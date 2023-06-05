@@ -252,6 +252,11 @@ declare_clippy_lint! {
     /// A `Result` is at least as large as the `Err`-variant. While we
     /// expect that variant to be seldomly used, the compiler needs to reserve
     /// and move that much memory every single time.
+    /// Furthermore, errors are often simply passed up the call-stack, making
+    /// use of the `?`-operator and its type-conversion mechanics. If the
+    /// `Err`-variant further up the call-stack stores the `Err`-variant in
+    /// question (as library code often does), it itself needs to be at least
+    /// as large, propagating the problem.
     ///
     /// ### Known problems
     /// The size determined by Clippy is platform-dependent.
@@ -330,7 +335,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Lints when `impl Trait` is being used in a function's paremeters.
+    /// Lints when `impl Trait` is being used in a function's parameters.
     /// ### Why is this bad?
     /// Turbofish syntax (`::<>`) cannot be used when `impl Trait` is being used, making `impl Trait` less powerful. Readability may also be a factor.
     ///
@@ -348,7 +353,7 @@ declare_clippy_lint! {
     /// 	// [...]
     /// }
     /// ```
-    #[clippy::version = "1.68.0"]
+    #[clippy::version = "1.69.0"]
     pub IMPL_TRAIT_IN_PARAMS,
     restriction,
     "`impl Trait` is used in the function's parameters"

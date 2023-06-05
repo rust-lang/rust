@@ -40,7 +40,7 @@
 
 use crate::framework::BitSetExt;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use std::iter;
 
 /// A [partially ordered set][poset] that has a [least upper bound][lub] for any pair of elements
@@ -75,12 +75,12 @@ pub trait MeetSemiLattice: Eq {
 
 /// A set that has a "bottom" element, which is less than or equal to any other element.
 pub trait HasBottom {
-    fn bottom() -> Self;
+    const BOTTOM: Self;
 }
 
 /// A set that has a "top" element, which is greater than or equal to any other element.
 pub trait HasTop {
-    fn top() -> Self;
+    const TOP: Self;
 }
 
 /// A `bool` is a "two-point" lattice with `true` as the top element and `false` as the bottom:
@@ -113,15 +113,11 @@ impl MeetSemiLattice for bool {
 }
 
 impl HasBottom for bool {
-    fn bottom() -> Self {
-        false
-    }
+    const BOTTOM: Self = false;
 }
 
 impl HasTop for bool {
-    fn top() -> Self {
-        true
-    }
+    const TOP: Self = true;
 }
 
 /// A tuple (or list) of lattices is itself a lattice whose least upper bound is the concatenation
@@ -274,13 +270,9 @@ impl<T: Clone + Eq> MeetSemiLattice for FlatSet<T> {
 }
 
 impl<T> HasBottom for FlatSet<T> {
-    fn bottom() -> Self {
-        Self::Bottom
-    }
+    const BOTTOM: Self = Self::Bottom;
 }
 
 impl<T> HasTop for FlatSet<T> {
-    fn top() -> Self {
-        Self::Top
-    }
+    const TOP: Self = Self::Top;
 }

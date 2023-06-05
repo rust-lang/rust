@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![deny(clippy::useless_conversion)]
 #![allow(clippy::unnecessary_wraps)]
@@ -31,6 +31,11 @@ fn test_issue_3913() -> Result<(), std::io::Error> {
     for _ in fs::read_dir(path)? {}
 
     Ok(())
+}
+
+fn dont_lint_on_type_alias() {
+    type A = i32;
+    _ = A::from(0i32);
 }
 
 fn dont_lint_into_iter_on_immutable_local_implementing_iterator_in_expr() {
@@ -106,6 +111,7 @@ fn main() {
     test_questionmark().unwrap();
     test_issue_3913().unwrap();
 
+    dont_lint_on_type_alias();
     dont_lint_into_iter_on_immutable_local_implementing_iterator_in_expr();
     lint_into_iter_on_mutable_local_implementing_iterator_in_expr();
     lint_into_iter_on_expr_implementing_iterator();

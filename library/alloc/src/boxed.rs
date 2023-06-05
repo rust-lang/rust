@@ -150,16 +150,13 @@ use core::any::Any;
 use core::async_iter::AsyncIterator;
 use core::borrow;
 use core::cmp::Ordering;
-use core::convert::{From, TryFrom};
 use core::error::Error;
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
-#[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
-use core::iter::{FusedIterator, Iterator};
+use core::iter::FusedIterator;
 use core::marker::Tuple;
-use core::marker::{Unpin, Unsize};
+use core::marker::Unsize;
 use core::mem;
 use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
@@ -579,8 +576,7 @@ impl<T, A: Allocator> Box<T, A> {
     ///
     /// This conversion does not allocate on the heap and happens in place.
     #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    pub const fn into_boxed_slice(boxed: Self) -> Box<[T], A> {
+    pub fn into_boxed_slice(boxed: Self) -> Box<[T], A> {
         let (raw, alloc) = Box::into_raw_with_allocator(boxed);
         unsafe { Box::from_raw_in(raw as *mut [T; 1], alloc) }
     }
@@ -812,9 +808,8 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// assert_eq!(*five, 5)
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const unsafe fn assume_init(self) -> Box<T, A> {
+    pub unsafe fn assume_init(self) -> Box<T, A> {
         let (raw, alloc) = Box::into_raw_with_allocator(self);
         unsafe { Box::from_raw_in(raw as *mut T, alloc) }
     }
@@ -847,9 +842,8 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// }
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const fn write(mut boxed: Self, value: T) -> Box<T, A> {
+    pub fn write(mut boxed: Self, value: T) -> Box<T, A> {
         unsafe {
             (*boxed).write(value);
             boxed.assume_init()
@@ -1093,9 +1087,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
+    pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
         let (leaked, alloc) = Box::into_unique(b);
         (leaked.as_ptr(), alloc)
     }
@@ -1105,10 +1098,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         issue = "none",
         reason = "use `Box::leak(b).into()` or `Unique::from(Box::leak(b))` instead"
     )]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
     #[doc(hidden)]
-    pub const fn into_unique(b: Self) -> (Unique<T>, A) {
+    pub fn into_unique(b: Self) -> (Unique<T>, A) {
         // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
         // raw pointer for the type system. Turning it directly into a raw pointer would not be
         // recognized as "releasing" the unique pointer to permit aliased raw accesses,
@@ -1166,9 +1158,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// assert_eq!(*static_ref, [4, 2, 3]);
     /// ```
     #[stable(feature = "box_leak", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const fn leak<'a>(b: Self) -> &'a mut T
+    pub fn leak<'a>(b: Self) -> &'a mut T
     where
         A: 'a,
     {
@@ -1237,8 +1228,7 @@ impl<T: Default> Default for Box<T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T> const Default for Box<[T]> {
+impl<T> Default for Box<[T]> {
     #[inline]
     fn default() -> Self {
         let ptr: Unique<[T]> = Unique::<[T; 0]>::dangling();
@@ -1248,8 +1238,7 @@ impl<T> const Default for Box<[T]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "default_box_extra", since = "1.17.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl const Default for Box<str> {
+impl Default for Box<str> {
     #[inline]
     fn default() -> Self {
         // SAFETY: This is the same as `Unique::cast<U>` but with an unsized `U = str`.
@@ -1446,8 +1435,7 @@ impl<T> From<T> for Box<T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_const_unstable(feature = "const_box", issue = "92521")]
-impl<T: ?Sized, A: Allocator> const From<Box<T, A>> for Pin<Box<T, A>>
+impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Pin<Box<T, A>>
 where
     A: 'static,
 {
@@ -1467,9 +1455,36 @@ where
     }
 }
 
+/// Specialization trait used for `From<&[T]>`.
+#[cfg(not(no_global_oom_handling))]
+trait BoxFromSlice<T> {
+    fn from_slice(slice: &[T]) -> Self;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: Clone> BoxFromSlice<T> for Box<[T]> {
+    #[inline]
+    default fn from_slice(slice: &[T]) -> Self {
+        slice.to_vec().into_boxed_slice()
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: Copy> BoxFromSlice<T> for Box<[T]> {
+    #[inline]
+    fn from_slice(slice: &[T]) -> Self {
+        let len = slice.len();
+        let buf = RawVec::with_capacity(len);
+        unsafe {
+            ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
+            buf.into_box(slice.len()).assume_init()
+        }
+    }
+}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_slice", since = "1.17.0")]
-impl<T: Copy> From<&[T]> for Box<[T]> {
+impl<T: Clone> From<&[T]> for Box<[T]> {
     /// Converts a `&[T]` into a `Box<[T]>`
     ///
     /// This conversion allocates on the heap
@@ -1483,19 +1498,15 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     ///
     /// println!("{boxed_slice:?}");
     /// ```
+    #[inline]
     fn from(slice: &[T]) -> Box<[T]> {
-        let len = slice.len();
-        let buf = RawVec::with_capacity(len);
-        unsafe {
-            ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
-            buf.into_box(slice.len()).assume_init()
-        }
+        <Self as BoxFromSlice<T>>::from_slice(slice)
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_cow", since = "1.45.0")]
-impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
+impl<T: Clone> From<Cow<'_, [T]>> for Box<[T]> {
     /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
     ///
     /// When `cow` is the `Cow::Borrowed` variant, this
@@ -1883,8 +1894,7 @@ impl<T: ?Sized, A: Allocator> fmt::Pointer for Box<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_box", issue = "92521")]
-impl<T: ?Sized, A: Allocator> const Deref for Box<T, A> {
+impl<T: ?Sized, A: Allocator> Deref for Box<T, A> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -1893,8 +1903,7 @@ impl<T: ?Sized, A: Allocator> const Deref for Box<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_box", issue = "92521")]
-impl<T: ?Sized, A: Allocator> const DerefMut for Box<T, A> {
+impl<T: ?Sized, A: Allocator> DerefMut for Box<T, A> {
     fn deref_mut(&mut self) -> &mut T {
         &mut **self
     }

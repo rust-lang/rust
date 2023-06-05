@@ -8,7 +8,6 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use cstr::cstr;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
@@ -224,25 +223,42 @@ pub unsafe fn create_module<'ll>(
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
-        let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
-    }
-
-    if sess.is_sanitizer_cfi_enabled() {
-        // FIXME(rcvalle): Add support for non canonical jump tables.
-        let canonical_jump_tables = "CFI Canonical Jump Tables\0".as_ptr().cast();
-        // FIXME(rcvalle): Add it with Override behavior flag.
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Warning,
-            canonical_jump_tables,
+            c"RtLibUseGOT".as_ptr().cast(),
             1,
         );
     }
 
+    // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
+    if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Override,
+            c"CFI Canonical Jump Tables".as_ptr().cast(),
+            1,
+        );
+    }
+
+    // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
+    if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Override,
+            c"EnableSplitLTOUnit".as_ptr().cast(),
+            1,
+        );
+    }
+
+    // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
-        let kcfi = "kcfi\0".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Override,
+            c"kcfi".as_ptr().cast(),
+            1,
+        );
     }
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
@@ -254,7 +270,7 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMRustAddModuleFlag(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    "cfguard\0".as_ptr() as *const _,
+                    c"cfguard".as_ptr() as *const _,
                     1,
                 )
             }
@@ -263,7 +279,7 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMRustAddModuleFlag(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    "cfguard\0".as_ptr() as *const _,
+                    c"cfguard".as_ptr() as *const _,
                     2,
                 )
             }
@@ -281,26 +297,26 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "branch-target-enforcement\0".as_ptr().cast(),
+                c"branch-target-enforcement".as_ptr().cast(),
                 bti.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address\0".as_ptr().cast(),
+                c"sign-return-address".as_ptr().cast(),
                 pac_ret.is_some().into(),
             );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address-all\0".as_ptr().cast(),
+                c"sign-return-address-all".as_ptr().cast(),
                 pac_opts.leaf.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address-with-bkey\0".as_ptr().cast(),
+                c"sign-return-address-with-bkey".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
             );
         } else {
@@ -316,7 +332,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
-            "cf-protection-branch\0".as_ptr().cast(),
+            c"cf-protection-branch".as_ptr().cast(),
             1,
         )
     }
@@ -324,7 +340,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
-            "cf-protection-return\0".as_ptr().cast(),
+            c"cf-protection-return".as_ptr().cast(),
             1,
         )
     }
@@ -333,7 +349,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Error,
-            "Virtual Function Elim\0".as_ptr().cast(),
+            c"Virtual Function Elim".as_ptr().cast(),
             1,
         );
     }
@@ -465,14 +481,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
-        let section = cstr!("llvm.metadata");
         let array = self.const_array(self.type_ptr_to(self.type_i8()), values);
 
         unsafe {
             let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
             llvm::LLVMSetInitializer(g, array);
             llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::LLVMSetSection(g, section.as_ptr());
+            llvm::LLVMSetSection(g, c"llvm.metadata".as_ptr());
         }
     }
 }
@@ -958,9 +973,9 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            self.sess().emit_fatal(Spanned { span, node: err })
+            self.sess().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
-            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+            span_bug!(span, "failed to get layout for `{ty}`: {err:?}")
         }
     }
 }
@@ -980,21 +995,12 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_fn_ptr({}, {:?})` failed: {}",
-                        sig,
-                        extra_args,
-                        err
-                    );
+                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
                 }
                 FnAbiRequest::OfInstance { instance, extra_args } => {
                     span_bug!(
                         span,
-                        "`fn_abi_of_instance({}, {:?})` failed: {}",
-                        instance,
-                        extra_args,
-                        err
+                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
                     );
                 }
             }

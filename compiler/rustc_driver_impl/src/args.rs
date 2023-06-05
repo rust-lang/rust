@@ -18,6 +18,9 @@ fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
     }
 }
 
+/// **Note:** This function doesn't interpret argument 0 in any special way.
+/// If this function is intended to be used with command line arguments,
+/// `argv[0]` must be removed prior to calling it manually.
 pub fn arg_expand_all(at_args: &[String]) -> Vec<String> {
     let mut args = Vec::new();
     for arg in at_args {
@@ -25,7 +28,7 @@ pub fn arg_expand_all(at_args: &[String]) -> Vec<String> {
             Ok(arg) => args.extend(arg),
             Err(err) => rustc_session::early_error(
                 rustc_session::config::ErrorOutputType::default(),
-                &format!("Failed to load argument file: {err}"),
+                format!("Failed to load argument file: {err}"),
             ),
         }
     }

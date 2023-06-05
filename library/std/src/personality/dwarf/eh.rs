@@ -47,6 +47,7 @@ pub enum EHAction {
     None,
     Cleanup(usize),
     Catch(usize),
+    Filter(usize),
     Terminate,
 }
 
@@ -142,9 +143,11 @@ unsafe fn interpret_cs_action(
         let ttype_index = action_reader.read_sleb128();
         if ttype_index == 0 {
             EHAction::Cleanup(lpad)
-        } else {
+        } else if ttype_index > 0 {
             // Stop unwinding Rust panics at catch_unwind.
             EHAction::Catch(lpad)
+        } else {
+            EHAction::Filter(lpad)
         }
     }
 }

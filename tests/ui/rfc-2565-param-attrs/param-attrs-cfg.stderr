@@ -10,6 +10,12 @@ note: the lint level is defined here
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
 
+error: unused variable: `a`
+  --> $DIR/param-attrs-cfg.rs:41:27
+   |
+LL |         #[cfg(something)] a: i32,
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
+
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:30:23
    |
@@ -21,12 +27,6 @@ error: unused variable: `c`
    |
 LL |     #[cfg_attr(nothing, cfg(nothing))] c: i32,
    |                                        ^ help: if this is intentional, prefix it with an underscore: `_c`
-
-error: unused variable: `a`
-  --> $DIR/param-attrs-cfg.rs:41:27
-   |
-LL |         #[cfg(something)] a: i32,
-   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:48:27

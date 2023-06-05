@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, 
 use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use smallvec::SmallVec;
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -205,7 +205,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                 // `delay_span_bug` to allow type error over an ICE.
                 canonicalizer.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
-                    &format!("unexpected region in query response: `{:?}`", r),
+                    format!("unexpected region in query response: `{:?}`", r),
                 );
                 r
             }
@@ -561,15 +561,13 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let _inside_canonical_ctxt_guard = infcx.set_canonicalization_ctxt();
-
         let needs_canonical_flags = if canonicalize_region_mode.any() {
-            TypeFlags::NEEDS_INFER |
+            TypeFlags::HAS_INFER |
             TypeFlags::HAS_FREE_REGIONS | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
             TypeFlags::HAS_TY_PLACEHOLDER |
             TypeFlags::HAS_CT_PLACEHOLDER
         } else {
-            TypeFlags::NEEDS_INFER
+            TypeFlags::HAS_INFER
                 | TypeFlags::HAS_RE_PLACEHOLDER
                 | TypeFlags::HAS_TY_PLACEHOLDER
                 | TypeFlags::HAS_CT_PLACEHOLDER
@@ -600,7 +598,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         // Once we have canonicalized `out_value`, it should not
         // contain anything that ties it to this inference context
         // anymore.
-        debug_assert!(!out_value.needs_infer() && !out_value.has_placeholders());
+        debug_assert!(!out_value.has_infer() && !out_value.has_placeholders());
 
         let canonical_variables =
             tcx.mk_canonical_var_infos(&canonicalizer.universe_canonicalized_variables());
@@ -773,7 +771,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
         let br = ty::BoundRegion { var, kind: ty::BrAnon(None) };
-        self.interner().mk_re_late_bound(self.binder_index, br)
+        ty::Region::new_late_bound(self.interner(), self.binder_index, br)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

@@ -1,5 +1,5 @@
 // Verifies that there is non-zero margin on variants and their docblocks.
-goto: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
 
 assert-css: (".variants > .variant", {"margin": "0px 0px 12px"})
 assert-css: (".variants > .docblock", {"margin": "0px 0px 32px 24px"})

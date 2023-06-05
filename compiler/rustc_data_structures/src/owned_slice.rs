@@ -1,5 +1,6 @@
 use std::{borrow::Borrow, ops::Deref};
 
+use crate::sync::Lrc;
 // Use our fake Send/Sync traits when on not parallel compiler,
 // so that `OwnedSlice` only implements/requires Send/Sync
 // for parallel compiler builds.
@@ -7,7 +8,7 @@ use crate::sync::{Send, Sync};
 
 /// An owned slice.
 ///
-/// This is similar to `Box<[u8]>` but allows slicing and using anything as the
+/// This is similar to `Lrc<[u8]>` but allows slicing and using anything as the
 /// backing buffer.
 ///
 /// See [`slice_owned`] for `OwnedSlice` construction and examples.
@@ -16,6 +17,7 @@ use crate::sync::{Send, Sync};
 ///
 /// This is essentially a replacement for `owning_ref` which is a lot simpler
 /// and even sound! 🌸
+#[derive(Clone)]
 pub struct OwnedSlice {
     /// This is conceptually a `&'self.owner [u8]`.
     bytes: *const [u8],
@@ -31,7 +33,7 @@ pub struct OwnedSlice {
     //       \/
     //      ⊂(´･◡･⊂ )∘˚˳° (I am the phantom remnant of #97770)
     #[expect(dead_code)]
-    owner: Box<dyn Send + Sync>,
+    owner: Lrc<dyn Send + Sync>,
 }
 
 /// Makes an [`OwnedSlice`] out of an `owner` and a `slicer` function.
@@ -72,10 +74,10 @@ where
     O: Send + Sync + 'static,
     F: FnOnce(&O) -> Result<&[u8], E>,
 {
-    // We box the owner of the bytes, so it doesn't move.
+    // We wrap the owner of the bytes in, so it doesn't move.
     //
     // Since the owner does not move and we don't access it in any way
-    // before drop, there is nothing that can invalidate the bytes pointer.
+    // before dropping, there is nothing that can invalidate the bytes pointer.
     //
     // Thus, "extending" the lifetime of the reference returned from `F` is fine.
     // We pretend that we pass it a reference that lives as long as the returned slice.
@@ -83,10 +85,37 @@ where
     // N.B. the HRTB on the `slicer` is important — without it the caller could provide
     // a short lived slice, unrelated to the owner.
 
-    let owner = Box::new(owner);
+    let owner = Lrc::new(owner);
     let bytes = slicer(&*owner)?;
 
     Ok(OwnedSlice { bytes, owner })
+}
+
+impl OwnedSlice {
+    /// Slice this slice by `slicer`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
+    /// let vec = vec![1, 2, 3, 4];
+    ///
+    /// // Identical to slicing via `&v[1..3]` but produces an owned slice
+    /// let slice: OwnedSlice = slice_owned(vec, |v| &v[..]);
+    /// assert_eq!(&*slice, [1, 2, 3, 4]);
+    ///
+    /// let slice = slice.slice(|slice| &slice[1..][..2]);
+    /// assert_eq!(&*slice, [2, 3]);
+    /// ```
+    ///
+    pub fn slice(self, slicer: impl FnOnce(&[u8]) -> &[u8]) -> OwnedSlice {
+        // This is basically identical to `try_slice_owned`,
+        // `slicer` can only return slices of its argument or some static data,
+        // both of which are valid while `owner` is alive.
+
+        let bytes = slicer(&self);
+        OwnedSlice { bytes, ..self }
+    }
 }
 
 impl Deref for OwnedSlice {
@@ -108,10 +137,12 @@ impl Borrow<[u8]> for OwnedSlice {
     }
 }
 
-// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Box<dyn Send + Sync>)`, which is `Send`
+// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Arc<dyn Send + Sync>)`, which is `Send`
+#[cfg(parallel_compiler)]
 unsafe impl Send for OwnedSlice {}
 
-// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Box<dyn Send + Sync>)`, which is `Sync`
+// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Arc<dyn Send + Sync>)`, which is `Sync`
+#[cfg(parallel_compiler)]
 unsafe impl Sync for OwnedSlice {}
 
 #[cfg(test)]

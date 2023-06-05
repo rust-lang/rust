@@ -6,12 +6,12 @@ LL |     is_send(foo(Some(true)));
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-await-let-else.rs:11:14
+  --> $DIR/async-await-let-else.rs:11:15
    |
 LL |         let r = Rc::new(());
    |             - has type `Rc<()>` which is not `Send`
 LL |         bar().await
-   |              ^^^^^^ await occurs here, with `r` maybe used later
+   |               ^^^^^ await occurs here, with `r` maybe used later
 note: required by a bound in `is_send`
   --> $DIR/async-await-let-else.rs:19:15
    |
@@ -63,10 +63,10 @@ LL |     is_send(foo3(Some(true)));
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-await-let-else.rs:33:28
+  --> $DIR/async-await-let-else.rs:33:29
    |
 LL |         (Rc::new(()), bar().await);
-   |          -----------       ^^^^^^ await occurs here, with `Rc::new(())` maybe used later
+   |          -----------        ^^^^^ await occurs here, with `Rc::new(())` maybe used later
    |          |
    |          has type `Rc<()>` which is not `Send`
 note: required by a bound in `is_send`
@@ -83,12 +83,12 @@ LL |     is_send(foo4(Some(true)));
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-await-let-else.rs:41:14
+  --> $DIR/async-await-let-else.rs:41:15
    |
 LL |         let r = Rc::new(());
    |             - has type `Rc<()>` which is not `Send`
 LL |         bar().await;
-   |              ^^^^^^ await occurs here, with `r` maybe used later
+   |               ^^^^^ await occurs here, with `r` maybe used later
 note: required by a bound in `is_send`
   --> $DIR/async-await-let-else.rs:19:15
    |

@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // EMIT_MIR reify_fn_ptr.main.ConstProp.diff
 
 fn main() {

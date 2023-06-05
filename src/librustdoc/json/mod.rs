@@ -279,7 +279,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
         p.set_extension("json");
         let mut file = BufWriter::new(try_err!(File::create(&p), p));
-        serde_json::ser::to_writer(&mut file, &output).unwrap();
+        self.tcx
+            .sess
+            .time("rustdoc_json_serialization", || serde_json::ser::to_writer(&mut file, &output))
+            .unwrap();
         try_err!(file.flush(), p);
 
         Ok(())

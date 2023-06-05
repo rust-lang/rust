@@ -4,7 +4,7 @@ error[E0046]: not all trait items implemented, missing: `Target`
 LL |         impl Deref for Thing {
    |         ^^^^^^^^^^^^^^^^^^^^ missing `Target` in implementation
    |
-   = help: implement the missing item: `type Target = Type;`
+   = help: implement the missing item: `type Target = /* Type */;`
 
 error: aborting due to previous error
 

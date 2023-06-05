@@ -46,7 +46,7 @@ pub struct SeparateConstSwitch;
 
 impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 2
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -303,8 +303,7 @@ fn find_determining_place<'tcx>(
                     | Rvalue::NullaryOp(_, _)
                     | Rvalue::ShallowInitBox(_, _)
                     | Rvalue::UnaryOp(_, Operand::Constant(_))
-                    | Rvalue::Cast(_, Operand::Constant(_), _)
-                    => return None,
+                    | Rvalue::Cast(_, Operand::Constant(_), _) => return None,
                 }
             }
 

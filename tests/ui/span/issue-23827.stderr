@@ -4,7 +4,7 @@ error[E0046]: not all trait items implemented, missing: `Output`
 LL | impl<C: Component> FnOnce<(C,)> for Prototype {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Output` in implementation
    |
-   = help: implement the missing item: `type Output = Type;`
+   = help: implement the missing item: `type Output = /* Type */;`
 
 error: aborting due to previous error
 

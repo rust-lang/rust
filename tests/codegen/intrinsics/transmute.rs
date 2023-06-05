@@ -8,16 +8,16 @@
 #![feature(inline_const)]
 #![allow(unreachable_code)]
 
-use std::mem::transmute;
+use std::mem::MaybeUninit;
+use std::intrinsics::{transmute, transmute_unchecked};
 
-// Some of the cases here are statically rejected by `mem::transmute`, so
-// we need to generate custom MIR for those cases to get to codegen.
+// Some of these need custom MIR to not get removed by MIR optimizations.
 use std::intrinsics::mir::*;
 
-enum Never {}
+pub enum ZstNever {}
 
 #[repr(align(2))]
-pub struct BigNever(Never, u16, Never);
+pub struct BigNever(ZstNever, u16, ZstNever);
 
 #[repr(align(8))]
 pub struct Scalar64(i64);
@@ -30,9 +30,39 @@ pub struct Aggregate8(u8);
 
 // CHECK-LABEL: @check_bigger_size(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
 pub unsafe fn check_bigger_size(x: u16) -> u32 {
     // CHECK: call void @llvm.trap
+    transmute_unchecked(x)
+}
+
+// CHECK-LABEL: @check_smaller_size(
+#[no_mangle]
+pub unsafe fn check_smaller_size(x: u32) -> u16 {
+    // CHECK: call void @llvm.trap
+    transmute_unchecked(x)
+}
+
+// CHECK-LABEL: @check_smaller_array(
+#[no_mangle]
+pub unsafe fn check_smaller_array(x: [u32; 7]) -> [u32; 3] {
+    // CHECK: call void @llvm.trap
+    transmute_unchecked(x)
+}
+
+// CHECK-LABEL: @check_bigger_array(
+#[no_mangle]
+pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
+    // CHECK: call void @llvm.trap
+    transmute_unchecked(x)
+}
+
+// CHECK-LABEL: @check_to_empty_array(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_to_empty_array(x: [u32; 5]) -> [u32; 0] {
+    // CHECK-NOT: trap
+    // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
     mir!{
         {
             RET = CastTransmute(x);
@@ -41,11 +71,13 @@ pub unsafe fn check_bigger_size(x: u16) -> u32 {
     }
 }
 
-// CHECK-LABEL: @check_smaller_size(
+// CHECK-LABEL: @check_from_empty_array(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
-pub unsafe fn check_smaller_size(x: u32) -> u16 {
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_from_empty_array(x: [u32; 0]) -> [u32; 5] {
+    // CHECK-NOT: trap
     // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
     mir!{
         {
             RET = CastTransmute(x);
@@ -56,12 +88,15 @@ pub unsafe fn check_smaller_size(x: u32) -> u16 {
 
 // CHECK-LABEL: @check_to_uninhabited(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
-pub unsafe fn check_to_uninhabited(x: u16) -> BigNever {
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_to_uninhabited(x: u16) {
+    // CHECK-NOT: trap
     // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
     mir!{
+        let temp: BigNever;
         {
-            RET = CastTransmute(x);
+            temp = CastTransmute(x);
             Return()
         }
     }
@@ -69,9 +104,9 @@ pub unsafe fn check_to_uninhabited(x: u16) -> BigNever {
 
 // CHECK-LABEL: @check_from_uninhabited(
 #[no_mangle]
-#[custom_mir(dialect = "runtime", phase = "initial")]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_from_uninhabited(x: BigNever) -> u16 {
-    // CHECK: call void @llvm.trap
+    // CHECK: ret i16 poison
     mir!{
         {
             RET = CastTransmute(x);
@@ -143,8 +178,8 @@ pub unsafe fn check_aggregate_from_bool(x: bool) -> Aggregate8 {
 #[no_mangle]
 pub unsafe fn check_byte_to_bool(x: u8) -> bool {
     // CHECK-NOT: alloca
-    // CHECK: %0 = trunc i8 %x to i1
-    // CHECK: ret i1 %0
+    // CHECK: %[[R:.+]] = trunc i8 %x to i1
+    // CHECK: ret i1 %[[R]]
     transmute(x)
 }
 
@@ -152,8 +187,8 @@ pub unsafe fn check_byte_to_bool(x: u8) -> bool {
 #[no_mangle]
 pub unsafe fn check_byte_from_bool(x: bool) -> u8 {
     // CHECK-NOT: alloca
-    // CHECK: %0 = zext i1 %x to i8
-    // CHECK: ret i8 %0
+    // CHECK: %[[R:.+]] = zext i1 %x to i8
+    // CHECK: ret i8 %[[R:.+]]
     transmute(x)
 }
 
@@ -299,5 +334,141 @@ pub unsafe fn check_pair_to_array(x: (i64, u64)) -> [u8; 16] {
     // CHECK-NOT: alloca
     // CHECK: store i64 %x.0, ptr %{{.+}}, align 1
     // CHECK: store i64 %x.1, ptr %{{.+}}, align 1
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_heterogeneous_integer_pair(
+#[no_mangle]
+pub unsafe fn check_heterogeneous_integer_pair(x: (i32, bool)) -> (bool, u32) {
+    // CHECK: store i32 %x.0
+    // CHECK: %[[WIDER:.+]] = zext i1 %x.1 to i8
+    // CHECK: store i8 %[[WIDER]]
+
+    // CHECK: %[[BYTE:.+]] = load i8
+    // CHECK: trunc i8 %[[BYTE:.+]] to i1
+    // CHECK: load i32
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_heterogeneous_float_pair(
+#[no_mangle]
+pub unsafe fn check_heterogeneous_float_pair(x: (f64, f32)) -> (f32, f64) {
+    // CHECK: store double %x.0
+    // CHECK: store float %x.1
+    // CHECK: %[[A:.+]] = load float
+    // CHECK: %[[B:.+]] = load double
+    // CHECK: %[[P:.+]] = insertvalue { float, double } poison, float %[[A]], 0
+    // CHECK: insertvalue { float, double } %[[P]], double %[[B]], 1
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_issue_110005(
+#[no_mangle]
+pub unsafe fn check_issue_110005(x: (usize, bool)) -> Option<Box<[u8]>> {
+    // CHECK: store i64 %x.0
+    // CHECK: %[[WIDER:.+]] = zext i1 %x.1 to i8
+    // CHECK: store i8 %[[WIDER]]
+    // CHECK: load ptr
+    // CHECK: load i64
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_pair_to_dst_ref(
+#[no_mangle]
+pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
+    // CHECK: %0 = inttoptr i64 %x.0 to ptr
+    // CHECK: %1 = insertvalue { ptr, i64 } poison, ptr %0, 0
+    // CHECK: %2 = insertvalue { ptr, i64 } %1, i64 %x.1, 1
+    // CHECK: ret { ptr, i64 } %2
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_issue_109992(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_issue_109992(x: ()) -> [(); 1] {
+    // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
+
+    // CHECK: start
+    // CHECK-NEXT: ret void
+    mir!{
+        {
+            RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_unit_to_never(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_unit_to_never(x: ()) {
+    // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
+
+    // CHECK-NOT: trap
+    // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
+    mir!{
+        let temp: ZstNever;
+        {
+            temp = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_unit_from_never(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_unit_from_never(x: ZstNever) -> () {
+    // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
+
+    // CHECK: start
+    // CHECK-NEXT: ret void
+    mir!{
+        {
+            RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_maybe_uninit_pair(i16 %x.0, i64 %x.1)
+#[no_mangle]
+pub unsafe fn check_maybe_uninit_pair(
+    x: (MaybeUninit<u16>, MaybeUninit<u64>),
+) -> (MaybeUninit<i64>, MaybeUninit<i16>) {
+    // Thanks to `MaybeUninit` this is actually defined behaviour,
+    // unlike the examples above with pairs of primitives.
+
+    // CHECK: store i16 %x.0
+    // CHECK: store i64 %x.1
+    // CHECK: load i64
+    // CHECK-NOT: noundef
+    // CHECK: load i16
+    // CHECK-NOT: noundef
+    // CHECK: ret { i64, i16 }
+    transmute(x)
+}
+
+#[repr(align(8))]
+pub struct HighAlignScalar(u8);
+
+// CHECK-LABEL: @check_to_overalign(
+#[no_mangle]
+pub unsafe fn check_to_overalign(x: u64) -> HighAlignScalar {
+    // CHECK: %0 = alloca %HighAlignScalar, align 8
+    // CHECK: store i64 %x, ptr %0, align 8
+    // CHECK: %1 = load i64, ptr %0, align 8
+    // CHECK: ret i64 %1
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_from_overalign(
+#[no_mangle]
+pub unsafe fn check_from_overalign(x: HighAlignScalar) -> u64 {
+    // CHECK: %x = alloca %HighAlignScalar, align 8
+    // CHECK: %[[VAL:.+]] = load i64, ptr %x, align 8
+    // CHECK: ret i64 %[[VAL]]
     transmute(x)
 }

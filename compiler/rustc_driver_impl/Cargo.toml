@@ -18,6 +18,7 @@ rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_hir_typeck = { path = "../rustc_hir_typeck" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_mir_build = { path = "../rustc_mir_build" }
@@ -50,12 +51,13 @@ rustc_interface = { path = "../rustc_interface" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
+rustc_mir_transform = { path = "../rustc_mir_transform" }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.46.0"
+version = "0.48.0"
 features = [
     "Win32_System_Diagnostics_Debug",
 ]
@@ -63,5 +65,8 @@ features = [
 [features]
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
-rustc_use_parallel_compiler = ['rustc_data_structures/rustc_use_parallel_compiler', 'rustc_interface/rustc_use_parallel_compiler',
-    'rustc_middle/rustc_use_parallel_compiler']
+rustc_use_parallel_compiler = [
+    'rustc_data_structures/rustc_use_parallel_compiler',
+    'rustc_interface/rustc_use_parallel_compiler',
+    'rustc_middle/rustc_use_parallel_compiler'
+]

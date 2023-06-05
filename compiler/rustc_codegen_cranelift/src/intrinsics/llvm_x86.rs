@@ -138,10 +138,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             llvm_add_sub(fx, BinOp::Sub, ret, b_in, a, b);
         }
         _ => {
-            fx.tcx.sess.warn(&format!(
-                "unsupported x86 llvm intrinsic {}; replacing with trap",
-                intrinsic
-            ));
+            fx.tcx
+                .sess
+                .warn(format!("unsupported x86 llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
             return;
         }

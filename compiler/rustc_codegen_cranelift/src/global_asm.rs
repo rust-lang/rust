@@ -104,7 +104,6 @@ pub(crate) fn compile_global_asm(
             return Ok(None);
         }
 
-        // FIXME fix linker error on macOS
         if cfg!(not(feature = "inline_asm")) {
             return Err(
                 "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift"

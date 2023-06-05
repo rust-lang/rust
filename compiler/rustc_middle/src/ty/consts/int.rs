@@ -1,5 +1,6 @@
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
 use std::fmt;
@@ -113,6 +114,14 @@ impl std::fmt::Debug for ConstInt {
     }
 }
 
+impl IntoDiagnosticArg for ConstInt {
+    // FIXME this simply uses the Debug impl, but we could probably do better by converting both
+    // to an inherent method that returns `Cow`.
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(format!("{self:?}").into())
+    }
+}
+
 /// The raw bytes of a simple value.
 ///
 /// This is a packed struct in order to allow this type to be optimally embedded in enums
@@ -141,14 +150,18 @@ impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
 
 impl<S: Encoder> Encodable<S> for ScalarInt {
     fn encode(&self, s: &mut S) {
-        s.emit_u128(self.data);
-        s.emit_u8(self.size.get());
+        let size = self.size.get();
+        s.emit_u8(size);
+        s.emit_raw_bytes(&self.data.to_le_bytes()[..size as usize]);
     }
 }
 
 impl<D: Decoder> Decodable<D> for ScalarInt {
     fn decode(d: &mut D) -> ScalarInt {
-        ScalarInt { data: d.read_u128(), size: NonZeroU8::new(d.read_u8()).unwrap() }
+        let mut data = [0u8; 16];
+        let size = d.read_u8();
+        data[..size as usize].copy_from_slice(d.read_raw_bytes(size as usize));
+        ScalarInt { data: u128::from_le_bytes(data), size: NonZeroU8::new(size).unwrap() }
     }
 }
 
@@ -337,7 +350,7 @@ impl ScalarInt {
     /// Fails if the size of the `ScalarInt` is not equal to `Size { raw: 16 }`
     /// and returns the `ScalarInt`s size in that case.
     pub fn try_to_i128(self) -> Result<i128, Size> {
-        self.try_to_int(Size::from_bits(128)).map(|v| i128::try_from(v).unwrap())
+        self.try_to_int(Size::from_bits(128))
     }
 }
 
