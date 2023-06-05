@@ -5479,6 +5479,30 @@ fn $0fun_name<T: Debug>(i: T) {
     }
 
     #[test]
+    fn dont_emit_type_with_hidden_lifetime_parameter() {
+        // FIXME: We should emit a `<T: Debug>` generic argument for the generated function
+        check_assist(
+            extract_function,
+            r#"
+struct Struct<'a, T>(&'a T);
+fn func<T: Debug>(i: Struct<'_, T>) {
+    $0foo(i);$0
+}
+"#,
+            r#"
+struct Struct<'a, T>(&'a T);
+fn func<T: Debug>(i: Struct<'_, T>) {
+    fun_name(i);
+}
+
+fn $0fun_name(i: Struct<'_, T>) {
+    foo(i);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn preserve_generics_from_body() {
         check_assist(
             extract_function,

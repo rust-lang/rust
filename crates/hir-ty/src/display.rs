@@ -1223,7 +1223,8 @@ fn hir_fmt_generics(
     generic_def: Option<hir_def::GenericDefId>,
 ) -> Result<(), HirDisplayError> {
     let db = f.db;
-    if parameters.len(Interner) > 0 {
+    let lifetime_args_count = generic_def.map_or(0, |g| db.generic_params(g).lifetimes.len());
+    if parameters.len(Interner) + lifetime_args_count > 0 {
         let parameters_to_write = if f.display_target.is_source_code() || f.omit_verbose_types() {
             match generic_def
                 .map(|generic_def_id| db.generic_defaults(generic_def_id))
@@ -1268,26 +1269,28 @@ fn hir_fmt_generics(
         } else {
             parameters.as_slice(Interner)
         };
-        if !parameters_to_write.is_empty() {
+        if !parameters_to_write.is_empty() || lifetime_args_count != 0 {
             write!(f, "<")?;
-
-            if f.display_target.is_source_code() {
-                let mut first = true;
-                for generic_arg in parameters_to_write {
-                    if !first {
-                        write!(f, ", ")?;
-                    }
-                    first = false;
-
-                    if generic_arg.ty(Interner).map(|ty| ty.kind(Interner)) == Some(&TyKind::Error)
-                    {
-                        write!(f, "_")?;
-                    } else {
-                        generic_arg.hir_fmt(f)?;
-                    }
+            let mut first = true;
+            for _ in 0..lifetime_args_count {
+                if !first {
+                    write!(f, ", ")?;
                 }
-            } else {
-                f.write_joined(parameters_to_write, ", ")?;
+                first = false;
+                write!(f, "'_")?;
+            }
+            for generic_arg in parameters_to_write {
+                if !first {
+                    write!(f, ", ")?;
+                }
+                first = false;
+                if f.display_target.is_source_code()
+                    && generic_arg.ty(Interner).map(|ty| ty.kind(Interner)) == Some(&TyKind::Error)
+                {
+                    write!(f, "_")?;
+                } else {
+                    generic_arg.hir_fmt(f)?;
+                }
             }
 
             write!(f, ">")?;
