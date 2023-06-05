@@ -180,7 +180,6 @@ fn main() {
         .or_else(|| config::get_value("target"))
         .unwrap_or_else(|| bootstrap_host_compiler.triple.clone());
 
-    // FIXME allow changing the location of these dirs using cli arguments
     let dirs = path::Dirs {
         source_dir: current_dir.clone(),
         download_dir: download_dir
