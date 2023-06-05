@@ -52,13 +52,14 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     }
 
     for local in &body.local_decls {
-        check_ty(tcx, local.ty, local.source_info.span)?;
+        check_ty(tcx, local.ty, local.source_info.span, false)?;
     }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
         tcx.fn_sig(def_id).subst_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
+        false,
     )?;
 
     for bb in body.basic_blocks.iter() {
@@ -70,7 +71,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     Ok(())
 }
 
-fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
+fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, in_drop: bool) -> McfResult {
     for arg in ty.walk() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
@@ -79,6 +80,27 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             // constants' types, but `walk` will get to them as well.
             GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
         };
+
+        // Only do this check if we're in `TerminatorKind::Drop`, otherwise rustc will sometimes overflow
+        // its stack. This check is unnecessary outside of a `Drop` anyway so it's faster regardless
+        if in_drop && let ty::Adt(def, subst) = ty.kind() {
+            if def.has_non_const_dtor(tcx) && in_drop {
+                return Err((
+                    span,
+                    "cannot drop locals with a non constant destructor in const fn".into(),
+                ));
+            }
+
+            for fields in def.variants().iter().map(|v| &v.fields) {
+                for field in fields {
+                    check_ty(tcx, field.ty(tcx, subst), span, in_drop)?;
+                }
+            }
+
+            for field in def.all_fields() {
+                check_ty(tcx, field.ty(tcx, subst), span, in_drop)?;
+            }
+        }
 
         match ty.kind() {
             ty::Ref(_, _, hir::Mutability::Mut) => {
@@ -306,7 +328,12 @@ fn check_terminator<'tcx>(
         | TerminatorKind::Terminate
         | TerminatorKind::Unreachable => Ok(()),
 
-        TerminatorKind::Drop { place, .. } => check_place(tcx, *place, span, body),
+        TerminatorKind::Drop { place, .. } => {
+            for local in &body.local_decls {
+                check_ty(tcx, local.ty, span, true)?;
+            }
+            check_place(tcx, *place, span, body)
+        },
 
         TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
 

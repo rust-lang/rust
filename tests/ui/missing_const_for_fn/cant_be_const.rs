@@ -126,3 +126,12 @@ with_span! {
     span
     fn dont_check_in_proc_macro() {}
 }
+
+fn a(this: String) {}
+
+enum A {
+    F(String),
+    N,
+}
+
+fn b(this: A) {}
