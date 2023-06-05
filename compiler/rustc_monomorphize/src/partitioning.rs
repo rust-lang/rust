@@ -486,21 +486,7 @@ fn internalize_symbols<'tcx>(
     mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 ) {
-    if codegen_units.len() == 1 {
-        // Fast path for when there is only one codegen unit. In this case we
-        // can internalize all candidates, since there is nowhere else they
-        // could be used from.
-        for cgu in codegen_units {
-            for (item, linkage_and_visibility) in cgu.items_mut() {
-                if !internalization_candidates.contains(item) {
-                    // This item is no candidate for internalizing, so skip it.
-                    continue;
-                }
-                *linkage_and_visibility = (Linkage::Internal, Visibility::Default);
-            }
-        }
-        return;
-    }
+    let single_codegen_unit = codegen_units.len() == 1;
 
     // For each internalization candidates in each codegen unit, check if it is
     // used from outside its defining codegen unit.
@@ -512,21 +498,24 @@ fn internalize_symbols<'tcx>(
                 // This item is no candidate for internalizing, so skip it.
                 continue;
             }
-            debug_assert_eq!(mono_item_placements[item], home_cgu);
 
-            if let Some(user_items) = cx.usage_map.get_user_items(*item) {
-                if user_items
-                    .iter()
-                    .filter_map(|user_item| {
-                        // Some user mono items might not have been
-                        // instantiated. We can safely ignore those.
-                        mono_item_placements.get(user_item)
-                    })
-                    .any(|placement| *placement != home_cgu)
-                {
-                    // Found a user from another CGU, so skip to the next item
-                    // without marking this one as internal.
-                    continue;
+            if !single_codegen_unit {
+                debug_assert_eq!(mono_item_placements[item], home_cgu);
+
+                if let Some(user_items) = cx.usage_map.get_user_items(*item) {
+                    if user_items
+                        .iter()
+                        .filter_map(|user_item| {
+                            // Some user mono items might not have been
+                            // instantiated. We can safely ignore those.
+                            mono_item_placements.get(user_item)
+                        })
+                        .any(|placement| *placement != home_cgu)
+                    {
+                        // Found a user from another CGU, so skip to the next item
+                        // without marking this one as internal.
+                        continue;
+                    }
                 }
             }
 
