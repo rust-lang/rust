@@ -580,7 +580,14 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     for (_, node) in map.parent_iter(body.hir_id) {
         match node {
             Node::Expr(e) => span = e.span,
-            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::Local(_) => (),
+            Node::Block(_)
+            | Node::Arm(_)
+            | Node::Stmt(_)
+            | Node::Local(_)
+            | Node::Item(hir::Item {
+                kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
+                ..
+            }) => (),
             _ => break,
         }
     }

@@ -540,7 +540,7 @@ define_Conf! {
     (min_ident_chars_threshold: u64 = 1),
     /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
     ///
-    /// Whether to accept a safety comment to be placed above the statement containing the `usafe` block
+    /// Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
     (accept_comment_above_statement: bool = false),
 }
 

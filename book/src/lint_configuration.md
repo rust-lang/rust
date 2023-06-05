@@ -696,7 +696,7 @@ Minimum chars an ident can have, anything below or equal to this will be linted.
 
 
 ## `accept-comment-above-statement`
-Whether to accept a safety comment to be placed above the statement containing the `usafe` block
+Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
 
 **Default Value:** `false` (`bool`)
 
