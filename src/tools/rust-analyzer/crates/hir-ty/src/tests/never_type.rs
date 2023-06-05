@@ -327,6 +327,7 @@ fn diverging_expression_2() {
 fn diverging_expression_3_break() {
     check_infer_with_mismatches(
         r"
+        //- minicore: iterator
         //- /main.rs
         fn test1() {
             // should give type mismatch
@@ -360,6 +361,15 @@ fn diverging_expression_3_break() {
             97..343 '{     ...; }; }': ()
             140..141 'x': u32
             149..175 '{ for ...; }; }': u32
+            151..172 'for a ...eak; }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            151..172 'for a ...eak; }': {unknown}
+            151..172 'for a ...eak; }': !
+            151..172 'for a ...eak; }': {unknown}
+            151..172 'for a ...eak; }': &mut {unknown}
+            151..172 'for a ...eak; }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            151..172 'for a ...eak; }': Option<{unknown}>
+            151..172 'for a ...eak; }': ()
+            151..172 'for a ...eak; }': ()
             151..172 'for a ...eak; }': ()
             155..156 'a': {unknown}
             160..161 'b': {unknown}
@@ -367,12 +377,30 @@ fn diverging_expression_3_break() {
             164..169 'break': !
             226..227 'x': u32
             235..253 '{ for ... {}; }': u32
+            237..250 'for a in b {}': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            237..250 'for a in b {}': {unknown}
+            237..250 'for a in b {}': !
+            237..250 'for a in b {}': {unknown}
+            237..250 'for a in b {}': &mut {unknown}
+            237..250 'for a in b {}': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            237..250 'for a in b {}': Option<{unknown}>
+            237..250 'for a in b {}': ()
+            237..250 'for a in b {}': ()
             237..250 'for a in b {}': ()
             241..242 'a': {unknown}
             246..247 'b': {unknown}
             248..250 '{}': ()
             304..305 'x': u32
             313..340 '{ for ...; }; }': u32
+            315..337 'for a ...urn; }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            315..337 'for a ...urn; }': {unknown}
+            315..337 'for a ...urn; }': !
+            315..337 'for a ...urn; }': {unknown}
+            315..337 'for a ...urn; }': &mut {unknown}
+            315..337 'for a ...urn; }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            315..337 'for a ...urn; }': Option<{unknown}>
+            315..337 'for a ...urn; }': ()
+            315..337 'for a ...urn; }': ()
             315..337 'for a ...urn; }': ()
             319..320 'a': {unknown}
             324..325 'b': {unknown}
@@ -479,6 +507,25 @@ fn example() -> bool {
     match 1 {
         _ => return true,
     };
+}
+"#,
+    );
+}
+
+#[test]
+fn reservation_impl_should_be_ignored() {
+    // See rust-lang/rust#64631.
+    check_types(
+        r#"
+//- minicore: from
+struct S;
+#[rustc_reservation_impl]
+impl<T> From<!> for T {}
+fn foo<T, U: From<T>>(_: U) -> T { loop {} }
+
+fn test() {
+    let s = foo(S);
+      //^ S
 }
 "#,
     );

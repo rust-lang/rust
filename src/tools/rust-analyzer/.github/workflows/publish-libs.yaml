@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - master
     paths:
-      - 'lib/**'
+      - "lib/**"
 
 jobs:
   publish-libs:
@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           git config --global user.email "runner@gha.local"
-          git config --global user.name "Github Action"
+          git config --global user.name "GitHub Action"
           # Remove r-a crates from the workspaces so we don't auto-publish them as well
           sed -i 's/ "crates\/\*"//' ./Cargo.toml
           cargo workspaces publish --yes --exact --from-git --no-git-commit --allow-dirty

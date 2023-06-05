@@ -357,7 +357,7 @@ impl Module {
 
     fn change_visibility(&mut self, record_fields: Vec<SyntaxNode>) {
         let (mut replacements, record_field_parents, impls) =
-            get_replacements_for_visibilty_change(&mut self.body_items, false);
+            get_replacements_for_visibility_change(&mut self.body_items, false);
 
         let mut impl_items: Vec<ast::Item> = impls
             .into_iter()
@@ -366,7 +366,7 @@ impl Module {
             .collect();
 
         let (mut impl_item_replacements, _, _) =
-            get_replacements_for_visibilty_change(&mut impl_items, true);
+            get_replacements_for_visibility_change(&mut impl_items, true);
 
         replacements.append(&mut impl_item_replacements);
 
@@ -824,7 +824,7 @@ fn does_source_exists_outside_sel_in_same_mod(
     source_exists_outside_sel_in_same_mod
 }
 
-fn get_replacements_for_visibilty_change(
+fn get_replacements_for_visibility_change(
     items: &mut [ast::Item],
     is_clone_for_updated: bool,
 ) -> (
@@ -904,7 +904,7 @@ fn compare_hir_and_ast_module(
 ) -> Option<()> {
     let hir_mod_name = hir_module.name(ctx.db())?;
     let ast_mod_name = ast_module.name()?;
-    if hir_mod_name.to_string() != ast_mod_name.to_string() {
+    if hir_mod_name.display(ctx.db()).to_string() != ast_mod_name.to_string() {
         return None;
     }
 
@@ -1236,7 +1236,8 @@ mod modname {
     }
 
     #[test]
-    fn test_extract_module_for_correspoding_adt_of_impl_present_in_same_mod_but_not_in_selection() {
+    fn test_extract_module_for_corresponding_adt_of_impl_present_in_same_mod_but_not_in_selection()
+    {
         check_assist(
             extract_module,
             r"

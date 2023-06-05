@@ -1,5 +1,5 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
-use std::{fmt, ops, sync::Arc};
+use std::{fmt, ops};
 
 use base_db::CrateId;
 use cfg::CfgExpr;
@@ -8,12 +8,12 @@ use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
 use syntax::{ast, match_ast, AstNode, SmolStr, SyntaxNode};
+use triomphe::Arc;
 
 use crate::{
     db::ExpandDatabase,
     hygiene::Hygiene,
-    mod_path::{ModPath, PathKind},
-    name::AsName,
+    mod_path::ModPath,
     tt::{self, Subtree},
     InFile,
 };
@@ -21,6 +21,7 @@ use crate::{
 /// Syntactical attributes, without filtering of `cfg_attr`s.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct RawAttrs {
+    // FIXME: Make this a ThinArc
     entries: Option<Arc<[Attr]>>,
 }
 
@@ -50,7 +51,9 @@ impl RawAttrs {
                     path: Interned::new(ModPath::from(crate::name!(doc))),
                 }),
             })
-            .collect::<Arc<_>>();
+            .collect::<Vec<_>>();
+        // FIXME: use `Arc::from_iter` when it becomes available
+        let entries: Arc<[Attr]> = Arc::from(entries);
 
         Self { entries: if entries.is_empty() { None } else { Some(entries) } }
     }
@@ -68,7 +71,7 @@ impl RawAttrs {
             (Some(a), Some(b)) => {
                 let last_ast_index = a.last().map_or(0, |it| it.id.ast_index() + 1) as u32;
                 Self {
-                    entries: Some(
+                    entries: Some(Arc::from(
                         a.iter()
                             .cloned()
                             .chain(b.iter().map(|it| {
@@ -78,8 +81,9 @@ impl RawAttrs {
                                         << AttrId::AST_INDEX_BITS;
                                 it
                             }))
-                            .collect(),
-                    ),
+                            // FIXME: use `Arc::from_iter` when it becomes available
+                            .collect::<Vec<_>>(),
+                    )),
                 }
             }
         }
@@ -96,48 +100,51 @@ impl RawAttrs {
         }
 
         let crate_graph = db.crate_graph();
-        let new_attrs = self
-            .iter()
-            .flat_map(|attr| -> SmallVec<[_; 1]> {
-                let is_cfg_attr =
-                    attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
-                if !is_cfg_attr {
-                    return smallvec![attr.clone()];
-                }
+        let new_attrs = Arc::from(
+            self.iter()
+                .flat_map(|attr| -> SmallVec<[_; 1]> {
+                    let is_cfg_attr =
+                        attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
+                    if !is_cfg_attr {
+                        return smallvec![attr.clone()];
+                    }
 
-                let subtree = match attr.token_tree_value() {
-                    Some(it) => it,
-                    _ => return smallvec![attr.clone()],
-                };
+                    let subtree = match attr.token_tree_value() {
+                        Some(it) => it,
+                        _ => return smallvec![attr.clone()],
+                    };
 
-                let (cfg, parts) = match parse_cfg_attr_input(subtree) {
-                    Some(it) => it,
-                    None => return smallvec![attr.clone()],
-                };
-                let index = attr.id;
-                let attrs =
-                    parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(|(idx, attr)| {
-                        let tree = Subtree {
-                            delimiter: tt::Delimiter::unspecified(),
-                            token_trees: attr.to_vec(),
-                        };
-                        // FIXME hygiene
-                        let hygiene = Hygiene::new_unhygienic();
-                        Attr::from_tt(db, &tree, &hygiene, index.with_cfg_attr(idx))
-                    });
+                    let (cfg, parts) = match parse_cfg_attr_input(subtree) {
+                        Some(it) => it,
+                        None => return smallvec![attr.clone()],
+                    };
+                    let index = attr.id;
+                    let attrs = parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(
+                        |(idx, attr)| {
+                            let tree = Subtree {
+                                delimiter: tt::Delimiter::unspecified(),
+                                token_trees: attr.to_vec(),
+                            };
+                            // FIXME hygiene
+                            let hygiene = Hygiene::new_unhygienic();
+                            Attr::from_tt(db, &tree, &hygiene, index.with_cfg_attr(idx))
+                        },
+                    );
 
-                let cfg_options = &crate_graph[krate].cfg_options;
-                let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
-                let cfg = CfgExpr::parse(&cfg);
-                if cfg_options.check(&cfg) == Some(false) {
-                    smallvec![]
-                } else {
-                    cov_mark::hit!(cfg_attr_active);
+                    let cfg_options = &crate_graph[krate].cfg_options;
+                    let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
+                    let cfg = CfgExpr::parse(&cfg);
+                    if cfg_options.check(&cfg) == Some(false) {
+                        smallvec![]
+                    } else {
+                        cov_mark::hit!(cfg_attr_active);
 
-                    attrs.collect()
-                }
-            })
-            .collect();
+                        attrs.collect()
+                    }
+                })
+                // FIXME: use `Arc::from_iter` when it becomes available
+                .collect::<Vec<_>>(),
+        );
 
         RawAttrs { entries: Some(new_attrs) }
     }
@@ -266,7 +273,11 @@ impl Attr {
     }
 
     /// Parses this attribute as a token tree consisting of comma separated paths.
-    pub fn parse_path_comma_token_tree(&self) -> Option<impl Iterator<Item = ModPath> + '_> {
+    pub fn parse_path_comma_token_tree<'a>(
+        &'a self,
+        db: &'a dyn ExpandDatabase,
+        hygiene: &'a Hygiene,
+    ) -> Option<impl Iterator<Item = ModPath> + 'a> {
         let args = self.token_tree_value()?;
 
         if args.delimiter.kind != DelimiterKind::Parenthesis {
@@ -275,18 +286,36 @@ impl Attr {
         let paths = args
             .token_trees
             .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
-            .filter_map(|tts| {
+            .filter_map(move |tts| {
                 if tts.is_empty() {
                     return None;
                 }
-                let segments = tts.iter().filter_map(|tt| match tt {
-                    tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => Some(id.as_name()),
-                    _ => None,
-                });
-                Some(ModPath::from_segments(PathKind::Plain, segments))
+                // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation here.
+                let subtree = tt::Subtree {
+                    delimiter: tt::Delimiter::unspecified(),
+                    token_trees: tts.into_iter().cloned().collect(),
+                };
+                let (parse, _) =
+                    mbe::token_tree_to_syntax_node(&subtree, mbe::TopEntryPoint::MetaItem);
+                let meta = ast::Meta::cast(parse.syntax_node())?;
+                // Only simple paths are allowed.
+                if meta.eq_token().is_some() || meta.expr().is_some() || meta.token_tree().is_some()
+                {
+                    return None;
+                }
+                let path = meta.path()?;
+                ModPath::from_src(db, path, hygiene)
             });
 
         Some(paths)
+    }
+
+    pub fn cfg(&self) -> Option<CfgExpr> {
+        if *self.path.as_ident()? == crate::name![cfg] {
+            self.token_tree_value().map(CfgExpr::parse)
+        } else {
+            None
+        }
     }
 }
 

@@ -90,8 +90,6 @@ impl Assist {
             let comment_blocks = sourcegen::CommentBlock::extract("Assist", &text);
 
             for block in comment_blocks {
-                // FIXME: doesn't support blank lines yet, need to tweak
-                // `extract_comment_blocks` for that.
                 let id = block.id;
                 assert!(
                     id.chars().all(|it| it.is_ascii_lowercase() || it == '_'),

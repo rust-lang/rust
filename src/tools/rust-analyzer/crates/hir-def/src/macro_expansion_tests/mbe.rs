@@ -4,6 +4,7 @@
 mod tt_conversion;
 mod matching;
 mod meta_syntax;
+mod metavar_expr;
 mod regression;
 
 use expect_test::expect;
@@ -98,7 +99,7 @@ fn#19 main#20(#21)#21 {#22
     );
 }
 #[test]
-fn float_field_acces_macro_input() {
+fn float_field_access_macro_input() {
     check(
         r#"
 macro_rules! foo {
@@ -922,7 +923,7 @@ macro_rules! m {
 
 fn bar() -> &'a Baz<u8> {}
 
-fn bar() -> extern "Rust"fn() -> Ret {}
+fn bar() -> extern "Rust" fn() -> Ret {}
 "#]],
     );
 }
@@ -1293,15 +1294,49 @@ ok!();
 }
 
 #[test]
-fn test_vertical_bar_with_pat() {
+fn test_vertical_bar_with_pat_param() {
     check(
         r#"
-macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+macro_rules! m { (|$pat:pat_param| ) => { ok!(); } }
 m! { |x| }
  "#,
         expect![[r#"
-macro_rules! m { (|$pat:pat| ) => { ok!(); } }
+macro_rules! m { (|$pat:pat_param| ) => { ok!(); } }
 ok!();
+ "#]],
+    );
+}
+
+#[test]
+fn test_new_std_matches() {
+    check(
+        r#"
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+fn main() {
+    matches!(0, 0 | 1 if true);
+}
+ "#,
+        expect![[r#"
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+fn main() {
+    match 0 {
+        0|1 if true =>true , _=>false
+    };
+}
  "#]],
     );
 }
@@ -1578,92 +1613,6 @@ macro_rules! error {
 struct Foo;
 "##]],
     )
-}
-
-#[test]
-fn test_dollar_dollar() {
-    check(
-        r#"
-macro_rules! register_struct { ($Struct:ident) => {
-    macro_rules! register_methods { ($$($method:ident),*) => {
-        macro_rules! implement_methods { ($$$$($$val:expr),*) => {
-            struct $Struct;
-            impl $Struct { $$(fn $method() -> &'static [u32] { &[$$$$($$$$val),*] })*}
-        }}
-    }}
-}}
-
-register_struct!(Foo);
-register_methods!(alpha, beta);
-implement_methods!(1, 2, 3);
-"#,
-        expect![[r#"
-macro_rules! register_struct { ($Struct:ident) => {
-    macro_rules! register_methods { ($$($method:ident),*) => {
-        macro_rules! implement_methods { ($$$$($$val:expr),*) => {
-            struct $Struct;
-            impl $Struct { $$(fn $method() -> &'static [u32] { &[$$$$($$$$val),*] })*}
-        }}
-    }}
-}}
-
-macro_rules !register_methods {
-    ($($method: ident), *) = > {
-        macro_rules!implement_methods {
-            ($$($val: expr), *) = > {
-                struct Foo;
-                impl Foo {
-                    $(fn $method()-> &'static[u32] {
-                        &[$$($$val), *]
-                    }
-                    )*
-                }
-            }
-        }
-    }
-}
-macro_rules !implement_methods {
-    ($($val: expr), *) = > {
-        struct Foo;
-        impl Foo {
-            fn alpha()-> &'static[u32] {
-                &[$($val), *]
-            }
-            fn beta()-> &'static[u32] {
-                &[$($val), *]
-            }
-        }
-    }
-}
-struct Foo;
-impl Foo {
-    fn alpha() -> &'static[u32] {
-        &[1, 2, 3]
-    }
-    fn beta() -> &'static[u32] {
-        &[1, 2, 3]
-    }
-}
-"#]],
-    )
-}
-
-#[test]
-fn test_metavar_exprs() {
-    check(
-        r#"
-macro_rules! m {
-    ( $( $t:tt )* ) => ( $( ${ignore(t)} -${index()} )-* );
-}
-const _: i32 = m!(a b c);
-    "#,
-        expect![[r#"
-macro_rules! m {
-    ( $( $t:tt )* ) => ( $( ${ignore(t)} -${index()} )-* );
-}
-const _: i32 = -0--1--2;
-    "#]],
-    );
 }
 
 #[test]

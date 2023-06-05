@@ -71,6 +71,11 @@ cargo check --quiet --workspace --message-format=json --all-targets
 Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
 avoid checking unnecessary things.
 --
+[[rust-analyzer.cargo.cfgs]]rust-analyzer.cargo.cfgs (default: `{}`)::
++
+--
+List of cfg options to enable with the given values.
+--
 [[rust-analyzer.cargo.extraArgs]]rust-analyzer.cargo.extraArgs (default: `[]`)::
 +
 --
@@ -120,7 +125,7 @@ Compilation target override (target triple).
 [[rust-analyzer.cargo.unsetTest]]rust-analyzer.cargo.unsetTest (default: `["core"]`)::
 +
 --
-Unsets `#[cfg(test)]` for the specified crates.
+Unsets the implicit `#[cfg(test)]` for the specified crates.
 --
 [[rust-analyzer.checkOnSave]]rust-analyzer.checkOnSave (default: `true`)::
 +
@@ -352,6 +357,11 @@ Controls file watching implementation.
 --
 Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
 --
+[[rust-analyzer.highlightRelated.closureCaptures.enable]]rust-analyzer.highlightRelated.closureCaptures.enable (default: `true`)::
++
+--
+Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
+--
 [[rust-analyzer.highlightRelated.exitPoints.enable]]rust-analyzer.highlightRelated.exitPoints.enable (default: `true`)::
 +
 --
@@ -416,7 +426,32 @@ Whether to show keyword hover popups. Only applies when
 [[rust-analyzer.hover.links.enable]]rust-analyzer.hover.links.enable (default: `true`)::
 +
 --
-Use markdown syntax for links in hover.
+Use markdown syntax for links on hover.
+--
+[[rust-analyzer.hover.memoryLayout.alignment]]rust-analyzer.hover.memoryLayout.alignment (default: `"hexadecimal"`)::
++
+--
+How to render the align information in a memory layout hover.
+--
+[[rust-analyzer.hover.memoryLayout.enable]]rust-analyzer.hover.memoryLayout.enable (default: `true`)::
++
+--
+Whether to show memory layout data on hover.
+--
+[[rust-analyzer.hover.memoryLayout.niches]]rust-analyzer.hover.memoryLayout.niches (default: `false`)::
++
+--
+How to render the niche information in a memory layout hover.
+--
+[[rust-analyzer.hover.memoryLayout.offset]]rust-analyzer.hover.memoryLayout.offset (default: `"hexadecimal"`)::
++
+--
+How to render the offset information in a memory layout hover.
+--
+[[rust-analyzer.hover.memoryLayout.size]]rust-analyzer.hover.memoryLayout.size (default: `"both"`)::
++
+--
+How to render the size information in a memory layout hover.
 --
 [[rust-analyzer.imports.granularity.enforce]]rust-analyzer.imports.granularity.enforce (default: `false`)::
 +
@@ -469,10 +504,20 @@ Whether to show inlay hints after a closing `}` to indicate what item it belongs
 Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1
 to always show them).
 --
+[[rust-analyzer.inlayHints.closureCaptureHints.enable]]rust-analyzer.inlayHints.closureCaptureHints.enable (default: `false`)::
++
+--
+Whether to show inlay hints for closure captures.
+--
 [[rust-analyzer.inlayHints.closureReturnTypeHints.enable]]rust-analyzer.inlayHints.closureReturnTypeHints.enable (default: `"never"`)::
 +
 --
 Whether to show inlay type hints for return types of closures.
+--
+[[rust-analyzer.inlayHints.closureStyle]]rust-analyzer.inlayHints.closureStyle (default: `"impl_fn"`)::
++
+--
+Closure notation in type and chaining inlay hints.
 --
 [[rust-analyzer.inlayHints.discriminantHints.enable]]rust-analyzer.inlayHints.discriminantHints.enable (default: `"never"`)::
 +
@@ -639,6 +684,11 @@ Elements must be paths pointing to `Cargo.toml`,
 --
 Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
 --
+[[rust-analyzer.lru.query.capacities]]rust-analyzer.lru.query.capacities (default: `{}`)::
++
+--
+Sets the LRU capacity of the specified queries.
+--
 [[rust-analyzer.notifications.cargoTomlNotFound]]rust-analyzer.notifications.cargoTomlNotFound (default: `true`)::
 +
 --
@@ -669,8 +719,7 @@ This config takes a map of crate names with the exported proc-macro names to ign
 [[rust-analyzer.procMacro.server]]rust-analyzer.procMacro.server (default: `null`)::
 +
 --
-Internal config, path to proc-macro server executable (typically,
-this is rust-analyzer itself, but we override this in tests).
+Internal config, path to proc-macro server executable.
 --
 [[rust-analyzer.references.excludeImports]]rust-analyzer.references.excludeImports (default: `false`)::
 +
@@ -729,6 +778,11 @@ Inject additional highlighting into doc comments.
 When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
 doc links.
 --
+[[rust-analyzer.semanticHighlighting.nonStandardTokens]]rust-analyzer.semanticHighlighting.nonStandardTokens (default: `true`)::
++
+--
+Whether the server is allowed to emit non-standard tokens and modifiers.
+--
 [[rust-analyzer.semanticHighlighting.operator.enable]]rust-analyzer.semanticHighlighting.operator.enable (default: `true`)::
 +
 --
@@ -748,7 +802,7 @@ of the generic `operator` token type.
 [[rust-analyzer.semanticHighlighting.punctuation.enable]]rust-analyzer.semanticHighlighting.punctuation.enable (default: `false`)::
 +
 --
-Use semantic tokens for punctuations.
+Use semantic tokens for punctuation.
 
 When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
 they are tagged with modifiers or have a special role.
@@ -762,7 +816,7 @@ calls.
 [[rust-analyzer.semanticHighlighting.punctuation.specialization.enable]]rust-analyzer.semanticHighlighting.punctuation.specialization.enable (default: `false`)::
 +
 --
-Use specialized semantic tokens for punctuations.
+Use specialized semantic tokens for punctuation.
 
 When enabled, rust-analyzer will emit special token types for punctuation tokens instead
 of the generic `punctuation` token type.

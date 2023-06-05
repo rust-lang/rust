@@ -504,7 +504,7 @@ fn main() {
     }
 
     #[test]
-    fn ignore_statements_aftert_if() {
+    fn ignore_statements_after_if() {
         check_assist_not_applicable(
             convert_to_guarded_return,
             r#"

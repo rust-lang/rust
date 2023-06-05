@@ -3,8 +3,8 @@ use ide_db::{
     base_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt},
     FxHashSet,
 };
-use std::sync::Arc;
 use test_utils::RangeOrOffset;
+use triomphe::Arc;
 
 use crate::{MatchFinder, SsrRule};
 

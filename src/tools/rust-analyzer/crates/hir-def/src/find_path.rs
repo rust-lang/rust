@@ -42,7 +42,7 @@ const MAX_PATH_LEN: usize = 15;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PrefixKind {
     /// Causes paths to always start with either `self`, `super`, `crate` or a crate-name.
-    /// This is the same as plain, just that paths will start with `self` iprepended f the path
+    /// This is the same as plain, just that paths will start with `self` prepended if the path
     /// starts with an identifier that is not a crate.
     BySelf,
     /// Causes paths to ignore imports in the local module.
@@ -81,7 +81,7 @@ fn find_path_inner(
     }
 
     let def_map = from.def_map(db);
-    let crate_root = def_map.crate_root(db);
+    let crate_root = def_map.crate_root();
     // - if the item is a module, jump straight to module search
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
@@ -183,7 +183,7 @@ fn find_path_for_module(
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
     let root_def_map = crate_root.def_map(db);
-    for (name, &def_id) in root_def_map.extern_prelude() {
+    for (name, def_id) in root_def_map.extern_prelude() {
         if module_id == def_id {
             let name = scope_name.unwrap_or_else(|| name.clone());
 
@@ -454,7 +454,7 @@ fn find_local_import_locations(
         worklist.push(ancestor);
     }
 
-    let def_map = def_map.crate_root(db).def_map(db);
+    let def_map = def_map.crate_root().def_map(db);
 
     let mut seen: FxHashSet<_> = FxHashSet::default();
 
@@ -543,6 +543,7 @@ mod tests {
                 module.local_id,
                 &mod_path,
                 crate::item_scope::BuiltinShadowMode::Module,
+                None,
             )
             .0
             .take_types()

@@ -119,7 +119,7 @@ pub(crate) fn convert_for_loop_with_for_each(
             {
                 // We have either "for x in &col" and col implements a method called iter
                 //             or "for x in &mut col" and col implements a method called iter_mut
-                format_to!(buf, "{expr_behind_ref}.{method}()");
+                format_to!(buf, "{expr_behind_ref}.{}()", method.display(ctx.db()));
             } else if let ast::Expr::RangeExpr(..) = iterable {
                 // range expressions need to be parenthesized for the syntax to be correct
                 format_to!(buf, "({iterable})");

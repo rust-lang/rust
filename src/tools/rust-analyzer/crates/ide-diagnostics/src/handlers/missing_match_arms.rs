@@ -271,15 +271,20 @@ enum Either2 { C, D }
 fn main() {
     match Either::A {
         Either2::C => (),
+      //^^^^^^^^^^ error: expected Either, found Either2
         Either2::D => (),
+      //^^^^^^^^^^ error: expected Either, found Either2
     }
     match (true, false) {
         (true, false, true) => (),
+      //^^^^^^^^^^^^^^^^^^^ error: expected (bool, bool), found (bool, bool, bool)
         (true) => (),
       // ^^^^  error: expected (bool, bool), found bool
     }
     match (true, false) { (true,) => {} }
+                        //^^^^^^^ error: expected (bool, bool), found (bool,)
     match (0) { () => () }
+              //^^ error: expected i32, found ()
     match Unresolved::Bar { Unresolved::Baz => () }
 }
         "#,
@@ -293,7 +298,9 @@ fn main() {
             r#"
 fn main() {
     match false { true | () => {} }
+                       //^^ error: expected bool, found ()
     match (false,) { (true | (),) => {} }
+                           //^^ error: expected bool, found ()
 }
 "#,
         );
@@ -738,17 +745,13 @@ fn main() {
 
     #[test]
     fn binding_ref_has_correct_type() {
-        cov_mark::check_count!(validate_match_bailed_out, 1);
-
         // Asserts `PatKind::Binding(ref _x): bool`, not &bool.
         // If that's not true match checking will panic with "incompatible constructors"
         // FIXME: make facilities to test this directly like `tests::check_infer(..)`
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Foo { A }
 fn main() {
-    // FIXME: this should not bail out but current behavior is such as the old algorithm.
-    // ExprValidator::validate_match(..) checks types of top level patterns incorrectly.
     match Foo::A {
         ref _x => {}
         Foo::A => {}
@@ -1024,6 +1027,7 @@ fn main() {
 
             check_diagnostics(
                 r#"
+//- minicore: copy
 fn main() {
     match &false {
         &true => {}
@@ -1035,11 +1039,13 @@ fn main() {
 
         #[test]
         fn reference_patterns_in_fields() {
-            cov_mark::check_count!(validate_match_bailed_out, 2);
+            cov_mark::check_count!(validate_match_bailed_out, 1);
             check_diagnostics(
                 r#"
+//- minicore: copy
 fn main() {
     match (&false,) {
+        //^^^^^^^^^ error: missing match arm: `(&false,)` not covered
         (true,) => {}
     }
     match (&false,) {

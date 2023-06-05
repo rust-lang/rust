@@ -153,6 +153,12 @@ pub struct Ident<Span> {
     pub span: Span,
 }
 
+impl<S> Ident<S> {
+    pub fn new(text: impl Into<SmolStr>, span: S) -> Self {
+        Ident { text: text.into(), span }
+    }
+}
+
 fn print_debug_subtree<Span: fmt::Debug>(
     f: &mut fmt::Formatter<'_>,
     subtree: &Subtree<Span>,

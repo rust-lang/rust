@@ -45,18 +45,18 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <pre><code><span class="keyword">fn</span> <span class="function declaration">fixture</span><span class="parenthesis">(</span><span class="value_param declaration reference">ra_fixture</span><span class="colon">:</span> <span class="punctuation">&</span><span class="builtin_type">str</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="function">fixture</span><span class="parenthesis">(</span><span class="string_literal">r#"</span>
-<span class="keyword">trait</span> <span class="trait declaration">Foo</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration static trait">foo</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-        <span class="unresolved_reference">println</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="string_literal">"2 + 2 = {}"</span><span class="comma">,</span> <span class="numeric_literal">4</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="brace">}</span>
-<span class="brace">}</span><span class="string_literal">"#</span>
+    <span class="function">fixture</span><span class="parenthesis">(</span><span class="string_literal">r#"</span><span class="none injected">
+</span><span class="keyword injected">trait</span><span class="none injected"> </span><span class="trait declaration injected">Foo</span><span class="none injected"> </span><span class="brace injected">{</span><span class="none injected">
+    </span><span class="keyword injected">fn</span><span class="none injected"> </span><span class="function associated declaration injected static trait">foo</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="none injected"> </span><span class="brace injected">{</span><span class="none injected">
+        </span><span class="unresolved_reference injected">println</span><span class="macro_bang injected">!</span><span class="parenthesis injected macro">(</span><span class="string_literal injected macro">"2 + 2 = {}"</span><span class="comma injected macro">,</span><span class="none injected"> </span><span class="numeric_literal injected macro">4</span><span class="parenthesis injected macro">)</span><span class="semicolon injected">;</span><span class="none injected">
+    </span><span class="brace injected">}</span><span class="none injected">
+</span><span class="brace injected">}</span><span class="string_literal">"#</span>
     <span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="function">fixture</span><span class="parenthesis">(</span><span class="string_literal">r"</span>
-<span class="keyword">fn</span> <span class="function declaration">foo</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="function">foo</span><span class="parenthesis">(</span><span class="keyword">$0</span><span class="brace">{</span>
-        <span class="numeric_literal">92</span>
-    <span class="brace">}</span><span class="keyword">$0</span><span class="parenthesis">)</span>
-<span class="brace">}</span><span class="string_literal">"</span>
+    <span class="function">fixture</span><span class="parenthesis">(</span><span class="string_literal">r"</span><span class="none injected">
+</span><span class="keyword injected">fn</span><span class="none injected"> </span><span class="function declaration injected">foo</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="none injected"> </span><span class="brace injected">{</span><span class="none injected">
+    </span><span class="function injected">foo</span><span class="parenthesis injected">(</span><span class="keyword injected">$0</span><span class="brace injected">{</span><span class="none injected">
+        </span><span class="numeric_literal injected">92</span><span class="none injected">
+    </span><span class="brace injected">}</span><span class="keyword injected">$0</span><span class="parenthesis injected">)</span><span class="none injected">
+</span><span class="brace injected">}</span><span class="string_literal">"</span>
     <span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span></code></pre>

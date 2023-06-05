@@ -18,12 +18,35 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      typescript: ${{ steps.filter.outputs.typescript }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@4067d885736b84de7c414f582ac45897079b0a78
+        id: filter
+        with:
+          filters: |
+            typescript:
+              - 'editors/code/**'
+            proc_macros:
+              - 'crates/proc-macro-api/**'
+              - 'crates/proc-macro-srv/**'
+              - 'crates/proc-macro-srv-cli/**'
+              - 'crates/proc-macro-test/**'
+
   rust:
+    needs: changes
     if: github.repository == 'rust-lang/rust-analyzer'
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
+      RUST_CHANNEL: "${{ needs.changes.outputs.proc_macros == 'true' && 'nightly' || 'stable'}}"
+      USE_SYSROOT_ABI: "${{ needs.changes.outputs.proc_macros == 'true' && '--features sysroot-abi' || ''}}"
 
     strategy:
       fail-fast: false
@@ -35,30 +58,31 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 20
 
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update stable
+          rustup update --no-self-update ${{ env.RUST_CHANNEL }}
           rustup component add rustfmt rust-src
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
+        uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
+        with:
+          key: ${{ env.RUST_CHANNEL }}
 
       - name: Bump opt-level
         if: matrix.os == 'ubuntu-latest'
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
 
       - name: Compile (tests)
-        run: cargo test --no-run --locked
+        run: cargo test --no-run --locked ${{ env.USE_SYSROOT_ABI }}
 
       # It's faster to `test` before `build` ¯\_(ツ)_/¯
       - name: Compile (rust-analyzer)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo build --quiet
+        run: cargo build --quiet ${{ env.USE_SYSROOT_ABI }}
 
       - name: Test
-        run: cargo test -- --nocapture --quiet
+        run: cargo test ${{ env.USE_SYSROOT_ABI }} -- --nocapture --quiet
 
       - name: Run analysis-stats on rust-analyzer
         if: matrix.os == 'ubuntu-latest'
@@ -90,7 +114,7 @@ jobs:
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
+        uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
 
       - name: Check
         run: |
@@ -102,6 +126,7 @@ jobs:
           done
 
   typescript:
+    needs: changes
     if: github.repository == 'rust-lang/rust-analyzer'
     name: TypeScript
     strategy:
@@ -114,18 +139,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        if: needs.changes.outputs.typescript == 'true'
 
       - name: Install Nodejs
         uses: actions/setup-node@v3
         with:
           node-version: 16
+        if: needs.changes.outputs.typescript == 'true'
 
       - name: Install xvfb
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && needs.changes.outputs.typescript == 'true'
         run: sudo apt-get install -y xvfb
 
       - run: npm ci
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
       #    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
       #      if: runner.os == 'Linux'
@@ -133,16 +161,17 @@ jobs:
 
       - run: npm run lint
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
       - name: Run VS Code tests (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && needs.changes.outputs.typescript == 'true'
         env:
           VSCODE_CLI: 1
         run: xvfb-run npm test
         working-directory: ./editors/code
 
       - name: Run VS Code tests (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && needs.changes.outputs.typescript == 'true'
         env:
           VSCODE_CLI: 1
         run: npm test
@@ -150,9 +179,11 @@ jobs:
 
       - run: npm run pretest
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
 
   end-success:
     name: bors build finished
@@ -165,7 +196,7 @@ jobs:
 
   end-failure:
     name: bors build finished
-    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    if: github.event.pusher.name == 'bors' && !success()
     runs-on: ubuntu-latest
     needs: [rust, rust-cross, typescript]
     steps:

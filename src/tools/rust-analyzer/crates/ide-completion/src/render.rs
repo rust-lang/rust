@@ -32,11 +32,17 @@ pub(crate) struct RenderContext<'a> {
     completion: &'a CompletionContext<'a>,
     is_private_editable: bool,
     import_to_add: Option<LocatedImport>,
+    doc_aliases: Vec<SmolStr>,
 }
 
 impl<'a> RenderContext<'a> {
     pub(crate) fn new(completion: &'a CompletionContext<'a>) -> RenderContext<'a> {
-        RenderContext { completion, is_private_editable: false, import_to_add: None }
+        RenderContext {
+            completion,
+            is_private_editable: false,
+            import_to_add: None,
+            doc_aliases: vec![],
+        }
     }
 
     pub(crate) fn private_editable(mut self, private_editable: bool) -> Self {
@@ -46,6 +52,11 @@ impl<'a> RenderContext<'a> {
 
     pub(crate) fn import_to_add(mut self, import_to_add: Option<LocatedImport>) -> Self {
         self.import_to_add = import_to_add;
+        self
+    }
+
+    pub(crate) fn doc_aliases(mut self, doc_aliases: Vec<SmolStr>) -> Self {
+        self.doc_aliases = doc_aliases;
         self
     }
 
@@ -115,24 +126,25 @@ pub(crate) fn render_field(
     field: hir::Field,
     ty: &hir::Type,
 ) -> CompletionItem {
+    let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
-    let name = field.name(ctx.db());
+    let name = field.name(db);
     let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(receiver.as_ref(), &name),
+        field_with_receiver(db, receiver.as_ref(), &name),
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
         exact_name_match: compute_exact_name_match(ctx.completion, name.as_str()),
         ..CompletionRelevance::default()
     });
-    item.detail(ty.display(ctx.db()).to_string())
-        .set_documentation(field.docs(ctx.db()))
+    item.detail(ty.display(db).to_string())
+        .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
-    item.insert_text(field_with_receiver(receiver.as_ref(), &escaped_name));
+    item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
             if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
@@ -140,11 +152,19 @@ pub(crate) fn render_field(
             }
         }
     }
-    item.build()
+    item.doc_aliases(ctx.doc_aliases);
+    item.build(db)
 }
 
-fn field_with_receiver(receiver: Option<&hir::Name>, field_name: &str) -> SmolStr {
-    receiver.map_or_else(|| field_name.into(), |receiver| format!("{receiver}.{field_name}").into())
+fn field_with_receiver(
+    db: &RootDatabase,
+    receiver: Option<&hir::Name>,
+    field_name: &str,
+) -> SmolStr {
+    receiver.map_or_else(
+        || field_name.into(),
+        |receiver| format!("{}.{field_name}", receiver.display(db)).into(),
+    )
 }
 
 pub(crate) fn render_tuple_field(
@@ -156,10 +176,10 @@ pub(crate) fn render_tuple_field(
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(receiver.as_ref(), &field.to_string()),
+        field_with_receiver(ctx.db(), receiver.as_ref(), &field.to_string()),
     );
     item.detail(ty.display(ctx.db()).to_string()).lookup_by(field.to_string());
-    item.build()
+    item.build(ctx.db())
 }
 
 pub(crate) fn render_type_inference(
@@ -169,7 +189,7 @@ pub(crate) fn render_type_inference(
     let mut builder =
         CompletionItem::new(CompletionItemKind::InferredType, ctx.source_range(), ty_string);
     builder.set_relevance(CompletionRelevance { is_definite: true, ..Default::default() });
-    builder.build()
+    builder.build(ctx.db)
 }
 
 pub(crate) fn render_path_resolution(
@@ -197,7 +217,9 @@ pub(crate) fn render_resolution_with_import(
 ) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
     let local_name = scope_def_to_name(resolution, &ctx, &import_edit)?;
-
+    //this now just renders the alias text, but we need to find the aliases earlier and call this with the alias instead
+    let doc_aliases = ctx.completion.doc_aliases_in_scope(resolution);
+    let ctx = ctx.doc_aliases(doc_aliases);
     Some(render_resolution_path(ctx, path_ctx, local_name, Some(import_edit), resolution))
 }
 
@@ -305,7 +327,7 @@ fn render_resolution_path(
                 item.lookup_by(name.clone())
                     .label(SmolStr::from_iter([&name, "<…>"]))
                     .trigger_call_info()
-                    .insert_snippet(cap, format!("{local_name}<$0>"));
+                    .insert_snippet(cap, format!("{}<$0>", local_name.display(db)));
             }
         }
     }
@@ -348,6 +370,8 @@ fn render_resolution_simple_(
     if let Some(import_to_add) = ctx.import_to_add {
         item.add_import(import_to_add);
     }
+
+    item.doc_aliases(ctx.doc_aliases);
     item
 }
 

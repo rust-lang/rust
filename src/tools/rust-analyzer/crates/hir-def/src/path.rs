@@ -7,14 +7,13 @@ use std::{
 };
 
 use crate::{
-    body::LowerCtx,
-    type_ref::{ConstRefOrPath, LifetimeRef},
+    lang_item::LangItemTarget,
+    lower::LowerCtx,
+    type_ref::{ConstRefOrPath, LifetimeRef, TypeBound, TypeRef},
 };
 use hir_expand::name::Name;
 use intern::Interned;
 use syntax::ast;
-
-use crate::type_ref::{TypeBound, TypeRef};
 
 pub use hir_expand::mod_path::{path, ModPath, PathKind};
 
@@ -36,13 +35,19 @@ impl Display for ImportAlias {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Path {
-    /// Type based path like `<T>::foo`.
-    /// Note that paths like `<Type as Trait>::foo` are desugared to `Trait::<Self=Type>::foo`.
-    type_anchor: Option<Interned<TypeRef>>,
-    mod_path: Interned<ModPath>,
-    /// Invariant: the same len as `self.mod_path.segments` or `None` if all segments are `None`.
-    generic_args: Option<Box<[Option<Interned<GenericArgs>>]>>,
+pub enum Path {
+    /// A normal path
+    Normal {
+        /// Type based path like `<T>::foo`.
+        /// Note that paths like `<Type as Trait>::foo` are desugared to `Trait::<Self=Type>::foo`.
+        type_anchor: Option<Interned<TypeRef>>,
+        mod_path: Interned<ModPath>,
+        /// Invariant: the same len as `self.mod_path.segments` or `None` if all segments are `None`.
+        generic_args: Option<Box<[Option<Interned<GenericArgs>>]>>,
+    },
+    /// A link to a lang item. It is used in desugaring of things like `x?`. We can show these
+    /// links via a normal path since they might be private and not accessible in the usage place.
+    LangItem(LangItemTarget),
 }
 
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
@@ -102,51 +107,77 @@ impl Path {
     ) -> Path {
         let generic_args = generic_args.into();
         assert_eq!(path.len(), generic_args.len());
-        Path { type_anchor: None, mod_path: Interned::new(path), generic_args: Some(generic_args) }
+        Path::Normal {
+            type_anchor: None,
+            mod_path: Interned::new(path),
+            generic_args: Some(generic_args),
+        }
+    }
+
+    /// Converts a known mod path to `Path`.
+    pub fn from_known_path_with_no_generic(path: ModPath) -> Path {
+        Path::Normal { type_anchor: None, mod_path: Interned::new(path), generic_args: None }
     }
 
     pub fn kind(&self) -> &PathKind {
-        &self.mod_path.kind
+        match self {
+            Path::Normal { mod_path, .. } => &mod_path.kind,
+            Path::LangItem(_) => &PathKind::Abs,
+        }
     }
 
     pub fn type_anchor(&self) -> Option<&TypeRef> {
-        self.type_anchor.as_deref()
+        match self {
+            Path::Normal { type_anchor, .. } => type_anchor.as_deref(),
+            Path::LangItem(_) => None,
+        }
     }
 
     pub fn segments(&self) -> PathSegments<'_> {
-        let s = PathSegments {
-            segments: self.mod_path.segments(),
-            generic_args: self.generic_args.as_deref(),
+        let Path::Normal { mod_path, generic_args, .. } = self else {
+            return PathSegments {
+                segments: &[],
+                generic_args: None,
+            };
         };
+        let s =
+            PathSegments { segments: mod_path.segments(), generic_args: generic_args.as_deref() };
         if let Some(generic_args) = s.generic_args {
             assert_eq!(s.segments.len(), generic_args.len());
         }
         s
     }
 
-    pub fn mod_path(&self) -> &ModPath {
-        &self.mod_path
+    pub fn mod_path(&self) -> Option<&ModPath> {
+        match self {
+            Path::Normal { mod_path, .. } => Some(&mod_path),
+            Path::LangItem(_) => None,
+        }
     }
 
     pub fn qualifier(&self) -> Option<Path> {
-        if self.mod_path.is_ident() {
+        let Path::Normal { mod_path, generic_args, type_anchor } = self else {
+            return None;
+        };
+        if mod_path.is_ident() {
             return None;
         }
-        let res = Path {
-            type_anchor: self.type_anchor.clone(),
+        let res = Path::Normal {
+            type_anchor: type_anchor.clone(),
             mod_path: Interned::new(ModPath::from_segments(
-                self.mod_path.kind,
-                self.mod_path.segments()[..self.mod_path.segments().len() - 1].iter().cloned(),
+                mod_path.kind,
+                mod_path.segments()[..mod_path.segments().len() - 1].iter().cloned(),
             )),
-            generic_args: self.generic_args.as_ref().map(|it| it[..it.len() - 1].to_vec().into()),
+            generic_args: generic_args.as_ref().map(|it| it[..it.len() - 1].to_vec().into()),
         };
         Some(res)
     }
 
     pub fn is_self_type(&self) -> bool {
-        self.type_anchor.is_none()
-            && self.generic_args.as_deref().is_none()
-            && self.mod_path.is_Self()
+        let Path::Normal { mod_path, generic_args, type_anchor } = self else {
+            return false;
+        };
+        type_anchor.is_none() && generic_args.as_deref().is_none() && mod_path.is_Self()
     }
 }
 
@@ -222,7 +253,7 @@ impl GenericArgs {
 
 impl From<Name> for Path {
     fn from(name: Name) -> Path {
-        Path {
+        Path::Normal {
             type_anchor: None,
             mod_path: Interned::new(ModPath::from_segments(PathKind::Plain, iter::once(name))),
             generic_args: None,

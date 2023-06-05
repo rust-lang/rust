@@ -3,12 +3,15 @@
 use std::{fmt::Display, iter};
 
 use crate::{
-    infer::PointerCast, Const, ConstScalar, InferenceResult, Interner, MemoryMap, Substitution, Ty,
+    consteval::usize_const, db::HirDatabase, display::HirDisplay, infer::PointerCast,
+    lang_items::is_box, mapping::ToChalk, CallableDefId, ClosureId, Const, ConstScalar,
+    InferenceResult, Interner, MemoryMap, Substitution, Ty, TyKind,
 };
+use base_db::CrateId;
 use chalk_ir::Mutability;
 use hir_def::{
-    expr::{BindingId, Expr, ExprId, Ordering, PatId},
-    DefWithBodyId, FieldId, UnionId, VariantId,
+    hir::{BindingId, Expr, ExprId, Ordering, PatId},
+    DefWithBodyId, FieldId, StaticId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
@@ -16,12 +19,19 @@ mod eval;
 mod lower;
 mod borrowck;
 mod pretty;
+mod monomorphization;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
-pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError};
-pub use lower::{lower_to_mir, mir_body_query, mir_body_recover, MirLowerError};
+pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError, VTableMap};
+pub use lower::{
+    lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
+};
+pub use monomorphization::{
+    monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
+    monomorphized_mir_body_query, monomorphized_mir_body_recover,
+};
 use smallvec::{smallvec, SmallVec};
-use stdx::impl_from;
+use stdx::{impl_from, never};
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 
@@ -32,7 +42,7 @@ fn return_slot() -> LocalId {
     LocalId::from_raw(RawIdx::from(0))
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Local {
     pub ty: Ty,
 }
@@ -52,7 +62,7 @@ pub struct Local {
 /// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
 /// something we can even decide without knowing more about Rust's memory model?
 ///
-/// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
+/// **Needs clarification:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -73,6 +83,9 @@ pub enum Operand {
     Move(Place),
     /// Constants are already semantically values, and remain unchanged.
     Constant(Const),
+    /// NON STANDARD: This kind of operand returns an immutable reference to that static memory. Rustc
+    /// handles it with the `Constant` variant somehow.
+    Static(StaticId),
 }
 
 impl Operand {
@@ -87,31 +100,141 @@ impl Operand {
     fn const_zst(ty: Ty) -> Operand {
         Self::from_bytes(vec![], ty)
     }
+
+    fn from_fn(
+        db: &dyn HirDatabase,
+        func_id: hir_def::FunctionId,
+        generic_args: Substitution,
+    ) -> Operand {
+        let ty =
+            chalk_ir::TyKind::FnDef(CallableDefId::FunctionId(func_id).to_chalk(db), generic_args)
+                .intern(Interner);
+        Operand::from_bytes(vec![], ty)
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ProjectionElem<V, T> {
     Deref,
     Field(FieldId),
-    TupleField(usize),
+    // FIXME: get rid of this, and use FieldId for tuples and closures
+    TupleOrClosureField(usize),
     Index(V),
-    ConstantIndex { offset: u64, min_length: u64, from_end: bool },
-    Subslice { from: u64, to: u64, from_end: bool },
+    ConstantIndex { offset: u64, from_end: bool },
+    Subslice { from: u64, to: u64 },
     //Downcast(Option<Symbol>, VariantIdx),
     OpaqueCast(T),
 }
 
+impl<V, T> ProjectionElem<V, T> {
+    pub fn projected_ty(
+        &self,
+        base: Ty,
+        db: &dyn HirDatabase,
+        closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
+        krate: CrateId,
+    ) -> Ty {
+        match self {
+            ProjectionElem::Deref => match &base.data(Interner).kind {
+                TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
+                TyKind::Adt(adt, subst) if is_box(db, adt.0) => {
+                    subst.at(Interner, 0).assert_ty_ref(Interner).clone()
+                }
+                _ => {
+                    never!("Overloaded deref on type {} is not a projection", base.display(db));
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::Field(f) => match &base.data(Interner).kind {
+                TyKind::Adt(_, subst) => {
+                    db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
+                }
+                _ => {
+                    never!("Only adt has field");
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::TupleOrClosureField(f) => match &base.data(Interner).kind {
+                TyKind::Tuple(_, subst) => subst
+                    .as_slice(Interner)
+                    .get(*f)
+                    .map(|x| x.assert_ty_ref(Interner))
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        never!("Out of bound tuple field");
+                        TyKind::Error.intern(Interner)
+                    }),
+                TyKind::Closure(id, subst) => closure_field(*id, subst, *f),
+                _ => {
+                    never!("Only tuple or closure has tuple or closure field");
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::ConstantIndex { .. } | ProjectionElem::Index(_) => {
+                match &base.data(Interner).kind {
+                    TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
+                    _ => {
+                        never!("Overloaded index is not a projection");
+                        return TyKind::Error.intern(Interner);
+                    }
+                }
+            }
+            &ProjectionElem::Subslice { from, to } => match &base.data(Interner).kind {
+                TyKind::Array(inner, c) => {
+                    let next_c = usize_const(
+                        db,
+                        match try_const_usize(db, c) {
+                            None => None,
+                            Some(x) => x.checked_sub(u128::from(from + to)),
+                        },
+                        krate,
+                    );
+                    TyKind::Array(inner.clone(), next_c).intern(Interner)
+                }
+                TyKind::Slice(_) => base.clone(),
+                _ => {
+                    never!("Subslice projection should only happen on slice and array");
+                    return TyKind::Error.intern(Interner);
+                }
+            },
+            ProjectionElem::OpaqueCast(_) => {
+                never!("We don't emit these yet");
+                return TyKind::Error.intern(Interner);
+            }
+        }
+    }
+}
+
 type PlaceElem = ProjectionElem<LocalId, Ty>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Place {
     pub local: LocalId,
-    pub projection: Vec<PlaceElem>,
+    pub projection: Box<[PlaceElem]>,
+}
+
+impl Place {
+    fn is_parent(&self, child: &Place) -> bool {
+        self.local == child.local && child.projection.starts_with(&self.projection)
+    }
+
+    fn iterate_over_parents(&self) -> impl Iterator<Item = Place> + '_ {
+        (0..self.projection.len())
+            .map(|x| &self.projection[0..x])
+            .map(|x| Place { local: self.local, projection: x.to_vec().into() })
+    }
+
+    fn project(&self, projection: PlaceElem) -> Place {
+        Place {
+            local: self.local,
+            projection: self.projection.iter().cloned().chain([projection]).collect(),
+        }
+    }
 }
 
 impl From<LocalId> for Place {
     fn from(local: LocalId) -> Self {
-        Self { local, projection: vec![] }
+        Self { local, projection: vec![].into() }
     }
 }
 
@@ -123,7 +246,7 @@ pub enum AggregateKind {
     Tuple(Ty),
     Adt(VariantId, Substitution),
     Union(UnionId, FieldId),
-    //Closure(LocalDefId, SubstsRef),
+    Closure(Ty),
     //Generator(LocalDefId, SubstsRef, Movability),
 }
 
@@ -197,7 +320,13 @@ impl SwitchTargets {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Terminator {
+pub struct Terminator {
+    span: MirSpan,
+    kind: TerminatorKind,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum TerminatorKind {
     /// Block has one successor; we continue execution there.
     Goto { target: BasicBlockId },
 
@@ -320,7 +449,7 @@ pub enum Terminator {
         /// These are owned by the callee, which is free to modify them.
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
-        args: Vec<Operand>,
+        args: Box<[Operand]>,
         /// Where the returned value will be written
         destination: Place,
         /// Where to go after this call returns. If none, the call necessarily diverges.
@@ -418,7 +547,7 @@ pub enum Terminator {
     },
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -564,6 +693,20 @@ pub enum BinOp {
     Offset,
 }
 
+impl BinOp {
+    fn run_compare<T: PartialEq + PartialOrd>(&self, l: T, r: T) -> bool {
+        match self {
+            BinOp::Ge => l >= r,
+            BinOp::Gt => l > r,
+            BinOp::Le => l <= r,
+            BinOp::Lt => l < r,
+            BinOp::Eq => l == r,
+            BinOp::Ne => l != r,
+            x => panic!("`run_compare` called on operator {x:?}"),
+        }
+    }
+}
+
 impl Display for BinOp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -588,32 +731,32 @@ impl Display for BinOp {
     }
 }
 
-impl From<hir_def::expr::ArithOp> for BinOp {
-    fn from(value: hir_def::expr::ArithOp) -> Self {
+impl From<hir_def::hir::ArithOp> for BinOp {
+    fn from(value: hir_def::hir::ArithOp) -> Self {
         match value {
-            hir_def::expr::ArithOp::Add => BinOp::Add,
-            hir_def::expr::ArithOp::Mul => BinOp::Mul,
-            hir_def::expr::ArithOp::Sub => BinOp::Sub,
-            hir_def::expr::ArithOp::Div => BinOp::Div,
-            hir_def::expr::ArithOp::Rem => BinOp::Rem,
-            hir_def::expr::ArithOp::Shl => BinOp::Shl,
-            hir_def::expr::ArithOp::Shr => BinOp::Shr,
-            hir_def::expr::ArithOp::BitXor => BinOp::BitXor,
-            hir_def::expr::ArithOp::BitOr => BinOp::BitOr,
-            hir_def::expr::ArithOp::BitAnd => BinOp::BitAnd,
+            hir_def::hir::ArithOp::Add => BinOp::Add,
+            hir_def::hir::ArithOp::Mul => BinOp::Mul,
+            hir_def::hir::ArithOp::Sub => BinOp::Sub,
+            hir_def::hir::ArithOp::Div => BinOp::Div,
+            hir_def::hir::ArithOp::Rem => BinOp::Rem,
+            hir_def::hir::ArithOp::Shl => BinOp::Shl,
+            hir_def::hir::ArithOp::Shr => BinOp::Shr,
+            hir_def::hir::ArithOp::BitXor => BinOp::BitXor,
+            hir_def::hir::ArithOp::BitOr => BinOp::BitOr,
+            hir_def::hir::ArithOp::BitAnd => BinOp::BitAnd,
         }
     }
 }
 
-impl From<hir_def::expr::CmpOp> for BinOp {
-    fn from(value: hir_def::expr::CmpOp) -> Self {
+impl From<hir_def::hir::CmpOp> for BinOp {
+    fn from(value: hir_def::hir::CmpOp) -> Self {
         match value {
-            hir_def::expr::CmpOp::Eq { negated: false } => BinOp::Eq,
-            hir_def::expr::CmpOp::Eq { negated: true } => BinOp::Ne,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Greater, strict: false } => BinOp::Ge,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Greater, strict: true } => BinOp::Gt,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Less, strict: false } => BinOp::Le,
-            hir_def::expr::CmpOp::Ord { ordering: Ordering::Less, strict: true } => BinOp::Lt,
+            hir_def::hir::CmpOp::Eq { negated: false } => BinOp::Eq,
+            hir_def::hir::CmpOp::Eq { negated: true } => BinOp::Ne,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Greater, strict: false } => BinOp::Ge,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Greater, strict: true } => BinOp::Gt,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Less, strict: false } => BinOp::Le,
+            hir_def::hir::CmpOp::Ord { ordering: Ordering::Less, strict: true } => BinOp::Lt,
         }
     }
 }
@@ -642,7 +785,6 @@ pub enum CastKind {
     FloatToInt,
     FloatToFloat,
     IntToFloat,
-    PtrToPtr,
     FnPtrToPtr,
 }
 
@@ -653,13 +795,8 @@ pub enum Rvalue {
 
     /// Creates an array where each element is the value of the operand.
     ///
-    /// This is the cause of a bug in the case where the repetition count is zero because the value
-    /// is not dropped, see [#74836].
-    ///
     /// Corresponds to source code like `[x; 32]`.
-    ///
-    /// [#74836]: https://github.com/rust-lang/rust/issues/74836
-    //Repeat(Operand, ty::Const),
+    Repeat(Operand, Const),
 
     /// Creates a reference of the indicated kind to the place.
     ///
@@ -768,7 +905,7 @@ pub enum Rvalue {
     ///
     /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Generator`. After
     /// generator lowering, `Generator` aggregate kinds are disallowed too.
-    Aggregate(AggregateKind, Vec<Operand>),
+    Aggregate(AggregateKind, Box<[Operand]>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
@@ -776,6 +913,9 @@ pub enum Rvalue {
     /// initialized but its content as uninitialized. Like other pointer casts, this in general
     /// affects alias analysis.
     ShallowInitBox(Operand, Ty),
+
+    /// NON STANDARD: allocates memory with the type's layout, and shallow init the box with the resulting pointer.
+    ShallowInitBoxWithAlloc(Ty),
 
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
@@ -816,7 +956,7 @@ pub struct Statement {
     pub span: MirSpan,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct BasicBlock {
     /// List of statements in this block.
     pub statements: Vec<Statement>,
@@ -838,19 +978,118 @@ pub struct BasicBlock {
     pub is_cleanup: bool,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MirBody {
     pub basic_blocks: Arena<BasicBlock>,
     pub locals: Arena<Local>,
     pub start_block: BasicBlockId,
     pub owner: DefWithBodyId,
-    pub arg_count: usize,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
     pub param_locals: Vec<LocalId>,
+    /// This field stores the closures directly owned by this body. It is used
+    /// in traversing every mir body.
+    pub closures: Vec<ClosureId>,
 }
 
-fn const_as_usize(c: &Const) -> usize {
-    try_const_usize(c).unwrap() as usize
+impl MirBody {
+    fn walk_places(&mut self, mut f: impl FnMut(&mut Place)) {
+        fn for_operand(op: &mut Operand, f: &mut impl FnMut(&mut Place)) {
+            match op {
+                Operand::Copy(p) | Operand::Move(p) => {
+                    f(p);
+                }
+                Operand::Constant(_) | Operand::Static(_) => (),
+            }
+        }
+        for (_, block) in self.basic_blocks.iter_mut() {
+            for statement in &mut block.statements {
+                match &mut statement.kind {
+                    StatementKind::Assign(p, r) => {
+                        f(p);
+                        match r {
+                            Rvalue::ShallowInitBoxWithAlloc(_) => (),
+                            Rvalue::ShallowInitBox(o, _)
+                            | Rvalue::UnaryOp(_, o)
+                            | Rvalue::Cast(_, o, _)
+                            | Rvalue::Repeat(o, _)
+                            | Rvalue::Use(o) => for_operand(o, &mut f),
+                            Rvalue::CopyForDeref(p)
+                            | Rvalue::Discriminant(p)
+                            | Rvalue::Len(p)
+                            | Rvalue::Ref(_, p) => f(p),
+                            Rvalue::CheckedBinaryOp(_, o1, o2) => {
+                                for_operand(o1, &mut f);
+                                for_operand(o2, &mut f);
+                            }
+                            Rvalue::Aggregate(_, ops) => {
+                                for op in ops.iter_mut() {
+                                    for_operand(op, &mut f);
+                                }
+                            }
+                        }
+                    }
+                    StatementKind::Deinit(p) => f(p),
+                    StatementKind::StorageLive(_)
+                    | StatementKind::StorageDead(_)
+                    | StatementKind::Nop => (),
+                }
+            }
+            match &mut block.terminator {
+                Some(x) => match &mut x.kind {
+                    TerminatorKind::SwitchInt { discr, .. } => for_operand(discr, &mut f),
+                    TerminatorKind::FalseEdge { .. }
+                    | TerminatorKind::FalseUnwind { .. }
+                    | TerminatorKind::Goto { .. }
+                    | TerminatorKind::Resume
+                    | TerminatorKind::GeneratorDrop
+                    | TerminatorKind::Abort
+                    | TerminatorKind::Return
+                    | TerminatorKind::Unreachable => (),
+                    TerminatorKind::Drop { place, .. } => {
+                        f(place);
+                    }
+                    TerminatorKind::DropAndReplace { place, value, .. } => {
+                        f(place);
+                        for_operand(value, &mut f);
+                    }
+                    TerminatorKind::Call { func, args, destination, .. } => {
+                        for_operand(func, &mut f);
+                        args.iter_mut().for_each(|x| for_operand(x, &mut f));
+                        f(destination);
+                    }
+                    TerminatorKind::Assert { cond, .. } => {
+                        for_operand(cond, &mut f);
+                    }
+                    TerminatorKind::Yield { value, resume_arg, .. } => {
+                        for_operand(value, &mut f);
+                        f(resume_arg);
+                    }
+                },
+                None => (),
+            }
+        }
+    }
+
+    fn shrink_to_fit(&mut self) {
+        let MirBody {
+            basic_blocks,
+            locals,
+            start_block: _,
+            owner: _,
+            binding_locals,
+            param_locals,
+            closures,
+        } = self;
+        basic_blocks.shrink_to_fit();
+        locals.shrink_to_fit();
+        binding_locals.shrink_to_fit();
+        param_locals.shrink_to_fit();
+        closures.shrink_to_fit();
+        for (_, b) in basic_blocks.iter_mut() {
+            let BasicBlock { statements, terminator: _, is_cleanup: _ } = b;
+            statements.shrink_to_fit();
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

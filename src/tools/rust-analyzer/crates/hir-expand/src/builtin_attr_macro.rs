@@ -96,7 +96,7 @@ fn derive_attr_expand(
 ) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
-        MacroCallKind::Attr { attr_args, is_derive: true, .. } => &attr_args.0,
+        MacroCallKind::Attr { attr_args, .. } if loc.def.is_attribute_derive() => &attr_args.0,
         _ => return ExpandResult::ok(tt::Subtree::empty()),
     };
     pseudo_derive_attr_expansion(tt, derives)

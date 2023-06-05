@@ -57,7 +57,10 @@ pub(crate) fn render_variant_pat(
     let enum_ty = variant.parent_enum(ctx.db()).ty(ctx.db());
 
     let (name, escaped_name) = match path {
-        Some(path) => (path.unescaped().to_string().into(), path.to_string().into()),
+        Some(path) => (
+            path.unescaped().display(ctx.db()).to_string().into(),
+            path.display(ctx.db()).to_string().into(),
+        ),
         None => {
             let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
             (name.unescaped().to_smol_str(), name.to_smol_str())
@@ -121,7 +124,7 @@ fn build_completion(
         Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),
         None => item.insert_text(pat),
     };
-    item.build()
+    item.build(ctx.db())
 }
 
 fn render_pat(
@@ -172,7 +175,7 @@ fn render_record_as_pat(
             format!(
                 "{name} {{ {}{} }}",
                 fields.enumerate().format_with(", ", |(idx, field), f| {
-                    f(&format_args!("{}${}", field.name(db), idx + 1))
+                    f(&format_args!("{}${}", field.name(db).display(db.upcast()), idx + 1))
                 }),
                 if fields_omitted { ", .." } else { "" },
                 name = name
