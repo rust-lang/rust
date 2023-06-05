@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `RawTable::remove` now also returns an `InsertSlot`. (#429)
 - `InsertSlot` can be used to insert an element with `RawTable::insert_in_slot`. (#429)
 - `RawIterHash` no longer has a lifetime tied to that of the `RawTable`. (#427)
-- The trait bounds of `HashSet::raw_table` have been relaxed tp not require `Eq + Hash`. (#423)
+- The trait bounds of `HashSet::raw_table` have been relaxed to not require `Eq + Hash`. (#423)
 - `EntryRef::and_replace_entry_with` and `OccupiedEntryRef::replace_entry_with`
   were changed to give a `&K` instead of a `&Q` to the closure.
 
