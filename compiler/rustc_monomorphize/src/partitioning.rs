@@ -491,11 +491,14 @@ fn internalize_symbols<'tcx>(
         // can internalize all candidates, since there is nowhere else they
         // could be used from.
         for cgu in codegen_units {
-            for candidate in &internalization_candidates {
-                cgu.items_mut().insert(*candidate, (Linkage::Internal, Visibility::Default));
+            for (item, linkage_and_visibility) in cgu.items_mut() {
+                if !internalization_candidates.contains(item) {
+                    // This item is no candidate for internalizing, so skip it.
+                    continue;
+                }
+                *linkage_and_visibility = (Linkage::Internal, Visibility::Default);
             }
         }
-
         return;
     }
 
