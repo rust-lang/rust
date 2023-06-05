@@ -67,7 +67,9 @@ use core::slice::{self, SliceIndex};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::{TryReserveError, TryReserveErrorKind};
-use crate::falloc::{Allocator, Global};
+#[cfg(not(no_global_oom_handling))]
+use crate::falloc::Fatal;
+use crate::falloc::{AllocResult, Allocator, ErrorHandling, Global};
 use crate::raw_vec::RawVec;
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -132,8 +134,10 @@ use self::spec_from_iter::SpecFromIter;
 #[cfg(not(no_global_oom_handling))]
 mod spec_from_iter;
 
+#[cfg(not(no_global_oom_handling))]
 use self::spec_extend::SpecExtend;
 
+#[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
@@ -670,8 +674,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> A::Result<Self, TryReserveError> {
-        A::map_result(Self::try_with_capacity_in(capacity, alloc))
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> AllocResult<A, Self, TryReserveError> {
+        A::ErrorHandling::map_result(Self::try_with_capacity_in(capacity, alloc))
     }
 
     /// Creates a `Vec<T, A>` directly from a pointer, a capacity, a length,
@@ -905,8 +909,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) -> A::Result<(), TryReserveError> {
-        A::map_result(self.try_reserve(additional))
+    pub fn reserve(&mut self, additional: usize) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result(self.try_reserve(additional))
     }
 
     /// Reserves the minimum capacity for at least `additional` more elements to
@@ -934,8 +938,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) -> A::Result<(), TryReserveError> {
-        A::map_result(self.try_reserve_exact(additional))
+    pub fn reserve_exact(&mut self, additional: usize) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result(self.try_reserve_exact(additional))
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -1044,8 +1048,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) -> A::Result<(), TryReserveError> {
-        A::map_result(self.try_shrink_to_fit())
+    pub fn shrink_to_fit(&mut self) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result(self.try_shrink_to_fit())
     }
 
     /// Shrinks the capacity of the vector with a lower bound.
@@ -1067,8 +1071,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) -> A::Result<(), TryReserveError> {
-        A::map_result(if self.capacity() > min_capacity {
+    pub fn shrink_to(&mut self, min_capacity: usize) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result(if self.capacity() > min_capacity {
             self.buf.shrink_to(cmp::max(self.len, min_capacity))
         } else {
             Ok(())
@@ -1101,8 +1105,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(slice.into_vec().capacity(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_boxed_slice(mut self) -> A::Result<Box<[T], A>, TryReserveError> {
-        A::map_result((|| {
+    pub fn into_boxed_slice(mut self) -> AllocResult<A, Box<[T], A>, TryReserveError> {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             self.try_shrink_to_fit()?;
             unsafe {
@@ -1439,8 +1443,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 4, 2, 3, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, index: usize, element: T) -> A::Result<(), TryReserveError> {
-        A::map_result((|| {
+    pub fn insert(&mut self, index: usize, element: T) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             #[cold]
             #[inline(never)]
@@ -1832,8 +1836,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, value: T) -> A::Result<(), TryReserveError> {
-        A::map_result((|| {
+    pub fn push(&mut self, value: T) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             // This will panic or abort if we would allocate > isize::MAX bytes
             // or if the length increment would overflow for zero-sized types.
@@ -1940,8 +1944,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    pub fn append(&mut self, other: &mut Self) -> A::Result<(), TryReserveError> {
-        A::map_result((|| {
+    pub fn append(&mut self, other: &mut Self) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             unsafe {
                 self.append_elements(other.as_slice() as _)?;
@@ -2108,11 +2112,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    pub fn split_off(&mut self, at: usize) -> A::Result<Self, TryReserveError>
+    pub fn split_off(&mut self, at: usize) -> AllocResult<A, Self, TryReserveError>
     where
         A: Clone,
     {
-        A::map_result((|| {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             #[cold]
             #[inline(never)]
@@ -2173,11 +2177,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
-    pub fn resize_with<F>(&mut self, new_len: usize, f: F) -> A::Result<(), TryReserveError>
+    pub fn resize_with<F>(&mut self, new_len: usize, f: F) -> AllocResult<A, (), TryReserveError>
     where
         F: FnMut() -> T,
     {
-        A::map_result((|| {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             let len = self.len();
             if new_len > len {
@@ -2377,8 +2381,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     #[stable(feature = "vec_resize", since = "1.5.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) -> A::Result<(), TryReserveError> {
-        A::map_result((|| {
+    pub fn resize(&mut self, new_len: usize, value: T) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             let len = self.len();
 
@@ -2413,8 +2417,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// [`extend`]: Vec::extend
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
-    pub fn extend_from_slice(&mut self, other: &[T]) -> A::Result<(), TryReserveError> {
-        A::map_result(self.spec_extend(other.iter()))
+    pub fn extend_from_slice(&mut self, other: &[T]) -> AllocResult<A, (), TryReserveError> {
+        A::ErrorHandling::map_result(self.spec_extend(other.iter()))
     }
 
     /// Copies elements from `src` range to the end of the vector.
@@ -2440,11 +2444,11 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_within", since = "1.53.0")]
-    pub fn extend_from_within<R>(&mut self, src: R) -> A::Result<(), TryReserveError>
+    pub fn extend_from_within<R>(&mut self, src: R) -> AllocResult<A, (), TryReserveError>
     where
         R: RangeBounds<usize>,
     {
-        A::map_result((|| {
+        A::ErrorHandling::map_result((|| {
             // Substitute for try block
             let range = slice::range(src, ..self.len());
             self.try_reserve(range.len())?;
@@ -2567,11 +2571,10 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_elem<T: Clone>(
-    elem: T,
-    n: usize,
-) -> <Global as Allocator>::Result<Vec<T>, TryReserveError> {
-    <Global as Allocator>::map_result(<T as SpecFromElem>::from_elem(elem, n, Global))
+pub fn from_elem<T: Clone>(elem: T, n: usize) -> AllocResult<Global, Vec<T>, TryReserveError> {
+    <Global as Allocator>::ErrorHandling::map_result(<T as SpecFromElem>::from_elem(
+        elem, n, Global,
+    ))
 }
 
 #[doc(hidden)]
@@ -2580,8 +2583,8 @@ pub fn from_elem_in<T: Clone, A: Allocator>(
     elem: T,
     n: usize,
     alloc: A,
-) -> A::Result<Vec<T, A>, TryReserveError> {
-    A::map_result(<T as SpecFromElem>::from_elem(elem, n, alloc))
+) -> AllocResult<A, Vec<T, A>, TryReserveError> {
+    A::ErrorHandling::map_result(<T as SpecFromElem>::from_elem(elem, n, alloc))
 }
 
 trait ExtendFromWithinSpec {
@@ -2665,7 +2668,7 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Clone> Clone for Vec<T, A>
 where
-    A: Allocator<Result<Self, TryReserveError> = Self>,
+    A: Allocator<ErrorHandling = Fatal>,
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
@@ -2807,11 +2810,15 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator<Result<(), TryReserveError> = ()>> Extend<T> for Vec<T, A> {
+impl<T, A: Allocator<ErrorHandling = Fatal>> Extend<T> for Vec<T, A> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        A::map_result(<Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter()))
+        A::ErrorHandling::map_result(<Self as SpecExtend<T, I::IntoIter>>::spec_extend(
+            self,
+            iter.into_iter(),
+        ))
     }
 
     #[inline]
@@ -2828,6 +2835,7 @@ impl<T, A: Allocator<Result<(), TryReserveError> = ()>> Extend<T> for Vec<T, A> 
 impl<T, A: Allocator> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
+    #[cfg(not(no_global_oom_handling))]
     fn extend_desugared<I: Iterator<Item = T>>(
         &mut self,
         mut iterator: I,
@@ -2935,7 +2943,7 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
-        A: Allocator<Result<(), TryReserveError> = ()>,
+        A: Allocator<ErrorHandling = Fatal>,
     {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
@@ -3007,11 +3015,10 @@ impl<T, A: Allocator> Vec<T, A> {
 ///
 /// [`copy_from_slice`]: slice::copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: Copy + 'a, A: Allocator<Result<(), TryReserveError> = ()> + 'a> Extend<&'a T>
-    for Vec<T, A>
-{
+#[cfg(not(no_global_oom_handling))]
+impl<'a, T: Copy + 'a, A: Allocator<ErrorHandling = Fatal> + 'a> Extend<&'a T> for Vec<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        A::map_result(self.spec_extend(iter.into_iter()))
+        A::ErrorHandling::map_result(self.spec_extend(iter.into_iter()))
     }
 
     #[inline]
@@ -3208,11 +3215,11 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 }
 
 // note: test pulls in std, which causes errors here
-#[cfg(not(test))]
+#[cfg(all(not(test), not(no_global_oom_handling)))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A> From<Vec<T, A>> for Box<[T], A>
 where
-    A: Allocator<Result<Self, TryReserveError> = Self>,
+    A: Allocator<ErrorHandling = Fatal>,
 {
     /// Convert a vector into a boxed slice.
     ///

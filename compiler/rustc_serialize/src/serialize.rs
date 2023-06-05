@@ -1,9 +1,8 @@
 //! Support code for encoding and decoding types.
 
-use std::alloc::Allocator;
+use std::alloc::{Allocator, Fatal};
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::collections::TryReserveError;
 use std::marker::PhantomData;
 use std::path;
 use std::rc::Rc;
@@ -276,8 +275,7 @@ impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
 
 impl<D: Decoder, A: Default, T: Decodable<D>> Decodable<D> for Box<[T], A>
 where
-    A: Allocator<Result<Vec<T, A>, TryReserveError> = Vec<T, A>>,
-    A: Allocator<Result<Box<[T], A>, TryReserveError> = Box<[T], A>>,
+    A: Allocator<ErrorHandling = Fatal>,
 {
     fn decode(d: &mut D) -> Box<[T], A> {
         let v: Vec<T, A> = Decodable::decode(d);
@@ -315,7 +313,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
 
 impl<D: Decoder, T: Decodable<D>, A: Default> Decodable<D> for Vec<T, A>
 where
-    A: Allocator<Result<Vec<T, A>, TryReserveError> = Vec<T, A>>,
+    A: Allocator<ErrorHandling = Fatal>,
 {
     default fn decode(d: &mut D) -> Vec<T, A> {
         let len = d.read_usize();

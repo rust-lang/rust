@@ -1,12 +1,10 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
-#[cfg(not(no_global_oom_handling))]
-use super::Vec;
 use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
-use crate::collections::TryReserveError;
-#[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
+#[cfg(not(no_global_oom_handling))]
+use crate::falloc::Fatal;
 use crate::raw_vec::RawVec;
 use core::array;
 use core::fmt;
@@ -389,7 +387,7 @@ where
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone, A: Clone> Clone for IntoIter<T, A>
 where
-    A: Allocator<Result<Vec<T, A>, TryReserveError> = Vec<T, A>>,
+    A: Allocator<ErrorHandling = Fatal>,
 {
     #[cfg(not(test))]
     fn clone(&self) -> Self {

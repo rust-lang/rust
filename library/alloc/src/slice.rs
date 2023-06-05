@@ -30,6 +30,8 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::TryReserveError;
+#[cfg(not(no_global_oom_handling))]
+use crate::falloc::{AllocResult, ErrorHandling};
 use crate::vec::Vec;
 
 #[cfg(test)]
@@ -443,12 +445,12 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> A::Result<Vec<T, A>, TryReserveError>
+    pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> AllocResult<A, Vec<T, A>, TryReserveError>
     where
         T: Clone,
     {
         // N.B., see the `hack` module in this file for more details.
-        A::map_result(hack::to_vec(self, alloc))
+        A::ErrorHandling::map_result(hack::to_vec(self, alloc))
     }
 
     /// Converts `self` into a vector without clones or allocation.

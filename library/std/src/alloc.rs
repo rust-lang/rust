@@ -285,16 +285,7 @@ unsafe impl Allocator for System {
         }
     }
 
-    type Result<T, E: core::error::Error> = T
-    where
-        E: HandleAllocError;
-
-    fn map_result<T, E: core::error::Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError,
-    {
-        result.unwrap_or_else(|e| e.handle_alloc_error())
-    }
+    type ErrorHandling = Fatal;
 }
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());

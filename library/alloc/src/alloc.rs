@@ -3,8 +3,6 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 #[cfg(not(test))]
-use core::error::Error;
-#[cfg(not(test))]
 use core::intrinsics;
 use core::intrinsics::{min_align_of_val, size_of_val};
 
@@ -13,10 +11,10 @@ use core::ptr::Unique;
 use core::ptr::{self, NonNull};
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub use crate::falloc::{Allocator, FallibleAdapter};
+pub use crate::falloc::{Allocator, Fallible};
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[cfg(not(no_global_oom_handling))]
-pub use crate::falloc::{HandleAllocError, InfallibleAdapter};
+pub use crate::falloc::{FallibleAdapter, Fatal, HandleAllocError, InfallibleAdapter};
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 #[allow(deprecated)]
@@ -331,25 +329,9 @@ unsafe impl Allocator for Global {
     }
 
     #[cfg(not(no_global_oom_handling))]
-    type Result<T, E: Error> = T
-    where
-        E: HandleAllocError;
-
-    #[cfg(not(no_global_oom_handling))]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError,
-    {
-        result.unwrap_or_else(|e| e.handle_alloc_error())
-    }
-
+    type ErrorHandling = Fatal;
     #[cfg(no_global_oom_handling)]
-    type Result<T, E: Error> = Result<T, E>;
-
-    #[cfg(no_global_oom_handling)]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E> {
-        result
-    }
+    type ErrorHandling = Fallible;
 }
 
 /// The allocator for unique pointers.

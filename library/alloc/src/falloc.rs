@@ -320,6 +320,21 @@ pub unsafe trait Allocator {
         self
     }
 
+    /// The mode of error handling for types using this allocator.
+    ///
+    /// [`Infallible`] means that any allocation failures should be handled
+    /// globally, often by panicking or aborting. Functions performing
+    /// allocation will simply return the value or nothing.
+    ///
+    /// [`Fallible`] means that any allocation failures should be handled
+    /// at the point of use. Functions performing allocation will return
+    /// `Result`.
+    type ErrorHandling: ErrorHandling;
+}
+
+// FIXME: this trait should be sealed
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub trait ErrorHandling {
     /// Result type returned by functions that are conditionally fallible.
     ///
     /// - "Infallible" allocators set `type Result<T, E> = T`
@@ -355,6 +370,62 @@ pub unsafe trait Allocator {
     #[cfg(no_global_oom_handling)]
     #[must_use]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>;
+}
+
+#[derive(Debug)]
+#[unstable(feature = "allocator_api", issue = "32838")]
+/// Error handling mode to use when the user of the type wants to handle
+/// allocation failures at the point of use. Functions performing
+/// allocation will return `Result`.
+pub struct Fallible;
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+impl ErrorHandling for Fallible {
+    #[cfg(not(no_global_oom_handling))]
+    type Result<T, E: Error> = Result<T, E>
+    where
+        E: HandleAllocError;
+
+    #[cfg(not(no_global_oom_handling))]
+    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
+    where
+        E: HandleAllocError,
+    {
+        result
+    }
+
+    #[cfg(no_global_oom_handling)]
+    type Result<T, E: Error> = Result<T, E>;
+
+    #[cfg(no_global_oom_handling)]
+    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E> {
+        result
+    }
+}
+
+#[derive(Debug)]
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "allocator_api", issue = "32838")]
+/// Error handling mode to use when the user of the type wants to ignore
+/// allocation failures, treating them as a fatal error. Functions
+/// performing allocation will return values directly.
+pub struct Fatal;
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "allocator_api", issue = "32838")]
+impl ErrorHandling for Fatal {
+    #[cfg(not(no_global_oom_handling))]
+    type Result<T, E: Error> = T
+    where
+        E: HandleAllocError;
+
+    #[cfg(not(no_global_oom_handling))]
+    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
+    where
+        E: HandleAllocError,
+    {
+        result.unwrap_or_else(|e| e.handle_alloc_error())
+    }
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -411,31 +482,11 @@ where
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 
-    #[cfg(not(no_global_oom_handling))]
-    type Result<T, E: Error> = A::Result<T, E>
-    where
-        E: HandleAllocError;
-
-    #[cfg(not(no_global_oom_handling))]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError,
-    {
-        A::map_result(result)
-    }
-
-    #[cfg(no_global_oom_handling)]
-    type Result<T, E: Error> = A::Result<T, E>;
-
-    #[cfg(no_global_oom_handling)]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E> {
-        A::map_result(result)
-    }
+    type ErrorHandling = A::ErrorHandling;
 }
 
-use crate::collections::TryReserveError;
 #[cfg(not(no_global_oom_handling))]
-use crate::collections::TryReserveErrorKind;
+use crate::collections::{TryReserveError, TryReserveErrorKind};
 
 // One central function responsible for reporting capacity overflows. This'll
 // ensure that the code generation related to these panics is minimal as there's
@@ -470,23 +521,11 @@ impl HandleAllocError for TryReserveError {
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Debug)]
-pub struct InfallibleAdapter<A>(A);
-
-#[cfg(not(no_global_oom_handling))]
-impl<A> InfallibleAdapter<A> {
-    /// Unwrap the adapter, returning the original allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_inner(self) -> A {
-        self.0
-    }
-}
+pub struct InfallibleAdapter<A: Allocator<ErrorHandling = Fallible>>(pub A);
 
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: Allocator> Allocator for InfallibleAdapter<A>
-where
-    A: Allocator<Result<(), TryReserveError> = Result<(), TryReserveError>>,
-{
+unsafe impl<A: Allocator<ErrorHandling = Fallible>> Allocator for InfallibleAdapter<A> {
     fn allocate(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
         self.0.allocate(layout)
     }
@@ -533,48 +572,19 @@ where
         self
     }
 
-    type Result<T, E: Error> = T
-    where
-        E: HandleAllocError;
-
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError,
-    {
-        result.unwrap_or_else(|e| e.handle_alloc_error())
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
-impl<A: Allocator> From<A> for InfallibleAdapter<A>
-where
-    A: Allocator<Result<(), TryReserveError> = Result<(), TryReserveError>>,
-{
-    fn from(value: A) -> Self {
-        InfallibleAdapter(value)
-    }
+    type ErrorHandling = Fatal;
 }
 
 /// Wrapper around an existing allocator allowing one to
 /// use an infallible allocator as a fallible one.
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Debug)]
-pub struct FallibleAdapter<A>(A);
-
-impl<A> FallibleAdapter<A> {
-    /// Unwrap the adapter, returning the original allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_inner(self) -> A {
-        self.0
-    }
-}
+pub struct FallibleAdapter<A: Allocator<ErrorHandling = Fatal>>(pub A);
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: Allocator> Allocator for FallibleAdapter<A>
-where
-    A: Allocator<Result<(), TryReserveError> = ()>,
-{
+#[cfg(not(no_global_oom_handling))]
+unsafe impl<A: Allocator<ErrorHandling = Fatal>> Allocator for FallibleAdapter<A> {
     fn allocate(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
         self.0.allocate(layout)
     }
@@ -621,34 +631,8 @@ where
         self
     }
 
-    #[cfg(not(no_global_oom_handling))]
-    type Result<T, E: Error> = Result<T, E>
-    where
-        E: HandleAllocError;
-
-    #[cfg(not(no_global_oom_handling))]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError,
-    {
-        result
-    }
-
-    #[cfg(no_global_oom_handling)]
-    type Result<T, E: Error> = Result<T, E>;
-
-    #[cfg(no_global_oom_handling)]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E> {
-        result
-    }
+    type ErrorHandling = Fallible;
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-impl<A: Allocator> From<A> for FallibleAdapter<A>
-where
-    A: Allocator<Result<(), TryReserveError> = ()>,
-{
-    fn from(value: A) -> Self {
-        FallibleAdapter(value)
-    }
-}
+pub(crate) type AllocResult<A, T, E> =
+    <<A as Allocator>::ErrorHandling as ErrorHandling>::Result<T, E>;
