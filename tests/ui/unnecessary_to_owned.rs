@@ -1,7 +1,7 @@
 //@run-rustfix
 
 #![allow(clippy::needless_borrow, clippy::ptr_arg)]
-#![warn(clippy::unnecessary_to_owned)]
+#![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
