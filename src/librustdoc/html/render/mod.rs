@@ -1039,8 +1039,8 @@ fn render_attributes_in_pre<'a, 'b: 'a>(
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, tcx: TyCtxt<'_>) {
-    for a in it.attributes(tcx, false) {
-        write!(w, "<div class=\"code-attribute\">{}</div>", a).unwrap();
+    for attr in it.attributes(tcx, false) {
+        write!(w, "<div class=\"code-attribute\">{attr}</div>").unwrap();
     }
 }
 

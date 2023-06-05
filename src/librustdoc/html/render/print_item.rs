@@ -1435,17 +1435,17 @@ fn item_proc_macro(
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                write!(buffer, "{}!() {{ /* proc-macro */ }}", name).unwrap();
+                write!(buffer, "{name}!() {{ /* proc-macro */ }}").unwrap();
             }
             MacroKind::Attr => {
-                write!(buffer, "#[{}]", name).unwrap();
+                write!(buffer, "#[{name}]").unwrap();
             }
             MacroKind::Derive => {
-                write!(buffer, "#[derive({})]", name).unwrap();
+                write!(buffer, "#[derive({name})]").unwrap();
                 if !m.helpers.is_empty() {
                     buffer.write_str("\n{\n    // Attributes available to this derive:\n").unwrap();
                     for attr in &m.helpers {
-                        writeln!(buffer, "    #[{}]", attr).unwrap();
+                        writeln!(buffer, "    #[{attr}]").unwrap();
                     }
                     buffer.write_str("}\n").unwrap();
                 }
