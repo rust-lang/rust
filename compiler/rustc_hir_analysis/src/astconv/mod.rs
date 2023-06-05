@@ -26,10 +26,8 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
@@ -2488,7 +2486,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     infcx.probe(|_| {
                         let ocx = ObligationCtxt::new_in_snapshot(&infcx);
 
-                        let impl_substs = infcx.fresh_item_substs(impl_);
+                        let impl_substs = infcx.fresh_substs_for_item(span, impl_);
                         let impl_ty = tcx.type_of(impl_).subst(tcx, impl_substs);
                         let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
@@ -3773,38 +3771,5 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
             }
         }
-    }
-}
-
-pub trait InferCtxtExt<'tcx> {
-    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx>;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
-    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } => self
-                .next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::SubstitutionPlaceholder,
-                    span: self.tcx.def_span(def_id),
-                })
-                .into(),
-            GenericParamDefKind::Const { .. } => {
-                let span = self.tcx.def_span(def_id);
-                let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::SubstitutionPlaceholder,
-                    span,
-                };
-                self.next_const_var(
-                    self.tcx
-                        .type_of(param.def_id)
-                        .no_bound_vars()
-                        .expect("const parameter types cannot be generic"),
-                    origin,
-                )
-                .into()
-            }
-        })
     }
 }
