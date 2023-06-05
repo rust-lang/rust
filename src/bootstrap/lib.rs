@@ -1069,7 +1069,6 @@ impl Build {
     }
 
     fn group(&self, msg: &str) -> Option<gha::Group> {
-        self.info(&msg);
         match self.config.dry_run {
             DryRun::SelfCheck => None,
             DryRun::Disabled | DryRun::UserSelected => Some(gha::group(&msg)),
