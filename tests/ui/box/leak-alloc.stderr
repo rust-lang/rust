@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `alloc` because it is borrowed
-  --> $DIR/leak-alloc.rs:26:10
+  --> $DIR/leak-alloc.rs:28:10
    |
 LL |     let alloc = Alloc {};
    |         ----- binding `alloc` declared here

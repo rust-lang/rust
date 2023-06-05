@@ -2,7 +2,7 @@
 #![feature(allocator_api)]
 #![allow(unused_must_use)]
 
-use std::alloc::Allocator;
+use std::alloc::{Allocator, Fatal};
 
 struct BigAllocator([usize; 2]);
 
@@ -16,6 +16,7 @@ unsafe impl Allocator for BigAllocator {
     unsafe fn deallocate(&self, _: std::ptr::NonNull<u8>, _: std::alloc::Layout) {
         todo!()
     }
+    type ErrorHandling = Fatal;
 }
 
 fn main() {

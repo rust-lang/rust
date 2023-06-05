@@ -4,7 +4,7 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout};
+use std::alloc::{AllocError, Allocator, Layout, Fatal};
 use std::ptr::NonNull;
 
 struct ZST;
@@ -16,6 +16,7 @@ unsafe impl Allocator for &ZST {
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         todo!()
     }
+    type ErrorHandling = Fatal;
 }
 
 fn main() {

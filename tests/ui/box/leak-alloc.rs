@@ -1,6 +1,6 @@
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout, System};
+use std::alloc::{AllocError, Allocator, Layout, System, Fatal};
 use std::ptr::NonNull;
 
 use std::boxed::Box;
@@ -15,6 +15,8 @@ unsafe impl Allocator for Alloc {
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         System.deallocate(ptr, layout)
     }
+
+    type ErrorHandling = Fatal;
 }
 
 fn use_value(_: u32) {}
