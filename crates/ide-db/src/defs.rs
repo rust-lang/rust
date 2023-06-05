@@ -8,8 +8,8 @@
 use arrayvec::ArrayVec;
 use hir::{
     Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper, Field,
-    Function, GenericParam, HasVisibility, Impl, ItemInNs, Label, Local, Macro, Module, ModuleDef,
-    Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias, TypeAlias, Variant,
+    Function, GenericParam, HasVisibility, Impl, Label, Local, Macro, Module, ModuleDef, Name,
+    PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias, TypeAlias, Variant,
     Visibility,
 };
 use stdx::impl_from;
@@ -620,24 +620,5 @@ impl From<ModuleDef> for Definition {
             ModuleDef::Macro(it) => Definition::Macro(it),
             ModuleDef::BuiltinType(it) => Definition::BuiltinType(it),
         }
-    }
-}
-
-impl From<Definition> for Option<ItemInNs> {
-    fn from(def: Definition) -> Self {
-        let item = match def {
-            Definition::Module(it) => ModuleDef::Module(it),
-            Definition::Function(it) => ModuleDef::Function(it),
-            Definition::Adt(it) => ModuleDef::Adt(it),
-            Definition::Variant(it) => ModuleDef::Variant(it),
-            Definition::Const(it) => ModuleDef::Const(it),
-            Definition::Static(it) => ModuleDef::Static(it),
-            Definition::Trait(it) => ModuleDef::Trait(it),
-            Definition::TraitAlias(it) => ModuleDef::TraitAlias(it),
-            Definition::TypeAlias(it) => ModuleDef::TypeAlias(it),
-            Definition::BuiltinType(it) => ModuleDef::BuiltinType(it),
-            _ => return None,
-        };
-        Some(ItemInNs::from(item))
     }
 }

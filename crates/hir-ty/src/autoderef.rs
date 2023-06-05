@@ -3,12 +3,11 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
-use std::sync::Arc;
-
 use chalk_ir::cast::Cast;
 use hir_def::lang_item::LangItem;
 use hir_expand::name::name;
 use limit::Limit;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, Canonical, Goal, Interner, ProjectionTyExt,
@@ -21,6 +20,21 @@ static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
 pub(crate) enum AutoderefKind {
     Builtin,
     Overloaded,
+}
+
+pub fn autoderef(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    ty: Canonical<Ty>,
+) -> impl Iterator<Item = Canonical<Ty>> + '_ {
+    let mut table = InferenceTable::new(db, env);
+    let ty = table.instantiate_canonical(ty);
+    let mut autoderef = Autoderef::new(&mut table, ty);
+    let mut v = Vec::new();
+    while let Some((ty, _steps)) = autoderef.next() {
+        v.push(autoderef.table.canonicalize(ty).value);
+    }
+    v.into_iter()
 }
 
 #[derive(Debug)]
@@ -76,49 +90,43 @@ pub(crate) fn autoderef_step(
     table: &mut InferenceTable<'_>,
     ty: Ty,
 ) -> Option<(AutoderefKind, Ty)> {
-    if let Some(derefed) = builtin_deref(&ty) {
+    if let Some(derefed) = builtin_deref(table, &ty, false) {
         Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
     } else {
         Some((AutoderefKind::Overloaded, deref_by_trait(table, ty)?))
     }
 }
 
-// FIXME: replace uses of this with Autoderef above
-pub fn autoderef(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
-    ty: Canonical<Ty>,
-) -> impl Iterator<Item = Canonical<Ty>> + '_ {
-    let mut table = InferenceTable::new(db, env);
-    let ty = table.instantiate_canonical(ty);
-    let mut autoderef = Autoderef::new(&mut table, ty);
-    let mut v = Vec::new();
-    while let Some((ty, _steps)) = autoderef.next() {
-        v.push(autoderef.table.canonicalize(ty).value);
-    }
-    v.into_iter()
-}
-
-pub(crate) fn deref(table: &mut InferenceTable<'_>, ty: Ty) -> Option<Ty> {
-    let _p = profile::span("deref");
-    autoderef_step(table, ty).map(|(_, ty)| ty)
-}
-
-fn builtin_deref(ty: &Ty) -> Option<&Ty> {
+pub(crate) fn builtin_deref<'ty>(
+    table: &mut InferenceTable<'_>,
+    ty: &'ty Ty,
+    explicit: bool,
+) -> Option<&'ty Ty> {
     match ty.kind(Interner) {
-        TyKind::Ref(.., ty) | TyKind::Raw(.., ty) => Some(ty),
+        TyKind::Ref(.., ty) => Some(ty),
+        // FIXME: Maybe accept this but diagnose if its not explicit?
+        TyKind::Raw(.., ty) if explicit => Some(ty),
+        &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) => {
+            if crate::lang_items::is_box(table.db, adt) {
+                substs.at(Interner, 0).ty(Interner)
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
 
-fn deref_by_trait(table: &mut InferenceTable<'_>, ty: Ty) -> Option<Ty> {
+pub(crate) fn deref_by_trait(
+    table @ &mut InferenceTable { db, .. }: &mut InferenceTable<'_>,
+    ty: Ty,
+) -> Option<Ty> {
     let _p = profile::span("deref_by_trait");
     if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
         // don't try to deref unknown variables
         return None;
     }
 
-    let db = table.db;
     let deref_trait =
         db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())?;
     let target = db.trait_data(deref_trait).associated_type_by_name(&name![Target])?;

@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           git config --global user.email "runner@gha.local"
-          git config --global user.name "Github Action"
+          git config --global user.name "GitHub Action"
           rm Cargo.lock
           # Fix names for crates that were published before switch to kebab-case.
           cargo workspaces rename --from base-db base_db

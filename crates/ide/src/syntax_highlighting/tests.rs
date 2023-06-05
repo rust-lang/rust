@@ -439,6 +439,16 @@ macro_rules! toho {
 }
 
 fn main() {
+    let a = '\n';
+    let a = '\t';
+    let a = '\e'; // invalid escape
+    let a = 'e';
+    let a = ' ';
+    let a = '\u{48}';
+    let a = '\u{4823}';
+    let a = '\x65';
+    let a = '\x00';
+
     println!("Hello {{Hello}}");
     // from https://doc.rust-lang.org/std/fmt/index.html
     println!("Hello");                 // => "Hello"
@@ -495,6 +505,7 @@ fn main() {
 
     let _ = "\x28\x28\x00\x63\n";
     let _ = b"\x28\x28\x00\x63\n";
+    let _ = r"\\";
 
     println!("{\x41}", A = 92);
     println!("{ничоси}", ничоси = 92);
@@ -1126,5 +1137,5 @@ fn benchmark_syntax_highlighting_parser() {
             .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Function))
             .count()
     };
-    assert_eq!(hash, 1608);
+    assert_eq!(hash, 1169);
 }

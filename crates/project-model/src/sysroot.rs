@@ -12,13 +12,15 @@ use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 
-use crate::{utf8_stdout, ManifestPath};
+use crate::{utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
     root: AbsPathBuf,
     src_root: AbsPathBuf,
     crates: Arena<SysrootCrateData>,
+    /// Stores the result of `cargo metadata` of the `RA_UNSTABLE_SYSROOT_HACK` workspace.
+    pub hack_cargo_workspace: Option<CargoWorkspace>,
 }
 
 pub(crate) type SysrootCrate = Idx<SysrootCrateData>;
@@ -74,6 +76,23 @@ impl Sysroot {
     pub fn is_empty(&self) -> bool {
         self.crates.is_empty()
     }
+
+    pub fn loading_warning(&self) -> Option<String> {
+        if self.by_name("core").is_none() {
+            let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
+                " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
+            } else {
+                " try running `rustup component add rust-src` to possible fix this"
+            };
+            Some(format!(
+                "could not find libcore in loaded sysroot at `{}`{}",
+                self.src_root.as_path().display(),
+                var_note,
+            ))
+        } else {
+            None
+        }
+    }
 }
 
 // FIXME: Expose a builder api as loading the sysroot got way too modular and complicated.
@@ -103,14 +122,36 @@ impl Sysroot {
 
     pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf) -> Result<Sysroot> {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir).ok_or_else(|| {
-            format_err!("can't load standard library from sysroot {}", sysroot_dir.display())
+            format_err!("can't load standard library from sysroot path {}", sysroot_dir.display())
         })?;
         Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
     }
 
-    pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf) -> Sysroot {
-        let mut sysroot =
-            Sysroot { root: sysroot_dir, src_root: sysroot_src_dir, crates: Arena::default() };
+    pub fn load(sysroot_dir: AbsPathBuf, mut sysroot_src_dir: AbsPathBuf) -> Sysroot {
+        // FIXME: Remove this `hack_cargo_workspace` field completely once we support sysroot dependencies
+        let hack_cargo_workspace = if let Ok(path) = std::env::var("RA_UNSTABLE_SYSROOT_HACK") {
+            let cargo_toml = ManifestPath::try_from(
+                AbsPathBuf::try_from(&*format!("{path}/Cargo.toml")).unwrap(),
+            )
+            .unwrap();
+            sysroot_src_dir = AbsPathBuf::try_from(&*path).unwrap().join("library");
+            CargoWorkspace::fetch_metadata(
+                &cargo_toml,
+                &AbsPathBuf::try_from("/").unwrap(),
+                &CargoConfig::default(),
+                &|_| (),
+            )
+            .map(CargoWorkspace::new)
+            .ok()
+        } else {
+            None
+        };
+        let mut sysroot = Sysroot {
+            root: sysroot_dir,
+            src_root: sysroot_src_dir,
+            crates: Arena::default(),
+            hack_cargo_workspace,
+        };
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
@@ -151,19 +192,6 @@ impl Sysroot {
                     sysroot.crates[proc_macro].deps.push(dep)
                 }
             }
-        }
-
-        if sysroot.by_name("core").is_none() {
-            let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
-                " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
-            } else {
-                ""
-            };
-            tracing::error!(
-                "could not find libcore in sysroot path `{}`{}",
-                sysroot.src_root.as_path().display(),
-                var_note,
-            );
         }
 
         sysroot

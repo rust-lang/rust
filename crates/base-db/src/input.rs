@@ -6,14 +6,20 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
+use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync};
 
 use cfg::CfgOptions;
-use rustc_hash::FxHashMap;
-use stdx::hash::{NoHashHashMap, NoHashHashSet};
+use la_arena::{Arena, Idx};
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
+use triomphe::Arc;
 use tt::token_id::Subtree;
-use vfs::{file_set::FileSet, AnchoredPath, FileId, VfsPath};
+use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
+
+// Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
+// then the crate for the proc-macro hasn't been build yet as the build data is missing.
+pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
+pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
 
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
@@ -79,17 +85,22 @@ impl SourceRoot {
 ///
 /// `CrateGraph` is `!Serialize` by design, see
 /// <https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/architecture.md#serialization>
-#[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
+#[derive(Clone, Default)]
 pub struct CrateGraph {
-    arena: NoHashHashMap<CrateId, CrateData>,
+    arena: Arena<CrateData>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CrateId(pub u32);
+impl fmt::Debug for CrateGraph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map()
+            .entries(self.arena.iter().map(|(id, data)| (u32::from(id.into_raw()), data)))
+            .finish()
+    }
+}
 
-impl stdx::hash::NoHashHashable for CrateId {}
+pub type CrateId = Idx<CrateData>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CrateName(SmolStr);
 
 impl CrateName {
@@ -130,8 +141,12 @@ impl ops::Deref for CrateName {
 /// Origin of the crates. It is used in emitting monikers.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CrateOrigin {
-    /// Crates that are from crates.io official registry,
-    CratesIo { repo: Option<String>, name: Option<String> },
+    /// Crates that are from the rustc workspace
+    Rustc { name: String },
+    /// Crates that are workspace members,
+    Local { repo: Option<String>, name: Option<String> },
+    /// Crates that are non member libraries.
+    Library { repo: Option<String>, name: String },
     /// Crates that are provided by the language, like std, core, proc-macro, ...
     Lang(LangCrateOrigin),
 }
@@ -173,7 +188,7 @@ impl fmt::Display for LangCrateOrigin {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CrateDisplayName {
     // The name we use to display various paths (with `_`).
     crate_name: CrateName,
@@ -249,10 +264,36 @@ pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
 pub struct ProcMacro {
     pub name: SmolStr,
     pub kind: ProcMacroKind,
-    pub expander: Arc<dyn ProcMacroExpander>,
+    pub expander: sync::Arc<dyn ProcMacroExpander>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ReleaseChannel {
+    Stable,
+    Beta,
+    Nightly,
+}
+
+impl ReleaseChannel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReleaseChannel::Stable => "stable",
+            ReleaseChannel::Beta => "beta",
+            ReleaseChannel::Nightly => "nightly",
+        }
+    }
+
+    pub fn from_str(str: &str) -> Option<Self> {
+        Some(match str {
+            "" => ReleaseChannel::Stable,
+            "nightly" => ReleaseChannel::Nightly,
+            _ if str.starts_with("beta") => ReleaseChannel::Beta,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateData {
     pub root_file_id: FileId,
     pub edition: Edition,
@@ -265,13 +306,15 @@ pub struct CrateData {
     /// `Dependency` matters), this name should only be used for UI.
     pub display_name: Option<CrateDisplayName>,
     pub cfg_options: CfgOptions,
-    pub potential_cfg_options: CfgOptions,
-    pub target_layout: TargetLayoutLoadResult,
+    /// The cfg options that could be used by the crate
+    pub potential_cfg_options: Option<CfgOptions>,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
-    pub proc_macro: ProcMacroLoadResult,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
+    // FIXME: These things should not be per crate! These are more per workspace crate graph level things
+    pub target_layout: TargetLayoutLoadResult,
+    pub channel: Option<ReleaseChannel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -290,7 +333,7 @@ pub struct Env {
     entries: FxHashMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dependency {
     pub crate_id: CrateId,
     pub name: CrateName,
@@ -320,12 +363,12 @@ impl CrateGraph {
         display_name: Option<CrateDisplayName>,
         version: Option<String>,
         cfg_options: CfgOptions,
-        potential_cfg_options: CfgOptions,
+        potential_cfg_options: Option<CfgOptions>,
         env: Env,
-        proc_macro: ProcMacroLoadResult,
         is_proc_macro: bool,
         origin: CrateOrigin,
         target_layout: Result<Arc<str>, Arc<str>>,
+        channel: Option<ReleaseChannel>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id,
@@ -335,16 +378,44 @@ impl CrateGraph {
             cfg_options,
             potential_cfg_options,
             env,
-            proc_macro,
             dependencies: Vec::new(),
             origin,
             target_layout,
             is_proc_macro,
+            channel,
         };
-        let crate_id = CrateId(self.arena.len() as u32);
-        let prev = self.arena.insert(crate_id, data);
-        assert!(prev.is_none());
-        crate_id
+        self.arena.alloc(data)
+    }
+
+    /// Remove the crate from crate graph. If any crates depend on this crate, the dependency would be replaced
+    /// with the second input.
+    pub fn remove_and_replace(
+        &mut self,
+        id: CrateId,
+        replace_with: CrateId,
+    ) -> Result<(), CyclicDependenciesError> {
+        for (x, data) in self.arena.iter() {
+            if x == id {
+                continue;
+            }
+            for edge in &data.dependencies {
+                if edge.crate_id == id {
+                    self.check_cycle_after_dependency(edge.crate_id, replace_with)?;
+                }
+            }
+        }
+        // if everything was ok, start to replace
+        for (x, data) in self.arena.iter_mut() {
+            if x == id {
+                continue;
+            }
+            for edge in &mut data.dependencies {
+                if edge.crate_id == id {
+                    edge.crate_id = replace_with;
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn add_dep(
@@ -354,17 +425,26 @@ impl CrateGraph {
     ) -> Result<(), CyclicDependenciesError> {
         let _p = profile::span("add_dep");
 
-        // Check if adding a dep from `from` to `to` creates a cycle. To figure
-        // that out, look for a  path in the *opposite* direction, from `to` to
-        // `from`.
-        if let Some(path) = self.find_path(&mut NoHashHashSet::default(), dep.crate_id, from) {
+        self.check_cycle_after_dependency(from, dep.crate_id)?;
+
+        self.arena[from].add_dep(dep);
+        Ok(())
+    }
+
+    /// Check if adding a dep from `from` to `to` creates a cycle. To figure
+    /// that out, look for a  path in the *opposite* direction, from `to` to
+    /// `from`.
+    fn check_cycle_after_dependency(
+        &self,
+        from: CrateId,
+        to: CrateId,
+    ) -> Result<(), CyclicDependenciesError> {
+        if let Some(path) = self.find_path(&mut FxHashSet::default(), to, from) {
             let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
             let err = CyclicDependenciesError { path };
-            assert!(err.from().0 == from && err.to().0 == dep.crate_id);
+            assert!(err.from().0 == from && err.to().0 == to);
             return Err(err);
         }
-
-        self.arena.get_mut(&from).unwrap().add_dep(dep);
         Ok(())
     }
 
@@ -373,14 +453,14 @@ impl CrateGraph {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = CrateId> + '_ {
-        self.arena.keys().copied()
+        self.arena.iter().map(|(idx, _)| idx)
     }
 
     /// Returns an iterator over all transitive dependencies of the given crate,
     /// including the crate itself.
     pub fn transitive_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> {
         let mut worklist = vec![of];
-        let mut deps = NoHashHashSet::default();
+        let mut deps = FxHashSet::default();
 
         while let Some(krate) = worklist.pop() {
             if !deps.insert(krate) {
@@ -397,11 +477,11 @@ impl CrateGraph {
     /// including the crate itself.
     pub fn transitive_rev_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> {
         let mut worklist = vec![of];
-        let mut rev_deps = NoHashHashSet::default();
+        let mut rev_deps = FxHashSet::default();
         rev_deps.insert(of);
 
-        let mut inverted_graph = NoHashHashMap::<_, Vec<_>>::default();
-        self.arena.iter().for_each(|(&krate, data)| {
+        let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
+        self.arena.iter().for_each(|(krate, data)| {
             data.dependencies
                 .iter()
                 .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
@@ -424,9 +504,9 @@ impl CrateGraph {
     /// come before the crate itself).
     pub fn crates_in_topological_order(&self) -> Vec<CrateId> {
         let mut res = Vec::new();
-        let mut visited = NoHashHashSet::default();
+        let mut visited = FxHashSet::default();
 
-        for krate in self.arena.keys().copied() {
+        for krate in self.iter() {
             go(self, &mut visited, &mut res, krate);
         }
 
@@ -434,7 +514,7 @@ impl CrateGraph {
 
         fn go(
             graph: &CrateGraph,
-            visited: &mut NoHashHashSet<CrateId>,
+            visited: &mut FxHashSet<CrateId>,
             res: &mut Vec<CrateId>,
             source: CrateId,
         ) {
@@ -450,31 +530,56 @@ impl CrateGraph {
 
     // FIXME: this only finds one crate with the given root; we could have multiple
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (&crate_id, _) =
+        let (crate_id, _) =
             self.arena.iter().find(|(_crate_id, data)| data.root_file_id == file_id)?;
         Some(crate_id)
     }
 
+    pub fn sort_deps(&mut self) {
+        self.arena
+            .iter_mut()
+            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
+    }
+
     /// Extends this crate graph by adding a complete disjoint second crate
-    /// graph.
+    /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
     ///
-    /// The ids of the crates in the `other` graph are shifted by the return
-    /// amount.
-    pub fn extend(&mut self, other: CrateGraph) -> u32 {
-        let start = self.arena.len() as u32;
-        self.arena.extend(other.arena.into_iter().map(|(id, mut data)| {
-            let new_id = id.shift(start);
-            for dep in &mut data.dependencies {
-                dep.crate_id = dep.crate_id.shift(start);
+    /// This will deduplicate the crates of the graph where possible.
+    /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
+    /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also have the crate dependencies sorted.
+    pub fn extend(&mut self, mut other: CrateGraph, proc_macros: &mut ProcMacroPaths) {
+        let topo = other.crates_in_topological_order();
+        let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
+
+        for topo in topo {
+            let crate_data = &mut other.arena[topo];
+            crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
+            crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
+
+            let res = self.arena.iter().find_map(
+                |(id, data)| {
+                    if data == crate_data {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                },
+            );
+            if let Some(res) = res {
+                id_map.insert(topo, res);
+            } else {
+                let id = self.arena.alloc(crate_data.clone());
+                id_map.insert(topo, id);
             }
-            (new_id, data)
-        }));
-        start
+        }
+
+        *proc_macros =
+            mem::take(proc_macros).into_iter().map(|(id, macros)| (id_map[&id], macros)).collect();
     }
 
     fn find_path(
         &self,
-        visited: &mut NoHashHashSet<CrateId>,
+        visited: &mut FxHashSet<CrateId>,
         from: CrateId,
         to: CrateId,
     ) -> Option<Vec<CrateId>> {
@@ -500,14 +605,14 @@ impl CrateGraph {
     // Work around for https://github.com/rust-lang/rust-analyzer/issues/6038.
     // As hacky as it gets.
     pub fn patch_cfg_if(&mut self) -> bool {
-        let cfg_if = self.hacky_find_crate("cfg_if");
-        let std = self.hacky_find_crate("std");
+        // we stupidly max by version in an attempt to have all duplicated std's depend on the same cfg_if so that deduplication still works
+        let cfg_if =
+            self.hacky_find_crate("cfg_if").max_by_key(|&it| self.arena[it].version.clone());
+        let std = self.hacky_find_crate("std").next();
         match (cfg_if, std) {
             (Some(cfg_if), Some(std)) => {
-                self.arena.get_mut(&cfg_if).unwrap().dependencies.clear();
-                self.arena
-                    .get_mut(&std)
-                    .unwrap()
+                self.arena[cfg_if].dependencies.clear();
+                self.arena[std]
                     .dependencies
                     .push(Dependency::new(CrateName::new("cfg_if").unwrap(), cfg_if));
                 true
@@ -516,21 +621,15 @@ impl CrateGraph {
         }
     }
 
-    fn hacky_find_crate(&self, display_name: &str) -> Option<CrateId> {
-        self.iter().find(|it| self[*it].display_name.as_deref() == Some(display_name))
+    fn hacky_find_crate<'a>(&'a self, display_name: &'a str) -> impl Iterator<Item = CrateId> + 'a {
+        self.iter().filter(move |it| self[*it].display_name.as_deref() == Some(display_name))
     }
 }
 
 impl ops::Index<CrateId> for CrateGraph {
     type Output = CrateData;
     fn index(&self, crate_id: CrateId) -> &CrateData {
-        &self.arena[&crate_id]
-    }
-}
-
-impl CrateId {
-    fn shift(self, amount: u32) -> CrateId {
-        CrateId(self.0 + amount)
+        &self.arena[crate_id]
     }
 }
 
@@ -632,7 +731,7 @@ impl fmt::Display for CyclicDependenciesError {
 mod tests {
     use crate::CrateOrigin;
 
-    use super::{CfgOptions, CrateGraph, CrateName, Dependency, Edition::Edition2018, Env, FileId};
+    use super::{CrateGraph, CrateName, Dependency, Edition::Edition2018, Env, FileId};
 
     #[test]
     fn detect_cyclic_dependency_indirect() {
@@ -642,39 +741,39 @@ mod tests {
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -695,26 +794,26 @@ mod tests {
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -732,39 +831,39 @@ mod tests {
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2))
@@ -782,26 +881,26 @@ mod tests {
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
             Edition2018,
             None,
             None,
-            CfgOptions::default(),
-            CfgOptions::default(),
+            Default::default(),
+            Default::default(),
             Env::default(),
-            Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None, name: None },
+            CrateOrigin::Local { repo: None, name: None },
             Err("".into()),
+            None,
         );
         assert!(graph
             .add_dep(

@@ -3,7 +3,7 @@
 
 use hir_def::{
     body::Body,
-    expr::{Expr, ExprId, UnaryOp},
+    hir::{Expr, ExprId, UnaryOp},
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId,
 };
@@ -73,7 +73,7 @@ fn walk_unsafe(
         }
         Expr::Path(path) => {
             let resolver = resolver_for_expr(db.upcast(), def, current);
-            let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path.mod_path());
+            let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path);
             if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id))) = value_or_partial {
                 if db.static_data(id).mutable {
                     unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });

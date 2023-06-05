@@ -1,1 +1,1 @@
-STRING "r##\"\\x7f" error: Missing trailing `"` with `#` symbols to terminate the raw string literal
+STRING "r##\"\\x7f" error: Invalid raw string literal

@@ -535,6 +535,7 @@ impl Field {
                     "!" => "excl",
                     "*" => "star",
                     "&" => "amp",
+                    "-" => "minus",
                     "_" => "underscore",
                     "." => "dot",
                     ".." => "dotdot",
@@ -572,10 +573,11 @@ impl Field {
 
 fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc {
-        tokens: "Whitespace Comment String ByteString IntNumber FloatNumber Char Byte Ident"
-            .split_ascii_whitespace()
-            .map(|it| it.to_string())
-            .collect::<Vec<_>>(),
+        tokens:
+            "Whitespace Comment String ByteString CString IntNumber FloatNumber Char Byte Ident"
+                .split_ascii_whitespace()
+                .map(|it| it.to_string())
+                .collect::<Vec<_>>(),
         ..Default::default()
     };
 

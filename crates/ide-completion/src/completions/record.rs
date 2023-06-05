@@ -69,7 +69,7 @@ pub(crate) fn complete_record_expr_fields(
                 let mut item =
                     CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), "..");
                 item.insert_text(".");
-                item.add_to(acc);
+                item.add_to(acc, ctx.db);
                 return;
             }
             missing_fields
@@ -98,7 +98,7 @@ pub(crate) fn add_default_update(
             postfix_match: Some(CompletionRelevancePostfixMatch::Exact),
             ..Default::default()
         });
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
     }
 }
 

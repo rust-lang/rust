@@ -12,6 +12,6 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-smol_str = "0.1.23"
+smol_str.workspace = true
 
 stdx.workspace = true

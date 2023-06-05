@@ -1,0 +1,36 @@
+{
+    "scopeName": "rustdoc.markdown.injection",
+    "injectionSelector": "L:source.rust",
+    "patterns": [
+        {
+            "include": "#doc-comment-line"
+        },
+        {
+            "include": "#doc-comment-block"
+        }
+    ],
+    "repository": {
+        "doc-comment-line": {
+            "name": "comment.line.documentation.rust",
+            "begin": "^\\s*//(/|!)",
+            "while": "^\\s*//(/|!)",
+            "contentName": "meta.embedded.block.markdown",
+            "patterns": [
+                {
+                    "include": "text.html.markdown"
+                }
+            ]
+        },
+        "doc-comment-block": {
+            "name": "comment.block.documentation.rust",
+            "begin": "/\\*(\\*|!)",
+            "end": "\\s*\\*/",
+            "contentName": "meta.embedded.block.markdown",
+            "patterns": [
+                {
+                    "include": "text.html.markdown"
+                }
+            ]
+        }
+    }
+}

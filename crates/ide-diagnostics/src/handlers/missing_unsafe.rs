@@ -24,7 +24,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Ass
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
     let expr = d.expr.value.to_node(&root);
 
     let node_to_add_unsafe_block = pick_best_node_to_add_unsafe_block(&expr)?;
@@ -142,6 +142,8 @@ fn main() {
     fn missing_unsafe_diagnostic_with_static_mut() {
         check_diagnostics(
             r#"
+//- minicore: copy
+
 struct Ty {
     a: u8,
 }
@@ -256,6 +258,7 @@ fn main() {
     fn add_unsafe_block_when_accessing_mutable_static() {
         check_fix(
             r#"
+//- minicore: copy
 struct Ty {
     a: u8,
 }
@@ -374,6 +377,7 @@ fn main() {
     fn unsafe_expr_as_right_hand_side_of_assignment() {
         check_fix(
             r#"
+//- minicore: copy
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
@@ -396,6 +400,7 @@ fn main() {
     fn unsafe_expr_in_binary_plus() {
         check_fix(
             r#"
+//- minicore: copy
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {

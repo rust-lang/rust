@@ -1,7 +1,7 @@
 //! A lowering for `use`-paths (more generally, paths without angle-bracketed segments).
 
 use std::{
-    fmt::{self, Display},
+    fmt::{self, Display as _},
     iter,
 };
 
@@ -23,6 +23,12 @@ pub struct ModPath {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UnescapedModPath<'a>(&'a ModPath);
+
+impl<'a> UnescapedModPath<'a> {
+    pub fn display(&'a self, db: &'a dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+        UnescapedDisplay { db, path: self }
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
@@ -110,52 +116,30 @@ impl ModPath {
         UnescapedModPath(self)
     }
 
-    fn _fmt(&self, f: &mut fmt::Formatter<'_>, escaped: bool) -> fmt::Result {
-        let mut first_segment = true;
-        let mut add_segment = |s| -> fmt::Result {
-            if !first_segment {
-                f.write_str("::")?;
-            }
-            first_segment = false;
-            f.write_str(s)?;
-            Ok(())
-        };
-        match self.kind {
-            PathKind::Plain => {}
-            PathKind::Super(0) => add_segment("self")?,
-            PathKind::Super(n) => {
-                for _ in 0..n {
-                    add_segment("super")?;
-                }
-            }
-            PathKind::Crate => add_segment("crate")?,
-            PathKind::Abs => add_segment("")?,
-            PathKind::DollarCrate(_) => add_segment("$crate")?,
-        }
-        for segment in &self.segments {
-            if !first_segment {
-                f.write_str("::")?;
-            }
-            first_segment = false;
-            if escaped {
-                segment.fmt(f)?
-            } else {
-                segment.unescaped().fmt(f)?
-            };
-        }
-        Ok(())
+    pub fn display<'a>(&'a self, db: &'a dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+        Display { db, path: self }
     }
 }
 
-impl Display for ModPath {
+struct Display<'a> {
+    db: &'a dyn ExpandDatabase,
+    path: &'a ModPath,
+}
+
+impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self._fmt(f, true)
+        display_fmt_path(self.db, self.path, f, true)
     }
 }
 
-impl<'a> Display for UnescapedModPath<'a> {
+struct UnescapedDisplay<'a> {
+    db: &'a dyn ExpandDatabase,
+    path: &'a UnescapedModPath<'a>,
+}
+
+impl<'a> fmt::Display for UnescapedDisplay<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0._fmt(f, false)
+        display_fmt_path(self.db, self.path.0, f, false)
     }
 }
 
@@ -163,6 +147,46 @@ impl From<Name> for ModPath {
     fn from(name: Name) -> ModPath {
         ModPath::from_segments(PathKind::Plain, iter::once(name))
     }
+}
+fn display_fmt_path(
+    db: &dyn ExpandDatabase,
+    path: &ModPath,
+    f: &mut fmt::Formatter<'_>,
+    escaped: bool,
+) -> fmt::Result {
+    let mut first_segment = true;
+    let mut add_segment = |s| -> fmt::Result {
+        if !first_segment {
+            f.write_str("::")?;
+        }
+        first_segment = false;
+        f.write_str(s)?;
+        Ok(())
+    };
+    match path.kind {
+        PathKind::Plain => {}
+        PathKind::Super(0) => add_segment("self")?,
+        PathKind::Super(n) => {
+            for _ in 0..n {
+                add_segment("super")?;
+            }
+        }
+        PathKind::Crate => add_segment("crate")?,
+        PathKind::Abs => add_segment("")?,
+        PathKind::DollarCrate(_) => add_segment("$crate")?,
+    }
+    for segment in &path.segments {
+        if !first_segment {
+            f.write_str("::")?;
+        }
+        first_segment = false;
+        if escaped {
+            segment.display(db).fmt(f)?;
+        } else {
+            segment.unescaped().display(db).fmt(f)?;
+        }
+    }
+    Ok(())
 }
 
 fn convert_path(

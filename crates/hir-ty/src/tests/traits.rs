@@ -90,7 +90,7 @@ fn infer_async_closure() {
 async fn test() {
     let f = async move |x: i32| x + 42;
     f;
-//  ^ |i32| -> impl Future<Output = i32>
+//  ^ impl Fn(i32) -> impl Future<Output = i32>
     let a = f(4);
     a;
 //  ^ impl Future<Output = i32>
@@ -99,7 +99,7 @@ async fn test() {
 //  ^ i32
     let f = async move || 42;
     f;
-//  ^ || -> impl Future<Output = i32>
+//  ^ impl Fn() -> impl Future<Output = i32>
     let a = f();
     a;
 //  ^ impl Future<Output = i32>
@@ -116,7 +116,7 @@ async fn test() {
     };
     let _: Option<u64> = c().await;
     c;
-//  ^ || -> impl Future<Output = Option<u64>>
+//  ^ impl Fn() -> impl Future<Output = Option<u64>>
 }
 "#,
     );
@@ -206,19 +206,27 @@ fn test() {
 fn infer_try_trait() {
     check_types(
         r#"
-//- minicore: try, result
+//- minicore: try, result, from
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
     v;
 } //^ i32
-
-impl<O, E> core::ops::Try for Result<O, E> {
-    type Output = O;
-    type Error = Result<core::convert::Infallible, E>;
+"#,
+    );
 }
 
-impl<T, E, F: From<E>> core::ops::FromResidual<Result<core::convert::Infallible, E>> for Result<T, F> {}
+#[test]
+fn infer_try_block() {
+    // FIXME: We should test more cases, but it currently doesn't work, since
+    // our labeled block type inference is broken.
+    check_types(
+        r#"
+//- minicore: try, option
+fn test() {
+    let x: Option<_> = try { Some(2)?; };
+      //^ Option<()>
+}
 "#,
     );
 }
@@ -542,7 +550,7 @@ fn test() -> u64 {
             53..54 'a': S
             57..58 'S': S(fn(u32) -> u64) -> S
             57..74 'S(|i| ...s u64)': S
-            59..73 '|i| 2*i as u64': |u32| -> u64
+            59..73 '|i| 2*i as u64': impl Fn(u32) -> u64
             60..61 'i': u32
             63..64 '2': u64
             63..73 '2*i as u64': u64
@@ -1325,9 +1333,9 @@ fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
 }
 "#,
         expect![[r#"
-            134..165 '{     ...(C)) }': (|&str, T| -> (), Bar<u8>)
-            140..163 '(|inpu...ar(C))': (|&str, T| -> (), Bar<u8>)
-            141..154 '|input, t| {}': |&str, T| -> ()
+            134..165 '{     ...(C)) }': (impl Fn(&str, T), Bar<u8>)
+            140..163 '(|inpu...ar(C))': (impl Fn(&str, T), Bar<u8>)
+            141..154 '|input, t| {}': impl Fn(&str, T)
             142..147 'input': &str
             149..150 't': T
             152..154 '{}': ()
@@ -1498,8 +1506,8 @@ fn main() {
             71..105 '{     ...()); }': ()
             77..78 'f': fn f(&dyn Fn(S))
             77..102 'f(&|nu...foo())': ()
-            79..101 '&|numb....foo()': &|S| -> ()
-            80..101 '|numbe....foo()': |S| -> ()
+            79..101 '&|numb....foo()': &impl Fn(S)
+            80..101 '|numbe....foo()': impl Fn(S)
             81..87 'number': S
             89..95 'number': S
             89..101 'number.foo()': ()
@@ -1904,13 +1912,13 @@ fn test() {
             131..132 'f': F
             151..153 '{}': Lazy<T, F>
             251..497 '{     ...o(); }': ()
-            261..266 'lazy1': Lazy<Foo, || -> Foo>
-            283..292 'Lazy::new': fn new<Foo, || -> Foo>(|| -> Foo) -> Lazy<Foo, || -> Foo>
-            283..300 'Lazy::...| Foo)': Lazy<Foo, || -> Foo>
-            293..299 '|| Foo': || -> Foo
+            261..266 'lazy1': Lazy<Foo, impl Fn() -> Foo>
+            283..292 'Lazy::new': fn new<Foo, impl Fn() -> Foo>(impl Fn() -> Foo) -> Lazy<Foo, impl Fn() -> Foo>
+            283..300 'Lazy::...| Foo)': Lazy<Foo, impl Fn() -> Foo>
+            293..299 '|| Foo': impl Fn() -> Foo
             296..299 'Foo': Foo
             310..312 'r1': usize
-            315..320 'lazy1': Lazy<Foo, || -> Foo>
+            315..320 'lazy1': Lazy<Foo, impl Fn() -> Foo>
             315..326 'lazy1.foo()': usize
             368..383 'make_foo_fn_ptr': fn() -> Foo
             399..410 'make_foo_fn': fn make_foo_fn() -> Foo
@@ -1955,20 +1963,20 @@ fn test() {
             163..167 '1u32': u32
             174..175 'x': Option<u32>
             174..190 'x.map(...v + 1)': Option<u32>
-            180..189 '|v| v + 1': |u32| -> u32
+            180..189 '|v| v + 1': impl Fn(u32) -> u32
             181..182 'v': u32
             184..185 'v': u32
             184..189 'v + 1': u32
             188..189 '1': u32
             196..197 'x': Option<u32>
             196..212 'x.map(... 1u64)': Option<u64>
-            202..211 '|_v| 1u64': |u32| -> u64
+            202..211 '|_v| 1u64': impl Fn(u32) -> u64
             203..205 '_v': u32
             207..211 '1u64': u64
             222..223 'y': Option<i64>
             239..240 'x': Option<u32>
             239..252 'x.map(|_v| 1)': Option<i64>
-            245..251 '|_v| 1': |u32| -> i64
+            245..251 '|_v| 1': impl Fn(u32) -> i64
             246..248 '_v': u32
             250..251 '1': i64
         "#]],
@@ -1997,11 +2005,11 @@ fn test<F: FnOnce(u32) -> u64>(f: F) {
   //^^^^ u64
     let g = |v| v + 1;
               //^^^^^ u64
-          //^^^^^^^^^ |u64| -> u64
+          //^^^^^^^^^ impl Fn(u64) -> u64
     g(1u64);
   //^^^^^^^ u64
     let h = |v| 1u128 + v;
-          //^^^^^^^^^^^^^ |u128| -> u128
+          //^^^^^^^^^^^^^ impl Fn(u128) -> u128
 }"#,
     );
 }
@@ -2054,17 +2062,17 @@ fn test() {
             312..314 '{}': ()
             330..489 '{     ... S); }': ()
             340..342 'x1': u64
-            345..349 'foo1': fn foo1<S, u64, |S| -> u64>(S, |S| -> u64) -> u64
+            345..349 'foo1': fn foo1<S, u64, impl Fn(S) -> u64>(S, impl Fn(S) -> u64) -> u64
             345..368 'foo1(S...hod())': u64
             350..351 'S': S
-            353..367 '|s| s.method()': |S| -> u64
+            353..367 '|s| s.method()': impl Fn(S) -> u64
             354..355 's': S
             357..358 's': S
             357..367 's.method()': u64
             378..380 'x2': u64
-            383..387 'foo2': fn foo2<S, u64, |S| -> u64>(|S| -> u64, S) -> u64
+            383..387 'foo2': fn foo2<S, u64, impl Fn(S) -> u64>(impl Fn(S) -> u64, S) -> u64
             383..406 'foo2(|...(), S)': u64
-            388..402 '|s| s.method()': |S| -> u64
+            388..402 '|s| s.method()': impl Fn(S) -> u64
             389..390 's': S
             392..393 's': S
             392..402 's.method()': u64
@@ -2073,14 +2081,14 @@ fn test() {
             421..422 'S': S
             421..446 'S.foo1...hod())': u64
             428..429 'S': S
-            431..445 '|s| s.method()': |S| -> u64
+            431..445 '|s| s.method()': impl Fn(S) -> u64
             432..433 's': S
             435..436 's': S
             435..445 's.method()': u64
             456..458 'x4': u64
             461..462 'S': S
             461..486 'S.foo2...(), S)': u64
-            468..482 '|s| s.method()': |S| -> u64
+            468..482 '|s| s.method()': impl Fn(S) -> u64
             469..470 's': S
             472..473 's': S
             472..482 's.method()': u64
@@ -2554,9 +2562,9 @@ fn main() {
             72..74 '_v': F
             117..120 '{ }': ()
             132..163 '{     ... }); }': ()
-            138..148 'f::<(), _>': fn f<(), |&()| -> ()>(|&()| -> ())
+            138..148 'f::<(), _>': fn f<(), impl Fn(&())>(impl Fn(&()))
             138..160 'f::<()... z; })': ()
-            149..159 '|z| { z; }': |&()| -> ()
+            149..159 '|z| { z; }': impl Fn(&())
             150..151 'z': &()
             153..159 '{ z; }': ()
             155..156 'z': &()
@@ -2713,9 +2721,9 @@ fn main() {
             983..998 'Vec::<i32>::new': fn new<i32>() -> Vec<i32>
             983..1000 'Vec::<...:new()': Vec<i32>
             983..1012 'Vec::<...iter()': IntoIter<i32>
-            983..1075 'Vec::<...one })': FilterMap<IntoIter<i32>, |i32| -> Option<u32>>
+            983..1075 'Vec::<...one })': FilterMap<IntoIter<i32>, impl Fn(i32) -> Option<u32>>
             983..1101 'Vec::<... y; })': ()
-            1029..1074 '|x| if...None }': |i32| -> Option<u32>
+            1029..1074 '|x| if...None }': impl Fn(i32) -> Option<u32>
             1030..1031 'x': i32
             1033..1074 'if x >...None }': Option<u32>
             1036..1037 'x': i32
@@ -2728,7 +2736,7 @@ fn main() {
             1049..1057 'x as u32': u32
             1066..1074 '{ None }': Option<u32>
             1068..1072 'None': Option<u32>
-            1090..1100 '|y| { y; }': |u32| -> ()
+            1090..1100 '|y| { y; }': impl Fn(u32)
             1091..1092 'y': u32
             1094..1100 '{ y; }': ()
             1096..1097 'y': u32
@@ -2971,13 +2979,13 @@ fn foo() {
             52..126 '{     ...)(s) }': ()
             62..63 's': Option<i32>
             66..78 'Option::None': Option<i32>
-            88..89 'f': |Option<i32>| -> ()
-            92..111 '|x: Op...2>| {}': |Option<i32>| -> ()
+            88..89 'f': impl Fn(Option<i32>)
+            92..111 '|x: Op...2>| {}': impl Fn(Option<i32>)
             93..94 'x': Option<i32>
             109..111 '{}': ()
             117..124 '(&f)(s)': ()
-            118..120 '&f': &|Option<i32>| -> ()
-            119..120 'f': |Option<i32>| -> ()
+            118..120 '&f': &impl Fn(Option<i32>)
+            119..120 'f': impl Fn(Option<i32>)
             122..123 's': Option<i32>
         "#]],
     );
@@ -3043,7 +3051,7 @@ impl<T: ?Sized> core::ops::Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &self.inner
+        unsafe { &*self.inner }
     }
 }
 
@@ -3054,23 +3062,25 @@ fn foo() {
 }"#,
         expect![[r#"
             154..158 'self': &Box<T>
-            166..193 '{     ...     }': &T
-            176..187 '&self.inner': &*mut T
-            177..181 'self': &Box<T>
-            177..187 'self.inner': *mut T
-            206..296 '{     ...&s); }': ()
-            216..217 's': Option<i32>
-            220..224 'None': Option<i32>
-            234..235 'f': Box<dyn FnOnce(&Option<i32>)>
-            269..282 'box (|ps| {})': Box<|&Option<i32>| -> ()>
-            274..281 '|ps| {}': |&Option<i32>| -> ()
-            275..277 'ps': &Option<i32>
-            279..281 '{}': ()
-            288..289 'f': Box<dyn FnOnce(&Option<i32>)>
-            288..293 'f(&s)': ()
-            290..292 '&s': &Option<i32>
-            291..292 's': Option<i32>
-            269..282: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|&Option<i32>| -> ()>
+            166..205 '{     ...     }': &T
+            176..199 'unsafe...nner }': &T
+            185..197 '&*self.inner': &T
+            186..197 '*self.inner': T
+            187..191 'self': &Box<T>
+            187..197 'self.inner': *mut T
+            218..308 '{     ...&s); }': ()
+            228..229 's': Option<i32>
+            232..236 'None': Option<i32>
+            246..247 'f': Box<dyn FnOnce(&Option<i32>)>
+            281..294 'box (|ps| {})': Box<impl Fn(&Option<i32>)>
+            286..293 '|ps| {}': impl Fn(&Option<i32>)
+            287..289 'ps': &Option<i32>
+            291..293 '{}': ()
+            300..301 'f': Box<dyn FnOnce(&Option<i32>)>
+            300..305 'f(&s)': ()
+            302..304 '&s': &Option<i32>
+            303..304 's': Option<i32>
+            281..294: expected Box<dyn FnOnce(&Option<i32>)>, got Box<impl Fn(&Option<i32>)>
         "#]],
     );
 }
@@ -3709,7 +3719,6 @@ async fn get_accounts() -> Result<u32, ()> {
 
 #[test]
 fn local_impl_1() {
-    check!(block_local_impls);
     check_types(
         r#"
 trait Trait<T> {
@@ -3731,7 +3740,6 @@ fn test() {
 
 #[test]
 fn local_impl_2() {
-    check!(block_local_impls);
     check_types(
         r#"
 struct S;
@@ -3753,7 +3761,6 @@ fn test() {
 
 #[test]
 fn local_impl_3() {
-    check!(block_local_impls);
     check_types(
         r#"
 trait Trait<T> {
@@ -3775,6 +3782,62 @@ fn test() {
 }
 "#,
     );
+}
+
+#[test]
+fn foreign_trait_with_local_trait_impl() {
+    check!(block_local_impls);
+    check(
+        r#"
+mod module {
+    pub trait T {
+        const C: usize;
+        fn f(&self);
+    }
+}
+
+fn f() {
+    use module::T;
+    impl T for usize {
+        const C: usize = 0;
+        fn f(&self) {}
+    }
+    0usize.f();
+  //^^^^^^^^^^ type: ()
+    usize::C;
+  //^^^^^^^^type: usize
+}
+"#,
+    );
+}
+
+#[test]
+fn regression_14443_trait_solve() {
+    check_no_mismatches(
+        r#"
+trait T {
+    fn f(&self) {}
+}
+
+
+fn main() {
+    struct A;
+    impl T for A {}
+
+    let a = A;
+
+    let b = {
+        struct B;
+        impl T for B {}
+
+        B
+    };
+
+    a.f();
+    b.f();
+}
+"#,
+    )
 }
 
 #[test]
@@ -4145,6 +4208,204 @@ fn test() {
     let a = 3.14;
     let b = a.foo();
       //^ f64
+}
+"#,
+    );
+}
+
+#[test]
+fn associated_type_in_struct_expr_path() {
+    // FIXME: All annotation should be resolvable.
+    // For lines marked as unstable, see rust-lang/rust#86935.
+    // FIXME: Remove the comments once stablized.
+    check_types(
+        r#"
+trait Trait {
+    type Assoc;
+    fn f();
+}
+
+struct S { x: u32 }
+
+impl Trait for () {
+    type Assoc = S;
+
+    fn f() {
+        let x = 42;
+        let a = Self::Assoc { x };
+      //    ^ S
+        let a = <Self>::Assoc { x }; // unstable
+      //    ^ {unknown}
+
+        // should be `Copy` but we don't track ownership anyway.
+        let value = S { x };
+        if let Self::Assoc { x } = value {}
+      //                     ^ u32
+        if let <Self>::Assoc { x } = value {} // unstable
+      //                       ^ {unknown}
+    }
+}
+    "#,
+    );
+}
+
+#[test]
+fn associated_type_in_struct_expr_path_enum() {
+    // FIXME: All annotation should be resolvable.
+    // For lines marked as unstable, see rust-lang/rust#86935.
+    // FIXME: Remove the comments once stablized.
+    check_types(
+        r#"
+trait Trait {
+    type Assoc;
+    fn f();
+}
+
+enum E {
+    Unit,
+    Struct { x: u32 },
+}
+
+impl Trait for () {
+    type Assoc = E;
+
+    fn f() {
+        let a = Self::Assoc::Unit;
+      //    ^ E
+        let a = <Self>::Assoc::Unit;
+      //    ^ E
+        let a = <Self::Assoc>::Unit;
+      //    ^ E
+        let a = <<Self>::Assoc>::Unit;
+      //    ^ E
+
+        // should be `Copy` but we don't track ownership anyway.
+        let value = E::Unit;
+        if let Self::Assoc::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^ E
+        if let <Self>::Assoc::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^^^ E
+        if let <Self::Assoc>::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^^^ E
+        if let <<Self>::Assoc>::Unit = value {}
+      //       ^^^^^^^^^^^^^^^^^^^^^ E
+
+        let x = 42;
+        let a = Self::Assoc::Struct { x };
+      //    ^ E
+        let a = <Self>::Assoc::Struct { x }; // unstable
+      //    ^ {unknown}
+        let a = <Self::Assoc>::Struct { x }; // unstable
+      //    ^ {unknown}
+        let a = <<Self>::Assoc>::Struct { x }; // unstable
+      //    ^ {unknown}
+
+        // should be `Copy` but we don't track ownership anyway.
+        let value = E::Struct { x: 42 };
+        if let Self::Assoc::Struct { x } = value {}
+      //                             ^ u32
+        if let <Self>::Assoc::Struct { x } = value {} // unstable
+      //                               ^ {unknown}
+        if let <Self::Assoc>::Struct { x } = value {} // unstable
+      //                               ^ {unknown}
+        if let <<Self>::Assoc>::Struct { x } = value {} // unstable
+      //                                 ^ {unknown}
+    }
+}
+    "#,
+    );
+}
+
+#[test]
+fn derive_macro_bounds() {
+    check_types(
+        r#"
+        //- minicore: clone, derive
+        #[derive(Clone)]
+        struct Copy;
+        struct NotCopy;
+        #[derive(Clone)]
+        struct Generic<T>(T);
+        trait Tr {
+            type Assoc;
+        }
+        impl Tr for Copy {
+            type Assoc = NotCopy;
+        }
+        #[derive(Clone)]
+        struct AssocGeneric<T: Tr>(T::Assoc);
+
+        #[derive(Clone)]
+        struct AssocGeneric2<T: Tr>(<T as Tr>::Assoc);
+
+        #[derive(Clone)]
+        struct AssocGeneric3<T: Tr>(Generic<T::Assoc>);
+
+        #[derive(Clone)]
+        struct Vec<T>();
+
+        #[derive(Clone)]
+        struct R1(Vec<R2>);
+        #[derive(Clone)]
+        struct R2(R1);
+
+        fn f() {
+            let x = (&Copy).clone();
+              //^ Copy
+            let x = (&NotCopy).clone();
+              //^ &NotCopy
+            let x = (&Generic(Copy)).clone();
+              //^ Generic<Copy>
+            let x = (&Generic(NotCopy)).clone();
+              //^ &Generic<NotCopy>
+            let x: &AssocGeneric<Copy> = &AssocGeneric(NotCopy);
+            let x = x.clone();
+              //^ &AssocGeneric<Copy>
+            let x: &AssocGeneric2<Copy> = &AssocGeneric2(NotCopy);
+            let x = x.clone();
+              //^ &AssocGeneric2<Copy>
+            let x: &AssocGeneric3<Copy> = &AssocGeneric3(Generic(NotCopy));
+            let x = x.clone();
+              //^ &AssocGeneric3<Copy>
+            let x = (&R1(Vec())).clone();
+              //^ R1
+            let x = (&R2(R1(Vec()))).clone();
+              //^ R2
+        }
+        "#,
+    );
+}
+
+#[test]
+fn trait_obligations_should_be_registered_during_path_inference() {
+    check_types(
+        r#"
+//- minicore: fn, from
+struct S<T>(T);
+fn map<T, U, F: FnOnce(T) -> S<U>>(_: T, _: F) -> U { loop {} }
+
+fn test(v: S<i32>) {
+    let res = map(v, Into::into);
+      //^^^ i32
+}
+"#,
+    );
+}
+
+#[test]
+fn fn_obligation_should_be_registered_during_path_inference() {
+    check_types(
+        r#"
+//- minicore: fn, from
+struct S<T>(T);
+impl<T> S<T> {
+    fn foo<U: Into<S<T>>>(_: U) -> Self { loop {} }
+}
+fn map<T, U, F: FnOnce(T) -> U>(_: T, _: F) -> U { loop {} }
+
+fn test(v: S<i32>) {
+    let res = map(v, S::foo);
+      //^^^ S<i32>
 }
 "#,
     );

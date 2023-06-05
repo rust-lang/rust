@@ -31,14 +31,14 @@ pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext<'_
     if value.chars().take(2).count() != 1 {
         return None;
     }
-    let quote_offets = token.quote_offsets()?;
+    let quote_offsets = token.quote_offsets()?;
 
     acc.add(
         AssistId("replace_string_with_char", AssistKind::RefactorRewrite),
         "Replace string with char",
         target,
         |edit| {
-            let (left, right) = quote_offets.quotes;
+            let (left, right) = quote_offsets.quotes;
             edit.replace(left, '\'');
             edit.replace(right, '\'');
             if value == "'" {

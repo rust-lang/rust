@@ -26,7 +26,7 @@ pub(super) fn token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> O
     }
 
     let highlight: Highlight = match token.kind() {
-        STRING | BYTE_STRING => HlTag::StringLiteral.into(),
+        STRING | BYTE_STRING | C_STRING => HlTag::StringLiteral.into(),
         INT_NUMBER if token.parent_ancestors().nth(1).map(|it| it.kind()) == Some(FIELD_EXPR) => {
             SymbolKind::Field.into()
         }
@@ -340,7 +340,7 @@ fn highlight_def(
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-            if module.is_crate_root(db) {
+            if module.is_crate_root() {
                 h |= HlMod::CrateRoot;
             }
             h
@@ -675,14 +675,12 @@ fn is_consumed_lvalue(node: &SyntaxNode, local: &hir::Local, db: &RootDatabase) 
 
 /// Returns true if the parent nodes of `node` all match the `SyntaxKind`s in `kinds` exactly.
 fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[SyntaxKind]) -> bool {
-    while let (Some(parent), [kind, rest @ ..]) = (&node.parent(), kinds) {
+    while let (Some(parent), [kind, rest @ ..]) = (node.parent(), kinds) {
         if parent.kind() != *kind {
             return false;
         }
 
-        // FIXME: Would be nice to get parent out of the match, but binding by-move and by-value
-        // in the same pattern is unstable: rust-lang/rust#68354.
-        node = node.parent().unwrap().into();
+        node = parent.into();
         kinds = rest;
     }
 

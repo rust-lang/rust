@@ -18,7 +18,11 @@ export interface ArtifactSpec {
 }
 
 export class Cargo {
-    constructor(readonly rootFolder: string, readonly output: vscode.OutputChannel) {}
+    constructor(
+        readonly rootFolder: string,
+        readonly output: vscode.OutputChannel,
+        readonly env: Record<string, string>
+    ) {}
 
     // Made public for testing purposes
     static artifactSpec(args: readonly string[]): ArtifactSpec {
@@ -102,6 +106,7 @@ export class Cargo {
             const cargo = cp.spawn(path, cargoArgs, {
                 stdio: ["ignore", "pipe", "pipe"],
                 cwd: this.rootFolder,
+                env: this.env,
             });
 
             cargo.on("error", (err) => reject(new Error(`could not launch cargo: ${err}`)));

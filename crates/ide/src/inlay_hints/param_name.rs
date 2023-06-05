@@ -10,7 +10,7 @@ use ide_db::{base_db::FileRange, RootDatabase};
 use stdx::to_lower_snake_case;
 use syntax::ast::{self, AstNode, HasArgList, HasName, UnaryOp};
 
-use crate::{InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind};
+use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -31,16 +31,16 @@ pub(super) fn hints(
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
             let (param_name, name_syntax) = match param.as_ref()? {
-                Either::Left(pat) => ("self".to_string(), pat.name()),
+                Either::Left(pat) => (pat.name()?, pat.name()),
                 Either::Right(pat) => match pat {
-                    ast::Pat::IdentPat(it) => (it.name()?.to_string(), it.name()),
+                    ast::Pat::IdentPat(it) => (it.name()?, it.name()),
                     _ => return None,
                 },
             };
             Some((name_syntax, param_name, arg, range))
         })
         .filter(|(_, param_name, arg, _)| {
-            !should_hide_param_name_hint(sema, &callable, param_name, arg)
+            !should_hide_param_name_hint(sema, &callable, &param_name.text(), arg)
         })
         .map(|(param, param_name, _, FileRange { range, .. })| {
             let mut linked_location = None;
@@ -53,10 +53,17 @@ pub(super) fn hints(
                 }
             }
 
+            let colon = if config.render_colons { ":" } else { "" };
+            let label =
+                InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location);
             InlayHint {
                 range,
                 kind: InlayKind::Parameter,
-                label: InlayHintLabel::simple(param_name, None, linked_location),
+                label,
+                text_edit: None,
+                position: InlayHintPosition::Before,
+                pad_left: false,
+                pad_right: true,
             }
         });
 

@@ -5,16 +5,16 @@
 
 use std::{collections::hash_map::Entry, iter, mem};
 
-use base_db::{AnchoredPathBuf, FileId};
-use stdx::{hash::NoHashHashMap, never};
-use syntax::{algo, AstNode, SyntaxNode, SyntaxNodePtr, TextRange, TextSize};
-use text_edit::{TextEdit, TextEditBuilder};
-
 use crate::SnippetCap;
+use base_db::{AnchoredPathBuf, FileId};
+use nohash_hasher::IntMap;
+use stdx::never;
+use syntax::{algo, ast, ted, AstNode, SyntaxNode, SyntaxNodePtr, TextRange, TextSize};
+use text_edit::{TextEdit, TextEditBuilder};
 
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
-    pub source_file_edits: NoHashHashMap<FileId, TextEdit>,
+    pub source_file_edits: IntMap<FileId, TextEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub is_snippet: bool,
 }
@@ -23,7 +23,7 @@ impl SourceChange {
     /// Creates a new SourceChange with the given label
     /// from the edits.
     pub fn from_edits(
-        source_file_edits: NoHashHashMap<FileId, TextEdit>,
+        source_file_edits: IntMap<FileId, TextEdit>,
         file_system_edits: Vec<FileSystemEdit>,
     ) -> Self {
         SourceChange { source_file_edits, file_system_edits, is_snippet: false }
@@ -77,8 +77,8 @@ impl Extend<FileSystemEdit> for SourceChange {
     }
 }
 
-impl From<NoHashHashMap<FileId, TextEdit>> for SourceChange {
-    fn from(source_file_edits: NoHashHashMap<FileId, TextEdit>) -> SourceChange {
+impl From<IntMap<FileId, TextEdit>> for SourceChange {
+    fn from(source_file_edits: IntMap<FileId, TextEdit>) -> SourceChange {
         SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
     }
 }
@@ -99,11 +99,19 @@ pub struct SourceChangeBuilder {
 
     /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
     pub mutated_tree: Option<TreeMutator>,
+    /// Keeps track of where to place snippets
+    pub snippet_builder: Option<SnippetBuilder>,
 }
 
 pub struct TreeMutator {
     immutable: SyntaxNode,
     mutable_clone: SyntaxNode,
+}
+
+#[derive(Default)]
+pub struct SnippetBuilder {
+    /// Where to place snippets at
+    places: Vec<PlaceSnippet>,
 }
 
 impl TreeMutator {
@@ -131,6 +139,7 @@ impl SourceChangeBuilder {
             source_change: SourceChange::default(),
             trigger_signature_help: false,
             mutated_tree: None,
+            snippet_builder: None,
         }
     }
 
@@ -140,6 +149,17 @@ impl SourceChangeBuilder {
     }
 
     fn commit(&mut self) {
+        // Render snippets first so that they get bundled into the tree diff
+        if let Some(mut snippets) = self.snippet_builder.take() {
+            // Last snippet always has stop index 0
+            let last_stop = snippets.places.pop().unwrap();
+            last_stop.place(0);
+
+            for (index, stop) in snippets.places.into_iter().enumerate() {
+                stop.place(index + 1)
+            }
+        }
+
         if let Some(tm) = self.mutated_tree.take() {
             algo::diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit)
         }
@@ -161,7 +181,7 @@ impl SourceChangeBuilder {
     /// mutability, and different nodes in the same tree see the same mutations.
     ///
     /// The typical pattern for an assist is to find specific nodes in the read
-    /// phase, and then get their mutable couterparts using `make_mut` in the
+    /// phase, and then get their mutable counterparts using `make_mut` in the
     /// mutable state.
     pub fn make_syntax_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
         self.mutated_tree.get_or_insert_with(|| TreeMutator::new(&node)).make_syntax_mut(&node)
@@ -214,6 +234,30 @@ impl SourceChangeBuilder {
         self.trigger_signature_help = true;
     }
 
+    /// Adds a tabstop snippet to place the cursor before `node`
+    pub fn add_tabstop_before(&mut self, _cap: SnippetCap, node: impl AstNode) {
+        assert!(node.syntax().parent().is_some());
+        self.add_snippet(PlaceSnippet::Before(node.syntax().clone()));
+    }
+
+    /// Adds a tabstop snippet to place the cursor after `node`
+    pub fn add_tabstop_after(&mut self, _cap: SnippetCap, node: impl AstNode) {
+        assert!(node.syntax().parent().is_some());
+        self.add_snippet(PlaceSnippet::After(node.syntax().clone()));
+    }
+
+    /// Adds a snippet to move the cursor selected over `node`
+    pub fn add_placeholder_snippet(&mut self, _cap: SnippetCap, node: impl AstNode) {
+        assert!(node.syntax().parent().is_some());
+        self.add_snippet(PlaceSnippet::Over(node.syntax().clone()))
+    }
+
+    fn add_snippet(&mut self, snippet: PlaceSnippet) {
+        let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
+        snippet_builder.places.push(snippet);
+        self.source_change.is_snippet = true;
+    }
+
     pub fn finish(mut self) -> SourceChange {
         self.commit();
         mem::take(&mut self.source_change)
@@ -234,5 +278,68 @@ impl From<FileSystemEdit> for SourceChange {
             file_system_edits: vec![edit],
             is_snippet: false,
         }
+    }
+}
+
+enum PlaceSnippet {
+    /// Place a tabstop before a node
+    Before(SyntaxNode),
+    /// Place a tabstop before a node
+    After(SyntaxNode),
+    /// Place a placeholder snippet in place of the node
+    Over(SyntaxNode),
+}
+
+impl PlaceSnippet {
+    /// Places the snippet before or over a node with the given tab stop index
+    fn place(self, order: usize) {
+        // ensure the target node is still attached
+        match &self {
+            PlaceSnippet::Before(node) | PlaceSnippet::After(node) | PlaceSnippet::Over(node) => {
+                // node should still be in the tree, but if it isn't
+                // then it's okay to just ignore this place
+                if stdx::never!(node.parent().is_none()) {
+                    return;
+                }
+            }
+        }
+
+        match self {
+            PlaceSnippet::Before(node) => {
+                ted::insert_raw(ted::Position::before(&node), Self::make_tab_stop(order));
+            }
+            PlaceSnippet::After(node) => {
+                ted::insert_raw(ted::Position::after(&node), Self::make_tab_stop(order));
+            }
+            PlaceSnippet::Over(node) => {
+                let position = ted::Position::before(&node);
+                node.detach();
+
+                let snippet = ast::SourceFile::parse(&format!("${{{order}:_}}"))
+                    .syntax_node()
+                    .clone_for_update();
+
+                let placeholder =
+                    snippet.descendants().find_map(ast::UnderscoreExpr::cast).unwrap();
+                ted::replace(placeholder.syntax(), node);
+
+                ted::insert_raw(position, snippet);
+            }
+        }
+    }
+
+    fn make_tab_stop(order: usize) -> SyntaxNode {
+        let stop = ast::SourceFile::parse(&format!("stop!(${order})"))
+            .syntax_node()
+            .descendants()
+            .find_map(ast::TokenTree::cast)
+            .unwrap()
+            .syntax()
+            .clone_for_update();
+
+        stop.first_token().unwrap().detach();
+        stop.last_token().unwrap().detach();
+
+        stop
     }
 }

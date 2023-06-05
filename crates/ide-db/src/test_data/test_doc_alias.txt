@@ -1,0 +1,202 @@
+[
+    (
+        Module {
+            id: ModuleId {
+                krate: Idx::<CrateData>(0),
+                block: None,
+                local_id: Idx::<ModuleData>(0),
+            },
+        },
+        [
+            FileSymbol {
+                name: "Duplicate",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                1,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 83..119,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 109..118,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
+                name: "Struct",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 0..81,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 74..80,
+                    },
+                },
+                container_name: None,
+                is_alias: false,
+            },
+            FileSymbol {
+                name: "mul1",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 0..81,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 74..80,
+                    },
+                },
+                container_name: None,
+                is_alias: true,
+            },
+            FileSymbol {
+                name: "mul2",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 0..81,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 74..80,
+                    },
+                },
+                container_name: None,
+                is_alias: true,
+            },
+            FileSymbol {
+                name: "s1",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 0..81,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 74..80,
+                    },
+                },
+                container_name: None,
+                is_alias: true,
+            },
+            FileSymbol {
+                name: "s1",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                1,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 83..119,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 109..118,
+                    },
+                },
+                container_name: None,
+                is_alias: true,
+            },
+            FileSymbol {
+                name: "s2",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: HirFileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 0..81,
+                    },
+                    name_ptr: SyntaxNodePtr {
+                        kind: NAME,
+                        range: 74..80,
+                    },
+                },
+                container_name: None,
+                is_alias: true,
+            },
+        ],
+    ),
+]

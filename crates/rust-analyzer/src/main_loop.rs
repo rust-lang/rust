@@ -2,8 +2,6 @@
 //! requests/replies and notifications back to the client.
 use std::{
     fmt,
-    ops::Deref,
-    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -11,20 +9,19 @@ use always_assert::always;
 use crossbeam_channel::{select, Receiver};
 use flycheck::FlycheckHandle;
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
-use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
-use vfs::{AbsPathBuf, ChangeKind, FileId};
+use triomphe::Arc;
+use vfs::FileId;
 
 use crate::{
     config::Config,
     dispatch::{NotificationDispatcher, RequestDispatcher},
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
-    handlers, lsp_ext,
-    lsp_utils::{apply_document_changes, notification_is, Progress},
-    mem_docs::DocumentData,
-    reload::{self, BuildDataProgress, ProjectWorkspaceProgress},
+    lsp_ext,
+    lsp_utils::{notification_is, Progress},
+    reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
     Result,
 };
 
@@ -36,7 +33,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     // temporary bumped. This optimization backfires in our case: each time the
     // `main_loop` schedules a task to run on a threadpool, the worker threads
     // gets a higher priority, and (on a machine with fewer cores) displaces the
-    // main loop! We work-around this by marking the main loop as a
+    // main loop! We work around this by marking the main loop as a
     // higher-priority thread.
     //
     // https://docs.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities
@@ -68,6 +65,7 @@ pub(crate) enum Task {
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
     FetchBuildData(BuildDataProgress),
+    LoadProcMacros(ProcMacroProgress),
 }
 
 #[derive(Debug)]
@@ -79,7 +77,7 @@ pub(crate) enum PrimeCachesProgress {
 
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter<'_>| {
+        let debug_non_verbose = |not: &Notification, f: &mut fmt::Formatter<'_>| {
             f.debug_struct("Notification").field("method", &not.method).finish()
         };
 
@@ -88,7 +86,7 @@ impl fmt::Debug for Event {
                 if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
                     || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
                 {
-                    return debug_verbose_not(not, f);
+                    return debug_non_verbose(not, f);
                 }
             }
             Event::Task(Task::Response(resp)) => {
@@ -114,55 +112,61 @@ impl GlobalState {
         self.update_status_or_notify();
 
         if self.config.did_save_text_document_dynamic_registration() {
-            let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
-                include_text: Some(false),
-                text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
-                    document_selector: Some(vec![
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/*.rs".into()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/Cargo.toml".into()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/Cargo.lock".into()),
-                        },
-                    ]),
-                },
-            };
-
-            let registration = lsp_types::Registration {
-                id: "textDocument/didSave".to_string(),
-                method: "textDocument/didSave".to_string(),
-                register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
-            };
-            self.send_request::<lsp_types::request::RegisterCapability>(
-                lsp_types::RegistrationParams { registrations: vec![registration] },
-                |_, _| (),
-            );
+            self.register_did_save_capability();
         }
 
-        self.fetch_workspaces_queue.request_op("startup".to_string());
-        if let Some(cause) = self.fetch_workspaces_queue.should_start_op() {
+        self.fetch_workspaces_queue.request_op("startup".to_string(), ());
+        if let Some((cause, ())) = self.fetch_workspaces_queue.should_start_op() {
             self.fetch_workspaces(cause);
         }
 
         while let Some(event) = self.next_event(&inbox) {
-            if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
-                if not.method == lsp_types::notification::Exit::METHOD {
-                    return Ok(());
-                }
+            if matches!(
+                &event,
+                Event::Lsp(lsp_server::Message::Notification(Notification { method, .. }))
+                if method == lsp_types::notification::Exit::METHOD
+            ) {
+                return Ok(());
             }
-            self.handle_event(event)?
+            self.handle_event(event)?;
         }
 
         Err("client exited without proper shutdown sequence".into())
+    }
+
+    fn register_did_save_capability(&mut self) {
+        let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
+            include_text: Some(false),
+            text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
+                document_selector: Some(vec![
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/*.rs".into()),
+                    },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/Cargo.toml".into()),
+                    },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/Cargo.lock".into()),
+                    },
+                ]),
+            },
+        };
+
+        let registration = lsp_types::Registration {
+            id: "textDocument/didSave".to_string(),
+            method: "textDocument/didSave".to_string(),
+            register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
+        };
+        self.send_request::<lsp_types::request::RegisterCapability>(
+            lsp_types::RegistrationParams { registrations: vec![registration] },
+            |_, _| (),
+        );
     }
 
     fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
@@ -186,19 +190,20 @@ impl GlobalState {
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
 
-        tracing::debug!("{:?} handle_event({:?})", loop_start, event);
-        let task_queue_len = self.task_pool.handle.len();
-        if task_queue_len > 0 {
-            tracing::info!("task queue len: {}", task_queue_len);
+        let event_dbg_msg = format!("{event:?}");
+        tracing::debug!("{:?} handle_event({})", loop_start, event_dbg_msg);
+        if tracing::enabled!(tracing::Level::INFO) {
+            let task_queue_len = self.task_pool.handle.len();
+            if task_queue_len > 0 {
+                tracing::info!("task queue len: {}", task_queue_len);
+            }
         }
 
         let was_quiescent = self.is_quiescent();
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_new_request(loop_start, req),
-                lsp_server::Message::Notification(not) => {
-                    self.on_notification(not)?;
-                }
+                lsp_server::Message::Notification(not) => self.on_notification(not)?,
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::Task(task) => {
@@ -247,7 +252,7 @@ impl GlobalState {
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
-                                    .request_op("restart after cancellation".to_string());
+                                    .request_op("restart after cancellation".to_string(), ());
                             }
                         }
                     };
@@ -279,7 +284,8 @@ impl GlobalState {
         if self.is_quiescent() {
             let became_quiescent = !(was_quiescent
                 || self.fetch_workspaces_queue.op_requested()
-                || self.fetch_build_data_queue.op_requested());
+                || self.fetch_build_data_queue.op_requested()
+                || self.fetch_proc_macros_queue.op_requested());
 
             if became_quiescent {
                 if self.config.check_on_save() {
@@ -287,11 +293,12 @@ impl GlobalState {
                     self.flycheck.iter().for_each(FlycheckHandle::restart);
                 }
                 if self.config.prefill_caches() {
-                    self.prime_caches_queue.request_op("became quiescent".to_string());
+                    self.prime_caches_queue.request_op("became quiescent".to_string(), ());
                 }
             }
 
-            if !was_quiescent || state_changed {
+            let client_refresh = !was_quiescent || state_changed;
+            if client_refresh {
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
                     self.semantic_tokens_cache.lock().clear();
@@ -309,9 +316,9 @@ impl GlobalState {
                 }
             }
 
-            if (!was_quiescent || state_changed || memdocs_added_or_removed)
-                && self.config.publish_diagnostics()
-            {
+            let update_diagnostics = (!was_quiescent || state_changed || memdocs_added_or_removed)
+                && self.config.publish_diagnostics();
+            if update_diagnostics {
                 self.update_diagnostics()
             }
         }
@@ -357,46 +364,52 @@ impl GlobalState {
         }
 
         if self.config.cargo_autoreload() {
-            if let Some(cause) = self.fetch_workspaces_queue.should_start_op() {
+            if let Some((cause, ())) = self.fetch_workspaces_queue.should_start_op() {
                 self.fetch_workspaces(cause);
             }
         }
 
         if !self.fetch_workspaces_queue.op_in_progress() {
-            if let Some(cause) = self.fetch_build_data_queue.should_start_op() {
+            if let Some((cause, ())) = self.fetch_build_data_queue.should_start_op() {
                 self.fetch_build_data(cause);
+            } else if let Some((cause, paths)) = self.fetch_proc_macros_queue.should_start_op() {
+                self.fetch_proc_macros(cause, paths);
             }
         }
 
-        if let Some(cause) = self.prime_caches_queue.should_start_op() {
-            tracing::debug!(%cause, "will prime caches");
-            let num_worker_threads = self.config.prime_caches_num_threads();
-
-            self.task_pool.handle.spawn_with_sender({
-                let analysis = self.snapshot().analysis;
-                move |sender| {
-                    sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                    let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
-                        let report = PrimeCachesProgress::Report(progress);
-                        sender.send(Task::PrimeCaches(report)).unwrap();
-                    });
-                    sender
-                        .send(Task::PrimeCaches(PrimeCachesProgress::End {
-                            cancelled: res.is_err(),
-                        }))
-                        .unwrap();
-                }
-            });
+        if let Some((cause, ())) = self.prime_caches_queue.should_start_op() {
+            self.prime_caches(cause);
         }
 
         self.update_status_or_notify();
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
-            tracing::warn!("overly long loop turn: {:?}", loop_duration);
-            self.poke_rust_analyzer_developer(format!("overly long loop turn: {loop_duration:?}"));
+            tracing::warn!("overly long loop turn took {loop_duration:?}: {event_dbg_msg}");
+            self.poke_rust_analyzer_developer(format!(
+                "overly long loop turn took {loop_duration:?}: {event_dbg_msg}"
+            ));
         }
         Ok(())
+    }
+
+    fn prime_caches(&mut self, cause: String) {
+        tracing::debug!(%cause, "will prime caches");
+        let num_worker_threads = self.config.prime_caches_num_threads();
+
+        self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
+            let analysis = self.snapshot().analysis;
+            move |sender| {
+                sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
+                let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
+                    let report = PrimeCachesProgress::Report(progress);
+                    sender.send(Task::PrimeCaches(report)).unwrap();
+                });
+                sender
+                    .send(Task::PrimeCaches(PrimeCachesProgress::End { cancelled: res.is_err() }))
+                    .unwrap();
+            }
+        });
     }
 
     fn update_status_or_notify(&mut self) {
@@ -406,7 +419,11 @@ impl GlobalState {
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
-            } else if let (health, Some(message)) = (status.health, &status.message) {
+            } else if let (
+                health @ (lsp_ext::Health::Warning | lsp_ext::Health::Error),
+                Some(message),
+            ) = (status.health, &status.message)
+            {
                 let open_log_button = tracing::enabled!(tracing::Level::ERROR)
                     && (self.fetch_build_data_error().is_err()
                         || self.fetch_workspace_error().is_err());
@@ -462,7 +479,8 @@ impl GlobalState {
                         let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
 
                         if self.config.run_build_scripts() && workspaces_updated {
-                            self.fetch_build_data_queue.request_op(format!("workspace updated"));
+                            self.fetch_build_data_queue
+                                .request_op(format!("workspace updated"), ());
                         }
 
                         (Progress::End, None)
@@ -482,6 +500,22 @@ impl GlobalState {
                         }
 
                         self.switch_workspaces("fetched build data".to_string());
+
+                        (Some(Progress::End), None)
+                    }
+                };
+
+                if let Some(state) = state {
+                    self.report_progress("Building", state, msg, None, None);
+                }
+            }
+            Task::LoadProcMacros(progress) => {
+                let (state, msg) = match progress {
+                    ProcMacroProgress::Begin => (Some(Progress::Begin), None),
+                    ProcMacroProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
+                    ProcMacroProgress::End(proc_macro_load_result) => {
+                        self.fetch_proc_macros_queue.op_completed(true);
+                        self.set_proc_macros(proc_macro_load_result);
 
                         (Some(Progress::End), None)
                     }
@@ -568,21 +602,18 @@ impl GlobalState {
                         (Progress::Begin, None)
                     }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
-                    flycheck::Progress::DidCancel => (Progress::End, None),
+                    flycheck::Progress::DidCancel => {
+                        self.last_flycheck_error = None;
+                        (Progress::End, None)
+                    }
                     flycheck::Progress::DidFailToRestart(err) => {
-                        self.show_and_log_error(
-                            "cargo check failed to start".to_string(),
-                            Some(err),
-                        );
+                        self.last_flycheck_error =
+                            Some(format!("cargo check failed to start: {err}"));
                         return;
                     }
                     flycheck::Progress::DidFinish(result) => {
-                        if let Err(err) = result {
-                            self.show_and_log_error(
-                                "cargo check failed".to_string(),
-                                Some(err.to_string()),
-                            );
-                        }
+                        self.last_flycheck_error =
+                            result.err().map(|err| format!("cargo check failed to start: {err}"));
                         (Progress::End, None)
                     }
                 };
@@ -631,18 +662,54 @@ impl GlobalState {
             _ => (),
         }
 
+        use crate::handlers::request as handlers;
+
         dispatcher
+            // Request handlers that must run on the main thread
+            // because they mutate GlobalState:
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
+            .on_sync_mut::<lsp_ext::RebuildProcMacros>(handlers::handle_proc_macros_rebuild)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
+            // Request handlers which are related to the user typing
+            // are run on the main thread to reduce latency:
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
             .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
+            .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
+            // We can’t run latency-sensitive request handlers which do semantic
+            // analysis on the main thread because that would block other
+            // requests. Instead, we run these request handlers on higher priority
+            // threads in the threadpool.
+            .on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
+            .on_latency_sensitive::<lsp_types::request::ResolveCompletionItem>(
+                handlers::handle_completion_resolve,
+            )
+            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
+                handlers::handle_semantic_tokens_full,
+            )
+            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullDeltaRequest>(
+                handlers::handle_semantic_tokens_full_delta,
+            )
+            .on_latency_sensitive::<lsp_types::request::SemanticTokensRangeRequest>(
+                handlers::handle_semantic_tokens_range,
+            )
+            // Formatting is not caused by the user typing,
+            // but it does qualify as latency-sensitive
+            // because a delay before formatting is applied
+            // can be confusing for the user.
+            .on_latency_sensitive::<lsp_types::request::Formatting>(handlers::handle_formatting)
+            .on_latency_sensitive::<lsp_types::request::RangeFormatting>(
+                handlers::handle_range_formatting,
+            )
+            // All other request handlers
+            .on::<lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)
             .on::<lsp_ext::ViewMir>(handlers::handle_view_mir)
+            .on::<lsp_ext::InterpretFunction>(handlers::handle_interpret_function)
             .on::<lsp_ext::ViewFileText>(handlers::handle_view_file_text)
             .on::<lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
             .on::<lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)
@@ -657,7 +724,6 @@ impl GlobalState {
             .on::<lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<lsp_ext::MoveItem>(handlers::handle_move_item)
             .on::<lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
-            .on::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
             .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
             .on::<lsp_types::request::GotoDeclaration>(handlers::handle_goto_declaration)
@@ -665,8 +731,6 @@ impl GlobalState {
             .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
             .on_no_retry::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
             .on::<lsp_types::request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
-            .on::<lsp_types::request::Completion>(handlers::handle_completion)
-            .on::<lsp_types::request::ResolveCompletionItem>(handlers::handle_completion_resolve)
             .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)
             .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)
             .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)
@@ -674,8 +738,6 @@ impl GlobalState {
             .on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)
             .on::<lsp_types::request::Rename>(handlers::handle_rename)
             .on::<lsp_types::request::References>(handlers::handle_references)
-            .on::<lsp_types::request::Formatting>(handlers::handle_formatting)
-            .on::<lsp_types::request::RangeFormatting>(handlers::handle_range_formatting)
             .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)
             .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
             .on::<lsp_types::request::CallHierarchyIncomingCalls>(
@@ -684,15 +746,6 @@ impl GlobalState {
             .on::<lsp_types::request::CallHierarchyOutgoingCalls>(
                 handlers::handle_call_hierarchy_outgoing,
             )
-            .on::<lsp_types::request::SemanticTokensFullRequest>(
-                handlers::handle_semantic_tokens_full,
-            )
-            .on::<lsp_types::request::SemanticTokensFullDeltaRequest>(
-                handlers::handle_semantic_tokens_full_delta,
-            )
-            .on::<lsp_types::request::SemanticTokensRangeRequest>(
-                handlers::handle_semantic_tokens_range,
-            )
             .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
             .finish();
@@ -700,282 +753,22 @@ impl GlobalState {
 
     /// Handles an incoming notification.
     fn on_notification(&mut self, not: Notification) -> Result<()> {
-        // FIXME: Move these implementations out into a module similar to on_request
-        fn run_flycheck(this: &mut GlobalState, vfs_path: VfsPath) -> bool {
-            let file_id = this.vfs.read().0.file_id(&vfs_path);
-            if let Some(file_id) = file_id {
-                let world = this.snapshot();
-                let mut updated = false;
-                let task = move || -> std::result::Result<(), ide::Cancelled> {
-                    // Trigger flychecks for all workspaces that depend on the saved file
-                    // Crates containing or depending on the saved file
-                    let crate_ids: Vec<_> = world
-                        .analysis
-                        .crates_for(file_id)?
-                        .into_iter()
-                        .flat_map(|id| world.analysis.transitive_rev_deps(id))
-                        .flatten()
-                        .sorted()
-                        .unique()
-                        .collect();
-
-                    let crate_root_paths: Vec<_> = crate_ids
-                        .iter()
-                        .filter_map(|&crate_id| {
-                            world
-                                .analysis
-                                .crate_root(crate_id)
-                                .map(|file_id| {
-                                    world
-                                        .file_id_to_file_path(file_id)
-                                        .as_path()
-                                        .map(ToOwned::to_owned)
-                                })
-                                .transpose()
-                        })
-                        .collect::<ide::Cancellable<_>>()?;
-                    let crate_root_paths: Vec<_> =
-                        crate_root_paths.iter().map(Deref::deref).collect();
-
-                    // Find all workspaces that have at least one target containing the saved file
-                    let workspace_ids =
-                        world.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
-                            project_model::ProjectWorkspace::Cargo { cargo, .. } => {
-                                cargo.packages().any(|pkg| {
-                                    cargo[pkg].targets.iter().any(|&it| {
-                                        crate_root_paths.contains(&cargo[it].root.as_path())
-                                    })
-                                })
-                            }
-                            project_model::ProjectWorkspace::Json { project, .. } => project
-                                .crates()
-                                .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c)),
-                            project_model::ProjectWorkspace::DetachedFiles { .. } => false,
-                        });
-
-                    // Find and trigger corresponding flychecks
-                    for flycheck in world.flycheck.iter() {
-                        for (id, _) in workspace_ids.clone() {
-                            if id == flycheck.id() {
-                                updated = true;
-                                flycheck.restart();
-                                continue;
-                            }
-                        }
-                    }
-                    // No specific flycheck was triggered, so let's trigger all of them.
-                    if !updated {
-                        for flycheck in world.flycheck.iter() {
-                            flycheck.restart();
-                        }
-                    }
-                    Ok(())
-                };
-                this.task_pool.handle.spawn_with_sender(move |_| {
-                    if let Err(e) = std::panic::catch_unwind(task) {
-                        tracing::error!("flycheck task panicked: {e:?}")
-                    }
-                });
-                true
-            } else {
-                false
-            }
-        }
+        use crate::handlers::notification as handlers;
+        use lsp_types::notification as notifs;
 
         NotificationDispatcher { not: Some(not), global_state: self }
-            .on::<lsp_types::notification::Cancel>(|this, params| {
-                let id: lsp_server::RequestId = match params.id {
-                    lsp_types::NumberOrString::Number(id) => id.into(),
-                    lsp_types::NumberOrString::String(id) => id.into(),
-                };
-                this.cancel(id);
-                Ok(())
-            })?
-            .on::<lsp_types::notification::WorkDoneProgressCancel>(|this, params| {
-                if let lsp_types::NumberOrString::String(s) = &params.token {
-                    if let Some(id) = s.strip_prefix("rust-analyzer/flycheck/") {
-                        if let Ok(id) = u32::from_str_radix(id, 10) {
-                            if let Some(flycheck) = this.flycheck.get(id as usize) {
-                                flycheck.cancel();
-                            }
-                        }
-                    }
-                }
-                // Just ignore this. It is OK to continue sending progress
-                // notifications for this token, as the client can't know when
-                // we accepted notification.
-                Ok(())
-            })?
-            .on::<lsp_types::notification::DidOpenTextDocument>(|this, params| {
-                if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    let already_exists = this
-                        .mem_docs
-                        .insert(path.clone(), DocumentData::new(params.text_document.version))
-                        .is_err();
-                    if already_exists {
-                        tracing::error!("duplicate DidOpenTextDocument: {}", path);
-                    }
-                    this.vfs
-                        .write()
-                        .0
-                        .set_file_contents(path, Some(params.text_document.text.into_bytes()));
-                }
-                Ok(())
-            })?
+            .on::<notifs::Cancel>(handlers::handle_cancel)?
+            .on::<notifs::WorkDoneProgressCancel>(handlers::handle_work_done_progress_cancel)?
+            .on::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
+            .on::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
+            .on::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
+            .on::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+            .on::<notifs::DidChangeConfiguration>(handlers::handle_did_change_configuration)?
+            .on::<notifs::DidChangeWorkspaceFolders>(handlers::handle_did_change_workspace_folders)?
+            .on::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
             .on::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
-            .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
-                if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    match this.mem_docs.get_mut(&path) {
-                        Some(doc) => {
-                            // The version passed in DidChangeTextDocument is the version after all edits are applied
-                            // so we should apply it before the vfs is notified.
-                            doc.version = params.text_document.version;
-                        }
-                        None => {
-                            tracing::error!("unexpected DidChangeTextDocument: {}", path);
-                            return Ok(());
-                        }
-                    };
-
-                    let vfs = &mut this.vfs.write().0;
-                    let file_id = vfs.file_id(&path).unwrap();
-                    let text = apply_document_changes(
-                        this.config.position_encoding(),
-                        || std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into(),
-                        params.content_changes,
-                    );
-
-                    vfs.set_file_contents(path, Some(text.into_bytes()));
-                }
-                Ok(())
-            })?
-            .on::<lsp_types::notification::DidCloseTextDocument>(|this, params| {
-                if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if this.mem_docs.remove(&path).is_err() {
-                        tracing::error!("orphan DidCloseTextDocument: {}", path);
-                    }
-
-                    this.semantic_tokens_cache.lock().remove(&params.text_document.uri);
-
-                    if let Some(path) = path.as_path() {
-                        this.loader.handle.invalidate(path.to_path_buf());
-                    }
-                }
-                Ok(())
-            })?
-            .on::<lsp_ext::ClearFlycheck>(|this, ()| {
-                this.diagnostics.clear_check_all();
-                Ok(())
-            })?
-            .on::<lsp_ext::RunFlycheck>(|this, params| {
-                if let Some(text_document) = params.text_document {
-                    if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {
-                        if run_flycheck(this, vfs_path) {
-                            return Ok(());
-                        }
-                    }
-                }
-                // No specific flycheck was triggered, so let's trigger all of them.
-                for flycheck in this.flycheck.iter() {
-                    flycheck.restart();
-                }
-                Ok(())
-            })?
-            .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
-                if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
-                    // Re-fetch workspaces if a workspace related file has changed
-                    if let Some(abs_path) = vfs_path.as_path() {
-                        if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
-                            this.fetch_workspaces_queue
-                                .request_op(format!("DidSaveTextDocument {}", abs_path.display()));
-                        }
-                    }
-
-                    if !this.config.check_on_save() || run_flycheck(this, vfs_path) {
-                        return Ok(());
-                    }
-                } else if this.config.check_on_save() {
-                    // No specific flycheck was triggered, so let's trigger all of them.
-                    for flycheck in this.flycheck.iter() {
-                        flycheck.restart();
-                    }
-                }
-                Ok(())
-            })?
-            .on::<lsp_types::notification::DidChangeConfiguration>(|this, _params| {
-                // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
-                // this notification's parameters should be ignored and the actual config queried separately.
-                this.send_request::<lsp_types::request::WorkspaceConfiguration>(
-                    lsp_types::ConfigurationParams {
-                        items: vec![lsp_types::ConfigurationItem {
-                            scope_uri: None,
-                            section: Some("rust-analyzer".to_string()),
-                        }],
-                    },
-                    |this, resp| {
-                        tracing::debug!("config update response: '{:?}", resp);
-                        let lsp_server::Response { error, result, .. } = resp;
-
-                        match (error, result) {
-                            (Some(err), _) => {
-                                tracing::error!("failed to fetch the server settings: {:?}", err)
-                            }
-                            (None, Some(mut configs)) => {
-                                if let Some(json) = configs.get_mut(0) {
-                                    // Note that json can be null according to the spec if the client can't
-                                    // provide a configuration. This is handled in Config::update below.
-                                    let mut config = Config::clone(&*this.config);
-                                    if let Err(error) = config.update(json.take()) {
-                                        this.show_message(
-                                            lsp_types::MessageType::WARNING,
-                                            error.to_string(),
-                                            false,
-                                        );
-                                    }
-                                    this.update_configuration(config);
-                                }
-                            }
-                            (None, None) => tracing::error!(
-                                "received empty server settings response from the client"
-                            ),
-                        }
-                    },
-                );
-
-                Ok(())
-            })?
-            .on::<lsp_types::notification::DidChangeWorkspaceFolders>(|this, params| {
-                let config = Arc::make_mut(&mut this.config);
-
-                for workspace in params.event.removed {
-                    let Ok(path) = workspace.uri.to_file_path() else { continue };
-                    let Ok(path) = AbsPathBuf::try_from(path) else { continue };
-                    let Some(position) = config.workspace_roots.iter().position(|it| it == &path) else { continue };
-                    config.workspace_roots.remove(position);
-                }
-
-                let added = params
-                    .event
-                    .added
-                    .into_iter()
-                    .filter_map(|it| it.uri.to_file_path().ok())
-                    .filter_map(|it| AbsPathBuf::try_from(it).ok());
-                config.workspace_roots.extend(added);
-                    if !config.has_linked_projects() && config.detached_files().is_empty() {
-                        config.rediscover_workspaces();
-                        this.fetch_workspaces_queue.request_op("client workspaces changed".to_string())
-                    }
-
-                Ok(())
-            })?
-            .on::<lsp_types::notification::DidChangeWatchedFiles>(|this, params| {
-                for change in params.changes {
-                    if let Ok(path) = from_proto::abs_path(&change.uri) {
-                        this.loader.handle.invalidate(path);
-                    }
-                }
-                Ok(())
-            })?
+            .on::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
+            .on::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
             .finish();
         Ok(())
     }
@@ -1000,16 +793,60 @@ impl GlobalState {
         tracing::trace!("updating notifications for {:?}", subscriptions);
 
         let snapshot = self.snapshot();
-        self.task_pool.handle.spawn(move || {
+
+        // Diagnostics are triggered by the user typing
+        // so we run them on a latency sensitive thread.
+        self.task_pool.handle.spawn(stdx::thread::ThreadIntent::LatencySensitive, move || {
+            let _p = profile::span("publish_diagnostics");
+            let _ctx = stdx::panic_context::enter("publish_diagnostics".to_owned());
             let diagnostics = subscriptions
                 .into_iter()
                 .filter_map(|file_id| {
-                    handlers::publish_diagnostics(&snapshot, file_id)
-                        .ok()
-                        .map(|diags| (file_id, diags))
+                    let line_index = snapshot.file_line_index(file_id).ok()?;
+                    Some((
+                        file_id,
+                        line_index,
+                        snapshot
+                            .analysis
+                            .diagnostics(
+                                &snapshot.config.diagnostics(),
+                                ide::AssistResolveStrategy::None,
+                                file_id,
+                            )
+                            .ok()?,
+                    ))
                 })
-                .collect::<Vec<_>>();
-            Task::Diagnostics(diagnostics)
-        })
+                .map(|(file_id, line_index, it)| {
+                    (
+                        file_id,
+                        it.into_iter()
+                            .map(move |d| lsp_types::Diagnostic {
+                                range: crate::to_proto::range(&line_index, d.range),
+                                severity: Some(crate::to_proto::diagnostic_severity(d.severity)),
+                                code: Some(lsp_types::NumberOrString::String(
+                                    d.code.as_str().to_string(),
+                                )),
+                                code_description: Some(lsp_types::CodeDescription {
+                                    href: lsp_types::Url::parse(&format!(
+                                        "https://rust-analyzer.github.io/manual.html#{}",
+                                        d.code.as_str()
+                                    ))
+                                    .unwrap(),
+                                }),
+                                source: Some("rust-analyzer".to_string()),
+                                message: d.message,
+                                related_information: None,
+                                tags: if d.unused {
+                                    Some(vec![lsp_types::DiagnosticTag::UNNECESSARY])
+                                } else {
+                                    None
+                                },
+                                data: None,
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                });
+            Task::Diagnostics(diagnostics.collect())
+        });
     }
 }

@@ -349,8 +349,13 @@ pub(crate) fn runnable_mod(
     if !has_test_function_or_multiple_test_submodules(sema, &def) {
         return None;
     }
-    let path =
-        def.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
+    let path = def
+        .path_to_root(sema.db)
+        .into_iter()
+        .rev()
+        .filter_map(|it| it.name(sema.db))
+        .map(|it| it.display(sema.db).to_string())
+        .join("::");
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
@@ -376,7 +381,7 @@ pub(crate) fn runnable_impl(
     } else {
         String::new()
     };
-    let mut test_id = format!("{adt_name}{params}");
+    let mut test_id = format!("{}{params}", adt_name.display(sema.db));
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
 
@@ -391,8 +396,13 @@ fn runnable_mod_outline_definition(
     if !has_test_function_or_multiple_test_submodules(sema, &def) {
         return None;
     }
-    let path =
-        def.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
+    let path = def
+        .path_to_root(sema.db)
+        .into_iter()
+        .rev()
+        .filter_map(|it| it.name(sema.db))
+        .map(|it| it.display(sema.db).to_string())
+        .join("::");
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
@@ -430,7 +440,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         let mut path = String::new();
         def.canonical_module_path(db)?
             .flat_map(|it| it.name(db))
-            .for_each(|name| format_to!(path, "{}::", name));
+            .for_each(|name| format_to!(path, "{}::", name.display(db)));
         // This probably belongs to canonical_path?
         if let Some(assoc_item) = def.as_assoc_item(db) {
             if let hir::AssocItemContainer::Impl(imp) = assoc_item.container(db) {
@@ -438,17 +448,17 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
                 if let Some(adt) = ty.as_adt() {
                     let name = adt.name(db);
                     let mut ty_args = ty.generic_parameters(db).peekable();
-                    format_to!(path, "{}", name);
+                    format_to!(path, "{}", name.display(db));
                     if ty_args.peek().is_some() {
                         format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
                     }
-                    format_to!(path, "::{}", def_name);
+                    format_to!(path, "::{}", def_name.display(db));
                     path.retain(|c| c != ' ');
                     return Some(path);
                 }
             }
         }
-        format_to!(path, "{}", def_name);
+        format_to!(path, "{}", def_name.display(db));
         Some(path)
     })();
 
@@ -2232,14 +2242,14 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 52..115,
-                            focus_range: 67..75,
-                            name: "foo_test",
+                            full_range: 121..185,
+                            focus_range: 136..145,
+                            name: "foo2_test",
                             kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
-                                "tests::foo_test",
+                                "tests::foo2_test",
                             ),
                             attr: TestAttr {
                                 ignore: false,
@@ -2253,14 +2263,14 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 121..185,
-                            focus_range: 136..145,
-                            name: "foo2_test",
+                            full_range: 52..115,
+                            focus_range: 67..75,
+                            name: "foo_test",
                             kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
-                                "tests::foo2_test",
+                                "tests::foo_test",
                             ),
                             attr: TestAttr {
                                 ignore: false,
@@ -2579,6 +2589,7 @@ mod r#mod {
                             ),
                             full_range: 47..84,
                             name: "r#for",
+                            container_name: "r#mod",
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -2595,6 +2606,7 @@ mod r#mod {
                             ),
                             full_range: 90..146,
                             name: "r#struct",
+                            container_name: "r#mod",
                         },
                         kind: DocTest {
                             test_id: Path(

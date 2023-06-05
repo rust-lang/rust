@@ -18,24 +18,23 @@ pub mod db;
 
 pub mod attr;
 pub mod path;
-pub mod type_ref;
 pub mod builtin_type;
-pub mod builtin_attr;
 pub mod per_ns;
 pub mod item_scope;
 
+pub mod lower;
+pub mod expander;
+
 pub mod dyn_map;
-pub mod keys;
 
 pub mod item_tree;
 
-pub mod adt;
 pub mod data;
 pub mod generics;
 pub mod lang_item;
-pub mod layout;
 
-pub mod expr;
+pub mod hir;
+pub use self::hir::type_ref;
 pub mod body;
 pub mod resolver;
 
@@ -49,29 +48,34 @@ pub mod visibility;
 pub mod find_path;
 pub mod import_map;
 
+pub use rustc_abi as layout;
+use triomphe::Arc;
+
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]
 mod macro_expansion_tests;
 mod pretty;
 
-use std::{
-    hash::{Hash, Hasher},
-    sync::Arc,
-};
+use std::hash::{Hash, Hasher};
 
-use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
+use base_db::{
+    impl_intern_key,
+    salsa::{self, InternId},
+    CrateId, ProcMacroKind,
+};
 use hir_expand::{
     ast_id_map::FileAstId,
     attrs::{Attr, AttrId, AttrInput},
     builtin_attr_macro::BuiltinAttrExpander,
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
-    eager::{expand_eager_macro, ErrorEmitted, ErrorSink},
+    db::ExpandDatabase,
+    eager::expand_eager_macro,
     hygiene::Hygiene,
     proc_macro::ProcMacroExpander,
-    AstId, ExpandError, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
-    MacroDefKind, UnresolvedMacro,
+    AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
+    MacroDefId, MacroDefKind, UnresolvedMacro,
 };
 use item_tree::ExternBlock;
 use la_arena::Idx;
@@ -82,8 +86,8 @@ use syntax::ast;
 use ::tt::token_id as tt;
 
 use crate::{
-    adt::VariantData,
     builtin_type::BuiltinType,
+    data::adt::VariantData,
     item_tree::{
         Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, ModItem,
         Static, Struct, Trait, TraitAlias, TypeAlias, Union,
@@ -104,13 +108,7 @@ pub struct ModuleId {
 impl ModuleId {
     pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
         match self.block {
-            Some(block) => {
-                db.block_def_map(block).unwrap_or_else(|| {
-                    // NOTE: This should be unreachable - all `ModuleId`s come from their `DefMap`s,
-                    // so the `DefMap` here must exist.
-                    unreachable!("no `block_def_map` for `ModuleId` {:?}", self);
-                })
-            }
+            Some(block) => db.block_def_map(block),
             None => db.crate_def_map(self.krate),
         }
     }
@@ -236,7 +234,7 @@ pub struct EnumVariantId {
     pub local_id: LocalEnumVariantId,
 }
 
-pub type LocalEnumVariantId = Idx<adt::EnumVariantData>;
+pub type LocalEnumVariantId = Idx<data::adt::EnumVariantData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldId {
@@ -244,7 +242,7 @@ pub struct FieldId {
     pub local_id: LocalFieldId,
 }
 
-pub type LocalFieldId = Idx<adt::FieldData>;
+pub type LocalFieldId = Idx<data::adt::FieldData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
@@ -477,6 +475,46 @@ impl_from!(
     BuiltinType
     for ModuleDefId
 );
+
+// FIXME: make this a DefWithBodyId
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct AnonymousConstId(InternId);
+impl_intern_key!(AnonymousConstId);
+
+/// A constant, which might appears as a const item, an annonymous const block in expressions
+/// or patterns, or as a constant in types with const generics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GeneralConstId {
+    ConstId(ConstId),
+    AnonymousConstId(AnonymousConstId),
+}
+
+impl_from!(ConstId, AnonymousConstId for GeneralConstId);
+
+impl GeneralConstId {
+    pub fn generic_def(self, db: &dyn db::DefDatabase) -> Option<GenericDefId> {
+        match self {
+            GeneralConstId::ConstId(x) => Some(x.into()),
+            GeneralConstId::AnonymousConstId(x) => {
+                let (parent, _) = db.lookup_intern_anonymous_const(x);
+                parent.as_generic_def_id()
+            }
+        }
+    }
+
+    pub fn name(self, db: &dyn db::DefDatabase) -> String {
+        match self {
+            GeneralConstId::ConstId(const_id) => db
+                .const_data(const_id)
+                .name
+                .as_ref()
+                .and_then(|x| x.as_str())
+                .unwrap_or("_")
+                .to_owned(),
+            GeneralConstId::AnonymousConstId(id) => format!("{{anonymous const {id:?}}}"),
+        }
+    }
+}
 
 /// The defs which have a body.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -799,52 +837,43 @@ impl AttrDefId {
 pub trait AsMacroCall {
     fn as_call_id(
         &self,
-        db: &dyn db::DefDatabase,
+        db: &dyn ExpandDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
-        self.as_call_id_with_errors(db, krate, resolver, &mut |_| ()).ok()?.ok()
+        self.as_call_id_with_errors(db, krate, resolver).ok()?.value
     }
 
     fn as_call_id_with_errors(
         &self,
-        db: &dyn db::DefDatabase,
+        db: &dyn ExpandDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-        error_sink: &mut dyn FnMut(ExpandError),
-    ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro>;
+    ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro>;
 }
 
 impl AsMacroCall for InFile<&ast::MacroCall> {
     fn as_call_id_with_errors(
         &self,
-        db: &dyn db::DefDatabase,
+        db: &dyn ExpandDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-        mut error_sink: &mut dyn FnMut(ExpandError),
-    ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
+    ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
-        let h = Hygiene::new(db.upcast(), self.file_id);
-        let path =
-            self.value.path().and_then(|path| path::ModPath::from_src(db.upcast(), path, &h));
+        let h = Hygiene::new(db, self.file_id);
+        let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &h));
 
-        let path = match error_sink
-            .option(path, || ExpandError::Other("malformed macro invocation".into()))
-        {
-            Ok(path) => path,
-            Err(error) => {
-                return Ok(Err(error));
-            }
+        let Some(path) = path else {
+            return Ok(ExpandResult::only_err(ExpandError::Other("malformed macro invocation".into())));
         };
 
-        macro_call_as_call_id(
+        macro_call_as_call_id_(
             db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
             expands_to,
             krate,
             resolver,
-            error_sink,
         )
     }
 }
@@ -863,26 +892,37 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
 }
 
 fn macro_call_as_call_id(
-    db: &dyn db::DefDatabase,
+    db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-    error_sink: &mut dyn FnMut(ExpandError),
-) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
+) -> Result<Option<MacroCallId>, UnresolvedMacro> {
+    macro_call_as_call_id_(db, call, expand_to, krate, resolver).map(|res| res.value)
+}
+
+fn macro_call_as_call_id_(
+    db: &dyn ExpandDatabase,
+    call: &AstIdWithPath<ast::MacroCall>,
+    expand_to: ExpandTo,
+    krate: CrateId,
+    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
     let def =
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
     let res = if let MacroDefKind::BuiltInEager(..) = def.kind {
-        let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db.upcast()));
-
-        expand_eager_macro(db.upcast(), krate, macro_call, def, &resolver, error_sink)?
+        let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
+        expand_eager_macro(db, krate, macro_call, def, &resolver)?
     } else {
-        Ok(def.as_lazy_macro(
-            db.upcast(),
-            krate,
-            MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
-        ))
+        ExpandResult {
+            value: Some(def.as_lazy_macro(
+                db,
+                krate,
+                MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
+            )),
+            err: None,
+        }
     };
     Ok(res)
 }
@@ -986,7 +1026,6 @@ fn attr_macro_as_call_id(
     macro_attr: &Attr,
     krate: CrateId,
     def: MacroDefId,
-    is_derive: bool,
 ) -> MacroCallId {
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt, map)) => (
@@ -1007,7 +1046,6 @@ fn attr_macro_as_call_id(
             ast_id: item_attr.ast_id,
             attr_args: Arc::new(arg),
             invoc_attr_index: macro_attr.id,
-            is_derive,
         },
     )
 }
