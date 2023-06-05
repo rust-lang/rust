@@ -222,6 +222,7 @@ pub struct Build {
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
     initial_libdir: PathBuf,
+    initial_sysroot: PathBuf,
 
     // Runtime state filled in later on
     // C/C++ compilers and archiver for all targets
@@ -389,13 +390,16 @@ impl Build {
             "/dummy".to_string()
         } else {
             output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
-        };
+        }
+        .trim()
+        .to_string();
+
         let initial_libdir = initial_target_dir
             .parent()
             .unwrap()
             .parent()
             .unwrap()
-            .strip_prefix(initial_sysroot.trim())
+            .strip_prefix(&initial_sysroot)
             .unwrap()
             .to_path_buf();
 
@@ -425,6 +429,7 @@ impl Build {
             initial_cargo: config.initial_cargo.clone(),
             initial_lld,
             initial_libdir,
+            initial_sysroot: initial_sysroot.into(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),

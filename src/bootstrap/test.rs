@@ -1424,7 +1424,15 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
-        cmd.arg("--sysroot-base").arg(builder.sysroot(compiler));
+
+        // When top stage is 0, that means that we're testing an externally provided compiler.
+        // In that case we need to use its specific sysroot for tests to pass.
+        let sysroot = if builder.top_stage == 0 {
+            builder.initial_sysroot.clone()
+        } else {
+            builder.sysroot(compiler).to_path_buf()
+        };
+        cmd.arg("--sysroot-base").arg(sysroot);
         cmd.arg("--stage-id").arg(stage_id);
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
