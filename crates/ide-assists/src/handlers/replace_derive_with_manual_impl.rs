@@ -182,7 +182,11 @@ fn impl_def_from_trait(
     let impl_def = {
         use syntax::ast::Impl;
         let text = generate_trait_impl_text(adt, trait_path.to_string().as_str(), "");
-        let parse = syntax::SourceFile::parse(&text);
+        // FIXME: `generate_trait_impl_text` currently generates two newlines
+        // at the front, but these leading newlines should really instead be
+        // inserted at the same time the impl is inserted
+        assert_eq!(&text[..2], "\n\n", "`generate_trait_impl_text` output changed");
+        let parse = syntax::SourceFile::parse(&text[2..]);
         let node = match parse.tree().syntax().descendants().find_map(Impl::cast) {
             Some(it) => it,
             None => {
@@ -193,7 +197,7 @@ fn impl_def_from_trait(
                 )
             }
         };
-        let node = node.clone_subtree();
+        let node = node.clone_for_update();
         assert_eq!(node.syntax().text_range().start(), 0.into());
         node
     };
@@ -209,8 +213,8 @@ fn impl_def_from_trait(
             it.clone_for_update()
         })
         .collect();
-    let (impl_def, first_assoc_item) =
-        add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
+    let first_assoc_item =
+        add_trait_assoc_items_to_impl(sema, trait_items, trait_, &impl_def, target_scope);
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
