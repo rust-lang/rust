@@ -377,6 +377,7 @@ pub fn create_wrapper_file(
                 SectionFlags::Elf { sh_flags: elf::SHF_EXCLUDE as u64 };
         }
         BinaryFormat::Xcoff => {
+            // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text, no .data and no .bss.
             file.add_section(Vec::new(), b".text".to_vec(), SectionKind::Text);
             file.section_mut(section).flags =
                 SectionFlags::Xcoff { s_flags: xcoff::STYP_INFO as u32 };
@@ -389,7 +390,7 @@ pub fn create_wrapper_file(
                 value: offset + 4,
                 size: 0,
                 kind: SymbolKind::Unknown,
-                scope: SymbolScope::Dynamic,
+                scope: SymbolScope::Compilation,
                 weak: false,
                 section: SymbolSection::Section(section),
                 flags: SymbolFlags::Xcoff {
@@ -488,6 +489,7 @@ pub fn create_compressed_metadata_file_for_xcoff(
     symbol_name: &str,
 ) -> Vec<u8> {
     assert!(file.format() == BinaryFormat::Xcoff);
+    // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text, no .data and no .bss.
     file.add_section(Vec::new(), b".text".to_vec(), SectionKind::Text);
     let data_section = file.add_section(Vec::new(), b".data".to_vec(), SectionKind::Data);
     let section = file.add_section(Vec::new(), b".info".to_vec(), SectionKind::Debug);
