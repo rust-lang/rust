@@ -2,7 +2,7 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
 //@[stack]error-in-other-file: which is strongly protected
-//@[tree]error-in-other-file: /write access through .* is forbidden/
+//@[tree]error-in-other-file: /deallocation through .* is forbidden/
 struct Newtype<'a>(&'a mut i32, i32);
 
 fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {

@@ -1,12 +1,12 @@
-error: Undefined Behavior: read access through <TAG> is forbidden
+error: Undefined Behavior: reborrow through <TAG> is forbidden
   --> $DIR/return_invalid_shr_option.rs:LL:CC
    |
 LL |     ret
-   |     ^^^ read access through <TAG> is forbidden
+   |     ^^^ reborrow through <TAG> is forbidden
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
-   = help: the conflicting tag <TAG> has state Disabled which forbids child read accesses
+   = help: the conflicting tag <TAG> has state Disabled which forbids this reborrow (acting as a child read access)
 help: the accessed tag <TAG> was created here
   --> $DIR/return_invalid_shr_option.rs:LL:CC
    |
@@ -22,7 +22,7 @@ help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign 
    |
 LL |     unsafe { *xraw = (42, 23) }; // unfreeze
    |              ^^^^^^^^^^^^^^^^
-   = help: this corresponds to a loss of read permissions
+   = help: this transition corresponds to a loss of read permissions
    = note: BACKTRACE (of the first span):
    = note: inside `foo` at $DIR/return_invalid_shr_option.rs:LL:CC
 note: inside `main`

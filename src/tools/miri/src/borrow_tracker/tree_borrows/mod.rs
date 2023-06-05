@@ -62,7 +62,14 @@ impl<'tcx> Tree {
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
         let span = machine.current_span();
-        self.perform_access(access_kind, tag, range, global, span)
+        self.perform_access(
+            access_kind,
+            tag,
+            range,
+            global,
+            span,
+            diagnostics::AccessCause::Explicit(access_kind),
+        )
     }
 
     /// Check that this pointer has permission to deallocate this range.
@@ -273,7 +280,14 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             // Count this reborrow as a read access
             let global = &this.machine.borrow_tracker.as_ref().unwrap();
             let span = this.machine.current_span();
-            tree_borrows.perform_access(AccessKind::Read, orig_tag, range, global, span)?;
+            tree_borrows.perform_access(
+                AccessKind::Read,
+                orig_tag,
+                range,
+                global,
+                span,
+                diagnostics::AccessCause::Reborrow,
+            )?;
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
                 data_race.read(alloc_id, range, &this.machine)?;
             }

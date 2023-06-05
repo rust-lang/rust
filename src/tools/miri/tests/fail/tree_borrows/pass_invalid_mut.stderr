@@ -6,7 +6,7 @@ LL |     *nope = 31;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
-   = help: the conflicting tag <TAG> has state Frozen which forbids child write accesses
+   = help: the conflicting tag <TAG> has state Frozen which forbids this child write access
 help: the accessed tag <TAG> was created here
   --> $DIR/pass_invalid_mut.rs:LL:CC
    |
@@ -22,13 +22,13 @@ help: the conflicting tag <TAG> later transitioned to Active due to a child writ
    |
 LL |     *xref = 18; // activate xref
    |     ^^^^^^^^^^
-   = help: this corresponds to the first write to a 2-phase borrowed mutable reference
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
 help: the conflicting tag <TAG> later transitioned to Frozen due to a foreign read access at offsets [0x0..0x4]
   --> $DIR/pass_invalid_mut.rs:LL:CC
    |
 LL |     let _val = unsafe { *xraw }; // invalidate xref for writing
    |                         ^^^^^
-   = help: this corresponds to a loss of write permissions
+   = help: this transition corresponds to a loss of write permissions
    = note: BACKTRACE (of the first span):
    = note: inside `foo` at $DIR/pass_invalid_mut.rs:LL:CC
 note: inside `main`

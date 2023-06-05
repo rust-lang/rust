@@ -6,8 +6,8 @@ LL |     unsafe { *y = 2 };
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
-   = help: the access would cause the protected tag <TAG> to transition from Active to Disabled
-   = help: this is a loss of read and write permissions, which is not allowed for protected tags
+   = help: this foreign write access would cause the protected tag <TAG> to transition from Active to Disabled
+   = help: this transition would be a loss of read and write permissions, which is not allowed for protected tags
 help: the accessed tag <TAG> was created here
   --> $DIR/illegal_write6.rs:LL:CC
    |
@@ -23,7 +23,7 @@ help: the protected tag <TAG> later transitioned to Active due to a child write 
    |
 LL |     *a = 1;
    |     ^^^^^^
-   = help: this corresponds to the first write to a 2-phase borrowed mutable reference
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
    = note: inside `foo` at $DIR/illegal_write6.rs:LL:CC
 note: inside `main`

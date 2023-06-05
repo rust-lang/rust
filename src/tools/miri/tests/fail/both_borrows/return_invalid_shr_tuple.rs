@@ -8,7 +8,7 @@ fn foo(x: &mut (i32, i32)) -> (&i32,) {
     unsafe { *xraw = (42, 23) }; // unfreeze
     ret
     //~[stack]^ ERROR: /retag .* tag does not exist in the borrow stack/
-    //~[tree]| ERROR: /read access through .* is forbidden/
+    //~[tree]| ERROR: /reborrow through .* is forbidden/
 }
 
 fn main() {
