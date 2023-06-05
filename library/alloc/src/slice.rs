@@ -833,6 +833,7 @@ impl<T: Clone> ToOwned for [T] {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T> Cow<'_, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,

@@ -216,6 +216,7 @@ impl ToOwned for str {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl Cow<'_, str> {
     /// Truncates the owned [`String`] or borrowed [`&str`](prim@str) to zero
     /// length.
