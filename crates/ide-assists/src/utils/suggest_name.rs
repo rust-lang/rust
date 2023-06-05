@@ -234,7 +234,7 @@ fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<Str
 
 fn name_of_type(ty: &hir::Type, db: &RootDatabase) -> Option<String> {
     let name = if let Some(adt) = ty.as_adt() {
-        let name = adt.name(db).to_string();
+        let name = adt.name(db).display(db).to_string();
 
         if WRAPPER_TYPES.contains(&name.as_str()) {
             let inner_ty = ty.type_arguments().next()?;
@@ -258,7 +258,7 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase) -> Option<String> {
 }
 
 fn trait_name(trait_: &hir::Trait, db: &RootDatabase) -> Option<String> {
-    let name = trait_.name(db).to_string();
+    let name = trait_.name(db).display(db).to_string();
     if USELESS_TRAITS.contains(&name.as_str()) {
         return None;
     }

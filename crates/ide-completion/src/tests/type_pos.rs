@@ -1,7 +1,7 @@
 //! Completion tests for type position.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_empty, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}\n{ra_fixture}"));
@@ -668,4 +668,54 @@ fn f(t: impl MyTrait<Item1 = u8, Item2 = $0
             kw self::
         "#]],
     );
+}
+
+#[test]
+fn type_pos_no_unstable_type_on_stable() {
+    check_empty(
+        r#"
+//- /main.rs crate:main deps:std
+use std::*;
+struct Foo {
+    f: $0
+}
+//- /std.rs crate:std
+#[unstable]
+pub struct S;
+"#,
+        expect![[r#"
+            md std
+            sp Self
+            st Foo
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    )
+}
+
+#[test]
+fn type_pos_unstable_type_on_nightly() {
+    check_empty(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+use std::*;
+struct Foo {
+    f: $0
+}
+//- /std.rs crate:std
+#[unstable]
+pub struct S;
+"#,
+        expect![[r#"
+            md std
+            sp Self
+            st Foo
+            st S
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    )
 }

@@ -52,7 +52,11 @@ pub(super) fn ra_fixture(
 
         if let Some(next) = text.strip_prefix(marker) {
             if let Some(range) = literal.map_range_up(TextRange::at(offset, TextSize::of(marker))) {
-                hl.add(HlRange { range, highlight: HlTag::Keyword.into(), binding_hash: None });
+                hl.add(HlRange {
+                    range,
+                    highlight: HlTag::Keyword | HlMod::Injected,
+                    binding_hash: None,
+                });
             }
 
             text = next;
@@ -66,7 +70,16 @@ pub(super) fn ra_fixture(
 
     for mut hl_range in analysis
         .highlight(
-            HighlightConfig { syntactic_name_ref_highlighting: false, ..config },
+            HighlightConfig {
+                syntactic_name_ref_highlighting: false,
+                punctuation: true,
+                operator: true,
+                strings: true,
+                specialize_punctuation: config.specialize_punctuation,
+                specialize_operator: config.operator,
+                inject_doc_comment: config.inject_doc_comment,
+                macro_bang: config.macro_bang,
+            },
             tmp_file_id,
         )
         .unwrap()
@@ -74,6 +87,7 @@ pub(super) fn ra_fixture(
         for range in inj.map_range_up(hl_range.range) {
             if let Some(range) = literal.map_range_up(range) {
                 hl_range.range = range;
+                hl_range.highlight |= HlMod::Injected;
                 hl.add(hl_range);
             }
         }
@@ -217,7 +231,16 @@ pub(super) fn doc_comment(
     if let Ok(ranges) = analysis.with_db(|db| {
         super::highlight(
             db,
-            HighlightConfig { syntactic_name_ref_highlighting: true, ..config },
+            HighlightConfig {
+                syntactic_name_ref_highlighting: true,
+                punctuation: true,
+                operator: true,
+                strings: true,
+                specialize_punctuation: config.specialize_punctuation,
+                specialize_operator: config.operator,
+                inject_doc_comment: config.inject_doc_comment,
+                macro_bang: config.macro_bang,
+            },
             tmp_file_id,
             None,
         )

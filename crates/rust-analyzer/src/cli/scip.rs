@@ -2,6 +2,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    path::PathBuf,
     time::Instant,
 };
 
@@ -9,7 +10,6 @@ use crate::{
     cli::load_cargo::ProcMacroServerChoice,
     line_index::{LineEndings, LineIndex, PositionEncoding},
 };
-use hir::Name;
 use ide::{
     LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
     TokenStaticData,
@@ -66,7 +66,6 @@ impl flags::Scip {
                     .as_os_str()
                     .to_str()
                     .ok_or(anyhow::anyhow!("Unable to normalize project_root path"))?
-                    .to_string()
             ),
             text_document_encoding: scip_types::TextEncoding::UTF8.into(),
             special_fields: Default::default(),
@@ -167,7 +166,8 @@ impl flags::Scip {
             special_fields: Default::default(),
         };
 
-        scip::write_message_to_file("index.scip", index)
+        let out_path = self.output.unwrap_or_else(|| PathBuf::from(r"index.scip"));
+        scip::write_message_to_file(out_path, index)
             .map_err(|err| anyhow::anyhow!("Failed to write scip to file: {}", err))?;
 
         eprintln!("Generating SCIP finished {:?}", now.elapsed());
@@ -210,13 +210,12 @@ fn new_descriptor_str(
     }
 }
 
-fn new_descriptor(name: Name, suffix: scip_types::descriptor::Suffix) -> scip_types::Descriptor {
-    let mut name = name.to_string();
-    if name.contains("'") {
-        name = format!("`{name}`");
+fn new_descriptor(name: &str, suffix: scip_types::descriptor::Suffix) -> scip_types::Descriptor {
+    if name.contains('\'') {
+        new_descriptor_str(&format!("`{name}`"), suffix)
+    } else {
+        new_descriptor_str(&name, suffix)
     }
-
-    new_descriptor_str(name.as_str(), suffix)
 }
 
 /// Loosely based on `def_to_moniker`
@@ -236,7 +235,7 @@ fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
         .iter()
         .map(|desc| {
             new_descriptor(
-                desc.name.clone(),
+                &desc.name,
                 match desc.desc {
                     MonikerDescriptorKind::Namespace => Namespace,
                     MonikerDescriptorKind::Type => Type,

@@ -4,7 +4,11 @@
 use std::iter;
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex};
+use chalk_ir::{
+    cast::Cast,
+    fold::{FallibleTypeFolder, Shift},
+    BoundVar, DebruijnIndex,
+};
 use either::Either;
 use hir_def::{
     db::DefDatabase,
@@ -15,16 +19,22 @@ use hir_def::{
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    ConstParamId, FunctionId, GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId,
+    ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId, ItemContainerId,
+    LocalEnumVariantId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
 };
 use hir_expand::name::Name;
 use intern::Interned;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
+use stdx::never;
 
 use crate::{
-    db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, WhereClause,
+    consteval::unknown_const,
+    db::HirDatabase,
+    layout::{Layout, TagEncoding},
+    mir::pad16,
+    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitRef, TraitRefExt,
+    Ty, WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -69,9 +79,7 @@ pub(super) fn all_super_trait_refs<T>(
     cb: impl FnMut(TraitRef) -> Option<T>,
 ) -> Option<T> {
     let seen = iter::once(trait_ref.trait_id).collect();
-    let mut stack = Vec::new();
-    stack.push(trait_ref);
-    SuperTraits { db, seen, stack }.find_map(cb)
+    SuperTraits { db, seen, stack: vec![trait_ref] }.find_map(cb)
 }
 
 struct SuperTraits<'a> {
@@ -130,7 +138,7 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(Tra
             WherePredicate::Lifetime { .. } => None,
         })
         .filter(|(_, bound_modifier)| matches!(bound_modifier, TraitBoundModifier::None))
-        .filter_map(|(path, _)| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {
+        .filter_map(|(path, _)| match resolver.resolve_path_in_type_ns_fully(db, path) {
             Some(TypeNs::TraitId(t)) => Some(t),
             _ => None,
         })
@@ -174,6 +182,37 @@ pub(super) fn associated_type_by_name_including_super_traits(
 pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
     Generics { def, params: db.generic_params(def), parent_generics }
+}
+
+/// It is a bit different from the rustc equivalent. Currently it stores:
+/// - 0: the function signature, encoded as a function pointer type
+/// - 1..n: generics of the parent
+///
+/// and it doesn't store the closure types and fields.
+///
+/// Codes should not assume this ordering, and should always use methods available
+/// on this struct for retriving, and `TyBuilder::substs_for_closure` for creating.
+pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
+
+impl<'a> ClosureSubst<'a> {
+    pub(crate) fn parent_subst(&self) -> &'a [GenericArg] {
+        match self.0.as_slice(Interner) {
+            [_, x @ ..] => x,
+            _ => {
+                never!("Closure missing parameter");
+                &[]
+            }
+        }
+    }
+
+    pub(crate) fn sig_ty(&self) -> &'a Ty {
+        match self.0.as_slice(Interner) {
+            [x, ..] => x.assert_ty_ref(Interner),
+            _ => {
+                unreachable!("Closure missing sig_ty parameter");
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -353,4 +392,75 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         }
         _ => false,
     }
+}
+
+pub(crate) struct UnevaluatedConstEvaluatorFolder<'a> {
+    pub(crate) db: &'a dyn HirDatabase,
+}
+
+impl FallibleTypeFolder<Interner> for UnevaluatedConstEvaluatorFolder<'_> {
+    type Error = ();
+
+    fn as_dyn(&mut self) -> &mut dyn FallibleTypeFolder<Interner, Error = ()> {
+        self
+    }
+
+    fn interner(&self) -> Interner {
+        Interner
+    }
+
+    fn try_fold_const(
+        &mut self,
+        constant: Const,
+        _outer_binder: DebruijnIndex,
+    ) -> Result<Const, Self::Error> {
+        if let chalk_ir::ConstValue::Concrete(c) = &constant.data(Interner).value {
+            if let ConstScalar::UnevaluatedConst(id, subst) = &c.interned {
+                if let Ok(eval) = self.db.const_eval(*id, subst.clone()) {
+                    return Ok(eval);
+                } else {
+                    return Ok(unknown_const(constant.data(Interner).ty.clone()));
+                }
+            }
+        }
+        Ok(constant)
+    }
+}
+
+pub(crate) fn detect_variant_from_bytes<'a>(
+    layout: &'a Layout,
+    db: &dyn HirDatabase,
+    krate: CrateId,
+    b: &[u8],
+    e: EnumId,
+) -> Option<(LocalEnumVariantId, &'a Layout)> {
+    let (var_id, var_layout) = match &layout.variants {
+        hir_def::layout::Variants::Single { index } => (index.0, &*layout),
+        hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
+            let target_data_layout = db.target_data_layout(krate)?;
+            let size = tag.size(&*target_data_layout).bytes_usize();
+            let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
+            let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], false));
+            match tag_encoding {
+                TagEncoding::Direct => {
+                    let x = variants.iter_enumerated().find(|x| {
+                        db.const_eval_discriminant(EnumVariantId { parent: e, local_id: x.0 .0 })
+                            == Ok(tag)
+                    })?;
+                    (x.0 .0, x.1)
+                }
+                TagEncoding::Niche { untagged_variant, niche_start, .. } => {
+                    let candidate_tag = tag.wrapping_sub(*niche_start as i128) as usize;
+                    let variant = variants
+                        .iter_enumerated()
+                        .map(|(x, _)| x)
+                        .filter(|x| x != untagged_variant)
+                        .nth(candidate_tag)
+                        .unwrap_or(*untagged_variant);
+                    (variant.0, &variants[variant])
+                }
+            }
+        }
+    };
+    Some((var_id, var_layout))
 }

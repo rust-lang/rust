@@ -2,9 +2,7 @@
     (
         Module {
             id: ModuleId {
-                krate: CrateId(
-                    0,
-                ),
+                krate: Idx::<CrateData>(0),
                 block: None,
                 local_id: Idx::<ModuleData>(0),
             },
@@ -12,6 +10,13 @@
         [
             FileSymbol {
                 name: "Alias",
+                def: TypeAlias(
+                    TypeAlias {
+                        id: TypeAliasId(
+                            0,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -25,11 +30,18 @@
                         range: 402..407,
                     },
                 },
-                kind: TypeAlias,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "CONST",
+                def: Const(
+                    Const {
+                        id: ConstId(
+                            0,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -43,11 +55,18 @@
                         range: 346..351,
                     },
                 },
-                kind: Const,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "CONST_WITH_INNER",
+                def: Const(
+                    Const {
+                        id: ConstId(
+                            2,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -61,11 +80,20 @@
                         range: 526..542,
                     },
                 },
-                kind: Const,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Enum",
+                def: Adt(
+                    Enum(
+                        Enum {
+                            id: EnumId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -79,11 +107,20 @@
                         range: 190..194,
                     },
                 },
-                kind: Enum,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Macro",
+                def: Macro(
+                    Macro {
+                        id: Macro2Id(
+                            Macro2Id(
+                                0,
+                            ),
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -97,11 +134,18 @@
                         range: 159..164,
                     },
                 },
-                kind: Macro,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "STATIC",
+                def: Static(
+                    Static {
+                        id: StaticId(
+                            0,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -115,11 +159,20 @@
                         range: 369..375,
                     },
                 },
-                kind: Static,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Struct",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                1,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -133,11 +186,20 @@
                         range: 177..183,
                     },
                 },
-                kind: Struct,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructFromMacro",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         2147483648,
@@ -151,11 +213,20 @@
                         range: 6..21,
                     },
                 },
-                kind: Struct,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructInFn",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                4,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -169,13 +240,22 @@
                         range: 325..335,
                     },
                 },
-                kind: Struct,
                 container_name: Some(
                     "main",
                 ),
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructInNamedConst",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                5,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -189,13 +269,22 @@
                         range: 562..580,
                     },
                 },
-                kind: Struct,
                 container_name: Some(
                     "CONST_WITH_INNER",
                 ),
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructInUnnamedConst",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                6,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -209,11 +298,18 @@
                         range: 486..506,
                     },
                 },
-                kind: Struct,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Trait",
+                def: Trait(
+                    Trait {
+                        id: TraitId(
+                            0,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -227,11 +323,20 @@
                         range: 267..272,
                     },
                 },
-                kind: Trait,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Union",
+                def: Adt(
+                    Union(
+                        Union {
+                            id: UnionId(
+                                0,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -245,11 +350,20 @@
                         range: 214..219,
                     },
                 },
-                kind: Union,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "a_mod",
+                def: Module(
+                    Module {
+                        id: ModuleId {
+                            krate: Idx::<CrateData>(0),
+                            block: None,
+                            local_id: Idx::<ModuleData>(1),
+                        },
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -263,11 +377,20 @@
                         range: 423..428,
                     },
                 },
-                kind: Module,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "b_mod",
+                def: Module(
+                    Module {
+                        id: ModuleId {
+                            krate: Idx::<CrateData>(0),
+                            block: None,
+                            local_id: Idx::<ModuleData>(2),
+                        },
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -281,11 +404,20 @@
                         range: 598..603,
                     },
                 },
-                kind: Module,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "define_struct",
+                def: Macro(
+                    Macro {
+                        id: MacroRulesId(
+                            MacroRulesId(
+                                1,
+                            ),
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -299,11 +431,18 @@
                         range: 64..77,
                     },
                 },
-                kind: Macro,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "impl_fn",
+                def: Function(
+                    Function {
+                        id: FunctionId(
+                            2,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -317,11 +456,20 @@
                         range: 245..252,
                     },
                 },
-                kind: Function,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "macro_rules_macro",
+                def: Macro(
+                    Macro {
+                        id: MacroRulesId(
+                            MacroRulesId(
+                                0,
+                            ),
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -335,11 +483,18 @@
                         range: 14..31,
                     },
                 },
-                kind: Macro,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "main",
+                def: Function(
+                    Function {
+                        id: FunctionId(
+                            0,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -353,11 +508,18 @@
                         range: 305..309,
                     },
                 },
-                kind: Function,
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "trait_fn",
+                def: Function(
+                    Function {
+                        id: FunctionId(
+                            1,
+                        ),
+                    },
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -371,19 +533,17 @@
                         range: 282..290,
                     },
                 },
-                kind: Function,
                 container_name: Some(
                     "Trait",
                 ),
+                is_alias: false,
             },
         ],
     ),
     (
         Module {
             id: ModuleId {
-                krate: CrateId(
-                    0,
-                ),
+                krate: Idx::<CrateData>(0),
                 block: None,
                 local_id: Idx::<ModuleData>(1),
             },
@@ -391,6 +551,15 @@
         [
             FileSymbol {
                 name: "StructInModA",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                2,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         0,
@@ -404,17 +573,15 @@
                         range: 442..454,
                     },
                 },
-                kind: Struct,
                 container_name: None,
+                is_alias: false,
             },
         ],
     ),
     (
         Module {
             id: ModuleId {
-                krate: CrateId(
-                    0,
-                ),
+                krate: Idx::<CrateData>(0),
                 block: None,
                 local_id: Idx::<ModuleData>(2),
             },
@@ -422,6 +589,15 @@
         [
             FileSymbol {
                 name: "StructInModB",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                3,
+                            ),
+                        },
+                    ),
+                ),
                 loc: DeclarationLocation {
                     hir_file_id: HirFileId(
                         1,
@@ -435,8 +611,8 @@
                         range: 7..19,
                     },
                 },
-                kind: Struct,
                 container_name: None,
+                is_alias: false,
             },
         ],
     ),

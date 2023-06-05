@@ -7,13 +7,14 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{fmt, iter, path::PathBuf};
+use std::{fmt, iter, ops::Not, path::PathBuf};
 
+use cfg::{CfgAtom, CfgDiff};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
     HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig,
-    JoinLinesConfig, Snippet, SnippetScope,
+    JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, Snippet, SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -23,11 +24,10 @@ use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
-    UnsetTestCrates,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
-use vfs::AbsPathBuf;
+use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
     caps::completion_item_edit_resolve,
@@ -101,6 +101,8 @@ config_data! {
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
+        /// List of cfg options to enable with the given values.
+        cargo_cfgs: FxHashMap<String, String> = "{}",
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = "[]",
         /// Extra environment variables that will be set when running cargo, rustc
@@ -128,7 +130,7 @@ config_data! {
         // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
         // than `checkOnSave_target`
         cargo_target: Option<String>     = "null",
-        /// Unsets `#[cfg(test)]` for the specified crates.
+        /// Unsets the implicit `#[cfg(test)]` for the specified crates.
         cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
         /// Run the check command for diagnostics on save.
@@ -281,6 +283,8 @@ config_data! {
 
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
+        /// Enables highlighting of all captures of a closure while the cursor is on the `|` or move keyword of a closure.
+        highlightRelated_closureCaptures_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
         highlightRelated_exitPoints_enable: bool = "true",
         /// Enables highlighting of related references while the cursor is on any identifier.
@@ -311,8 +315,18 @@ config_data! {
         /// Whether to show keyword hover popups. Only applies when
         /// `#rust-analyzer.hover.documentation.enable#` is set.
         hover_documentation_keywords_enable: bool  = "true",
-        /// Use markdown syntax for links in hover.
+        /// Use markdown syntax for links on hover.
         hover_links_enable: bool = "true",
+        /// How to render the align information in a memory layout hover.
+        hover_memoryLayout_alignment: Option<MemoryLayoutHoverRenderKindDef> = "\"hexadecimal\"",
+        /// Whether to show memory layout data on hover.
+        hover_memoryLayout_enable: bool = "true",
+        /// How to render the niche information in a memory layout hover.
+        hover_memoryLayout_niches: Option<bool> = "false",
+        /// How to render the offset information in a memory layout hover.
+        hover_memoryLayout_offset: Option<MemoryLayoutHoverRenderKindDef> = "\"hexadecimal\"",
+        /// How to render the size information in a memory layout hover.
+        hover_memoryLayout_size: Option<MemoryLayoutHoverRenderKindDef> = "\"both\"",
 
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = "false",
@@ -336,8 +350,12 @@ config_data! {
         /// Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1
         /// to always show them).
         inlayHints_closingBraceHints_minLines: usize               = "25",
+        /// Whether to show inlay hints for closure captures.
+        inlayHints_closureCaptureHints_enable: bool                          = "false",
         /// Whether to show inlay type hints for return types of closures.
         inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
+        /// Closure notation in type and chaining inlay hints.
+        inlayHints_closureStyle: ClosureStyle                                = "\"impl_fn\"",
         /// Whether to show enum variant discriminant hints.
         inlayHints_discriminantHints_enable: DiscriminantHintsDef            = "\"never\"",
         /// Whether to show inlay hints for type adjustments.
@@ -418,6 +436,8 @@ config_data! {
 
         /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
         lru_capacity: Option<usize>                 = "null",
+        /// Sets the LRU capacity of the specified queries.
+        lru_query_capacities: FxHashMap<Box<str>, usize> = "{}",
 
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
@@ -433,8 +453,7 @@ config_data! {
         ///
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
-        /// Internal config, path to proc-macro server executable (typically,
-        /// this is rust-analyzer itself, but we override this in tests).
+        /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<PathBuf>          = "null",
 
         /// Exclude imports from find-all-references.
@@ -474,6 +493,8 @@ config_data! {
         /// When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
         /// doc links.
         semanticHighlighting_doc_comment_inject_enable: bool = "true",
+        /// Whether the server is allowed to emit non-standard tokens and modifiers.
+        semanticHighlighting_nonStandardTokens: bool = "true",
         /// Use semantic tokens for operators.
         ///
         /// When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
@@ -484,7 +505,7 @@ config_data! {
         /// When enabled, rust-analyzer will emit special token types for operator tokens instead
         /// of the generic `operator` token type.
         semanticHighlighting_operator_specialization_enable: bool = "false",
-        /// Use semantic tokens for punctuations.
+        /// Use semantic tokens for punctuation.
         ///
         /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
         /// they are tagged with modifiers or have a special role.
@@ -492,7 +513,7 @@ config_data! {
         /// When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
         /// calls.
         semanticHighlighting_punctuation_separate_macro_bang: bool = "false",
-        /// Use specialized semantic tokens for punctuations.
+        /// Use specialized semantic tokens for punctuation.
         ///
         /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
         /// of the generic `punctuation` token type.
@@ -531,8 +552,9 @@ impl Default for ConfigData {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub discovered_projects: Option<Vec<ProjectManifest>>,
-    pub workspace_roots: Vec<AbsPathBuf>,
+    discovered_projects: Vec<ProjectManifest>,
+    /// The workspace roots as registered by the LSP client
+    workspace_roots: Vec<AbsPathBuf>,
     caps: lsp_types::ClientCapabilities,
     root_path: AbsPathBuf,
     data: ConfigData,
@@ -570,6 +592,7 @@ pub struct LensConfig {
     // runnables
     pub run: bool,
     pub debug: bool,
+    pub interpret: bool,
 
     // implementations
     pub implementations: bool,
@@ -707,11 +730,11 @@ pub struct ClientCommandsConfig {
 }
 
 #[derive(Debug)]
-pub struct ConfigUpdateError {
+pub struct ConfigError {
     errors: Vec<(String, serde_json::Error)>,
 }
 
-impl fmt::Display for ConfigUpdateError {
+impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let errors = self.errors.iter().format_with("\n", |(key, e), f| {
             f(key)?;
@@ -720,8 +743,7 @@ impl fmt::Display for ConfigUpdateError {
         });
         write!(
             f,
-            "rust-analyzer found {} invalid config value{}:\n{}",
-            self.errors.len(),
+            "invalid config value{}:\n{}",
             if self.errors.len() == 1 { "" } else { "s" },
             errors
         )
@@ -738,7 +760,7 @@ impl Config {
             caps,
             data: ConfigData::default(),
             detached_files: Vec::new(),
-            discovered_projects: None,
+            discovered_projects: Vec::new(),
             root_path,
             snippets: Default::default(),
             workspace_roots,
@@ -751,10 +773,20 @@ impl Config {
         if discovered.is_empty() {
             tracing::error!("failed to find any projects in {:?}", &self.workspace_roots);
         }
-        self.discovered_projects = Some(discovered);
+        self.discovered_projects = discovered;
     }
 
-    pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigUpdateError> {
+    pub fn remove_workspace(&mut self, path: &AbsPath) {
+        if let Some(position) = self.workspace_roots.iter().position(|it| it == path) {
+            self.workspace_roots.remove(position);
+        }
+    }
+
+    pub fn add_workspaces(&mut self, paths: impl Iterator<Item = AbsPathBuf>) {
+        self.workspace_roots.extend(paths);
+    }
+
+    pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigError> {
         tracing::info!("updating config from JSON: {:#}", json);
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return Ok(());
@@ -801,7 +833,7 @@ impl Config {
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(ConfigUpdateError { errors })
+            Err(ConfigError { errors })
         }
     }
 
@@ -856,25 +888,19 @@ impl Config {
     pub fn linked_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
             [] => {
-                match self.discovered_projects.as_ref() {
-                    Some(discovered_projects) => {
-                        let exclude_dirs: Vec<_> = self
-                            .data
-                            .files_excludeDirs
-                            .iter()
-                            .map(|p| self.root_path.join(p))
-                            .collect();
-                        discovered_projects
-                        .iter()
-                        .filter(|(ProjectManifest::ProjectJson(path) | ProjectManifest::CargoToml(path))| {
+                let exclude_dirs: Vec<_> =
+                    self.data.files_excludeDirs.iter().map(|p| self.root_path.join(p)).collect();
+                self.discovered_projects
+                    .iter()
+                    .filter(
+                        |(ProjectManifest::ProjectJson(path)
+                         | ProjectManifest::CargoToml(path))| {
                             !exclude_dirs.iter().any(|p| path.starts_with(p))
-                        })
-                        .cloned()
-                        .map(LinkedProject::from)
-                        .collect()
-                    }
-                    None => Vec::new(),
-                }
+                        },
+                    )
+                    .cloned()
+                    .map(LinkedProject::from)
+                    .collect()
             }
             linked_projects => linked_projects
                 .iter()
@@ -1013,6 +1039,11 @@ impl Config {
         .is_some()
     }
 
+    pub fn semantics_tokens_augments_syntax_tokens(&self) -> bool {
+        try_!(self.caps.text_document.as_ref()?.semantic_tokens.as_ref()?.augments_syntax_tokens?)
+            .unwrap_or(false)
+    }
+
     pub fn position_encoding(&self) -> PositionEncoding {
         negotiated_encoding(&self.caps)
     }
@@ -1023,6 +1054,10 @@ impl Config {
 
     pub fn code_action_group(&self) -> bool {
         self.experimental("codeActionGroup")
+    }
+
+    pub fn local_docs(&self) -> bool {
+        self.experimental("localDocs")
     }
 
     pub fn open_server_logs(&self) -> bool {
@@ -1085,25 +1120,25 @@ impl Config {
         extra_env
     }
 
-    pub fn lru_capacity(&self) -> Option<usize> {
+    pub fn lru_parse_query_capacity(&self) -> Option<usize> {
         self.data.lru_capacity
     }
 
-    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, /* is path explicitly set */ bool)> {
-        if !self.data.procMacro_enable {
-            return None;
-        }
-        Some(match &self.data.procMacro_server {
-            Some(it) => (
-                AbsPathBuf::try_from(it.clone()).unwrap_or_else(|path| self.root_path.join(path)),
-                true,
-            ),
-            None => (AbsPathBuf::assert(std::env::current_exe().ok()?), false),
-        })
+    pub fn lru_query_capacities(&self) -> Option<&FxHashMap<Box<str>, usize>> {
+        self.data.lru_query_capacities.is_empty().not().then(|| &self.data.lru_query_capacities)
+    }
+
+    pub fn proc_macro_srv(&self) -> Option<AbsPathBuf> {
+        let path = self.data.procMacro_server.clone()?;
+        Some(AbsPathBuf::try_from(path).unwrap_or_else(|path| self.root_path.join(&path)))
     }
 
     pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
         &self.data.procMacro_ignored
+    }
+
+    pub fn expand_proc_macros(&self) -> bool {
+        self.data.procMacro_enable
     }
 
     pub fn expand_proc_attr_macros(&self) -> bool {
@@ -1164,7 +1199,34 @@ impl Config {
             sysroot,
             sysroot_src,
             rustc_source,
-            unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
+            cfg_overrides: project_model::CfgOverrides {
+                global: CfgDiff::new(
+                    self.data
+                        .cargo_cfgs
+                        .iter()
+                        .map(|(key, val)| {
+                            if val.is_empty() {
+                                CfgAtom::Flag(key.into())
+                            } else {
+                                CfgAtom::KeyValue { key: key.into(), value: val.into() }
+                            }
+                        })
+                        .collect(),
+                    vec![],
+                )
+                .unwrap(),
+                selective: self
+                    .data
+                    .cargo_unsetTest
+                    .iter()
+                    .map(|it| {
+                        (
+                            it.clone(),
+                            CfgDiff::new(vec![], vec![CfgAtom::Flag("test".into())]).unwrap(),
+                        )
+                    })
+                    .collect(),
+            },
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
             invocation_strategy: match self.data.cargo_buildScripts_invocationStrategy {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
@@ -1291,6 +1353,13 @@ impl Config {
             hide_closure_initialization_hints: self
                 .data
                 .inlayHints_typeHints_hideClosureInitialization,
+            closure_style: match self.data.inlayHints_closureStyle {
+                ClosureStyle::ImplFn => hir::ClosureStyle::ImplFn,
+                ClosureStyle::RustAnalyzer => hir::ClosureStyle::RANotation,
+                ClosureStyle::WithId => hir::ClosureStyle::ClosureWithId,
+                ClosureStyle::Hide => hir::ClosureStyle::Hide,
+            },
+            closure_capture_hints: self.data.inlayHints_closureCaptureHints_enable,
             adjustment_hints: match self.data.inlayHints_expressionAdjustmentHints_enable {
                 AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
                 AdjustmentHintsDef::Never => match self.data.inlayHints_reborrowHints_enable {
@@ -1409,6 +1478,9 @@ impl Config {
         LensConfig {
             run: self.data.lens_enable && self.data.lens_run_enable,
             debug: self.data.lens_enable && self.data.lens_debug_enable,
+            interpret: self.data.lens_enable
+                && self.data.lens_run_enable
+                && self.data.interpret_tests,
             implementations: self.data.lens_enable && self.data.lens_implementations_enable,
             method_refs: self.data.lens_enable && self.data.lens_references_method_enable,
             refs_adt: self.data.lens_enable && self.data.lens_references_adt_enable,
@@ -1430,6 +1502,10 @@ impl Config {
         }
     }
 
+    pub fn highlighting_non_standard_tokens(&self) -> bool {
+        self.data.semanticHighlighting_nonStandardTokens
+    }
+
     pub fn highlighting_config(&self) -> HighlightConfig {
         HighlightConfig {
             strings: self.data.semanticHighlighting_strings_enable,
@@ -1446,8 +1522,19 @@ impl Config {
     }
 
     pub fn hover(&self) -> HoverConfig {
+        let mem_kind = |kind| match kind {
+            MemoryLayoutHoverRenderKindDef::Both => MemoryLayoutHoverRenderKind::Both,
+            MemoryLayoutHoverRenderKindDef::Decimal => MemoryLayoutHoverRenderKind::Decimal,
+            MemoryLayoutHoverRenderKindDef::Hexadecimal => MemoryLayoutHoverRenderKind::Hexadecimal,
+        };
         HoverConfig {
             links_in_hover: self.data.hover_links_enable,
+            memory_layout: self.data.hover_memoryLayout_enable.then_some(MemoryLayoutHoverConfig {
+                size: self.data.hover_memoryLayout_size.map(mem_kind),
+                offset: self.data.hover_memoryLayout_offset.map(mem_kind),
+                alignment: self.data.hover_memoryLayout_alignment.map(mem_kind),
+                niches: self.data.hover_memoryLayout_niches.unwrap_or_default(),
+            }),
             documentation: self.data.hover_documentation_enable,
             format: {
                 let is_markdown = try_or_def!(self
@@ -1467,7 +1554,6 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
-            interpret_tests: self.data.interpret_tests,
         }
     }
 
@@ -1537,6 +1623,7 @@ impl Config {
             break_points: self.data.highlightRelated_breakPoints_enable,
             exit_points: self.data.highlightRelated_exitPoints_enable,
             yield_points: self.data.highlightRelated_yieldPoints_enable,
+            closure_captures: self.data.highlightRelated_closureCaptures_enable,
         }
     }
 
@@ -1657,6 +1744,9 @@ mod de_unit_v {
     named_unit_variant!(reborrow);
     named_unit_variant!(fieldless);
     named_unit_variant!(with_block);
+    named_unit_variant!(decimal);
+    named_unit_variant!(hexadecimal);
+    named_unit_variant!(both);
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -1798,6 +1888,15 @@ enum ClosureReturnTypeHintsDef {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum ClosureStyle {
+    ImplFn,
+    RustAnalyzer,
+    WithId,
+    Hide,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum ReborrowHintsDef {
     #[serde(deserialize_with = "true_or_always")]
@@ -1878,6 +1977,18 @@ enum WorkspaceSymbolSearchKindDef {
     AllSymbols,
 }
 
+#[derive(Deserialize, Debug, Copy, Clone)]
+#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
+pub enum MemoryLayoutHoverRenderKindDef {
+    #[serde(deserialize_with = "de_unit_v::decimal")]
+    Decimal,
+    #[serde(deserialize_with = "de_unit_v::hexadecimal")]
+    Hexadecimal,
+    #[serde(deserialize_with = "de_unit_v::both")]
+    Both,
+}
+
 macro_rules! _config_data {
     (struct $name:ident {
         $(
@@ -1940,7 +2051,7 @@ fn get_field<T: DeserializeOwned>(
     alias: Option<&'static str>,
     default: &str,
 ) -> T {
-    // XXX: check alias first, to work-around the VS Code where it pre-fills the
+    // XXX: check alias first, to work around the VS Code where it pre-fills the
     // defaults instead of sending an empty object.
     alias
         .into_iter()
@@ -1960,7 +2071,9 @@ fn get_field<T: DeserializeOwned>(
                 None
             }
         })
-        .unwrap_or_else(|| serde_json::from_str(default).unwrap())
+        .unwrap_or_else(|| {
+            serde_json::from_str(default).unwrap_or_else(|e| panic!("{e} on: `{default}`"))
+        })
 }
 
 fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json::Value {
@@ -2018,6 +2131,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "object",
         },
         "FxHashMap<String, String>" => set! {
+            "type": "object",
+        },
+        "FxHashMap<Box<str>, usize>" => set! {
             "type": "object",
         },
         "Option<usize>" => set! {
@@ -2169,8 +2285,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Always show adjustment hints as prefix (`*expr`).",
                 "Always show adjustment hints as postfix (`expr.*`).",
-                "Show prefix or postfix depending on which uses less parenthesis, prefering prefix.",
-                "Show prefix or postfix depending on which uses less parenthesis, prefering postfix.",
+                "Show prefix or postfix depending on which uses less parenthesis, preferring prefix.",
+                "Show prefix or postfix depending on which uses less parenthesis, preferring postfix.",
             ]
         },
         "CargoFeaturesDef" => set! {
@@ -2272,6 +2388,32 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 {
                     "type": "array",
                     "items": { "type": "string" }
+                },
+            ],
+        },
+        "ClosureStyle" => set! {
+            "type": "string",
+            "enum": ["impl_fn", "rust_analyzer", "with_id", "hide"],
+            "enumDescriptions": [
+                "`impl_fn`: `impl FnMut(i32, u64) -> i8`",
+                "`rust_analyzer`: `|i32, u64| -> i8`",
+                "`with_id`: `{closure#14352}`, where that id is the unique number of the closure in r-a internals",
+                "`hide`: Shows `...` for every closure type",
+            ],
+        },
+        "Option<MemoryLayoutHoverRenderKindDef>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string",
+                    "enum": ["both", "decimal", "hexadecimal", ],
+                    "enumDescriptions": [
+                        "Render as 12 (0xC)",
+                        "Render as 12",
+                        "Render as 0xC"
+                    ],
                 },
             ],
         },
@@ -2383,5 +2525,44 @@ mod tests {
 
     fn remove_ws(text: &str) -> String {
         text.replace(char::is_whitespace, "")
+    }
+
+    #[test]
+    fn proc_macro_srv_null() {
+        let mut config =
+            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        config
+            .update(serde_json::json!({
+                "procMacro_server": null,
+            }))
+            .unwrap();
+        assert_eq!(config.proc_macro_srv(), None);
+    }
+
+    #[test]
+    fn proc_macro_srv_abs() {
+        let mut config =
+            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        config
+            .update(serde_json::json!({
+                "procMacro": {"server": project_root().display().to_string()}
+            }))
+            .unwrap();
+        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::try_from(project_root()).unwrap()));
+    }
+
+    #[test]
+    fn proc_macro_srv_rel() {
+        let mut config =
+            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        config
+            .update(serde_json::json!({
+                "procMacro": {"server": "./server"}
+            }))
+            .unwrap();
+        assert_eq!(
+            config.proc_macro_srv(),
+            Some(AbsPathBuf::try_from(project_root().join("./server")).unwrap())
+        );
     }
 }

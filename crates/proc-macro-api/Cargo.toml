@@ -19,9 +19,10 @@ object = { version = "0.30.2", default-features = false, features = [
     "macho",
     "pe",
 ] }
-serde = { version = "1.0.137", features = ["derive"] }
-serde_json = { version = "1.0.81", features = ["unbounded_depth"] }
+serde.workspace = true
+serde_json = { workspace = true, features = ["unbounded_depth"] }
 tracing = "0.1.37"
+triomphe.workspace = true
 memmap2 = "0.5.4"
 snap = "1.1.0"
 

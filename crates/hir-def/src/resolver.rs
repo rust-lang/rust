@@ -1,5 +1,5 @@
 //! Name resolution façade.
-use std::{fmt, hash::BuildHasherDefault, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
 use hir_expand::name::{name, Name};
@@ -7,16 +7,18 @@ use indexmap::IndexMap;
 use intern::Interned;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
+use triomphe::Arc;
 
 use crate::{
     body::scope::{ExprScopes, ScopeId},
     builtin_type::BuiltinType,
     db::DefDatabase,
-    expr::{BindingId, ExprId, LabelId},
     generics::{GenericParams, TypeOrConstParamData},
+    hir::{BindingId, ExprId, LabelId},
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
-    nameres::DefMap,
-    path::{ModPath, PathKind},
+    lang_item::LangItemTarget,
+    nameres::{DefMap, MacroSubNs},
+    path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
@@ -78,7 +80,7 @@ enum Scope {
     ExprScope(ExprScope),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TypeNs {
     SelfType(ImplId),
     GenericParam(TypeParamId),
@@ -153,7 +155,8 @@ impl Resolver {
         path: &ModPath,
     ) -> Option<PerNs> {
         let (item_map, module) = self.item_scope();
-        let (module_res, idx) = item_map.resolve_path(db, module, path, BuiltinShadowMode::Module);
+        let (module_res, idx) =
+            item_map.resolve_path(db, module, path, BuiltinShadowMode::Module, None);
         match module_res.take_types()? {
             ModuleDefId::TraitId(it) => {
                 let idx = idx?;
@@ -176,8 +179,27 @@ impl Resolver {
     pub fn resolve_path_in_type_ns(
         &self,
         db: &dyn DefDatabase,
-        path: &ModPath,
+        path: &Path,
     ) -> Option<(TypeNs, Option<usize>)> {
+        let path = match path {
+            Path::Normal { mod_path, .. } => mod_path,
+            Path::LangItem(l) => {
+                return Some((
+                    match *l {
+                        LangItemTarget::Union(x) => TypeNs::AdtId(x.into()),
+                        LangItemTarget::TypeAlias(x) => TypeNs::TypeAliasId(x),
+                        LangItemTarget::Struct(x) => TypeNs::AdtId(x.into()),
+                        LangItemTarget::EnumVariant(x) => TypeNs::EnumVariantId(x),
+                        LangItemTarget::EnumId(x) => TypeNs::AdtId(x.into()),
+                        LangItemTarget::Trait(x) => TypeNs::TraitId(x),
+                        LangItemTarget::Function(_)
+                        | LangItemTarget::ImplDef(_)
+                        | LangItemTarget::Static(_) => return None,
+                    },
+                    None,
+                ))
+            }
+        };
         let first_name = path.segments().first()?;
         let skip_to_mod = path.kind != PathKind::Plain;
         if skip_to_mod {
@@ -217,7 +239,7 @@ impl Resolver {
     pub fn resolve_path_in_type_ns_fully(
         &self,
         db: &dyn DefDatabase,
-        path: &ModPath,
+        path: &Path,
     ) -> Option<TypeNs> {
         let (res, unresolved) = self.resolve_path_in_type_ns(db, path)?;
         if unresolved.is_some() {
@@ -245,8 +267,24 @@ impl Resolver {
     pub fn resolve_path_in_value_ns(
         &self,
         db: &dyn DefDatabase,
-        path: &ModPath,
+        path: &Path,
     ) -> Option<ResolveValueResult> {
+        let path = match path {
+            Path::Normal { mod_path, .. } => mod_path,
+            Path::LangItem(l) => {
+                return Some(ResolveValueResult::ValueNs(match *l {
+                    LangItemTarget::Function(x) => ValueNs::FunctionId(x),
+                    LangItemTarget::Static(x) => ValueNs::StaticId(x),
+                    LangItemTarget::Struct(x) => ValueNs::StructId(x),
+                    LangItemTarget::EnumVariant(x) => ValueNs::EnumVariantId(x),
+                    LangItemTarget::Union(_)
+                    | LangItemTarget::ImplDef(_)
+                    | LangItemTarget::TypeAlias(_)
+                    | LangItemTarget::Trait(_)
+                    | LangItemTarget::EnumId(_) => return None,
+                }))
+            }
+        };
         let n_segments = path.segments().len();
         let tmp = name![self];
         let first_name = if path.is_self() { &tmp } else { path.segments().first()? };
@@ -340,7 +378,7 @@ impl Resolver {
     pub fn resolve_path_in_value_ns_fully(
         &self,
         db: &dyn DefDatabase,
-        path: &ModPath,
+        path: &Path,
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path)? {
             ResolveValueResult::ValueNs(it) => Some(it),
@@ -348,9 +386,17 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroId> {
+    pub fn resolve_path_as_macro(
+        &self,
+        db: &dyn DefDatabase,
+        path: &ModPath,
+        expected_macro_kind: Option<MacroSubNs>,
+    ) -> Option<MacroId> {
         let (item_map, module) = self.item_scope();
-        item_map.resolve_path(db, module, path, BuiltinShadowMode::Other).0.take_macros()
+        item_map
+            .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
+            .0
+            .take_macros()
     }
 
     /// Returns a set of names available in the current scope.
@@ -415,7 +461,10 @@ impl Resolver {
                 res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
             })
         });
-        def_map.extern_prelude().for_each(|(name, &def)| {
+        def_map.macro_use_prelude().for_each(|(name, def)| {
+            res.add(name, ScopeDef::ModuleDef(def.into()));
+        });
+        def_map.extern_prelude().for_each(|(name, def)| {
             res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def)));
         });
         BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
@@ -441,7 +490,7 @@ impl Resolver {
                 &Scope::ImplDefScope(impl_) => {
                     if let Some(target_trait) = &db.impl_data(impl_).target_trait {
                         if let Some(TypeNs::TraitId(trait_)) =
-                            self.resolve_path_in_type_ns_fully(db, target_trait.path.mod_path())
+                            self.resolve_path_in_type_ns_fully(db, &target_trait.path)
                         {
                             traits.insert(trait_);
                         }
@@ -536,15 +585,13 @@ impl Resolver {
                 scope_id,
             }));
             if let Some(block) = expr_scopes.block(scope_id) {
-                if let Some(def_map) = db.block_def_map(block) {
-                    let root = def_map.root();
-                    resolver
-                        .scopes
-                        .push(Scope::BlockScope(ModuleItemMap { def_map, module_id: root }));
-                    // FIXME: This adds as many module scopes as there are blocks, but resolving in each
-                    // already traverses all parents, so this is O(n²). I think we could only store the
-                    // innermost module scope instead?
-                }
+                let def_map = db.block_def_map(block);
+                resolver
+                    .scopes
+                    .push(Scope::BlockScope(ModuleItemMap { def_map, module_id: DefMap::ROOT }));
+                // FIXME: This adds as many module scopes as there are blocks, but resolving in each
+                // already traverses all parents, so this is O(n²). I think we could only store the
+                // innermost module scope instead?
             }
         }
 
@@ -592,7 +639,8 @@ impl Resolver {
         shadow: BuiltinShadowMode,
     ) -> PerNs {
         let (item_map, module) = self.item_scope();
-        let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow);
+        // This method resolves `path` just like import paths, so no expected macro subns is given.
+        let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow, None);
         if segment_index.is_some() {
             return PerNs::none();
         }
@@ -705,13 +753,11 @@ fn resolver_for_scope_(
 
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
-            if let Some(def_map) = db.block_def_map(block) {
-                let root = def_map.root();
-                r = r.push_block_scope(def_map, root);
-                // FIXME: This adds as many module scopes as there are blocks, but resolving in each
-                // already traverses all parents, so this is O(n²). I think we could only store the
-                // innermost module scope instead?
-            }
+            let def_map = db.block_def_map(block);
+            r = r.push_block_scope(def_map, DefMap::ROOT);
+            // FIXME: This adds as many module scopes as there are blocks, but resolving in each
+            // already traverses all parents, so this is O(n²). I think we could only store the
+            // innermost module scope instead?
         }
 
         r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
@@ -997,6 +1043,12 @@ impl HasResolver for GenericDefId {
             GenericDefId::EnumVariantId(inner) => inner.parent.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
         }
+    }
+}
+
+impl HasResolver for EnumVariantId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.parent.resolver(db)
     }
 }
 

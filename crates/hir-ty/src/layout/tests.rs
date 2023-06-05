@@ -2,49 +2,55 @@ use std::collections::HashMap;
 
 use base_db::fixture::WithFixture;
 use chalk_ir::{AdtId, TyKind};
-use hir_def::{
-    db::DefDatabase,
+use hir_def::db::DefDatabase;
+use triomphe::Arc;
+
+use crate::{
+    db::HirDatabase,
     layout::{Layout, LayoutError},
+    test_db::TestDB,
+    Interner, Substitution,
 };
 
-use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
-
-use super::layout_of_ty;
+mod closure;
 
 fn current_machine_data_layout() -> String {
     project_model::target_data_layout::get(None, None, &HashMap::default()).unwrap()
 }
 
-fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutError> {
     let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\n{ra_fixture}",
     );
 
-    let (db, file_id) = TestDB::with_single_file(&ra_fixture);
-    let module_id = db.module_for_file(file_id);
-    let def_map = module_id.def_map(&db);
-    let scope = &def_map[module_id.local_id].scope;
-    let adt_id = scope
-        .declarations()
-        .find_map(|x| match x {
-            hir_def::ModuleDefId::AdtId(x) => {
-                let name = match x {
-                    hir_def::AdtId::StructId(x) => db.struct_data(x).name.to_smol_str(),
-                    hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
-                    hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
-                };
-                (name == "Goal").then_some(x)
-            }
-            _ => None,
+    let (db, file_ids) = TestDB::with_many_files(&ra_fixture);
+    let (adt_id, module_id) = file_ids
+        .into_iter()
+        .find_map(|file_id| {
+            let module_id = db.module_for_file(file_id);
+            let def_map = module_id.def_map(&db);
+            let scope = &def_map[module_id.local_id].scope;
+            let adt_id = scope.declarations().find_map(|x| match x {
+                hir_def::ModuleDefId::AdtId(x) => {
+                    let name = match x {
+                        hir_def::AdtId::StructId(x) => db.struct_data(x).name.to_smol_str(),
+                        hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
+                        hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
+                    };
+                    (name == "Goal").then_some(x)
+                }
+                _ => None,
+            })?;
+            Some((adt_id, module_id))
         })
         .unwrap();
     let goal_ty = TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner);
-    layout_of_ty(&db, &goal_ty, module_id.krate())
+    db.layout_of_ty(goal_ty, module_id.krate())
 }
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
-fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutError> {
     let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\nfn main(){{let goal = {{{ra_fixture}}};}}",
@@ -68,7 +74,7 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
     let b = hir_body.bindings.iter().find(|x| x.1.name.to_smol_str() == "goal").unwrap().0;
     let infer = db.infer(adt_id.into());
     let goal_ty = infer.type_of_binding[b].clone();
-    layout_of_ty(&db, &goal_ty, module_id.krate())
+    db.layout_of_ty(goal_ty, module_id.krate())
 }
 
 #[track_caller]
@@ -81,8 +87,8 @@ fn check_size_and_align(ra_fixture: &str, minicore: &str, size: u64, align: u64)
 #[track_caller]
 fn check_size_and_align_expr(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
     let l = eval_expr(ra_fixture, minicore).unwrap();
-    assert_eq!(l.size.bytes(), size);
-    assert_eq!(l.align.abi.bytes(), align);
+    assert_eq!(l.size.bytes(), size, "size mismatch");
+    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
@@ -118,13 +124,31 @@ macro_rules! size_and_align {
     };
 }
 
+#[macro_export]
 macro_rules! size_and_align_expr {
+    (minicore: $($x:tt),*; stmts: [$($s:tt)*] $($t:tt)*) => {
+        {
+            #[allow(dead_code)]
+            #[allow(unused_must_use)]
+            #[allow(path_statements)]
+            {
+                $($s)*
+                let val = { $($t)* };
+                $crate::layout::tests::check_size_and_align_expr(
+                    &format!("{{ {} let val = {{ {} }}; val }}", stringify!($($s)*), stringify!($($t)*)),
+                    &format!("//- minicore: {}\n", stringify!($($x),*)),
+                    ::std::mem::size_of_val(&val) as u64,
+                    ::std::mem::align_of_val(&val) as u64,
+                );
+            }
+        }
+    };
     ($($t:tt)*) => {
         {
             #[allow(dead_code)]
             {
                 let val = { $($t)* };
-                check_size_and_align_expr(
+                $crate::layout::tests::check_size_and_align_expr(
                     stringify!($($t)*),
                     "",
                     ::std::mem::size_of_val(&val) as u64,
@@ -197,6 +221,44 @@ fn generic() {
 }
 
 #[test]
+fn associated_types() {
+    size_and_align! {
+        trait Tr {
+            type Ty;
+        }
+
+        impl Tr for i32 {
+            type Ty = i64;
+        }
+
+        struct Foo<A: Tr>(<A as Tr>::Ty);
+        struct Bar<A: Tr>(A::Ty);
+        struct Goal(Foo<i32>, Bar<i32>, <i32 as Tr>::Ty);
+    }
+    check_size_and_align(
+        r#"
+//- /b/mod.rs crate:b
+pub trait Tr {
+    type Ty;
+}
+pub struct Foo<A: Tr>(<A as Tr>::Ty);
+
+//- /a/mod.rs crate:a deps:b
+use b::{Tr, Foo};
+
+struct S;
+impl Tr for S {
+    type Ty = i64;
+}
+struct Goal(Foo<S>);
+        "#,
+        "",
+        8,
+        8,
+    );
+}
+
+#[test]
 fn return_position_impl_trait() {
     size_and_align_expr! {
         trait T {}
@@ -211,6 +273,45 @@ fn return_position_impl_trait() {
         impl T for i64 {}
         fn foo() -> (impl T, impl T, impl T) { (2i64, 5i32, 7i32) }
         foo()
+    }
+    size_and_align_expr! {
+        minicore: iterators;
+        stmts: []
+        trait Tr {}
+        impl Tr for i32 {}
+        fn foo() -> impl Iterator<Item = impl Tr> {
+            [1, 2, 3].into_iter()
+        }
+        let mut iter = foo();
+        let item = iter.next();
+        (iter, item)
+    }
+    size_and_align_expr! {
+        minicore: future;
+        stmts: []
+        use core::{future::Future, task::{Poll, Context}, pin::pin};
+        use std::{task::Wake, sync::Arc};
+        trait Tr {}
+        impl Tr for i32 {}
+        async fn f() -> impl Tr {
+            2
+        }
+        fn unwrap_fut<T>(inp: impl Future<Output = T>) -> Poll<T> {
+            // In a normal test we could use `loop {}` or `panic!()` here,
+            // but rustc actually runs this code.
+            let pinned = pin!(inp);
+            struct EmptyWaker;
+            impl Wake for EmptyWaker {
+                fn wake(self: Arc<Self>) {
+                }
+            }
+            let waker = Arc::new(EmptyWaker).into();
+            let mut context = Context::from_waker(&waker);
+            let x = pinned.poll(&mut context);
+            x
+        }
+        let x = unwrap_fut(f());
+        x
     }
     size_and_align_expr! {
         struct Foo<T>(T, T, (T, T));
@@ -273,6 +374,14 @@ fn niche_optimization() {
     size_and_align! {
         minicore: option;
         struct Goal(Option<Option<bool>>);
+    }
+}
+
+#[test]
+fn const_eval() {
+    size_and_align! {
+        const X: usize = 5;
+        struct Goal([i32; X]);
     }
 }
 

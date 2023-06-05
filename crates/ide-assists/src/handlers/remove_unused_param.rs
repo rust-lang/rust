@@ -232,7 +232,7 @@ fn b() { foo( ) }
     }
 
     #[test]
-    fn remove_unused_surrounded_by_parms() {
+    fn remove_unused_surrounded_by_params() {
         check_assist(
             remove_unused_param,
             r#"

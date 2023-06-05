@@ -1,6 +1,6 @@
 //! AST -> `ItemTree` lowering code.
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::collections::hash_map::Entry;
 
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
 use syntax::ast::{self, HasModuleItem, HasTypeBounds};
@@ -20,7 +20,7 @@ pub(super) struct Ctx<'a> {
     db: &'a dyn DefDatabase,
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
-    body_ctx: crate::body::LowerCtx<'a>,
+    body_ctx: crate::lower::LowerCtx<'a>,
 }
 
 impl<'a> Ctx<'a> {
@@ -29,7 +29,7 @@ impl<'a> Ctx<'a> {
             db,
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
-            body_ctx: crate::body::LowerCtx::new(db, file),
+            body_ctx: crate::lower::LowerCtx::with_file_id(db, file),
         }
     }
 
@@ -293,7 +293,7 @@ impl<'a> Ctx<'a> {
                     }
                 };
                 let ty = Interned::new(self_type);
-                let idx = self.data().params.alloc(Param::Normal(None, ty));
+                let idx = self.data().params.alloc(Param::Normal(ty));
                 self.add_attrs(
                     idx.into(),
                     RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
@@ -306,19 +306,7 @@ impl<'a> Ctx<'a> {
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        let mut pat = param.pat();
-                        // FIXME: This really shouldn't be here, in fact FunctionData/ItemTree's function shouldn't know about
-                        // pattern names at all
-                        let name = 'name: loop {
-                            match pat {
-                                Some(ast::Pat::RefPat(ref_pat)) => pat = ref_pat.pat(),
-                                Some(ast::Pat::IdentPat(ident)) => {
-                                    break 'name ident.name().map(|it| it.as_name())
-                                }
-                                _ => break 'name None,
-                            }
-                        };
-                        self.data().params.alloc(Param::Normal(name, ty))
+                        self.data().params.alloc(Param::Normal(ty))
                     }
                 };
                 self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));
@@ -336,13 +324,12 @@ impl<'a> Ctx<'a> {
             None => TypeRef::unit(),
         };
 
-        let (ret_type, async_ret_type) = if func.async_token().is_some() {
-            let async_ret_type = ret_type.clone();
+        let ret_type = if func.async_token().is_some() {
             let future_impl = desugar_future_path(ret_type);
             let ty_bound = Interned::new(TypeBound::Path(future_impl, TraitBoundModifier::None));
-            (TypeRef::ImplTrait(vec![ty_bound]), Some(async_ret_type))
+            TypeRef::ImplTrait(vec![ty_bound])
         } else {
-            (ret_type, None)
+            ret_type
         };
 
         let abi = func.abi().map(lower_abi);
@@ -376,7 +363,6 @@ impl<'a> Ctx<'a> {
             abi,
             params,
             ret_type: Interned::new(ret_type),
-            async_ret_type: async_ret_type.map(Interned::new),
             ast_id,
             flags,
         };

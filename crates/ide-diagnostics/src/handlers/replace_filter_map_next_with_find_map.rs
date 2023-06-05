@@ -28,7 +28,7 @@ fn fixes(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::ReplaceFilterMapNextWithFindMap,
 ) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.file)?;
+    let root = ctx.sema.db.parse_or_expand(d.file);
     let next_expr = d.next_expr.to_node(&root);
     let next_call = ast::MethodCallExpr::cast(next_expr.syntax().clone())?;
 
@@ -115,7 +115,7 @@ fn foo() {
             r#"
 //- minicore: iterators
 fn foo() {
-    let m = core::iter::repeat(())
+    let mut m = core::iter::repeat(())
         .filter_map(|()| Some(92));
     let n = m.next();
 }

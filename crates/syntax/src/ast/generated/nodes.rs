@@ -121,6 +121,8 @@ impl ast::HasTypeBounds for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
+    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
+    pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
@@ -1375,6 +1377,7 @@ pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
 }
 impl LiteralPat {
+    pub fn minus_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![-]) }
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
 }
 

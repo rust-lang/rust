@@ -55,7 +55,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
     let returned_type = match ctx.sema.type_of_expr(&initializer) {
         Some(returned_type) if !returned_type.original.contains_unknown() => {
             let module = ctx.sema.scope(let_stmt.syntax())?.module();
-            returned_type.original.display_source_code(ctx.db(), module.into()).ok()?
+            returned_type.original.display_source_code(ctx.db(), module.into(), false).ok()?
         }
         _ => {
             cov_mark::hit!(fallback_to_turbofish_type_if_type_info_not_available);

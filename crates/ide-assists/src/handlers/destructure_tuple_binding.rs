@@ -91,7 +91,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
         return None;
     }
 
-    let ty = ctx.sema.type_of_pat(&ident_pat.clone().into())?.adjusted();
+    let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
     let ref_type = if ty.is_mutable_reference() {
         Some(RefType::Mutable)
     } else if ty.is_reference() {

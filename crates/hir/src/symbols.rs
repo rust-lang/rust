@@ -2,23 +2,25 @@
 
 use base_db::FileRange;
 use hir_def::{
-    item_tree::ItemTreeNode, src::HasSource, AdtId, AssocItemId, AssocItemLoc, DefWithBodyId,
-    HasModule, ImplId, ItemContainerId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
+    src::HasSource, AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
 use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
 
-use crate::{Module, Semantics};
+use crate::{Module, ModuleDef, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
+    // even though name can be derived from the def, we store it for efficiency
     pub name: SmolStr,
+    pub def: ModuleDef,
     pub loc: DeclarationLocation,
-    pub kind: FileSymbolKind,
     pub container_name: Option<SmolStr>,
+    pub is_alias: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -32,18 +34,26 @@ pub struct DeclarationLocation {
 }
 
 impl DeclarationLocation {
-    pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<'_, DB>) -> Option<SyntaxNode> {
-        let root = sema.parse_or_expand(self.hir_file_id)?;
-        Some(self.ptr.to_node(&root))
+    pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<'_, DB>) -> SyntaxNode {
+        let root = sema.parse_or_expand(self.hir_file_id);
+        self.ptr.to_node(&root)
     }
 
-    pub fn original_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
-        let node = resolve_node(db, self.hir_file_id, &self.ptr)?;
-        Some(node.as_ref().original_file_range(db.upcast()))
+    pub fn original_range(&self, db: &dyn HirDatabase) -> FileRange {
+        if let Some(file_id) = self.hir_file_id.file_id() {
+            // fast path to prevent parsing
+            return FileRange { file_id, range: self.ptr.text_range() };
+        }
+        let node = resolve_node(db, self.hir_file_id, &self.ptr);
+        node.as_ref().original_file_range(db.upcast())
     }
 
     pub fn original_name_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
-        let node = resolve_node(db, self.hir_file_id, &self.name_ptr)?;
+        if let Some(file_id) = self.hir_file_id.file_id() {
+            // fast path to prevent parsing
+            return Some(FileRange { file_id, range: self.name_ptr.text_range() });
+        }
+        let node = resolve_node(db, self.hir_file_id, &self.name_ptr);
         node.as_ref().original_file_range_opt(db.upcast())
     }
 }
@@ -52,38 +62,10 @@ fn resolve_node(
     db: &dyn HirDatabase,
     file_id: HirFileId,
     ptr: &SyntaxNodePtr,
-) -> Option<InFile<SyntaxNode>> {
-    let root = db.parse_or_expand(file_id)?;
+) -> InFile<SyntaxNode> {
+    let root = db.parse_or_expand(file_id);
     let node = ptr.to_node(&root);
-    Some(InFile::new(file_id, node))
-}
-
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub enum FileSymbolKind {
-    Const,
-    Enum,
-    Function,
-    Macro,
-    Module,
-    Static,
-    Struct,
-    Trait,
-    TraitAlias,
-    TypeAlias,
-    Union,
-}
-
-impl FileSymbolKind {
-    pub fn is_type(self: FileSymbolKind) -> bool {
-        matches!(
-            self,
-            FileSymbolKind::Struct
-                | FileSymbolKind::Enum
-                | FileSymbolKind::Trait
-                | FileSymbolKind::TypeAlias
-                | FileSymbolKind::Union
-        )
-    }
+    InFile::new(file_id, node)
 }
 
 /// Represents an outstanding module that the symbol collector must collect symbols from.
@@ -102,21 +84,33 @@ pub struct SymbolCollector<'a> {
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
 /// all symbols that should be indexed for the given module.
 impl<'a> SymbolCollector<'a> {
-    pub fn collect(db: &dyn HirDatabase, module: Module) -> Vec<FileSymbol> {
-        let mut symbol_collector = SymbolCollector {
+    pub fn new(db: &'a dyn HirDatabase) -> Self {
+        SymbolCollector {
             db,
             symbols: Default::default(),
+            work: Default::default(),
             current_container_name: None,
-            // The initial work is the root module we're collecting, additional work will
-            // be populated as we traverse the module's definitions.
-            work: vec![SymbolCollectorWork { module_id: module.into(), parent: None }],
-        };
-
-        while let Some(work) = symbol_collector.work.pop() {
-            symbol_collector.do_work(work);
         }
+    }
 
-        symbol_collector.symbols
+    pub fn collect(&mut self, module: Module) {
+        // The initial work is the root module we're collecting, additional work will
+        // be populated as we traverse the module's definitions.
+        self.work.push(SymbolCollectorWork { module_id: module.into(), parent: None });
+
+        while let Some(work) = self.work.pop() {
+            self.do_work(work);
+        }
+    }
+
+    pub fn finish(self) -> Vec<FileSymbol> {
+        self.symbols
+    }
+
+    pub fn collect_module(db: &dyn HirDatabase, module: Module) -> Vec<FileSymbol> {
+        let mut symbol_collector = SymbolCollector::new(db);
+        symbol_collector.collect(module);
+        symbol_collector.finish()
     }
 
     fn do_work(&mut self, work: SymbolCollectorWork) {
@@ -134,36 +128,34 @@ impl<'a> SymbolCollector<'a> {
             match module_def_id {
                 ModuleDefId::ModuleId(id) => self.push_module(id),
                 ModuleDefId::FunctionId(id) => {
-                    self.push_decl_assoc(id, FileSymbolKind::Function);
+                    self.push_decl(id);
                     self.collect_from_body(id);
                 }
-                ModuleDefId::AdtId(AdtId::StructId(id)) => {
-                    self.push_decl(id, FileSymbolKind::Struct)
-                }
-                ModuleDefId::AdtId(AdtId::EnumId(id)) => self.push_decl(id, FileSymbolKind::Enum),
-                ModuleDefId::AdtId(AdtId::UnionId(id)) => self.push_decl(id, FileSymbolKind::Union),
+                ModuleDefId::AdtId(AdtId::StructId(id)) => self.push_decl(id),
+                ModuleDefId::AdtId(AdtId::EnumId(id)) => self.push_decl(id),
+                ModuleDefId::AdtId(AdtId::UnionId(id)) => self.push_decl(id),
                 ModuleDefId::ConstId(id) => {
-                    self.push_decl_assoc(id, FileSymbolKind::Const);
+                    self.push_decl(id);
                     self.collect_from_body(id);
                 }
                 ModuleDefId::StaticId(id) => {
-                    self.push_decl_assoc(id, FileSymbolKind::Static);
+                    self.push_decl(id);
                     self.collect_from_body(id);
                 }
                 ModuleDefId::TraitId(id) => {
-                    self.push_decl(id, FileSymbolKind::Trait);
+                    self.push_decl(id);
                     self.collect_from_trait(id);
                 }
                 ModuleDefId::TraitAliasId(id) => {
-                    self.push_decl(id, FileSymbolKind::TraitAlias);
+                    self.push_decl(id);
                 }
                 ModuleDefId::TypeAliasId(id) => {
-                    self.push_decl_assoc(id, FileSymbolKind::TypeAlias);
+                    self.push_decl(id);
                 }
                 ModuleDefId::MacroId(id) => match id {
-                    MacroId::Macro2Id(id) => self.push_decl(id, FileSymbolKind::Macro),
-                    MacroId::MacroRulesId(id) => self.push_decl(id, FileSymbolKind::Macro),
-                    MacroId::ProcMacroId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                    MacroId::Macro2Id(id) => self.push_decl(id),
+                    MacroId::MacroRulesId(id) => self.push_decl(id),
+                    MacroId::ProcMacroId(id) => self.push_decl(id),
                 },
                 // Don't index these.
                 ModuleDefId::BuiltinType(_) => {}
@@ -183,9 +175,9 @@ impl<'a> SymbolCollector<'a> {
             for &id in id {
                 if id.module(self.db.upcast()) == module_id {
                     match id {
-                        MacroId::Macro2Id(id) => self.push_decl(id, FileSymbolKind::Macro),
-                        MacroId::MacroRulesId(id) => self.push_decl(id, FileSymbolKind::Macro),
-                        MacroId::ProcMacroId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                        MacroId::Macro2Id(id) => self.push_decl(id),
+                        MacroId::MacroRulesId(id) => self.push_decl(id),
+                        MacroId::ProcMacroId(id) => self.push_decl(id),
                     }
                 }
             }
@@ -233,124 +225,94 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
-    fn current_container_name(&self) -> Option<SmolStr> {
-        self.current_container_name.clone()
-    }
-
     fn def_with_body_id_name(&self, body_id: DefWithBodyId) -> Option<SmolStr> {
         match body_id {
-            DefWithBodyId::FunctionId(id) => Some(
-                id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
-            ),
-            DefWithBodyId::StaticId(id) => Some(
-                id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
-            ),
-            DefWithBodyId::ConstId(id) => Some(
-                id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
-            ),
-            DefWithBodyId::VariantId(id) => Some({
-                let db = self.db.upcast();
-                id.parent.lookup(db).source(db).value.name()?.text().into()
-            }),
+            DefWithBodyId::FunctionId(id) => Some(self.db.function_data(id).name.to_smol_str()),
+            DefWithBodyId::StaticId(id) => Some(self.db.static_data(id).name.to_smol_str()),
+            DefWithBodyId::ConstId(id) => Some(self.db.const_data(id).name.as_ref()?.to_smol_str()),
+            DefWithBodyId::VariantId(id) => {
+                Some(self.db.enum_data(id.parent).variants[id.local_id].name.to_smol_str())
+            }
         }
     }
 
     fn push_assoc_item(&mut self, assoc_item_id: AssocItemId) {
         match assoc_item_id {
-            AssocItemId::FunctionId(id) => self.push_decl_assoc(id, FileSymbolKind::Function),
-            AssocItemId::ConstId(id) => self.push_decl_assoc(id, FileSymbolKind::Const),
-            AssocItemId::TypeAliasId(id) => self.push_decl_assoc(id, FileSymbolKind::TypeAlias),
+            AssocItemId::FunctionId(id) => self.push_decl(id),
+            AssocItemId::ConstId(id) => self.push_decl(id),
+            AssocItemId::TypeAliasId(id) => self.push_decl(id),
         }
     }
 
-    fn push_decl_assoc<L, T>(&mut self, id: L, kind: FileSymbolKind)
+    fn push_decl<L>(&mut self, id: L)
     where
-        L: Lookup<Data = AssocItemLoc<T>>,
-        T: ItemTreeNode,
-        <T as ItemTreeNode>::Source: HasName,
-    {
-        fn container_name(db: &dyn HirDatabase, container: ItemContainerId) -> Option<SmolStr> {
-            match container {
-                ItemContainerId::ModuleId(module_id) => {
-                    let module = Module::from(module_id);
-                    module.name(db).and_then(|name| name.as_text())
-                }
-                ItemContainerId::TraitId(trait_id) => {
-                    let trait_data = db.trait_data(trait_id);
-                    trait_data.name.as_text()
-                }
-                ItemContainerId::ImplId(_) | ItemContainerId::ExternBlockId(_) => None,
-            }
-        }
-
-        self.push_file_symbol(|s| {
-            let loc = id.lookup(s.db.upcast());
-            let source = loc.source(s.db.upcast());
-            let name_node = source.value.name()?;
-            let container_name =
-                container_name(s.db, loc.container).or_else(|| s.current_container_name());
-
-            Some(FileSymbol {
-                name: name_node.text().into(),
-                kind,
-                container_name,
-                loc: DeclarationLocation {
-                    hir_file_id: source.file_id,
-                    ptr: SyntaxNodePtr::new(source.value.syntax()),
-                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-                },
-            })
-        })
-    }
-
-    fn push_decl<L>(&mut self, id: L, kind: FileSymbolKind)
-    where
-        L: Lookup,
+        L: Lookup + Into<ModuleDefId>,
         <L as Lookup>::Data: HasSource,
         <<L as Lookup>::Data as HasSource>::Value: HasName,
     {
-        self.push_file_symbol(|s| {
-            let loc = id.lookup(s.db.upcast());
-            let source = loc.source(s.db.upcast());
-            let name_node = source.value.name()?;
+        let loc = id.lookup(self.db.upcast());
+        let source = loc.source(self.db.upcast());
+        let Some(name_node) = source.value.name() else { return };
+        let def = ModuleDef::from(id.into());
+        let dec_loc = DeclarationLocation {
+            hir_file_id: source.file_id,
+            ptr: SyntaxNodePtr::new(source.value.syntax()),
+            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+        };
 
-            Some(FileSymbol {
-                name: name_node.text().into(),
-                kind,
-                container_name: s.current_container_name(),
-                loc: DeclarationLocation {
-                    hir_file_id: source.file_id,
-                    ptr: SyntaxNodePtr::new(source.value.syntax()),
-                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-                },
-            })
-        })
+        if let Some(attrs) = def.attrs(self.db) {
+            for alias in attrs.doc_aliases() {
+                self.symbols.push(FileSymbol {
+                    name: alias,
+                    def,
+                    loc: dec_loc.clone(),
+                    container_name: self.current_container_name.clone(),
+                    is_alias: true,
+                });
+            }
+        }
+
+        self.symbols.push(FileSymbol {
+            name: name_node.text().into(),
+            def,
+            container_name: self.current_container_name.clone(),
+            loc: dec_loc,
+            is_alias: false,
+        });
     }
 
     fn push_module(&mut self, module_id: ModuleId) {
-        self.push_file_symbol(|s| {
-            let def_map = module_id.def_map(s.db.upcast());
-            let module_data = &def_map[module_id.local_id];
-            let declaration = module_data.origin.declaration()?;
-            let module = declaration.to_node(s.db.upcast());
-            let name_node = module.name()?;
+        let def_map = module_id.def_map(self.db.upcast());
+        let module_data = &def_map[module_id.local_id];
+        let Some(declaration) = module_data.origin.declaration() else { return };
+        let module = declaration.to_node(self.db.upcast());
+        let Some(name_node) = module.name() else { return };
+        let dec_loc = DeclarationLocation {
+            hir_file_id: declaration.file_id,
+            ptr: SyntaxNodePtr::new(module.syntax()),
+            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+        };
 
-            Some(FileSymbol {
-                name: name_node.text().into(),
-                kind: FileSymbolKind::Module,
-                container_name: s.current_container_name(),
-                loc: DeclarationLocation {
-                    hir_file_id: declaration.file_id,
-                    ptr: SyntaxNodePtr::new(module.syntax()),
-                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-                },
-            })
-        })
-    }
+        let def = ModuleDef::Module(module_id.into());
 
-    fn push_file_symbol(&mut self, f: impl FnOnce(&Self) -> Option<FileSymbol>) {
-        if let Some(file_symbol) = f(self) {
-            self.symbols.push(file_symbol);
+        if let Some(attrs) = def.attrs(self.db) {
+            for alias in attrs.doc_aliases() {
+                self.symbols.push(FileSymbol {
+                    name: alias,
+                    def,
+                    loc: dec_loc.clone(),
+                    container_name: self.current_container_name.clone(),
+                    is_alias: true,
+                });
+            }
         }
+
+        self.symbols.push(FileSymbol {
+            name: name_node.text().into(),
+            def: ModuleDef::Module(module_id.into()),
+            container_name: self.current_container_name.clone(),
+            loc: dec_loc,
+            is_alias: false,
+        });
     }
 }

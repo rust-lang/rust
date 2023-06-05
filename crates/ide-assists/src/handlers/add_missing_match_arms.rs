@@ -148,7 +148,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             return None;
         }
 
-        let variants_of_enums = vec![variants.clone(); len];
+        let variants_of_enums = vec![variants; len];
 
         let missing_pats = variants_of_enums
             .into_iter()

@@ -62,7 +62,9 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
     let assist_label = match target_name {
         None => format!("Change visibility to {missing_visibility}"),
-        Some(name) => format!("Change visibility of {name} to {missing_visibility}"),
+        Some(name) => {
+            format!("Change visibility of {} to {missing_visibility}", name.display(ctx.db()))
+        }
     };
 
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
@@ -117,8 +119,11 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     let target_file = in_file_source.file_id.original_file(ctx.db());
 
     let target_name = record_field_def.name(ctx.db());
-    let assist_label =
-        format!("Change visibility of {parent_name}.{target_name} to {missing_visibility}");
+    let assist_label = format!(
+        "Change visibility of {}.{} to {missing_visibility}",
+        parent_name.display(ctx.db()),
+        target_name.display(ctx.db())
+    );
 
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
         builder.edit_file(target_file);

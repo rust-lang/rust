@@ -25,7 +25,6 @@ mod diff;
 mod dispatch;
 mod from_proto;
 mod global_state;
-mod handlers;
 mod line_index;
 mod lsp_utils;
 mod main_loop;
@@ -37,6 +36,11 @@ mod semantic_tokens;
 mod task_pool;
 mod to_proto;
 mod version;
+
+mod handlers {
+    pub(crate) mod notification;
+    pub(crate) mod request;
+}
 
 pub mod config;
 pub mod lsp_ext;

@@ -26,7 +26,7 @@ pub(crate) fn unresolved_method(
         "unresolved-method",
         format!(
             "no method `{}` on type `{}`{field_suffix}",
-            d.name,
+            d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
         ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
@@ -53,7 +53,7 @@ fn field_fix(
         return None;
     }
     let expr_ptr = &d.expr;
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id)?;
+    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     let (file_id, range) = match expr {
         ast::Expr::MethodCallExpr(mcall) => {

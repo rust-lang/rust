@@ -140,6 +140,7 @@ fn infer_path_qualified_macros_expanded() {
 fn expr_macro_def_expanded_in_various_places() {
     check_infer(
         r#"
+        //- minicore: iterator
         macro spam() {
             1isize
         }
@@ -195,10 +196,19 @@ fn expr_macro_def_expanded_in_various_places() {
             !0..6 '1isize': isize
             39..442 '{     ...!(); }': ()
             73..94 'spam!(...am!())': {unknown}
+            100..119 'for _ ...!() {}': fn into_iter<isize>(isize) -> <isize as IntoIterator>::IntoIter
+            100..119 'for _ ...!() {}': IntoIterator::IntoIter<isize>
+            100..119 'for _ ...!() {}': !
+            100..119 'for _ ...!() {}': IntoIterator::IntoIter<isize>
+            100..119 'for _ ...!() {}': &mut IntoIterator::IntoIter<isize>
+            100..119 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
+            100..119 'for _ ...!() {}': Option<Iterator::Item<IntoIterator::IntoIter<isize>>>
             100..119 'for _ ...!() {}': ()
-            104..105 '_': {unknown}
+            100..119 'for _ ...!() {}': ()
+            100..119 'for _ ...!() {}': ()
+            104..105 '_': Iterator::Item<IntoIterator::IntoIter<isize>>
             117..119 '{}': ()
-            124..134 '|| spam!()': || -> isize
+            124..134 '|| spam!()': impl Fn() -> isize
             140..156 'while ...!() {}': ()
             154..156 '{}': ()
             161..174 'break spam!()': !
@@ -221,6 +231,7 @@ fn expr_macro_def_expanded_in_various_places() {
 fn expr_macro_rules_expanded_in_various_places() {
     check_infer(
         r#"
+        //- minicore: iterator
         macro_rules! spam {
             () => (1isize);
         }
@@ -276,10 +287,19 @@ fn expr_macro_rules_expanded_in_various_places() {
             !0..6 '1isize': isize
             53..456 '{     ...!(); }': ()
             87..108 'spam!(...am!())': {unknown}
+            114..133 'for _ ...!() {}': fn into_iter<isize>(isize) -> <isize as IntoIterator>::IntoIter
+            114..133 'for _ ...!() {}': IntoIterator::IntoIter<isize>
+            114..133 'for _ ...!() {}': !
+            114..133 'for _ ...!() {}': IntoIterator::IntoIter<isize>
+            114..133 'for _ ...!() {}': &mut IntoIterator::IntoIter<isize>
+            114..133 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
+            114..133 'for _ ...!() {}': Option<Iterator::Item<IntoIterator::IntoIter<isize>>>
             114..133 'for _ ...!() {}': ()
-            118..119 '_': {unknown}
+            114..133 'for _ ...!() {}': ()
+            114..133 'for _ ...!() {}': ()
+            118..119 '_': Iterator::Item<IntoIterator::IntoIter<isize>>
             131..133 '{}': ()
-            138..148 '|| spam!()': || -> isize
+            138..148 '|| spam!()': impl Fn() -> isize
             154..170 'while ...!() {}': ()
             168..170 '{}': ()
             175..188 'break spam!()': !
@@ -661,8 +681,9 @@ fn infer_builtin_macros_line() {
         "#,
         expect![[r#"
             !0..1 '0': i32
+            !0..6 '0asu32': u32
             63..87 '{     ...!(); }': ()
-            73..74 'x': i32
+            73..74 'x': u32
         "#]],
     );
 }
@@ -699,8 +720,9 @@ fn infer_builtin_macros_column() {
         "#,
         expect![[r#"
             !0..1 '0': i32
+            !0..6 '0asu32': u32
             65..91 '{     ...!(); }': ()
-            75..76 'x': i32
+            75..76 'x': u32
         "#]],
     );
 }
@@ -945,7 +967,7 @@ fn infer_builtin_macros_concat_with_lazy() {
 
 #[test]
 fn infer_builtin_macros_env() {
-    check_infer(
+    check_types(
         r#"
         //- /main.rs env:foo=bar
         #[rustc_builtin_macro]
@@ -953,13 +975,26 @@ fn infer_builtin_macros_env() {
 
         fn main() {
             let x = env!("foo");
+              //^ &str
         }
         "#,
-        expect![[r#"
-            !0..22 '"__RA_...TED__"': &str
-            62..90 '{     ...o"); }': ()
-            72..73 'x': &str
-        "#]],
+    );
+}
+
+#[test]
+fn infer_builtin_macros_option_env() {
+    check_types(
+        r#"
+        //- minicore: option
+        //- /main.rs env:foo=bar
+        #[rustc_builtin_macro]
+        macro_rules! option_env {() => {}}
+
+        fn main() {
+            let x = option_env!("foo");
+              //^ Option<&str>
+        }
+        "#,
     );
 }
 

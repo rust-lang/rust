@@ -21,7 +21,7 @@ pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) 
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.field.file_id)?;
+    let root = ctx.sema.db.parse_or_expand(d.field.file_id);
     missing_record_expr_field_fixes(
         &ctx.sema,
         d.field.file_id.original_file(ctx.sema.db),
@@ -69,7 +69,7 @@ fn missing_record_expr_field_fixes(
     let new_field = make::record_field(
         None,
         make::name(record_expr_field.field_name()?.ident_token()?.text()),
-        make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
+        make::ty(&new_field_type.display_source_code(sema.db, module.into(), true).ok()?),
     );
 
     let last_field = record_fields.fields().last()?;

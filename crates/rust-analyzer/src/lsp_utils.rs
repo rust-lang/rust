@@ -1,8 +1,9 @@
 //! Utilities for LSP-related boilerplate code.
-use std::{mem, ops::Range, sync::Arc};
+use std::{mem, ops::Range};
 
 use lsp_server::Notification;
 use lsp_types::request::Request;
+use triomphe::Arc;
 
 use crate::{
     from_proto,
@@ -80,39 +81,14 @@ impl GlobalState {
         match additional_info {
             Some(additional_info) => {
                 tracing::error!("{}:\n{}", &message, &additional_info);
-                match self.config.open_server_logs() && tracing::enabled!(tracing::Level::ERROR) {
-                    true => self.send_request::<lsp_types::request::ShowMessageRequest>(
-                        lsp_types::ShowMessageRequestParams {
-                            typ: lsp_types::MessageType::ERROR,
-                            message,
-                            actions: Some(vec![lsp_types::MessageActionItem {
-                                title: "Open server logs".to_owned(),
-                                properties: Default::default(),
-                            }]),
-                        },
-                        |this, resp| {
-                            let lsp_server::Response { error: None, result: Some(result), .. } = resp
-                            else { return };
-                            if let Ok(Some(_item)) = crate::from_json::<
-                                <lsp_types::request::ShowMessageRequest as lsp_types::request::Request>::Result,
-                            >(
-                                lsp_types::request::ShowMessageRequest::METHOD, &result
-                            ) {
-                                this.send_notification::<lsp_ext::OpenServerLogs>(());
-                            }
-                        },
-                    ),
-                    false => self.send_notification::<lsp_types::notification::ShowMessage>(
-                        lsp_types::ShowMessageParams {
-                            typ: lsp_types::MessageType::ERROR,
-                            message,
-                        },
-                    ),
-                }
+                self.show_message(
+                    lsp_types::MessageType::ERROR,
+                    message,
+                    tracing::enabled!(tracing::Level::ERROR),
+                );
             }
             None => {
                 tracing::error!("{}", &message);
-
                 self.send_notification::<lsp_types::notification::ShowMessage>(
                     lsp_types::ShowMessageParams { typ: lsp_types::MessageType::ERROR, message },
                 );

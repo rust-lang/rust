@@ -4,8 +4,8 @@ use crate::grammar::attributes::ATTRIBUTE_FIRST;
 
 use super::*;
 
-pub(crate) use self::atom::{block_expr, match_arm_list};
-pub(super) use self::atom::{literal, LITERAL_FIRST};
+pub(crate) use atom::{block_expr, match_arm_list};
+pub(super) use atom::{literal, LITERAL_FIRST};
 
 #[derive(PartialEq, Eq)]
 pub(super) enum Semicolon {
@@ -188,47 +188,56 @@ struct Restrictions {
     prefer_stmt: bool,
 }
 
+enum Associativity {
+    Left,
+    Right,
+}
+
 /// Binding powers of operators for a Pratt parser.
 ///
 /// See <https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html>
+///
+/// Note that Rust doesn't define associativity for some infix operators (e.g. `==` and `..`) and
+/// requires parentheses to disambiguate. We just treat them as left associative.
 #[rustfmt::skip]
-fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind) {
-    const NOT_AN_OP: (u8, SyntaxKind) = (0, T![@]);
+fn current_op(p: &Parser<'_>) -> (u8, SyntaxKind, Associativity) {
+    use Associativity::*;
+    const NOT_AN_OP: (u8, SyntaxKind, Associativity) = (0, T![@], Left);
     match p.current() {
-        T![|] if p.at(T![||])  => (3,  T![||]),
-        T![|] if p.at(T![|=])  => (1,  T![|=]),
-        T![|]                  => (6,  T![|]),
-        T![>] if p.at(T![>>=]) => (1,  T![>>=]),
-        T![>] if p.at(T![>>])  => (9,  T![>>]),
-        T![>] if p.at(T![>=])  => (5,  T![>=]),
-        T![>]                  => (5,  T![>]),
+        T![|] if p.at(T![||])  => (3,  T![||],  Left),
+        T![|] if p.at(T![|=])  => (1,  T![|=],  Right),
+        T![|]                  => (6,  T![|],   Left),
+        T![>] if p.at(T![>>=]) => (1,  T![>>=], Right),
+        T![>] if p.at(T![>>])  => (9,  T![>>],  Left),
+        T![>] if p.at(T![>=])  => (5,  T![>=],  Left),
+        T![>]                  => (5,  T![>],   Left),
         T![=] if p.at(T![=>])  => NOT_AN_OP,
-        T![=] if p.at(T![==])  => (5,  T![==]),
-        T![=]                  => (1,  T![=]),
-        T![<] if p.at(T![<=])  => (5,  T![<=]),
-        T![<] if p.at(T![<<=]) => (1,  T![<<=]),
-        T![<] if p.at(T![<<])  => (9,  T![<<]),
-        T![<]                  => (5,  T![<]),
-        T![+] if p.at(T![+=])  => (1,  T![+=]),
-        T![+]                  => (10, T![+]),
-        T![^] if p.at(T![^=])  => (1,  T![^=]),
-        T![^]                  => (7,  T![^]),
-        T![%] if p.at(T![%=])  => (1,  T![%=]),
-        T![%]                  => (11, T![%]),
-        T![&] if p.at(T![&=])  => (1,  T![&=]),
+        T![=] if p.at(T![==])  => (5,  T![==],  Left),
+        T![=]                  => (1,  T![=],   Right),
+        T![<] if p.at(T![<=])  => (5,  T![<=],  Left),
+        T![<] if p.at(T![<<=]) => (1,  T![<<=], Right),
+        T![<] if p.at(T![<<])  => (9,  T![<<],  Left),
+        T![<]                  => (5,  T![<],   Left),
+        T![+] if p.at(T![+=])  => (1,  T![+=],  Right),
+        T![+]                  => (10, T![+],   Left),
+        T![^] if p.at(T![^=])  => (1,  T![^=],  Right),
+        T![^]                  => (7,  T![^],   Left),
+        T![%] if p.at(T![%=])  => (1,  T![%=],  Right),
+        T![%]                  => (11, T![%],   Left),
+        T![&] if p.at(T![&=])  => (1,  T![&=],  Right),
         // If you update this, remember to update `expr_let()` too.
-        T![&] if p.at(T![&&])  => (4,  T![&&]),
-        T![&]                  => (8,  T![&]),
-        T![/] if p.at(T![/=])  => (1,  T![/=]),
-        T![/]                  => (11, T![/]),
-        T![*] if p.at(T![*=])  => (1,  T![*=]),
-        T![*]                  => (11, T![*]),
-        T![.] if p.at(T![..=]) => (2,  T![..=]),
-        T![.] if p.at(T![..])  => (2,  T![..]),
-        T![!] if p.at(T![!=])  => (5,  T![!=]),
-        T![-] if p.at(T![-=])  => (1,  T![-=]),
-        T![-]                  => (10, T![-]),
-        T![as]                 => (12, T![as]),
+        T![&] if p.at(T![&&])  => (4,  T![&&],  Left),
+        T![&]                  => (8,  T![&],   Left),
+        T![/] if p.at(T![/=])  => (1,  T![/=],  Right),
+        T![/]                  => (11, T![/],   Left),
+        T![*] if p.at(T![*=])  => (1,  T![*=],  Right),
+        T![*]                  => (11, T![*],   Left),
+        T![.] if p.at(T![..=]) => (2,  T![..=], Left),
+        T![.] if p.at(T![..])  => (2,  T![..],  Left),
+        T![!] if p.at(T![!=])  => (5,  T![!=],  Left),
+        T![-] if p.at(T![-=])  => (1,  T![-=],  Right),
+        T![-]                  => (10, T![-],   Left),
+        T![as]                 => (12, T![as],  Left),
 
         _                      => NOT_AN_OP
     }
@@ -273,7 +282,7 @@ fn expr_bp(
 
     loop {
         let is_range = p.at(T![..]) || p.at(T![..=]);
-        let (op_bp, op) = current_op(p);
+        let (op_bp, op, associativity) = current_op(p);
         if op_bp < bp {
             break;
         }
@@ -306,7 +315,11 @@ fn expr_bp(
             }
         }
 
-        expr_bp(p, None, Restrictions { prefer_stmt: false, ..r }, op_bp + 1);
+        let op_bp = match associativity {
+            Associativity::Left => op_bp + 1,
+            Associativity::Right => op_bp,
+        };
+        expr_bp(p, None, Restrictions { prefer_stmt: false, ..r }, op_bp);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
     Some((lhs, BlockLike::NotBlock))
@@ -417,7 +430,7 @@ fn postfix_expr(
         allow_calls = true;
         block_like = BlockLike::NotBlock;
     }
-    return (lhs, block_like);
+    (lhs, block_like)
 }
 
 fn postfix_dot_expr<const FLOAT_RECOVERY: bool>(

@@ -5,6 +5,88 @@ use syntax::T;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
+// Assist: convert_let_else_to_match
+//
+// Converts let-else statement to let statement and match expression.
+//
+// ```
+// fn main() {
+//     let Ok(mut x) = f() else$0 { return };
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let mut x = match f() {
+//         Ok(x) => x,
+//         _ => return,
+//     };
+// }
+// ```
+pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    // should focus on else token to trigger
+    let let_stmt = ctx
+        .find_token_syntax_at_offset(T![else])
+        .and_then(|it| it.parent()?.parent())
+        .or_else(|| ctx.find_token_syntax_at_offset(T![let])?.parent())?;
+    let let_stmt = LetStmt::cast(let_stmt)?;
+    let let_else_block = let_stmt.let_else()?.block_expr()?;
+    let let_init = let_stmt.initializer()?;
+    if let_stmt.ty().is_some() {
+        // don't support let with type annotation
+        return None;
+    }
+    let pat = let_stmt.pat()?;
+    let mut binders = Vec::new();
+    binders_in_pat(&mut binders, &pat, &ctx.sema)?;
+
+    let target = let_stmt.syntax().text_range();
+    acc.add(
+        AssistId("convert_let_else_to_match", AssistKind::RefactorRewrite),
+        "Convert let-else to let and match",
+        target,
+        |edit| {
+            let indent_level = let_stmt.indent_level().0 as usize;
+            let indent = "    ".repeat(indent_level);
+            let indent1 = "    ".repeat(indent_level + 1);
+
+            let binders_str = binders_to_str(&binders, false);
+            let binders_str_mut = binders_to_str(&binders, true);
+
+            let init_expr = let_init.syntax().text();
+            let mut pat_no_mut = pat.syntax().text().to_string();
+            // remove the mut from the pattern
+            for (b, ismut) in binders.iter() {
+                if *ismut {
+                    pat_no_mut = pat_no_mut.replace(&format!("mut {b}"), &b.to_string());
+                }
+            }
+
+            let only_expr = let_else_block.statements().next().is_none();
+            let branch2 = match &let_else_block.tail_expr() {
+                Some(tail) if only_expr => format!("{tail},"),
+                _ => let_else_block.syntax().text().to_string(),
+            };
+            let replace = if binders.is_empty() {
+                format!(
+                    "match {init_expr} {{
+{indent1}{pat_no_mut} => {binders_str}
+{indent1}_ => {branch2}
+{indent}}}"
+                )
+            } else {
+                format!(
+                    "let {binders_str_mut} = match {init_expr} {{
+{indent1}{pat_no_mut} => {binders_str},
+{indent1}_ => {branch2}
+{indent}}};"
+                )
+            };
+            edit.replace(target, replace);
+        },
+    )
+}
+
 /// Gets a list of binders in a pattern, and whether they are mut.
 fn binders_in_pat(
     acc: &mut Vec<(Name, bool)>,
@@ -95,85 +177,6 @@ fn binders_to_str(binders: &[(Name, bool)], addmut: bool) -> String {
     } else {
         format!("({vars})")
     }
-}
-
-// Assist: convert_let_else_to_match
-//
-// Converts let-else statement to let statement and match expression.
-//
-// ```
-// fn main() {
-//     let Ok(mut x) = f() else$0 { return };
-// }
-// ```
-// ->
-// ```
-// fn main() {
-//     let mut x = match f() {
-//         Ok(x) => x,
-//         _ => return,
-//     };
-// }
-// ```
-pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    // should focus on else token to trigger
-    let else_token = ctx.find_token_syntax_at_offset(T![else])?;
-    let let_stmt = LetStmt::cast(else_token.parent()?.parent()?)?;
-    let let_else_block = let_stmt.let_else()?.block_expr()?;
-    let let_init = let_stmt.initializer()?;
-    if let_stmt.ty().is_some() {
-        // don't support let with type annotation
-        return None;
-    }
-    let pat = let_stmt.pat()?;
-    let mut binders = Vec::new();
-    binders_in_pat(&mut binders, &pat, &ctx.sema)?;
-
-    let target = let_stmt.syntax().text_range();
-    acc.add(
-        AssistId("convert_let_else_to_match", AssistKind::RefactorRewrite),
-        "Convert let-else to let and match",
-        target,
-        |edit| {
-            let indent_level = let_stmt.indent_level().0 as usize;
-            let indent = "    ".repeat(indent_level);
-            let indent1 = "    ".repeat(indent_level + 1);
-
-            let binders_str = binders_to_str(&binders, false);
-            let binders_str_mut = binders_to_str(&binders, true);
-
-            let init_expr = let_init.syntax().text();
-            let mut pat_no_mut = pat.syntax().text().to_string();
-            // remove the mut from the pattern
-            for (b, ismut) in binders.iter() {
-                if *ismut {
-                    pat_no_mut = pat_no_mut.replace(&format!("mut {b}"), &b.to_string());
-                }
-            }
-
-            let only_expr = let_else_block.statements().next().is_none();
-            let branch2 = match &let_else_block.tail_expr() {
-                Some(tail) if only_expr => format!("{tail},"),
-                _ => let_else_block.syntax().text().to_string(),
-            };
-            let replace = if binders.is_empty() {
-                format!(
-                    "match {init_expr} {{
-{indent1}{pat_no_mut} => {binders_str}
-{indent1}_ => {branch2}
-{indent}}}"
-                )
-            } else {
-                format!(
-                    "let {binders_str_mut} = match {init_expr} {{
-{indent1}{pat_no_mut} => {binders_str},
-{indent1}_ => {branch2}
-{indent}}};"
-                )
-            };
-            edit.replace(target, replace);
-        },
-    )
 }
 
 #[cfg(test)]
