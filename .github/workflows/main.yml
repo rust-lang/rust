@@ -93,12 +93,6 @@ jobs:
     - name: Prepare dependencies
       run: ./y.rs prepare
 
-    - name: Build without unstable features
-      env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      # This is the config rust-lang/rust uses for builds
-      run: ./y.rs build --no-unstable-features
-
     - name: Build
       run: ./y.rs build --sysroot none
 
@@ -106,6 +100,18 @@ jobs:
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: ./y.rs test
+
+    - name: Install LLVM standard library
+      run: rustup target add ${{ matrix.env.TARGET_TRIPLE }}
+
+    # This is roughly config rust-lang/rust uses for testing
+    - name: Test with LLVM sysroot
+      # Skip native x86_64-pc-windows-gnu. It is way too slow and cross-compiled
+      # x86_64-pc-windows-gnu covers at least part of the tests.
+      if: matrix.os != 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      run: ./y.rs test --sysroot llvm --no-unstable-features
 
 
   # This job doesn't use cg_clif in any way. It checks that all cg_clif tests work with cg_llvm too.
