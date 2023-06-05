@@ -29,6 +29,7 @@ use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
+use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::DynKind;
@@ -929,6 +930,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn conv_object_ty_poly_trait_ref(
         &self,
         span: Span,
+        hir_id: hir::HirId,
         hir_trait_bounds: &[hir::PolyTraitRef<'_>],
         lifetime: &hir::Lifetime,
         borrowed: bool,
@@ -1125,9 +1127,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
         // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
         // corresponding `Projection` clause
-        for (projection_bound, _) in &projection_bounds {
+        for (projection_bound, span) in &projection_bounds {
             for def_ids in associated_types.values_mut() {
-                def_ids.remove(&projection_bound.projection_def_id());
+                let def_id = projection_bound.projection_def_id();
+                def_ids.remove(&def_id);
+                if tcx.generics_require_sized_self(def_id) {
+                    tcx.emit_spanned_lint(
+                        UNUSED_ASSOCIATED_TYPE_BOUNDS,
+                        hir_id,
+                        *span,
+                        crate::errors::UnusedAssociatedTypeBounds { span: *span },
+                    );
+                }
             }
         }
 
@@ -2812,7 +2823,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     TraitObjectSyntax::DynStar => ty::DynStar,
                 };
 
-                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed, repr)
+                self.conv_object_ty_poly_trait_ref(
+                    ast_ty.span,
+                    ast_ty.hir_id,
+                    bounds,
+                    lifetime,
+                    borrowed,
+                    repr,
+                )
             }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);

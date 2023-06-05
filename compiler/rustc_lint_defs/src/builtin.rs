@@ -3469,6 +3469,32 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `unused_associated_type_bounds` lint is emitted when an
+    /// associated type bound is added to a trait object, but the associated
+    /// type has a `where Self: Sized` bound, and is thus unavailable on the
+    /// trait object anyway.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// trait Foo {
+    ///     type Bar where Self: Sized;
+    /// }
+    /// type Mop = dyn Foo<Bar = ()>;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Just like methods with `Self: Sized` bounds are unavailable on trait
+    /// objects, associated types can be removed from the trait object.
+    pub UNUSED_ASSOCIATED_TYPE_BOUNDS,
+    Warn,
+    "detects unused `Foo = Bar` bounds in `dyn Trait<Foo = Bar>`"
+}
+
+declare_lint! {
     /// The `unused_doc_comments` lint detects doc comments that aren't used
     /// by `rustdoc`.
     ///
