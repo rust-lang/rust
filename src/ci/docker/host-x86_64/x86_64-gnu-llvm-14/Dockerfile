@@ -4,7 +4,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
-  gcc-multilib \
   make \
   ninja-build \
   file \
@@ -26,11 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
-# Install powershell (universal package) so we can test x.ps1 on Linux
-RUN curl -sL "https://github.com/PowerShell/PowerShell/releases/download/v7.3.1/powershell_7.3.1-1.deb_amd64.deb" > powershell.deb && \
-    dpkg -i powershell.deb && \
-    rm -f powershell.deb
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
@@ -49,6 +43,4 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 
-COPY host-x86_64/x86_64-gnu-llvm-14/script.sh /tmp/
-
-ENV SCRIPT /tmp/script.sh
+ENV SCRIPT ../x.py --stage 2 test
