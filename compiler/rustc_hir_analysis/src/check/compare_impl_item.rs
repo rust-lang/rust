@@ -302,7 +302,7 @@ fn compare_method_predicate_entailment<'tcx>(
         return Err(emitted);
     }
 
-    if check_implied_wf == CheckImpliedWfMode::Check {
+    if check_implied_wf == CheckImpliedWfMode::Check && !(impl_sig, trait_sig).references_error() {
         // We need to check that the impl's args are well-formed given
         // the hybrid param-env (impl + trait method where-clauses).
         ocx.register_obligation(traits::Obligation::new(
