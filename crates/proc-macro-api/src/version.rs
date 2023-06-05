@@ -122,7 +122,7 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     // https://github.com/rust-lang/rust/commit/0696e79f2740ad89309269b460579e548a5cd632
     let snappy_portion = match version {
         5 | 6 => &dot_rustc[8..],
-        7 => {
+        7 | 8 => {
             let len_bytes = &dot_rustc[8..12];
             let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
             &dot_rustc[12..data_len + 12]
