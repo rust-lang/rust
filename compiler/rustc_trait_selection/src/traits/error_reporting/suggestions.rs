@@ -2807,8 +2807,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
-            ObligationCauseCode::SizedArgumentType(sp) => {
-                if let Some(span) = sp {
+            ObligationCauseCode::SizedArgumentType(ty_span) => {
+                if let Some(span) = ty_span {
                     if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder()
                         && let ty::Clause::Trait(trait_pred) = clause
                         && let ty::Dynamic(..) = trait_pred.self_ty().kind()

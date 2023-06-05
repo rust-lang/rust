@@ -129,7 +129,17 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                     self.fcx.require_type_is_sized(
                         var_ty,
                         p.span,
-                        traits::SizedArgumentType(Some(ty_span)),
+                        // ty_span == ident.span iff this is a closure parameter with no type
+                        // ascription, or if it's an implicit `self` parameter
+                        traits::SizedArgumentType(
+                            if ty_span == ident.span
+                                && self.fcx.tcx.is_closure(self.fcx.body_id.into())
+                            {
+                                None
+                            } else {
+                                Some(ty_span)
+                            },
+                        ),
                     );
                 }
             } else {

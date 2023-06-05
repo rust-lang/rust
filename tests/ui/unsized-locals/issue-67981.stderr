@@ -5,10 +5,7 @@ LL |     let f: fn([u8]) = |_| {};
    |                        ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
-help: function arguments must have a statically known size, borrowed types always have a known size
-   |
-LL |     let f: fn([u8]) = |&_| {};
-   |                        +
+   = note: all function arguments must have a statically known size
 
 error: aborting due to previous error
 
