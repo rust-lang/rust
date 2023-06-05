@@ -5,6 +5,7 @@
 //
 // needs-sanitizer-support
 // needs-sanitizer-address
+// ignore-cross-compile
 //
 // compile-flags: -Copt-level=0 -Zsanitizer=address
 // run-pass
