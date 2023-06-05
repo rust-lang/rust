@@ -90,6 +90,7 @@ fn main() {
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
     let mut frozen = false;
+    let mut skip_tests = vec![];
     let mut use_backend = None;
     while let Some(arg) = args.next().as_deref() {
         match arg {
@@ -115,6 +116,12 @@ fn main() {
             }
             "--no-unstable-features" => use_unstable_features = false,
             "--frozen" => frozen = true,
+            "--skip-test" => {
+                // FIXME check that all passed in tests actually exist
+                skip_tests.push(args.next().unwrap_or_else(|| {
+                    arg_error!("--skip-test requires argument");
+                }));
+            }
             "--use-backend" => {
                 use_backend = Some(match args.next() {
                     Some(name) => name,
@@ -218,6 +225,7 @@ fn main() {
                 channel,
                 sysroot_kind,
                 use_unstable_features,
+                &skip_tests.iter().map(|test| &**test).collect::<Vec<_>>(),
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),

@@ -3,7 +3,7 @@ The build system of cg_clif.
 USAGE:
     ./y.sh prepare [--out-dir DIR] [--download-dir DIR]
     ./y.sh build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.sh test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
     ./y.sh abi-cafe [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
     ./y.sh bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
 
@@ -31,6 +31,9 @@ OPTIONS:
 
     --frozen
             Require Cargo.lock and cache are up to date
+
+    --skip-test TESTNAME
+            Skip testing the TESTNAME test. The test name format is the same as config.txt.
 
     --use-backend NAME
             Use the existing Cranelift (or other) backend of the rustc with which we built.

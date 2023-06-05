@@ -19,7 +19,7 @@ struct TestCase {
 }
 
 enum TestCaseCmd {
-    Custom { func: &'static dyn Fn(&TestRunner) },
+    Custom { func: &'static dyn Fn(&TestRunner<'_>) },
     BuildLib { source: &'static str, crate_types: &'static str },
     BuildBinAndRun { source: &'static str, args: &'static [&'static str] },
     JitBin { source: &'static str, args: &'static str },
@@ -27,7 +27,7 @@ enum TestCaseCmd {
 
 impl TestCase {
     // FIXME reduce usage of custom test case commands
-    const fn custom(config: &'static str, func: &'static dyn Fn(&TestRunner)) -> Self {
+    const fn custom(config: &'static str, func: &'static dyn Fn(&TestRunner<'_>)) -> Self {
         Self { config, cmd: TestCaseCmd::Custom { func } }
     }
 
@@ -247,6 +247,7 @@ pub(crate) fn run_tests(
     channel: &str,
     sysroot_kind: SysrootKind,
     use_unstable_features: bool,
+    skip_tests: &[&str],
     cg_clif_dylib: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
@@ -256,7 +257,7 @@ pub(crate) fn run_tests(
         get_default_sysroot(&bootstrap_host_compiler.rustc).join("lib/rustlib/src/rust");
     assert!(stdlib_source.exists());
 
-    if config::get_bool("testsuite.no_sysroot") {
+    if config::get_bool("testsuite.no_sysroot") && !skip_tests.contains(&"testsuite.no_sysroot") {
         let target_compiler = build_sysroot::build_sysroot(
             dirs,
             channel,
@@ -271,6 +272,7 @@ pub(crate) fn run_tests(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
+            skip_tests,
             bootstrap_host_compiler.triple == target_triple,
             stdlib_source.clone(),
         );
@@ -281,8 +283,10 @@ pub(crate) fn run_tests(
         eprintln!("[SKIP] no_sysroot tests");
     }
 
-    let run_base_sysroot = config::get_bool("testsuite.base_sysroot");
-    let run_extended_sysroot = config::get_bool("testsuite.extended_sysroot");
+    let run_base_sysroot = config::get_bool("testsuite.base_sysroot")
+        && !skip_tests.contains(&"testsuite.base_sysroot");
+    let run_extended_sysroot = config::get_bool("testsuite.extended_sysroot")
+        && !skip_tests.contains(&"testsuite.extended_sysroot");
 
     if run_base_sysroot || run_extended_sysroot {
         let mut target_compiler = build_sysroot::build_sysroot(
@@ -302,6 +306,7 @@ pub(crate) fn run_tests(
             dirs.clone(),
             target_compiler,
             use_unstable_features,
+            skip_tests,
             bootstrap_host_compiler.triple == target_triple,
             stdlib_source,
         );
@@ -320,20 +325,22 @@ pub(crate) fn run_tests(
     }
 }
 
-struct TestRunner {
+struct TestRunner<'a> {
     is_native: bool,
     jit_supported: bool,
     use_unstable_features: bool,
+    skip_tests: &'a [&'a str],
     dirs: Dirs,
     target_compiler: Compiler,
     stdlib_source: PathBuf,
 }
 
-impl TestRunner {
+impl<'a> TestRunner<'a> {
     fn new(
         dirs: Dirs,
         mut target_compiler: Compiler,
         use_unstable_features: bool,
+        skip_tests: &'a [&'a str],
         is_native: bool,
         stdlib_source: PathBuf,
     ) -> Self {
@@ -360,6 +367,7 @@ impl TestRunner {
             is_native,
             jit_supported,
             use_unstable_features,
+            skip_tests,
             dirs,
             target_compiler,
             stdlib_source,
@@ -372,7 +380,10 @@ impl TestRunner {
             let tag = tag.to_uppercase();
             let is_jit_test = tag == "JIT";
 
-            if !config::get_bool(config) || (is_jit_test && !self.jit_supported) {
+            if !config::get_bool(config)
+                || (is_jit_test && !self.jit_supported)
+                || self.skip_tests.contains(&config)
+            {
                 eprintln!("[{tag}] {testname} (skipped)");
                 continue;
             } else {
