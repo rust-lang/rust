@@ -1355,7 +1355,8 @@ impl ToOwned for OsStr {
 }
 
 impl Cow<'_, OsStr> {
-    /// Truncates the [`OsString`] or [`&OsStr`](OsStr).
+    /// Truncates the owned [`OsString`] or borrowed [`&OsStr`](OsStr) to zero
+    /// length.
     ///
     /// See [`OsString::clear`].
     ///

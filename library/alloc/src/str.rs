@@ -217,7 +217,8 @@ impl ToOwned for str {
 }
 
 impl Cow<'_, str> {
-    /// Truncates the [`String`] or [`&str`](prim@str).
+    /// Truncates the owned [`String`] or borrowed [`&str`](prim@str) to zero
+    /// length.
     ///
     /// See [`String::clear`].
     ///

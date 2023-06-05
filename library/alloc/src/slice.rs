@@ -837,7 +837,8 @@ impl<T> Cow<'_, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
-    /// Truncates the [`Vec`] or [`&[T]`](prim@slice).
+    /// Truncates the owned [`Vec`] or borrowed [`&[T]`](prim@slice) to zero
+    /// length.
     ///
     /// See [`Vec::clear`].
     ///
