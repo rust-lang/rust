@@ -922,5 +922,10 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { object_safety_violations, check_is_object_safe, ..*providers };
+    *providers = Providers {
+        object_safety_violations,
+        check_is_object_safe,
+        generics_require_sized_self,
+        ..*providers
+    };
 }

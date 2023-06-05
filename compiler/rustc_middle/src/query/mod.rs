@@ -2197,6 +2197,10 @@ rustc_queries! {
         desc { "getting cfg-ed out item names" }
         separate_provide_extern
     }
+
+    query generics_require_sized_self(def_id: DefId) -> bool {
+        desc { "check whether the item has a `where Self: Sized` bound" }
+    }
 }
 
 rustc_query_append! { define_callbacks! }
