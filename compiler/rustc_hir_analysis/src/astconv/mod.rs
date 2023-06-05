@@ -1601,7 +1601,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                .filter(|item| tcx.opt_rpitit_info(item.def_id).is_none())
+                                .filter(|item| item.opt_rpitit_info.is_none())
                                 .map(|item| item.def_id),
                         );
                     }
@@ -1643,6 +1643,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        // `dyn Trait<Assoc = Foo>` desugars to (not Rust syntax) `dyn Trait where <Self as Trait>::Assoc = Foo`.
+        // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
+        // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
+        // corresponding `Projection` clause
         for (projection_bound, _) in &projection_bounds {
             for def_ids in associated_types.values_mut() {
                 def_ids.remove(&projection_bound.projection_def_id());

@@ -16,6 +16,11 @@ fn generic<T>(_: T) -> Option<()> {
     Some(())
 }
 
+fn generic_ref<T>(_: T) -> Option<()> {
+    //~^ HELP do not borrow the argument
+    Some(())
+}
+
 fn main() {
     let _: Option<()> = produces_string().as_deref().and_then(takes_str);
     //~^ ERROR type mismatch in function arguments
@@ -27,4 +32,8 @@ fn main() {
     //~^ ERROR type mismatch in function arguments
     //~| HELP call `Option::as_deref_mut()` first
     let _ = produces_string().and_then(generic);
+
+    let _ = produces_string().as_deref().and_then(generic_ref);
+    //~^ ERROR type mismatch in function arguments
+    //~| HELP call `Option::as_deref()` first
 }

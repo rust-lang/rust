@@ -944,18 +944,25 @@ impl CheckAttrVisitor<'_> {
         let mut is_valid = true;
         if let Some(metas) = meta.meta_item_list() {
             for i_meta in metas {
-                match i_meta.name_or_empty() {
-                    sym::attr | sym::no_crate_inject => {}
-                    _ => {
+                match (i_meta.name_or_empty(), i_meta.meta_item()) {
+                    (sym::attr | sym::no_crate_inject, _) => {}
+                    (_, Some(m)) => {
                         self.tcx.emit_spanned_lint(
                             INVALID_DOC_ATTRIBUTES,
                             hir_id,
                             i_meta.span(),
                             errors::DocTestUnknown {
-                                path: rustc_ast_pretty::pprust::path_to_string(
-                                    &i_meta.meta_item().unwrap().path,
-                                ),
+                                path: rustc_ast_pretty::pprust::path_to_string(&m.path),
                             },
+                        );
+                        is_valid = false;
+                    }
+                    (_, None) => {
+                        self.tcx.emit_spanned_lint(
+                            INVALID_DOC_ATTRIBUTES,
+                            hir_id,
+                            i_meta.span(),
+                            errors::DocTestLiteral,
                         );
                         is_valid = false;
                     }
