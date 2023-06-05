@@ -27,7 +27,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// In the case of some temporaries, e.g. locks, eliding the variable binding could lead
-    /// to deadlocks. See [rust-lang issue 37612](https://github.com/rust-lang/rust/issues/37612).
+    /// to deadlocks. See [this issue](https://github.com/rust-lang/rust/issues/37612).
     /// This could become relevant if the code is later changed to use the code that would have been
     /// bound without first assigning it to a let-binding.
     ///
