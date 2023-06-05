@@ -6,8 +6,8 @@ LL |     *y
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
-   = help: the access would cause the protected tag <TAG> to transition from Active to Frozen
-   = help: this is a loss of write permissions, which is not allowed for protected tags
+   = help: this foreign read access would cause the protected tag <TAG> to transition from Active to Frozen
+   = help: this transition would be a loss of write permissions, which is not allowed for protected tags
 help: the accessed tag <TAG> was created here
   --> $DIR/box_noalias_violation.rs:LL:CC
    |
@@ -23,7 +23,7 @@ help: the protected tag <TAG> later transitioned to Active due to a child write 
    |
 LL |     *x = 5;
    |     ^^^^^^
-   = help: this corresponds to the first write to a 2-phase borrowed mutable reference
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
    = note: inside `test` at $DIR/box_noalias_violation.rs:LL:CC
 note: inside `main`

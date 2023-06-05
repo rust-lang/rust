@@ -6,7 +6,7 @@ LL |     let _val = *target_alias;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
-   = help: the conflicting tag <TAG> has state Disabled which forbids child read accesses
+   = help: the conflicting tag <TAG> has state Disabled which forbids this child read access
 help: the accessed tag <TAG> was created here
   --> $DIR/alias_through_mutation.rs:LL:CC
    |
@@ -22,7 +22,7 @@ help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign 
    |
 LL |     *target = 13;
    |     ^^^^^^^^^^^^
-   = help: this corresponds to a loss of read and write permissions
+   = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span):
    = note: inside `main` at $DIR/alias_through_mutation.rs:LL:CC
 

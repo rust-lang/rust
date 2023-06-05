@@ -5,7 +5,7 @@ LL |         let _val = *frozen;
    |                    ^^^^^^^ read access through <TAG> is forbidden
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
-   = help: the accessed tag <TAG> has state Disabled which forbids child read accesses
+   = help: the accessed tag <TAG> has state Disabled which forbids this child read access
 help: the accessed tag <TAG> was created here, in the initial state Frozen
   --> $DIR/shr_frozen_violation2.rs:LL:CC
    |
@@ -16,7 +16,7 @@ help: the accessed tag <TAG> later transitioned to Disabled due to a foreign wri
    |
 LL |         x = 1;
    |         ^^^^^
-   = help: this corresponds to a loss of read permissions
+   = help: this transition corresponds to a loss of read permissions
    = note: BACKTRACE (of the first span):
    = note: inside `main` at $DIR/shr_frozen_violation2.rs:LL:CC
 

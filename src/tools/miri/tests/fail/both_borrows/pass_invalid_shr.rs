@@ -11,5 +11,5 @@ fn main() {
     unsafe { *xraw = 42 }; // unfreeze
     foo(xref);
     //~[stack]^ ERROR: /retag .* tag does not exist in the borrow stack/
-    //~[tree]| ERROR: /read access through .* is forbidden/
+    //~[tree]| ERROR: /reborrow through .* is forbidden/
 }

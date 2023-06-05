@@ -16,8 +16,8 @@ LL |             *y = 1;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> (y, callee:y, caller:y) is foreign to the protected tag <TAG> (callee:x) (i.e., it is not a child)
-   = help: the access would cause the protected tag <TAG> (callee:x) to transition from Reserved to Disabled
-   = help: this is a loss of read and write permissions, which is not allowed for protected tags
+   = help: this foreign write access would cause the protected tag <TAG> (callee:x) to transition from Reserved to Disabled
+   = help: this transition would be a loss of read and write permissions, which is not allowed for protected tags
 help: the accessed tag <TAG> was created here
   --> $DIR/cell-protected-write.rs:LL:CC
    |
