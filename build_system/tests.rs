@@ -100,7 +100,7 @@ pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rust-random",
     "rand",
     "50b9a447410860af8d6db9a208c3576886955874",
-    "98b2276210b30e43",
+    "446203b96054891e",
     "rand",
 );
 
@@ -110,7 +110,7 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "regex",
     "32fed9429eafba0ae92a64b01796a0c5a75b88c8",
-    "d6af6507d565aa66",
+    "fcc4df7c5b902633",
     "regex",
 );
 
@@ -120,7 +120,7 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
     "ad8afa8c81273b3b49acbea38cd3bcf17a34cf2b",
-    "1ba291009510070b",
+    "800548f8000e31bd",
     "portable-simd",
 );
 
@@ -155,6 +155,10 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             &runner.stdlib_source.join("library/core/tests"),
             &LIBCORE_TESTS_SRC.to_path(&runner.dirs),
         );
+
+        let source_lockfile = RelPath::PATCHES.to_path(&runner.dirs).join("coretests-lock.toml");
+        let target_lockfile = LIBCORE_TESTS_SRC.to_path(&runner.dirs).join("Cargo.lock");
+        fs::copy(source_lockfile, target_lockfile).unwrap();
 
         LIBCORE_TESTS.clean(&runner.dirs);
 

@@ -47,6 +47,10 @@ codegen-units = 10000
 "#,
     )
     .unwrap();
+
+    let source_lockfile = RelPath::PATCHES.to_path(dirs).join("stdlib-lock.toml");
+    let target_lockfile = STDLIB_SRC.to_path(dirs).join("Cargo.lock");
+    fs::copy(source_lockfile, target_lockfile).unwrap();
 }
 
 pub(crate) struct GitRepo {
@@ -132,6 +136,15 @@ impl GitRepo {
             GitRepoUrl::Github { user, repo } => {
                 clone_repo_shallow_github(dirs, &download_dir, user, repo, self.rev);
             }
+        }
+
+        let source_lockfile =
+            RelPath::PATCHES.to_path(dirs).join(format!("{}-lock.toml", self.patch_name));
+        let target_lockfile = download_dir.join("Cargo.lock");
+        if source_lockfile.exists() {
+            fs::copy(source_lockfile, target_lockfile).unwrap();
+        } else {
+            assert!(target_lockfile.exists());
         }
 
         let actual_hash = format!("{:016x}", hash_dir(&download_dir));
@@ -284,13 +297,5 @@ pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, ta
         let mut apply_patch_cmd = git_command(target_dir, "am");
         apply_patch_cmd.arg(patch).arg("-q");
         spawn_and_wait(apply_patch_cmd);
-    }
-
-    let source_lockfile = RelPath::PATCHES.to_path(dirs).join(format!("{crate_name}-lock.toml"));
-    let target_lockfile = target_dir.join("Cargo.lock");
-    if source_lockfile.exists() {
-        fs::copy(source_lockfile, target_lockfile).unwrap();
-    } else {
-        assert!(target_lockfile.exists());
     }
 }
