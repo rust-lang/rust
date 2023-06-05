@@ -1,0 +1,24 @@
+error[E0631]: type mismatch in function arguments
+  --> $DIR/suggest-option-asderef-inference-var.rs:7:56
+   |
+LL | fn deref_int(a: &i32) -> i32 {
+   | ---------------------------- found signature defined here
+...
+LL |     let _has_inference_vars: Option<i32> = Some(0).map(deref_int);
+   |                                                    --- ^^^^^^^^^ expected due to this
+   |                                                    |
+   |                                                    required by a bound introduced by this call
+   |
+   = note: expected function signature `fn({integer}) -> _`
+              found function signature `for<'a> fn(&'a i32) -> _`
+note: required by a bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: do not borrow the argument
+   |
+LL - fn deref_int(a: &i32) -> i32 {
+LL + fn deref_int(a: i32) -> i32 {
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0631`.
