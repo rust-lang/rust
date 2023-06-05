@@ -45,13 +45,13 @@ impl AccessCause {
 /// Complete data for an event:
 #[derive(Clone, Debug)]
 pub struct Event {
-    /// Transformation of permissions that occured because of this event
+    /// Transformation of permissions that occured because of this event.
     pub transition: PermTransition,
-    /// Kind of the access that triggered this event
+    /// Kind of the access that triggered this event.
     pub access_cause: AccessCause,
-    /// Relative position of the tag to the one used for the access
+    /// Relative position of the tag to the one used for the access.
     pub is_foreign: bool,
-    /// Whether this access was explicit or inserted implicitly by Tree Borrows.
+    /// User-visible range of the access.
     pub access_range: AllocRange,
     /// The transition recorded by this event only occured on a subrange of
     /// `access_range`: a single access on `access_range` triggers several events,
@@ -66,7 +66,7 @@ pub struct Event {
     /// the `TbError`, which should satisfy
     /// `event.transition_range.contains(error.error_offset)`.
     pub transition_range: Range<u64>,
-    /// Line of code that triggered this event
+    /// Line of code that triggered this event.
     pub span: Span,
 }
 
