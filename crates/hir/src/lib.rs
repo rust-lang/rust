@@ -52,9 +52,10 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
-    TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, InTypeConstId, ItemContainerId,
+    LifetimeParamId, LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId,
+    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
+    UnionId,
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
@@ -1375,8 +1376,9 @@ pub enum DefWithBody {
     Static(Static),
     Const(Const),
     Variant(Variant),
+    InTypeConst(InTypeConst),
 }
-impl_from!(Function, Const, Static, Variant for DefWithBody);
+impl_from!(Function, Const, Static, Variant, InTypeConst for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1385,6 +1387,7 @@ impl DefWithBody {
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
             DefWithBody::Variant(v) => v.module(db),
+            DefWithBody::InTypeConst(c) => c.module(db),
         }
     }
 
@@ -1394,6 +1397,7 @@ impl DefWithBody {
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
             DefWithBody::Variant(v) => Some(v.name(db)),
+            DefWithBody::InTypeConst(_) => None,
         }
     }
 
@@ -1404,6 +1408,11 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
             DefWithBody::Variant(it) => it.parent.variant_body_ty(db),
+            DefWithBody::InTypeConst(it) => Type::new_with_resolver_inner(
+                db,
+                &DefWithBodyId::from(it.id).resolver(db.upcast()),
+                TyKind::Error.intern(Interner),
+            ),
         }
     }
 
@@ -1413,6 +1422,7 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
             DefWithBody::Variant(it) => it.into(),
+            DefWithBody::InTypeConst(it) => it.id.into(),
         }
     }
 
@@ -1797,6 +1807,8 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
             DefWithBody::Variant(it) => it.into(),
+            // FIXME: don't ignore diagnostics for in type const
+            DefWithBody::InTypeConst(_) => return,
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
             acc.push(diag.into())
@@ -2082,6 +2094,17 @@ impl SelfParam {
 impl HasVisibility for Function {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         db.function_visibility(self.id)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InTypeConst {
+    pub(crate) id: InTypeConstId,
+}
+
+impl InTypeConst {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        Module { id: self.id.lookup(db.upcast()).1.module(db.upcast()) }
     }
 }
 
@@ -2515,7 +2538,7 @@ impl AsAssocItem for DefWithBody {
         match self {
             DefWithBody::Function(it) => it.as_assoc_item(db),
             DefWithBody::Const(it) => it.as_assoc_item(db),
-            DefWithBody::Static(_) | DefWithBody::Variant(_) => None,
+            DefWithBody::Static(_) | DefWithBody::Variant(_) | DefWithBody::InTypeConst(_) => None,
         }
     }
 }

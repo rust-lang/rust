@@ -2052,6 +2052,17 @@ fn extern_weak_statics() {
 }
 
 #[test]
+fn from_ne_bytes() {
+    check_number(
+        r#"
+//- minicore: int_impl
+const GOAL: u32 = u32::from_ne_bytes([44, 1, 0, 0]);
+        "#,
+        300,
+    );
+}
+
+#[test]
 fn enums() {
     check_number(
         r#"

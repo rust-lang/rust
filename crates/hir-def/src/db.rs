@@ -1,7 +1,7 @@
 //! Defines database & queries for name resolution.
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
-use hir_expand::{db::ExpandDatabase, HirFileId};
+use hir_expand::{db::ExpandDatabase, AstId, HirFileId};
 use intern::Interned;
 use la_arena::ArenaMap;
 use syntax::{ast, AstPtr};
@@ -24,9 +24,10 @@ use crate::{
     visibility::{self, Visibility},
     AnonymousConstId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId,
     EnumLoc, ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc,
-    LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc,
-    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId,
-    TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
+    InTypeConstId, LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId,
+    MacroRulesLoc, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc,
+    TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, TypeOwnerId,
+    UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -63,6 +64,8 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
     #[salsa::interned]
     fn intern_anonymous_const(&self, id: (DefWithBodyId, ExprId)) -> AnonymousConstId;
+    #[salsa::interned]
+    fn intern_in_type_const(&self, id: (AstId<ast::Expr>, TypeOwnerId)) -> InTypeConstId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]

@@ -328,14 +328,21 @@ impl flags::AnalysisStats {
         let analysis = host.analysis();
         for f in funcs.iter().copied() {
             let name = f.name(db);
-            let full_name = f
-                .module(db)
-                .path_to_root(db)
+            let module = f.module(db);
+            let full_name = module
+                .krate()
+                .display_name(db)
+                .map(|x| x.canonical_name().to_string())
                 .into_iter()
-                .rev()
-                .filter_map(|it| it.name(db))
-                .chain(Some(f.name(db)))
-                .map(|it| it.display(db).to_string())
+                .chain(
+                    module
+                        .path_to_root(db)
+                        .into_iter()
+                        .filter_map(|it| it.name(db))
+                        .rev()
+                        .chain(Some(f.name(db)))
+                        .map(|it| it.display(db).to_string()),
+                )
                 .join("::");
             if let Some(only_name) = self.only.as_deref() {
                 if name.display(db).to_string() != only_name && full_name != only_name {

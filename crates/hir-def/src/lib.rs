@@ -89,8 +89,8 @@ use crate::{
     builtin_type::BuiltinType,
     data::adt::VariantData,
     item_tree::{
-        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, ModItem,
-        Static, Struct, Trait, TraitAlias, TypeAlias, Union,
+        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, Static,
+        Struct, Trait, TraitAlias, TypeAlias, Union,
     },
 };
 
@@ -476,10 +476,44 @@ impl_from!(
     for ModuleDefId
 );
 
-// FIXME: make this a DefWithBodyId
+/// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
+/// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct AnonymousConstId(InternId);
 impl_intern_key!(AnonymousConstId);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum TypeOwnerId {
+    ModuleId(ModuleId),
+    DefWithBodyId(DefWithBodyId),
+    GenericDefId(GenericDefId),
+}
+
+impl TypeOwnerId {
+    fn as_generic_def_id(self) -> Option<GenericDefId> {
+        match self {
+            TypeOwnerId::ModuleId(_) => None,
+            TypeOwnerId::DefWithBodyId(x) => x.as_generic_def_id(),
+            TypeOwnerId::GenericDefId(x) => Some(x),
+        }
+    }
+}
+
+impl_from!(ModuleId, DefWithBodyId(FunctionId, ConstId, StaticId), GenericDefId(AdtId, TypeAliasId, ImplId) for TypeOwnerId);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct InTypeConstId(InternId);
+type InTypeConstLoc = (AstId<ast::Expr>, TypeOwnerId);
+impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
+
+impl InTypeConstId {
+    pub fn source(&self, db: &dyn db::DefDatabase) -> ast::Expr {
+        let src = self.lookup(db).0;
+        let file_id = src.file_id;
+        let root = &db.parse_or_expand(file_id);
+        db.ast_id_map(file_id).get(src.value).to_node(root)
+    }
+}
 
 /// A constant, which might appears as a const item, an annonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.
@@ -487,9 +521,10 @@ impl_intern_key!(AnonymousConstId);
 pub enum GeneralConstId {
     ConstId(ConstId),
     AnonymousConstId(AnonymousConstId),
+    InTypeConstId(InTypeConstId),
 }
 
-impl_from!(ConstId, AnonymousConstId for GeneralConstId);
+impl_from!(ConstId, AnonymousConstId, InTypeConstId for GeneralConstId);
 
 impl GeneralConstId {
     pub fn generic_def(self, db: &dyn db::DefDatabase) -> Option<GenericDefId> {
@@ -497,6 +532,10 @@ impl GeneralConstId {
             GeneralConstId::ConstId(x) => Some(x.into()),
             GeneralConstId::AnonymousConstId(x) => {
                 let (parent, _) = db.lookup_intern_anonymous_const(x);
+                parent.as_generic_def_id()
+            }
+            GeneralConstId::InTypeConstId(x) => {
+                let (_, parent) = x.lookup(db);
                 parent.as_generic_def_id()
             }
         }
@@ -512,6 +551,7 @@ impl GeneralConstId {
                 .unwrap_or("_")
                 .to_owned(),
             GeneralConstId::AnonymousConstId(id) => format!("{{anonymous const {id:?}}}"),
+            GeneralConstId::InTypeConstId(id) => format!("{{in type const {id:?}}}"),
         }
     }
 }
@@ -522,10 +562,11 @@ pub enum DefWithBodyId {
     FunctionId(FunctionId),
     StaticId(StaticId),
     ConstId(ConstId),
+    InTypeConstId(InTypeConstId),
     VariantId(EnumVariantId),
 }
 
-impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
+impl_from!(FunctionId, ConstId, StaticId, InTypeConstId for DefWithBodyId);
 
 impl From<EnumVariantId> for DefWithBodyId {
     fn from(id: EnumVariantId) -> Self {
@@ -540,6 +581,9 @@ impl DefWithBodyId {
             DefWithBodyId::StaticId(_) => None,
             DefWithBodyId::ConstId(c) => Some(c.into()),
             DefWithBodyId::VariantId(c) => Some(c.into()),
+            // FIXME: stable rust doesn't allow generics in constants, but we should
+            // use `TypeOwnerId::as_generic_def_id` when it does.
+            DefWithBodyId::InTypeConstId(_) => None,
         }
     }
 }
@@ -734,6 +778,16 @@ impl HasModule for MacroId {
     }
 }
 
+impl HasModule for TypeOwnerId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        match self {
+            TypeOwnerId::ModuleId(x) => *x,
+            TypeOwnerId::DefWithBodyId(x) => x.module(db),
+            TypeOwnerId::GenericDefId(x) => x.module(db),
+        }
+    }
+}
+
 impl HasModule for DefWithBodyId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
@@ -741,17 +795,7 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
             DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
             DefWithBodyId::VariantId(it) => it.parent.lookup(db).container,
-        }
-    }
-}
-
-impl DefWithBodyId {
-    pub fn as_mod_item(self, db: &dyn db::DefDatabase) -> ModItem {
-        match self {
-            DefWithBodyId::FunctionId(it) => it.lookup(db).id.value.into(),
-            DefWithBodyId::StaticId(it) => it.lookup(db).id.value.into(),
-            DefWithBodyId::ConstId(it) => it.lookup(db).id.value.into(),
-            DefWithBodyId::VariantId(it) => it.parent.lookup(db).id.value.into(),
+            DefWithBodyId::InTypeConstId(it) => it.lookup(db).1.module(db),
         }
     }
 }

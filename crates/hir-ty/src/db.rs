@@ -278,6 +278,7 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
         DefWithBodyId::VariantId(it) => {
             db.enum_data(it.parent).variants[it.local_id].name.display(db.upcast()).to_string()
         }
+        DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
     });
     db.infer_query(def)
 }
