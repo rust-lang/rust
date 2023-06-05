@@ -1,6 +1,7 @@
 #![deny(clippy::type_repetition_in_bounds)]
 #![allow(clippy::extra_unused_type_parameters)]
 
+use serde::Deserialize;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 pub fn foo<T>(_t: T)
@@ -68,6 +69,20 @@ mod issue4326 {
     {
         foo: S,
     }
+}
+
+// Extern macros shouldn't lint, again (see #10504)
+mod issue10504 {
+    use serde::{Deserialize, Serialize};
+    use std::fmt::Debug;
+    use std::hash::Hash;
+
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(bound(
+        serialize = "T: Serialize + Hash + Eq",
+        deserialize = "Box<T>: serde::de::DeserializeOwned + Hash + Eq"
+    ))]
+    struct OpaqueParams<T: ?Sized + Debug>(std::marker::PhantomData<T>);
 }
 
 // Issue #7360

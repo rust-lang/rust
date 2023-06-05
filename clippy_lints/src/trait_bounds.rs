@@ -260,6 +260,9 @@ impl TraitBounds {
                     SpanlessTy { ty: p.bounded_ty, cx },
                     p.bounds.iter().collect::<Vec<_>>()
                 );
+                if let TyKind::Path(qpath) = p.bounded_ty.kind;
+                if format!("{}:", rustc_hir_pretty::qpath_to_string(&qpath))
+                    == format!("{}:", snippet(cx, p.bounded_ty.span, "_"));
 
                 then {
                     let trait_bounds = v
