@@ -26,7 +26,7 @@ use crate::alloc::Allocator;
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{self, Global};
 #[cfg(not(no_global_oom_handling))]
-use crate::borrow::ToOwned;
+use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::vec::Vec;
 
@@ -830,6 +830,40 @@ impl<T: Clone> ToOwned for [T] {
 
     fn clone_into(&self, target: &mut Vec<T>) {
         SpecCloneIntoVec::clone_into(self, target);
+    }
+}
+
+impl<T> Cow<'_, [T]>
+where
+    T: Clone,
+{
+    /// Truncates the [`Vec`] or [`&[T]`](prim@slice).
+    ///
+    /// See [`Vec::clear`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(cow_clear)]
+    /// use std::borrow::Cow;
+    ///
+    /// let mut owned: Cow<'_, [i32]> = Cow::Owned(vec![1, 2, 3]);
+    /// owned.clear();
+    /// assert!(owned.is_empty());
+    ///
+    /// let mut borrowed = Cow::Borrowed([1, 2, 3].as_slice());
+    /// borrowed.clear();
+    /// assert!(borrowed.is_empty());
+    /// ```
+    #[inline]
+    #[unstable(feature = "cow_clear", issue = "none")]
+    pub fn clear(&mut self) {
+        match self {
+            Self::Owned(vec) => vec.clear(),
+            Self::Borrowed(slice) => *slice = &[],
+        }
     }
 }
 

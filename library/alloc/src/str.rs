@@ -14,7 +14,7 @@ use core::ptr;
 use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use core::unicode::conversions;
 
-use crate::borrow::ToOwned;
+use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::slice::{Concat, Join, SliceIndex};
 use crate::string::String;
@@ -213,6 +213,37 @@ impl ToOwned for str {
         let mut b = mem::take(target).into_bytes();
         self.as_bytes().clone_into(&mut b);
         *target = unsafe { String::from_utf8_unchecked(b) }
+    }
+}
+
+impl Cow<'_, str> {
+    /// Truncates the [`String`] or [`&str`](prim@str).
+    ///
+    /// See [`String::clear`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(cow_clear)]
+    /// use std::borrow::Cow;
+    ///
+    /// let mut owned: Cow<'_, str> = Cow::Owned(String::from("foo"));
+    /// owned.clear();
+    /// assert!(owned.is_empty());
+    ///
+    /// let mut borrowed = Cow::Borrowed("bar");
+    /// borrowed.clear();
+    /// assert!(borrowed.is_empty());
+    /// ```
+    #[inline]
+    #[unstable(feature = "cow_clear", issue = "none")]
+    pub fn clear(&mut self) {
+        match self {
+            Self::Owned(string) => string.clear(),
+            Self::Borrowed(str) => *str = "",
+        }
     }
 }
 
