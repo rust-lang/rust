@@ -106,6 +106,9 @@ jobs:
 
     # This is roughly config rust-lang/rust uses for testing
     - name: Test with LLVM sysroot
+      # Skip native x86_64-pc-windows-gnu. It is way too slow and cross-compiled
+      # x86_64-pc-windows-gnu covers at least part of the tests.
+      if: matrix.os != 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: ./y.rs test --sysroot llvm --no-unstable-features
