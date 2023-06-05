@@ -1431,30 +1431,28 @@ fn item_proc_macro(
     it: &clean::Item,
     m: &clean::ProcMacro,
 ) {
-    let mut buffer = Buffer::new();
-    wrap_item(&mut buffer, |buffer| {
+    wrap_item(w, |buffer| {
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                write!(buffer, "{}!() {{ /* proc-macro */ }}", name);
+                write!(buffer, "{name}!() {{ /* proc-macro */ }}").unwrap();
             }
             MacroKind::Attr => {
-                write!(buffer, "#[{}]", name);
+                write!(buffer, "#[{name}]").unwrap();
             }
             MacroKind::Derive => {
-                write!(buffer, "#[derive({})]", name);
+                write!(buffer, "#[derive({name})]").unwrap();
                 if !m.helpers.is_empty() {
-                    buffer.push_str("\n{\n");
-                    buffer.push_str("    // Attributes available to this derive:\n");
+                    buffer.write_str("\n{\n    // Attributes available to this derive:\n").unwrap();
                     for attr in &m.helpers {
-                        writeln!(buffer, "    #[{}]", attr);
+                        writeln!(buffer, "    #[{attr}]").unwrap();
                     }
-                    buffer.push_str("}\n");
+                    buffer.write_str("}\n").unwrap();
                 }
             }
         }
     });
-    write!(w, "{}{}", buffer.into_inner(), document(cx, it, None, HeadingOffset::H2)).unwrap();
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
 fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
@@ -1571,8 +1569,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 }
 
 fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
-    let mut buffer = Buffer::new();
-    wrap_item(&mut buffer, |buffer| {
+    wrap_item(w, |buffer| {
         render_attributes_in_code(buffer, it, cx.tcx());
         write!(
             buffer,
@@ -1581,29 +1578,27 @@ fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, 
             mutability = s.mutability.print_with_space(),
             name = it.name.unwrap(),
             typ = s.type_.print(cx)
-        );
+        )
+        .unwrap();
     });
-
-    write!(w, "{}", buffer.into_inner()).unwrap();
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
 fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
-    let mut buffer = Buffer::new();
-    wrap_item(&mut buffer, |buffer| {
-        buffer.write_str("extern {\n");
+    wrap_item(w, |buffer| {
+        buffer.write_str("extern {\n").unwrap();
         render_attributes_in_code(buffer, it, cx.tcx());
         write!(
             buffer,
             "    {}type {};\n}}",
             visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
             it.name.unwrap(),
-        );
+        )
+        .unwrap();
     });
 
-    write!(w, "{}{}", buffer.into_inner(), document(cx, it, None, HeadingOffset::H2)).unwrap();
-
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
     write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
         .unwrap();
 }
