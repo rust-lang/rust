@@ -1,5 +1,5 @@
 error: #[allow] attribute found
-  --> $DIR/allow_attributes.rs:11:3
+  --> $DIR/allow_attributes.rs:14:3
    |
 LL | #[allow(dead_code)]
    |   ^^^^^ help: replace it with: `expect`
@@ -7,7 +7,7 @@ LL | #[allow(dead_code)]
    = note: `-D clippy::allow-attributes` implied by `-D warnings`
 
 error: #[allow] attribute found
-  --> $DIR/allow_attributes.rs:20:30
+  --> $DIR/allow_attributes.rs:23:30
    |
 LL | #[cfg_attr(panic = "unwind", allow(dead_code))]
    |                              ^^^^^ help: replace it with: `expect`

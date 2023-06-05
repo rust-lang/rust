@@ -12,7 +12,11 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
-use rustc_ast::ast::{IntTy, LitIntType, LitKind, StrStyle, UintTy};
+use rustc_ast::{
+    ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, UintTy},
+    token::CommentKind,
+    AttrStyle,
+};
 use rustc_hir::{
     intravisit::FnKind, Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId,
     Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, Node, QPath, TraitItem,
@@ -25,12 +29,16 @@ use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 /// The search pattern to look for. Used by `span_matches_pat`
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Pat {
     /// A single string.
     Str(&'static str),
+    /// A single string.
+    OwnedStr(String),
     /// Any of the given strings.
     MultiStr(&'static [&'static str]),
+    /// Any of the given strings.
+    OwnedMultiStr(Vec<String>),
     /// The string representation of the symbol.
     Sym(Symbol),
     /// Any decimal or hexadecimal digit depending on the location.
@@ -51,12 +59,16 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
         let end_str = s.trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ',');
         (match start_pat {
             Pat::Str(text) => start_str.starts_with(text),
+            Pat::OwnedStr(text) => start_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
             Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
+            Pat::OwnedStr(text) => end_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.ends_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
             Pat::Num => end_str.as_bytes().last().map_or(false, u8::is_ascii_hexdigit),
         })
@@ -271,6 +283,42 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
     (start_pat, end_pat)
 }
 
+fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
+    match attr.kind {
+        AttrKind::Normal(..) => {
+            let mut pat = if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("#["), Pat::Str("]"))
+            } else {
+                (Pat::Str("#!["), Pat::Str("]"))
+            };
+
+            if let Some(ident) = attr.ident() && let Pat::Str(old_pat) = pat.0 {
+                // TODO: I feel like it's likely we can use `Cow` instead but this will require quite a bit of
+                // refactoring
+                // NOTE: This will likely have false positives, like `allow = 1`
+                pat.0 = Pat::OwnedMultiStr(vec![ident.to_string(), old_pat.to_owned()]);
+                pat.1 = Pat::Str("");
+            }
+
+            pat
+        },
+        AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
+            if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("///"), Pat::Str(""))
+            } else {
+                (Pat::Str("//!"), Pat::Str(""))
+            }
+        },
+        AttrKind::DocComment(_kind @ CommentKind::Block, ..) => {
+            if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("/**"), Pat::Str("*/"))
+            } else {
+                (Pat::Str("/*!"), Pat::Str("*/"))
+            }
+        },
+    }
+}
+
 pub trait WithSearchPat {
     type Context: LintContext;
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
@@ -307,6 +355,19 @@ impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
 
     fn span(&self) -> Span {
         self.3
+    }
+}
+
+// `Attribute` does not have the `hir` associated lifetime, so we cannot use the macro
+impl<'cx> WithSearchPat for &'cx Attribute {
+    type Context = LateContext<'cx>;
+
+    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
+        attr_search_pat(self)
+    }
+
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
