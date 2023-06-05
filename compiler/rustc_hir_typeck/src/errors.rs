@@ -298,6 +298,17 @@ pub enum SuggestBoxing {
     },
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_suggest_ptr_null_mut,
+    applicability = "maybe-incorrect",
+    code = "core::ptr::null_mut()"
+)]
+pub struct SuggestPtrNullMut {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_no_associated_item, code = "E0599")]
 pub struct NoAssociatedItem {
