@@ -22,41 +22,27 @@ use super::*;
 /// A preorder traversal of this graph is either `A B D C` or `A C D B`
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx> {
-    basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+    body: &'a Body<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
-    pub fn new(
-        basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        root: BasicBlock,
-    ) -> Preorder<'a, 'tcx> {
+    pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
         Preorder {
-            basic_blocks,
-            visited: BitSet::new_empty(basic_blocks.len()),
+            body,
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             worklist,
             root_is_start_block: root == START_BLOCK,
         }
     }
-
-    pub(super) fn into_visited(self) -> BitSet<BasicBlock> {
-        self.visited
-    }
 }
 
-pub type PreorderIter<'a, 'tcx: 'a> =
-    impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator;
-
-pub fn preorder<'a, 'tcx>(body: &'a Body<'tcx>) -> PreorderIter<'a, 'tcx> {
-    body.basic_blocks
-        .preorder_and_reachable_bitset()
-        .0
-        .iter()
-        .map(|&bb| (bb, &body.basic_blocks[bb]))
+pub fn preorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
+    Preorder::new(body, START_BLOCK)
 }
 
 impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
@@ -68,7 +54,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
                 continue;
             }
 
-            let data = &self.basic_blocks[idx];
+            let data = &self.body[idx];
 
             if let Some(ref term) = data.terminator {
                 self.worklist.extend(term.successors());
@@ -82,7 +68,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // All the blocks, minus the number of blocks we've visited.
-        let upper = self.basic_blocks.len() - self.visited.count();
+        let upper = self.body.basic_blocks.len() - self.visited.count();
 
         let lower = if self.root_is_start_block {
             // We will visit all remaining blocks exactly once.
@@ -299,13 +285,17 @@ impl<'a, 'tcx> ExactSizeIterator for ReversePostorder<'a, 'tcx> {}
 /// order.
 ///
 /// This is clearer than writing `preorder` in cases where the order doesn't matter.
-pub fn reachable<'a, 'tcx>(body: &'a Body<'tcx>) -> PreorderIter<'a, 'tcx> {
+pub fn reachable<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+) -> impl 'a + Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> {
     preorder(body)
 }
 
 /// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
-pub fn reachable_as_bitset<'a>(body: &'a Body<'_>) -> &'a BitSet<BasicBlock> {
-    body.basic_blocks.preorder_and_reachable_bitset().1
+pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
+    let mut iter = preorder(body);
+    (&mut iter).for_each(drop);
+    iter.visited
 }
 
 #[derive(Clone)]

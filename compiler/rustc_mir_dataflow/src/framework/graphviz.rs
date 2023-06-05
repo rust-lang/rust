@@ -43,7 +43,7 @@ where
     A: Analysis<'tcx>,
 {
     pub fn new(body: &'a Body<'tcx>, results: &'a Results<'tcx, A>, style: OutputStyle) -> Self {
-        let reachable = mir::traversal::reachable_as_bitset(body).clone();
+        let reachable = mir::traversal::reachable_as_bitset(body);
         Formatter { body, results, style, reachable }
     }
 }

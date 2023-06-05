@@ -6,12 +6,9 @@ use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
-use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
-
-use super::traversal::Preorder;
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
@@ -29,7 +26,6 @@ struct Cache {
     predecessors: OnceCell<Predecessors>,
     switch_sources: OnceCell<SwitchSources>,
     is_cyclic: OnceCell<bool>,
-    preorder: OnceCell<(Vec<BasicBlock>, BitSet<BasicBlock>)>,
     postorder: OnceCell<Vec<BasicBlock>>,
     dominators: OnceCell<Dominators<BasicBlock>>,
 }
@@ -72,18 +68,6 @@ impl<'tcx> BasicBlocks<'tcx> {
         self.cache.postorder.get_or_init(|| {
             Postorder::new(&self.basic_blocks, START_BLOCK).map(|(bb, _)| bb).collect()
         })
-    }
-
-    /// Returns basic blocks in a preorder.
-    #[inline]
-    pub fn preorder_and_reachable_bitset(&self) -> (&[BasicBlock], &BitSet<BasicBlock>) {
-        let (preorder, reachable) = self.cache.preorder.get_or_init(|| {
-            let mut result = Vec::new();
-            let mut preorder = Preorder::new(&self.basic_blocks, START_BLOCK);
-            result.extend(preorder.by_ref().map(|(bb, _)| bb));
-            (result, preorder.into_visited())
-        });
-        (preorder, reachable)
     }
 
     /// `switch_sources()[&(target, switch)]` returns a list of switch
