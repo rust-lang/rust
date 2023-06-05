@@ -262,7 +262,7 @@ impl TraitBounds {
                 );
                 let bounded_ty = snippet(cx, p.bounded_ty.span, "_");
                 if let TyKind::Path(qpath) = p.bounded_ty.kind;
-                if format!("{}:", rustc_hir_pretty::qpath_to_string(&qpath)) == format!("{}:", bounded_ty);
+                if format!("{}:", rustc_hir_pretty::qpath_to_string(&qpath)) == format!("{bounded_ty}:");
 
                 then {
                     let trait_bounds = v
@@ -272,7 +272,7 @@ impl TraitBounds {
                         .filter_map(get_trait_info_from_bound)
                         .map(|(_, _, span)| snippet_with_applicability(cx, span, "..", &mut applicability))
                         .join(" + ");
-                    let hint_string = format!("consider combining the bounds: `{}: {trait_bounds}`", bounded_ty);
+                    let hint_string = format!("consider combining the bounds: `{bounded_ty}: {trait_bounds}`");
                     span_lint_and_help(
                         cx,
                         TYPE_REPETITION_IN_BOUNDS,
