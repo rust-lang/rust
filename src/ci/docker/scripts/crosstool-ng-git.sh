@@ -2,7 +2,7 @@
 set -ex
 
 URL=https://github.com/crosstool-ng/crosstool-ng
-REV=943364711a650d9b9e84c1b42c91cc0265b6ab5c
+REV=227d99d7f3115f3a078595a580d2b307dcd23e93
 
 mkdir crosstool-ng
 cd crosstool-ng
