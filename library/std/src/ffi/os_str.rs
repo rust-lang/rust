@@ -1354,6 +1354,39 @@ impl ToOwned for OsStr {
     }
 }
 
+impl Cow<'_, OsStr> {
+    /// Truncates the [`OsString`] or [`&OsStr`](OsStr).
+    ///
+    /// See [`OsString::clear`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(cow_clear)]
+    /// use std::borrow::Cow;
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let mut owned: Cow<'_, OsStr> = Cow::Owned(OsString::from("foo"));
+    /// owned.clear();
+    /// assert!(owned.is_empty());
+    ///
+    /// let mut borrowed = Cow::Borrowed(OsStr::new("bar"));
+    /// borrowed.clear();
+    /// assert!(borrowed.is_empty());
+    /// ```
+    #[inline]
+    #[rustc_allow_incoherent_impl]
+    #[unstable(feature = "cow_clear", issue = "none")]
+    pub fn clear(&mut self) {
+        match self {
+            Self::Owned(os_string) => os_string.clear(),
+            Self::Borrowed(os_str) => *os_str = OsStr::new(""),
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for OsStr {
     #[inline]
