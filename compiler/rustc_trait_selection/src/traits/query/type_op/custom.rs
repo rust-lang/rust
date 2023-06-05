@@ -5,6 +5,7 @@ use crate::traits::ObligationCtxt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 
@@ -24,9 +25,10 @@ impl<F> CustomTypeOp<F> {
     }
 }
 
-impl<'tcx, F, R: fmt::Debug> super::TypeOp<'tcx> for CustomTypeOp<F>
+impl<'tcx, F, R> super::TypeOp<'tcx> for CustomTypeOp<F>
 where
     F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
+    R: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
 {
     type Output = R;
     /// We can't do any custom error reporting for `CustomTypeOp`, so
@@ -57,12 +59,16 @@ impl<F> fmt::Debug for CustomTypeOp<F> {
 
 /// Executes `op` and then scrapes out all the "old style" region
 /// constraints that result, creating query-region-constraints.
-pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
+pub fn scrape_region_constraints<'tcx, Op, R>(
     infcx: &InferCtxt<'tcx>,
     op: impl FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
     name: &'static str,
     span: Span,
-) -> Result<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>), ErrorGuaranteed> {
+) -> Result<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>), ErrorGuaranteed>
+where
+    R: TypeFoldable<TyCtxt<'tcx>>,
+    Op: super::TypeOp<'tcx, Output = R>,
+{
     // During NLL, we expect that nobody will register region
     // obligations **except** as part of a custom type op (and, at the
     // end of each custom type op, we scrape out the region
@@ -90,6 +96,9 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
             ))
         }
     })?;
+
+    // Next trait solver performs operations locally, and normalize goals should resolve vars.
+    let value = infcx.resolve_vars_if_possible(value);
 
     let region_obligations = infcx.take_registered_region_obligations();
     let region_constraint_data = infcx.take_and_reset_region_constraints();
