@@ -462,10 +462,7 @@ impl Socket {
 
     #[cfg(target_os = "vita")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        let option = match nonblocking {
-            true => 1,
-            false => 0,
-        };
+        let option = nonblocking as libc::c_int;
         setsockopt(self, libc::SOL_SOCKET, libc::SO_NONBLOCK, option)
     }
 
