@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn remove_parens_doesnt_apply_weird_syntax_and_adge_cases() {
+    fn remove_parens_doesnt_apply_weird_syntax_and_edge_cases() {
         // removing `()` would break code because {} would be counted as the loop/if body
         check_assist_not_applicable(remove_parentheses, r#"fn f() { for _ in $0(0..{3}) {} }"#);
         check_assist_not_applicable(remove_parentheses, r#"fn f() { for _ in $0(S {}) {} }"#);

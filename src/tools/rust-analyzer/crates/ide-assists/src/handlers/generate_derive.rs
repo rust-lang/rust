@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, AstNode, HasAttrs},
+    ast::{self, edit::IndentLevel, AstNode, HasAttrs},
     SyntaxKind::{COMMENT, WHITESPACE},
     TextSize,
 };
@@ -42,7 +42,12 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                 .next();
             match derive_attr {
                 None => {
-                    builder.insert_snippet(cap, node_start, "#[derive($0)]\n");
+                    let indent_level = IndentLevel::from_node(nominal.syntax());
+                    builder.insert_snippet(
+                        cap,
+                        node_start,
+                        format!("#[derive($0)]\n{indent_level}"),
+                    );
                 }
                 Some(tt) => {
                     // Just move the cursor.
@@ -84,6 +89,20 @@ mod tests {
             "struct Foo { $0 a: i32, }",
             "#[derive($0)]\nstruct Foo {  a: i32, }",
         );
+        check_assist(
+            generate_derive,
+            "
+mod m {
+    struct Foo { a: i32,$0 }
+}
+            ",
+            "
+mod m {
+    #[derive($0)]
+    struct Foo { a: i32, }
+}
+            ",
+        );
     }
 
     #[test]
@@ -109,6 +128,24 @@ struct Foo { a: i32$0, }
 /// It does stuff.
 #[derive($0)]
 struct Foo { a: i32, }
+            ",
+        );
+        check_assist(
+            generate_derive,
+            "
+mod m {
+    /// `Foo` is a pretty important struct.
+    /// It does stuff.
+    struct Foo { a: i32,$0 }
+}
+            ",
+            "
+mod m {
+    /// `Foo` is a pretty important struct.
+    /// It does stuff.
+    #[derive($0)]
+    struct Foo { a: i32, }
+}
             ",
         );
     }

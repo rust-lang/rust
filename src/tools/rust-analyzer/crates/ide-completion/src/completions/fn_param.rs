@@ -40,7 +40,7 @@ pub(crate) fn complete_fn_param(
         };
         // Completion lookup is omitted intentionally here.
         // See the full discussion: https://github.com/rust-lang/rust-analyzer/issues/12073
-        item.add_to(acc)
+        item.add_to(acc, ctx.db)
     };
 
     match kind {
@@ -50,7 +50,7 @@ pub(crate) fn complete_fn_param(
         ParamKind::Closure(closure) => {
             let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;
             params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
-                add_new_item_to_acc(&format!("{name}: {ty}"));
+                add_new_item_to_acc(&format!("{}: {ty}", name.display(ctx.db)));
             });
         }
     }
@@ -100,7 +100,9 @@ fn fill_fn_params(
 
     if let Some(stmt_list) = function.syntax().parent().and_then(ast::StmtList::cast) {
         params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
-            file_params.entry(format!("{name}: {ty}")).or_insert(name.to_string());
+            file_params
+                .entry(format!("{}: {ty}", name.display(ctx.db)))
+                .or_insert(name.display(ctx.db).to_string());
         });
     }
     remove_duplicated(&mut file_params, param_list.params());
@@ -127,7 +129,7 @@ fn params_from_stmt_list_scope(
         let module = scope.module().into();
         scope.process_all_names(&mut |name, def| {
             if let hir::ScopeDef::Local(local) = def {
-                if let Ok(ty) = local.ty(ctx.db).display_source_code(ctx.db, module) {
+                if let Ok(ty) = local.ty(ctx.db).display_source_code(ctx.db, module, true) {
                     cb(name, ty);
                 }
             }

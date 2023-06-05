@@ -49,6 +49,14 @@ impl Extend<CfgFlag> for CfgOptions {
     }
 }
 
+impl FromIterator<CfgFlag> for CfgOptions {
+    fn from_iter<T: IntoIterator<Item = CfgFlag>>(iter: T) -> Self {
+        let mut this = CfgOptions::default();
+        this.extend(iter);
+        this
+    }
+}
+
 impl fmt::Display for CfgFlag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

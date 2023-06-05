@@ -14,7 +14,7 @@ use tt::token_id::Subtree;
 /// The result of calculating fixes for a syntax node -- a bunch of changes
 /// (appending to and replacing nodes), the information that is needed to
 /// reverse those changes afterwards, and a token map.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct SyntaxFixups {
     pub(crate) append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
     pub(crate) replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
@@ -24,7 +24,7 @@ pub(crate) struct SyntaxFixups {
 }
 
 /// This is the information needed to reverse the fixups.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct SyntaxFixupUndoInfo {
     original: Vec<Subtree>,
 }

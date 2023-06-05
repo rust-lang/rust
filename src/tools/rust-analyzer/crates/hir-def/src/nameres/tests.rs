@@ -4,10 +4,9 @@ mod macros;
 mod mod_resolution;
 mod primitives;
 
-use std::sync::Arc;
-
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::{expect, Expect};
+use triomphe::Arc;
 
 use crate::{db::DefDatabase, test_db::TestDB};
 

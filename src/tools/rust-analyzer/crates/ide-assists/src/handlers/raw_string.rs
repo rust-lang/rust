@@ -20,6 +20,7 @@ use crate::{utils::required_hashes, AssistContext, AssistId, AssistKind, Assists
 // }
 // ```
 pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    // FIXME: This should support byte and c strings as well.
     let token = ctx.find_token_at_offset::<ast::String>()?;
     if token.is_raw() {
         return None;

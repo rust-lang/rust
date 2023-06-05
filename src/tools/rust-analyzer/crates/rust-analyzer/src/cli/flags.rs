@@ -66,6 +66,8 @@ xflags::xflags! {
             optional --memory-usage
             /// Print the total length of all source and macro files (whitespace is not counted).
             optional --source-stats
+            /// Only type check, skip lowering to mir
+            optional --skip-mir-stats
 
             /// Only analyze items matching this path.
             optional -o, --only path: String
@@ -104,14 +106,15 @@ xflags::xflags! {
             optional --debug snippet: String
         }
 
-        cmd proc-macro {}
-
         cmd lsif {
             required path: PathBuf
         }
 
         cmd scip {
             required path: PathBuf
+
+            /// The output path where the SCIP file will be written to. Defaults to `index.scip`.
+            optional --output path: PathBuf
         }
     }
 }
@@ -139,7 +142,6 @@ pub enum RustAnalyzerCmd {
     Diagnostics(Diagnostics),
     Ssr(Ssr),
     Search(Search),
-    ProcMacro(ProcMacro),
     Lsif(Lsif),
     Scip(Scip),
 }
@@ -172,6 +174,7 @@ pub struct AnalysisStats {
     pub parallel: bool,
     pub memory_usage: bool,
     pub source_stats: bool,
+    pub skip_mir_stats: bool,
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
@@ -201,9 +204,6 @@ pub struct Search {
 }
 
 #[derive(Debug)]
-pub struct ProcMacro;
-
-#[derive(Debug)]
 pub struct Lsif {
     pub path: PathBuf,
 }
@@ -211,6 +211,7 @@ pub struct Lsif {
 #[derive(Debug)]
 pub struct Scip {
     pub path: PathBuf,
+    pub output: Option<PathBuf>,
 }
 
 impl RustAnalyzer {

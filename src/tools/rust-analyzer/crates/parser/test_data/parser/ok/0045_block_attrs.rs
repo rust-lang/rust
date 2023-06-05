@@ -3,7 +3,7 @@ fn inner() {
     //! As are ModuleDoc style comments
     {
         #![doc("Inner attributes are allowed in blocks used as statements")]
-        #![doc("Being validated is not affected by duplcates")]
+        #![doc("Being validated is not affected by duplicates")]
         //! As are ModuleDoc style comments
     };
     {

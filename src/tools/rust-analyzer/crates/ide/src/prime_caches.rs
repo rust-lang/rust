@@ -12,9 +12,8 @@ use ide_db::{
         salsa::{Database, ParallelDatabase, Snapshot},
         Cancelled, CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
     },
-    FxIndexMap,
+    FxHashSet, FxIndexMap,
 };
-use stdx::hash::NoHashHashSet;
 
 use crate::RootDatabase;
 
@@ -81,7 +80,11 @@ pub(crate) fn parallel_prime_caches(
         for _ in 0..num_worker_threads {
             let worker = prime_caches_worker.clone();
             let db = db.snapshot();
-            std::thread::spawn(move || Cancelled::catch(|| worker(db)));
+
+            stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
+                .allow_leak(true)
+                .spawn(move || Cancelled::catch(|| worker(db)))
+                .expect("failed to spawn thread");
         }
 
         (work_sender, progress_receiver)
@@ -142,7 +145,7 @@ pub(crate) fn parallel_prime_caches(
     }
 }
 
-fn compute_crates_to_prime(db: &RootDatabase, graph: &CrateGraph) -> NoHashHashSet<CrateId> {
+fn compute_crates_to_prime(db: &RootDatabase, graph: &CrateGraph) -> FxHashSet<CrateId> {
     // We're only interested in the workspace crates and the `ImportMap`s of their direct
     // dependencies, though in practice the latter also compute the `DefMap`s.
     // We don't prime transitive dependencies because they're generally not visible in

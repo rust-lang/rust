@@ -9,8 +9,8 @@ use stdx::format_to;
 use syntax::{
     ast::{
         self,
-        edit::{self, AstNodeEdit},
-        edit_in_place::{AttrsOwnerEdit, Removable},
+        edit::{AstNodeEdit, IndentLevel},
+        edit_in_place::{AttrsOwnerEdit, Indent, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
     ted, AstNode, AstToken, Direction, SourceFile,
@@ -139,9 +139,11 @@ pub fn add_trait_assoc_items_to_impl(
 
     let transform = PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
 
+    let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
     let items = items.into_iter().map(|assoc_item| {
         transform.apply(assoc_item.syntax());
         assoc_item.remove_attrs_and_docs();
+        assoc_item.reindent_to(new_indent_level);
         assoc_item
     });
 
@@ -153,8 +155,10 @@ pub fn add_trait_assoc_items_to_impl(
         first_item.get_or_insert_with(|| item.clone());
         match &item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let body = make::block_expr(None, Some(make::ext::expr_todo()))
-                    .indent(edit::IndentLevel(1));
+                let body = AstNodeEdit::indent(
+                    &make::block_expr(None, Some(make::ext::expr_todo())),
+                    new_indent_level,
+                );
                 ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
             }
             ast::AssocItem::TypeAlias(type_alias) => {
@@ -338,7 +342,12 @@ fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
 
 /// `find_struct_impl` looks for impl of a struct, but this also has additional feature
 /// where it takes a list of function names and check if they exist inside impl_, if
-/// even one match is found, it returns None
+/// even one match is found, it returns None.
+///
+/// That means this function can have 3 potential return values:
+///  - `None`: an impl exists, but one of the function names within the impl matches one of the provided names.
+///  - `Some(None)`: no impl exists.
+///  - `Some(Some(_))`: an impl exists, with no matching function names.
 pub(crate) fn find_struct_impl(
     ctx: &AssistContext<'_>,
     adt: &ast::Adt,

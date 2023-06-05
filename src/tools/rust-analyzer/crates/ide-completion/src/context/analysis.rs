@@ -609,14 +609,14 @@ fn classify_name_ref(
                     _ => false,
                 };
 
-                let reciever_is_part_of_indivisible_expression = match &receiver {
+                let receiver_is_part_of_indivisible_expression = match &receiver {
                     Some(ast::Expr::IfExpr(_)) => {
                         let next_token_kind = next_non_trivia_token(name_ref.syntax().clone()).map(|t| t.kind());
                         next_token_kind == Some(SyntaxKind::ELSE_KW)
                     },
                     _ => false
                 };
-                if reciever_is_part_of_indivisible_expression {
+                if receiver_is_part_of_indivisible_expression {
                     return None;
                 }
 
@@ -1190,7 +1190,7 @@ fn pattern_context_for(
                                     })
                                 }).and_then(|variants| {
                                    Some(variants.iter().filter_map(|variant| {
-                                        let variant_name = variant.name(sema.db).to_string();
+                                        let variant_name = variant.name(sema.db).display(sema.db).to_string();
 
                                         let variant_already_present = match_arm_list.arms().any(|arm| {
                                             arm.pat().and_then(|pat| {

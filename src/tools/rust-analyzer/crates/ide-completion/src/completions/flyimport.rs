@@ -257,30 +257,24 @@ fn import_on_the_fly(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    acc.add_all(
-        import_assets
-            .search_for_imports(
-                &ctx.sema,
-                ctx.config.insert_use.prefix_kind,
-                ctx.config.prefer_no_std,
-            )
-            .into_iter()
-            .filter(ns_filter)
-            .filter(|import| {
-                !ctx.is_item_hidden(&import.item_to_import)
-                    && !ctx.is_item_hidden(&import.original_item)
-            })
-            .sorted_by_key(|located_import| {
-                compute_fuzzy_completion_order_key(
-                    &located_import.import_path,
-                    &user_input_lowercased,
-                )
-            })
-            .filter_map(|import| {
-                render_resolution_with_import(RenderContext::new(ctx), path_ctx, import)
-            })
-            .map(|builder| builder.build()),
-    );
+    import_assets
+        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .into_iter()
+        .filter(ns_filter)
+        .filter(|import| {
+            let original_item = &import.original_item;
+            !ctx.is_item_hidden(&import.item_to_import)
+                && !ctx.is_item_hidden(original_item)
+                && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
+        })
+        .sorted_by_key(|located_import| {
+            compute_fuzzy_completion_order_key(&located_import.import_path, &user_input_lowercased)
+        })
+        .filter_map(|import| {
+            render_resolution_with_import(RenderContext::new(ctx), path_ctx, import)
+        })
+        .map(|builder| builder.build(ctx.db))
+        .for_each(|item| acc.add(item));
     Some(())
 }
 
@@ -305,30 +299,24 @@ fn import_on_the_fly_pat_(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    acc.add_all(
-        import_assets
-            .search_for_imports(
-                &ctx.sema,
-                ctx.config.insert_use.prefix_kind,
-                ctx.config.prefer_no_std,
-            )
-            .into_iter()
-            .filter(ns_filter)
-            .filter(|import| {
-                !ctx.is_item_hidden(&import.item_to_import)
-                    && !ctx.is_item_hidden(&import.original_item)
-            })
-            .sorted_by_key(|located_import| {
-                compute_fuzzy_completion_order_key(
-                    &located_import.import_path,
-                    &user_input_lowercased,
-                )
-            })
-            .filter_map(|import| {
-                render_resolution_with_import_pat(RenderContext::new(ctx), pattern_ctx, import)
-            })
-            .map(|builder| builder.build()),
-    );
+    import_assets
+        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .into_iter()
+        .filter(ns_filter)
+        .filter(|import| {
+            let original_item = &import.original_item;
+            !ctx.is_item_hidden(&import.item_to_import)
+                && !ctx.is_item_hidden(original_item)
+                && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
+        })
+        .sorted_by_key(|located_import| {
+            compute_fuzzy_completion_order_key(&located_import.import_path, &user_input_lowercased)
+        })
+        .filter_map(|import| {
+            render_resolution_with_import_pat(RenderContext::new(ctx), pattern_ctx, import)
+        })
+        .map(|builder| builder.build(ctx.db))
+        .for_each(|item| acc.add(item));
     Some(())
 }
 

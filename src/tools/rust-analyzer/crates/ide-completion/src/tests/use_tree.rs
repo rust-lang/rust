@@ -382,3 +382,50 @@ use self::foo::impl$0
         "#]],
     );
 }
+
+#[test]
+fn use_tree_no_unstable_items_on_stable() {
+    check(
+        r#"
+//- /lib.rs crate:main deps:std
+use std::$0
+//- /std.rs crate:std
+#[unstable]
+pub mod simd {}
+#[unstable]
+pub struct S;
+#[unstable]
+pub fn foo() {}
+#[unstable]
+#[macro_export]
+marco_rules! m { () => {} }
+"#,
+        expect![""],
+    );
+}
+
+#[test]
+fn use_tree_unstable_items_on_nightly() {
+    check(
+        r#"
+//- toolchain:nightly
+//- /lib.rs crate:main deps:std
+use std::$0
+//- /std.rs crate:std
+#[unstable]
+pub mod simd {}
+#[unstable]
+pub struct S;
+#[unstable]
+pub fn foo() {}
+#[unstable]
+#[macro_export]
+marco_rules! m { () => {} }
+"#,
+        expect![[r#"
+            fn foo  fn()
+            md simd
+            st S
+        "#]],
+    );
+}

@@ -72,7 +72,7 @@
     },
     {
       // Used for testing the extension with a local build of the LSP server (in `target/release`)
-      // with all other extendions loaded.
+      // with all other extensions loaded.
       "name": "Run With Extensions",
       "type": "extensionHost",
       "request": "launch",

@@ -1,9 +1,9 @@
 use either::Either;
-use ide_db::defs::Definition;
+use ide_db::{defs::Definition, search::FileReference};
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, HasGenericParams, HasVisibility},
-    match_ast, SyntaxKind, SyntaxNode,
+    match_ast, SyntaxKind,
 };
 
 use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -52,7 +52,11 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let strukt = ctx.find_node_at_offset::<Either<ast::Struct, ast::Variant>>()?;
+    // XXX: We don't currently provide this assist for struct definitions inside macros, but if we
+    // are to lift this limitation, don't forget to make `edit_struct_def()` consider macro files
+    // too.
+    let name = ctx.find_node_at_offset::<ast::Name>()?;
+    let strukt = name.syntax().parent().and_then(<Either<ast::Struct, ast::Variant>>::cast)?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let record_fields = match field_list {
         ast::FieldList::RecordFieldList(it) => it,
@@ -62,12 +66,11 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
         Either::Left(s) => Either::Left(ctx.sema.to_def(s)?),
         Either::Right(v) => Either::Right(ctx.sema.to_def(v)?),
     };
-    let target = strukt.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
 
     acc.add(
         AssistId("convert_named_struct_to_tuple_struct", AssistKind::RefactorRewrite),
         "Convert to tuple struct",
-        target,
+        strukt.syntax().text_range(),
         |edit| {
             edit_field_references(ctx, edit, record_fields.fields());
             edit_struct_references(ctx, edit, strukt_def);
@@ -82,6 +85,8 @@ fn edit_struct_def(
     strukt: &Either<ast::Struct, ast::Variant>,
     record_fields: ast::RecordFieldList,
 ) {
+    // Note that we don't need to consider macro files in this function because this this is
+    // currently not triggered for struct definitions inside macro calls.
     let tuple_fields = record_fields
         .fields()
         .filter_map(|f| Some(ast::make::tuple_field(f.visibility(), f.ty()?)));
@@ -137,48 +142,70 @@ fn edit_struct_references(
     };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
-    let edit_node = |edit: &mut SourceChangeBuilder, node: SyntaxNode| -> Option<()> {
-        match_ast! {
-            match node {
-                ast::RecordPat(record_struct_pat) => {
-                    edit.replace(
-                        record_struct_pat.syntax().text_range(),
-                        ast::make::tuple_struct_pat(
-                            record_struct_pat.path()?,
-                            record_struct_pat
-                                .record_pat_field_list()?
-                                .fields()
-                                .filter_map(|pat| pat.pat())
-                        )
-                        .to_string()
-                    );
-                },
-                ast::RecordExpr(record_expr) => {
-                    let path = record_expr.path()?;
-                    let args = record_expr
-                        .record_expr_field_list()?
-                        .fields()
-                        .filter_map(|f| f.expr())
-                        .join(", ");
-
-                    edit.replace(record_expr.syntax().text_range(), format!("{path}({args})"));
-                },
-                _ => return None,
-            }
-        }
-        Some(())
-    };
-
     for (file_id, refs) in usages {
         edit.edit_file(file_id);
         for r in refs {
-            for node in r.name.syntax().ancestors() {
-                if edit_node(edit, node).is_some() {
-                    break;
-                }
-            }
+            process_struct_name_reference(ctx, r, edit);
         }
     }
+}
+
+fn process_struct_name_reference(
+    ctx: &AssistContext<'_>,
+    r: FileReference,
+    edit: &mut SourceChangeBuilder,
+) -> Option<()> {
+    // First check if it's the last semgnet of a path that directly belongs to a record
+    // expression/pattern.
+    let name_ref = r.name.as_name_ref()?;
+    let path_segment = name_ref.syntax().parent().and_then(ast::PathSegment::cast)?;
+    // A `PathSegment` always belongs to a `Path`, so there's at least one `Path` at this point.
+    let full_path =
+        path_segment.syntax().parent()?.ancestors().map_while(ast::Path::cast).last().unwrap();
+
+    if full_path.segment().unwrap().name_ref()? != *name_ref {
+        // `name_ref` isn't the last segment of the path, so `full_path` doesn't point to the
+        // struct we want to edit.
+        return None;
+    }
+
+    let parent = full_path.syntax().parent()?;
+    match_ast! {
+        match parent {
+            ast::RecordPat(record_struct_pat) => {
+                // When we failed to get the original range for the whole struct expression node,
+                // we can't provide any reasonable edit. Leave it untouched.
+                let file_range = ctx.sema.original_range_opt(record_struct_pat.syntax())?;
+                edit.replace(
+                    file_range.range,
+                    ast::make::tuple_struct_pat(
+                        record_struct_pat.path()?,
+                        record_struct_pat
+                            .record_pat_field_list()?
+                            .fields()
+                            .filter_map(|pat| pat.pat())
+                    )
+                    .to_string()
+                );
+            },
+            ast::RecordExpr(record_expr) => {
+                // When we failed to get the original range for the whole struct pattern node,
+                // we can't provide any reasonable edit. Leave it untouched.
+                let file_range = ctx.sema.original_range_opt(record_expr.syntax())?;
+                let path = record_expr.path()?;
+                let args = record_expr
+                    .record_expr_field_list()?
+                    .fields()
+                    .filter_map(|f| f.expr())
+                    .join(", ");
+
+                edit.replace(file_range.range, format!("{path}({args})"));
+            },
+            _ => {}
+        }
+    }
+
+    Some(())
 }
 
 fn edit_field_references(
@@ -199,7 +226,7 @@ fn edit_field_references(
                 if let Some(name_ref) = r.name.as_name_ref() {
                     // Only edit the field reference if it's part of a `.field` access
                     if name_ref.syntax().parent().and_then(ast::FieldExpr::cast).is_some() {
-                        edit.replace(name_ref.syntax().text_range(), index.to_string());
+                        edit.replace(r.range, index.to_string());
                     }
                 }
             }
@@ -812,6 +839,141 @@ mod foo;
 use crate::{A::Variant, Inner};
 fn f() {
     let a = Variant(Inner);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn field_access_inside_macro_call() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct $0Struct {
+    inner: i32,
+}
+
+macro_rules! id {
+    ($e:expr) => { $e }
+}
+
+fn test(c: Struct) {
+    id!(c.inner);
+}
+"#,
+            r#"
+struct Struct(i32);
+
+macro_rules! id {
+    ($e:expr) => { $e }
+}
+
+fn test(c: Struct) {
+    id!(c.0);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn struct_usage_inside_macro_call() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+
+struct $0Struct {
+    inner: i32,
+}
+
+fn test() {
+    id! {
+        let s = Struct {
+            inner: 42,
+        };
+        let Struct { inner: value } = s;
+        let Struct { inner } = s;
+    }
+}
+"#,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+
+struct Struct(i32);
+
+fn test() {
+    id! {
+        let s = Struct(42);
+        let Struct(value) = s;
+        let Struct(inner) = s;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn struct_name_ref_may_not_be_part_of_struct_expr_or_struct_pat() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct $0Struct {
+    inner: i32,
+}
+struct Outer<T> {
+    value: T,
+}
+fn foo<T>() -> T { loop {} }
+
+fn test() {
+    Outer {
+        value: foo::<Struct>();
+    }
+}
+
+trait HasAssoc {
+    type Assoc;
+    fn test();
+}
+impl HasAssoc for Struct {
+    type Assoc = Outer<i32>;
+    fn test() {
+        let a = Self::Assoc {
+            value: 42,
+        };
+        let Self::Assoc { value } = a;
+    }
+}
+"#,
+            r#"
+struct Struct(i32);
+struct Outer<T> {
+    value: T,
+}
+fn foo<T>() -> T { loop {} }
+
+fn test() {
+    Outer {
+        value: foo::<Struct>();
+    }
+}
+
+trait HasAssoc {
+    type Assoc;
+    fn test();
+}
+impl HasAssoc for Struct {
+    type Assoc = Outer<i32>;
+    fn test() {
+        let a = Self::Assoc {
+            value: 42,
+        };
+        let Self::Assoc { value } = a;
+    }
 }
 "#,
         );

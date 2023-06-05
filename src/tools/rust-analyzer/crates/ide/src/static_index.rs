@@ -118,9 +118,11 @@ impl StaticIndex<'_> {
                     adjustment_hints_hide_outside_unsafe: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    closure_style: hir::ClosureStyle::ImplFn,
                     param_names_for_lifetime_elision_hints: false,
                     binding_mode_hints: false,
                     max_length: Some(25),
+                    closure_capture_hints: false,
                     closing_brace_hints_min_lines: Some(25),
                 },
                 file_id,
@@ -136,10 +138,10 @@ impl StaticIndex<'_> {
         });
         let hover_config = HoverConfig {
             links_in_hover: true,
+            memory_layout: None,
             documentation: true,
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
-            interpret_tests: false,
         };
         let tokens = tokens.filter(|token| {
             matches!(

@@ -51,7 +51,9 @@ TypeArg =
   Type
 
 AssocTypeArg =
-  NameRef GenericArgList? (':' TypeBoundList | ('=' Type | ConstArg))
+  NameRef
+  (GenericArgList | ParamList RetType?)?
+  (':' TypeBoundList | ('=' Type | ConstArg))
 
 LifetimeArg =
   Lifetime
@@ -581,7 +583,7 @@ ImplTraitType =
   'impl' TypeBoundList
 
 DynTraitType =
-  'dyn' TypeBoundList
+  'dyn'? TypeBoundList
 
 TypeBoundList =
   bounds:(TypeBound ('+' TypeBound)* '+'?)
@@ -613,7 +615,7 @@ Pat =
 | ConstBlockPat
 
 LiteralPat =
-  Literal
+  '-'? Literal
 
 IdentPat =
   Attr* 'ref'? 'mut'? Name ('@' Pat)?

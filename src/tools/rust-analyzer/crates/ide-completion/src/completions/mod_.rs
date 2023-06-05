@@ -52,7 +52,7 @@ pub(crate) fn complete_mod(
 
     let existing_mod_declarations = current_module
         .children(ctx.db)
-        .filter_map(|module| Some(module.name(ctx.db)?.to_string()))
+        .filter_map(|module| Some(module.name(ctx.db)?.display(ctx.db).to_string()))
         .filter(|module| module != ctx.original_token.text())
         .collect::<FxHashSet<_>>();
 
@@ -99,7 +99,7 @@ pub(crate) fn complete_mod(
                 label.push(';');
             }
             let item = CompletionItem::new(SymbolKind::Module, ctx.source_range(), &label);
-            item.add_to(acc)
+            item.add_to(acc, ctx.db)
         });
 
     Some(())
