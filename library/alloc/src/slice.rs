@@ -835,7 +835,7 @@ impl<T: Clone> ToOwned for [T] {
 
 impl<T> Cow<'_, [T]>
 where
-    T: Clone,
+    [T]: ToOwned<Owned = Vec<T>>,
 {
     /// Truncates the [`Vec`] or [`&[T]`](prim@slice).
     ///
