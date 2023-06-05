@@ -314,6 +314,7 @@ fn test_retain_predicate_order() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_retain_pred_panic_with_hole() {
     let v = (0..5).map(Rc::new).collect::<Vec<_>>();
     catch_unwind(AssertUnwindSafe(|| {
@@ -331,6 +332,7 @@ fn test_retain_pred_panic_with_hole() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_retain_pred_panic_no_hole() {
     let v = (0..5).map(Rc::new).collect::<Vec<_>>();
     catch_unwind(AssertUnwindSafe(|| {
@@ -346,6 +348,7 @@ fn test_retain_pred_panic_no_hole() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_retain_drop_panic() {
     struct Wrap(Rc<i32>);
 
@@ -806,6 +809,7 @@ fn test_drain_end_overflow() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drain_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1038,6 +1042,7 @@ fn test_into_iter_clone() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_iter_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1195,6 +1200,7 @@ fn test_from_iter_specialization_head_tail_drop() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_from_iter_specialization_panic_during_iteration_drops() {
     let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
     let src: Vec<_> = drop_count.iter().cloned().collect();
@@ -1219,6 +1225,7 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_from_iter_specialization_panic_during_drop_doesnt_leak() {
     static mut DROP_COUNTER_OLD: [usize; 5] = [0; 5];
     static mut DROP_COUNTER_NEW: [usize; 2] = [0; 2];
@@ -1494,6 +1501,7 @@ fn drain_filter_complex() {
 // FIXME: re-enable emscripten once it can unwind again
 #[test]
 #[cfg(not(target_os = "emscripten"))]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn drain_filter_consumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
@@ -1546,6 +1554,7 @@ fn drain_filter_consumed_panic() {
 // FIXME: Re-enable emscripten once it can catch panics
 #[test]
 #[cfg(not(target_os = "emscripten"))]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn drain_filter_unconsumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
@@ -2414,6 +2423,7 @@ fn test_vec_dedup() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_vec_dedup_panicking() {
     #[derive(Debug)]
     struct Panic<'a> {
@@ -2470,6 +2480,7 @@ fn test_vec_dedup_panicking() {
 
 // Regression test for issue #82533
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_extend_from_within_panicking_clone() {
     struct Panic<'dc> {
         drop_count: &'dc AtomicU32,

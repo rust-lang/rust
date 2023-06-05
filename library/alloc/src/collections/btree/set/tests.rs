@@ -377,6 +377,7 @@ fn test_drain_filter() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drain_filter_drop_panic_leak() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -397,6 +398,7 @@ fn test_drain_filter_drop_panic_leak() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drain_filter_pred_panic_leak() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
