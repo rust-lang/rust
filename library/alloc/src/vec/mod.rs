@@ -2355,7 +2355,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         let len = self.len();
 
         if new_len > len {
-            self.extend_with(new_len - len, ExtendElement(value))
+            self.extend_with(new_len - len, value)
         } else {
             self.truncate(new_len);
         }
@@ -2469,26 +2469,10 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
     }
 }
 
-// This code generalizes `extend_with_{element,default}`.
-trait ExtendWith<T> {
-    fn next(&mut self) -> T;
-    fn last(self) -> T;
-}
-
-struct ExtendElement<T>(T);
-impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
-    fn next(&mut self) -> T {
-        self.0.clone()
-    }
-    fn last(self) -> T {
-        self.0
-    }
-}
-
-impl<T, A: Allocator> Vec<T, A> {
+impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
-    /// Extend the vector by `n` values, using the given generator.
-    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
+    /// Extend the vector by `n` clones of value.
+    fn extend_with(&mut self, n: usize, value: T) {
         self.reserve(n);
 
         unsafe {
@@ -2500,15 +2484,15 @@ impl<T, A: Allocator> Vec<T, A> {
 
             // Write all elements except the last one
             for _ in 1..n {
-                ptr::write(ptr, value.next());
+                ptr::write(ptr, value.clone());
                 ptr = ptr.add(1);
-                // Increment the length in every step in case next() panics
+                // Increment the length in every step in case clone() panics
                 local_len.increment_len(1);
             }
 
             if n > 0 {
                 // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value.last());
+                ptr::write(ptr, value);
                 local_len.increment_len(1);
             }
 
