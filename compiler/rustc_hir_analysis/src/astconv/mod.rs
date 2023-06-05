@@ -1643,6 +1643,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        // `dyn Trait<Assoc = Foo>` desugars to (not Rust syntax) `dyn Trait where <Self as Trait>::Assoc = Foo`.
+        // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
+        // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
+        // corresponding `Projection` clause
         for (projection_bound, _) in &projection_bounds {
             for def_ids in associated_types.values_mut() {
                 def_ids.remove(&projection_bound.projection_def_id());
