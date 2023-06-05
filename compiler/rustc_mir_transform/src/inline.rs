@@ -23,8 +23,6 @@ pub(crate) mod cycle;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
-const LANDINGPAD_PENALTY: usize = 50;
-const RESUME_PENALTY: usize = 45;
 
 const TOP_DOWN_DEPTH_LIMIT: usize = 5;
 
@@ -789,21 +787,18 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         let tcx = self.tcx;
         match terminator.kind {
-            TerminatorKind::Drop { ref place, unwind, .. } => {
+            TerminatorKind::Drop { ref place, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = self
                     .instance
                     .subst_mir(tcx, ty::EarlyBinder::bind(&place.ty(self.callee_body, tcx).ty));
                 if ty.needs_drop(tcx, self.param_env) {
                     self.cost += CALL_PENALTY;
-                    if let UnwindAction::Cleanup(_) = unwind {
-                        self.cost += LANDINGPAD_PENALTY;
-                    }
                 } else {
                     self.cost += INSTR_COST;
                 }
             }
-            TerminatorKind::Call { func: Operand::Constant(ref f), unwind, .. } => {
+            TerminatorKind::Call { func: Operand::Constant(ref f), .. } => {
                 let fn_ty = self.instance.subst_mir(tcx, ty::EarlyBinder::bind(&f.literal.ty()));
                 self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
                     // Don't give intrinsics the extra penalty for calls
@@ -811,22 +806,9 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 } else {
                     CALL_PENALTY
                 };
-                if let UnwindAction::Cleanup(_) = unwind {
-                    self.cost += LANDINGPAD_PENALTY;
-                }
             }
-            TerminatorKind::Assert { unwind, .. } => {
+            TerminatorKind::Assert { .. } => {
                 self.cost += CALL_PENALTY;
-                if let UnwindAction::Cleanup(_) = unwind {
-                    self.cost += LANDINGPAD_PENALTY;
-                }
-            }
-            TerminatorKind::Resume => self.cost += RESUME_PENALTY,
-            TerminatorKind::InlineAsm { unwind, .. } => {
-                self.cost += INSTR_COST;
-                if let UnwindAction::Cleanup(_) = unwind {
-                    self.cost += LANDINGPAD_PENALTY;
-                }
             }
             _ => self.cost += INSTR_COST,
         }
