@@ -1,5 +1,5 @@
 error[E0631]: type mismatch in function arguments
-  --> $DIR/suggest-option-asderef-unfixable.rs:28:40
+  --> $DIR/suggest-option-asderef-unfixable.rs:24:40
    |
 LL | fn takes_str_but_too_many_refs(_: &&str) -> Option<()> {
    | ------------------------------------------------------ found signature defined here
@@ -15,7 +15,7 @@ note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0277]: expected a `FnOnce<(String,)>` closure, found `for<'a> extern "C" fn(&'a str) -> Option<()> {takes_str_but_wrong_abi}`
-  --> $DIR/suggest-option-asderef-unfixable.rs:30:40
+  --> $DIR/suggest-option-asderef-unfixable.rs:26:40
    |
 LL |     let _ = produces_string().and_then(takes_str_but_wrong_abi);
    |                               -------- ^^^^^^^^^^^^^^^^^^^^^^^ expected an `FnOnce<(String,)>` closure, found `for<'a> extern "C" fn(&'a str) -> Option<()> {takes_str_but_wrong_abi}`
@@ -27,7 +27,7 @@ note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0277]: expected a `FnOnce<(String,)>` closure, found `for<'a> unsafe fn(&'a str) -> Option<()> {takes_str_but_unsafe}`
-  --> $DIR/suggest-option-asderef-unfixable.rs:32:40
+  --> $DIR/suggest-option-asderef-unfixable.rs:28:40
    |
 LL |     let _ = produces_string().and_then(takes_str_but_unsafe);
    |                               -------- ^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
@@ -40,7 +40,7 @@ note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0593]: function is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/suggest-option-asderef-unfixable.rs:34:40
+  --> $DIR/suggest-option-asderef-unfixable.rs:30:40
    |
 LL | fn no_args() -> Option<()> {
    | -------------------------- takes 0 arguments
@@ -54,28 +54,7 @@ note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/suggest-option-asderef-unfixable.rs:36:40
-   |
-LL | fn generic_ref<T>(_: &T) -> Option<()> {
-   | -------------------------------------- found signature defined here
-...
-LL |     let _ = produces_string().and_then(generic_ref);
-   |                               -------- ^^^^^^^^^^^ expected due to this
-   |                               |
-   |                               required by a bound introduced by this call
-   |
-   = note: expected function signature `fn(String) -> _`
-              found function signature `for<'a> fn(&'a _) -> _`
-note: required by a bound in `Option::<T>::and_then`
-  --> $SRC_DIR/core/src/option.rs:LL:COL
-help: do not borrow the argument
-   |
-LL - fn generic_ref<T>(_: &T) -> Option<()> {
-LL + fn generic_ref<T>(_: T) -> Option<()> {
-   |
-
-error[E0631]: type mismatch in function arguments
-  --> $DIR/suggest-option-asderef-unfixable.rs:38:45
+  --> $DIR/suggest-option-asderef-unfixable.rs:32:45
    |
 LL | fn takes_str_but_too_many_refs(_: &&str) -> Option<()> {
    | ------------------------------------------------------ found signature defined here
@@ -90,7 +69,7 @@ LL |     let _ = Some(TypeWithoutDeref).and_then(takes_str_but_too_many_refs);
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0277, E0593, E0631.
 For more information about an error, try `rustc --explain E0277`.
