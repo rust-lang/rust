@@ -147,9 +147,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         // `#[macro_export] macro_rules!` items are reexported at the top level of the
         // crate, regardless of where they're defined. We want to document the
-        // top level rexport of the macro, not its original definition, since
-        // the rexport defines the path that a user will actually see. Accordingly,
-        // we add the rexport as an item here, and then skip over the original
+        // top level re-export of the macro, not its original definition, since
+        // the re-export defines the path that a user will actually see. Accordingly,
+        // we add the re-export as an item here, and then skip over the original
         // definition in `visit_item()` below.
         //
         // We also skip `#[macro_export] macro_rules!` that have already been inserted,
