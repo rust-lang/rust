@@ -153,6 +153,9 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     state.next_opaque = None;
 
     let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
+    for dbg in body.var_debug_info.iter_mut() {
+        state.visit_var_debug_info(dbg);
+    }
     for bb in reverse_postorder {
         let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
         state.visit_basic_block_data(bb, data);
@@ -1236,6 +1239,51 @@ impl<'tcx> VnState<'_, 'tcx> {
 impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
+        let mut replace_dereffed = |place: &mut Place<'tcx>| -> Option<!> {
+            let last_deref = place.projection.iter().rposition(|e| e == PlaceElem::Deref)?;
+
+            // Another place that holds the same value.
+            let mut place_ref = place.as_ref();
+            let mut value = self.locals[place.local]?;
+
+            for (index, &proj) in place.projection[..last_deref].iter().enumerate() {
+                if let Some(candidates) = self.rev_locals.get(value)
+                    && let Some(&local) = candidates.first()
+                {
+                    place_ref = PlaceRef { local, projection: &place.projection[index..] };
+                }
+
+                let place_upto =
+                    PlaceRef { local: place.local, projection: &place.projection[..index] };
+                if let Some(projected) = self.project(place_upto, value, proj) {
+                    value = projected;
+                } else {
+                    if place_ref.projection.len() < place.projection.len() {
+                        *place = place_ref.project_deeper(&[], self.tcx);
+                    }
+                    return None;
+                }
+            }
+
+            if let Some(candidates) = self.rev_locals.get(value)
+                && let Some(&local) = candidates.first()
+            {
+                let place_ref = PlaceRef { local, projection: &place.projection[last_deref..] };
+                *place = place_ref.project_deeper(&[], self.tcx);
+            }
+
+            return None;
+        };
+
+        match &mut var_debug_info.value {
+            VarDebugInfoContents::Const(_) => {}
+            VarDebugInfoContents::Place(place) => {
+                replace_dereffed(place);
+            }
+        }
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {
