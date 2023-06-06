@@ -25,7 +25,7 @@ LL |     let Point { .., y } = p;
 help: move the `..` to the end of the field list
    |
 LL -     let Point { .., y } = p;
-LL +     let Point { y , .. } = p;
+LL +     let Point { y, .. } = p;
    |
 
 error: expected `}`, found `,`
