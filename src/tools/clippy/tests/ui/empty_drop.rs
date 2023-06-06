@@ -1,6 +1,6 @@
 //@run-rustfix
 #![warn(clippy::empty_drop)]
-#![allow(unused)]
+#![allow(unused, unnecessary_block)]
 
 // should cause an error
 struct Foo;

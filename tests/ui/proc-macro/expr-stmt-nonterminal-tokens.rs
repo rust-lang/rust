@@ -31,6 +31,7 @@ fn main() {
     mac!(expr #[allow(warnings)] 0);
     mac!(stmt 0);
     mac!(stmt {});
+    //~^ WARN unnecessary block [unnecessary_block]
     mac!(stmt PATH);
     mac!(stmt 0 + 1);
     mac!(stmt PATH + 1);

@@ -1,0 +1,10 @@
+warning: unnecessary block
+  --> $DIR/expr-stmt-nonterminal-tokens.rs:33:15
+   |
+LL |     mac!(stmt {});
+   |               ^^ help: remove this block
+   |
+   = note: `#[warn(unnecessary_block)]` on by default
+
+warning: 1 warning emitted
+

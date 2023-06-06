@@ -40,5 +40,13 @@ note: the built-in attribute `inline` will be ignored, since it's applied to the
 LL |     #[allow(warnings)] #[inline] foo!();
    |                                  ^^^
 
-warning: 3 warnings emitted
+warning: unnecessary block
+  --> $DIR/inert-attr-macro.rs:19:24
+   |
+LL |     #[allow(warnings)] { #[inline] foo!(); }
+   |                        ^^^^^^^^^^^^^^^^^^^^^ help: remove this block
+   |
+   = note: `#[warn(unnecessary_block)]` on by default
+
+warning: 4 warnings emitted
 

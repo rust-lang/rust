@@ -8,6 +8,7 @@ enum Foo {
 const A: usize = { 1; 2 };
 
 const B: usize = { { } 2 };
+//~^ WARN unnecessary block [unnecessary_block]
 
 macro_rules! foo {
     () => (())

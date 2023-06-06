@@ -36,6 +36,7 @@ fn foo() {
 
     /// dox //~ ERROR unused doc comment
     {
+    //~^ WARN unnecessary block [unnecessary_block]
 
     }
 }

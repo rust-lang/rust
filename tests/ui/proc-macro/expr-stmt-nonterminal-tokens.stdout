@@ -327,7 +327,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                 stream: TokenStream [
                                     Ident {
                                         ident: "PATH",
-                                        span: #0 bytes(615..619),
+                                        span: #0 bytes(667..671),
                                     },
                                 ],
                                 span: #16 bytes(460..465),
@@ -407,18 +407,18 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                         kind: Integer,
                                         symbol: "0",
                                         suffix: None,
-                                        span: #0 bytes(636..637),
+                                        span: #0 bytes(688..689),
                                     },
                                     Punct {
                                         ch: '+',
                                         spacing: Alone,
-                                        span: #0 bytes(638..639),
+                                        span: #0 bytes(690..691),
                                     },
                                     Literal {
                                         kind: Integer,
                                         symbol: "1",
                                         suffix: None,
-                                        span: #0 bytes(640..641),
+                                        span: #0 bytes(692..693),
                                     },
                                 ],
                                 span: #20 bytes(460..465),
@@ -496,18 +496,18 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                 stream: TokenStream [
                                     Ident {
                                         ident: "PATH",
-                                        span: #0 bytes(658..662),
+                                        span: #0 bytes(710..714),
                                     },
                                     Punct {
                                         ch: '+',
                                         spacing: Alone,
-                                        span: #0 bytes(663..664),
+                                        span: #0 bytes(715..716),
                                     },
                                     Literal {
                                         kind: Integer,
                                         symbol: "1",
                                         suffix: None,
-                                        span: #0 bytes(665..666),
+                                        span: #0 bytes(717..718),
                                     },
                                 ],
                                 span: #24 bytes(460..465),

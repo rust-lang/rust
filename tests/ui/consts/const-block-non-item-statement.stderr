@@ -1,0 +1,10 @@
+warning: unnecessary block
+  --> $DIR/const-block-non-item-statement.rs:10:20
+   |
+LL | const B: usize = { { } 2 };
+   |                    ^^^ help: remove this block
+   |
+   = note: `#[warn(unnecessary_block)]` on by default
+
+warning: 1 warning emitted
+

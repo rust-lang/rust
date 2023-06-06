@@ -61,5 +61,16 @@ warning: unused label
 LL |     'unused_block_label: {
    |     ^^^^^^^^^^^^^^^^^^^
 
-warning: 9 warnings emitted
+warning: unnecessary block
+  --> $DIR/unused_labels.rs:77:5
+   |
+LL | /     'unused_block_label: {
+LL | |
+LL | |
+LL | |     }
+   | |_____^ help: remove this block
+   |
+   = note: `#[warn(unnecessary_block)]` on by default
+
+warning: 10 warnings emitted
 

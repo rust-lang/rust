@@ -150,6 +150,7 @@ fn edit_struct_references(
     }
 }
 
+#[allow(unnecessary_block)]
 fn process_struct_name_reference(
     ctx: &AssistContext<'_>,
     r: FileReference,
@@ -201,7 +202,7 @@ fn process_struct_name_reference(
 
                 edit.replace(file_range.range, format!("{path}({args})"));
             },
-            _ => {}
+            _ => {},
         }
     }
 

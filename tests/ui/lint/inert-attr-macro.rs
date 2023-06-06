@@ -17,4 +17,5 @@ fn main() {
     // This does work, since the attribute is on a parent
     // of the macro invocation.
     #[allow(warnings)] { #[inline] foo!(); }
+    //~^ WARN unnecessary block [unnecessary_block]
 }

@@ -101,10 +101,22 @@ LL |       /// dox
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | /     {
 LL | |
+LL | |
 LL | |     }
    | |_____- rustdoc does not generate documentation for expressions
    |
    = help: use `//` for a plain comment
 
-error: aborting due to 10 previous errors
+warning: unnecessary block
+  --> $DIR/useless-comment.rs:38:5
+   |
+LL | /     {
+LL | |
+LL | |
+LL | |     }
+   | |_____^ help: remove this block
+   |
+   = note: `#[warn(unnecessary_block)]` on by default
+
+error: aborting due to 10 previous errors; 1 warning emitted
 

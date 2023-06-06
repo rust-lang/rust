@@ -163,6 +163,8 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 #[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
+    #![cfg_attr(not(bootstrap), allow(unnecessary_block))]
+
     #[cfg(target_arch = "x86")]
     {
         // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.

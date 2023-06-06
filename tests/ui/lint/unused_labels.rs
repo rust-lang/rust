@@ -76,6 +76,7 @@ fn main() {
     // Make sure unused block labels give warnings...
     'unused_block_label: {
         //~^ WARN unused label
+        //~^^ WARN unnecessary block [unnecessary_block]
     }
 
     // ...and that used ones don't:

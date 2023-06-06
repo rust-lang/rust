@@ -2,7 +2,8 @@
     clippy::single_match,
     unused_assignments,
     unused_variables,
-    clippy::while_immutable_condition
+    clippy::while_immutable_condition,
+    unnecessary_block
 )]
 
 fn test1() {
