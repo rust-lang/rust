@@ -80,6 +80,7 @@ mod redundant_semicolon;
 mod traits;
 mod types;
 mod unused;
+mod raw_strings;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
@@ -120,6 +121,7 @@ use redundant_semicolon::*;
 use traits::*;
 use types::*;
 use unused::*;
+use raw_strings::*;
 
 /// Useful for other parts of the compiler / Clippy.
 pub use builtin::SoftLints;
@@ -175,6 +177,7 @@ early_lint_methods!(
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             UnexpectedCfgs: UnexpectedCfgs,
+            UnusedRawStringHash: UnusedRawStringHash,
         ]
     ]
 );
@@ -311,6 +314,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_PARENS,
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS,
+        UNUSED_RAW_STRING_HASH,
         MAP_UNIT_FN
     );
 

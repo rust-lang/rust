@@ -1623,3 +1623,12 @@ pub struct UnusedAllocationDiag;
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_allocation_mut)]
 pub struct UnusedAllocationMutDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_raw_string_hash)]
+pub struct UnusedRawStringHashDiag {
+    #[label]
+    pub span: Span,
+    pub hash_count: usize,
+    pub hash_req: usize,
+}
