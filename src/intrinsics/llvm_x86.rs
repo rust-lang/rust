@@ -222,7 +222,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 _ => fx.bcx.ins().iconst(types::I32, 0),
             });
         }
-        "llvm.x86.avx2.pshuf.b" => {
+        "llvm.x86.ssse3.pshuf.b.128" | "llvm.x86.avx2.pshuf.b" => {
             let (a, b) = match args {
                 [a, b] => (a, b),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
@@ -241,15 +241,18 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let res = fx.bcx.ins().select(is_zero, zero, a_lane);
                 ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
             }
-            for i in 16..32 {
-                let b_lane = b.value_lane(fx, i).load_scalar(fx);
-                let is_zero = fx.bcx.ins().band_imm(b_lane, 0x80);
-                let b_lane_masked = fx.bcx.ins().band_imm(b_lane, 0xf);
-                let a_idx = fx.bcx.ins().iadd_imm(b_lane_masked, 16);
-                let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
-                let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
-                let res = fx.bcx.ins().select(is_zero, zero, a_lane);
-                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+
+            if intrinsic == "llvm.x86.avx2.pshuf.b" {
+                for i in 16..32 {
+                    let b_lane = b.value_lane(fx, i).load_scalar(fx);
+                    let is_zero = fx.bcx.ins().band_imm(b_lane, 0x80);
+                    let b_lane_masked = fx.bcx.ins().band_imm(b_lane, 0xf);
+                    let a_idx = fx.bcx.ins().iadd_imm(b_lane_masked, 16);
+                    let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
+                    let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
+                    let res = fx.bcx.ins().select(is_zero, zero, a_lane);
+                    ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                }
             }
         }
         "llvm.x86.avx2.vperm2i128" => {
