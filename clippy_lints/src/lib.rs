@@ -267,6 +267,7 @@ mod redundant_field_names;
 mod redundant_pub_crate;
 mod redundant_slicing;
 mod redundant_static_lifetimes;
+mod redundant_type_annotations;
 mod ref_option_ref;
 mod ref_patterns;
 mod reference;
@@ -1012,6 +1013,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(needless_else::NeedlessElse));
     store.register_late_pass(|_| Box::new(missing_fields_in_debug::MissingFieldsInDebug));
     store.register_late_pass(|_| Box::new(endian_bytes::EndianBytes));
+    store.register_late_pass(|_| Box::new(redundant_type_annotations::RedundantTypeAnnotations));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
