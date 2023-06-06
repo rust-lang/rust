@@ -1,6 +1,6 @@
 CHECK: print
 CHECK:      lfence
-CHECK:      lfence
-CHECK:      lfence
-CHECK:      callq 0x{{[[:xdigit:]]*}} <_Unwind_Resume>
-CHECK-NEXT: ud2
+CHECK:      popq
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: jmpq *[[REGISTER]]
