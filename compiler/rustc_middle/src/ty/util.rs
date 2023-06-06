@@ -173,18 +173,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
-        if let ty::Adt(def, substs) = *ty.kind() {
-            for field in def.all_fields() {
-                let field_ty = field.ty(self, substs);
-                if let ty::Error(_) = field_ty.kind() {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     /// Attempts to returns the deeply last field of nested structures, but
     /// does not apply any normalization in its search. Returns the same type
     /// if input `ty` is not a structure at all.

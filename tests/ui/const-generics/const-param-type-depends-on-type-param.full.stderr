@@ -6,16 +6,6 @@ LL | pub struct Dependent<T, const X: T>([(); X]);
    |
    = note: type parameters may not be used in the type of const parameters
 
-error[E0392]: parameter `T` is never used
-  --> $DIR/const-param-type-depends-on-type-param.rs:11:22
-   |
-LL | pub struct Dependent<T, const X: T>([(); X]);
-   |                      ^ unused parameter
-   |
-   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0392, E0770.
-For more information about an error, try `rustc --explain E0392`.
+For more information about this error, try `rustc --explain E0770`.
