@@ -57,7 +57,10 @@ mod test_db;
 mod macro_expansion_tests;
 mod pretty;
 
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    panic::{RefUnwindSafe, UnwindSafe},
+};
 
 use base_db::{
     impl_intern_key,
@@ -501,9 +504,40 @@ impl TypeOwnerId {
 
 impl_from!(ModuleId, DefWithBodyId(FunctionId, ConstId, StaticId), GenericDefId(AdtId, TypeAliasId, ImplId) for TypeOwnerId);
 
+/// A thing that we want to store in interned ids, but we don't know its type in `hir-def`
+pub trait OpaqueInternableThing:
+    std::any::Any + std::fmt::Debug + Sync + Send + UnwindSafe + RefUnwindSafe
+{
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn box_any(&self) -> Box<dyn std::any::Any>;
+    fn dyn_hash(&self, state: &mut dyn Hasher);
+    fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool;
+    fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing>;
+}
+
+impl Hash for dyn OpaqueInternableThing {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
+    }
+}
+
+impl PartialEq for dyn OpaqueInternableThing {
+    fn eq(&self, other: &Self) -> bool {
+        self.dyn_eq(other)
+    }
+}
+
+impl Eq for dyn OpaqueInternableThing {}
+
+impl Clone for Box<dyn OpaqueInternableThing> {
+    fn clone(&self) -> Self {
+        self.dyn_clone()
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct InTypeConstId(InternId);
-type InTypeConstLoc = (AstId<ast::Expr>, TypeOwnerId);
+type InTypeConstLoc = (AstId<ast::Expr>, TypeOwnerId, Box<dyn OpaqueInternableThing>);
 impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
 
 impl InTypeConstId {
@@ -535,7 +569,7 @@ impl GeneralConstId {
                 parent.as_generic_def_id()
             }
             GeneralConstId::InTypeConstId(x) => {
-                let (_, parent) = x.lookup(db);
+                let (_, parent, _) = x.lookup(db);
                 parent.as_generic_def_id()
             }
         }

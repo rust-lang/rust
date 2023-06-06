@@ -53,7 +53,10 @@ use crate::{
     mapping::{from_chalk_trait_id, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::Generics,
-    utils::{all_super_trait_refs, associated_type_by_name_including_super_traits, generics},
+    utils::{
+        all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
+        InTypeConstIdMetadata,
+    },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
     FnPointer, FnSig, FnSubst, GenericArgData, ImplTraitId, Interner, ParamKind, PolyFnSig,
     ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait,
@@ -2052,7 +2055,13 @@ pub(crate) fn const_or_path_to_chalk(
                 // that are unlikely to be edited.
                 return unknown_const(expected_ty);
             }
-            let c = db.intern_in_type_const((x, owner)).into();
+            let c = db
+                .intern_in_type_const((
+                    x,
+                    owner,
+                    Box::new(InTypeConstIdMetadata(expected_ty.clone())),
+                ))
+                .into();
             intern_const_scalar(
                 ConstScalar::UnevaluatedConst(c, Substitution::empty(Interner)),
                 expected_ty,

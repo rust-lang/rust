@@ -25,9 +25,9 @@ use crate::{
     AnonymousConstId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId,
     EnumLoc, ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc,
     InTypeConstId, LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId,
-    MacroRulesLoc, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc,
-    TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, TypeOwnerId,
-    UnionId, UnionLoc, VariantId,
+    MacroRulesLoc, OpaqueInternableThing, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
+    StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc,
+    TypeOwnerId, UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -65,7 +65,10 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_anonymous_const(&self, id: (DefWithBodyId, ExprId)) -> AnonymousConstId;
     #[salsa::interned]
-    fn intern_in_type_const(&self, id: (AstId<ast::Expr>, TypeOwnerId)) -> InTypeConstId;
+    fn intern_in_type_const(
+        &self,
+        id: (AstId<ast::Expr>, TypeOwnerId, Box<dyn OpaqueInternableThing>),
+    ) -> InTypeConstId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]

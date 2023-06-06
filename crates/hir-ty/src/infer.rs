@@ -41,8 +41,13 @@ use stdx::{always, never};
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
-    static_lifetime, to_assoc_type_id, traits::FnTrait, utils::UnevaluatedConstEvaluatorFolder,
+    db::HirDatabase,
+    fold_tys,
+    infer::coerce::CoerceMany,
+    lower::ImplTraitLoweringMode,
+    static_lifetime, to_assoc_type_id,
+    traits::FnTrait,
+    utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
     AliasEq, AliasTy, ClosureId, DomainGoal, GenericArg, Goal, ImplTraitId, InEnvironment,
     Interner, ProjectionTy, RpitId, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt,
 };
@@ -102,9 +107,9 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
                 },
             });
         }
-        DefWithBodyId::InTypeConstId(_) => {
-            // FIXME: We should know the expected type here.
-            ctx.return_ty = ctx.table.new_type_var();
+        DefWithBodyId::InTypeConstId(c) => {
+            ctx.return_ty =
+                c.lookup(db.upcast()).2.box_any().downcast::<InTypeConstIdMetadata>().unwrap().0;
         }
     }
 
