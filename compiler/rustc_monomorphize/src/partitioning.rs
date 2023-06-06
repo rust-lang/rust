@@ -416,37 +416,35 @@ enum MonoItemPlacement {
 fn place_inlined_mono_items<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut [CodegenUnit<'tcx>],
-    roots: FxHashSet<MonoItem<'tcx>>,
+    _roots: FxHashSet<MonoItem<'tcx>>,
 ) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement> {
-    let mut mono_item_placements = FxHashMap::default();
-
-    let single_codegen_unit = codegen_units.len() == 1;
-
     for cgu in codegen_units.iter_mut() {
-        // Collect all items that need to be available in this codegen unit.
-        let mut reachable = FxHashSet::default();
+        // Collect all inlined items that need to be available in this codegen unit.
+        let mut reachable_inlined_items = FxHashSet::default();
         for root in cgu.items().keys() {
-            // Insert the root item itself, plus all inlined items that are
-            // reachable from it without going via another root item.
-            reachable.insert(*root);
-            get_reachable_inlined_items(cx.tcx, *root, cx.usage_map, &mut reachable);
+            // Get all inlined items that are reachable from it without going
+            // via another root item.
+            get_reachable_inlined_items(cx.tcx, *root, cx.usage_map, &mut reachable_inlined_items);
         }
 
         // Add all monomorphizations that are not already there.
-        for mono_item in reachable {
-            if !cgu.items().contains_key(&mono_item) {
-                if roots.contains(&mono_item) {
-                    bug!("GloballyShared mono-item inlined into other CGU: {:?}", mono_item);
-                }
+        for inlined_item in reachable_inlined_items {
+            assert!(!cgu.items().contains_key(&inlined_item));
 
-                // This is a CGU-private copy.
-                cgu.items_mut().insert(mono_item, (Linkage::Internal, Visibility::Default));
-            }
+            // This is a CGU-private copy.
+            cgu.items_mut().insert(inlined_item, (Linkage::Internal, Visibility::Default));
+        }
+    }
 
+    let mut mono_item_placements = FxHashMap::default();
+    let single_codegen_unit = codegen_units.len() == 1;
+
+    for cgu in codegen_units.iter_mut() {
+        for item in cgu.items().keys() {
             if !single_codegen_unit {
                 // If there is more than one codegen unit, we need to keep track
                 // in which codegen units each monomorphization is placed.
-                match mono_item_placements.entry(mono_item) {
+                match mono_item_placements.entry(*item) {
                     Entry::Occupied(e) => {
                         let placement = e.into_mut();
                         debug_assert!(match *placement {
