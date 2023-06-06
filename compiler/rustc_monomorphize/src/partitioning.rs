@@ -129,7 +129,6 @@ struct PlacedRootMonoItems<'tcx> {
     /// The codegen units, sorted by name to make things deterministic.
     codegen_units: Vec<CodegenUnit<'tcx>>,
 
-    roots: FxHashSet<MonoItem<'tcx>>,
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
@@ -150,7 +149,7 @@ where
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
-    let PlacedRootMonoItems { mut codegen_units, roots, internalization_candidates } = {
+    let PlacedRootMonoItems { mut codegen_units, internalization_candidates } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
         place_root_mono_items(cx, mono_items)
     };
@@ -176,7 +175,7 @@ where
     // local functions the definition of which is marked with `#[inline]`.
     let mono_item_placements = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        place_inlined_mono_items(cx, &mut codegen_units, roots)
+        place_inlined_mono_items(cx, &mut codegen_units)
     };
 
     for cgu in &mut codegen_units {
@@ -244,7 +243,6 @@ fn place_root_mono_items<'tcx, I>(
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
-    let mut roots = FxHashSet::default();
     let mut codegen_units = FxHashMap::default();
     let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
     let mut internalization_candidates = FxHashSet::default();
@@ -295,7 +293,6 @@ where
         }
 
         codegen_unit.items_mut().insert(mono_item, (linkage, visibility));
-        roots.insert(mono_item);
     }
 
     // Always ensure we have at least one CGU; otherwise, if we have a
@@ -308,7 +305,7 @@ where
     let mut codegen_units: Vec<_> = codegen_units.into_values().collect();
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
-    PlacedRootMonoItems { codegen_units, roots, internalization_candidates }
+    PlacedRootMonoItems { codegen_units, internalization_candidates }
 }
 
 // This function requires the CGUs to be sorted by name on input, and ensures
@@ -416,7 +413,6 @@ enum MonoItemPlacement {
 fn place_inlined_mono_items<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut [CodegenUnit<'tcx>],
-    _roots: FxHashSet<MonoItem<'tcx>>,
 ) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement> {
     for cgu in codegen_units.iter_mut() {
         // Collect all inlined items that need to be available in this codegen unit.
