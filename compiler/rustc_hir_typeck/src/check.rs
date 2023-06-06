@@ -96,7 +96,19 @@ pub(super) fn check_fn<'a, 'tcx>(
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
         if param.pat.simple_ident().is_none() && !params_can_be_unsized {
-            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
+            fcx.require_type_is_sized(
+                param_ty,
+                param.pat.span,
+                // ty_span == binding_span iff this is a closure parameter with no type ascription,
+                // or if it's an implicit `self` parameter
+                traits::SizedArgumentType(
+                    if ty_span == Some(param.span) && tcx.is_closure(fn_def_id.into()) {
+                        None
+                    } else {
+                        ty_span
+                    },
+                ),
+            );
         }
 
         fcx.write_ty(param.hir_id, param_ty);

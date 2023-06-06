@@ -938,7 +938,8 @@ impl<'a> Parser<'a> {
         let mut etc = false;
         let mut ate_comma = true;
         let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>> = None;
-        let mut etc_span = None;
+        let mut first_etc_and_maybe_comma_span = None;
+        let mut last_non_comma_dotdot_span = None;
 
         while self.token != token::CloseDelim(Delimiter::Brace) {
             let attrs = match self.parse_outer_attributes() {
@@ -969,12 +970,27 @@ impl<'a> Parser<'a> {
             {
                 etc = true;
                 let mut etc_sp = self.token.span;
+                if first_etc_and_maybe_comma_span.is_none() {
+                    if let Some(comma_tok) = self
+                        .look_ahead(1, |t| if *t == token::Comma { Some(t.clone()) } else { None })
+                    {
+                        let nw_span = self
+                            .sess
+                            .source_map()
+                            .span_extend_to_line(comma_tok.span)
+                            .trim_start(comma_tok.span.shrink_to_lo())
+                            .map(|s| self.sess.source_map().span_until_non_whitespace(s));
+                        first_etc_and_maybe_comma_span = nw_span.map(|s| etc_sp.to(s));
+                    } else {
+                        first_etc_and_maybe_comma_span =
+                            Some(self.sess.source_map().span_until_non_whitespace(etc_sp));
+                    }
+                }
 
                 self.recover_bad_dot_dot();
                 self.bump(); // `..` || `...` || `_`
 
                 if self.token == token::CloseDelim(Delimiter::Brace) {
-                    etc_span = Some(etc_sp);
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
@@ -996,7 +1012,6 @@ impl<'a> Parser<'a> {
                     ate_comma = true;
                 }
 
-                etc_span = Some(etc_sp.until(self.token.span));
                 if self.token == token::CloseDelim(Delimiter::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
@@ -1040,6 +1055,9 @@ impl<'a> Parser<'a> {
                         }
                     }?;
                     ate_comma = this.eat(&token::Comma);
+
+                    last_non_comma_dotdot_span = Some(this.prev_token.span);
+
                     // We just ate a comma, so there's no need to use
                     // `TrailingToken::Comma`
                     Ok((field, TrailingToken::None))
@@ -1049,15 +1067,30 @@ impl<'a> Parser<'a> {
         }
 
         if let Some(mut err) = delayed_err {
-            if let Some(etc_span) = etc_span {
-                err.multipart_suggestion(
-                    "move the `..` to the end of the field list",
-                    vec![
-                        (etc_span, String::new()),
-                        (self.token.span, format!("{}.. }}", if ate_comma { "" } else { ", " })),
-                    ],
-                    Applicability::MachineApplicable,
-                );
+            if let Some(first_etc_span) = first_etc_and_maybe_comma_span {
+                if self.prev_token == token::DotDot {
+                    // We have `.., x, ..`.
+                    err.multipart_suggestion(
+                        "remove the starting `..`",
+                        vec![(first_etc_span, String::new())],
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    if let Some(last_non_comma_dotdot_span) = last_non_comma_dotdot_span {
+                        // We have `.., x`.
+                        err.multipart_suggestion(
+                            "move the `..` to the end of the field list",
+                            vec![
+                                (first_etc_span, String::new()),
+                                (
+                                    self.token.span.to(last_non_comma_dotdot_span.shrink_to_hi()),
+                                    format!("{} .. }}", if ate_comma { "" } else { "," }),
+                                ),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
             }
             err.emit();
         }
