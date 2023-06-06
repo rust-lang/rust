@@ -31,6 +31,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};
+use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -1760,11 +1761,10 @@ fn normalize<'tcx>(
 fn clean_trait_object_lifetime_bound<'tcx>(
     region: ty::Region<'tcx>,
     container: Option<ContainerTy<'tcx>>,
-    trait_: DefId,
-    substs: ty::Binder<'tcx, &ty::List<ty::GenericArg<'tcx>>>,
+    preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> Option<Lifetime> {
-    if can_elide_trait_object_lifetime_bound(region, container, trait_, substs, tcx) {
+    if can_elide_trait_object_lifetime_bound(region, container, preds, tcx) {
         return None;
     }
 
@@ -1792,8 +1792,7 @@ fn clean_trait_object_lifetime_bound<'tcx>(
 fn can_elide_trait_object_lifetime_bound<'tcx>(
     region: ty::Region<'tcx>,
     container: Option<ContainerTy<'tcx>>,
-    trait_: DefId,
-    substs: ty::Binder<'tcx, &ty::List<ty::GenericArg<'tcx>>>,
+    preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
     // Below we quote extracts from https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
@@ -1817,41 +1816,8 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
         ObjectLifetimeDefault::Empty => {}
     }
 
-    // We filter out any escaping regions below, thus it's fine to skip the binder.
-    let substs = substs.skip_binder();
-
     // > If neither of those rules apply, then the bounds on the trait are used:
-    let mut trait_regions: Vec<_> = tcx
-        .predicates_of(trait_)
-        .predicates
-        .iter()
-        .filter_map(|(pred, _)| {
-            // Look for bounds of the form `Self: 'a` for any region `'a`.
-            if let ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty, region))) = pred.kind().skip_binder()
-                && let ty::Param(param) = ty.kind()
-                && param.name == kw::SelfUpper
-            {
-                Some(ty::EarlyBinder::bind(region).subst(tcx, tcx.mk_substs_trait(ty, substs)))
-                    .filter(|region| !region.has_escaping_bound_vars())
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // As a result of the substitutions above, we might be left with duplicate regions.
-    // Consider `<'a, 'b> Self: 'a + 'b` with substitution `<'r, 'r>`. Deduplicate.
-    trait_regions.dedup();
-
-    // > If 'static is used for any lifetime bound then 'static is used.
-    // If the list contains `'static`, throw out everyhing else as it outlives any of them.
-    if let Some(index) = trait_regions.iter().position(|region| region.is_static()) {
-        let static_ = trait_regions.swap_remove(index);
-        trait_regions.clear();
-        trait_regions.push(static_);
-    }
-
-    match *trait_regions {
+    match *object_region_bounds(tcx, preds) {
         // > If the trait has no lifetime bounds, then the lifetime is inferred in expressions
         // > and is 'static outside of expressions.
         // FIXME: If we are in an expression context (i.e. fn bodies and const exprs) then the default is
@@ -1861,9 +1827,10 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
         // nor show the contents of fn bodies.
         [] => *region == ty::ReStatic,
         // > If the trait is defined with a single lifetime bound then that bound is used.
+        // > If 'static is used for any lifetime bound then 'static is used.
         // FIXME(fmease): Don't compare lexically but respect de Bruijn indices etc. to handle shadowing correctly.
-        [trait_region] => trait_region.get_name() == region.get_name(),
-        // There are several distinct trait regions and none are `'static` (thanks to the preprocessing above).
+        [object_region] => object_region.get_name() == region.get_name(),
+        // There are several distinct trait regions and none are `'static`.
         // Due to ambiguity there is no default trait-object lifetime and thus elision is impossible.
         // Don't elide the lifetime.
         _ => false,
@@ -2004,7 +1971,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
             inline::record_extern_fqn(cx, did, ItemType::Trait);
 
-            let lifetime = clean_trait_object_lifetime_bound(*reg, container, did, substs, cx.tcx);
+            let lifetime = clean_trait_object_lifetime_bound(*reg, container, obj, cx.tcx);
 
             let mut bounds = dids
                 .map(|did| {
