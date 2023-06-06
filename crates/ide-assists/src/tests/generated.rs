@@ -1480,6 +1480,27 @@ fn foo(name: Option<&str>) {
 }
 
 #[test]
+fn doctest_inline_const_as_literal() {
+    check_doc_test(
+        "inline_const_as_literal",
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    STRING$0
+}
+"#####,
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    "Hello, World!"
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_into_callers() {
     check_doc_test(
         "inline_into_callers",
