@@ -1195,15 +1195,15 @@ impl<'tcx> InferCtxt<'tcx> {
             .var_origin(vid)
     }
 
-    /// Takes ownership of the list of variable regions. This implies
-    /// that all the region constraints have already been taken, and
-    /// hence that `resolve_regions_and_report_errors` can never be
-    /// called. This is used only during NLL processing to "hand off" ownership
-    /// of the set of region variables into the NLL region context.
+    /// Clone the list of variable regions. This is used only during NLL processing
+    /// to put the set of region variables into the NLL region context.
     pub fn get_region_var_origins(&self) -> VarInfos {
         let mut inner = self.inner.borrow_mut();
         let (var_infos, data) = inner
             .region_constraint_storage
+            // We clone instead of taking because borrowck still wants to use
+            // the inference context after calling this for diagnostics
+            // and the new trait solver.
             .clone()
             .expect("regions already resolved")
             .with_log(&mut inner.undo_log)

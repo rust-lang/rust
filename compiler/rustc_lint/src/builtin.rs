@@ -548,8 +548,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         // Previously the Impl and Use types have been excluded from missing docs,
-        // so we will continue to exclude them for compatibility
-        if let hir::ItemKind::Impl(..) | hir::ItemKind::Use(..) = it.kind {
+        // so we will continue to exclude them for compatibility.
+        //
+        // The documentation on `ExternCrate` is not used at the moment so no need to warn for it.
+        if let hir::ItemKind::Impl(..) | hir::ItemKind::Use(..) | hir::ItemKind::ExternCrate(_) =
+            it.kind
+        {
             return;
         }
 
