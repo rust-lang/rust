@@ -1261,8 +1261,6 @@ default_test!(RunPassValgrind {
     suite: "run-pass-valgrind"
 });
 
-default_test!(MirOpt { path: "tests/mir-opt", mode: "mir-opt", suite: "mir-opt" });
-
 default_test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen" });
 
 default_test!(CodegenUnits {
@@ -1298,6 +1296,39 @@ host_test!(RunMakeFullDeps {
 });
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
+
+// For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct MirOpt {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for MirOpt {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.suite_path("tests/mir-opt")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(MirOpt { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: "mir-opt",
+            suite: "mir-opt",
+            path: "tests/mir-opt",
+            compare_mode: None,
+        });
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
