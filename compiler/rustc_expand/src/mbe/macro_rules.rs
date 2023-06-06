@@ -647,6 +647,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
                 if seq.separator.is_none()
                     && seq.tts.iter().all(|seq_tt| match seq_tt {
                         TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => true,
+                        TokenTree::Token(t) => matches!(t, Token { kind: DocComment(..), .. }),
                         TokenTree::Sequence(_, sub_seq) => {
                             sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
                                 || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne

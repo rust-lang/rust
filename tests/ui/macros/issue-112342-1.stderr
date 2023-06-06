@@ -1,0 +1,29 @@
+error: repetition matches empty token tree
+  --> $DIR/issue-112342-1.rs:5:10
+   |
+LL |           $(
+   |  __________^
+LL | |             ///
+LL | |         )*
+   | |_________^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-112342-1.rs:16:10
+   |
+LL |           $(
+   |  __________^
+LL | |             ///
+LL | |         )+
+   | |_________^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-112342-1.rs:27:10
+   |
+LL |           $(
+   |  __________^
+LL | |             ///
+LL | |         )?
+   | |_________^
+
+error: aborting due to 3 previous errors
+
