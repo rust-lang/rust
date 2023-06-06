@@ -1,3 +1,4 @@
+#![allow(clippy::useless_vec)]
 #[warn(clippy::range_zip_with_len)]
 fn main() {
     let v1 = vec![1, 2, 3];

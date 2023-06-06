@@ -1,5 +1,5 @@
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:7:5
+  --> $DIR/without_loop_counters.rs:8:5
    |
 LL | /     for i in 0..src.len() {
 LL | |         dst[i] = src[i];
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::manual-memcpy` implied by `-D warnings`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:12:5
+  --> $DIR/without_loop_counters.rs:13:5
    |
 LL | /     for i in 0..src.len() {
 LL | |         dst[i + 10] = src[i];
@@ -17,7 +17,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[10..(src.len() + 10)].copy_from_slice(&src[..]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:17:5
+  --> $DIR/without_loop_counters.rs:18:5
    |
 LL | /     for i in 0..src.len() {
 LL | |         dst[i] = src[i + 10];
@@ -25,7 +25,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..src.len()].copy_from_slice(&src[10..(src.len() + 10)]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:22:5
+  --> $DIR/without_loop_counters.rs:23:5
    |
 LL | /     for i in 11..src.len() {
 LL | |         dst[i] = src[i - 10];
@@ -33,7 +33,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[11..src.len()].copy_from_slice(&src[(11 - 10)..(src.len() - 10)]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:27:5
+  --> $DIR/without_loop_counters.rs:28:5
    |
 LL | /     for i in 0..dst.len() {
 LL | |         dst[i] = src[i];
@@ -41,7 +41,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[..dst.len()]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:40:5
+  --> $DIR/without_loop_counters.rs:41:5
    |
 LL | /     for i in 10..256 {
 LL | |         dst[i] = src[i - 5];
@@ -56,7 +56,7 @@ LL +     dst2[(10 + 500)..(256 + 500)].copy_from_slice(&src[10..256]);
    |
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:52:5
+  --> $DIR/without_loop_counters.rs:53:5
    |
 LL | /     for i in 10..LOOP_OFFSET {
 LL | |         dst[i + LOOP_OFFSET] = src[i - some_var];
@@ -64,7 +64,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[(10 + LOOP_OFFSET)..(LOOP_OFFSET + LOOP_OFFSET)].copy_from_slice(&src[(10 - some_var)..(LOOP_OFFSET - some_var)]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:65:5
+  --> $DIR/without_loop_counters.rs:66:5
    |
 LL | /     for i in 0..src_vec.len() {
 LL | |         dst_vec[i] = src_vec[i];
@@ -72,7 +72,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst_vec[..src_vec.len()].copy_from_slice(&src_vec[..]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:94:5
+  --> $DIR/without_loop_counters.rs:95:5
    |
 LL | /     for i in from..from + src.len() {
 LL | |         dst[i] = src[i - from];
@@ -80,7 +80,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[from..(from + src.len())].copy_from_slice(&src[..(from + src.len() - from)]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:98:5
+  --> $DIR/without_loop_counters.rs:99:5
    |
 LL | /     for i in from..from + 3 {
 LL | |         dst[i] = src[i - from];
@@ -88,7 +88,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[from..(from + 3)].copy_from_slice(&src[..(from + 3 - from)]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:103:5
+  --> $DIR/without_loop_counters.rs:104:5
    |
 LL | /     for i in 0..5 {
 LL | |         dst[i - 0] = src[i];
@@ -96,7 +96,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..5].copy_from_slice(&src[..5]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:108:5
+  --> $DIR/without_loop_counters.rs:109:5
    |
 LL | /     for i in 0..0 {
 LL | |         dst[i] = src[i];
@@ -104,7 +104,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..0].copy_from_slice(&src[..0]);`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/without_loop_counters.rs:131:5
+  --> $DIR/without_loop_counters.rs:132:5
    |
 LL | /     for i in 0..src.len() {
 LL | |         dst[i] = src[i].clone();

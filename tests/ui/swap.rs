@@ -10,7 +10,8 @@
     dead_code,
     unused_assignments,
     unused_variables,
-    clippy::let_and_return
+    clippy::let_and_return,
+    clippy::useless_vec
 )]
 
 struct Foo(u32);

@@ -1,6 +1,11 @@
 //@run-rustfix
 
-#![allow(unused_mut, clippy::from_iter_instead_of_collect, clippy::get_first)]
+#![allow(
+    unused_mut,
+    clippy::from_iter_instead_of_collect,
+    clippy::get_first,
+    clippy::useless_vec
+)]
 #![warn(clippy::unwrap_used)]
 #![deny(clippy::get_unwrap)]
 

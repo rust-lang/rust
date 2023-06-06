@@ -1,7 +1,7 @@
 //@run-rustfix
 //@aux-build:proc_macros.rs
 
-#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::return_self_not_must_use, clippy::useless_vec)]
 #![warn(clippy::deref_addrof)]
 
 extern crate proc_macros;

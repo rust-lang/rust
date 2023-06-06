@@ -1,5 +1,5 @@
 error: it is more idiomatic to use `v1.iter().enumerate()`
-  --> $DIR/range.rs:5:14
+  --> $DIR/range.rs:6:14
    |
 LL |     let _x = v1.iter().zip(0..v1.len());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^

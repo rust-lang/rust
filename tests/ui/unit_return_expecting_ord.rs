@@ -1,6 +1,7 @@
 #![warn(clippy::unit_return_expecting_ord)]
 #![allow(clippy::needless_return)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::useless_vec)]
 #![feature(is_sorted)]
 
 struct Struct {

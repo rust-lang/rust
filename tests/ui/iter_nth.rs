@@ -1,6 +1,7 @@
 //@aux-build:option_helpers.rs
 
 #![warn(clippy::iter_nth)]
+#![allow(clippy::useless_vec)]
 
 #[macro_use]
 extern crate option_helpers;

@@ -1,5 +1,5 @@
 #![warn(clippy::needless_range_loop)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, clippy::useless_vec)]
 
 static STATIC: [usize; 4] = [0, 1, 8, 16];
 const CONST: [usize; 4] = [0, 1, 8, 16];
