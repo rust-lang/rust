@@ -79,6 +79,7 @@ mod passes;
 mod redundant_semicolon;
 mod traits;
 mod types;
+mod unnecessary_block;
 mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
@@ -119,6 +120,7 @@ use pass_by_value::*;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
+use unnecessary_block::*;
 use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
@@ -251,6 +253,7 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            UnnecessaryBlock: UnnecessaryBlock,
         ]
     ]
 );

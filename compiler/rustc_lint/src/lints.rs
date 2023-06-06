@@ -1623,3 +1623,10 @@ pub struct UnusedAllocationDiag;
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_allocation_mut)]
 pub struct UnusedAllocationMutDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unnecessary_block)]
+pub struct UnnecessaryBlock {
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
