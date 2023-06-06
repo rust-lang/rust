@@ -1,6 +1,5 @@
-use clippy_utils::diagnostics::span_lint;
 use rustc_hir::Expr;
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::Ty;
 
 use super::{utils, CAST_POSSIBLE_WRAP};
@@ -9,6 +8,7 @@ use super::{utils, CAST_POSSIBLE_WRAP};
 const ALLOWED_POINTER_SIZES: [u64; 3] = [16, 32, 64];
 
 // whether the lint should be emitted, and the required pointer size, if it matters
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EmitState {
     NoLint,
     LintAlways,
@@ -77,5 +77,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
         ),
     };
 
-    span_lint(cx, CAST_POSSIBLE_WRAP, expr.span, message.as_str());
+    cx.struct_span_lint(CAST_POSSIBLE_WRAP, expr.span, message, |diag| {
+        if let EmitState::LintOnPtrSize(16) = should_lint {
+            diag
+            .note("`usize` and `isize` may be as small as 16 bits on some platforms")
+            .note("for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types")
+        } else {
+            diag
+        }
+    });
 }

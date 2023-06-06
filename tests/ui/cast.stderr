@@ -244,6 +244,9 @@ error: casting `usize` to `i16` may wrap around the value on targets with 16-bit
    |
 LL |     1usize as i16; // wraps on 16 bit ptr size
    |     ^^^^^^^^^^^^^
+   |
+   = note: `usize` and `isize` may be as small as 16 bits on some platforms
+   = note: for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
 
 error: casting `usize` to `i32` may truncate the value on targets with 64-bit wide pointers
   --> $DIR/cast.rs:46:5
@@ -274,6 +277,9 @@ error: casting `u16` to `isize` may wrap around the value on targets with 16-bit
    |
 LL |     1u16 as isize; // wraps on 16 bit ptr size
    |     ^^^^^^^^^^^^^
+   |
+   = note: `usize` and `isize` may be as small as 16 bits on some platforms
+   = note: for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
 
 error: casting `u32` to `isize` may wrap around the value on targets with 32-bit wide pointers
   --> $DIR/cast.rs:50:5
