@@ -625,7 +625,7 @@ where
     let html_diff = re.replace_all(&raw_diff, |captures: &regex::Captures<'_>| {
         let mut ret = String::new();
         if inside_font_tag {
-            ret.push_str(r#"</font>"#);
+            ret.push_str(r"</font>");
         }
 
         let tag = match &captures[1] {
