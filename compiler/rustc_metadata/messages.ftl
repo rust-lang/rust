@@ -78,9 +78,6 @@ metadata_failed_create_file =
 metadata_failed_create_tempdir =
     couldn't create a temp dir: {$err}
 
-metadata_failed_remove =
-    failed to remove {$filename}: {$err}
-
 metadata_failed_write_error =
     failed to write {$filename}: {$err}
 

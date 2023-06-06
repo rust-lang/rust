@@ -32,7 +32,7 @@ obj: $(OUT)
 # it there.
 metadata: $(OUT)
 	cp $(SRC) $(OUT)
-	(cd $(OUT); pwd; ls -d; $(RUSTC) --emit metadata=- $(SRC) 1>/dev/ptmx 2>$(OUT)/$@ || true)
+	(cd $(OUT); $(RUSTC) --emit metadata=- $(SRC) 1>/dev/ptmx 2>$(OUT)/$@ || true)
 	diff $(OUT)/$@ emit-metadata.stderr
 
 link: $(OUT)

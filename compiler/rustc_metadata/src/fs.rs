@@ -1,6 +1,6 @@
 use crate::errors::{
     BinaryOutputToTty, FailedCopyToStdout, FailedCreateEncodedMetadata, FailedCreateFile,
-    FailedCreateTempdir, FailedRemove, FailedWriteError,
+    FailedCreateTempdir, FailedWriteError,
 };
 use crate::{encode_metadata, EncodedMetadata};
 
@@ -108,13 +108,6 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
         .unwrap_or_else(|err| {
             tcx.sess.emit_fatal(FailedCreateEncodedMetadata { err });
         });
-
-    // Delete the temporary metadata file if output is stdout
-    if need_metadata_file && out_filename.is_stdout() {
-        if let Err(err) = fs::remove_file(&metadata_filename) {
-            tcx.sess.emit_err(FailedRemove { filename: metadata_filename, err });
-        }
-    }
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 

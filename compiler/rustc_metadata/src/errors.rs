@@ -403,13 +403,6 @@ pub struct FailedCopyToStdout {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_failed_remove)]
-pub struct FailedRemove {
-    pub filename: PathBuf,
-    pub err: Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(metadata_binary_output_to_tty)]
 pub struct BinaryOutputToTty;
 
