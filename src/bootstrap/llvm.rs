@@ -605,7 +605,7 @@ fn configure_cmake(
     }
 
     let (cc, cxx) = match builder.config.llvm_clang_cl {
-        Some(ref cl) => (cl.as_ref(), cl.as_ref()),
+        Some(ref cl) => (cl.into(), cl.into()),
         None => (builder.cc(target), builder.cxx(target).unwrap()),
     };
 
@@ -656,9 +656,9 @@ fn configure_cmake(
                     .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
             }
         }
-        cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
-            .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx))
-            .define("CMAKE_ASM_COMPILER", sanitize_cc(cc));
+        cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
+            .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
+            .define("CMAKE_ASM_COMPILER", sanitize_cc(&cc));
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
@@ -698,7 +698,7 @@ fn configure_cmake(
         if ar.is_absolute() {
             // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
-            cfg.define("CMAKE_AR", sanitize_cc(ar));
+            cfg.define("CMAKE_AR", sanitize_cc(&ar));
         }
     }
 
@@ -706,7 +706,7 @@ fn configure_cmake(
         if ranlib.is_absolute() {
             // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
-            cfg.define("CMAKE_RANLIB", sanitize_cc(ranlib));
+            cfg.define("CMAKE_RANLIB", sanitize_cc(&ranlib));
         }
     }
 

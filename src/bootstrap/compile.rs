@@ -314,7 +314,7 @@ fn copy_self_contained_objects(
         }
     } else if target.ends_with("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
-            let src = compiler_file(builder, builder.cc(target), target, CLang::C, obj);
+            let src = compiler_file(builder, &builder.cc(target), target, CLang::C, obj);
             let target = libdir_self_contained.join(obj);
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
@@ -995,8 +995,13 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         && !target.contains("apple")
         && !target.contains("solaris")
     {
-        let file =
-            compiler_file(builder, builder.cxx(target).unwrap(), target, CLang::Cxx, "libstdc++.a");
+        let file = compiler_file(
+            builder,
+            &builder.cxx(target).unwrap(),
+            target,
+            CLang::Cxx,
+            "libstdc++.a",
+        );
         cargo.env("LLVM_STATIC_STDCPP", file);
     }
     if builder.llvm_link_shared() {

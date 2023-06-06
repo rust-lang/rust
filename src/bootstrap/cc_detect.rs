@@ -89,7 +89,7 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
     cfg
 }
 
-pub fn find(build: &mut Build) {
+pub fn find(build: &Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
     let targets = build
@@ -115,7 +115,7 @@ pub fn find(build: &mut Build) {
             cc2ar(compiler.path(), target)
         };
 
-        build.cc.insert(target, compiler.clone());
+        build.cc.borrow_mut().insert(target, compiler.clone());
         let cflags = build.cflags(target, GitRepo::Rustc, CLang::C);
 
         // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
@@ -136,7 +136,7 @@ pub fn find(build: &mut Build) {
         // for VxWorks, record CXX compiler which will be used in lib.rs:linker()
         if cxx_configured || target.contains("vxworks") {
             let compiler = cfg.get_compiler();
-            build.cxx.insert(target, compiler);
+            build.cxx.borrow_mut().insert(target, compiler);
         }
 
         build.verbose(&format!("CC_{} = {:?}", &target.triple, build.cc(target)));
@@ -148,11 +148,11 @@ pub fn find(build: &mut Build) {
         }
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target.triple, ar));
-            build.ar.insert(target, ar);
+            build.ar.borrow_mut().insert(target, ar);
         }
 
         if let Some(ranlib) = config.and_then(|c| c.ranlib.clone()) {
-            build.ranlib.insert(target, ranlib);
+            build.ranlib.borrow_mut().insert(target, ranlib);
         }
     }
 }
