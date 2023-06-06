@@ -1,4 +1,4 @@
-use core::alloc::{AllocError, Allocator, Layout};
+use core::alloc::{AllocError, Allocator, Layout, Fatal};
 use core::cell::Cell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
@@ -178,4 +178,6 @@ unsafe impl Allocator for ConstAllocator {
     {
         self
     }
+
+    type ErrorHandling = Fatal;
 }

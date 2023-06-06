@@ -2,7 +2,7 @@ use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
 
-use crate::falloc::{Allocator, ErrorHandling, Global};
+use crate::alloc::{Allocator, ErrorHandling, Global};
 use crate::raw_vec::RawVec;
 
 use super::{SpecExtend, Vec};

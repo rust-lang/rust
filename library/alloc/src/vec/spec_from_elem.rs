@@ -1,7 +1,7 @@
 use core::ptr;
 
+use crate::alloc::Allocator;
 use crate::collections::TryReserveError;
-use crate::falloc::Allocator;
 
 use super::{IsZero, Vec};
 

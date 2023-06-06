@@ -1,10 +1,12 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
+#[cfg(test)]
+use crate::alloc::ErrorHandling;
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::Fatal;
 use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
-#[cfg(not(no_global_oom_handling))]
-use crate::falloc::Fatal;
 use crate::raw_vec::RawVec;
 use core::array;
 use core::fmt;
@@ -395,7 +397,11 @@ where
     }
     #[cfg(test)]
     fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.deref().clone()).into_iter()
+        A::ErrorHandling::map_result(crate::slice::to_vec(
+            self.as_slice(),
+            self.alloc.deref().clone(),
+        ))
+        .into_iter()
     }
 }
 

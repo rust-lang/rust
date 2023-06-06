@@ -22,9 +22,9 @@ use core::slice;
 #[allow(unused_imports)]
 use core::mem;
 
+use crate::alloc::{AllocResult, Allocator, ErrorHandling, Fatal, Global};
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
-use crate::falloc::{AllocResult, Allocator, ErrorHandling, Fatal, Global};
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 

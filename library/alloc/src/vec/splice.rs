@@ -1,4 +1,4 @@
-use crate::falloc::{Allocator, ErrorHandling, Fatal, Global};
+use crate::alloc::{Allocator, ErrorHandling, Fatal, Global};
 use core::ptr;
 use core::slice;
 

@@ -3,7 +3,7 @@ use std::cell::Cell;
 
 #[test]
 fn allocator_param() -> Result<(), TryReserveError> {
-    use crate::alloc::AllocError;
+    use crate::alloc::{AllocError, Fatal};
 
     // Writing a test of integration between third-party
     // allocators and `RawVec` is a little tricky because the `RawVec`
@@ -37,6 +37,7 @@ fn allocator_param() -> Result<(), TryReserveError> {
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             unsafe { Global.deallocate(ptr, layout) }
         }
+        type ErrorHandling = Fatal;
     }
 
     let a = BoundedAlloc { fuel: Cell::new(500) };

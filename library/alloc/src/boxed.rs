@@ -166,13 +166,13 @@ use core::ptr::{self, Unique};
 use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
+use crate::alloc::Fatal;
+#[cfg(not(no_global_oom_handling))]
 use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
+use crate::alloc::{AllocError, AllocResult, Allocator, ErrorHandling, Global, Layout};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
-#[cfg(not(no_global_oom_handling))]
-use crate::falloc::Fatal;
-use crate::falloc::{AllocError, AllocResult, Allocator, ErrorHandling, Global, Layout};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;

@@ -26,12 +26,12 @@ use crate::alloc::Allocator;
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{self, Global};
 #[cfg(not(no_global_oom_handling))]
+use crate::alloc::{AllocResult, ErrorHandling};
+#[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::TryReserveError;
-#[cfg(not(no_global_oom_handling))]
-use crate::falloc::{AllocResult, ErrorHandling};
 use crate::vec::Vec;
 
 #[cfg(test)]
@@ -837,7 +837,7 @@ impl<T: Clone> ToOwned for [T] {
 
     #[cfg(test)]
     fn to_owned(&self) -> Vec<T> {
-        hack::to_vec(self, Global)
+        <Global as Allocator>::ErrorHandling::map_result(hack::to_vec(self, Global))
     }
 
     fn clone_into(&self, target: &mut Vec<T>) {

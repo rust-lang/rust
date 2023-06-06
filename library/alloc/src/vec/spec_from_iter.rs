@@ -1,7 +1,7 @@
 use core::mem::ManuallyDrop;
 use core::ptr;
 
-use crate::falloc::{Allocator, ErrorHandling, Global};
+use crate::alloc::{Allocator, ErrorHandling, Global};
 
 use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 

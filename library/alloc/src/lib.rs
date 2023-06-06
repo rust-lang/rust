@@ -226,10 +226,6 @@ mod raw_vec;
 
 pub mod alloc;
 
-// Fallible allocation experiment
-
-mod falloc;
-
 // Primitive types using the heaps above
 
 // Need to conditionally define the mod from `boxed.rs` to avoid

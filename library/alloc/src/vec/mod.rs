@@ -64,12 +64,12 @@ use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
 
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::Fatal;
+use crate::alloc::{AllocResult, Allocator, ErrorHandling, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::{TryReserveError, TryReserveErrorKind};
-#[cfg(not(no_global_oom_handling))]
-use crate::falloc::Fatal;
-use crate::falloc::{AllocResult, Allocator, ErrorHandling, Global};
 use crate::raw_vec::RawVec;
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -2683,7 +2683,7 @@ where
     #[cfg(test)]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
-        crate::slice::to_vec(&**self, alloc)
+        <Global as Allocator>::ErrorHandling::map_result(crate::slice::to_vec(&**self, alloc))
     }
 
     fn clone_from(&mut self, other: &Self) {
@@ -3127,7 +3127,7 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     }
     #[cfg(test)]
     fn from(s: &[T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
+        <Global as Allocator>::ErrorHandling::map_result(crate::slice::to_vec(s, Global))
     }
 }
 
@@ -3147,7 +3147,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     }
     #[cfg(test)]
     fn from(s: &mut [T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
+        <Global as Allocator>::ErrorHandling::map_result(crate::slice::to_vec(s, Global))
     }
 }
 

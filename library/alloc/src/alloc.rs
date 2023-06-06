@@ -10,15 +10,9 @@ use core::ptr::Unique;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub use crate::falloc::{Allocator, Fallible};
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[cfg(not(no_global_oom_handling))]
-pub use crate::falloc::{FallibleAdapter, Fatal, HandleAllocError, InfallibleAdapter};
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
-#[allow(deprecated)]
-pub use core::alloc::{AllocError, GlobalAlloc, Layout, LayoutErr, LayoutError};
+pub use core::alloc::*;
 
 #[cfg(test)]
 mod tests;
@@ -454,3 +448,28 @@ impl<T: Copy> WriteCloneIntoRaw for T {
         unsafe { target.copy_from_nonoverlapping(self, 1) };
     }
 }
+
+#[cfg(not(no_global_oom_handling))]
+use crate::collections::{TryReserveError, TryReserveErrorKind};
+
+// One central function responsible for reporting capacity overflows. This'll
+// ensure that the code generation related to these panics is minimal as there's
+// only one location which panics rather than a bunch throughout the module.
+#[cfg(not(no_global_oom_handling))]
+pub(crate) fn capacity_overflow() -> ! {
+    panic!("capacity overflow");
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "allocator_api", issue = "32838")]
+impl HandleAllocError for TryReserveError {
+    fn handle_alloc_error(self) -> ! {
+        match self.kind() {
+            TryReserveErrorKind::CapacityOverflow => capacity_overflow(),
+            TryReserveErrorKind::AllocError { layout, .. } => handle_alloc_error(layout),
+        }
+    }
+}
+
+pub(crate) type AllocResult<A, T, E> =
+    <<A as Allocator>::ErrorHandling as ErrorHandling>::Result<T, E>;
