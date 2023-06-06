@@ -4,7 +4,7 @@ error: invalid struct literal
 LL |     if Example { a: one(), }.is_pos() {
    |        ^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal in parentheses
+help: you might need to surround the struct literal with parentheses
    |
 LL |     if (Example { a: one(), }).is_pos() {
    |        +                     +

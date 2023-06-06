@@ -751,7 +751,10 @@ impl SourceMap {
         f: impl Fn(char) -> bool,
     ) -> Result<Span, SpanSnippetError> {
         self.span_to_source(span, |s, start, _end| {
-            let n = s[..start].char_indices().rfind(|&(_, c)| !f(c)).map_or(start, |(i, _)| start - i - 1);
+            let n = s[..start]
+                .char_indices()
+                .rfind(|&(_, c)| !f(c))
+                .map_or(start, |(i, _)| start - i - 1);
             Ok(span.with_lo(span.lo() - BytePos(n as u32)))
         })
     }

@@ -4,7 +4,7 @@ error: invalid struct literal
 LL |     if x == module::Type { x: module::C, y: 1 } {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal in parentheses
+help: you might need to surround the struct literal with parentheses
    |
 LL |     if x == (module::Type { x: module::C, y: 1 }) {
    |             +                                   +
@@ -15,7 +15,7 @@ error: invalid struct literal
 LL |     if x ==module::Type { x: module::C, y: 1 } {
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal in parentheses
+help: you might need to surround the struct literal with parentheses
    |
 LL |     if x ==(module::Type { x: module::C, y: 1 }) {
    |            +                                   +
@@ -26,7 +26,7 @@ error: invalid struct literal
 LL |     if x == Type { x: module::C, y: 1 } {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal in parentheses
+help: you might need to surround the struct literal with parentheses
    |
 LL |     if x == (Type { x: module::C, y: 1 }) {
    |             +                           +
@@ -37,7 +37,7 @@ error: invalid struct literal
 LL |     if x == demo_module::Type { x: module::C, y: 1 } {
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal in parentheses
+help: you might need to surround the struct literal with parentheses
    |
 LL |     if x == (demo_module::Type { x: module::C, y: 1 }) {
    |             +                                        +
