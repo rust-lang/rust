@@ -33,4 +33,17 @@ macro_rules! m3 {
 
 m3! {}
 
+
+macro_rules! m4 {
+    (
+        $(
+            ///
+            ///
+        )*
+        //~^^^^ERROR repetition matches empty token tree
+    ) => {};
+}
+
+m4! {}
+
 fn main() {}

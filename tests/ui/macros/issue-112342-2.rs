@@ -25,4 +25,15 @@ macro_rules! m2 {
 
 m2! {}
 
+macro_rules! m3 {
+    (
+        $(
+            ///
+            $tt: tt,
+        )*
+    ) => {};
+}
+
+m3! {}
+
 fn main() {}
