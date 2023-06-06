@@ -647,7 +647,7 @@ fn build_call_shim<'tcx>(
     let mut sig = if let Some(sig_substs) = sig_substs {
         sig.subst(tcx, &sig_substs)
     } else {
-        sig.skip_binder()
+        sig.subst_identity()
     };
 
     if let CallKind::Indirect(fnty) = call_kind {
