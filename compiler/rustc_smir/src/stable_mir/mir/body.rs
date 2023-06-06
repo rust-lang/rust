@@ -46,6 +46,14 @@ pub enum Terminator {
         unwind: UnwindAction,
     },
     GeneratorDrop,
+    InlineAsm {
+        template: String,
+        operands: String,
+        options: String,
+        line_spans: String,
+        destination: Option<usize>,
+        unwind: UnwindAction,
+    },
 }
 
 #[derive(Clone, Debug)]

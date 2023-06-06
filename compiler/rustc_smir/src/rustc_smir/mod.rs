@@ -334,6 +334,15 @@ fn rustc_terminator_to_terminator(
         GeneratorDrop => Terminator::GeneratorDrop,
         FalseEdge { .. } => todo!(),
         FalseUnwind { .. } => todo!(),
-        InlineAsm { .. } => todo!(),
+        InlineAsm { template, operands, options, line_spans, destination, unwind } => {
+            Terminator::InlineAsm {
+                template: format!("{:?}", template),
+                operands: format!("{:?}", operands),
+                options: format!("{:?}", options),
+                line_spans: format!("{:?}", line_spans),
+                destination: destination.map(|d| d.as_usize()),
+                unwind: rustc_unwind_to_unwind(unwind),
+            }
+        }
     }
 }
