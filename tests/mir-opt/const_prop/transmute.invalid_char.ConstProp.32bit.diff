@@ -2,14 +2,14 @@
 + // MIR for `invalid_char` after ConstProp
   
   fn invalid_char() -> char {
-      let mut _0: char;                    // return place in scope 0 at $DIR/transmute.rs:+0:33: +0:37
+      let mut _0: char;
       scope 1 {
       }
   
       bb0: {
--         _0 = const _ as char (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:33
-+         _0 = const {transmute(0x7fffffff): char}; // scope 1 at $DIR/transmute.rs:+1:14: +1:33
-          return;                          // scope 0 at $DIR/transmute.rs:+2:2: +2:2
+-         _0 = const _ as char (Transmute);
++         _0 = const {transmute(0x7fffffff): char};
+          return;
       }
   }
   

@@ -2,55 +2,46 @@
 + // MIR for `maybe_dead` after ReferencePropagation
   
   fn maybe_dead(_1: bool) -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/reference_prop.rs:+0:24: +0:24
-      let mut _2: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _3: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _4: &i32;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _5: &mut i32;                // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _6: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _7: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _8: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _0: ();
+      let mut _2: i32;
+      let mut _3: i32;
+      let mut _4: &i32;
+      let mut _5: &mut i32;
+      let mut _6: i32;
+      let mut _7: i32;
+      let mut _8: i32;
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/reference_prop.rs:+7:13: +7:27
-          StorageLive(_3);                 // scope 0 at $DIR/reference_prop.rs:+8:13: +8:27
-          _2 = const 5_i32;                // scope 0 at $DIR/reference_prop.rs:+9:13: +9:18
-          _3 = const 5_i32;                // scope 0 at $DIR/reference_prop.rs:+10:13: +10:18
-          _4 = &_2;                        // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          _5 = &mut _3;                    // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          (*_5) = const 7_i32;             // scope 0 at $DIR/reference_prop.rs:+14:13: +14:19
--         _6 = (*_4);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-+         _6 = _2;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          switchInt(_1) -> [1: bb1, otherwise: bb2]; // scope 0 at $DIR/reference_prop.rs:+17:13: +17:46
+          StorageLive(_2);
+          StorageLive(_3);
+          _2 = const 5_i32;
+          _3 = const 5_i32;
+          _4 = &_2;
+          _5 = &mut _3;
+          (*_5) = const 7_i32;
+-         _6 = (*_4);
++         _6 = _2;
+          switchInt(_1) -> [1: bb1, otherwise: bb2];
       }
   
       bb1: {
-          StorageDead(_2);                 // scope 0 at $DIR/reference_prop.rs:+20:13: +20:27
-          StorageDead(_3);                 // scope 0 at $DIR/reference_prop.rs:+21:13: +21:27
-          _0 = opaque::<i32>(_6) -> bb2;   // scope 0 at $DIR/reference_prop.rs:+22:13: +22:38
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:489:28: 489:34
-                                           // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
+          StorageDead(_2);
+          StorageDead(_3);
+          _0 = opaque::<i32>(_6) -> bb2;
       }
   
       bb2: {
-          _7 = (*_4);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          _0 = opaque::<i32>(_7) -> bb3;   // scope 0 at $DIR/reference_prop.rs:+27:13: +27:38
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:494:28: 494:34
-                                           // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
+          _7 = (*_4);
+          _0 = opaque::<i32>(_7) -> bb3;
       }
   
       bb3: {
-          _8 = (*_5);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          _0 = opaque::<i32>(_8) -> bb4;   // scope 0 at $DIR/reference_prop.rs:+33:13: +33:43
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:500:33: 500:39
-                                           // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
+          _8 = (*_5);
+          _0 = opaque::<i32>(_8) -> bb4;
       }
   
       bb4: {
-          return;                          // scope 0 at $DIR/reference_prop.rs:+36:13: +36:21
+          return;
       }
   }
   

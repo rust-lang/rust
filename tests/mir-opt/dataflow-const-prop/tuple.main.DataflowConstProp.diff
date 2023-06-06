@@ -2,70 +2,70 @@
 + // MIR for `main` after DataflowConstProp
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/tuple.rs:+0:11: +0:11
-      let mut _1: (i32, i32);              // in scope 0 at $DIR/tuple.rs:+1:9: +1:14
-      let mut _3: i32;                     // in scope 0 at $DIR/tuple.rs:+2:13: +2:22
-      let mut _4: i32;                     // in scope 0 at $DIR/tuple.rs:+2:13: +2:16
-      let mut _5: i32;                     // in scope 0 at $DIR/tuple.rs:+2:19: +2:22
-      let mut _7: i32;                     // in scope 0 at $DIR/tuple.rs:+4:13: +4:22
-      let mut _8: i32;                     // in scope 0 at $DIR/tuple.rs:+4:13: +4:16
-      let mut _9: i32;                     // in scope 0 at $DIR/tuple.rs:+4:19: +4:22
-      let mut _10: i32;                    // in scope 0 at $DIR/tuple.rs:+4:25: +4:26
+      let mut _0: ();
+      let mut _1: (i32, i32);
+      let mut _3: i32;
+      let mut _4: i32;
+      let mut _5: i32;
+      let mut _7: i32;
+      let mut _8: i32;
+      let mut _9: i32;
+      let mut _10: i32;
       scope 1 {
-          debug a => _1;                   // in scope 1 at $DIR/tuple.rs:+1:9: +1:14
-          let _2: i32;                     // in scope 1 at $DIR/tuple.rs:+2:9: +2:10
+          debug a => _1;
+          let _2: i32;
           scope 2 {
-              debug b => _2;               // in scope 2 at $DIR/tuple.rs:+2:9: +2:10
-              let _6: i32;                 // in scope 2 at $DIR/tuple.rs:+4:9: +4:10
+              debug b => _2;
+              let _6: i32;
               scope 3 {
-                  debug c => _6;           // in scope 3 at $DIR/tuple.rs:+4:9: +4:10
+                  debug c => _6;
               }
           }
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/tuple.rs:+1:9: +1:14
-          _1 = (const 1_i32, const 2_i32); // scope 0 at $DIR/tuple.rs:+1:17: +1:23
-          StorageLive(_2);                 // scope 1 at $DIR/tuple.rs:+2:9: +2:10
-          StorageLive(_3);                 // scope 1 at $DIR/tuple.rs:+2:13: +2:22
-          StorageLive(_4);                 // scope 1 at $DIR/tuple.rs:+2:13: +2:16
--         _4 = (_1.0: i32);                // scope 1 at $DIR/tuple.rs:+2:13: +2:16
-+         _4 = const 1_i32;                // scope 1 at $DIR/tuple.rs:+2:13: +2:16
-          StorageLive(_5);                 // scope 1 at $DIR/tuple.rs:+2:19: +2:22
--         _5 = (_1.1: i32);                // scope 1 at $DIR/tuple.rs:+2:19: +2:22
--         _3 = Add(move _4, move _5);      // scope 1 at $DIR/tuple.rs:+2:13: +2:22
-+         _5 = const 2_i32;                // scope 1 at $DIR/tuple.rs:+2:19: +2:22
-+         _3 = const 3_i32;                // scope 1 at $DIR/tuple.rs:+2:13: +2:22
-          StorageDead(_5);                 // scope 1 at $DIR/tuple.rs:+2:21: +2:22
-          StorageDead(_4);                 // scope 1 at $DIR/tuple.rs:+2:21: +2:22
--         _2 = Add(move _3, const 3_i32);  // scope 1 at $DIR/tuple.rs:+2:13: +2:26
-+         _2 = const 6_i32;                // scope 1 at $DIR/tuple.rs:+2:13: +2:26
-          StorageDead(_3);                 // scope 1 at $DIR/tuple.rs:+2:25: +2:26
-          _1 = (const 2_i32, const 3_i32); // scope 2 at $DIR/tuple.rs:+3:5: +3:15
-          StorageLive(_6);                 // scope 2 at $DIR/tuple.rs:+4:9: +4:10
-          StorageLive(_7);                 // scope 2 at $DIR/tuple.rs:+4:13: +4:22
-          StorageLive(_8);                 // scope 2 at $DIR/tuple.rs:+4:13: +4:16
--         _8 = (_1.0: i32);                // scope 2 at $DIR/tuple.rs:+4:13: +4:16
-+         _8 = const 2_i32;                // scope 2 at $DIR/tuple.rs:+4:13: +4:16
-          StorageLive(_9);                 // scope 2 at $DIR/tuple.rs:+4:19: +4:22
--         _9 = (_1.1: i32);                // scope 2 at $DIR/tuple.rs:+4:19: +4:22
--         _7 = Add(move _8, move _9);      // scope 2 at $DIR/tuple.rs:+4:13: +4:22
-+         _9 = const 3_i32;                // scope 2 at $DIR/tuple.rs:+4:19: +4:22
-+         _7 = const 5_i32;                // scope 2 at $DIR/tuple.rs:+4:13: +4:22
-          StorageDead(_9);                 // scope 2 at $DIR/tuple.rs:+4:21: +4:22
-          StorageDead(_8);                 // scope 2 at $DIR/tuple.rs:+4:21: +4:22
-          StorageLive(_10);                // scope 2 at $DIR/tuple.rs:+4:25: +4:26
--         _10 = _2;                        // scope 2 at $DIR/tuple.rs:+4:25: +4:26
--         _6 = Add(move _7, move _10);     // scope 2 at $DIR/tuple.rs:+4:13: +4:26
-+         _10 = const 6_i32;               // scope 2 at $DIR/tuple.rs:+4:25: +4:26
-+         _6 = const 11_i32;               // scope 2 at $DIR/tuple.rs:+4:13: +4:26
-          StorageDead(_10);                // scope 2 at $DIR/tuple.rs:+4:25: +4:26
-          StorageDead(_7);                 // scope 2 at $DIR/tuple.rs:+4:25: +4:26
-          _0 = const ();                   // scope 0 at $DIR/tuple.rs:+0:11: +5:2
-          StorageDead(_6);                 // scope 2 at $DIR/tuple.rs:+5:1: +5:2
-          StorageDead(_2);                 // scope 1 at $DIR/tuple.rs:+5:1: +5:2
-          StorageDead(_1);                 // scope 0 at $DIR/tuple.rs:+5:1: +5:2
-          return;                          // scope 0 at $DIR/tuple.rs:+5:2: +5:2
+          StorageLive(_1);
+          _1 = (const 1_i32, const 2_i32);
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+-         _4 = (_1.0: i32);
++         _4 = const 1_i32;
+          StorageLive(_5);
+-         _5 = (_1.1: i32);
+-         _3 = Add(move _4, move _5);
++         _5 = const 2_i32;
++         _3 = const 3_i32;
+          StorageDead(_5);
+          StorageDead(_4);
+-         _2 = Add(move _3, const 3_i32);
++         _2 = const 6_i32;
+          StorageDead(_3);
+          _1 = (const 2_i32, const 3_i32);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+-         _8 = (_1.0: i32);
++         _8 = const 2_i32;
+          StorageLive(_9);
+-         _9 = (_1.1: i32);
+-         _7 = Add(move _8, move _9);
++         _9 = const 3_i32;
++         _7 = const 5_i32;
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageLive(_10);
+-         _10 = _2;
+-         _6 = Add(move _7, move _10);
++         _10 = const 6_i32;
++         _6 = const 11_i32;
+          StorageDead(_10);
+          StorageDead(_7);
+          _0 = const ();
+          StorageDead(_6);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
       }
   }
   

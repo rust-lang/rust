@@ -2,49 +2,40 @@
 + // MIR for `caller` after Inline
   
   fn caller(_1: Box<[i32]>) -> () {
-      debug x => _1;                       // in scope 0 at $DIR/unsized_argument.rs:+0:11: +0:12
-      let mut _0: ();                      // return place in scope 0 at $DIR/unsized_argument.rs:+0:26: +0:26
-      let _2: ();                          // in scope 0 at $DIR/unsized_argument.rs:+1:5: +1:15
-      let mut _3: std::boxed::Box<[i32]>;  // in scope 0 at $DIR/unsized_argument.rs:+1:13: +1:14
-      let mut _4: ();                      // in scope 0 at $DIR/unsized_argument.rs:+1:14: +1:15
-      let mut _5: ();                      // in scope 0 at $DIR/unsized_argument.rs:+1:14: +1:15
-      let mut _6: ();                      // in scope 0 at $DIR/unsized_argument.rs:+1:14: +1:15
-      let mut _7: *const [i32];            // in scope 0 at $DIR/unsized_argument.rs:+1:13: +1:14
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: std::boxed::Box<[i32]>;
+      let mut _4: ();
+      let mut _5: ();
+      let mut _6: ();
+      let mut _7: *const [i32];
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/unsized_argument.rs:+1:5: +1:15
-          StorageLive(_3);                 // scope 0 at $DIR/unsized_argument.rs:+1:13: +1:14
-          _3 = move _1;                    // scope 0 at $DIR/unsized_argument.rs:+1:13: +1:14
-          _7 = (((_3.0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>).0: *const [i32]); // scope 0 at $DIR/unsized_argument.rs:+1:5: +1:15
-          _2 = callee(move (*_7)) -> [return: bb3, unwind: bb4]; // scope 0 at $DIR/unsized_argument.rs:+1:5: +1:15
-                                           // mir::Constant
-                                           // + span: $DIR/unsized_argument.rs:9:5: 9:11
-                                           // + literal: Const { ty: fn([i32]) {callee}, val: Value(<ZST>) }
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = move _1;
+          _7 = (((_3.0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>).0: *const [i32]);
+          _2 = callee(move (*_7)) -> [return: bb3, unwind: bb4];
       }
   
       bb1: {
-          StorageDead(_3);                 // scope 0 at $DIR/unsized_argument.rs:+1:14: +1:15
-          StorageDead(_2);                 // scope 0 at $DIR/unsized_argument.rs:+1:15: +1:16
-          _0 = const ();                   // scope 0 at $DIR/unsized_argument.rs:+0:26: +2:2
-          return;                          // scope 0 at $DIR/unsized_argument.rs:+2:2: +2:2
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          return;
       }
   
       bb2 (cleanup): {
-          resume;                          // scope 0 at $DIR/unsized_argument.rs:+0:1: +2:2
+          resume;
       }
   
       bb3: {
-          _4 = alloc::alloc::box_free::<[i32], std::alloc::Global>(move (_3.0: std::ptr::Unique<[i32]>), move (_3.1: std::alloc::Global)) -> bb1; // scope 0 at $DIR/unsized_argument.rs:+1:14: +1:15
-                                           // mir::Constant
-                                           // + span: $DIR/unsized_argument.rs:9:14: 9:15
-                                           // + literal: Const { ty: unsafe fn(Unique<[i32]>, std::alloc::Global) {alloc::alloc::box_free::<[i32], std::alloc::Global>}, val: Value(<ZST>) }
+          _4 = alloc::alloc::box_free::<[i32], std::alloc::Global>(move (_3.0: std::ptr::Unique<[i32]>), move (_3.1: std::alloc::Global)) -> bb1;
       }
   
       bb4 (cleanup): {
-          _6 = alloc::alloc::box_free::<[i32], std::alloc::Global>(move (_3.0: std::ptr::Unique<[i32]>), move (_3.1: std::alloc::Global)) -> [return: bb2, unwind terminate]; // scope 0 at $DIR/unsized_argument.rs:+1:14: +1:15
-                                           // mir::Constant
-                                           // + span: $DIR/unsized_argument.rs:9:14: 9:15
-                                           // + literal: Const { ty: unsafe fn(Unique<[i32]>, std::alloc::Global) {alloc::alloc::box_free::<[i32], std::alloc::Global>}, val: Value(<ZST>) }
+          _6 = alloc::alloc::box_free::<[i32], std::alloc::Global>(move (_3.0: std::ptr::Unique<[i32]>), move (_3.1: std::alloc::Global)) -> [return: bb2, unwind terminate];
       }
   }
   

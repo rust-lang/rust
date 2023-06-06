@@ -2,24 +2,24 @@
 + // MIR for `d2` after SimplifyLocals-before-const-prop
   
   fn d2() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals.rs:+0:9: +0:9
--     let mut _1: E;                       // in scope 0 at $DIR/simplify_locals.rs:+2:22: +2:26
--     let mut _2: (i32, E);                // in scope 0 at $DIR/simplify_locals.rs:+2:5: +2:17
--     let mut _3: E;                       // in scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
+      let mut _0: ();
+-     let mut _1: E;
+-     let mut _2: (i32, E);
+-     let mut _3: E;
   
       bb0: {
--         StorageLive(_1);                 // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:26
--         _1 = E::B;                       // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:26
--         StorageLive(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:17
--         StorageLive(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
--         _3 = E::A;                       // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
--         _2 = (const 10_i32, move _3);    // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
--         StorageDead(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:15: +2:16
--         (_2.1: E) = move _1;             // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:26
--         StorageDead(_1);                 // scope 0 at $DIR/simplify_locals.rs:+2:25: +2:26
--         StorageDead(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:26: +2:27
-          _0 = const ();                   // scope 0 at $DIR/simplify_locals.rs:+0:9: +3:2
-          return;                          // scope 0 at $DIR/simplify_locals.rs:+3:2: +3:2
+-         StorageLive(_1);
+-         _1 = E::B;
+-         StorageLive(_2);
+-         StorageLive(_3);
+-         _3 = E::A;
+-         _2 = (const 10_i32, move _3);
+-         StorageDead(_3);
+-         (_2.1: E) = move _1;
+-         StorageDead(_1);
+-         StorageDead(_2);
+          _0 = const ();
+          return;
       }
   }
   

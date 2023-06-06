@@ -2,51 +2,45 @@
 + // MIR for `h` after Inline
   
   fn h() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/inline_diverging.rs:+0:12: +0:12
-      let _1: (!, !);                      // in scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
-+     let mut _2: fn() -> ! {sleep};       // in scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
-+     let mut _8: ();                      // in scope 0 at $DIR/inline_diverging.rs:27:13: 27:16
-+     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) { // at $DIR/inline_diverging.rs:22:5: 22:22
-+         debug f => _2;                   // in scope 1 at $DIR/inline_diverging.rs:26:36: 26:37
-+         let mut _3: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline_diverging.rs:27:13: 27:14
-+         let _4: !;                       // in scope 1 at $DIR/inline_diverging.rs:27:9: 27:10
-+         let mut _5: &fn() -> ! {sleep};  // in scope 1 at $DIR/inline_diverging.rs:28:13: 28:14
-+         let mut _6: !;                   // in scope 1 at $DIR/inline_diverging.rs:29:9: 29:10
-+         let mut _7: !;                   // in scope 1 at $DIR/inline_diverging.rs:29:6: 29:7
+      let mut _0: ();
+      let _1: (!, !);
++     let mut _2: fn() -> ! {sleep};
++     let mut _8: ();
++     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) {
++         debug f => _2;
++         let mut _3: &fn() -> ! {sleep};
++         let _4: !;
++         let mut _5: &fn() -> ! {sleep};
++         let mut _6: !;
++         let mut _7: !;
 +         scope 2 {
-+             debug a => _4;               // in scope 2 at $DIR/inline_diverging.rs:27:9: 27:10
++             debug a => _4;
 +             scope 3 {
-+                 debug b => _6;           // in scope 3 at $DIR/inline_diverging.rs:28:9: 28:10
++                 debug b => _6;
 +             }
 +         }
-+         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) { // at $DIR/inline_diverging.rs:27:13: 27:16
-+             scope 5 (inlined sleep) {    // at $SRC_DIR/core/src/ops/function.rs:LL:COL
++         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) {
++             scope 5 (inlined sleep) {
 +             }
 +         }
 +     }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
--         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep); // scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
-+         StorageLive(_2);                 // scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
-+         _2 = sleep;                      // scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
-                                           // mir::Constant
--                                          // + span: $DIR/inline_diverging.rs:22:5: 22:15
--                                          // + literal: Const { ty: fn(fn() -> ! {sleep}) -> (!, !) {call_twice::<!, fn() -> ! {sleep}>}, val: Value(<ZST>) }
--                                          // mir::Constant
-                                           // + span: $DIR/inline_diverging.rs:22:16: 22:21
-                                           // + literal: Const { ty: fn() -> ! {sleep}, val: Value(<ZST>) }
-+         StorageLive(_6);                 // scope 0 at $DIR/inline_diverging.rs:+1:5: +1:22
-+         StorageLive(_4);                 // scope 1 at $DIR/inline_diverging.rs:27:9: 27:10
-+         StorageLive(_3);                 // scope 1 at $DIR/inline_diverging.rs:27:13: 27:14
-+         _3 = &_2;                        // scope 1 at $DIR/inline_diverging.rs:27:13: 27:14
-+         StorageLive(_8);                 // scope 1 at $DIR/inline_diverging.rs:27:13: 27:16
-+         _8 = const ();                   // scope 1 at $DIR/inline_diverging.rs:27:13: 27:16
-+         goto -> bb1;                     // scope 5 at $DIR/inline_diverging.rs:39:5: 39:12
+          StorageLive(_1);
+-         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep);
++         StorageLive(_2);
++         _2 = sleep;
++         StorageLive(_6);
++         StorageLive(_4);
++         StorageLive(_3);
++         _3 = &_2;
++         StorageLive(_8);
++         _8 = const ();
++         goto -> bb1;
 +     }
 + 
 +     bb1: {
-+         goto -> bb1;                     // scope 5 at $DIR/inline_diverging.rs:39:5: 39:12
++         goto -> bb1;
       }
   }
   

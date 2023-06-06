@@ -2,51 +2,49 @@
 + // MIR for `issue_77355_opt` after ConstGoto
   
   fn issue_77355_opt(_1: Foo) -> u64 {
-      debug num => _1;                     // in scope 0 at $DIR/const_goto.rs:+0:20: +0:23
-      let mut _0: u64;                     // return place in scope 0 at $DIR/const_goto.rs:+0:33: +0:36
--     let mut _2: bool;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--     let mut _3: isize;                   // in scope 0 at $DIR/const_goto.rs:+1:22: +1:28
-+     let mut _2: isize;                   // in scope 0 at $DIR/const_goto.rs:+1:22: +1:28
+      debug num => _1;
+      let mut _0: u64;
+-     let mut _2: bool;
+-     let mut _3: isize;
++     let mut _2: isize;
   
       bb0: {
--         StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--         _3 = discriminant(_1);           // scope 0 at $DIR/const_goto.rs:+1:17: +1:20
--         switchInt(move _3) -> [1: bb2, 2: bb2, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-+         _2 = discriminant(_1);           // scope 0 at $DIR/const_goto.rs:+1:17: +1:20
-+         switchInt(move _2) -> [1: bb2, 2: bb2, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         StorageLive(_2);
+-         _3 = discriminant(_1);
+-         switchInt(move _3) -> [1: bb2, 2: bb2, otherwise: bb1];
++         _2 = discriminant(_1);
++         switchInt(move _2) -> [1: bb2, 2: bb2, otherwise: bb1];
       }
   
       bb1: {
--         _2 = const false;                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-+         _0 = const 42_u64;               // scope 0 at $DIR/const_goto.rs:+1:53: +1:55
-+         goto -> bb3;                     // scope 0 at $DIR/const_goto.rs:+1:5: +1:57
+-         _2 = const false;
++         _0 = const 42_u64;
+          goto -> bb3;
       }
   
       bb2: {
--         _2 = const true;                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--     }
-- 
--     bb3: {
--         switchInt(move _2) -> [0: bb5, otherwise: bb4]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         _2 = const true;
++         _0 = const 23_u64;
+          goto -> bb3;
+      }
+  
+      bb3: {
+-         switchInt(move _2) -> [0: bb5, otherwise: bb4];
 -     }
 - 
 -     bb4: {
-          _0 = const 23_u64;               // scope 0 at $DIR/const_goto.rs:+1:41: +1:43
--         goto -> bb6;                     // scope 0 at $DIR/const_goto.rs:+1:5: +1:57
-+         goto -> bb3;                     // scope 0 at $DIR/const_goto.rs:+1:5: +1:57
-      }
-  
+-         _0 = const 23_u64;
+-         goto -> bb6;
+-     }
+- 
 -     bb5: {
--         _0 = const 42_u64;               // scope 0 at $DIR/const_goto.rs:+1:53: +1:55
--         goto -> bb6;                     // scope 0 at $DIR/const_goto.rs:+1:5: +1:57
+-         _0 = const 42_u64;
+-         goto -> bb6;
 -     }
 - 
 -     bb6: {
--         StorageDead(_2);                 // scope 0 at $DIR/const_goto.rs:+1:56: +1:57
-+     bb3: {
-          return;                          // scope 0 at $DIR/const_goto.rs:+2:2: +2:2
+-         StorageDead(_2);
+          return;
       }
   }
   

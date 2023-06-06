@@ -2,21 +2,21 @@
 + // MIR for `undef_union_as_integer` after ConstProp
   
   fn undef_union_as_integer() -> u32 {
-      let mut _0: u32;                     // return place in scope 0 at $DIR/transmute.rs:+0:43: +0:46
-      let mut _1: undef_union_as_integer::Union32; // in scope 0 at $DIR/transmute.rs:+2:24: +2:44
-      let mut _2: ();                      // in scope 0 at $DIR/transmute.rs:+2:40: +2:42
+      let mut _0: u32;
+      let mut _1: undef_union_as_integer::Union32;
+      let mut _2: ();
       scope 1 {
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 1 at $DIR/transmute.rs:+2:24: +2:44
-          StorageLive(_2);                 // scope 1 at $DIR/transmute.rs:+2:40: +2:42
-          _2 = ();                         // scope 1 at $DIR/transmute.rs:+2:40: +2:42
-          _1 = Union32 { value: move _2 }; // scope 1 at $DIR/transmute.rs:+2:24: +2:44
-          StorageDead(_2);                 // scope 1 at $DIR/transmute.rs:+2:43: +2:44
-          _0 = move _1 as u32 (Transmute); // scope 1 at $DIR/transmute.rs:+2:14: +2:45
-          StorageDead(_1);                 // scope 1 at $DIR/transmute.rs:+2:44: +2:45
-          return;                          // scope 0 at $DIR/transmute.rs:+3:2: +3:2
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = ();
+          _1 = Union32 { value: move _2 };
+          StorageDead(_2);
+          _0 = move _1 as u32 (Transmute);
+          StorageDead(_1);
+          return;
       }
   }
   

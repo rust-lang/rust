@@ -1,127 +1,127 @@
 // MIR for `naive` after PreCodegen
 
 fn naive(_1: &Blueprint, _2: &Blueprint) -> bool {
-    debug a => _1;                       // in scope 0 at $DIR/chained_comparison.rs:+0:14: +0:15
-    debug b => _2;                       // in scope 0 at $DIR/chained_comparison.rs:+0:29: +0:30
-    let mut _0: bool;                    // return place in scope 0 at $DIR/chained_comparison.rs:+0:47: +0:51
-    let mut _3: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+1:6: +1:22
-    let mut _4: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+1:26: +1:42
-    let mut _5: bool;                    // in scope 0 at $DIR/chained_comparison.rs:+1:5: +1:43
-    let mut _6: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+2:13: +2:22
-    let mut _7: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+2:26: +2:35
-    let mut _8: bool;                    // in scope 0 at $DIR/chained_comparison.rs:+2:12: +2:36
-    let mut _9: bool;                    // in scope 0 at $DIR/chained_comparison.rs:+1:5: +2:36
-    let mut _10: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+3:13: +3:29
-    let mut _11: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+3:33: +3:49
-    let mut _12: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+3:12: +3:50
-    let mut _13: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+1:5: +3:50
-    let mut _14: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+4:13: +4:26
-    let mut _15: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+4:30: +4:43
-    let mut _16: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+4:12: +4:44
-    let mut _17: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+1:5: +4:44
-    let mut _18: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+5:13: +5:22
-    let mut _19: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+5:26: +5:35
-    let mut _20: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+5:12: +5:36
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    let mut _3: u32;
+    let mut _4: u32;
+    let mut _5: bool;
+    let mut _6: u32;
+    let mut _7: u32;
+    let mut _8: bool;
+    let mut _9: bool;
+    let mut _10: u32;
+    let mut _11: u32;
+    let mut _12: bool;
+    let mut _13: bool;
+    let mut _14: u32;
+    let mut _15: u32;
+    let mut _16: bool;
+    let mut _17: bool;
+    let mut _18: u32;
+    let mut _19: u32;
+    let mut _20: bool;
 
     bb0: {
-        StorageLive(_17);                // scope 0 at $DIR/chained_comparison.rs:+1:5: +4:44
-        StorageLive(_13);                // scope 0 at $DIR/chained_comparison.rs:+1:5: +3:50
-        StorageLive(_9);                 // scope 0 at $DIR/chained_comparison.rs:+1:5: +2:36
-        StorageLive(_5);                 // scope 0 at $DIR/chained_comparison.rs:+1:5: +1:43
-        StorageLive(_3);                 // scope 0 at $DIR/chained_comparison.rs:+1:6: +1:22
-        _3 = ((*_1).0: u32);             // scope 0 at $DIR/chained_comparison.rs:+1:6: +1:22
-        StorageLive(_4);                 // scope 0 at $DIR/chained_comparison.rs:+1:26: +1:42
-        _4 = ((*_2).0: u32);             // scope 0 at $DIR/chained_comparison.rs:+1:26: +1:42
-        _5 = Eq(move _3, move _4);       // scope 0 at $DIR/chained_comparison.rs:+1:5: +1:43
-        StorageDead(_4);                 // scope 0 at $DIR/chained_comparison.rs:+1:42: +1:43
-        StorageDead(_3);                 // scope 0 at $DIR/chained_comparison.rs:+1:42: +1:43
-        switchInt(move _5) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/chained_comparison.rs:+1:5: +2:36
+        StorageLive(_17);
+        StorageLive(_13);
+        StorageLive(_9);
+        StorageLive(_5);
+        StorageLive(_3);
+        _3 = ((*_1).0: u32);
+        StorageLive(_4);
+        _4 = ((*_2).0: u32);
+        _5 = Eq(move _3, move _4);
+        StorageDead(_4);
+        StorageDead(_3);
+        switchInt(move _5) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        StorageDead(_8);                 // scope 0 at $DIR/chained_comparison.rs:+2:35: +2:36
-        StorageDead(_5);                 // scope 0 at $DIR/chained_comparison.rs:+2:35: +2:36
-        goto -> bb3;                     // scope 0 at $DIR/chained_comparison.rs:+1:5: +2:36
+        StorageDead(_8);
+        StorageDead(_5);
+        goto -> bb3;
     }
 
     bb2: {
-        StorageLive(_8);                 // scope 0 at $DIR/chained_comparison.rs:+2:12: +2:36
-        StorageLive(_6);                 // scope 0 at $DIR/chained_comparison.rs:+2:13: +2:22
-        _6 = ((*_1).1: u32);             // scope 0 at $DIR/chained_comparison.rs:+2:13: +2:22
-        StorageLive(_7);                 // scope 0 at $DIR/chained_comparison.rs:+2:26: +2:35
-        _7 = ((*_2).1: u32);             // scope 0 at $DIR/chained_comparison.rs:+2:26: +2:35
-        _8 = Eq(move _6, move _7);       // scope 0 at $DIR/chained_comparison.rs:+2:12: +2:36
-        StorageDead(_7);                 // scope 0 at $DIR/chained_comparison.rs:+2:35: +2:36
-        StorageDead(_6);                 // scope 0 at $DIR/chained_comparison.rs:+2:35: +2:36
-        _9 = move _8;                    // scope 0 at $DIR/chained_comparison.rs:+1:5: +2:36
-        StorageDead(_8);                 // scope 0 at $DIR/chained_comparison.rs:+2:35: +2:36
-        StorageDead(_5);                 // scope 0 at $DIR/chained_comparison.rs:+2:35: +2:36
-        switchInt(move _9) -> [0: bb3, otherwise: bb4]; // scope 0 at $DIR/chained_comparison.rs:+1:5: +3:50
+        StorageLive(_8);
+        StorageLive(_6);
+        _6 = ((*_1).1: u32);
+        StorageLive(_7);
+        _7 = ((*_2).1: u32);
+        _8 = Eq(move _6, move _7);
+        StorageDead(_7);
+        StorageDead(_6);
+        _9 = move _8;
+        StorageDead(_8);
+        StorageDead(_5);
+        switchInt(move _9) -> [0: bb3, otherwise: bb4];
     }
 
     bb3: {
-        StorageDead(_12);                // scope 0 at $DIR/chained_comparison.rs:+3:49: +3:50
-        StorageDead(_9);                 // scope 0 at $DIR/chained_comparison.rs:+3:49: +3:50
-        goto -> bb5;                     // scope 0 at $DIR/chained_comparison.rs:+1:5: +3:50
+        StorageDead(_12);
+        StorageDead(_9);
+        goto -> bb5;
     }
 
     bb4: {
-        StorageLive(_12);                // scope 0 at $DIR/chained_comparison.rs:+3:12: +3:50
-        StorageLive(_10);                // scope 0 at $DIR/chained_comparison.rs:+3:13: +3:29
-        _10 = ((*_1).2: u32);            // scope 0 at $DIR/chained_comparison.rs:+3:13: +3:29
-        StorageLive(_11);                // scope 0 at $DIR/chained_comparison.rs:+3:33: +3:49
-        _11 = ((*_2).2: u32);            // scope 0 at $DIR/chained_comparison.rs:+3:33: +3:49
-        _12 = Eq(move _10, move _11);    // scope 0 at $DIR/chained_comparison.rs:+3:12: +3:50
-        StorageDead(_11);                // scope 0 at $DIR/chained_comparison.rs:+3:49: +3:50
-        StorageDead(_10);                // scope 0 at $DIR/chained_comparison.rs:+3:49: +3:50
-        _13 = move _12;                  // scope 0 at $DIR/chained_comparison.rs:+1:5: +3:50
-        StorageDead(_12);                // scope 0 at $DIR/chained_comparison.rs:+3:49: +3:50
-        StorageDead(_9);                 // scope 0 at $DIR/chained_comparison.rs:+3:49: +3:50
-        switchInt(move _13) -> [0: bb5, otherwise: bb6]; // scope 0 at $DIR/chained_comparison.rs:+1:5: +4:44
+        StorageLive(_12);
+        StorageLive(_10);
+        _10 = ((*_1).2: u32);
+        StorageLive(_11);
+        _11 = ((*_2).2: u32);
+        _12 = Eq(move _10, move _11);
+        StorageDead(_11);
+        StorageDead(_10);
+        _13 = move _12;
+        StorageDead(_12);
+        StorageDead(_9);
+        switchInt(move _13) -> [0: bb5, otherwise: bb6];
     }
 
     bb5: {
-        StorageDead(_16);                // scope 0 at $DIR/chained_comparison.rs:+4:43: +4:44
-        StorageDead(_13);                // scope 0 at $DIR/chained_comparison.rs:+4:43: +4:44
-        goto -> bb7;                     // scope 0 at $DIR/chained_comparison.rs:+1:5: +4:44
+        StorageDead(_16);
+        StorageDead(_13);
+        goto -> bb7;
     }
 
     bb6: {
-        StorageLive(_16);                // scope 0 at $DIR/chained_comparison.rs:+4:12: +4:44
-        StorageLive(_14);                // scope 0 at $DIR/chained_comparison.rs:+4:13: +4:26
-        _14 = ((*_1).3: u32);            // scope 0 at $DIR/chained_comparison.rs:+4:13: +4:26
-        StorageLive(_15);                // scope 0 at $DIR/chained_comparison.rs:+4:30: +4:43
-        _15 = ((*_2).3: u32);            // scope 0 at $DIR/chained_comparison.rs:+4:30: +4:43
-        _16 = Eq(move _14, move _15);    // scope 0 at $DIR/chained_comparison.rs:+4:12: +4:44
-        StorageDead(_15);                // scope 0 at $DIR/chained_comparison.rs:+4:43: +4:44
-        StorageDead(_14);                // scope 0 at $DIR/chained_comparison.rs:+4:43: +4:44
-        _17 = move _16;                  // scope 0 at $DIR/chained_comparison.rs:+1:5: +4:44
-        StorageDead(_16);                // scope 0 at $DIR/chained_comparison.rs:+4:43: +4:44
-        StorageDead(_13);                // scope 0 at $DIR/chained_comparison.rs:+4:43: +4:44
-        switchInt(move _17) -> [0: bb7, otherwise: bb8]; // scope 0 at $DIR/chained_comparison.rs:+1:5: +5:36
+        StorageLive(_16);
+        StorageLive(_14);
+        _14 = ((*_1).3: u32);
+        StorageLive(_15);
+        _15 = ((*_2).3: u32);
+        _16 = Eq(move _14, move _15);
+        StorageDead(_15);
+        StorageDead(_14);
+        _17 = move _16;
+        StorageDead(_16);
+        StorageDead(_13);
+        switchInt(move _17) -> [0: bb7, otherwise: bb8];
     }
 
     bb7: {
-        _0 = const false;                // scope 0 at $DIR/chained_comparison.rs:+1:5: +5:36
-        goto -> bb9;                     // scope 0 at $DIR/chained_comparison.rs:+1:5: +5:36
+        _0 = const false;
+        goto -> bb9;
     }
 
     bb8: {
-        StorageLive(_20);                // scope 0 at $DIR/chained_comparison.rs:+5:12: +5:36
-        StorageLive(_18);                // scope 0 at $DIR/chained_comparison.rs:+5:13: +5:22
-        _18 = ((*_1).4: u32);            // scope 0 at $DIR/chained_comparison.rs:+5:13: +5:22
-        StorageLive(_19);                // scope 0 at $DIR/chained_comparison.rs:+5:26: +5:35
-        _19 = ((*_2).4: u32);            // scope 0 at $DIR/chained_comparison.rs:+5:26: +5:35
-        _20 = Eq(move _18, move _19);    // scope 0 at $DIR/chained_comparison.rs:+5:12: +5:36
-        StorageDead(_19);                // scope 0 at $DIR/chained_comparison.rs:+5:35: +5:36
-        StorageDead(_18);                // scope 0 at $DIR/chained_comparison.rs:+5:35: +5:36
-        _0 = move _20;                   // scope 0 at $DIR/chained_comparison.rs:+1:5: +5:36
-        goto -> bb9;                     // scope 0 at $DIR/chained_comparison.rs:+1:5: +5:36
+        StorageLive(_20);
+        StorageLive(_18);
+        _18 = ((*_1).4: u32);
+        StorageLive(_19);
+        _19 = ((*_2).4: u32);
+        _20 = Eq(move _18, move _19);
+        StorageDead(_19);
+        StorageDead(_18);
+        _0 = move _20;
+        goto -> bb9;
     }
 
     bb9: {
-        StorageDead(_20);                // scope 0 at $DIR/chained_comparison.rs:+5:35: +5:36
-        StorageDead(_17);                // scope 0 at $DIR/chained_comparison.rs:+5:35: +5:36
-        return;                          // scope 0 at $DIR/chained_comparison.rs:+6:2: +6:2
+        StorageDead(_20);
+        StorageDead(_17);
+        return;
     }
 }

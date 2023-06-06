@@ -1,22 +1,22 @@
 // MIR for `c` after Inline
 
 fn c(_1: &[T]) -> &[T] {
-    debug x => _1;                       // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:13: +0:14
-    let mut _0: &[T];                    // return place in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:25: +0:29
-    let _2: &[T];                        // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    let mut _3: &[T];                    // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    scope 1 (inlined <[T] as AsRef<[T]>>::as_ref) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:13:7: 13:15
-        debug self => _3;                // in scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+    debug x => _1;
+    let mut _0: &[T];
+    let _2: &[T];
+    let mut _3: &[T];
+    scope 1 (inlined <[T] as AsRef<[T]>>::as_ref) {
+        debug self => _3;
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageLive(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        _3 = &(*_1);                     // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        _2 = _3;                         // scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-        _0 = &(*_2);                     // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        StorageDead(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:14: +1:15
-        StorageDead(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:1: +2:2
-        return;                          // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:2: +2:2
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = &(*_1);
+        _2 = _3;
+        _0 = &(*_2);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 }

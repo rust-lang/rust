@@ -2,39 +2,39 @@
 + // MIR for `generic` after ConstProp
   
   fn generic() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/offset_of.rs:+0:17: +0:17
-      let _1: usize;                       // in scope 0 at $DIR/offset_of.rs:+1:9: +1:11
+      let mut _0: ();
+      let _1: usize;
       scope 1 {
-          debug gx => _1;                  // in scope 1 at $DIR/offset_of.rs:+1:9: +1:11
-          let _2: usize;                   // in scope 1 at $DIR/offset_of.rs:+2:9: +2:11
+          debug gx => _1;
+          let _2: usize;
           scope 2 {
-              debug gy => _2;              // in scope 2 at $DIR/offset_of.rs:+2:9: +2:11
-              let _3: usize;               // in scope 2 at $DIR/offset_of.rs:+3:9: +3:11
+              debug gy => _2;
+              let _3: usize;
               scope 3 {
-                  debug dx => _3;          // in scope 3 at $DIR/offset_of.rs:+3:9: +3:11
-                  let _4: usize;           // in scope 3 at $DIR/offset_of.rs:+4:9: +4:11
+                  debug dx => _3;
+                  let _4: usize;
                   scope 4 {
-                      debug dy => _4;      // in scope 4 at $DIR/offset_of.rs:+4:9: +4:11
+                      debug dy => _4;
                   }
               }
           }
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/offset_of.rs:+1:9: +1:11
-          _1 = OffsetOf(Gamma<T>, [0]);    // scope 0 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          StorageLive(_2);                 // scope 1 at $DIR/offset_of.rs:+2:9: +2:11
-          _2 = OffsetOf(Gamma<T>, [1]);    // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          StorageLive(_3);                 // scope 2 at $DIR/offset_of.rs:+3:9: +3:11
-          _3 = OffsetOf(Delta<T>, [1]);    // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          StorageLive(_4);                 // scope 3 at $DIR/offset_of.rs:+4:9: +4:11
-          _4 = OffsetOf(Delta<T>, [2]);    // scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          _0 = const ();                   // scope 0 at $DIR/offset_of.rs:+0:17: +5:2
-          StorageDead(_4);                 // scope 3 at $DIR/offset_of.rs:+5:1: +5:2
-          StorageDead(_3);                 // scope 2 at $DIR/offset_of.rs:+5:1: +5:2
-          StorageDead(_2);                 // scope 1 at $DIR/offset_of.rs:+5:1: +5:2
-          StorageDead(_1);                 // scope 0 at $DIR/offset_of.rs:+5:1: +5:2
-          return;                          // scope 0 at $DIR/offset_of.rs:+5:2: +5:2
+          StorageLive(_1);
+          _1 = OffsetOf(Gamma<T>, [0]);
+          StorageLive(_2);
+          _2 = OffsetOf(Gamma<T>, [1]);
+          StorageLive(_3);
+          _3 = OffsetOf(Delta<T>, [1]);
+          StorageLive(_4);
+          _4 = OffsetOf(Delta<T>, [2]);
+          _0 = const ();
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
       }
   }
   

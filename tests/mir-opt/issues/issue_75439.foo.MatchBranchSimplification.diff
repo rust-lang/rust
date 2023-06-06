@@ -2,17 +2,17 @@
 + // MIR for `foo` after MatchBranchSimplification
   
   fn foo(_1: [u8; 16]) -> Option<[u8; 4]> {
-      debug bytes => _1;                   // in scope 0 at $DIR/issue_75439.rs:+0:12: +0:17
-      let mut _0: std::option::Option<[u8; 4]>; // return place in scope 0 at $DIR/issue_75439.rs:+0:32: +0:47
-      let _2: [u32; 4];                    // in scope 0 at $DIR/issue_75439.rs:+2:9: +2:15
-      let mut _3: [u8; 16];                // in scope 0 at $DIR/issue_75439.rs:+2:47: +2:52
-      let mut _5: [u8; 4];                 // in scope 0 at $DIR/issue_75439.rs:+5:14: +5:38
-      let mut _6: u32;                     // in scope 0 at $DIR/issue_75439.rs:+5:33: +5:35
+      debug bytes => _1;
+      let mut _0: std::option::Option<[u8; 4]>;
+      let _2: [u32; 4];
+      let mut _3: [u8; 16];
+      let mut _5: [u8; 4];
+      let mut _6: u32;
       scope 1 {
-          debug dwords => _2;              // in scope 1 at $DIR/issue_75439.rs:+2:9: +2:15
+          debug dwords => _2;
           scope 3 {
-              debug ip => _4;              // in scope 3 at $DIR/issue_75439.rs:+4:27: +4:29
-              let _4: u32;                 // in scope 3 at $DIR/issue_75439.rs:+4:27: +4:29
+              debug ip => _4;
+              let _4: u32;
               scope 4 {
               }
           }
@@ -21,54 +21,54 @@
       }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/issue_75439.rs:+2:9: +2:15
-          StorageLive(_3);                 // scope 2 at $DIR/issue_75439.rs:+2:47: +2:52
-          _3 = _1;                         // scope 2 at $DIR/issue_75439.rs:+2:47: +2:52
-          _2 = move _3 as [u32; 4] (Transmute); // scope 2 at $DIR/issue_75439.rs:+2:37: +2:53
-          StorageDead(_3);                 // scope 2 at $DIR/issue_75439.rs:+2:52: +2:53
-          switchInt(_2[0 of 4]) -> [0: bb1, otherwise: bb6]; // scope 3 at $DIR/issue_75439.rs:+4:12: +4:30
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = _1;
+          _2 = move _3 as [u32; 4] (Transmute);
+          StorageDead(_3);
+          switchInt(_2[0 of 4]) -> [0: bb1, otherwise: bb6];
       }
   
       bb1: {
-          switchInt(_2[1 of 4]) -> [0: bb2, otherwise: bb6]; // scope 3 at $DIR/issue_75439.rs:+4:12: +4:30
+          switchInt(_2[1 of 4]) -> [0: bb2, otherwise: bb6];
       }
   
       bb2: {
-          switchInt(_2[2 of 4]) -> [0: bb4, 4294901760: bb5, otherwise: bb6]; // scope 3 at $DIR/issue_75439.rs:+4:12: +4:30
+          switchInt(_2[2 of 4]) -> [0: bb4, 4294901760: bb5, otherwise: bb6];
       }
   
       bb3: {
-          StorageLive(_5);                 // scope 3 at $DIR/issue_75439.rs:+5:14: +5:38
-          StorageLive(_6);                 // scope 4 at $DIR/issue_75439.rs:+5:33: +5:35
-          _6 = _4;                         // scope 4 at $DIR/issue_75439.rs:+5:33: +5:35
-          _5 = move _6 as [u8; 4] (Transmute); // scope 4 at $DIR/issue_75439.rs:+5:23: +5:36
-          StorageDead(_6);                 // scope 4 at $DIR/issue_75439.rs:+5:35: +5:36
-          _0 = Option::<[u8; 4]>::Some(move _5); // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
-          StorageDead(_5);                 // scope 3 at $DIR/issue_75439.rs:+5:38: +5:39
-          StorageDead(_4);                 // scope 1 at $DIR/issue_75439.rs:+6:5: +6:6
-          goto -> bb7;                     // scope 1 at $DIR/issue_75439.rs:+4:5: +8:6
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = _4;
+          _5 = move _6 as [u8; 4] (Transmute);
+          StorageDead(_6);
+          _0 = Option::<[u8; 4]>::Some(move _5);
+          StorageDead(_5);
+          StorageDead(_4);
+          goto -> bb7;
       }
   
       bb4: {
-          StorageLive(_4);                 // scope 3 at $DIR/issue_75439.rs:+4:27: +4:29
-          _4 = _2[3 of 4];                 // scope 3 at $DIR/issue_75439.rs:+4:27: +4:29
-          goto -> bb3;                     // scope 3 at $DIR/issue_75439.rs:+4:12: +4:30
+          StorageLive(_4);
+          _4 = _2[3 of 4];
+          goto -> bb3;
       }
   
       bb5: {
-          StorageLive(_4);                 // scope 3 at $DIR/issue_75439.rs:+4:27: +4:29
-          _4 = _2[3 of 4];                 // scope 3 at $DIR/issue_75439.rs:+4:27: +4:29
-          goto -> bb3;                     // scope 3 at $DIR/issue_75439.rs:+4:12: +4:30
+          StorageLive(_4);
+          _4 = _2[3 of 4];
+          goto -> bb3;
       }
   
       bb6: {
-          _0 = Option::<[u8; 4]>::None;    // scope 1 at $DIR/issue_75439.rs:+7:9: +7:13
-          goto -> bb7;                     // scope 1 at $DIR/issue_75439.rs:+4:5: +8:6
+          _0 = Option::<[u8; 4]>::None;
+          goto -> bb7;
       }
   
       bb7: {
-          StorageDead(_2);                 // scope 0 at $DIR/issue_75439.rs:+9:1: +9:2
-          return;                          // scope 0 at $DIR/issue_75439.rs:+9:2: +9:2
+          StorageDead(_2);
+          return;
       }
   }
   

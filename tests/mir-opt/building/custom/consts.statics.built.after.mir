@@ -1,20 +1,14 @@
 // MIR for `statics` after built
 
 fn statics() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/consts.rs:+0:14: +0:14
-    let mut _1: &i32;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _2: *mut i32;                // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: ();
+    let mut _1: &i32;
+    let mut _2: *mut i32;
 
     bb0: {
-        _1 = const {alloc1: &i32};       // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $DIR/consts.rs:27:31: 27:32
-                                         // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }
-        _2 = const {alloc2: *mut i32};   // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $DIR/consts.rs:28:38: 28:39
-                                         // + literal: Const { ty: *mut i32, val: Value(Scalar(alloc2)) }
-        return;                          // scope 0 at $DIR/consts.rs:+4:9: +4:17
+        _1 = const {alloc1: &i32};
+        _2 = const {alloc2: *mut i32};
+        return;
     }
 }
 

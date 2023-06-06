@@ -7,90 +7,81 @@
 | 3: user_ty: Canonical { value: Ty(&&&&*mut Test), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/receiver_ptr_mutability.rs:18:18: 18:31, inferred_ty: &&&&*mut Test
 |
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/receiver_ptr_mutability.rs:+0:11: +0:11
-    let _1: *mut Test as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/receiver_ptr_mutability.rs:+1:9: +1:12
-    let _2: ();                          // in scope 0 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:12
-    let mut _3: *const Test;             // in scope 0 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:12
-    let mut _4: *mut Test;               // in scope 0 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:8
-    let _6: &&&&*mut Test;               // in scope 0 at $DIR/receiver_ptr_mutability.rs:+5:34: +5:41
-    let _7: &&&*mut Test;                // in scope 0 at $DIR/receiver_ptr_mutability.rs:+5:35: +5:41
-    let _8: &&*mut Test;                 // in scope 0 at $DIR/receiver_ptr_mutability.rs:+5:36: +5:41
-    let _9: &*mut Test;                  // in scope 0 at $DIR/receiver_ptr_mutability.rs:+5:37: +5:41
-    let _10: ();                         // in scope 0 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-    let mut _11: *const Test;            // in scope 0 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-    let mut _12: *mut Test;              // in scope 0 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
+    let mut _0: ();
+    let _1: *mut Test as UserTypeProjection { base: UserType(0), projs: [] };
+    let _2: ();
+    let mut _3: *const Test;
+    let mut _4: *mut Test;
+    let _6: &&&&*mut Test;
+    let _7: &&&*mut Test;
+    let _8: &&*mut Test;
+    let _9: &*mut Test;
+    let _10: ();
+    let mut _11: *const Test;
+    let mut _12: *mut Test;
     scope 1 {
-        debug ptr => _1;                 // in scope 1 at $DIR/receiver_ptr_mutability.rs:+1:9: +1:12
-        let _5: &&&&*mut Test as UserTypeProjection { base: UserType(2), projs: [] }; // in scope 1 at $DIR/receiver_ptr_mutability.rs:+5:9: +5:16
+        debug ptr => _1;
+        let _5: &&&&*mut Test as UserTypeProjection { base: UserType(2), projs: [] };
         scope 2 {
-            debug ptr_ref => _5;         // in scope 2 at $DIR/receiver_ptr_mutability.rs:+5:9: +5:16
+            debug ptr_ref => _5;
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/receiver_ptr_mutability.rs:+1:9: +1:12
-        _1 = null_mut::<Test>() -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/receiver_ptr_mutability.rs:+1:26: +1:46
-                                         // mir::Constant
-                                         // + span: $DIR/receiver_ptr_mutability.rs:14:26: 14:44
-                                         // + literal: Const { ty: fn() -> *mut Test {null_mut::<Test>}, val: Value(<ZST>) }
+        StorageLive(_1);
+        _1 = null_mut::<Test>() -> [return: bb1, unwind: bb4];
     }
 
     bb1: {
-        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/receiver_ptr_mutability.rs:+1:9: +1:12
-        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/receiver_ptr_mutability.rs:+1:14: +1:23
-        StorageLive(_2);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:12
-        StorageLive(_3);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:12
-        StorageLive(_4);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:8
-        _4 = _1;                         // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:8
-        _3 = move _4 as *const Test (Pointer(MutToConstPointer)); // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:12
-        StorageDead(_4);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:7: +2:8
-        _2 = Test::x(move _3) -> [return: bb2, unwind: bb4]; // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:5: +2:12
-                                         // mir::Constant
-                                         // + span: $DIR/receiver_ptr_mutability.rs:15:9: 15:10
-                                         // + literal: Const { ty: fn(*const Test) {Test::x}, val: Value(<ZST>) }
+        FakeRead(ForLet(None), _1);
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = _1;
+        _3 = move _4 as *const Test (Pointer(MutToConstPointer));
+        StorageDead(_4);
+        _2 = Test::x(move _3) -> [return: bb2, unwind: bb4];
     }
 
     bb2: {
-        StorageDead(_3);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:11: +2:12
-        StorageDead(_2);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+2:12: +2:13
-        StorageLive(_5);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:9: +5:16
-        StorageLive(_6);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:34: +5:41
-        StorageLive(_7);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:35: +5:41
-        StorageLive(_8);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:36: +5:41
-        StorageLive(_9);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:37: +5:41
-        _9 = &_1;                        // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:37: +5:41
-        _8 = &_9;                        // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:36: +5:41
-        _7 = &_8;                        // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:35: +5:41
-        _6 = &_7;                        // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:34: +5:41
-        _5 = &(*_6);                     // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:34: +5:41
-        FakeRead(ForLet(None), _5);      // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:9: +5:16
-        AscribeUserType(_5, o, UserTypeProjection { base: UserType(3), projs: [] }); // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:18: +5:31
-        StorageDead(_6);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+5:41: +5:42
-        StorageLive(_10);                // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-        StorageLive(_11);                // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-        StorageLive(_12);                // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-        _12 = (*(*(*(*_5))));            // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-        _11 = move _12 as *const Test (Pointer(MutToConstPointer)); // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-        StorageDead(_12);                // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:11: +6:12
-        _10 = Test::x(move _11) -> [return: bb3, unwind: bb4]; // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:5: +6:16
-                                         // mir::Constant
-                                         // + span: $DIR/receiver_ptr_mutability.rs:19:13: 19:14
-                                         // + literal: Const { ty: fn(*const Test) {Test::x}, val: Value(<ZST>) }
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        StorageLive(_9);
+        _9 = &_1;
+        _8 = &_9;
+        _7 = &_8;
+        _6 = &_7;
+        _5 = &(*_6);
+        FakeRead(ForLet(None), _5);
+        AscribeUserType(_5, o, UserTypeProjection { base: UserType(3), projs: [] });
+        StorageDead(_6);
+        StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = (*(*(*(*_5))));
+        _11 = move _12 as *const Test (Pointer(MutToConstPointer));
+        StorageDead(_12);
+        _10 = Test::x(move _11) -> [return: bb3, unwind: bb4];
     }
 
     bb3: {
-        StorageDead(_11);                // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:15: +6:16
-        StorageDead(_10);                // scope 2 at $DIR/receiver_ptr_mutability.rs:+6:16: +6:17
-        _0 = const ();                   // scope 0 at $DIR/receiver_ptr_mutability.rs:+0:11: +7:2
-        StorageDead(_9);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+7:1: +7:2
-        StorageDead(_8);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+7:1: +7:2
-        StorageDead(_7);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+7:1: +7:2
-        StorageDead(_5);                 // scope 1 at $DIR/receiver_ptr_mutability.rs:+7:1: +7:2
-        StorageDead(_1);                 // scope 0 at $DIR/receiver_ptr_mutability.rs:+7:1: +7:2
-        return;                          // scope 0 at $DIR/receiver_ptr_mutability.rs:+7:2: +7:2
+        StorageDead(_11);
+        StorageDead(_10);
+        _0 = const ();
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_5);
+        StorageDead(_1);
+        return;
     }
 
     bb4 (cleanup): {
-        resume;                          // scope 0 at $DIR/receiver_ptr_mutability.rs:+0:1: +7:2
+        resume;
     }
 }

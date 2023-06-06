@@ -1,35 +1,35 @@
 // MIR for `fun` after built
 
 fn fun(_1: &[T]) -> &T {
-    debug it => _1;                      // in scope 0 at $DIR/issue_91633.rs:+0:12: +0:14
-    let mut _0: &T;                      // return place in scope 0 at $DIR/issue_91633.rs:+0:25: +0:27
-    let _2: &T;                          // in scope 0 at $DIR/issue_91633.rs:+2:10: +2:11
-    let _3: usize;                       // in scope 0 at $DIR/issue_91633.rs:+2:18: +2:19
-    let mut _4: usize;                   // in scope 0 at $DIR/issue_91633.rs:+2:15: +2:20
-    let mut _5: bool;                    // in scope 0 at $DIR/issue_91633.rs:+2:15: +2:20
+    debug it => _1;
+    let mut _0: &T;
+    let _2: &T;
+    let _3: usize;
+    let mut _4: usize;
+    let mut _5: bool;
     scope 1 {
-        debug f => _2;                   // in scope 1 at $DIR/issue_91633.rs:+2:10: +2:11
+        debug f => _2;
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/issue_91633.rs:+2:10: +2:11
-        StorageLive(_3);                 // scope 0 at $DIR/issue_91633.rs:+2:18: +2:19
-        _3 = const 0_usize;              // scope 0 at $DIR/issue_91633.rs:+2:18: +2:19
-        _4 = Len((*_1));                 // scope 0 at $DIR/issue_91633.rs:+2:15: +2:20
-        _5 = Lt(_3, _4);                 // scope 0 at $DIR/issue_91633.rs:+2:15: +2:20
-        assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> [success: bb1, unwind: bb2]; // scope 0 at $DIR/issue_91633.rs:+2:15: +2:20
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = const 0_usize;
+        _4 = Len((*_1));
+        _5 = Lt(_3, _4);
+        assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> [success: bb1, unwind: bb2];
     }
 
     bb1: {
-        _2 = &(*_1)[_3];                 // scope 0 at $DIR/issue_91633.rs:+2:14: +2:20
-        FakeRead(ForLet(None), _2);      // scope 0 at $DIR/issue_91633.rs:+2:10: +2:11
-        _0 = &(*_2);                     // scope 1 at $DIR/issue_91633.rs:+3:6: +3:7
-        StorageDead(_3);                 // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
-        StorageDead(_2);                 // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
-        return;                          // scope 0 at $DIR/issue_91633.rs:+4:3: +4:3
+        _2 = &(*_1)[_3];
+        FakeRead(ForLet(None), _2);
+        _0 = &(*_2);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 
     bb2 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue_91633.rs:+0:1: +4:3
+        resume;
     }
 }

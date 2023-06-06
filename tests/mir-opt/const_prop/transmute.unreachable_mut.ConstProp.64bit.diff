@@ -2,26 +2,23 @@
 + // MIR for `unreachable_mut` after ConstProp
   
   fn unreachable_mut() -> ! {
-      let mut _0: !;                       // return place in scope 0 at $DIR/transmute.rs:+0:36: +0:37
-      let _1: &mut Never;                  // in scope 0 at $DIR/transmute.rs:+1:9: +1:10
-      let mut _2: &mut Never;              // in scope 0 at $DIR/transmute.rs:+1:34: +1:52
+      let mut _0: !;
+      let _1: &mut Never;
+      let mut _2: &mut Never;
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/transmute.rs:+1:9: +1:10
+          debug x => _1;
       }
       scope 2 {
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/transmute.rs:+1:9: +1:10
-          StorageLive(_2);                 // scope 0 at $DIR/transmute.rs:+1:34: +1:52
--         _2 = const 1_usize as &mut Never (Transmute); // scope 2 at $DIR/transmute.rs:+1:34: +1:52
-+         _2 = const {0x1 as &mut Never};  // scope 2 at $DIR/transmute.rs:+1:34: +1:52
-+                                          // mir::Constant
-+                                          // + span: no-location
-+                                          // + literal: Const { ty: &mut Never, val: Value(Scalar(0x0000000000000001)) }
-          _1 = &mut (*_2);                 // scope 0 at $DIR/transmute.rs:+1:34: +1:52
-          StorageDead(_2);                 // scope 0 at $DIR/transmute.rs:+1:54: +1:55
-          unreachable;                     // scope 1 at $DIR/transmute.rs:+2:11: +2:13
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = const 1_usize as &mut Never (Transmute);
++         _2 = const {0x1 as &mut Never};
+          _1 = &mut (*_2);
+          StorageDead(_2);
+          unreachable;
       }
   }
   

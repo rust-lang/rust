@@ -2,25 +2,25 @@
 + // MIR for `mutate_discriminant` after DataflowConstProp
   
   fn mutate_discriminant() -> u8 {
-      let mut _0: u8;                      // return place in scope 0 at $DIR/enum.rs:+0:29: +0:31
-      let mut _1: std::option::Option<NonZeroUsize>; // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _2: isize;                   // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _0: u8;
+      let mut _1: std::option::Option<NonZeroUsize>;
+      let mut _2: isize;
   
       bb0: {
-          discriminant(_1) = 1;            // scope 0 at $DIR/enum.rs:+4:13: +4:34
-          (((_1 as variant#1).0: NonZeroUsize).0: usize) = const 0_usize; // scope 0 at $DIR/enum.rs:+6:13: +6:64
-          _2 = discriminant(_1);           // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          switchInt(_2) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/enum.rs:+9:13: +12:14
+          discriminant(_1) = 1;
+          (((_1 as variant#1).0: NonZeroUsize).0: usize) = const 0_usize;
+          _2 = discriminant(_1);
+          switchInt(_2) -> [0: bb1, otherwise: bb2];
       }
   
       bb1: {
-          _0 = const 1_u8;                 // scope 0 at $DIR/enum.rs:+15:13: +15:20
-          return;                          // scope 0 at $DIR/enum.rs:+16:13: +16:21
+          _0 = const 1_u8;
+          return;
       }
   
       bb2: {
-          _0 = const 2_u8;                 // scope 0 at $DIR/enum.rs:+19:13: +19:20
-          unreachable;                     // scope 0 at $DIR/enum.rs:+20:13: +20:26
+          _0 = const 2_u8;
+          unreachable;
       }
   }
   

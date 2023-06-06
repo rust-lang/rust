@@ -1,14 +1,14 @@
 // MIR for `drop_first` after built
 
 fn drop_first(_1: WriteOnDrop<'_>, _2: WriteOnDrop<'_>) -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/terminators.rs:+0:59: +0:59
+    let mut _0: ();
 
     bb0: {
-        drop(_1) -> bb1;                 // scope 0 at $DIR/terminators.rs:+3:13: +3:30
+        drop(_1) -> bb1;
     }
 
     bb1: {
-        _1 = move _2;                    // scope 0 at $DIR/terminators.rs:+7:13: +7:24
-        return;                          // scope 0 at $DIR/terminators.rs:+8:13: +8:21
+        _1 = move _2;
+        return;
     }
 }

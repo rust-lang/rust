@@ -5,288 +5,265 @@
 | 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[22bb]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Unevaluated([], DefId(0:8 ~ issue_99325[22bb]::main::{constant#1})) }], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:11:16: 11:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
 |
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/issue_99325.rs:+0:15: +0:15
-    let _1: ();                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _2: (&&[u8], &&[u8; 4]);     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _3: &&[u8];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _4: &[u8];                       // in scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
-    let mut _5: &&[u8; 4];               // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _6: &[u8; 4];                    // in scope 0 at $DIR/issue_99325.rs:+1:50: +1:75
-    let _7: [u8; 4];                     // in scope 0 at $DIR/issue_99325.rs:+1:51: +1:75
-    let _8: &&[u8];                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _9: &&[u8; 4];                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _10: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _11: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _12: &&[u8];                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _13: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _14: !;                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _16: !;                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _17: core::panicking::AssertKind; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _18: &&[u8];                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _19: &&[u8];                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _20: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _21: &&[u8; 4];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _22: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _23: ();                         // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _24: (&&[u8], &&[u8; 4]);    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _25: &&[u8];                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _26: &[u8];                      // in scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
-    let mut _27: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _28: &[u8; 4];                   // in scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
-    let _29: &&[u8];                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _30: &&[u8; 4];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _31: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _32: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _33: &&[u8];                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _34: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _35: !;                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _37: !;                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _38: core::panicking::AssertKind; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _39: &&[u8];                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _40: &&[u8];                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _41: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _42: &&[u8; 4];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let mut _43: std::option::Option<std::fmt::Arguments<'_>>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+    let mut _0: ();
+    let _1: ();
+    let mut _2: (&&[u8], &&[u8; 4]);
+    let mut _3: &&[u8];
+    let _4: &[u8];
+    let mut _5: &&[u8; 4];
+    let _6: &[u8; 4];
+    let _7: [u8; 4];
+    let _8: &&[u8];
+    let _9: &&[u8; 4];
+    let mut _10: bool;
+    let mut _11: bool;
+    let mut _12: &&[u8];
+    let mut _13: &&[u8; 4];
+    let mut _14: !;
+    let _16: !;
+    let mut _17: core::panicking::AssertKind;
+    let mut _18: &&[u8];
+    let _19: &&[u8];
+    let mut _20: &&[u8; 4];
+    let _21: &&[u8; 4];
+    let mut _22: std::option::Option<std::fmt::Arguments<'_>>;
+    let _23: ();
+    let mut _24: (&&[u8], &&[u8; 4]);
+    let mut _25: &&[u8];
+    let _26: &[u8];
+    let mut _27: &&[u8; 4];
+    let _28: &[u8; 4];
+    let _29: &&[u8];
+    let _30: &&[u8; 4];
+    let mut _31: bool;
+    let mut _32: bool;
+    let mut _33: &&[u8];
+    let mut _34: &&[u8; 4];
+    let mut _35: !;
+    let _37: !;
+    let mut _38: core::panicking::AssertKind;
+    let mut _39: &&[u8];
+    let _40: &&[u8];
+    let mut _41: &&[u8; 4];
+    let _42: &&[u8; 4];
+    let mut _43: std::option::Option<std::fmt::Arguments<'_>>;
     scope 1 {
-        debug left_val => _8;            // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        debug right_val => _9;           // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        let _15: core::panicking::AssertKind; // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        debug left_val => _8;
+        debug right_val => _9;
+        let _15: core::panicking::AssertKind;
         scope 2 {
-            debug kind => _15;           // in scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+            debug kind => _15;
         }
     }
     scope 3 {
-        debug left_val => _29;           // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        debug right_val => _30;          // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        let _36: core::panicking::AssertKind; // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        debug left_val => _29;
+        debug right_val => _30;
+        let _36: core::panicking::AssertKind;
         scope 4 {
-            debug kind => _36;           // in scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+            debug kind => _36;
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_3);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_4);                 // scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
-        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb19]; // scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
-                                         // mir::Constant
-                                         // + span: $DIR/issue_99325.rs:10:16: 10:46
-                                         // + user_ty: UserType(0)
-                                         // + literal: Const { ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}, val: Value(<ZST>) }
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb19];
     }
 
     bb1: {
-        _3 = &_4;                        // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_5);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_6);                 // scope 0 at $DIR/issue_99325.rs:+1:50: +1:75
-        StorageLive(_7);                 // scope 0 at $DIR/issue_99325.rs:+1:51: +1:75
-        _7 = [const 65_u8, const 65_u8, const 65_u8, const 65_u8]; // scope 0 at $DIR/issue_99325.rs:+1:51: +1:75
-        _6 = &_7;                        // scope 0 at $DIR/issue_99325.rs:+1:50: +1:75
-        _5 = &_6;                        // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _2 = (move _3, move _5);         // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_5);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_3);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        FakeRead(ForMatchedPlace(None), _2); // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_8);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _8 = (_2.0: &&[u8]);             // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_9);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _9 = (_2.1: &&[u8; 4]);          // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_10);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_11);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_12);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _12 = &(*_8);                    // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_13);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _13 = &(*_9);                    // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _11 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _12, move _13) -> [return: bb2, unwind: bb19]; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'a, 'b> fn(&'a &[u8], &'b &[u8; 4]) -> bool {<&[u8] as PartialEq<&[u8; 4]>>::eq}, val: Value(<ZST>) }
+        _3 = &_4;
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = [const 65_u8, const 65_u8, const 65_u8, const 65_u8];
+        _6 = &_7;
+        _5 = &_6;
+        _2 = (move _3, move _5);
+        StorageDead(_5);
+        StorageDead(_3);
+        FakeRead(ForMatchedPlace(None), _2);
+        StorageLive(_8);
+        _8 = (_2.0: &&[u8]);
+        StorageLive(_9);
+        _9 = (_2.1: &&[u8; 4]);
+        StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = &(*_8);
+        StorageLive(_13);
+        _13 = &(*_9);
+        _11 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _12, move _13) -> [return: bb2, unwind: bb19];
     }
 
     bb2: {
-        StorageDead(_13);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_12);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _10 = Not(move _11);             // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_11);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        switchInt(move _10) -> [0: bb4, otherwise: bb3]; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageDead(_13);
+        StorageDead(_12);
+        _10 = Not(move _11);
+        StorageDead(_11);
+        switchInt(move _10) -> [0: bb4, otherwise: bb3];
     }
 
     bb3: {
-        StorageLive(_15);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _15 = core::panicking::AssertKind::Eq; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        FakeRead(ForLet(None), _15);     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_16);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_17);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _17 = move _15;                  // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_18);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_19);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _19 = &(*_8);                    // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _18 = &(*_19);                   // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_20);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_21);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _21 = &(*_9);                    // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _20 = &(*_21);                   // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_22);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _22 = Option::<Arguments<'_>>::None; // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _16 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _17, move _18, move _20, move _22) -> bb19; // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a &[u8], &'b &[u8; 4], Option<Arguments<'c>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
+        StorageLive(_15);
+        _15 = core::panicking::AssertKind::Eq;
+        FakeRead(ForLet(None), _15);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = move _15;
+        StorageLive(_18);
+        StorageLive(_19);
+        _19 = &(*_8);
+        _18 = &(*_19);
+        StorageLive(_20);
+        StorageLive(_21);
+        _21 = &(*_9);
+        _20 = &(*_21);
+        StorageLive(_22);
+        _22 = Option::<Arguments<'_>>::None;
+        _16 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _17, move _18, move _20, move _22) -> bb19;
     }
 
     bb4: {
-        goto -> bb7;                     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        goto -> bb7;
     }
 
     bb5: {
-        StorageDead(_22);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_20);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_18);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_17);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_21);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_19);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_16);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_15);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        unreachable;                     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageDead(_22);
+        StorageDead(_20);
+        StorageDead(_18);
+        StorageDead(_17);
+        StorageDead(_21);
+        StorageDead(_19);
+        StorageDead(_16);
+        StorageDead(_15);
+        unreachable;
     }
 
     bb6: {
-        goto -> bb8;                     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        goto -> bb8;
     }
 
     bb7: {
-        _1 = const ();                   // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        goto -> bb8;                     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _1 = const ();
+        goto -> bb8;
     }
 
     bb8: {
-        StorageDead(_10);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_9);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_8);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        goto -> bb9;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
+        goto -> bb9;
     }
 
     bb9: {
-        StorageDead(_7);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_6);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_4);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_1);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_23);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_24);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_25);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_26);                // scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
-        _26 = function_with_bytes::<&*b"AAAA">() -> [return: bb10, unwind: bb19]; // scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
-                                         // mir::Constant
-                                         // + span: $DIR/issue_99325.rs:11:16: 11:68
-                                         // + user_ty: UserType(1)
-                                         // + literal: Const { ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}, val: Value(<ZST>) }
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_4);
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_23);
+        StorageLive(_24);
+        StorageLive(_25);
+        StorageLive(_26);
+        _26 = function_with_bytes::<&*b"AAAA">() -> [return: bb10, unwind: bb19];
     }
 
     bb10: {
-        _25 = &_26;                      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_27);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_28);                // scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
-        _28 = const b"AAAA";             // scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
-                                         // mir::Constant
-                                         // + span: $DIR/issue_99325.rs:11:72: 11:79
-                                         // + literal: Const { ty: &[u8; 4], val: Value(Scalar(alloc4)) }
-        _27 = &_28;                      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _24 = (move _25, move _27);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_27);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_25);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        FakeRead(ForMatchedPlace(None), _24); // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_29);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _29 = (_24.0: &&[u8]);           // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_30);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _30 = (_24.1: &&[u8; 4]);        // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_31);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_32);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_33);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _33 = &(*_29);                   // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_34);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _34 = &(*_30);                   // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _32 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _33, move _34) -> [return: bb11, unwind: bb19]; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'a, 'b> fn(&'a &[u8], &'b &[u8; 4]) -> bool {<&[u8] as PartialEq<&[u8; 4]>>::eq}, val: Value(<ZST>) }
+        _25 = &_26;
+        StorageLive(_27);
+        StorageLive(_28);
+        _28 = const b"AAAA";
+        _27 = &_28;
+        _24 = (move _25, move _27);
+        StorageDead(_27);
+        StorageDead(_25);
+        FakeRead(ForMatchedPlace(None), _24);
+        StorageLive(_29);
+        _29 = (_24.0: &&[u8]);
+        StorageLive(_30);
+        _30 = (_24.1: &&[u8; 4]);
+        StorageLive(_31);
+        StorageLive(_32);
+        StorageLive(_33);
+        _33 = &(*_29);
+        StorageLive(_34);
+        _34 = &(*_30);
+        _32 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _33, move _34) -> [return: bb11, unwind: bb19];
     }
 
     bb11: {
-        StorageDead(_34);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_33);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _31 = Not(move _32);             // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_32);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        switchInt(move _31) -> [0: bb13, otherwise: bb12]; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageDead(_34);
+        StorageDead(_33);
+        _31 = Not(move _32);
+        StorageDead(_32);
+        switchInt(move _31) -> [0: bb13, otherwise: bb12];
     }
 
     bb12: {
-        StorageLive(_36);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _36 = core::panicking::AssertKind::Eq; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        FakeRead(ForLet(None), _36);     // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_37);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_38);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _38 = move _36;                  // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_39);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_40);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _40 = &(*_29);                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _39 = &(*_40);                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_41);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_42);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _42 = &(*_30);                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _41 = &(*_42);                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_43);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _43 = Option::<Arguments<'_>>::None; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _37 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _38, move _39, move _41, move _43) -> bb19; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'a, 'b, 'c> fn(core::panicking::AssertKind, &'a &[u8], &'b &[u8; 4], Option<Arguments<'c>>) -> ! {core::panicking::assert_failed::<&[u8], &[u8; 4]>}, val: Value(<ZST>) }
+        StorageLive(_36);
+        _36 = core::panicking::AssertKind::Eq;
+        FakeRead(ForLet(None), _36);
+        StorageLive(_37);
+        StorageLive(_38);
+        _38 = move _36;
+        StorageLive(_39);
+        StorageLive(_40);
+        _40 = &(*_29);
+        _39 = &(*_40);
+        StorageLive(_41);
+        StorageLive(_42);
+        _42 = &(*_30);
+        _41 = &(*_42);
+        StorageLive(_43);
+        _43 = Option::<Arguments<'_>>::None;
+        _37 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _38, move _39, move _41, move _43) -> bb19;
     }
 
     bb13: {
-        goto -> bb16;                    // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        goto -> bb16;
     }
 
     bb14: {
-        StorageDead(_43);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_41);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_39);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_38);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_42);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_40);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_37);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_36);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        unreachable;                     // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageDead(_43);
+        StorageDead(_41);
+        StorageDead(_39);
+        StorageDead(_38);
+        StorageDead(_42);
+        StorageDead(_40);
+        StorageDead(_37);
+        StorageDead(_36);
+        unreachable;
     }
 
     bb15: {
-        goto -> bb17;                    // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        goto -> bb17;
     }
 
     bb16: {
-        _23 = const ();                  // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        goto -> bb17;                    // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _23 = const ();
+        goto -> bb17;
     }
 
     bb17: {
-        StorageDead(_31);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_30);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_29);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        goto -> bb18;                    // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        StorageDead(_31);
+        StorageDead(_30);
+        StorageDead(_29);
+        goto -> bb18;
     }
 
     bb18: {
-        StorageDead(_28);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_26);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_24);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_23);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _0 = const ();                   // scope 0 at $DIR/issue_99325.rs:+0:15: +3:2
-        return;                          // scope 0 at $DIR/issue_99325.rs:+3:2: +3:2
+        StorageDead(_28);
+        StorageDead(_26);
+        StorageDead(_24);
+        StorageDead(_23);
+        _0 = const ();
+        return;
     }
 
     bb19 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue_99325.rs:+0:1: +3:2
+        resume;
     }
 }
 

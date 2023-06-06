@@ -2,43 +2,37 @@
 + // MIR for `main` after ConstProp
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/read_immutable_static.rs:+0:11: +0:11
-      let _1: u8;                          // in scope 0 at $DIR/read_immutable_static.rs:+1:9: +1:10
-      let mut _2: u8;                      // in scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
-      let mut _3: &u8;                     // in scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
-      let mut _4: u8;                      // in scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
-      let mut _5: &u8;                     // in scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
+      let mut _0: ();
+      let _1: u8;
+      let mut _2: u8;
+      let mut _3: &u8;
+      let mut _4: u8;
+      let mut _5: &u8;
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/read_immutable_static.rs:+1:9: +1:10
+          debug x => _1;
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/read_immutable_static.rs:+1:9: +1:10
-          StorageLive(_2);                 // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
-          StorageLive(_3);                 // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
-          _3 = const {alloc1: &u8};        // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
-                                           // mir::Constant
-                                           // + span: $DIR/read_immutable_static.rs:7:13: 7:16
-                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc1)) }
--         _2 = (*_3);                      // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
-+         _2 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
-          StorageLive(_4);                 // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
-          StorageLive(_5);                 // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
-          _5 = const {alloc1: &u8};        // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
-                                           // mir::Constant
-                                           // + span: $DIR/read_immutable_static.rs:7:19: 7:22
-                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc1)) }
--         _4 = (*_5);                      // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
--         _1 = Add(move _2, move _4);      // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:22
-+         _4 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
-+         _1 = const 4_u8;                 // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:22
-          StorageDead(_4);                 // scope 0 at $DIR/read_immutable_static.rs:+1:21: +1:22
-          StorageDead(_2);                 // scope 0 at $DIR/read_immutable_static.rs:+1:21: +1:22
-          StorageDead(_5);                 // scope 0 at $DIR/read_immutable_static.rs:+1:22: +1:23
-          StorageDead(_3);                 // scope 0 at $DIR/read_immutable_static.rs:+1:22: +1:23
-          _0 = const ();                   // scope 0 at $DIR/read_immutable_static.rs:+0:11: +2:2
-          StorageDead(_1);                 // scope 0 at $DIR/read_immutable_static.rs:+2:1: +2:2
-          return;                          // scope 0 at $DIR/read_immutable_static.rs:+2:2: +2:2
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = const {alloc1: &u8};
+-         _2 = (*_3);
++         _2 = const 2_u8;
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = const {alloc1: &u8};
+-         _4 = (*_5);
+-         _1 = Add(move _2, move _4);
++         _4 = const 2_u8;
++         _1 = const 4_u8;
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageDead(_5);
+          StorageDead(_3);
+          _0 = const ();
+          StorageDead(_1);
+          return;
       }
   }
   

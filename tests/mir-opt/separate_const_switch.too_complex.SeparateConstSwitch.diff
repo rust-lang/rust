@@ -2,75 +2,75 @@
 + // MIR for `too_complex` after SeparateConstSwitch
   
   fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
-      debug x => _1;                       // in scope 0 at $DIR/separate_const_switch.rs:+0:16: +0:17
-      let mut _0: std::option::Option<i32>; // return place in scope 0 at $DIR/separate_const_switch.rs:+0:42: +0:53
-      let mut _2: std::ops::ControlFlow<usize, i32>; // in scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
-      let mut _3: isize;                   // in scope 0 at $DIR/separate_const_switch.rs:+7:13: +7:18
-      let _4: i32;                         // in scope 0 at $DIR/separate_const_switch.rs:+7:16: +7:17
-      let mut _5: i32;                     // in scope 0 at $DIR/separate_const_switch.rs:+7:44: +7:45
-      let _6: usize;                       // in scope 0 at $DIR/separate_const_switch.rs:+8:17: +8:18
-      let mut _7: usize;                   // in scope 0 at $DIR/separate_const_switch.rs:+8:42: +8:43
-      let mut _8: isize;                   // in scope 0 at $DIR/separate_const_switch.rs:+11:9: +11:33
-      let _9: i32;                         // in scope 0 at $DIR/separate_const_switch.rs:+11:31: +11:32
-      let mut _10: i32;                    // in scope 0 at $DIR/separate_const_switch.rs:+11:42: +11:43
-      let _11: usize;                      // in scope 0 at $DIR/separate_const_switch.rs:+12:28: +12:29
+      debug x => _1;
+      let mut _0: std::option::Option<i32>;
+      let mut _2: std::ops::ControlFlow<usize, i32>;
+      let mut _3: isize;
+      let _4: i32;
+      let mut _5: i32;
+      let _6: usize;
+      let mut _7: usize;
+      let mut _8: isize;
+      let _9: i32;
+      let mut _10: i32;
+      let _11: usize;
       scope 1 {
-          debug v => _4;                   // in scope 1 at $DIR/separate_const_switch.rs:+7:16: +7:17
+          debug v => _4;
       }
       scope 2 {
-          debug r => _6;                   // in scope 2 at $DIR/separate_const_switch.rs:+8:17: +8:18
+          debug r => _6;
       }
       scope 3 {
-          debug v => _9;                   // in scope 3 at $DIR/separate_const_switch.rs:+11:31: +11:32
+          debug v => _9;
       }
       scope 4 {
-          debug r => _11;                  // in scope 4 at $DIR/separate_const_switch.rs:+12:28: +12:29
+          debug r => _11;
       }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
-          _3 = discriminant(_1);           // scope 0 at $DIR/separate_const_switch.rs:+6:15: +6:16
-          switchInt(move _3) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+6:9: +6:16
+          StorageLive(_2);
+          _3 = discriminant(_1);
+          switchInt(move _3) -> [0: bb3, 1: bb1, otherwise: bb2];
       }
   
       bb1: {
-          _6 = ((_1 as Err).0: usize);     // scope 0 at $DIR/separate_const_switch.rs:+8:17: +8:18
-          _2 = ControlFlow::<usize, i32>::Break(_6); // scope 2 at $DIR/separate_const_switch.rs:+8:23: +8:44
-          goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+8:43: +8:44
+          _6 = ((_1 as Err).0: usize);
+          _2 = ControlFlow::<usize, i32>::Break(_6);
+          goto -> bb4;
       }
   
       bb2: {
-          unreachable;                     // scope 0 at $DIR/separate_const_switch.rs:+6:15: +6:16
+          unreachable;
       }
   
       bb3: {
-          _4 = ((_1 as Ok).0: i32);        // scope 0 at $DIR/separate_const_switch.rs:+7:16: +7:17
-          _2 = ControlFlow::<usize, i32>::Continue(_4); // scope 1 at $DIR/separate_const_switch.rs:+7:22: +7:46
-          goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+7:45: +7:46
+          _4 = ((_1 as Ok).0: i32);
+          _2 = ControlFlow::<usize, i32>::Continue(_4);
+          goto -> bb4;
       }
   
       bb4: {
-          _8 = discriminant(_2);           // scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
-          switchInt(move _8) -> [0: bb6, 1: bb5, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+5:5: +10:6
+          _8 = discriminant(_2);
+          switchInt(move _8) -> [0: bb6, 1: bb5, otherwise: bb2];
       }
   
       bb5: {
-          StorageLive(_11);                // scope 0 at $DIR/separate_const_switch.rs:+12:28: +12:29
-          _11 = ((_2 as Break).0: usize);  // scope 0 at $DIR/separate_const_switch.rs:+12:28: +12:29
-          _0 = Option::<i32>::None;        // scope 4 at $DIR/separate_const_switch.rs:+12:34: +12:38
-          StorageDead(_11);                // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
-          goto -> bb7;                     // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
+          StorageLive(_11);
+          _11 = ((_2 as Break).0: usize);
+          _0 = Option::<i32>::None;
+          StorageDead(_11);
+          goto -> bb7;
       }
   
       bb6: {
-          _9 = ((_2 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:+11:31: +11:32
-          _0 = Option::<i32>::Some(_9);    // scope 3 at $DIR/separate_const_switch.rs:+11:37: +11:44
-          goto -> bb7;                     // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
+          _9 = ((_2 as Continue).0: i32);
+          _0 = Option::<i32>::Some(_9);
+          goto -> bb7;
       }
   
       bb7: {
-          StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+14:1: +14:2
-          return;                          // scope 0 at $DIR/separate_const_switch.rs:+14:2: +14:2
+          StorageDead(_2);
+          return;
       }
   }
   

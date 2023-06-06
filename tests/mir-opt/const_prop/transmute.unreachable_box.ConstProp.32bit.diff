@@ -2,22 +2,19 @@
 + // MIR for `unreachable_box` after ConstProp
   
   fn unreachable_box() -> ! {
-      let mut _0: !;                       // return place in scope 0 at $DIR/transmute.rs:+0:36: +0:37
-      let _1: std::boxed::Box<Never>;      // in scope 0 at $DIR/transmute.rs:+1:9: +1:10
+      let mut _0: !;
+      let _1: std::boxed::Box<Never>;
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/transmute.rs:+1:9: +1:10
+          debug x => _1;
       }
       scope 2 {
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/transmute.rs:+1:9: +1:10
--         _1 = const 1_usize as std::boxed::Box<Never> (Transmute); // scope 2 at $DIR/transmute.rs:+1:34: +1:52
-+         _1 = const Box::<Never>(Unique::<Never> {{ pointer: NonNull::<Never> {{ pointer: {0x1 as *const Never} }}, _marker: PhantomData::<Never> }}, std::alloc::Global); // scope 2 at $DIR/transmute.rs:+1:34: +1:52
-+                                          // mir::Constant
-+                                          // + span: no-location
-+                                          // + literal: Const { ty: Box<Never>, val: Value(Scalar(0x00000001)) }
-          unreachable;                     // scope 1 at $DIR/transmute.rs:+2:11: +2:13
+          StorageLive(_1);
+-         _1 = const 1_usize as std::boxed::Box<Never> (Transmute);
++         _1 = const Box::<Never>(Unique::<Never> {{ pointer: NonNull::<Never> {{ pointer: {0x1 as *const Never} }}, _marker: PhantomData::<Never> }}, std::alloc::Global);
+          unreachable;
       }
   }
   

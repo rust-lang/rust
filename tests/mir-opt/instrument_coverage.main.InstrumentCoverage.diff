@@ -2,50 +2,47 @@
 + // MIR for `main` after InstrumentCoverage
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at /the/src/instrument_coverage.rs:+0:11: +0:11
-      let mut _1: ();                      // in scope 0 at /the/src/instrument_coverage.rs:+0:1: +6:2
-      let mut _2: bool;                    // in scope 0 at /the/src/instrument_coverage.rs:+2:12: +2:17
-      let mut _3: !;                       // in scope 0 at /the/src/instrument_coverage.rs:+2:18: +4:10
+      let mut _0: ();
+      let mut _1: ();
+      let mut _2: bool;
+      let mut _3: !;
   
       bb0: {
-+         Coverage::Counter(1) for /the/src/instrument_coverage.rs:11:1 - 11:11; // scope 0 at /the/src/instrument_coverage.rs:+1:5: +5:6
-          goto -> bb1;                     // scope 0 at /the/src/instrument_coverage.rs:+1:5: +5:6
++         Coverage::Counter(1) for /the/src/instrument_coverage.rs:11:1 - 11:11;
+          goto -> bb1;
       }
   
       bb1: {
-+         Coverage::Expression(4294967295) = 1 + 2 for /the/src/instrument_coverage.rs:12:5 - 13:17; // scope 0 at /the/src/instrument_coverage.rs:+1:5: +5:6
-          falseUnwind -> [real: bb2, unwind: bb6]; // scope 0 at /the/src/instrument_coverage.rs:+1:5: +5:6
++         Coverage::Expression(4294967295) = 1 + 2 for /the/src/instrument_coverage.rs:12:5 - 13:17;
+          falseUnwind -> [real: bb2, unwind: bb6];
       }
   
       bb2: {
-          StorageLive(_2);                 // scope 0 at /the/src/instrument_coverage.rs:+2:12: +2:17
-          _2 = bar() -> [return: bb3, unwind: bb6]; // scope 0 at /the/src/instrument_coverage.rs:+2:12: +2:17
-                                           // mir::Constant
-                                           // + span: /the/src/instrument_coverage.rs:13:12: 13:15
-                                           // + literal: Const { ty: fn() -> bool {bar}, val: Value(<ZST>) }
+          StorageLive(_2);
+          _2 = bar() -> [return: bb3, unwind: bb6];
       }
   
       bb3: {
-          switchInt(move _2) -> [0: bb5, otherwise: bb4]; // scope 0 at /the/src/instrument_coverage.rs:+2:12: +2:17
+          switchInt(move _2) -> [0: bb5, otherwise: bb4];
       }
   
       bb4: {
-+         Coverage::Expression(4294967293) = 4294967294 + 0 for /the/src/instrument_coverage.rs:17:1 - 17:2; // scope 0 at /the/src/instrument_coverage.rs:+6:2: +6:2
-+         Coverage::Expression(4294967294) = 4294967295 - 2 for /the/src/instrument_coverage.rs:14:13 - 14:18; // scope 0 at /the/src/instrument_coverage.rs:+6:2: +6:2
-          _0 = const ();                   // scope 0 at /the/src/instrument_coverage.rs:+3:13: +3:18
-          StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:+4:9: +4:10
-          return;                          // scope 0 at /the/src/instrument_coverage.rs:+6:2: +6:2
++         Coverage::Expression(4294967293) = 4294967294 + 0 for /the/src/instrument_coverage.rs:17:1 - 17:2;
++         Coverage::Expression(4294967294) = 4294967295 - 2 for /the/src/instrument_coverage.rs:14:13 - 14:18;
+          _0 = const ();
+          StorageDead(_2);
+          return;
       }
   
       bb5: {
-+         Coverage::Counter(2) for /the/src/instrument_coverage.rs:15:10 - 15:11; // scope 0 at /the/src/instrument_coverage.rs:+1:5: +5:6
-          _1 = const ();                   // scope 0 at /the/src/instrument_coverage.rs:+4:10: +4:10
-          StorageDead(_2);                 // scope 0 at /the/src/instrument_coverage.rs:+4:9: +4:10
-          goto -> bb1;                     // scope 0 at /the/src/instrument_coverage.rs:+1:5: +5:6
++         Coverage::Counter(2) for /the/src/instrument_coverage.rs:15:10 - 15:11;
+          _1 = const ();
+          StorageDead(_2);
+          goto -> bb1;
       }
   
       bb6 (cleanup): {
-          resume;                          // scope 0 at /the/src/instrument_coverage.rs:+0:1: +6:2
+          resume;
       }
   }
   

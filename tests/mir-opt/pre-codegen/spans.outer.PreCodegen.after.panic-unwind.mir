@@ -1,0 +1,19 @@
+// MIR for `outer` after PreCodegen
+
+fn outer(_1: u8) -> u8 {
+    debug v => _1;                       // in scope 0 at $DIR/spans.rs:10:14: 10:15
+    let mut _0: u8;                      // return place in scope 0 at $DIR/spans.rs:10:24: 10:26
+    let _2: &u8;                         // in scope 0 at $DIR/spans.rs:11:11: 11:13
+
+    bb0: {
+        _2 = &_1;                        // scope 0 at $DIR/spans.rs:11:11: 11:13
+        _0 = inner(_2) -> bb1;           // scope 0 at $DIR/spans.rs:11:5: 11:14
+                                         // mir::Constant
+                                         // + span: $DIR/spans.rs:11:5: 11:10
+                                         // + literal: Const { ty: for<'a> fn(&'a u8) -> u8 {inner}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        return;                          // scope 0 at $DIR/spans.rs:12:2: 12:2
+    }
+}
