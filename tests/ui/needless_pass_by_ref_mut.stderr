@@ -1,0 +1,28 @@
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:6:11
+   |
+LL | fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
+   |           ^^^^^^^^^^^^^ help: consider changing to: `&Vec<u32>`
+   |
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:31:12
+   |
+LL | fn foo6(s: &mut Vec<u32>) {
+   |            ^^^^^^^^^^^^^ help: consider changing to: `&Vec<u32>`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:44:29
+   |
+LL |     fn mushroom(&self, vec: &mut Vec<i32>) -> usize {
+   |                             ^^^^^^^^^^^^^ help: consider changing to: `&Vec<i32>`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:49:31
+   |
+LL |     fn badger(&mut self, vec: &mut Vec<i32>) -> usize {
+   |                               ^^^^^^^^^^^^^ help: consider changing to: `&Vec<i32>`
+
+error: aborting due to 4 previous errors
+
