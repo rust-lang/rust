@@ -11,7 +11,13 @@ use crate::slice::from_raw_parts;
 use crate::sys::net::Socket;
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
-#[cfg(all(doc, not(target_os = "linux"), not(target_os = "android"), not(target_os = "netbsd")))]
+#[cfg(all(
+    doc,
+    not(target_os = "linux"),
+    not(target_os = "android"),
+    not(target_os = "netbsd"),
+    not(target_os = "freebsd")
+))]
 #[allow(non_camel_case_types)]
 mod libc {
     pub use libc::c_int;
