@@ -1745,9 +1745,11 @@ fn check_variances_for_type_defn<'tcx>(
     item: &hir::Item<'tcx>,
     hir_generics: &hir::Generics<'_>,
 ) {
-    let ty = tcx.type_of(item.owner_id).subst_identity();
-    if tcx.has_error_field(ty) {
-        return;
+    let identity_substs = ty::InternalSubsts::identity_for_item(tcx, item.owner_id);
+    for field in tcx.adt_def(item.owner_id).all_fields() {
+        if field.ty(tcx, identity_substs).references_error() {
+            return;
+        }
     }
 
     let ty_predicates = tcx.predicates_of(item.owner_id);
