@@ -122,11 +122,7 @@ pub fn expand_test_or_bench(
     let ast::ItemKind::Fn(fn_) = &item.kind else {
         not_testable_error(cx, attr_sp, Some(&item));
         return if is_stmt {
-            vec![Annotatable::Stmt(P(ast::Stmt {
-                id: ast::DUMMY_NODE_ID,
-                span: item.span,
-                kind: ast::StmtKind::Item(item),
-            }))]
+            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -138,7 +134,11 @@ pub fn expand_test_or_bench(
     if (!is_bench && !has_test_signature(cx, &item))
         || (is_bench && !has_bench_signature(cx, &item))
     {
-        return vec![Annotatable::Item(item)];
+        return if is_stmt {
+            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
+        } else {
+            vec![Annotatable::Item(item)]
+        };
     }
 
     let sp = cx.with_def_site_ctxt(item.span);
