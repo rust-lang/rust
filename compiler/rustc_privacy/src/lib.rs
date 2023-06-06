@@ -409,8 +409,8 @@ impl VisibilityLike for ty::Visibility {
     }
 }
 
-impl VisibilityLike for Option<EffectiveVisibility> {
-    const MAX: Self = Some(EffectiveVisibility::from_vis(ty::Visibility::Public));
+impl VisibilityLike for EffectiveVisibility {
+    const MAX: Self = EffectiveVisibility::from_vis(ty::Visibility::Public);
     // Type inference is very smart sometimes.
     // It can make an impl reachable even some components of its type or trait are unreachable.
     // E.g. methods of `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
@@ -422,13 +422,14 @@ impl VisibilityLike for Option<EffectiveVisibility> {
     // (which require reaching the `DefId`s in them).
     const SHALLOW: bool = true;
     fn new_min(find: &FindMin<'_, '_, Self>, def_id: LocalDefId) -> Self {
-        if let Some(min) = find.min {
-            return find
-                .effective_visibilities
-                .effective_vis(def_id)
-                .map(|eff_vis| min.min(*eff_vis, find.tcx));
-        }
-        None
+        let effective_vis =
+            find.effective_visibilities.effective_vis(def_id).cloned().unwrap_or_else(|| {
+                let private_vis =
+                    ty::Visibility::Restricted(find.tcx.parent_module_from_def_id(def_id));
+                EffectiveVisibility::from_vis(private_vis)
+            });
+
+        effective_vis.min(find.min, find.tcx)
     }
 }
 
@@ -766,28 +767,23 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
             hir::ItemKind::Impl(ref impl_) => {
-                if let Some(item_ev) = Option::<EffectiveVisibility>::of_impl(
+                let item_ev = EffectiveVisibility::of_impl(
                     item.owner_id.def_id,
                     self.tcx,
                     &self.effective_visibilities,
-                ) {
-                    self.update_eff_vis(item.owner_id.def_id, item_ev, None, Level::Direct);
+                );
+                self.update_eff_vis(item.owner_id.def_id, item_ev, None, Level::Direct);
 
-                    self.reach(item.owner_id.def_id, item_ev)
-                        .generics()
-                        .predicates()
-                        .ty()
-                        .trait_ref();
+                self.reach(item.owner_id.def_id, item_ev).generics().predicates().ty().trait_ref();
 
-                    for impl_item_ref in impl_.items {
-                        let def_id = impl_item_ref.id.owner_id.def_id;
-                        let nominal_vis =
-                            impl_.of_trait.is_none().then(|| self.tcx.local_visibility(def_id));
-                        self.update_eff_vis(def_id, item_ev, nominal_vis, Level::Direct);
+                for impl_item_ref in impl_.items {
+                    let def_id = impl_item_ref.id.owner_id.def_id;
+                    let nominal_vis =
+                        impl_.of_trait.is_none().then(|| self.tcx.local_visibility(def_id));
+                    self.update_eff_vis(def_id, item_ev, nominal_vis, Level::Direct);
 
-                        if let Some(impl_item_ev) = self.get(def_id) {
-                            self.reach(def_id, impl_item_ev).generics().predicates().ty();
-                        }
+                    if let Some(impl_item_ev) = self.get(def_id) {
+                        self.reach(def_id, impl_item_ev).generics().predicates().ty();
                     }
                 }
             }

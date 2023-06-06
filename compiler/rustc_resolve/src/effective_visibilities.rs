@@ -81,7 +81,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
             def_effective_visibilities: Default::default(),
             import_effective_visibilities: Default::default(),
             current_private_vis: Visibility::Restricted(CRATE_DEF_ID),
-            changed: false,
+            changed: true,
         };
 
         visitor.def_effective_visibilities.update_root();
