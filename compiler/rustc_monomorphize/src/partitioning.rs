@@ -173,7 +173,7 @@ where
     // monomorphizations have to go into each codegen unit. These additional
     // monomorphizations can be drop-glue, functions from external crates, and
     // local functions the definition of which is marked with `#[inline]`.
-    let mono_item_placements = {
+    {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
         place_inlined_mono_items(cx, &mut codegen_units)
     };
@@ -188,12 +188,7 @@ where
     // more freedom to optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
-        internalize_symbols(
-            cx,
-            &mut codegen_units,
-            mono_item_placements,
-            internalization_candidates,
-        );
+        internalize_symbols(cx, &mut codegen_units, internalization_candidates);
     }
 
     let instrument_dead_code =
@@ -401,19 +396,10 @@ fn merge_codegen_units<'tcx>(
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 }
 
-/// For symbol internalization, we need to know whether a symbol/mono-item is
-/// used from outside the codegen unit it is defined in. This type is used
-/// to keep track of that.
-#[derive(Clone, PartialEq, Eq, Debug)]
-enum MonoItemPlacement {
-    SingleCgu { cgu_name: Symbol },
-    MultipleCgus,
-}
-
 fn place_inlined_mono_items<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut [CodegenUnit<'tcx>],
-) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement> {
+) {
     for cgu in codegen_units.iter_mut() {
         // Collect all inlined items that need to be available in this codegen unit.
         let mut reachable_inlined_items = FxHashSet::default();
@@ -431,33 +417,6 @@ fn place_inlined_mono_items<'tcx>(
             cgu.items_mut().insert(inlined_item, (Linkage::Internal, Visibility::Default));
         }
     }
-
-    let mut mono_item_placements = FxHashMap::default();
-    let single_codegen_unit = codegen_units.len() == 1;
-
-    for cgu in codegen_units.iter_mut() {
-        for item in cgu.items().keys() {
-            if !single_codegen_unit {
-                // If there is more than one codegen unit, we need to keep track
-                // in which codegen units each monomorphization is placed.
-                match mono_item_placements.entry(*item) {
-                    Entry::Occupied(e) => {
-                        let placement = e.into_mut();
-                        debug_assert!(match *placement {
-                            MonoItemPlacement::SingleCgu { cgu_name } => cgu_name != cgu.name(),
-                            MonoItemPlacement::MultipleCgus => true,
-                        });
-                        *placement = MonoItemPlacement::MultipleCgus;
-                    }
-                    Entry::Vacant(e) => {
-                        e.insert(MonoItemPlacement::SingleCgu { cgu_name: cgu.name() });
-                    }
-                }
-            }
-        }
-    }
-
-    return mono_item_placements;
 
     fn get_reachable_inlined_items<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -477,10 +436,41 @@ fn place_inlined_mono_items<'tcx>(
 fn internalize_symbols<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut [CodegenUnit<'tcx>],
-    mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 ) {
+    /// For symbol internalization, we need to know whether a symbol/mono-item
+    /// is used from outside the codegen unit it is defined in. This type is
+    /// used to keep track of that.
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    enum MonoItemPlacement {
+        SingleCgu { cgu_name: Symbol },
+        MultipleCgus,
+    }
+
+    let mut mono_item_placements = FxHashMap::default();
     let single_codegen_unit = codegen_units.len() == 1;
+
+    if !single_codegen_unit {
+        for cgu in codegen_units.iter_mut() {
+            for item in cgu.items().keys() {
+                // If there is more than one codegen unit, we need to keep track
+                // in which codegen units each monomorphization is placed.
+                match mono_item_placements.entry(*item) {
+                    Entry::Occupied(e) => {
+                        let placement = e.into_mut();
+                        debug_assert!(match *placement {
+                            MonoItemPlacement::SingleCgu { cgu_name } => cgu_name != cgu.name(),
+                            MonoItemPlacement::MultipleCgus => true,
+                        });
+                        *placement = MonoItemPlacement::MultipleCgus;
+                    }
+                    Entry::Vacant(e) => {
+                        e.insert(MonoItemPlacement::SingleCgu { cgu_name: cgu.name() });
+                    }
+                }
+            }
+        }
+    }
 
     // For each internalization candidates in each codegen unit, check if it is
     // used from outside its defining codegen unit.
