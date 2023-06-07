@@ -160,15 +160,6 @@ where
 
     debug_dump(tcx, "INITIAL PARTITIONING", &codegen_units);
 
-    // Merge until we have at most `max_cgu_count` codegen units.
-    // `merge_codegen_units` is responsible for updating the CGU size
-    // estimates.
-    {
-        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        merge_codegen_units(cx, &mut codegen_units);
-        debug_dump(tcx, "POST MERGING", &codegen_units);
-    }
-
     // In the next step, we use the inlining map to determine which additional
     // monomorphizations have to go into each codegen unit. These additional
     // monomorphizations can be drop-glue, functions from external crates, and
@@ -183,6 +174,15 @@ where
     }
 
     debug_dump(tcx, "POST INLINING", &codegen_units);
+
+    // Merge until we have at most `max_cgu_count` codegen units.
+    // `merge_codegen_units` is responsible for updating the CGU size
+    // estimates.
+    {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
+        merge_codegen_units(cx, &mut codegen_units);
+        debug_dump(tcx, "POST MERGING", &codegen_units);
+    }
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
@@ -396,6 +396,7 @@ fn merge_codegen_units<'tcx>(
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 }
 
+// njn: comment about duplicates working out due to hash table
 fn place_inlined_mono_items<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut [CodegenUnit<'tcx>],
