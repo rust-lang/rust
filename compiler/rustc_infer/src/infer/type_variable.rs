@@ -129,7 +129,6 @@ pub enum TypeVariableOriginKind {
     /// (before it has been determined).
     // FIXME(eddyb) distinguish upvar inference variables from the rest.
     ClosureSynthetic,
-    SubstitutionPlaceholder,
     AutoDeref,
     AdjustmentType,
 

@@ -9,7 +9,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir_analysis::astconv::InferCtxtExt as _;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
@@ -954,7 +953,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         trait_def_id: DefId,
     ) {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
-        let trait_substs = self.fresh_item_substs(trait_def_id);
+        let trait_substs = self.fresh_substs_for_item(self.span, trait_def_id);
         let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, trait_substs);
 
         if self.tcx.is_trait_alias(trait_def_id) {
@@ -1899,7 +1898,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         impl_def_id: DefId,
     ) -> (ty::EarlyBinder<Ty<'tcx>>, SubstsRef<'tcx>) {
-        (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
+        (self.tcx.type_of(impl_def_id), self.fresh_substs_for_item(self.span, impl_def_id))
     }
 
     /// Replaces late-bound-regions bound by `value` with `'static` using
