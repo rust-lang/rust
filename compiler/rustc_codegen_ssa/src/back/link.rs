@@ -2097,7 +2097,14 @@ fn linker_with_args<'a>(
     cmd.add_as_needed();
 
     // Local native libraries of all kinds.
-    add_local_native_libraries(cmd, sess, archive_builder_builder, codegen_results, tmpdir);
+    add_local_native_libraries(
+        cmd,
+        sess,
+        archive_builder_builder,
+        codegen_results,
+        tmpdir,
+        link_output_kind,
+    );
 
     // Upstream rust crates and their non-dynamic native libraries.
     add_upstream_rust_crates(
@@ -2107,10 +2114,18 @@ fn linker_with_args<'a>(
         codegen_results,
         crate_type,
         tmpdir,
+        link_output_kind,
     );
 
     // Dynamic native libraries from upstream crates.
-    add_upstream_native_libraries(cmd, sess, archive_builder_builder, codegen_results, tmpdir);
+    add_upstream_native_libraries(
+        cmd,
+        sess,
+        archive_builder_builder,
+        codegen_results,
+        tmpdir,
+        link_output_kind,
+    );
 
     // Link with the import library generated for any raw-dylib functions.
     for (raw_dylib_name, raw_dylib_imports) in
@@ -2365,6 +2380,7 @@ fn add_native_libs_from_crate(
     cnum: CrateNum,
     link_static: bool,
     link_dynamic: bool,
+    link_output_kind: LinkOutputKind,
 ) {
     if !sess.opts.unstable_opts.link_native_libraries {
         // If `-Zlink-native-libraries=false` is set, then the assumption is that an
@@ -2444,8 +2460,16 @@ fn add_native_libs_from_crate(
                 }
             }
             NativeLibKind::Unspecified => {
-                if link_dynamic {
-                    cmd.link_dylib(name, verbatim, true);
+                // If we are generating a static binary, prefer static library when the
+                // link kind is unspecified.
+                if !link_output_kind.can_link_dylib() && !sess.target.crt_static_allows_dylibs {
+                    if link_static {
+                        cmd.link_staticlib(name, verbatim)
+                    }
+                } else {
+                    if link_dynamic {
+                        cmd.link_dylib(name, verbatim, true);
+                    }
                 }
             }
             NativeLibKind::Framework { as_needed } => {
@@ -2472,6 +2496,7 @@ fn add_local_native_libraries(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
+    link_output_kind: LinkOutputKind,
 ) {
     if sess.opts.unstable_opts.link_native_libraries {
         // User-supplied library search paths (-L on the command line). These are the same paths
@@ -2501,6 +2526,7 @@ fn add_local_native_libraries(
         LOCAL_CRATE,
         link_static,
         link_dynamic,
+        link_output_kind,
     );
 }
 
@@ -2511,6 +2537,7 @@ fn add_upstream_rust_crates<'a>(
     codegen_results: &CodegenResults,
     crate_type: CrateType,
     tmpdir: &Path,
+    link_output_kind: LinkOutputKind,
 ) {
     // All of the heavy lifting has previously been accomplished by the
     // dependency_format module of the compiler. This is just crawling the
@@ -2588,6 +2615,7 @@ fn add_upstream_rust_crates<'a>(
             cnum,
             link_static,
             link_dynamic,
+            link_output_kind,
         );
     }
 }
@@ -2598,6 +2626,7 @@ fn add_upstream_native_libraries(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
+    link_output_kind: LinkOutputKind,
 ) {
     let search_path = OnceCell::new();
     for &cnum in &codegen_results.crate_info.used_crates {
@@ -2626,6 +2655,7 @@ fn add_upstream_native_libraries(
             cnum,
             link_static,
             link_dynamic,
+            link_output_kind,
         );
     }
 }
