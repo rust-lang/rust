@@ -1,3 +1,5 @@
+#[cfg(any(target_family = "unix", target_family = "windows"))]
+
 use std::fs::File;
 use std::io::{Read, Write};
 
