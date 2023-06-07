@@ -108,6 +108,13 @@ fn main() {
     else
     {
     }
+
+    //#10273 This is fine. Don't warn
+    if foo() {
+    } else
+    /* whelp */
+    {
+    }
 }
 
 // #7650 - Don't lint. Proc-macro using bad spans for `if` expressions.
