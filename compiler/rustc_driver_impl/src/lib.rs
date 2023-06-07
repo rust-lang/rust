@@ -58,11 +58,18 @@ use std::str;
 use std::sync::OnceLock;
 use std::time::Instant;
 
+#[allow(unused_macros)]
+macro do_not_use_print($($t:tt)*) {
+    std::compile_error!(
+        "Don't use `print` or `println` here, use `safe_print` or `safe_println` instead"
+    )
+}
+
 // This import blocks the use of panicking `print` and `println` in all the code
 // below. Please use `safe_print` and `safe_println` to avoid ICE when
 // encountering an I/O error during print.
 #[allow(unused_imports)]
-use std::{compile_error as print, compile_error as println};
+use {do_not_use_print as print, do_not_use_print as println};
 
 pub mod args;
 pub mod pretty;
