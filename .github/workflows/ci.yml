@@ -444,7 +444,7 @@ jobs:
             os: windows-2019-8core-32gb
           - name: dist-x86_64-msvc
             env:
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler --set rust.lto=thin"
               SCRIPT: PGO_HOST=x86_64-pc-windows-msvc python src/ci/stage-build.py python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-2019-8core-32gb
@@ -578,7 +578,6 @@ jobs:
       actions: write
     name: "try - ${{ matrix.name }}"
     env:
-      DIST_TRY_BUILD: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
@@ -594,9 +593,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
-            os: ubuntu-20.04-16core-64gb
-            env: {}
+          - name: dist-x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler --set rust.lto=thin"
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc python src/ci/stage-build.py python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-2019-8core-32gb
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
