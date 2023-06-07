@@ -110,7 +110,7 @@ impl GlobalState {
 
         if self.proc_macro_changed {
             status.health = lsp_ext::Health::Warning;
-            message.push_str("Proc-macros have changed and need to be rebuild.\n\n");
+            message.push_str("Proc-macros have changed and need to be rebuilt.\n\n");
         }
         if let Err(_) = self.fetch_build_data_error() {
             status.health = lsp_ext::Health::Warning;
