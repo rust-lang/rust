@@ -591,7 +591,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .insert(opaque_type_key, hidden_type)
                 && last_opaque_ty.ty != hidden_type.ty
             {
-                assert!(!self.tcx().trait_solver_next());
+                assert!(!self.fcx.next_trait_solver());
                 hidden_type
                     .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
                     .stash(
@@ -812,7 +812,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match self.fcx.fully_resolve(t) {
-            Ok(t) if self.fcx.tcx.trait_solver_next() => {
+            Ok(t) if self.fcx.next_trait_solver() => {
                 // We must normalize erasing regions here, since later lints
                 // expect that types that show up in the typeck are fully
                 // normalized.

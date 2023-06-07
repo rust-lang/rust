@@ -82,6 +82,7 @@ impl<'tcx> InferCtxt<'tcx> {
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),
             intercrate: self.intercrate,
+            next_trait_solver: self.next_trait_solver,
         }
     }
 }

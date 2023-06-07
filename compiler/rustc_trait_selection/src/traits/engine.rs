@@ -27,24 +27,42 @@ use rustc_session::config::TraitSolver;
 use rustc_span::Span;
 
 pub trait TraitEngineExt<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
-    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self>;
+    fn new(infcx: &InferCtxt<'tcx>) -> Box<Self>;
+    fn new_in_snapshot(infcx: &InferCtxt<'tcx>) -> Box<Self>;
 }
 
 impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Box<Self> {
-        match tcx.sess.opts.unstable_opts.trait_solver {
-            TraitSolver::Classic => Box::new(FulfillmentContext::new()),
-            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new()),
-            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
+    fn new(infcx: &InferCtxt<'tcx>) -> Box<Self> {
+        match (infcx.tcx.sess.opts.unstable_opts.trait_solver, infcx.next_trait_solver()) {
+            (TraitSolver::Classic, false) | (TraitSolver::NextCoherence, false) => {
+                Box::new(FulfillmentContext::new())
+            }
+            (TraitSolver::Next | TraitSolver::NextCoherence, true) => {
+                Box::new(NextFulfillmentCtxt::new())
+            }
+            (TraitSolver::Chalk, false) => Box::new(ChalkFulfillmentContext::new()),
+            _ => bug!(
+                "incompatible combination of -Ztrait-solver flag ({:?}) and InferCtxt::next_trait_solver ({:?})",
+                infcx.tcx.sess.opts.unstable_opts.trait_solver,
+                infcx.next_trait_solver()
+            ),
         }
     }
 
-    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
-        match tcx.sess.opts.unstable_opts.trait_solver {
-            TraitSolver::Classic => Box::new(FulfillmentContext::new_in_snapshot()),
-            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new_in_snapshot()),
-            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
+    fn new_in_snapshot(infcx: &InferCtxt<'tcx>) -> Box<Self> {
+        match (infcx.tcx.sess.opts.unstable_opts.trait_solver, infcx.next_trait_solver()) {
+            (TraitSolver::Classic, false) | (TraitSolver::NextCoherence, false) => {
+                Box::new(FulfillmentContext::new_in_snapshot())
+            }
+            (TraitSolver::Next | TraitSolver::NextCoherence, true) => {
+                Box::new(NextFulfillmentCtxt::new())
+            }
+            (TraitSolver::Chalk, false) => Box::new(ChalkFulfillmentContext::new_in_snapshot()),
+            _ => bug!(
+                "incompatible combination of -Ztrait-solver flag ({:?}) and InferCtxt::next_trait_solver ({:?})",
+                infcx.tcx.sess.opts.unstable_opts.trait_solver,
+                infcx.next_trait_solver()
+            ),
         }
     }
 }
@@ -58,11 +76,11 @@ pub struct ObligationCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)) }
+        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx)) }
     }
 
     pub fn new_in_snapshot(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)) }
+        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx)) }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {

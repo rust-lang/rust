@@ -383,7 +383,7 @@ pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
 pub use diagnostic_impls::{
     DiagnosticArgFromDisplay, DiagnosticSymbolList, LabelKind, SingleLabelManySpans,
 };
-use std::backtrace::Backtrace;
+use std::backtrace::{Backtrace, BacktraceStatus};
 
 /// A handler deals with errors and other compiler output.
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
@@ -1331,7 +1331,7 @@ impl HandlerInner {
             // once *any* errors were emitted (and truncate `delayed_span_bugs`
             // when an error is first emitted, also), but maybe there's a case
             // in which that's not sound? otherwise this is really inefficient.
-            let backtrace = std::backtrace::Backtrace::force_capture();
+            let backtrace = std::backtrace::Backtrace::capture();
             self.delayed_span_bugs
                 .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
@@ -1620,7 +1620,7 @@ impl HandlerInner {
         if self.flags.report_delayed_bugs {
             self.emit_diagnostic(&mut diagnostic);
         }
-        let backtrace = std::backtrace::Backtrace::force_capture();
+        let backtrace = std::backtrace::Backtrace::capture();
         self.delayed_good_path_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
 
@@ -1739,7 +1739,17 @@ impl DelayedDiagnostic {
     }
 
     fn decorate(mut self) -> Diagnostic {
-        self.inner.note(format!("delayed at {}\n{}", self.inner.emitted_at, self.note));
+        match self.note.status() {
+            BacktraceStatus::Captured => {
+                self.inner.note(format!("delayed at {}\n{}", self.inner.emitted_at, self.note));
+            }
+            // Avoid the needless newline when no backtrace has been captured,
+            // the display impl should just be a single line.
+            _ => {
+                self.inner.note(format!("delayed at {} - {}", self.inner.emitted_at, self.note));
+            }
+        }
+
         self.inner
     }
 }

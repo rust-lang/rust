@@ -73,7 +73,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             // NOTE: we may still need to normalize the built-in deref in case
             // we have some type like `&<Ty as Trait>::Assoc`, since users of
             // autoderef expect this type to have been structurally normalized.
-            if self.infcx.tcx.trait_solver_next()
+            if self.infcx.next_trait_solver()
                 && let ty::Alias(ty::Projection, _) = ty.kind()
             {
                 let (normalized_ty, obligations) = self.structurally_normalize(ty)?;
@@ -161,8 +161,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(Ty<'tcx>, Vec<traits::PredicateObligation<'tcx>>)> {
-        let tcx = self.infcx.tcx;
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.infcx);
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
         let normalized_ty = match self

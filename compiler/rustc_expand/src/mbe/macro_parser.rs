@@ -249,6 +249,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
 }
 
 /// A single matcher position, representing the state of matching.
+#[derive(Debug)]
 struct MatcherPos {
     /// The index into `TtParser::locs`, which represents the "dot".
     idx: usize,

@@ -108,6 +108,7 @@ string_enum! {
         Polonius => "polonius",
         Chalk => "chalk",
         NextSolver => "next-solver",
+        NextSolverCoherence => "next-solver-coherence",
         SplitDwarf => "split-dwarf",
         SplitDwarfSingle => "split-dwarf-single",
     }

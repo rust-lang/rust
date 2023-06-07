@@ -146,7 +146,7 @@ where
         infcx: &InferCtxt<'tcx>,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
-        if infcx.tcx.trait_solver_next() {
+        if infcx.next_trait_solver() {
             return Ok(scrape_region_constraints(
                 infcx,
                 |ocx| QueryTypeOp::perform_locally_in_new_solver(ocx, self),

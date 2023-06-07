@@ -14,7 +14,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use std::{iter, mem};
+use std::mem;
 
 use crate::clean::{cfg::Cfg, reexport_chain, AttributesExt, NestedAttributesExt};
 use crate::core;
@@ -291,27 +291,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         if !please_inline {
             let inherits_hidden = inherits_doc_hidden(tcx, res_did, None);
             // Only inline if requested or if the item would otherwise be stripped.
-            //
-            // If it's a doc hidden module, we need to keep it in case some of its inner items
-            // are re-exported.
             if (!is_private && !inherits_hidden) || (
                 is_hidden &&
+                // If it's a doc hidden module, we need to keep it in case some of its inner items
+                // are re-exported.
                 !matches!(item, Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_), .. }))
-            ) {
-                return false;
-            } else if let Some(item_def_id) = reexport_chain(tcx, def_id, res_did).iter()
-                .flat_map(|reexport| reexport.id()).map(|id| id.expect_local())
-                .chain(iter::once(res_did)).nth(1) &&
-                item_def_id != def_id &&
-                self
-                    .cx
-                    .cache
-                    .effective_visibilities
-                    .is_directly_public(tcx, item_def_id.to_def_id()) &&
-                !tcx.is_doc_hidden(item_def_id) &&
-                !inherits_doc_hidden(tcx, item_def_id, None)
-            {
+            ) ||
                 // The imported item is public and not `doc(hidden)` so no need to inline it.
+                self.reexport_public_and_not_hidden(def_id, res_did)
+            {
                 return false;
             }
         }
@@ -357,6 +345,28 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
         self.view_item_stack.remove(&res_did);
         ret
+    }
+
+    /// Returns `true` if the item is visible, meaning it's not `#[doc(hidden)]` or private.
+    ///
+    /// This function takes into account the entire re-export `use` chain, so it needs the
+    /// ID of the "leaf" `use` and the ID of the "root" item.
+    fn reexport_public_and_not_hidden(
+        &self,
+        import_def_id: LocalDefId,
+        target_def_id: LocalDefId,
+    ) -> bool {
+        let tcx = self.cx.tcx;
+        let item_def_id = reexport_chain(tcx, import_def_id, target_def_id)
+            .iter()
+            .flat_map(|reexport| reexport.id())
+            .map(|id| id.expect_local())
+            .nth(1)
+            .unwrap_or(target_def_id);
+        item_def_id != import_def_id
+            && self.cx.cache.effective_visibilities.is_directly_public(tcx, item_def_id.to_def_id())
+            && !tcx.is_doc_hidden(item_def_id)
+            && !inherits_doc_hidden(tcx, item_def_id, None)
     }
 
     #[inline]
