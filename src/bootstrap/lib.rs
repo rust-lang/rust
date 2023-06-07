@@ -61,6 +61,7 @@ mod run;
 mod sanity;
 mod setup;
 mod suggest;
+mod synthetic_targets;
 mod tarball;
 mod test;
 mod tool;

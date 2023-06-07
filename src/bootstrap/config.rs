@@ -429,6 +429,7 @@ impl std::str::FromStr for RustcLto {
 pub struct TargetSelection {
     pub triple: Interned<String>,
     file: Option<Interned<String>>,
+    synthetic: bool,
 }
 
 /// Newtype over `Vec<TargetSelection>` so we can implement custom parsing logic
@@ -460,7 +461,15 @@ impl TargetSelection {
         let triple = INTERNER.intern_str(triple);
         let file = file.map(|f| INTERNER.intern_str(f));
 
-        Self { triple, file }
+        Self { triple, file, synthetic: false }
+    }
+
+    pub fn create_synthetic(triple: &str, file: &str) -> Self {
+        Self {
+            triple: INTERNER.intern_str(triple),
+            file: Some(INTERNER.intern_str(file)),
+            synthetic: true,
+        }
     }
 
     pub fn rustc_target_arg(&self) -> &str {
@@ -477,6 +486,11 @@ impl TargetSelection {
 
     pub fn ends_with(&self, needle: &str) -> bool {
         self.triple.ends_with(needle)
+    }
+
+    // See src/bootstrap/synthetic_targets.rs
+    pub fn is_synthetic(&self) -> bool {
+        self.synthetic
     }
 }
 

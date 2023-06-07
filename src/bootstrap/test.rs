@@ -23,6 +23,7 @@ use crate::doc::DocumentationFormat;
 use crate::flags::Subcommand;
 use crate::llvm;
 use crate::render_tests::add_flags_and_try_run_tests;
+use crate::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date};
@@ -1347,8 +1348,8 @@ impl Step for MirOpt {
         };
 
         // We use custom logic to bless the mir-opt suite: mir-opt tests have multiple variants
-        // (32bit vs 64bit), and all of them needs to be blessed. When blessing, we try best-effort
-        // to also bless the other variants, to aid developers.
+        // (32bit vs 64bit, and panic=abort vs panic=unwind), and all of them needs to be blessed.
+        // When blessing, we try best-effort to also bless the other variants, to aid developers.
         if builder.config.cmd.bless() {
             let targets = MIR_OPT_BLESS_TARGET_MAPPING
                 .iter()
@@ -1385,6 +1386,12 @@ You can add that mapping by changing MIR_OPT_BLESS_TARGET_MAPPING in src/bootstr
 
             for target in targets {
                 run(target);
+
+                let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
+                    compiler: self.compiler,
+                    base: target,
+                });
+                run(panic_abort_target);
             }
         } else {
             run(self.target);
