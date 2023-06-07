@@ -123,7 +123,14 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                        if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
+                        if let Some(higher::Range {
+                            start: Some(_),
+                            end: Some(_),
+                            limits: rustc_ast::RangeLimits::Closed
+                        }) = higher::Range::hir(body.value) {
+                            // `|x,y| x..=y` becomes `|x, y| RangeInclusive::new(x, y)`
+                            snippet = "core::ops::RangeInclusive::new".to_owned();
+                        } else if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
                             && let args = cx.tcx.erase_late_bound_regions(substs.as_closure().sig()).inputs()
                             && implements_trait(
                                    cx,
@@ -136,6 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                                 // Mutable closure is used after current expr; we cannot consume it.
                                 snippet = format!("&mut {snippet}");
                         }
+
                         diag.span_suggestion(
                             expr.span,
                             "replace the closure with the function itself",
