@@ -63,7 +63,8 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update ${{ env.RUST_CHANNEL }}
-          rustup component add rustfmt rust-src
+          rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
+          rustup default ${{ env.RUST_CHANNEL }}
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
