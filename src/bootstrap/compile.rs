@@ -1358,7 +1358,12 @@ impl Step for Sysroot {
             // newly compiled std, not the downloaded std.
             add_filtered_files("lib", builder.config.ci_rust_std_contents());
 
-            let filtered_extensions = [OsStr::new("rmeta"), OsStr::new("rlib"), OsStr::new("so")];
+            let filtered_extensions = [
+                OsStr::new("rmeta"),
+                OsStr::new("rlib"),
+                // FIXME: this is wrong when compiler.host != build, but we don't support that today
+                OsStr::new(std::env::consts::DLL_EXTENSION),
+            ];
             let ci_rustc_dir = builder.ci_rustc_dir(builder.config.build);
             builder.cp_filtered(&ci_rustc_dir, &sysroot, &|path| {
                 if path.extension().map_or(true, |ext| !filtered_extensions.contains(&ext)) {
