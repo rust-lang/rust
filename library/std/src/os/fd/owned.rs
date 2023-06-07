@@ -20,20 +20,25 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 ///
 /// This uses `repr(transparent)` and has the representation of a host file
 /// descriptor, so it can be used in FFI in places where a file descriptor is
-/// passed as an argument, it is not captured or consumed, and it never has the
-/// value `-1`.
+/// passed as an argument, it is not captured or consumed.
+///
+/// On all platforms except Haiku, it never has the value `-1`.
 ///
 /// This type's `.to_owned()` implementation returns another `BorrowedFd`
 /// rather than an `OwnedFd`. It just makes a trivial copy of the raw file
 /// descriptor, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
+// On Haiku, the `-1` is the value of `AT_FDCWD`, which should be valid to store
+// in a `BorrowedFd`, so Haiku can't participate in the layout optimization for
+// `BorrowedFd`. It can still participate in the layout optimization for
+// `OwnedFd`, as APIs where `AT_FDCWD` is accepted don't take ownership of it.
+#[cfg_attr(not(target_os = "haiku"), rustc_layout_scalar_valid_range_start(0))]
 // libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
 // 32-bit c_int. Below is -2, in two's complement, but that only works out
 // because c_int is 32 bits.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
-#[rustc_nonnull_optimization_guaranteed]
+#[cfg_attr(not(target_os = "haiku"), rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE))]
+#[cfg_attr(not(target_os = "haiku"), rustc_nonnull_optimization_guaranteed)]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct BorrowedFd<'fd> {
     fd: RawFd,
@@ -66,12 +71,15 @@ impl BorrowedFd<'_> {
     /// # Safety
     ///
     /// The resource pointed to by `fd` must remain open for the duration of
-    /// the returned `BorrowedFd`, and it must not have the value `-1`.
+    /// the returned `BorrowedFd`. And on all platforms except Haiku, it must
+    /// not have the value `-1`.
     #[inline]
     #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
+        #[cfg(not(target_os = "haiku"))]
         assert!(fd != u32::MAX as RawFd);
+
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { Self { fd, _phantom: PhantomData } }
     }
