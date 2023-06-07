@@ -26,19 +26,16 @@ declare_clippy_lint! {
 declare_lint_pass!(UnderscoreTyped => [LET_WITH_TYPE_UNDERSCORE]);
 
 impl LateLintPass<'_> for UnderscoreTyped {
-    fn check_local<'tcx>(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, local.span);
             if let Some(ty) = local.ty; // Ensure that it has a type defined
             if let TyKind::Infer = &ty.kind; // that type is '_'
             if local.span.ctxt() == ty.span.ctxt();
             then {
-                let underscore_span = ty.span.with_lo(local.pat.span.hi());
-                let snippet = snippet(cx, underscore_span, ": _");
-
                 // NOTE: Using `is_from_proc_macro` on `init` will require that it's initialized,
                 // this doesn't. Alternatively, `WithSearchPat` can be implemented for `Ty`
-                if !snippet.trim().starts_with(':') && !snippet.trim().ends_with('_') {
+                if snippet(cx, ty.span, "_").trim() != "_" {
                     return;
                 }
 
@@ -47,7 +44,7 @@ impl LateLintPass<'_> for UnderscoreTyped {
                     LET_WITH_TYPE_UNDERSCORE,
                     local.span,
                     "variable declared with type underscore",
-                    Some(underscore_span),
+                    Some(ty.span.with_lo(local.pat.span.hi())),
                     "remove the explicit type `_` declaration"
                 )
             }
