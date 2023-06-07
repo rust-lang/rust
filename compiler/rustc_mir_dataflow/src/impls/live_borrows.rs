@@ -786,20 +786,7 @@ where
                 debug!("gen {:?}", local);
                 self._trans.gen(local);
             }
-            _ => {
-                if let Some(node_idx) = self.borrow_deps.locals_to_node_indexes.get(&local) {
-                    let node = self.borrow_deps.dep_graph.node(*node_idx);
-
-                    // these are `Local`s that contain references/pointers or are raw pointers
-                    // that were assigned to raw pointers, which were cast to usize. Hence we
-                    // need to treat them as uses of the references/pointers that they
-                    // refer/correspond to.
-                    if let NodeKind::LocalWithRefs(_) = node.data {
-                        debug!("gen {:?}", local);
-                        self._trans.gen(local);
-                    }
-                }
-            }
+            _ => {}
         }
 
         self.super_place(place, context, location);
@@ -825,7 +812,26 @@ where
                         self._trans.kill(destination.local);
 
                         for arg in args {
-                            self.visit_operand(arg, location)
+                            match arg {
+                                Operand::Copy(place) | Operand::Move(place) => {
+                                    if let Some(node_idx) =
+                                        self.borrow_deps.locals_to_node_indexes.get(&place.local)
+                                    {
+                                        let node = self.borrow_deps.dep_graph.node(*node_idx);
+
+                                        // these are `Local`s that contain references/pointers or are raw pointers
+                                        // that were assigned to raw pointers, which were cast to usize. Since the
+                                        // function call is free to use these in any form, we need to gen them here.
+                                        if let NodeKind::LocalWithRefs(_) = node.data {
+                                            debug!("gen {:?}", place.local);
+                                            self._trans.gen(place.local);
+                                        }
+                                    } else {
+                                        self.super_operand(arg, location)
+                                    }
+                                }
+                                _ => {}
+                            }
                         }
                     }
                     _ => self.super_terminator(terminator, location),
@@ -837,6 +843,26 @@ where
                         debug!("killing {:?}", resume_arg.local);
                         self._trans.kill(resume_arg.local);
 
+                        match value {
+                            Operand::Copy(place) | Operand::Move(place) => {
+                                if let Some(node_idx) =
+                                    self.borrow_deps.locals_to_node_indexes.get(&place.local)
+                                {
+                                    let node = self.borrow_deps.dep_graph.node(*node_idx);
+
+                                    // these are `Local`s that contain references/pointers or are raw pointers
+                                    // that were assigned to raw pointers, which were cast to usize. Since the
+                                    // function call is free to use these in any form, we need to gen them here.
+                                    if let NodeKind::LocalWithRefs(_) = node.data {
+                                        debug!("gen {:?}", place.local);
+                                        self._trans.gen(place.local);
+                                    }
+                                } else {
+                                    self.super_operand(value, location)
+                                }
+                            }
+                            _ => {}
+                        }
                         self.visit_operand(value, location)
                     }
                     _ => self.super_terminator(terminator, location),
