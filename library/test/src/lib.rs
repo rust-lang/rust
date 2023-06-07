@@ -781,11 +781,21 @@ fn run_test_in_spawned_subprocess(
             builtin_panic_hook(info);
         }
 
-        if let TrOk = test_result {
-            process::exit(test_result::TR_OK);
+        let return_code = if test_result == TrOk {
+            test_result::TR_OK
         } else {
-            process::exit(test_result::TR_FAILED);
+            test_result::TR_FAILED
+        };
+
+        // Skip atexit hooks if the test panicked. This will prevent (among
+        // other things) leak sanitizer from being run, which should not have
+        // its atexit hook run when a test panics. This simulates the behavior
+        // of aborting more closely on unix.
+        #[cfg(unix)]
+        if panic_info.is_some() {
+            libc::_exit(return_code);
         }
+        process::exit(return_code);
     });
     let record_result2 = record_result.clone();
     panic::set_hook(Box::new(move |info| record_result2(Some(info))));
