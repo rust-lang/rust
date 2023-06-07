@@ -30,6 +30,22 @@ use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
+// mir-opt tests have different variants depending on whether a target is 32bit or 64bit, and
+// blessing them requires blessing with each target. To aid developers, when blessing the mir-opt
+// test suite the corresponding target of the opposite pointer size is also blessed.
+//
+// This array serves as the known mappings between 32bit and 64bit targets. If you're developing on
+// a target where a target with the opposite pointer size exists, feel free to add it here.
+const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
+    // (32bit, 64bit)
+    ("i686-unknown-linux-gnu", "x86_64-unknown-linux-gnu"),
+    ("i686-unknown-linux-musl", "x86_64-unknown-linux-musl"),
+    ("i686-pc-windows-msvc", "x86_64-pc-windows-msvc"),
+    ("i686-pc-windows-gnu", "x86_64-pc-windows-gnu"),
+    ("i686-apple-darwin", "x86_64-apple-darwin"),
+    ("i686-apple-darwin", "aarch64-apple-darwin"),
+];
+
 fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
         if !builder.try_run(cmd) {
@@ -1319,14 +1335,60 @@ impl Step for MirOpt {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: "mir-opt",
-            suite: "mir-opt",
-            path: "tests/mir-opt",
-            compare_mode: None,
-        });
+        let run = |target| {
+            builder.ensure(Compiletest {
+                compiler: self.compiler,
+                target: target,
+                mode: "mir-opt",
+                suite: "mir-opt",
+                path: "tests/mir-opt",
+                compare_mode: None,
+            })
+        };
+
+        // We use custom logic to bless the mir-opt suite: mir-opt tests have multiple variants
+        // (32bit vs 64bit), and all of them needs to be blessed. When blessing, we try best-effort
+        // to also bless the other variants, to aid developers.
+        if builder.config.cmd.bless() {
+            let targets = MIR_OPT_BLESS_TARGET_MAPPING
+                .iter()
+                .filter(|(target_32bit, target_64bit)| {
+                    *target_32bit == &*self.target.triple || *target_64bit == &*self.target.triple
+                })
+                .next()
+                .map(|(target_32bit, target_64bit)| {
+                    let target_32bit = TargetSelection::from_user(target_32bit);
+                    let target_64bit = TargetSelection::from_user(target_64bit);
+
+                    // Running compiletest requires a C compiler to be available, but it might not
+                    // have been detected by bootstrap if the target we're testing wasn't in the
+                    // --target flags.
+                    if !builder.cc.borrow().contains_key(&target_32bit) {
+                        crate::cc_detect::find_target(builder, target_32bit);
+                    }
+                    if !builder.cc.borrow().contains_key(&target_64bit) {
+                        crate::cc_detect::find_target(builder, target_64bit);
+                    }
+
+                    vec![target_32bit, target_64bit]
+                })
+                .unwrap_or_else(|| {
+                    eprintln!(
+                        "\
+Note that not all variants of mir-opt tests are going to be blessed, as no mapping between
+a 32bit and a 64bit target was found for {target}.
+You can add that mapping by changing MIR_OPT_BLESS_TARGET_MAPPING in src/bootstrap/test.rs",
+                        target = self.target,
+                    );
+                    vec![self.target]
+                });
+
+            for target in targets {
+                run(target);
+            }
+        } else {
+            run(self.target);
+        }
     }
 }
 
