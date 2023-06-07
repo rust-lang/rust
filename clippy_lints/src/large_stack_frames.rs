@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// ### Drawbacks
+    /// ### Known issues
     /// False positives. The stack size that clippy sees is an estimated value and can be vastly different
     /// from the actual stack usage after optimizations passes have run (especially true in release mode).
     /// Modern compilers are very smart and are able to optimize away a lot of unnecessary stack allocations.
