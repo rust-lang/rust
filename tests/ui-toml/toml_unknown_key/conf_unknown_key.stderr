@@ -86,6 +86,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold

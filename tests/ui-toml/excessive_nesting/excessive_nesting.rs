@@ -1,7 +1,7 @@
-//@aux-build:macro_rules.rs
-//@revisions: set default
+//@aux-build:proc_macros.rs
+//@revisions: set above
 //@[set] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/set
-//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/default
+//@[above] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/above
 #![rustfmt::skip]
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
@@ -13,10 +13,8 @@
 #![warn(clippy::excessive_nesting)]
 #![allow(clippy::collapsible_if)]
 
-mod auxiliary;
-
 #[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
 
 static X: u32 = {
     let x = {
@@ -142,7 +140,8 @@ fn main() {
         x
     })();
 
-    excessive_nesting!(); // ensure this isn't linted in external macros
+    external! { {{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}} }; // ensure this isn't linted in external macros
+    with_span! { span {{{{{{{{{{{{}}}}}}}}}}}} }; // don't lint for proc macros
     xx!(); // ensure this is never linted
     let boo = true;
     !{boo as u32 + !{boo as u32 + !{boo as u32}}};

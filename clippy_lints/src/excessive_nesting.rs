@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{diagnostics::span_lint_and_help, source::snippet};
 use rustc_ast::{
     node_id::NodeSet,
     visit::{walk_block, walk_item, Visitor},
@@ -86,6 +86,10 @@ impl ExcessiveNesting {
 
 impl EarlyLintPass for ExcessiveNesting {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
+        if self.excessive_nesting_threshold == 0 {
+            return;
+        }
+
         let mut visitor = NestingVisitor {
             conf: self,
             cx,
@@ -114,9 +118,7 @@ struct NestingVisitor<'conf, 'cx> {
 
 impl NestingVisitor<'_, '_> {
     fn check_indent(&mut self, span: Span, id: NodeId) -> bool {
-        let threshold = self.conf.excessive_nesting_threshold;
-
-        if threshold != 0 && self.nest_level > threshold && !in_external_macro(self.cx.sess(), span) {
+        if self.nest_level > self.conf.excessive_nesting_threshold && !in_external_macro(self.cx.sess(), span) {
             self.conf.nodes.insert(id);
 
             return true;
@@ -129,6 +131,13 @@ impl NestingVisitor<'_, '_> {
 impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
     fn visit_block(&mut self, block: &Block) {
         if block.span.from_expansion() {
+            return;
+        }
+
+        // TODO: This should be rewritten using `LateLintPass` so we can use `is_from_proc_macro` instead,
+        // but for now, this is fine.
+        let snippet = snippet(self.cx, block.span, "{}").trim().to_owned();
+        if !snippet.starts_with('{') || !snippet.ends_with('}') {
             return;
         }
 
