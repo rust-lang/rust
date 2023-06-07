@@ -15,6 +15,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{def_id::DefId, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, PredicateKind};
 use rustc_span::{sym, Symbol};
 use std::cmp;
@@ -114,6 +115,20 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
             if self.eagerness == ForceNoChange {
                 return;
             }
+
+            // Autoderef through a user-defined `Deref` impl can have side-effects,
+            // so don't suggest changing it.
+            if self
+                .cx
+                .typeck_results()
+                .expr_adjustments(e)
+                .iter()
+                .any(|adj| matches!(adj.kind, Adjust::Deref(Some(_))))
+            {
+                self.eagerness |= NoChange;
+                return;
+            }
+
             match e.kind {
                 ExprKind::Call(
                     &Expr {
