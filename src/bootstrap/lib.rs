@@ -1104,12 +1104,18 @@ impl Build {
 
     /// Returns the path to the C compiler for the target specified.
     fn cc(&self, target: TargetSelection) -> PathBuf {
+        if self.config.dry_run() {
+            return PathBuf::new();
+        }
         self.cc.borrow()[&target].path().into()
     }
 
     /// Returns a list of flags to pass to the C compiler for the target
     /// specified.
     fn cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+        if self.config.dry_run() {
+            return Vec::new();
+        }
         let base = match c {
             CLang::C => self.cc.borrow()[&target].clone(),
             CLang::Cxx => self.cxx.borrow()[&target].clone(),
@@ -1154,16 +1160,25 @@ impl Build {
 
     /// Returns the path to the `ar` archive utility for the target specified.
     fn ar(&self, target: TargetSelection) -> Option<PathBuf> {
+        if self.config.dry_run() {
+            return None;
+        }
         self.ar.borrow().get(&target).cloned()
     }
 
     /// Returns the path to the `ranlib` utility for the target specified.
     fn ranlib(&self, target: TargetSelection) -> Option<PathBuf> {
+        if self.config.dry_run() {
+            return None;
+        }
         self.ranlib.borrow().get(&target).cloned()
     }
 
     /// Returns the path to the C++ compiler for the target specified.
     fn cxx(&self, target: TargetSelection) -> Result<PathBuf, String> {
+        if self.config.dry_run() {
+            return Ok(PathBuf::new());
+        }
         match self.cxx.borrow().get(&target) {
             Some(p) => Ok(p.path().into()),
             None => {
@@ -1174,6 +1189,9 @@ impl Build {
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
     fn linker(&self, target: TargetSelection) -> Option<PathBuf> {
+        if self.config.dry_run() {
+            return Some(PathBuf::new());
+        }
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.clone())
         {
             Some(linker)

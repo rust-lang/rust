@@ -1272,6 +1272,9 @@ pub fn compiler_file(
     c: CLang,
     file: &str,
 ) -> PathBuf {
+    if builder.config.dry_run() {
+        return PathBuf::new();
+    }
     let mut cmd = Command::new(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={}", file));
