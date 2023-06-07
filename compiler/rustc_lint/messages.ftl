@@ -548,10 +548,16 @@ lint_variant_size_differences =
 
 lint_unused_raw_string_hash =
     raw string literal uses more hashes than it needs.
-    .label = This raw string requires {$hash_req} {$hash_req ->
+    .label = this raw string requires {$hash_req} {$hash_req ->
         [one] hash
         *[other]  hashes
     }, but {$hash_count} {$hash_count ->
         [one] is
         *[other] are
     } used
+
+lint_unused_raw_string = string literal does not need to be raw.
+    .label = removing the {$contains_hashes -> 
+        *[true] `r` and hashes
+        [false] `r`
+    } would result in the same value

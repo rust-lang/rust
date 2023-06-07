@@ -178,6 +178,7 @@ early_lint_methods!(
             UnusedDocComment: UnusedDocComment,
             UnexpectedCfgs: UnexpectedCfgs,
             UnusedRawStringHash: UnusedRawStringHash,
+            UnusedRawString: UnusedRawString,
         ]
     ]
 );
@@ -315,6 +316,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS,
         UNUSED_RAW_STRING_HASH,
+        UNUSED_RAW_STRING,
         MAP_UNIT_FN
     );
 

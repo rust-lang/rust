@@ -1,6 +1,6 @@
-use crate::lints::UnusedRawStringHashDiag;
+use crate::lints::{UnusedRawStringHashDiag, UnusedRawStringDiag};
 use crate::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_ast::{Expr, ExprKind, token::LitKind};
+use rustc_ast::{Expr, ExprKind, token::LitKind::{StrRaw, ByteStrRaw, CStrRaw}};
 
 // Examples / Intuition:
 // Must be raw, but hashes are just right   r#" " "#  (neither warning)
@@ -9,7 +9,7 @@ use rustc_ast::{Expr, ExprKind, token::LitKind};
 // Non-raw and hashes are just right         r" ! "
 
 declare_lint! {
-    /// The `unused_raw_string_hash` lint checks raw strings that
+    /// The `unused_raw_string_hash` lint checks whether raw strings
     /// use more hashes than they need.
     ///
     /// ### Example
@@ -37,7 +37,6 @@ impl EarlyLintPass for UnusedRawStringHash {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Lit(lit) = expr.kind {
             // Check all raw string variants with one or more hashes
-            use LitKind::{StrRaw, ByteStrRaw, CStrRaw};
             if let StrRaw(hc @1..) | ByteStrRaw(hc @1..) | CStrRaw(hc @1..) = lit.kind {
                 // Now check if `hash_count` hashes are actually required
                 let hash_count = hc as usize;
@@ -74,3 +73,54 @@ impl UnusedRawStringHash {
             .unwrap_or(0)
     }
 }
+
+declare_lint! {
+    /// The `unused_raw_string` lint checks whether raw strings need
+    /// to be raw.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unused_raw_string)]
+    /// fn main() {
+    ///     let x = r"  totally normal string  ";
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// If a string contains no escapes and no double quotes, it does
+    /// not need to be raw.
+    pub UNUSED_RAW_STRING,
+    Warn,
+    "String literal does not need to be raw"
+}
+
+declare_lint_pass!(UnusedRawString => [UNUSED_RAW_STRING]);
+
+impl EarlyLintPass for UnusedRawString {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if let ExprKind::Lit(lit) = expr.kind {
+            // Check all raw string variants
+            if let StrRaw(hc) | ByteStrRaw(hc) | CStrRaw(hc) = lit.kind {
+                // Now check if string needs to be raw
+                let contents = lit.symbol.as_str();
+                let contains_hashes = hc > 0;
+
+                if !contents.bytes().any(|b| matches!(b, b'\\' | b'"')) {
+                    cx.emit_spanned_lint(
+                        UNUSED_RAW_STRING,
+                        expr.span,
+                        UnusedRawStringDiag {
+                            span: expr.span,
+                            contains_hashes,
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+

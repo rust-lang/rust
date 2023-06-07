@@ -1632,3 +1632,11 @@ pub struct UnusedRawStringHashDiag {
     pub hash_count: usize,
     pub hash_req: usize,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_raw_string)]
+pub struct UnusedRawStringDiag {
+    #[label]
+    pub span: Span,
+    pub contains_hashes: bool,
+}
