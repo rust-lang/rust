@@ -120,17 +120,17 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Arc);
             if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Rc);
             if let ty::Closure(_, substs) = *closure_ty.kind();
+            // Don't lint if this is an inclusive range expression.
+            // They desugar to a call to `RangeInclusiveNew` which would have odd suggestions. (#10684)
+            if !matches!(higher::Range::hir(body.value), Some(higher::Range {
+                start: Some(_),
+                end: Some(_),
+                limits: rustc_ast::RangeLimits::Closed
+            }));
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                        if let Some(higher::Range {
-                            start: Some(_),
-                            end: Some(_),
-                            limits: rustc_ast::RangeLimits::Closed
-                        }) = higher::Range::hir(body.value) {
-                            // `|x,y| x..=y` becomes `|x, y| RangeInclusive::new(x, y)`
-                            snippet = "core::ops::RangeInclusive::new".to_owned();
-                        } else if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
+                        if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
                             && let args = cx.tcx.erase_late_bound_regions(substs.as_closure().sig()).inputs()
                             && implements_trait(
                                    cx,

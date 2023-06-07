@@ -51,7 +51,7 @@ fn main() {
     fn test<T>(x: impl Fn(usize, usize) -> T) -> T {
         x(1, 2)
     }
-    test(core::ops::RangeInclusive::new);
+    test(|start, end| start..=end);
 }
 
 trait TestTrait {

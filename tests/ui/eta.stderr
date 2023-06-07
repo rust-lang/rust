@@ -31,12 +31,6 @@ LL |     let e = Some(1u8).map(|a| generic(a));
    |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `generic`
 
 error: redundant closure
-  --> $DIR/eta.rs:54:10
-   |
-LL |     test(|start, end| start..=end);
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `core::ops::RangeInclusive::new`
-
-error: redundant closure
   --> $DIR/eta.rs:93:51
    |
 LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
@@ -164,5 +158,5 @@ error: redundant closure
 LL |     dyn_opt.map(|d| d.method_on_dyn());
    |                 ^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<dyn TestTrait>::method_on_dyn`
 
-error: aborting due to 27 previous errors
+error: aborting due to 26 previous errors
 
