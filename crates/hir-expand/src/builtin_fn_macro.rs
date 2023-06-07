@@ -262,9 +262,6 @@ fn format_args_expand_general(
     let expand_error =
         ExpandResult::new(tt::Subtree::empty(), mbe::ExpandError::NoMatchingRule.into());
 
-    if args.is_empty() {
-        return expand_error;
-    }
     let mut key_args = FxHashMap::default();
     let mut args = args.into_iter().filter_map(|mut arg| {
         // Remove `key =`.
@@ -281,7 +278,9 @@ fn format_args_expand_general(
         Some(arg)
     }).collect::<Vec<_>>().into_iter();
     // ^^^^^^^ we need this collect, to enforce the side effect of the filter_map closure (building the `key_args`)
-    let format_subtree = args.next().unwrap();
+    let Some(format_subtree) = args.next() else {
+        return expand_error;
+    };
     let format_string = (|| {
         let token_tree = format_subtree.token_trees.get(0)?;
         match token_tree {
