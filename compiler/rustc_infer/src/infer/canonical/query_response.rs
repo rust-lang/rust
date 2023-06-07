@@ -662,7 +662,7 @@ pub fn make_query_region_constraints<'tcx>(
 
     debug!(?constraints);
 
-    let outlives: Vec<_> = constraints
+    let mut outlives: Vec<_> = constraints
         .iter()
         .map(|(k, origin)| {
             let constraint = match *k {
@@ -686,6 +686,9 @@ pub fn make_query_region_constraints<'tcx>(
             (ty::OutlivesPredicate(ty.into(), r), constraint_category)
         }))
         .collect();
+
+    outlives.sort();
+    outlives.dedup();
 
     QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
 }
