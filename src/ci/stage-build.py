@@ -973,6 +973,12 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRu
             ]
             print_free_disk_space(pipeline)
 
+    # We want to keep the already built PGO-optimized `rustc`.
+    dist_build_args += [
+        "--keep-stage", "0",
+        "--keep-stage", "1"
+    ]
+
     """
     Final stage: Build PGO optimized rustc + PGO/BOLT optimized LLVM
     """
