@@ -216,6 +216,9 @@ pub enum Expr {
     Return {
         expr: Option<ExprId>,
     },
+    Become {
+        expr: ExprId,
+    },
     Yield {
         expr: Option<ExprId>,
     },
@@ -410,6 +413,7 @@ impl Expr {
                     f(expr);
                 }
             }
+            Expr::Become { expr } => f(*expr),
             Expr::RecordLit { fields, spread, .. } => {
                 for field in fields.iter() {
                     f(field.expr);

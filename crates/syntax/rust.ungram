@@ -367,6 +367,7 @@ Expr =
 | RecordExpr
 | RefExpr
 | ReturnExpr
+| BecomeExpr
 | TryExpr
 | TupleExpr
 | WhileExpr
@@ -527,6 +528,9 @@ MatchGuard =
 
 ReturnExpr =
   Attr* 'return' Expr?
+
+BecomeExpr =
+  Attr* 'become' Expr
 
 YieldExpr =
   Attr* 'yield' Expr?

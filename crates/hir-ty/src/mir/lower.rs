@@ -775,6 +775,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.set_terminator(current, TerminatorKind::Return, expr_id.into());
                 Ok(None)
             }
+            Expr::Become { .. } => not_supported!("tail-calls"),
             Expr::Yield { .. } => not_supported!("yield"),
             Expr::RecordLit { fields, path, spread, ellipsis: _, is_assignee_expr: _ } => {
                 let spread_place = match spread {
