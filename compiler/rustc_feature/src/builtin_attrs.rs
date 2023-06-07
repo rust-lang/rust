@@ -783,7 +783,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
-        r"`rustc_doc_primitive` is a rustc internal attribute",
+        "`rustc_doc_primitive` is a rustc internal attribute",
     ),
 
     // ==========================================================================

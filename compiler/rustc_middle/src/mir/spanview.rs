@@ -14,12 +14,12 @@ const CARET: char = '\u{2038}'; // Unicode `CARET`
 const ANNOTATION_LEFT_BRACKET: char = '\u{298a}'; // Unicode `Z NOTATION RIGHT BINDING BRACKET`
 const ANNOTATION_RIGHT_BRACKET: char = '\u{2989}'; // Unicode `Z NOTATION LEFT BINDING BRACKET`
 const NEW_LINE_SPAN: &str = "</span>\n<span class=\"line\">";
-const HEADER: &str = r"<!DOCTYPE html>
+const HEADER: &str = "<!DOCTYPE html>
 <html>
 <head>";
-const START_BODY: &str = r"</head>
+const START_BODY: &str = "</head>
 <body>";
-const FOOTER: &str = r"</body>
+const FOOTER: &str = "</body>
 </html>";
 
 const STYLE_SECTION: &str = r#"<style>

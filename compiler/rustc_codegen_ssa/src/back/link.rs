@@ -735,7 +735,7 @@ fn link_natively<'a>(
     info!("{:?}", &cmd);
     let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
     let unknown_arg_regex =
-        Regex::new(r"(unknown|unrecognized) (command line )?(option|argument)").unwrap();
+        Regex::new("(unknown|unrecognized) (command line )?(option|argument)").unwrap();
     let mut prog;
     let mut i = 0;
     loop {
