@@ -54,7 +54,7 @@ use crate::ty::{
 };
 use rustc_arena::TypedArena;
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
@@ -2173,6 +2173,15 @@ rustc_queries! {
     /// the types might be equal.
     query check_tys_might_be_eq(arg: Canonical<'tcx, (ty::ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>) -> Result<(), NoSolution> {
         desc { "check whether two const param are definitely not equal to eachother"}
+    }
+
+    /// Get all item paths that were stripped by a `#[cfg]` in a particular crate.
+    /// Should not be called for the local crate before the resolver outputs are created, as it
+    /// is only fed there.
+    query stripped_cfg_items(cnum: CrateNum) -> &'tcx [StrippedCfgItem] {
+        feedable
+        desc { "getting cfg-ed out item names" }
+        separate_provide_extern
     }
 }
 

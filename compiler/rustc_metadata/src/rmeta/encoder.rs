@@ -3,6 +3,7 @@ use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
+use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -584,6 +585,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             (self.encode_lang_items(), self.encode_lang_items_missing())
         });
 
+        let stripped_cfg_items = stat!("stripped-cfg-items", || self.encode_stripped_cfg_items());
+
         let diagnostic_items = stat!("diagnostic-items", || self.encode_diagnostic_items());
 
         let native_libraries = stat!("native-libs", || self.encode_native_libraries());
@@ -694,6 +697,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 lang_items,
                 diagnostic_items,
                 lang_items_missing,
+                stripped_cfg_items,
                 native_libraries,
                 foreign_modules,
                 source_map,
@@ -1937,6 +1941,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         self.lazy_array(&tcx.lang_items().missing)
+    }
+
+    fn encode_stripped_cfg_items(&mut self) -> LazyArray<StrippedCfgItem<DefIndex>> {
+        self.lazy_array(
+            self.tcx
+                .stripped_cfg_items(LOCAL_CRATE)
+                .into_iter()
+                .map(|item| item.clone().map_mod_id(|def_id| def_id.index)),
+        )
     }
 
     fn encode_traits(&mut self) -> LazyArray<DefIndex> {

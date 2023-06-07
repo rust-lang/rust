@@ -93,6 +93,9 @@ error[E0433]: failed to resolve: could not find `test` in `std`
    |
 LL | #[std::test]
    |        ^^^^ could not find `test` in `std`
+   |
+note: found an item that was configured out
+  --> $SRC_DIR/std/src/lib.rs:LL:COL
 
 error: aborting due to 16 previous errors
 
