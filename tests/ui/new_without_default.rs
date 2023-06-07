@@ -114,12 +114,12 @@ impl PrivateItem {
     } // We don't lint private items on public structs
 }
 
-struct Const;
+pub struct Const;
 
 impl Const {
     pub const fn new() -> Const {
         Const
-    } // const fns can't be implemented via Default
+    } // While Default is not const, it can still call const functions, so we should lint this
 }
 
 pub struct IgnoreGenericNew;
