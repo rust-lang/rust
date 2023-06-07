@@ -190,7 +190,7 @@ pub enum BorrowKind {
 #[derive(Hash, HashStable)]
 pub enum MutBorrowKind {
     Default,
-    /// this borrow arose from method-call auto-ref. (i.e., `adjustment::Adjust::Borrow`)
+    /// This borrow arose from method-call auto-ref. (i.e., `adjustment::Adjust::Borrow`)
     TwoPhaseBorrow,
     /// Data must be immutable but not aliasable. This kind of borrow
     /// cannot currently be expressed by the user and is used only in
@@ -226,9 +226,12 @@ pub enum MutBorrowKind {
     /// user code, if awkward, but extra weird for closures, since the
     /// borrow is hidden.
     ///
-    /// So we introduce a "unique imm" borrow -- the referent is
-    /// immutable, but not aliasable. This solves the problem. For
-    /// simplicity, we don't give users the way to express this
+    /// So we introduce a `ClosureCapture` borrow -- user will not have to mark the variable
+    /// containing the mutable reference as `mut`, as they didn't ever
+    /// intend to mutate the mutable reference itself. We still mutable capture it in order to
+    /// mutate the pointed value through it (but not mutating the reference itself).
+    ///
+    /// This solves the problem. For simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
     ClosureCapture,
 }
