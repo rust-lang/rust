@@ -30,18 +30,12 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         borrow_desc: &str,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        create_err(CannotUseWhenMutablyBorrowed { span, desc })
-        // let mut err = struct_span_err!(
-        //     self,
-        //     span,
-        //     E0503,
-        //     "cannot use {} because it was mutably borrowed",
-        //     desc,
-        // );
-
-        // err.span_label(borrow_span, format!("{} is borrowed here", borrow_desc));
-        // err.span_label(span, format!("use of borrowed {}", borrow_desc));
-        // err
+        self.infcx.tcx.sess.create_err(CannotUseWhenMutablyBorrowed {
+            span,
+            borrow_span,
+            borrow_desc,
+            desc,
+        })
     }
 
     pub(crate) fn cannot_mutably_borrow_multiply(

@@ -7,10 +7,13 @@ use crate::diagnostics::RegionName;
 
 #[derive(Diagnostic)]
 #[diag(borrowck_cannot_use_when_mutably_borrowed, code = "E0503")]
-pub(crate) struct CannotUseWhenMutablyBorrowed {
+pub(crate) struct CannotUseWhenMutablyBorrowed<'a> {
     #[primary_span]
     pub span: Span,
-    desc: &'static str,
+    #[label]
+    pub borrow_span: Span,
+    pub borrow_desc: &'a str,
+    pub desc: &'a str,
 }
 
 #[derive(Diagnostic)]
