@@ -46,7 +46,7 @@ impl ProcMacroExpander {
                         never!("Non-dummy expander even though there are no proc macros");
                         return ExpandResult::new(
                             tt::Subtree::empty(),
-                            ExpandError::Other("Internal error".into()),
+                            ExpandError::other("Internal error"),
                         );
                     }
                 };
@@ -60,7 +60,7 @@ impl ProcMacroExpander {
                         );
                         return ExpandResult::new(
                             tt::Subtree::empty(),
-                            ExpandError::Other("Internal error".into()),
+                            ExpandError::other("Internal error"),
                         );
                     }
                 };
@@ -75,14 +75,11 @@ impl ProcMacroExpander {
                         ProcMacroExpansionError::System(text)
                             if proc_macro.kind == ProcMacroKind::Attr =>
                         {
-                            ExpandResult {
-                                value: tt.clone(),
-                                err: Some(ExpandError::Other(text.into())),
-                            }
+                            ExpandResult { value: tt.clone(), err: Some(ExpandError::other(text)) }
                         }
                         ProcMacroExpansionError::System(text)
                         | ProcMacroExpansionError::Panic(text) => {
-                            ExpandResult::new(tt::Subtree::empty(), ExpandError::Other(text.into()))
+                            ExpandResult::new(tt::Subtree::empty(), ExpandError::other(text))
                         }
                     },
                 }

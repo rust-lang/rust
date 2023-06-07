@@ -79,7 +79,7 @@ fn main() { env!("TEST_ENV_VAR"); }
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { "__RA_UNIMPLEMENTED__"; }
+fn main() { "UNRESOLVED_ENV_VAR"; }
 "##]],
     );
 }
@@ -442,10 +442,6 @@ macro_rules! surprise {
     () => { "s" };
 }
 
-macro_rules! stuff {
-    ($string:expr) => { concat!($string) };
-}
-
 fn main() { concat!(surprise!()); }
 "##,
         expect![[r##"
@@ -454,10 +450,6 @@ macro_rules! concat {}
 
 macro_rules! surprise {
     () => { "s" };
-}
-
-macro_rules! stuff {
-    ($string:expr) => { concat!($string) };
 }
 
 fn main() { "s"; }
