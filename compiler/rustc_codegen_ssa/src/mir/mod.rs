@@ -209,6 +209,19 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         caller_location: None,
     };
 
+    if mir.args_iter().any(|arg| {
+        // Find the monomorphized type of our argument
+        let arg_decl = &mir.local_decls[arg];
+        let arg_ty = fx.monomorphize(arg_decl.ty);
+
+        // And check if it is a reference to an uninhabited type
+        let ty = arg_ty.peel_refs();
+        start_bx.layout_of(ty).abi.is_uninhabited()
+    }) {
+        start_bx.unreachable();
+        return;
+    }
+
     // It may seem like we should iterate over `required_consts` to ensure they all successfully
     // evaluate; however, the `MirUsedCollector` already did that during the collection phase of
     // monomorphization so we don't have to do it again.
