@@ -1,6 +1,9 @@
-use crate::lints::{UnusedRawStringHashDiag, UnusedRawStringDiag};
+use crate::lints::{UnusedRawStringDiag, UnusedRawStringHashDiag};
 use crate::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_ast::{Expr, ExprKind, token::LitKind::{StrRaw, ByteStrRaw, CStrRaw}};
+use rustc_ast::{
+    token::LitKind::{ByteStrRaw, CStrRaw, StrRaw},
+    Expr, ExprKind,
+};
 
 // Examples / Intuition:
 // Must be raw, but hashes are just right   r#" " "#  (neither warning)
@@ -37,7 +40,7 @@ impl EarlyLintPass for UnusedRawStringHash {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Lit(lit) = expr.kind {
             // Check all raw string variants with one or more hashes
-            if let StrRaw(hc @1..) | ByteStrRaw(hc @1..) | CStrRaw(hc @1..) = lit.kind {
+            if let StrRaw(hc @ 1..) | ByteStrRaw(hc @ 1..) | CStrRaw(hc @ 1..) = lit.kind {
                 // Now check if `hash_count` hashes are actually required
                 let hash_count = hc as usize;
                 let contents = lit.symbol.as_str();
@@ -46,11 +49,7 @@ impl EarlyLintPass for UnusedRawStringHash {
                     cx.emit_spanned_lint(
                         UNUSED_RAW_STRING_HASH,
                         expr.span,
-                        UnusedRawStringHashDiag {
-                            span: expr.span,
-                            hash_count,
-                            hash_req,
-                        },
+                        UnusedRawStringHashDiag { span: expr.span, hash_count, hash_req },
                     );
                 }
             }
@@ -63,11 +62,12 @@ impl UnusedRawStringHash {
         // How many hashes are needed to wrap the input string?
         // aka length of longest "#* sequence or zero if none exists
 
-        // TODO potential speedup: short-circuit max() if `hash_count` found
+        // FIXME potential speedup: short-circuit max() if `hash_count` found
 
-        contents.as_bytes()
+        contents
+            .as_bytes()
             .split(|&b| b == b'"')
-            .skip(1)  // first element is the only one not starting with "
+            .skip(1) // first element is the only one not starting with "
             .map(|bs| 1 + bs.iter().take_while(|&&b| b == b'#').count())
             .max()
             .unwrap_or(0)
@@ -113,14 +113,10 @@ impl EarlyLintPass for UnusedRawString {
                     cx.emit_spanned_lint(
                         UNUSED_RAW_STRING,
                         expr.span,
-                        UnusedRawStringDiag {
-                            span: expr.span,
-                            contains_hashes,
-                        },
+                        UnusedRawStringDiag { span: expr.span, contains_hashes },
                     );
                 }
             }
         }
     }
 }
-

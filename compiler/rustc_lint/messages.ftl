@@ -541,23 +541,23 @@ lint_unused_op = unused {$op} that must be used
     .label = the {$op} produces a value
     .suggestion = use `let _ = ...` to ignore the resulting value
 
-lint_unused_result = unused result of type `{$ty}`
-
-lint_variant_size_differences =
-    enum variant is more than three times larger ({$largest} bytes) than the next largest
+lint_unused_raw_string = string literal does not need to be raw.
+    .label = removing the {$contains_hashes ->
+        *[true] `r` and hashes
+        [false] `r`
+    } would result in the same value
 
 lint_unused_raw_string_hash =
     raw string literal uses more hashes than it needs.
     .label = this raw string requires {$hash_req} {$hash_req ->
         [one] hash
-        *[other]  hashes
+        *[other] hashes
     }, but {$hash_count} {$hash_count ->
         [one] is
         *[other] are
     } used
 
-lint_unused_raw_string = string literal does not need to be raw.
-    .label = removing the {$contains_hashes -> 
-        *[true] `r` and hashes
-        [false] `r`
-    } would result in the same value
+lint_unused_result = unused result of type `{$ty}`
+
+lint_variant_size_differences =
+    enum variant is more than three times larger ({$largest} bytes) than the next largest

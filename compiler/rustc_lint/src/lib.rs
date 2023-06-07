@@ -76,11 +76,11 @@ mod noop_method_call;
 mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
+mod raw_strings;
 mod redundant_semicolon;
 mod traits;
 mod types;
 mod unused;
-mod raw_strings;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
@@ -117,11 +117,11 @@ use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
+use raw_strings::*;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
 use unused::*;
-use raw_strings::*;
 
 /// Useful for other parts of the compiler / Clippy.
 pub use builtin::SoftLints;
