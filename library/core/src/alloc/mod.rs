@@ -366,7 +366,7 @@ pub unsafe trait Allocator {
 
     /// The mode of error handling for types using this allocator.
     ///
-    /// [`Infallible`] means that any allocation failures should be handled
+    /// [`Fatal`] means that any allocation failures should be handled
     /// globally, often by panicking or aborting. Functions performing
     /// allocation will simply return the value or nothing.
     ///
@@ -381,7 +381,7 @@ pub unsafe trait Allocator {
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub trait HandleAllocError {
-    /// Globally handle this allocation error, using [`handle_alloc_error`]
+    /// Globally handle this allocation error
     fn handle_alloc_error(self) -> !;
 }
 
@@ -399,7 +399,7 @@ pub trait ErrorHandling {
 
     /// Function to map allocation results into `Self::Result`.
     ///
-    /// - For "Infallible" allocators, this should call [`handle_alloc_error`]
+    /// - For "Infallible" allocators, this should call [`HandleAllocError::handle_alloc_error`]
     /// - For "Fallible" allocators, this is just the identity function
     #[cfg(not(no_global_oom_handling))]
     #[must_use]

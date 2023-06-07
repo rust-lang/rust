@@ -4,7 +4,7 @@
 #![feature(allocator_api, trait_upcasting)]
 
 use std::alloc::Layout;
-use std::alloc::{AllocError, Allocator};
+use std::alloc::{AllocError, Allocator, Fatal};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 use std::ptr::{self, NonNull};
@@ -28,6 +28,8 @@ unsafe impl<'shared, 'a: 'shared> Allocator for &'shared OnceAlloc<'a> {
     }
 
     unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {}
+
+    type ErrorHandling = Fatal;
 }
 
 trait MyTrait {
@@ -68,6 +70,8 @@ unsafe impl<'shared, 'a: 'shared> Allocator for OnceAllocRef<'shared, 'a> {
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         self.0.deallocate(ptr, layout)
     }
+
+    type ErrorHandling = Fatal;
 }
 
 /// `Box<T, G>` is an `Aggregate`.
