@@ -156,7 +156,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // In the new solver, lazy norm may allow us to shallowly equate
             // more types, but we emit possibly impossible-to-satisfy obligations.
             // Filter these cases out to make sure our coercion is more accurate.
-            if self.tcx.trait_solver_next() {
+            if self.next_trait_solver() {
                 if let Ok(res) = &res {
                     for obligation in &res.obligations {
                         if !self.predicate_may_hold(&obligation) {

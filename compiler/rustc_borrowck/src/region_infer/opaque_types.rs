@@ -285,7 +285,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let infcx = self
             .tcx
             .infer_ctxt()
-            .with_opaque_type_inference(if self.tcx.trait_solver_next() {
+            .with_opaque_type_inference(if self.next_trait_solver() {
                 DefiningAnchor::Bind(def_id)
             } else {
                 DefiningAnchor::Bubble

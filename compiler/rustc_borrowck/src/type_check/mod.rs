@@ -188,7 +188,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
 
     // FIXME(-Ztrait-solver=next): A bit dubious that we're only registering
     // predefined opaques in the typeck root.
-    if infcx.tcx.trait_solver_next() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
+    if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
         checker.register_predefined_opaques_in_new_solver();
     }
 

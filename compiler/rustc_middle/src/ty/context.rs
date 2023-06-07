@@ -2333,8 +2333,16 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
     }
 
-    pub fn trait_solver_next(self) -> bool {
+    pub fn next_trait_solver_globally(self) -> bool {
         self.sess.opts.unstable_opts.trait_solver == rustc_session::config::TraitSolver::Next
+    }
+
+    pub fn next_trait_solver_in_coherence(self) -> bool {
+        matches!(
+            self.sess.opts.unstable_opts.trait_solver,
+            rustc_session::config::TraitSolver::Next
+                | rustc_session::config::TraitSolver::NextCoherence
+        )
     }
 
     pub fn lower_impl_trait_in_trait_to_assoc_ty(self) -> bool {

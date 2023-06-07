@@ -78,7 +78,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             _ => obligation.param_env.without_const(),
         };
 
-        if self.tcx.trait_solver_next() {
+        if self.next_trait_solver() {
             self.probe(|snapshot| {
                 let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
                 fulfill_cx.register_predicate_obligation(self, obligation.clone());
