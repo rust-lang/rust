@@ -68,7 +68,6 @@ ide-db.workspace = true
 ide-ssr.workspace = true
 ide.workspace = true
 proc-macro-api.workspace = true
-proc-macro-srv-cli.workspace = true
 profile.workspace = true
 project-model.workspace = true
 stdx.workspace = true
@@ -95,5 +94,5 @@ mbe.workspace = true
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
-sysroot-abi = ["proc-macro-srv-cli/sysroot-abi"]
+sysroot-abi = []
 in-rust-tree = ["sysroot-abi", "ide/in-rust-tree", "syntax/in-rust-tree"]
