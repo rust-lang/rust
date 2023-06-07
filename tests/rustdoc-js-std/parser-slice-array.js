@@ -1,24 +1,6 @@
-const QUERY = [
-    '[[[D, []]]',
-    '[[[D, []]]]',
-    '[] u8',
-    '[u8]',
-    '[u8,u8]',
-    '[u8<u8>]',
-    '[]',
-    '[>',
-    '[<',
-    '[a>',
-    '[a<',
-    '[a',
-    '[',
-    ']',
-    'primitive:[u8]',
-    'macro:[u8]',
-];
-
 const PARSED = [
     {
+        query: '[[[D, []]]',
         elems: [],
         foundElems: 0,
         original: '[[[D, []]]',
@@ -27,6 +9,7 @@ const PARSED = [
         error: 'Unclosed `[`',
     },
     {
+        query: '[[[D, []]]]',
         elems: [
             {
                 name: "[]",
@@ -79,6 +62,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '[] u8',
         elems: [
             {
                 name: "[]",
@@ -104,6 +88,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '[u8]',
         elems: [
             {
                 name: "[]",
@@ -130,6 +115,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '[u8,u8]',
         elems: [
             {
                 name: "[]",
@@ -164,6 +150,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '[u8<u8>]',
         elems: [
             {
                 name: "[]",
@@ -199,6 +186,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '[]',
         elems: [
             {
                 name: "[]",
@@ -216,6 +204,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '[>',
         elems: [],
         foundElems: 0,
         original: "[>",
@@ -224,6 +213,7 @@ const PARSED = [
         error: "Unexpected `>` after `[`",
     },
     {
+        query: '[<',
         elems: [],
         foundElems: 0,
         original: "[<",
@@ -232,6 +222,7 @@ const PARSED = [
         error: "Found generics without a path",
     },
     {
+        query: '[a>',
         elems: [],
         foundElems: 0,
         original: "[a>",
@@ -240,6 +231,7 @@ const PARSED = [
         error: "Unexpected `>` after `[`",
     },
     {
+        query: '[a<',
         elems: [],
         foundElems: 0,
         original: "[a<",
@@ -248,6 +240,7 @@ const PARSED = [
         error: "Unclosed `<`",
     },
     {
+        query: '[a',
         elems: [],
         foundElems: 0,
         original: "[a",
@@ -256,6 +249,7 @@ const PARSED = [
         error: "Unclosed `[`",
     },
     {
+        query: '[',
         elems: [],
         foundElems: 0,
         original: "[",
@@ -264,6 +258,7 @@ const PARSED = [
         error: "Unclosed `[`",
     },
     {
+        query: ']',
         elems: [],
         foundElems: 0,
         original: "]",
@@ -272,6 +267,7 @@ const PARSED = [
         error: "Unexpected `]`",
     },
     {
+        query: 'primitive:[u8]',
         elems: [
             {
                 name: "[]",
@@ -298,6 +294,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'macro:[u8]',
         elems: [],
         foundElems: 0,
         original: "macro:[u8]",

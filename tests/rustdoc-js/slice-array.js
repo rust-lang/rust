@@ -52,7 +52,7 @@ const EXPECTED = [
         ],
     },
     {
-        'query': '[TraitDog]',
+        'query': '[TraitCat]',
         'in_args': [
             { 'path': 'slice_array', 'name': 'gamma' },
             { 'path': 'slice_array', 'name': 'epsilon' },
