@@ -208,6 +208,44 @@ fn main() {
 }
 
 #[test]
+fn regression_15002() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! format_args {
+    ($fmt:expr) => ({ /* compiler built-in */ });
+    ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+}
+
+fn main() {
+    format_args!(x = 2);
+    format_args!(x =);
+    format_args!(x =, x = 2);
+    format_args!("{}", x =);
+    format_args!(=, "{}", x =);
+    format_args!(x = 2, "{}", 5);
+}
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro_rules! format_args {
+    ($fmt:expr) => ({ /* compiler built-in */ });
+    ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+}
+
+fn main() {
+    /* error: no rule matches input tokens */;
+    /* error: no rule matches input tokens */;
+    /* error: no rule matches input tokens */;
+    /* error: no rule matches input tokens */::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::Argument::new(&(), ::core::fmt::Display::fmt), ]);
+    /* error: no rule matches input tokens */;
+    ::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::Argument::new(&(5), ::core::fmt::Display::fmt), ]);
+}
+"##]],
+    );
+}
+
+#[test]
 fn test_format_args_expand_with_comma_exprs() {
     check(
         r#"
