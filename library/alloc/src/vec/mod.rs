@@ -2510,7 +2510,6 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
 }
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
-    #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` clones of value.
     fn extend_with(&mut self, n: usize, value: T) -> Result<(), TryReserveError> {
         self.try_reserve(n)?;
