@@ -46,6 +46,12 @@ fn main() {
 
     // issue #7224
     let _: Option<Vec<u32>> = Some(0).map(|_| vec![]);
+
+    // issue #10684
+    fn test<T>(x: impl Fn(usize, usize) -> T) -> T {
+        x(1, 2)
+    }
+    test(|start, end| start..=end);
 }
 
 trait TestTrait {
