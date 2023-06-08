@@ -6,6 +6,7 @@ use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_lint::LateLintPass;
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -46,6 +47,10 @@ impl LateLintPass<'_> for ArcWithNonSendSync {
             if let ExprKind::Path(func_path) = func.kind;
             if last_path_segment(&func_path).ident.name == sym::new;
             if let arg_ty = cx.typeck_results().expr_ty(arg);
+            if match arg_ty.kind() {
+                ty::Param(_) => false,
+                _ => true,
+            };
             if !cx.tcx
                 .lang_items()
                 .sync_trait()

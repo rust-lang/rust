@@ -3,6 +3,11 @@
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
+fn foo<T>(x: T) {
+    // Should not lint - purposefully ignoring generic args.
+    let a = Arc::new(x);
+}
+
 fn main() {
     // This is safe, as `i32` implements `Send` and `Sync`.
     let a = Arc::new(42);
