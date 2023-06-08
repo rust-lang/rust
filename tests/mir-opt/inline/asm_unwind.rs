@@ -1,6 +1,6 @@
 // Tests inlining of `may_unwind` inline assembly.
 //
-// ignore-wasm32-bare compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // needs-asm-support
 #![feature(asm_unwind)]
 

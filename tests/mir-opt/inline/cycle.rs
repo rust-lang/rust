@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // EMIT_MIR cycle.f.Inline.diff
 #[inline(always)]

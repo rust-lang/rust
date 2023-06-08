@@ -1,5 +1,5 @@
 // unit-test: LowerIntrinsics
-// ignore-wasm32 compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(core_intrinsics, intrinsics, rustc_attrs)]
 #![crate_type = "lib"]

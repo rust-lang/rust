@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-// ignore-wasm32-bare compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // ignore-debug: the debug assertions prevent the inlining we are testing for
 // compile-flags: -Zmir-opt-level=2 -Zinline-mir
 
