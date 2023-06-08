@@ -901,11 +901,11 @@ unsafe fn embed_bitcode(
         llvm::LLVMSetInitializer(llglobal, llconst);
 
         let section = if is_apple {
-            "__LLVM,__bitcode"
+            c"__LLVM,__bitcode"
         } else if is_aix {
-            ".ipa"
+            c".ipa"
         } else {
-            ".llvmbc"
+            c".llvmbc"
         };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
@@ -919,11 +919,11 @@ unsafe fn embed_bitcode(
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
         let section = if is_apple {
-            "__LLVM,__cmdline"
+            c"__LLVM,__cmdline"
         } else if is_aix {
-            ".info"
+            c".info"
         } else {
-            ".llvmcmd"
+            c".llvmcmd"
         };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
