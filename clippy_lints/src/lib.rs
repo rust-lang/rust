@@ -68,6 +68,7 @@ mod renamed_lints;
 mod allow_attributes;
 mod almost_complete_range;
 mod approx_const;
+mod arc_with_non_send_sync;
 mod as_conversions;
 mod asm_syntax;
 mod assertions_on_constants;
@@ -1014,6 +1015,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(missing_fields_in_debug::MissingFieldsInDebug));
     store.register_late_pass(|_| Box::new(endian_bytes::EndianBytes));
     store.register_late_pass(|_| Box::new(redundant_type_annotations::RedundantTypeAnnotations));
+    store.register_late_pass(|_| Box::new(arc_with_non_send_sync::ArcWithNonSendSync));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
