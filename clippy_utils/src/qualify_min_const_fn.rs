@@ -4,17 +4,24 @@
 // differ from the time of `rustc` even if the name stays the same.
 
 use crate::msrvs::Msrv;
+use hir::{Constness, LangItem};
+use rustc_const_eval::transform::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::Obligation;
 use rustc_middle::mir::{
     Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind,
 };
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
+use rustc_middle::ty::{BoundConstness, TraitRef};
 use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::traits::SelectionContext;
 use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
@@ -52,14 +59,13 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     }
 
     for local in &body.local_decls {
-        check_ty(tcx, local.ty, local.source_info.span, false)?;
+        check_ty(tcx, local.ty, local.source_info.span)?;
     }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
         tcx.fn_sig(def_id).subst_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
-        false,
     )?;
 
     for bb in body.basic_blocks.iter() {
@@ -71,7 +77,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     Ok(())
 }
 
-fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, in_drop: bool) -> McfResult {
+fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
     for arg in ty.walk() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
@@ -80,27 +86,6 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, in_drop: bool) ->
             // constants' types, but `walk` will get to them as well.
             GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
         };
-
-        // Only do this check if we're in `TerminatorKind::Drop`, otherwise rustc will sometimes overflow
-        // its stack. This check is unnecessary outside of a `Drop` anyway so it's faster regardless
-        if in_drop && let ty::Adt(def, subst) = ty.kind() {
-            if def.has_non_const_dtor(tcx) && in_drop {
-                return Err((
-                    span,
-                    "cannot drop locals with a non constant destructor in const fn".into(),
-                ));
-            }
-
-            for fields in def.variants().iter().map(|v| &v.fields) {
-                for field in fields {
-                    check_ty(tcx, field.ty(tcx, subst), span, in_drop)?;
-                }
-            }
-
-            for field in def.all_fields() {
-                check_ty(tcx, field.ty(tcx, subst), span, in_drop)?;
-            }
-        }
 
         match ty.kind() {
             ty::Ref(_, _, hir::Mutability::Mut) => {
@@ -288,6 +273,7 @@ fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, b
 
 fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
     let mut cursor = place.projection.as_ref();
+
     while let [ref proj_base @ .., elem] = *cursor {
         cursor = proj_base;
         match elem {
@@ -327,20 +313,19 @@ fn check_terminator<'tcx>(
         | TerminatorKind::Resume
         | TerminatorKind::Terminate
         | TerminatorKind::Unreachable => Ok(()),
-
         TerminatorKind::Drop { place, .. } => {
-            for local in &body.local_decls {
-                check_ty(tcx, local.ty, span, true)?;
+            if !is_ty_const_destruct(tcx, place.ty(&body.local_decls, tcx).ty, body) {
+                return Err((
+                    span,
+                    "cannot drop locals with a non constant destructor in const fn".into(),
+                ));
             }
             check_place(tcx, *place, span, body)
         },
-
         TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
-
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         },
-
         TerminatorKind::Call {
             func,
             args,
@@ -384,7 +369,6 @@ fn check_terminator<'tcx>(
                 Err((span, "can only call other const fns within const fn".into()))
             }
         },
-
         TerminatorKind::Assert {
             cond,
             expected: _,
@@ -392,7 +376,6 @@ fn check_terminator<'tcx>(
             target: _,
             unwind: _,
         } => check_operand(tcx, cond, span, body),
-
         TerminatorKind::InlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
     }
 }
@@ -406,8 +389,7 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
                 // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver`
-                // doesn't accept                  the `-dev` version number so we have to strip it
-                // off.
+                // doesn't accept the `-dev` version number so we have to strip it off.
                 let short_version = since
                     .as_str()
                     .split('-')
@@ -424,4 +406,34 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                 msrv.current().is_none()
             }
         })
+}
+
+fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
+    // Avoid selecting for simple cases, such as builtin types.
+    if ty::util::is_trivially_const_drop(ty) {
+        return true;
+    }
+
+    let obligation = Obligation::new(
+        tcx,
+        ObligationCause::dummy_with_span(body.span),
+        ConstCx::new(tcx, body).param_env.with_constness(Constness::Const),
+        TraitRef::from_lang_item(tcx, LangItem::Destruct, body.span, [ty]).with_constness(BoundConstness::ConstIfConst),
+    );
+
+    let fields_all_const_destruct = if let ty::Adt(def, subst) = ty.kind() && !ty.is_union() {
+        // This is such a mess even rustfmt doesn't wanna touch it
+        def.all_fields()
+            .map(|field| is_ty_const_destruct(tcx, field.ty(tcx, subst), body))
+            .all(|f| f)
+            && def.variants().iter()
+                .map(|variant| variant.fields.iter().map(|field| is_ty_const_destruct(tcx, field.ty(tcx, subst), body)))
+                .all(|mut fs| fs.all(|f| f))
+    } else {
+        true
+    };
+
+    let infcx = tcx.infer_ctxt().build();
+    let mut selcx = SelectionContext::new(&infcx);
+    selcx.select(&obligation).is_ok() && fields_all_const_destruct
 }

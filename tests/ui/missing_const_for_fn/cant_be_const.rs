@@ -13,7 +13,7 @@ extern crate proc_macros;
 
 use proc_macros::with_span;
 
-struct Game;
+struct Game; // You just lost.
 
 // This should not be linted because it's already const
 const fn already_const() -> i32 {
@@ -135,3 +135,5 @@ enum A {
 }
 
 fn b(this: A) {}
+
+fn c(this: Vec<u16>) {}
