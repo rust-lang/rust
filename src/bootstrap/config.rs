@@ -12,6 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fmt;
 use std::fs;
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
@@ -894,8 +895,6 @@ define_config! {
 
 impl Config {
     pub fn default_opts() -> Config {
-        use is_terminal::IsTerminal;
-
         let mut config = Config::default();
         config.llvm_optimize = true;
         config.ninja_in_file = true;
