@@ -147,13 +147,21 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: Box::new(DebugSolver::new()),
+            inspect: match self.tcx.sess.opts.unstable_opts.dump_solver_proof_tree {
+                true => Box::new(DebugSolver::new()),
+                false => Box::new(()),
+            },
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
-        let tree = match ecx.inspect.into_debug_solver() {
+        let tcx = ecx.tcx();
+        match ecx.inspect.into_debug_solver() {
             Some(tree) => match Box::leak(tree) {
-                DebugSolver::GoalEvaluation(tree) => tree,
+                DebugSolver::GoalEvaluation(tree) => {
+                    if tcx.sess.opts.unstable_opts.dump_solver_proof_tree {
+                        println!("{:?}", tree);
+                    }
+                }
                 _ => unreachable!("unable to convert to `DebugSolver::GoalEvaluation`"),
             },
             _ => unreachable!("unable to convert to `DebugSolver::GoalEvaluation`"),
