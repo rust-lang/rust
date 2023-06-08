@@ -713,7 +713,7 @@ impl hash::Hash for TypeId {
         // because:
         // - The hashing algorithm which backs `TypeId` is expected to be
         //   unbiased and high quality, meaning further mixing would be somewhat
-        //   redundant compared to choosing (the lower) 64 bits arbitrarially.
+        //   redundant compared to choosing (the lower) 64 bits arbitrarily.
         // - `Hasher::finish` returns a u64 anyway, so the extra entropy we'd
         //   get from hashing the full value would probably not be useful
         //   (especially given the previous point about the lower 64 bits being
