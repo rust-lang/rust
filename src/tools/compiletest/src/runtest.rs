@@ -1951,7 +1951,9 @@ impl<'test> TestCx<'test> {
         rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
-        if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot")) {
+        if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
+            && !self.config.host_rustcflags.iter().any(|flag| flag == "--sysroot")
+        {
             // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
             rustc.arg("--sysroot").arg(&self.config.sysroot_base);
         }
