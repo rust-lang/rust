@@ -1,4 +1,4 @@
-use core::alloc::{AllocError, Allocator, Layout, Fatal};
+use alloc::alloc::{AllocError, Allocator, Layout, Fatal};
 use core::cell::Cell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;

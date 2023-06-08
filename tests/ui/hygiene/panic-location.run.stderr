@@ -1,2 +1,2 @@
-thread 'main' panicked at 'capacity overflow', library/alloc/src/alloc.rs:460:5
+thread 'main' panicked at 'capacity overflow', library/alloc/src/alloc.rs:650:5
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -376,49 +376,26 @@ pub unsafe trait Allocator {
     type ErrorHandling: ErrorHandling;
 }
 
-/// Trait for handling alloc errors for allocators which
-/// panic or abort instead of returning errors.
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub trait HandleAllocError {
-    /// Globally handle this allocation error
-    fn handle_alloc_error(self) -> !;
+#[unstable(feature = "alloc_internals", issue = "none")]
+#[doc(hidden)]
+pub mod error_handling_sealed {
+    pub trait Sealed {}
 }
+use error_handling_sealed::Sealed;
 
 // FIXME: this trait should be sealed
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub trait ErrorHandling {
+pub trait ErrorHandling: Sealed {
     /// Result type returned by functions that are conditionally fallible.
     ///
     /// - "Infallible" allocators set `type Result<T, E> = T`
     /// - "Fallible" allocators set `type Result<T, E> = Result<T, E>`
-    #[cfg(not(no_global_oom_handling))]
-    type Result<T, E: Error>
-    where
-        E: HandleAllocError;
+    type Result<T, E: Error>;
 
     /// Function to map allocation results into `Self::Result`.
     ///
     /// - For "Infallible" allocators, this should call [`HandleAllocError::handle_alloc_error`]
     /// - For "Fallible" allocators, this is just the identity function
-    #[cfg(not(no_global_oom_handling))]
-    #[must_use]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError;
-
-    /// Result type returned by functions that are conditionally fallible.
-    ///
-    /// - "Infallible" allocators set `type Result<T, E> = T`
-    /// - "Fallible" allocators set `type Result<T, E> = Result<T, E>`
-    #[cfg(no_global_oom_handling)]
-    type Result<T, E: Error>;
-
-    /// Function to map allocation results into `Self::Result`.
-    ///
-    /// - For "Infallible" allocators, this should call [`handle_alloc_error`]
-    /// - For "Fallible" allocators, this is just the identity function
-    #[cfg(no_global_oom_handling)]
     #[must_use]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>;
 }
@@ -431,51 +408,14 @@ pub trait ErrorHandling {
 pub struct Fallible;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
+impl Sealed for Fallible {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
 impl ErrorHandling for Fallible {
-    #[cfg(not(no_global_oom_handling))]
-    type Result<T, E: Error> = Result<T, E>
-    where
-        E: HandleAllocError;
-
-    #[cfg(not(no_global_oom_handling))]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError,
-    {
-        result
-    }
-
-    #[cfg(no_global_oom_handling)]
     type Result<T, E: Error> = Result<T, E>;
 
-    #[cfg(no_global_oom_handling)]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E> {
         result
-    }
-}
-
-/// Error handling mode to use when the user of the type wants to ignore
-/// allocation failures, treating them as a fatal error. Functions
-/// performing allocation will return values directly.
-#[derive(Debug)]
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub struct Fatal;
-
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
-impl ErrorHandling for Fatal {
-    #[cfg(not(no_global_oom_handling))]
-    type Result<T, E: Error> = T
-    where
-        E: HandleAllocError;
-
-    #[cfg(not(no_global_oom_handling))]
-    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
-    where
-        E: HandleAllocError,
-    {
-        result.unwrap_or_else(|e| e.handle_alloc_error())
     }
 }
 
@@ -534,130 +474,4 @@ where
     }
 
     type ErrorHandling = A::ErrorHandling;
-}
-
-/// Wrapper around an existing allocator allowing one to
-/// use a fallible allocator as an infallible one.
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[derive(Debug)]
-pub struct FatalAdapter<A: Allocator<ErrorHandling = Fallible>>(pub A);
-
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: Allocator<ErrorHandling = Fallible>> Allocator for FatalAdapter<A> {
-    fn allocate(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        self.0.allocate(layout)
-    }
-
-    fn allocate_zeroed(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        self.0.allocate_zeroed(layout)
-    }
-
-    unsafe fn deallocate(&self, ptr: core::ptr::NonNull<u8>, layout: Layout) {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.deallocate(ptr, layout) }
-    }
-
-    unsafe fn grow(
-        &self,
-        ptr: core::ptr::NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.grow(ptr, old_layout, new_layout) }
-    }
-
-    unsafe fn grow_zeroed(
-        &self,
-        ptr: core::ptr::NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.grow_zeroed(ptr, old_layout, new_layout) }
-    }
-
-    unsafe fn shrink(
-        &self,
-        ptr: core::ptr::NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.shrink(ptr, old_layout, new_layout) }
-    }
-
-    fn by_ref(&self) -> &Self
-    where
-        Self: Sized,
-    {
-        self
-    }
-
-    type ErrorHandling = Fatal;
-}
-
-/// Wrapper around an existing allocator allowing one to
-/// use an infallible allocator as a fallible one.
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[derive(Debug)]
-pub struct FallibleAdapter<A: Allocator<ErrorHandling = Fatal>>(pub A);
-
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[cfg(not(no_global_oom_handling))]
-unsafe impl<A: Allocator<ErrorHandling = Fatal>> Allocator for FallibleAdapter<A> {
-    fn allocate(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        self.0.allocate(layout)
-    }
-
-    fn allocate_zeroed(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        self.0.allocate_zeroed(layout)
-    }
-
-    unsafe fn deallocate(&self, ptr: core::ptr::NonNull<u8>, layout: Layout) {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.deallocate(ptr, layout) }
-    }
-
-    unsafe fn grow(
-        &self,
-        ptr: core::ptr::NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.grow(ptr, old_layout, new_layout) }
-    }
-
-    unsafe fn grow_zeroed(
-        &self,
-        ptr: core::ptr::NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.grow_zeroed(ptr, old_layout, new_layout) }
-    }
-
-    unsafe fn shrink(
-        &self,
-        ptr: core::ptr::NonNull<u8>,
-        old_layout: Layout,
-        new_layout: Layout,
-    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
-        // SAFETY: the safety contract must be upheld by the caller
-        unsafe { self.0.shrink(ptr, old_layout, new_layout) }
-    }
-
-    fn by_ref(&self) -> &Self
-    where
-        Self: Sized,
-    {
-        self
-    }
-
-    type ErrorHandling = Fallible;
 }

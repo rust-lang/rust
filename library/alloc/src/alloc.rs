@@ -449,6 +449,196 @@ impl<T: Copy> WriteCloneIntoRaw for T {
     }
 }
 
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+use core::error::Error;
+
+/// Trait for handling alloc errors for allocators which
+/// panic or abort instead of returning errors.
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[rustc_specialization_trait]
+pub trait HandleAllocError: Error {
+    /// Globally handle this allocation error
+    fn handle_alloc_error(self) -> !;
+}
+
+/// Error handling mode to use when the user of the type wants to ignore
+/// allocation failures, treating them as a fatal error. Functions
+/// performing allocation will return values directly.
+#[derive(Debug)]
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+pub struct Fatal;
+
+#[unstable(feature = "alloc_internals", issue = "none")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+impl error_handling_sealed::Sealed for Fatal {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+impl ErrorHandling for Fatal {
+    type Result<T, E: Error> = T;
+
+    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E> {
+        /// Hack around lack of `cfg(no_global_oom_handling)` in core.
+        ///
+        /// Using post-monomorphization errors and specialization,
+        /// we can enforce that any error used with `Fatal` implements
+        /// `HandleAllocError`, without requiring that all errors used
+        /// with fallible allocation implement it. This also allows
+        /// for `HandleAllocError` to live with the rest of the
+        /// global allocation handling in the `alloc` crate.
+        trait HandleAllocErrorInternal {
+            fn handle_alloc_error_internal(self) -> !;
+        }
+        impl<E: Error> HandleAllocErrorInternal for E {
+            default fn handle_alloc_error_internal(self) -> ! {
+                const {
+                    panic!(
+                        "user must implement `HandleAllocError` for any error type used with the `Fatal` kind of `ErrorHandling`"
+                    )
+                }
+            }
+        }
+        impl<E: HandleAllocError> HandleAllocErrorInternal for E {
+            fn handle_alloc_error_internal(self) -> ! {
+                self.handle_alloc_error()
+            }
+        }
+
+        result.unwrap_or_else(|e| e.handle_alloc_error_internal())
+    }
+}
+
+/// Wrapper around an existing allocator allowing one to
+/// use a fallible allocator as an infallible one.
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[derive(Debug)]
+pub struct FatalAdapter<A: Allocator<ErrorHandling = Fallible>>(pub A);
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+unsafe impl<A: Allocator<ErrorHandling = Fallible>> Allocator for FatalAdapter<A> {
+    fn allocate(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        self.0.allocate(layout)
+    }
+
+    fn allocate_zeroed(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        self.0.allocate_zeroed(layout)
+    }
+
+    unsafe fn deallocate(&self, ptr: core::ptr::NonNull<u8>, layout: Layout) {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.deallocate(ptr, layout) }
+    }
+
+    unsafe fn grow(
+        &self,
+        ptr: core::ptr::NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.grow(ptr, old_layout, new_layout) }
+    }
+
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: core::ptr::NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.grow_zeroed(ptr, old_layout, new_layout) }
+    }
+
+    unsafe fn shrink(
+        &self,
+        ptr: core::ptr::NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.shrink(ptr, old_layout, new_layout) }
+    }
+
+    fn by_ref(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+
+    type ErrorHandling = Fatal;
+}
+
+/// Wrapper around an existing allocator allowing one to
+/// use an infallible allocator as a fallible one.
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[derive(Debug)]
+pub struct FallibleAdapter<A: Allocator<ErrorHandling = Fatal>>(pub A);
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+unsafe impl<A: Allocator<ErrorHandling = Fatal>> Allocator for FallibleAdapter<A> {
+    fn allocate(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        self.0.allocate(layout)
+    }
+
+    fn allocate_zeroed(&self, layout: Layout) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        self.0.allocate_zeroed(layout)
+    }
+
+    unsafe fn deallocate(&self, ptr: core::ptr::NonNull<u8>, layout: Layout) {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.deallocate(ptr, layout) }
+    }
+
+    unsafe fn grow(
+        &self,
+        ptr: core::ptr::NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.grow(ptr, old_layout, new_layout) }
+    }
+
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: core::ptr::NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.grow_zeroed(ptr, old_layout, new_layout) }
+    }
+
+    unsafe fn shrink(
+        &self,
+        ptr: core::ptr::NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<core::ptr::NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { self.0.shrink(ptr, old_layout, new_layout) }
+    }
+
+    fn by_ref(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+
+    type ErrorHandling = Fallible;
+}
+
+#[cfg(test)]
+pub use std::alloc::{FallibleAdapter, Fatal, FatalAdapter, HandleAllocError};
+
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::{TryReserveError, TryReserveErrorKind};
 
