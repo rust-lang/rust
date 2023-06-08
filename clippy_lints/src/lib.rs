@@ -699,7 +699,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     let too_large_for_stack = conf.too_large_for_stack;
     store.register_late_pass(move |_| Box::new(escape::BoxedLocal { too_large_for_stack }));
-    store.register_late_pass(move |_| Box::new(vec::UselessVec { too_large_for_stack }));
+    store.register_late_pass(move |_| {
+        Box::new(vec::UselessVec {
+            too_large_for_stack,
+            msrv: msrv(),
+        })
+    });
     store.register_late_pass(|_| Box::new(panic_unimplemented::PanicUnimplemented));
     store.register_late_pass(|_| Box::new(strings::StringLitAsBytes));
     store.register_late_pass(|_| Box::new(derive::Derive));

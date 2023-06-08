@@ -1,15 +1,12 @@
 //@run-rustfix
 #![warn(clippy::useless_vec)]
-#![allow(clippy::nonstandard_macro_braces, clippy::uninlined_format_args)]
+#![allow(clippy::nonstandard_macro_braces, clippy::uninlined_format_args, unused)]
 
 use std::rc::Rc;
 
 struct StructWithVec {
     _x: Vec<i32>,
 }
-
-#[derive(Debug)]
-struct NonCopy;
 
 fn on_slice(_: &[u8]) {}
 
@@ -66,14 +63,6 @@ fn main() {
     on_mut_slice(&mut vec![2; line.length]);
     on_mut_slice(&mut vec![2; line.length()]);
 
-    for a in vec![1, 2, 3] {
-        println!("{:?}", a);
-    }
-
-    for a in vec![NonCopy, NonCopy] {
-        println!("{:?}", a);
-    }
-
     on_vec(&vec![1; 201]); // Ok, size of `vec` higher than `too_large_for_stack`
     on_mut_vec(&mut vec![1; 201]); // Ok, size of `vec` higher than `too_large_for_stack`
 
@@ -121,4 +110,26 @@ fn main() {
 
     // Too large
     let _x = vec![1; 201];
+}
+
+#[clippy::msrv = "1.53"]
+fn above() {
+    for a in vec![1, 2, 3] {
+        let _: usize = a;
+    }
+
+    for a in vec![String::new(), String::new()] {
+        let _: String = a;
+    }
+}
+
+#[clippy::msrv = "1.52"]
+fn below() {
+    for a in vec![1, 2, 3] {
+        let _: usize = a;
+    }
+
+    for a in vec![String::new(), String::new()] {
+        let _: String = a;
+    }
 }
