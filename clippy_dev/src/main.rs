@@ -35,7 +35,7 @@ fn main() {
         },
         Some(("new_lint", matches)) => {
             match new_lint::create(
-                matches.get_one::<String>("pass"),
+                matches.get_one::<String>("pass").unwrap(),
                 matches.get_one::<String>("name"),
                 matches.get_one::<String>("category").map(String::as_str),
                 matches.get_one::<String>("type").map(String::as_str),
@@ -176,7 +176,7 @@ fn get_clap_config() -> ArgMatches {
                         .help("Specify whether the lint runs during the early or late pass")
                         .value_parser(["early", "late"])
                         .conflicts_with("type")
-                        .required_unless_present("type"),
+                        .default_value("late"),
                     Arg::new("name")
                         .short('n')
                         .long("name")
