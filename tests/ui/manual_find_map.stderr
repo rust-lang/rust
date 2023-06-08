@@ -1,5 +1,5 @@
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:8:19
+  --> $DIR/manual_find_map.rs:9:19
    |
 LL |     let _ = (0..).find(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_opt(a))`
@@ -7,19 +7,19 @@ LL |     let _ = (0..).find(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap()
    = note: `-D clippy::manual-find-map` implied by `-D warnings`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:11:19
+  --> $DIR/manual_find_map.rs:12:19
    |
 LL |     let _ = (0..).find(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_opt(a))`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:14:19
+  --> $DIR/manual_find_map.rs:15:19
    |
 LL |     let _ = (0..).find(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_res(a).ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:17:10
+  --> $DIR/manual_find_map.rs:18:10
    |
 LL |           .find(|&x| to_ref(to_opt(x)).is_some())
    |  __________^
@@ -27,7 +27,7 @@ LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| *to_ref(to_opt(y)))`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:20:10
+  --> $DIR/manual_find_map.rs:21:10
    |
 LL |           .find(|x| to_ref(to_opt(*x)).is_some())
    |  __________^
@@ -35,7 +35,7 @@ LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| *to_ref(to_opt(y)))`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:24:10
+  --> $DIR/manual_find_map.rs:25:10
    |
 LL |           .find(|&x| to_ref(to_res(x)).is_ok())
    |  __________^
@@ -43,7 +43,7 @@ LL | |         .map(|y| to_ref(to_res(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| to_ref(to_res(y)).ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:27:10
+  --> $DIR/manual_find_map.rs:28:10
    |
 LL |           .find(|x| to_ref(to_res(*x)).is_ok())
    |  __________^
@@ -51,91 +51,91 @@ LL | |         .map(|y| to_ref(to_res(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| to_ref(to_res(y)).ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:33:26
+  --> $DIR/manual_find_map.rs:34:26
    |
 LL |     iter::<Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x)`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:34:27
+  --> $DIR/manual_find_map.rs:35:27
    |
 LL |     iter::<&Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| *x)`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:35:28
+  --> $DIR/manual_find_map.rs:36:28
    |
 LL |     iter::<&&Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| **x)`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:36:27
+  --> $DIR/manual_find_map.rs:37:27
    |
 LL |     iter::<Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:37:28
+  --> $DIR/manual_find_map.rs:38:28
    |
 LL |     iter::<&Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:38:31
+  --> $DIR/manual_find_map.rs:39:31
    |
 LL |     iter::<&Option<String>>().find(|x| x.is_some()).map(|x| x.as_deref().unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.as_deref())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:39:31
+  --> $DIR/manual_find_map.rs:40:31
    |
 LL |     iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:41:30
+  --> $DIR/manual_find_map.rs:42:30
    |
 LL |     iter::<Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:42:31
+  --> $DIR/manual_find_map.rs:43:31
    |
 LL |     iter::<&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:43:32
+  --> $DIR/manual_find_map.rs:44:32
    |
 LL |     iter::<&&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:44:31
+  --> $DIR/manual_find_map.rs:45:31
    |
 LL |     iter::<Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:45:32
+  --> $DIR/manual_find_map.rs:46:32
    |
 LL |     iter::<&Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:46:35
+  --> $DIR/manual_find_map.rs:47:35
    |
 LL |     iter::<&Result<String, ()>>().find(|x| x.is_ok()).map(|x| x.as_deref().unwrap());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.as_deref().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:47:35
+  --> $DIR/manual_find_map.rs:48:35
    |
 LL |     iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:95:10
+  --> $DIR/manual_find_map.rs:96:10
    |
 LL |           .find(|f| f.option_field.is_some())
    |  __________^
@@ -143,7 +143,7 @@ LL | |         .map(|f| f.option_field.clone().unwrap());
    | |_________________________________________________^ help: try: `find_map(|f| f.option_field.clone())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:100:10
+  --> $DIR/manual_find_map.rs:101:10
    |
 LL |           .find(|f| f.ref_field.is_some())
    |  __________^
@@ -151,7 +151,7 @@ LL | |         .map(|f| f.ref_field.cloned().unwrap());
    | |_______________________________________________^ help: try: `find_map(|f| f.ref_field.cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:105:10
+  --> $DIR/manual_find_map.rs:106:10
    |
 LL |           .find(|f| f.ref_field.is_some())
    |  __________^
@@ -159,7 +159,7 @@ LL | |         .map(|f| f.ref_field.copied().unwrap());
    | |_______________________________________________^ help: try: `find_map(|f| f.ref_field.copied())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:110:10
+  --> $DIR/manual_find_map.rs:111:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -167,7 +167,7 @@ LL | |         .map(|f| f.result_field.clone().unwrap());
    | |_________________________________________________^ help: try: `find_map(|f| f.result_field.clone().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:115:10
+  --> $DIR/manual_find_map.rs:116:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -175,7 +175,7 @@ LL | |         .map(|f| f.result_field.as_ref().unwrap());
    | |__________________________________________________^ help: try: `find_map(|f| f.result_field.as_ref().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:120:10
+  --> $DIR/manual_find_map.rs:121:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -183,7 +183,7 @@ LL | |         .map(|f| f.result_field.as_deref().unwrap());
    | |____________________________________________________^ help: try: `find_map(|f| f.result_field.as_deref().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:125:10
+  --> $DIR/manual_find_map.rs:126:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -191,7 +191,7 @@ LL | |         .map(|f| f.result_field.as_mut().unwrap());
    | |__________________________________________________^ help: try: `find_map(|f| f.result_field.as_mut().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:130:10
+  --> $DIR/manual_find_map.rs:131:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -199,7 +199,7 @@ LL | |         .map(|f| f.result_field.as_deref_mut().unwrap());
    | |________________________________________________________^ help: try: `find_map(|f| f.result_field.as_deref_mut().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> $DIR/manual_find_map.rs:135:10
+  --> $DIR/manual_find_map.rs:136:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^

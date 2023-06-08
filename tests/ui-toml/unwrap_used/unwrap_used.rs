@@ -1,6 +1,11 @@
 //@compile-flags: --test
 
-#![allow(unused_mut, clippy::get_first, clippy::from_iter_instead_of_collect)]
+#![allow(
+    unused_mut,
+    clippy::get_first,
+    clippy::from_iter_instead_of_collect,
+    clippy::useless_vec
+)]
 #![warn(clippy::unwrap_used)]
 #![deny(clippy::get_unwrap)]
 

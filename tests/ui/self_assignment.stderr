@@ -1,5 +1,5 @@
 error: self-assignment of `a` to `a`
-  --> $DIR/self_assignment.rs:12:5
+  --> $DIR/self_assignment.rs:13:5
    |
 LL |     a = a;
    |     ^^^^^
@@ -7,61 +7,61 @@ LL |     a = a;
    = note: `-D clippy::self-assignment` implied by `-D warnings`
 
 error: self-assignment of `*b` to `*b`
-  --> $DIR/self_assignment.rs:13:5
+  --> $DIR/self_assignment.rs:14:5
    |
 LL |     *b = *b;
    |     ^^^^^^^
 
 error: self-assignment of `s` to `s`
-  --> $DIR/self_assignment.rs:14:5
+  --> $DIR/self_assignment.rs:15:5
    |
 LL |     s = s;
    |     ^^^^^
 
 error: self-assignment of `s.a` to `s.a`
-  --> $DIR/self_assignment.rs:15:5
+  --> $DIR/self_assignment.rs:16:5
    |
 LL |     s.a = s.a;
    |     ^^^^^^^^^
 
 error: self-assignment of `s.b[5 + 5]` to `s.b[10]`
-  --> $DIR/self_assignment.rs:16:5
+  --> $DIR/self_assignment.rs:17:5
    |
 LL |     s.b[10] = s.b[5 + 5];
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: self-assignment of `s.c[0][1]` to `s.c[0][1]`
-  --> $DIR/self_assignment.rs:17:5
+  --> $DIR/self_assignment.rs:18:5
    |
 LL |     s.c[0][1] = s.c[0][1];
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: self-assignment of `s.b[a]` to `s.b[a]`
-  --> $DIR/self_assignment.rs:18:5
+  --> $DIR/self_assignment.rs:19:5
    |
 LL |     s.b[a] = s.b[a];
    |     ^^^^^^^^^^^^^^^
 
 error: self-assignment of `*s.e` to `*s.e`
-  --> $DIR/self_assignment.rs:19:5
+  --> $DIR/self_assignment.rs:20:5
    |
 LL |     *s.e = *s.e;
    |     ^^^^^^^^^^^
 
 error: self-assignment of `s.b[10 + a]` to `s.b[a + 10]`
-  --> $DIR/self_assignment.rs:20:5
+  --> $DIR/self_assignment.rs:21:5
    |
 LL |     s.b[a + 10] = s.b[10 + a];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: self-assignment of `t.1` to `t.1`
-  --> $DIR/self_assignment.rs:23:5
+  --> $DIR/self_assignment.rs:24:5
    |
 LL |     t.1 = t.1;
    |     ^^^^^^^^^
 
 error: self-assignment of `(t.0)` to `t.0`
-  --> $DIR/self_assignment.rs:24:5
+  --> $DIR/self_assignment.rs:25:5
    |
 LL |     t.0 = (t.0);
    |     ^^^^^^^^^^^

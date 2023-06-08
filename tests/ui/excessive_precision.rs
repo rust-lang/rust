@@ -1,6 +1,6 @@
 //@run-rustfix
 #![warn(clippy::excessive_precision)]
-#![allow(dead_code, unused_variables, clippy::print_literal)]
+#![allow(dead_code, unused_variables, clippy::print_literal, clippy::useless_vec)]
 
 fn main() {
     // Consts

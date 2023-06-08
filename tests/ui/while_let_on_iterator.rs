@@ -6,7 +6,8 @@
     clippy::manual_find,
     clippy::never_loop,
     clippy::redundant_closure_call,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::useless_vec
 )]
 
 fn base() {

@@ -1,5 +1,5 @@
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:33:5
+  --> $DIR/match_single_binding.rs:34:5
    |
 LL | /     match (a, b, c) {
 LL | |         (x, y, z) => {
@@ -18,7 +18,7 @@ LL +     }
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:39:5
+  --> $DIR/match_single_binding.rs:40:5
    |
 LL | /     match (a, b, c) {
 LL | |         (x, y, z) => println!("{} {} {}", x, y, z),
@@ -32,7 +32,7 @@ LL +     println!("{} {} {}", x, y, z);
    |
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:56:5
+  --> $DIR/match_single_binding.rs:57:5
    |
 LL | /     match a {
 LL | |         _ => println!("whatever"),
@@ -40,7 +40,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `println!("whatever");`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:60:5
+  --> $DIR/match_single_binding.rs:61:5
    |
 LL | /     match a {
 LL | |         _ => {
@@ -59,7 +59,7 @@ LL +     }
    |
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:67:5
+  --> $DIR/match_single_binding.rs:68:5
    |
 LL | /     match a {
 LL | |         _ => {
@@ -81,7 +81,7 @@ LL +     }
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:77:5
+  --> $DIR/match_single_binding.rs:78:5
    |
 LL | /     match p {
 LL | |         Point { x, y } => println!("Coords: ({}, {})", x, y),
@@ -95,7 +95,7 @@ LL +     println!("Coords: ({}, {})", x, y);
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:81:5
+  --> $DIR/match_single_binding.rs:82:5
    |
 LL | /     match p {
 LL | |         Point { x: x1, y: y1 } => println!("Coords: ({}, {})", x1, y1),
@@ -109,7 +109,7 @@ LL +     println!("Coords: ({}, {})", x1, y1);
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:86:5
+  --> $DIR/match_single_binding.rs:87:5
    |
 LL | /     match x {
 LL | |         ref r => println!("Got a reference to {}", r),
@@ -123,7 +123,7 @@ LL +     println!("Got a reference to {}", r);
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:91:5
+  --> $DIR/match_single_binding.rs:92:5
    |
 LL | /     match x {
 LL | |         ref mut mr => println!("Got a mutable reference to {}", mr),
@@ -137,7 +137,7 @@ LL +     println!("Got a mutable reference to {}", mr);
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:95:5
+  --> $DIR/match_single_binding.rs:96:5
    |
 LL | /     let product = match coords() {
 LL | |         Point { x, y } => x * y,
@@ -151,7 +151,7 @@ LL +     let product = x * y;
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:103:18
+  --> $DIR/match_single_binding.rs:104:18
    |
 LL |           .map(|i| match i.unwrap() {
    |  __________________^
@@ -168,7 +168,7 @@ LL ~         })
    |
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:129:5
+  --> $DIR/match_single_binding.rs:130:5
    |
 LL | /     match x {
 LL | |         // =>
@@ -177,7 +177,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `println!("Not an array index start")`
 
 error: this assignment could be simplified
-  --> $DIR/match_single_binding.rs:138:5
+  --> $DIR/match_single_binding.rs:139:5
    |
 LL | /     val = match val.split_at(idx) {
 LL | |         (pre, suf) => {
@@ -197,7 +197,7 @@ LL ~     };
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> $DIR/match_single_binding.rs:151:16
+  --> $DIR/match_single_binding.rs:152:16
    |
 LL |       let _ = || match side_effects() {
    |  ________________^
@@ -214,7 +214,7 @@ LL ~     };
    |
 
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:157:5
+  --> $DIR/match_single_binding.rs:158:5
    |
 LL | /     match r {
 LL | |         x => match x {
@@ -239,7 +239,7 @@ LL ~     };
    |
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:170:5
+  --> $DIR/match_single_binding.rs:171:5
    |
 LL | /     match 1 {
 LL | |         _ => (),
@@ -247,7 +247,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `();`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:174:13
+  --> $DIR/match_single_binding.rs:175:13
    |
 LL |       let a = match 1 {
    |  _____________^
@@ -256,7 +256,7 @@ LL | |     };
    | |_____^ help: consider using the match body instead: `()`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:178:5
+  --> $DIR/match_single_binding.rs:179:5
    |
 LL | /     match 1 {
 LL | |         _ => side_effects(),
@@ -264,7 +264,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `side_effects();`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:182:13
+  --> $DIR/match_single_binding.rs:183:13
    |
 LL |       let b = match 1 {
    |  _____________^
@@ -273,7 +273,7 @@ LL | |     };
    | |_____^ help: consider using the match body instead: `side_effects()`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:186:5
+  --> $DIR/match_single_binding.rs:187:5
    |
 LL | /     match 1 {
 LL | |         _ => println!("1"),
@@ -281,7 +281,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `println!("1");`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:190:13
+  --> $DIR/match_single_binding.rs:191:13
    |
 LL |       let c = match 1 {
    |  _____________^
@@ -290,7 +290,7 @@ LL | |     };
    | |_____^ help: consider using the match body instead: `println!("1")`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:195:9
+  --> $DIR/match_single_binding.rs:196:9
    |
 LL | /         match 1 {
 LL | |             _ => (),
@@ -298,7 +298,7 @@ LL | |         },
    | |_________^ help: consider using the match body instead: `()`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:198:9
+  --> $DIR/match_single_binding.rs:199:9
    |
 LL | /         match 1 {
 LL | |             _ => side_effects(),
@@ -306,7 +306,7 @@ LL | |         },
    | |_________^ help: consider using the match body instead: `side_effects()`
 
 error: this match could be replaced by its body itself
-  --> $DIR/match_single_binding.rs:201:9
+  --> $DIR/match_single_binding.rs:202:9
    |
 LL | /         match 1 {
 LL | |             _ => println!("1"),

@@ -1,4 +1,5 @@
 #![warn(clippy::match_on_vec_items)]
+#![allow(clippy::useless_vec)]
 
 fn match_with_wildcard() {
     let arr = vec![0, 1, 2, 3];

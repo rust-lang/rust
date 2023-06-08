@@ -1,5 +1,6 @@
 //@aux-build:option_helpers.rs
 #![warn(clippy::search_is_some)]
+#![allow(clippy::useless_vec)]
 #![allow(dead_code)]
 extern crate option_helpers;
 use option_helpers::IteratorFalsePositives;
