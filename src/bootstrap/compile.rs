@@ -169,6 +169,11 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
+        // See src/bootstrap/synthetic_targets.rs
+        if target.is_synthetic() {
+            cargo.env("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET", "1");
+        }
+
         let _guard = builder.msg(
             Kind::Build,
             compiler.stage,
