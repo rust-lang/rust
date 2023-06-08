@@ -418,18 +418,18 @@ fn test_retain() {
 }
 
 #[test]
-fn test_drain_filter() {
+fn test_extract_if() {
     let mut x: HashSet<_> = [1].iter().copied().collect();
     let mut y: HashSet<_> = [1].iter().copied().collect();
 
-    x.drain_filter(|_| true);
-    y.drain_filter(|_| false);
+    x.extract_if(|_| true).for_each(drop);
+    y.extract_if(|_| false).for_each(drop);
     assert_eq!(x.len(), 0);
     assert_eq!(y.len(), 1);
 }
 
 #[test]
-fn test_drain_filter_drop_panic_leak() {
+fn test_extract_if_drop_panic_leak() {
     static PREDS: AtomicU32 = AtomicU32::new(0);
     static DROPS: AtomicU32 = AtomicU32::new(0);
 
@@ -446,19 +446,20 @@ fn test_drain_filter_drop_panic_leak() {
     let mut set = (0..3).map(|i| D(i)).collect::<HashSet<_>>();
 
     catch_unwind(move || {
-        drop(set.drain_filter(|_| {
+        set.extract_if(|_| {
             PREDS.fetch_add(1, Ordering::SeqCst);
             true
-        }))
+        })
+        .for_each(drop)
     })
     .ok();
 
-    assert_eq!(PREDS.load(Ordering::SeqCst), 3);
+    assert_eq!(PREDS.load(Ordering::SeqCst), 2);
     assert_eq!(DROPS.load(Ordering::SeqCst), 3);
 }
 
 #[test]
-fn test_drain_filter_pred_panic_leak() {
+fn test_extract_if_pred_panic_leak() {
     static PREDS: AtomicU32 = AtomicU32::new(0);
     static DROPS: AtomicU32 = AtomicU32::new(0);
 
@@ -473,10 +474,11 @@ fn test_drain_filter_pred_panic_leak() {
     let mut set: HashSet<_> = (0..3).map(|_| D).collect();
 
     catch_unwind(AssertUnwindSafe(|| {
-        drop(set.drain_filter(|_| match PREDS.fetch_add(1, Ordering::SeqCst) {
+        set.extract_if(|_| match PREDS.fetch_add(1, Ordering::SeqCst) {
             0 => true,
             _ => panic!(),
-        }))
+        })
+        .for_each(drop)
     }))
     .ok();
 

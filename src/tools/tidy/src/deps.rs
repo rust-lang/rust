@@ -108,6 +108,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "adler",
     "ahash",
     "aho-corasick",
+    "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
     "ansi_term",
     "ar_archive_writer",
