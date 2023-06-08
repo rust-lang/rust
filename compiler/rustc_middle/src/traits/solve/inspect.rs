@@ -3,6 +3,12 @@ use crate::ty;
 use std::fmt::{Debug, Write};
 
 #[derive(Eq, PartialEq, Hash, HashStable)]
+pub enum CacheHit {
+    Provisional,
+    Global,
+}
+
+#[derive(Eq, PartialEq, Hash, HashStable)]
 pub struct GoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
     pub canonicalized_goal: Option<CanonicalInput<'tcx>>,
@@ -12,7 +18,7 @@ pub struct GoalEvaluation<'tcx> {
     /// is represented as an entry in this vec.
     pub evaluation_steps: Vec<GoalEvaluationStep<'tcx>>,
 
-    pub cache_hit: bool,
+    pub cache_hit: Option<CacheHit>,
 
     pub result: Option<QueryResult<'tcx>>,
 }
@@ -92,8 +98,9 @@ impl ProofTreeFormatter<'_, '_> {
         writeln!(f, "CANONICALIZED: {:?}", goal.canonicalized_goal)?;
 
         match goal.cache_hit {
-            true => writeln!(f, "CACHE HIT: {:?}", goal.result),
-            false => {
+            Some(CacheHit::Global) => writeln!(f, "GLOBAL CACHE HIT: {:?}", goal.result),
+            Some(CacheHit::Provisional) => writeln!(f, "PROVISIONAL CACHE HIT: {:?}", goal.result),
+            None => {
                 for (n, step) in goal.evaluation_steps.iter().enumerate() {
                     let f = &mut *self.f;
                     writeln!(f, "REVISION {n}: {:?}", step.result.unwrap())?;

@@ -23,7 +23,7 @@ pub trait InspectSolve<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Box<dyn InspectSolve<'tcx> + 'tcx>;
     fn canonicalized_goal(&mut self, canonical_goal: CanonicalInput<'tcx>);
-    fn cache_hit(&mut self);
+    fn cache_hit(&mut self, cache_hit: CacheHit);
     fn goal_evaluation(&mut self, goal_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>);
 
     fn new_goal_evaluation_step(
@@ -59,7 +59,7 @@ impl<'tcx> InspectSolve<'tcx> for () {
         Box::new(())
     }
     fn canonicalized_goal(&mut self, _canonical_goal: CanonicalInput<'tcx>) {}
-    fn cache_hit(&mut self) {}
+    fn cache_hit(&mut self, _cache_hit: CacheHit) {}
     fn goal_evaluation(&mut self, _goal_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>) {}
 
     fn new_goal_evaluation_step(
@@ -104,7 +104,7 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
             uncanonicalized_goal: goal,
             canonicalized_goal: None,
             evaluation_steps: vec![],
-            cache_hit: false,
+            cache_hit: None,
             result: None,
         }))
     }
@@ -117,9 +117,11 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
             _ => unreachable!(),
         }
     }
-    fn cache_hit(&mut self) {
+    fn cache_hit(&mut self, cache_hit: CacheHit) {
         match self {
-            DebugSolver::GoalEvaluation(goal_evaluation) => goal_evaluation.cache_hit = true,
+            DebugSolver::GoalEvaluation(goal_evaluation) => {
+                goal_evaluation.cache_hit = Some(cache_hit)
+            }
             _ => unreachable!(),
         };
     }
