@@ -1,7 +1,4 @@
 //@aux-build:proc_macros.rs
-//@revisions: set above
-//@[set] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/set
-//@[above] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/above
 #![rustfmt::skip]
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
