@@ -47,10 +47,7 @@ impl LateLintPass<'_> for ArcWithNonSendSync {
             if let ExprKind::Path(func_path) = func.kind;
             if last_path_segment(&func_path).ident.name == sym::new;
             if let arg_ty = cx.typeck_results().expr_ty(arg);
-            if match arg_ty.kind() {
-                ty::Param(_) => false,
-                _ => true,
-            };
+            if !matches!(arg_ty.kind(), ty::Param(_));
             if !cx.tcx
                 .lang_items()
                 .sync_trait()
