@@ -4,7 +4,7 @@
 // differ from the time of `rustc` even if the name stays the same.
 
 use crate::msrvs::Msrv;
-use hir::{Constness, LangItem};
+use hir::LangItem;
 use rustc_const_eval::transform::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -14,14 +14,14 @@ use rustc_middle::mir::{
     Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind,
 };
-use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::{ImplSource, ObligationCause};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
 use rustc_middle::ty::{BoundConstness, TraitRef};
 use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_trait_selection::traits::SelectionContext;
+use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
 use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
@@ -135,9 +135,9 @@ fn check_rvalue<'tcx>(
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-            check_place(tcx, *place, span, body)
+            check_place(tcx, *place, span, body, false)
         },
-        Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body),
+        Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, false),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
         | Rvalue::Cast(
@@ -230,14 +230,14 @@ fn check_statement<'tcx>(
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(box (place, rval)) => {
-            check_place(tcx, *place, span, body)?;
+            check_place(tcx, *place, span, body, false)?;
             check_rvalue(tcx, body, def_id, rval, span)
         },
 
-        StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body),
+        StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body, false),
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
-            check_place(tcx, **place, span, body)
+            check_place(tcx, **place, span, body, false)
         },
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
@@ -263,7 +263,8 @@ fn check_statement<'tcx>(
 
 fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
     match operand {
-        Operand::Move(place) | Operand::Copy(place) => check_place(tcx, *place, span, body),
+        Operand::Move(place) => check_place(tcx, *place, span, body, true),
+        Operand::Copy(place) => check_place(tcx, *place, span, body, false),
         Operand::Constant(c) => match c.check_static_ptr(tcx) {
             Some(_) => Err((span, "cannot access `static` items in const fn".into())),
             None => Ok(()),
@@ -271,13 +272,20 @@ fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, b
     }
 }
 
-fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
+fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>, in_move: bool) -> McfResult {
     let mut cursor = place.projection.as_ref();
 
     while let [ref proj_base @ .., elem] = *cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Field(..) => {
+            ProjectionElem::Field(_, ty) => {
+                if !is_ty_const_destruct(tcx, ty, body) && in_move {
+                    return Err((
+                        span,
+                        "cannot drop locals with a non constant destructor in const fn".into(),
+                    ));
+                }
+
                 let base_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
                     // No union field accesses in `const fn`
@@ -320,7 +328,7 @@ fn check_terminator<'tcx>(
                     "cannot drop locals with a non constant destructor in const fn".into(),
                 ));
             }
-            check_place(tcx, *place, span, body)
+            check_place(tcx, *place, span, body, false)
         },
         TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
@@ -408,6 +416,7 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
         })
 }
 
+#[expect(clippy::similar_names)] // bit too pedantic
 fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
     // Avoid selecting for simple cases, such as builtin types.
     if ty::util::is_trivially_const_drop(ty) {
@@ -417,23 +426,24 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
     let obligation = Obligation::new(
         tcx,
         ObligationCause::dummy_with_span(body.span),
-        ConstCx::new(tcx, body).param_env.with_constness(Constness::Const),
+        ConstCx::new(tcx, body).param_env.with_const(),
         TraitRef::from_lang_item(tcx, LangItem::Destruct, body.span, [ty]).with_constness(BoundConstness::ConstIfConst),
     );
 
-    let fields_all_const_destruct = if let ty::Adt(def, subst) = ty.kind() && !ty.is_union() {
-        // This is such a mess even rustfmt doesn't wanna touch it
-        def.all_fields()
-            .map(|field| is_ty_const_destruct(tcx, field.ty(tcx, subst), body))
-            .all(|f| f)
-            && def.variants().iter()
-                .map(|variant| variant.fields.iter().map(|field| is_ty_const_destruct(tcx, field.ty(tcx, subst), body)))
-                .all(|mut fs| fs.all(|f| f))
-    } else {
-        true
-    };
-
     let infcx = tcx.infer_ctxt().build();
     let mut selcx = SelectionContext::new(&infcx);
-    selcx.select(&obligation).is_ok() && fields_all_const_destruct
+    let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
+        return false;
+    };
+
+    if !matches!(
+        impl_src,
+        ImplSource::ConstDestruct(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+    ) {
+        return false;
+    }
+
+    let ocx = ObligationCtxt::new(&infcx);
+    ocx.register_obligations(impl_src.nested_obligations());
+    ocx.select_all_or_error().is_empty()
 }

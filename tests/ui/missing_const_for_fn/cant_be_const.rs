@@ -127,6 +127,7 @@ with_span! {
     fn dont_check_in_proc_macro() {}
 }
 
+// Do not lint `String` has `Vec<u8>`, which cannot be dropped in const contexts
 fn a(this: String) {}
 
 enum A {
@@ -134,6 +135,25 @@ enum A {
     N,
 }
 
+// Same here.
 fn b(this: A) {}
 
+// Minimized version of `a`.
 fn c(this: Vec<u16>) {}
+
+struct F(A);
+
+// Do not lint
+fn f(this: F) {}
+
+// Do not lint
+fn g<T>(this: T) {}
+
+struct Issue10617(String);
+
+impl Issue10617 {
+    // Do not lint
+    pub fn name(self) -> String {
+        self.0
+    }
+}
