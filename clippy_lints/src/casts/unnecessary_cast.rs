@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{get_parent_expr, is_ty_alias, path_to_local};
+use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -27,17 +27,23 @@ pub(super) fn check<'tcx>(
         // check both mutability and type are the same
         if cast_from.kind() == cast_to.kind();
         if let ExprKind::Cast(_, cast_to_hir) = expr.kind;
+        // Ignore casts to e.g. type aliases and infer types
+        // - p as pointer_alias
+        // - p as _
+        if let TyKind::Ptr(to_pointee) = cast_to_hir.kind;
         then {
-            if_chain! {
-                if let TyKind::Path(qpath) = cast_to_hir.kind;
-                if is_ty_alias(&qpath);
-                then {
-                    return false;
-                }
-            }
-
-            if let TyKind::Infer = cast_to_hir.kind {
-                return false;
+            match to_pointee.ty.kind {
+                // Ignore casts to pointers that are aliases or cfg dependant, e.g.
+                // - p as *const std::ffi::c_char (alias)
+                // - p as *const std::os::raw::c_char (cfg dependant)
+                TyKind::Path(qpath) => {
+                    if is_ty_alias(&qpath) || is_hir_ty_cfg_dependant(cx, to_pointee.ty) {
+                        return false;
+                    }
+                },
+                // Ignore `p as *const _`
+                TyKind::Infer => return false,
+                _ => {},
             }
 
             span_lint_and_sugg(
