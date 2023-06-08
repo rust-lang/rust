@@ -17,10 +17,10 @@ declare_clippy_lint! {
     /// Wrapping a type in Arc doesn't add thread safety to the underlying data, so data races
     /// could occur when touching the underlying data.
     ///
-    /// ### Example.
+    /// ### Example
     /// ```rust
-    /// use std::cell::RefCell;
-    /// use std::sync::Arc;
+    /// # use std::cell::RefCell;
+    /// # use std::sync::Arc;
     ///
     /// fn main() {
     ///     // This is safe, as `i32` implements `Send` and `Sync`.
@@ -29,7 +29,6 @@ declare_clippy_lint! {
     ///     // This is not safe, as `RefCell` does not implement `Sync`.
     ///     let b = Arc::new(RefCell::new(42));
     /// }
-    /// ```
     /// ```
     #[clippy::version = "1.72.0"]
     pub ARC_WITH_NON_SEND_SYNC,
@@ -63,7 +62,7 @@ impl LateLintPass<'_> for ArcWithNonSendSync {
                     "usage of `Arc<T>` where `T` is not `Send` or `Sync`",
                     None,
                     "consider using `Rc<T>` instead or wrapping `T` in a std::sync type like \
-                    Mutex<T>",
+                    `Mutex<T>`",
                 );
             }
         }
