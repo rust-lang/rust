@@ -3281,7 +3281,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.71.0"]
     pub DRAIN_COLLECT,
     perf,
-    "description"
+    "calling `.drain(..).collect()` to move all elements into a new collection"
 }
 
 pub struct Methods {
