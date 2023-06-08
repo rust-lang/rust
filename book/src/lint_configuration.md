@@ -338,7 +338,7 @@ The maximum allowed size for arrays on the stack
 * [`large_const_arrays`](https://rust-lang.github.io/rust-clippy/master/index.html#large_const_arrays)
 
 
-### stack-size-threshold
+## `stack-size-threshold`
 The maximum allowed stack size for functions in bytes
 
 **Default Value:** `512000` (`u64`)
@@ -346,7 +346,7 @@ The maximum allowed stack size for functions in bytes
 * [large_stack_frames](https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_frames)
 
 
-### vec-box-size-threshold
+## `vec-box-size-threshold`
 The size of the boxed type in bytes, where boxing in a `Vec` is allowed
 
 **Default Value:** `4096` (`u64`)
