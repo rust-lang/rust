@@ -1670,7 +1670,7 @@ pub struct TargetOptions {
     pub static_position_independent_executables: bool,
     /// Determines if the target always requires using the PLT for indirect
     /// library calls or not. This controls the default value of the `-Z plt` flag.
-    pub needs_plt: bool,
+    pub plt_by_default: bool,
     /// Either partial, full, or off. Full RELRO makes the dynamic linker
     /// resolve all symbols at startup and marks the GOT read-only before
     /// starting the program, preventing overwriting the GOT.
@@ -1992,7 +1992,7 @@ impl Default for TargetOptions {
             no_default_libraries: true,
             position_independent_executables: false,
             static_position_independent_executables: false,
-            needs_plt: false,
+            plt_by_default: true,
             relro_level: RelroLevel::None,
             pre_link_objects: Default::default(),
             post_link_objects: Default::default(),
@@ -2665,7 +2665,7 @@ impl Target {
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
         key!(static_position_independent_executables, bool);
-        key!(needs_plt, bool);
+        key!(plt_by_default, bool);
         key!(relro_level, RelroLevel)?;
         key!(archive_format);
         key!(allow_asm, bool);
@@ -2921,7 +2921,7 @@ impl ToJson for Target {
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
         target_option_val!(static_position_independent_executables);
-        target_option_val!(needs_plt);
+        target_option_val!(plt_by_default);
         target_option_val!(relro_level);
         target_option_val!(archive_format);
         target_option_val!(allow_asm);
