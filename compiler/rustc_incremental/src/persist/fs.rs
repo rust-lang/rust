@@ -676,11 +676,8 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // Delete all lock files, that don't have an associated directory. They must
     // be some kind of leftover
-    let lock_file_to_session_dir_iter = lock_file_to_session_dir
-        .items()
-        .map(|(file, dir)| (file.as_str(), dir.as_ref().map(|y| y.as_str())));
     for (lock_file_name, directory_name) in
-        lock_file_to_session_dir_iter.into_sorted_stable_ord(false)
+        lock_file_to_session_dir.items().into_sorted_stable_ord()
     {
         if directory_name.is_none() {
             let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
@@ -712,10 +709,10 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     }
 
     // Filter out `None` directories
-    let lock_file_to_session_dir: UnordMap<String, String> =
-        UnordMap::from(lock_file_to_session_dir.into_items().filter_map(
-            |(lock_file_name, directory_name)| directory_name.map(|n| (lock_file_name, n)),
-        ));
+    let lock_file_to_session_dir: UnordMap<String, String> = lock_file_to_session_dir
+        .into_items()
+        .filter_map(|(lock_file_name, directory_name)| directory_name.map(|n| (lock_file_name, n)))
+        .into();
 
     // Delete all session directories that don't have a lock file.
     for directory_name in session_directories {
@@ -821,7 +818,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             }
             None
         });
-    let deletion_candidates = UnordMap::from(deletion_candidates);
+    let deletion_candidates = deletion_candidates.into();
 
     // Delete all but the most recent of the candidates
     all_except_most_recent(deletion_candidates).into_items().all(|(path, lock)| {

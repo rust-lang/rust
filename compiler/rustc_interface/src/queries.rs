@@ -194,10 +194,15 @@ impl<'tcx> Queries<'tcx> {
             let future_opt = self.dep_graph_future()?.steal();
             let dep_graph = future_opt
                 .and_then(|future| {
-                    let (prev_graph, prev_work_products) =
+                    let (prev_graph, mut prev_work_products) =
                         sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
-                    let prev_work_products =
-                        FxIndexMap::from_iter(prev_work_products.into_sorted(&(), false));
+                    // Convert from UnordMap to FxIndexMap by sorting
+                    let prev_work_product_ids =
+                        prev_work_products.items().map(|x| *x.0).into_sorted_stable_ord();
+                    let prev_work_products = prev_work_product_ids
+                        .into_iter()
+                        .map(|x| (x, prev_work_products.remove(&x).unwrap()))
+                        .collect::<FxIndexMap<_, _>>();
                     rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
                 })
                 .unwrap_or_else(DepGraph::new_disabled);

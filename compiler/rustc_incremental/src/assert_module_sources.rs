@@ -119,7 +119,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
 
         if !self.available_cgus.contains(&cgu_name) {
             let cgu_names: Vec<&str> =
-                self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord(true);
+                self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
             self.tcx.sess.emit_err(errors::NoModuleNamed {
                 span: attr.span,
                 user_path,
