@@ -109,10 +109,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         direction: ty::AliasRelationDirection,
         invert: Invert,
     ) -> QueryResult<'tcx> {
-        self.probe(|ecx| {
-            ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+        self.probe_candidate(
+            |ecx| {
+                ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            },
+            || "normalizes-to".into(),
+        )
     }
 
     fn normalizes_to_inner(
@@ -153,18 +156,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         alias_rhs: ty::AliasTy<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe(|ecx| {
-            match direction {
-                ty::AliasRelationDirection::Equate => {
-                    ecx.eq(param_env, alias_lhs, alias_rhs)?;
+        self.probe_candidate(
+            |ecx| {
+                match direction {
+                    ty::AliasRelationDirection::Equate => {
+                        ecx.eq(param_env, alias_lhs, alias_rhs)?;
+                    }
+                    ty::AliasRelationDirection::Subtype => {
+                        ecx.sub(param_env, alias_lhs, alias_rhs)?;
+                    }
                 }
-                ty::AliasRelationDirection::Subtype => {
-                    ecx.sub(param_env, alias_lhs, alias_rhs)?;
-                }
-            }
 
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            },
+            || "substs relate".into(),
+        )
     }
 
     fn assemble_bidirectional_normalizes_to_candidate(
@@ -174,22 +180,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         rhs: ty::Term<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe(|ecx| {
-            ecx.normalizes_to_inner(
-                param_env,
-                lhs.to_alias_ty(ecx.tcx()).unwrap(),
-                rhs,
-                direction,
-                Invert::No,
-            )?;
-            ecx.normalizes_to_inner(
-                param_env,
-                rhs.to_alias_ty(ecx.tcx()).unwrap(),
-                lhs,
-                direction,
-                Invert::Yes,
-            )?;
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+        self.probe_candidate(
+            |ecx| {
+                ecx.normalizes_to_inner(
+                    param_env,
+                    lhs.to_alias_ty(ecx.tcx()).unwrap(),
+                    rhs,
+                    direction,
+                    Invert::No,
+                )?;
+                ecx.normalizes_to_inner(
+                    param_env,
+                    rhs.to_alias_ty(ecx.tcx()).unwrap(),
+                    lhs,
+                    direction,
+                    Invert::Yes,
+                )?;
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            },
+            || "bidir normalizes-to".into(),
+        )
     }
 }

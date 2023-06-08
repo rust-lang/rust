@@ -12,6 +12,7 @@ use rustc_middle::traits::solve::{CanonicalInput, Certainty, MaybeCause, QueryRe
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
 
+use super::inspect::InspectSolve;
 use super::SolverMode;
 
 rustc_index::newtype_index! {
@@ -205,11 +206,13 @@ impl<'tcx> SearchGraph<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        mut loop_body: impl FnMut(&mut Self) -> QueryResult<'tcx>,
+        inspect: &mut dyn InspectSolve<'tcx>,
+        mut loop_body: impl FnMut(&mut Self, &mut dyn InspectSolve<'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
         if self.should_use_global_cache() {
             if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_input, tcx) {
                 debug!(?canonical_input, ?result, "cache hit");
+                inspect.cache_hit();
                 return result;
             }
         }
@@ -231,7 +234,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     result
                 },
                 |this| {
-                    let result = loop_body(this);
+                    let result = loop_body(this, inspect);
                     this.try_finalize_goal(canonical_input, result).then(|| result)
                 },
             )
