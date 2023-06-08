@@ -1,8 +1,8 @@
 //! Code to save/load the dep-graph from files.
 
 use crate::errors;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::opaque::MemDecoder;
@@ -16,7 +16,7 @@ use super::file_format;
 use super::fs::*;
 use super::work_product;
 
-type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
+type WorkProductMap = UnordMap<WorkProductId, WorkProduct>;
 
 #[derive(Debug)]
 /// Represents the result of an attempt to load incremental compilation data.
@@ -147,7 +147,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     let report_incremental_info = sess.opts.unstable_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
-    let mut prev_work_products = FxHashMap::default();
+    let mut prev_work_products = UnordMap::default();
 
     // If we are only building with -Zquery-dep-graph but without an actual
     // incr. comp. session directory, we skip this. Otherwise we'd fail
@@ -163,7 +163,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 Decodable::decode(&mut work_product_decoder);
 
             for swp in work_products {
-                let all_files_exist = swp.work_product.saved_files.iter().all(|(_, path)| {
+                let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
                     let exists = in_incr_comp_dir_sess(sess, path).exists();
                     if !exists && sess.opts.unstable_opts.incremental_info {
                         eprintln!("incremental: could not find file for work product: {path}",);

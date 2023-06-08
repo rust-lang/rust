@@ -6,7 +6,7 @@ use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen};
 
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
@@ -101,7 +101,7 @@ pub trait CodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed>;
+    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed>;
 
     /// This is called on the returned `Box<dyn Any>` from `join_codegen`
     ///

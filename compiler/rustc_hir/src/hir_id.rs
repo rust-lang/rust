@@ -166,7 +166,9 @@ impl ItemLocalId {
 
 // Safety: Ord is implement as just comparing the ItemLocalId's numerical
 // values and these are not changed by (de-)serialization.
-unsafe impl StableOrd for ItemLocalId {}
+unsafe impl StableOrd for ItemLocalId {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.
 pub const CRATE_HIR_ID: HirId =
