@@ -1640,7 +1640,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 hir::Stmt {
                                                     kind:
                                                         hir::StmtKind::Expr(hir::Expr {
-                                                            kind: hir::ExprKind::Assign(..),
+                                                            kind: hir::ExprKind::Assign(lhs, ..),
                                                             ..
                                                         }),
                                                     ..
@@ -1650,7 +1650,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     } = blk
                                     {
                                         self.comes_from_while_condition(blk.hir_id, |_| {
-                                            err.downgrade_to_delayed_bug();
+                                            // We cannot suppress the error if the LHS of assignment
+                                            // is a syntactic place expression because E0070 would
+                                            // not be emitted by `check_lhs_assignable`.
+                                            let res = self.typeck_results.borrow().expr_ty_opt(lhs);
+
+                                            if !lhs.is_syntactic_place_expr()
+                                                || res.references_error()
+                                            {
+                                                err.downgrade_to_delayed_bug();
+                                            }
                                         })
                                     }
                                 }
