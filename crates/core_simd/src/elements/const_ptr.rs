@@ -1,5 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdPartialEq, SupportedLaneCount};
+use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdPartialEq, SimdUint, SupportedLaneCount};
 
 /// Operations on SIMD vectors of constant pointers.
 pub trait SimdConstPtr: Copy + Sealed {
@@ -9,6 +9,9 @@ pub trait SimdConstPtr: Copy + Sealed {
     /// Vector of `isize` with the same number of lanes.
     type Isize;
 
+    /// Vector of const pointers with the same number of lanes.
+    type CastPtr<T>;
+
     /// Vector of mutable pointers to the same type.
     type MutPtr;
 
@@ -17,6 +20,11 @@ pub trait SimdConstPtr: Copy + Sealed {
 
     /// Returns `true` for each lane that is null.
     fn is_null(self) -> Self::Mask;
+
+    /// Casts to a pointer of another type.
+    ///
+    /// Equivalent to calling [`pointer::cast`] on each lane.
+    fn cast<T>(self) -> Self::CastPtr<T>;
 
     /// Changes constness without changing the type.
     ///
@@ -78,6 +86,7 @@ where
 {
     type Usize = Simd<usize, LANES>;
     type Isize = Simd<isize, LANES>;
+    type CastPtr<U> = Simd<*const U, LANES>;
     type MutPtr = Simd<*mut T, LANES>;
     type Mask = Mask<isize, LANES>;
 
@@ -87,8 +96,21 @@ where
     }
 
     #[inline]
+    fn cast<U>(self) -> Self::CastPtr<U> {
+        // SimdElement currently requires zero-sized metadata, so this should never fail.
+        // If this ever changes, `simd_cast_ptr` should produce a post-mono error.
+        use core::{mem::size_of, ptr::Pointee};
+        assert_eq!(size_of::<<T as Pointee>::Metadata>(), 0);
+        assert_eq!(size_of::<<U as Pointee>::Metadata>(), 0);
+
+        // Safety: pointers can be cast
+        unsafe { intrinsics::simd_cast_ptr(self) }
+    }
+
+    #[inline]
     fn cast_mut(self) -> Self::MutPtr {
-        self.cast_ptr()
+        // Safety: pointers can be cast
+        unsafe { intrinsics::simd_cast_ptr(self) }
     }
 
     #[inline]
@@ -106,9 +128,9 @@ where
         // In the mean-time, this operation is defined to be "as if" it was
         // a wrapping_offset, so we can emulate it as such. This should properly
         // restore pointer provenance even under today's compiler.
-        self.cast_ptr::<*const u8>()
+        self.cast::<u8>()
             .wrapping_offset(addr.cast::<isize>() - self.addr().cast::<isize>())
-            .cast_ptr()
+            .cast()
     }
 
     #[inline]

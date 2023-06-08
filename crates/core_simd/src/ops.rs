@@ -15,6 +15,7 @@ where
     I: core::slice::SliceIndex<[T]>,
 {
     type Output = I::Output;
+    #[inline]
     fn index(&self, index: I) -> &Self::Output {
         &self.as_array()[index]
     }
@@ -26,6 +27,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
     I: core::slice::SliceIndex<[T]>,
 {
+    #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         &mut self.as_mut_array()[index]
     }
@@ -118,10 +120,14 @@ macro_rules! for_base_types {
 
                     #[inline]
                     #[must_use = "operator returns a new vector without mutating the inputs"]
+                    // TODO: only useful for int Div::div, but we hope that this
+                    // will essentially always always get inlined anyway.
+                    #[track_caller]
                     fn $call(self, rhs: Self) -> Self::Output {
                         $macro_impl!(self, rhs, $inner, $scalar)
                     }
-                })*
+                }
+            )*
     }
 }
 
