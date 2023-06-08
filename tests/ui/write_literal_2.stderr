@@ -1,3 +1,11 @@
+error: unnecessary raw string literal
+  --> $DIR/write_literal_2.rs:10:24
+   |
+LL |     writeln!(v, r"{}", r"{hello}");
+   |                        ^^^^^^^^^^ help: try: `"{hello}"`
+   |
+   = note: `-D clippy::needless-raw-string` implied by `-D warnings`
+
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:9:23
    |
@@ -186,5 +194,5 @@ error: literal with an empty format string
 LL |     writeln!(v, r#"{}{}"#, '#', '"'); // hard mode
    |                                 ^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 

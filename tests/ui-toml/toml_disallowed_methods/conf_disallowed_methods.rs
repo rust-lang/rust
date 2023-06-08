@@ -1,5 +1,6 @@
 //@compile-flags: --crate-name conf_disallowed_methods
 
+#![allow(clippy::needless_raw_string)]
 #![warn(clippy::disallowed_methods)]
 #![allow(clippy::useless_vec)]
 

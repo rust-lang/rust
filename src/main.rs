@@ -6,7 +6,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
-const CARGO_CLIPPY_HELP: &str = r"Checks a package to catch common mistakes and improve your Rust code.
+const CARGO_CLIPPY_HELP: &str = "Checks a package to catch common mistakes and improve your Rust code.
 
 Usage:
     cargo clippy [options] [--] [<opts>...]
