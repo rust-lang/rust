@@ -71,7 +71,7 @@ impl EarlyLintPass for RawStrings {
                 return;
             }
 
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             let req = lit.symbol.as_str().as_bytes()
                 .split(|&b| b == b'"')
                 .skip(1)
