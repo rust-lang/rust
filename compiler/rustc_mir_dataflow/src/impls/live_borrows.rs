@@ -134,6 +134,7 @@
 use super::*;
 
 use crate::framework::{Analysis, Results, ResultsCursor};
+use crate::impls::MaybeBorrowedLocals;
 use crate::{
     AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKillAnalysis, ResultsRefCursor,
 };
@@ -145,6 +146,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty;
 
 use either::Either;
+use std::cell::RefCell;
 
 #[derive(Copy, Clone, Debug)]
 enum NodeKind {
@@ -232,6 +234,68 @@ impl<'a, 'tcx> BorrowDependencies<'a, 'tcx> {
             let node_idx = self.dep_graph.add_node(node_kind);
             self.locals_to_node_indexes.insert(local, node_idx);
             node_idx
+        }
+    }
+
+    /// Panics if `local` doesn't have a `Node` in `self.dep_graph`.
+    fn get_node_idx_for_local(&self, local: Local) -> NodeIndex {
+        let node_idx = self
+            .locals_to_node_indexes
+            .get(&local)
+            .unwrap_or_else(|| bug!("expected {:?} to have a Node", local));
+
+        *node_idx
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn local_is_ref_ptr_or_localwithrefs(&self, place: &Place<'tcx>) -> bool {
+        let place_ty = place.ty(self.local_decls, self.tcx).ty;
+        let is_ref_or_ptr = matches!(place_ty.kind(), ty::Ref(..) | ty::RawPtr(..));
+
+        // Also account for `LocalWithRef`s
+        let is_local_with_refs =
+            if let Some(node_idx) = self.locals_to_node_indexes.get(&place.local) {
+                let node_for_place = self.dep_graph.node(*node_idx);
+                debug!(?node_for_place.data);
+                matches!(node_for_place.data, NodeKind::LocalWithRefs(_))
+            } else {
+                false
+            };
+
+        debug!(?is_ref_or_ptr, ?is_local_with_refs);
+        is_ref_or_ptr || is_local_with_refs
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn maybe_create_edges_for_operands(&mut self, args: &Vec<Operand<'tcx>>) {
+        for i in 0..args.len() {
+            let outer_operand = &args[i];
+            debug!(?outer_operand);
+            match outer_operand {
+                Operand::Copy(outer_place) | Operand::Move(outer_place) => {
+                    if self.local_is_ref_ptr_or_localwithrefs(outer_place) {
+                        for j in i + 1..args.len() {
+                            let inner_operand = &args[j];
+                            debug!(?inner_operand);
+                            match inner_operand {
+                                Operand::Copy(inner_place) | Operand::Move(inner_place) => {
+                                    if self.local_is_ref_ptr_or_localwithrefs(inner_place) {
+                                        let node_idx_outer =
+                                            self.get_node_idx_for_local(outer_place.local);
+                                        let node_idx_inner =
+                                            self.get_node_idx_for_local(inner_place.local);
+
+                                        self.dep_graph.add_edge(node_idx_outer, node_idx_inner, ());
+                                        self.dep_graph.add_edge(node_idx_inner, node_idx_outer, ());
+                                    }
+                                }
+                                Operand::Constant(_) => {}
+                            }
+                        }
+                    }
+                }
+                Operand::Constant(_) => {}
+            }
         }
     }
 }
@@ -427,6 +491,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                     self.visit_operand(arg, location);
                 }
 
+                // Additionally we have to introduce edges between borrowed operands, since we could
+                // mutate those in the call (either through mutable references or interior mutability)
+                self.maybe_create_edges_for_operands(args);
+
                 self.current_local = None;
             }
             TerminatorKind::Yield { resume_arg, value, .. } => {
@@ -444,7 +512,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
     }
 }
 
-pub struct BorrowedLocalsResults<'mir, 'tcx> {
+pub struct BorrowedLocalsResults<'a, 'mir, 'tcx> {
     // the results of the liveness analysis of `LiveBorrows`
     borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>,
 
@@ -453,28 +521,49 @@ pub struct BorrowedLocalsResults<'mir, 'tcx> {
     // exposed pointers or a composite value that might include refs, pointers or exposed pointers)
     // to the set of `Local`s that are borrowed through those references, pointers or composite values.
     borrowed_local_to_locals_to_keep_alive: FxHashMap<Local, Vec<Local>>,
+
+    maybe_borrowed_locals_results_cursor: RefCell<
+        ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals, &'a Results<'tcx, MaybeBorrowedLocals>>,
+    >,
 }
 
-impl<'mir, 'tcx> BorrowedLocalsResults<'mir, 'tcx>
+impl<'a, 'mir, 'tcx> BorrowedLocalsResults<'a, 'mir, 'tcx>
 where
     'tcx: 'mir,
+    'tcx: 'a,
 {
-    fn new(borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>) -> Self {
+    fn new(
+        borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>,
+        maybe_borrowed_locals_results_cursor: ResultsCursor<
+            'mir,
+            'tcx,
+            MaybeBorrowedLocals,
+            &'a Results<'tcx, MaybeBorrowedLocals>,
+        >,
+    ) -> Self {
         let dep_graph = &borrows_analysis_results.analysis.borrow_deps.dep_graph;
         let borrowed_local_to_locals_to_keep_alive = Self::get_locals_to_keep_alive_map(dep_graph);
-        Self { borrows_analysis_results, borrowed_local_to_locals_to_keep_alive }
+        Self {
+            borrows_analysis_results,
+            borrowed_local_to_locals_to_keep_alive,
+            maybe_borrowed_locals_results_cursor: RefCell::new(
+                maybe_borrowed_locals_results_cursor,
+            ),
+        }
     }
 
     /// Uses the dependency graph to find all locals that we need to keep live for a given
     /// `Node` (or more specically the `Local` corresponding to that `Node`).
-    fn get_locals_to_keep_alive_map<'a>(
-        dep_graph: &'a Graph<NodeKind, ()>,
+    #[instrument(skip(dep_graph), level = "debug")]
+    fn get_locals_to_keep_alive_map<'b>(
+        dep_graph: &'b Graph<NodeKind, ()>,
     ) -> FxHashMap<Local, Vec<Local>> {
         let mut borrows_to_locals: FxHashMap<Local, Vec<Local>> = Default::default();
         let mut locals_visited = vec![];
 
         for (node_idx, node) in dep_graph.enumerated_nodes() {
             let current_local = node.data.get_local();
+            debug!(?current_local);
             if borrows_to_locals.get(&current_local).is_none() {
                 Self::dfs_for_node(
                     node_idx,
@@ -489,6 +578,7 @@ where
         borrows_to_locals
     }
 
+    #[instrument(skip(dep_graph), level = "debug")]
     fn dfs_for_node(
         node_idx: NodeIndex,
         borrows_to_locals: &mut FxHashMap<Local, Vec<Local>>,
@@ -499,6 +589,7 @@ where
         let current_local = src_node.data.get_local();
         locals_visited.push(current_local);
         if let Some(locals_to_keep_alive) = borrows_to_locals.get(&current_local) {
+            debug!("already prev. calculated: {:?}", locals_to_keep_alive);
             // already traversed this node
             return (*locals_to_keep_alive).clone();
         }
@@ -510,7 +601,17 @@ where
             let target_node_idx = edge.target();
             let target_node = dep_graph.node(target_node_idx);
             let target_local = target_node.data.get_local();
+
+            // necessary to prevent loops
             if locals_visited.contains(&target_local) {
+                if let Some(locals_to_keep_alive) = borrows_to_locals.get(&target_local) {
+                    debug!(
+                        "prev. calculated locals to keep alive for {:?}: {:?}",
+                        target_local, locals_to_keep_alive
+                    );
+                    locals_for_node.append(&mut locals_to_keep_alive.clone());
+                }
+
                 continue;
             }
 
@@ -537,6 +638,7 @@ where
             NodeKind::Borrow(_) => {}
         }
 
+        debug!("locals for {:?}: {:?}", current_local, locals_for_node);
         borrows_to_locals.insert(current_local, locals_for_node.clone());
         locals_for_node
     }
@@ -544,11 +646,17 @@ where
 
 /// The function gets the results of the borrowed locals analysis in this module. See the module
 /// doc-comment for information on what exactly this analysis does.
-#[instrument(skip(tcx), level = "debug")]
-pub fn get_borrowed_locals_results<'mir, 'tcx>(
+#[instrument(skip(tcx, maybe_borrowed_locals_cursor, body), level = "debug")]
+pub fn get_borrowed_locals_results<'a, 'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-) -> BorrowedLocalsResults<'mir, 'tcx> {
+    maybe_borrowed_locals_cursor: ResultsCursor<
+        'mir,
+        'tcx,
+        MaybeBorrowedLocals,
+        &'a Results<'tcx, MaybeBorrowedLocals>,
+    >,
+) -> BorrowedLocalsResults<'a, 'mir, 'tcx> {
     debug!("body: {:#?}", body);
 
     let mut borrow_deps = BorrowDependencies::new(body.local_decls(), tcx);
@@ -585,7 +693,7 @@ pub fn get_borrowed_locals_results<'mir, 'tcx>(
     let results =
         live_borrows.into_engine(tcx, body).pass_name("borrowed_locals").iterate_to_fixpoint();
 
-    BorrowedLocalsResults::new(results)
+    BorrowedLocalsResults::new(results, maybe_borrowed_locals_cursor)
 }
 
 /// The `ResultsCursor` equivalent for the borrowed locals analysis. Since this analysis doesn't
@@ -602,10 +710,15 @@ pub struct BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
     // corresponding to `NodeKind::LocalWithRefs` since they might contain refs, ptrs or
     // exposed pointers and need to be treated equivalently to refs/ptrs
     borrowed_local_to_locals_to_keep_alive: &'a FxHashMap<Local, Vec<Local>>,
+
+    // the cursor of the conservative borrowed locals analysis
+    maybe_borrowed_locals_results_cursor: &'a RefCell<
+        ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals, &'a Results<'tcx, MaybeBorrowedLocals>>,
+    >,
 }
 
 impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
-    pub fn new(body: &'mir Body<'tcx>, results: &'a BorrowedLocalsResults<'mir, 'tcx>) -> Self {
+    pub fn new(body: &'mir Body<'tcx>, results: &'a BorrowedLocalsResults<'a, 'mir, 'tcx>) -> Self {
         let mut cursor = ResultsCursor::new(body, &results.borrows_analysis_results);
 
         // We don't care about the order of the blocks, only about the result at a given location.
@@ -617,6 +730,7 @@ impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
             body,
             borrows_analysis_cursor: cursor,
             borrowed_local_to_locals_to_keep_alive: &results.borrowed_local_to_locals_to_keep_alive,
+            maybe_borrowed_locals_results_cursor: &results.maybe_borrowed_locals_results_cursor,
         }
     }
 
@@ -661,6 +775,16 @@ impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
             }
             Either::Left(_) => {}
         }
+
+        // use results of conservative analysis as an "upper bound" on the borrowed locals. This
+        // is necessary since to guarantee soundness for this analysis requires us to be more conservative
+        // in some cases than the analysis performed by `MaybeBorrowedLocals`.
+        let mut maybe_borrowed_locals_cursor =
+            self.maybe_borrowed_locals_results_cursor.borrow_mut();
+        maybe_borrowed_locals_cursor.allow_unreachable();
+        maybe_borrowed_locals_cursor.seek_before_primary_effect(loc);
+        let upper_bound_borrowed_locals = maybe_borrowed_locals_cursor.get();
+        borrowed_locals.intersect(upper_bound_borrowed_locals);
 
         debug!(?borrowed_locals);
         borrowed_locals
@@ -821,7 +945,14 @@ where
                 debug!("gen {:?}", local);
                 self._trans.gen(local);
             }
-            _ => {}
+            _ => {
+                if let Some(node_idx) = self.borrow_deps.locals_to_node_indexes.get(&local) {
+                    let node = self.borrow_deps.dep_graph.node(*node_idx);
+                    if matches!(node.data, NodeKind::LocalWithRefs(_)) {
+                        self._trans.gen(local);
+                    }
+                }
+            }
         }
 
         self.super_place(place, context, location);

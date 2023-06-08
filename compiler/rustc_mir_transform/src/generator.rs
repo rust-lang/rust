@@ -67,7 +67,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_middle::ty::{GeneratorSubsts, SubstsRef};
 use rustc_mir_dataflow::impls::{
-    get_borrowed_locals_results, BorrowedLocalsResultsCursor, MaybeLiveLocals,
+    get_borrowed_locals_results, BorrowedLocalsResultsCursor, MaybeBorrowedLocals, MaybeLiveLocals,
     MaybeRequiresStorage, MaybeStorageLive,
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
@@ -593,8 +593,13 @@ fn locals_live_across_suspend_points<'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
 
+    let borrowed_locals_results =
+        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
+    let borrowed_locals_cursor =
+        rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
+
     // Calculate the locals that are live due to outstanding references or pointers.
-    let live_borrows_results = get_borrowed_locals_results(body_ref, tcx);
+    let live_borrows_results = get_borrowed_locals_results(body_ref, tcx, borrowed_locals_cursor);
     let mut live_borrows_cursor = BorrowedLocalsResultsCursor::new(body_ref, &live_borrows_results);
 
     // Calculate the MIR locals that we actually need to keep storage around

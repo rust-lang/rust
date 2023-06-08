@@ -157,7 +157,7 @@ pub struct MaybeRequiresStorage<'a, 'mir, 'tcx> {
 impl<'a, 'mir, 'tcx> MaybeRequiresStorage<'a, 'mir, 'tcx> {
     pub fn new(
         body: &'mir Body<'tcx>,
-        borrowed_locals: &'a BorrowedLocalsResults<'mir, 'tcx>,
+        borrowed_locals: &'a BorrowedLocalsResults<'a, 'mir, 'tcx>,
     ) -> Self {
         MaybeRequiresStorage {
             body,
