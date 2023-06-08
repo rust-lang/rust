@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
@@ -18,9 +19,10 @@ use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 #[expect(clippy::module_name_repetitions)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct UselessVec {
     pub too_large_for_stack: u64,
+    pub msrv: Msrv,
 }
 
 declare_clippy_lint! {
@@ -122,14 +124,16 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         if_chain! {
             if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr);
             if let Some(vec_args) = higher::VecArgs::hir(cx, arg);
-            if is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(arg)));
+            if self.msrv.meets(msrvs::ARRAY_INTO_ITERATOR);
             then {
                 // report the error around the `vec!` not inside `<std macros>:`
                 let span = arg.span.ctxt().outer_expn_data().call_site;
-                self.check_vec_macro(cx, &vec_args, Mutability::Not, span, SuggestSlice::Yes);
+                self.check_vec_macro(cx, &vec_args, Mutability::Not, span, SuggestSlice::No);
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 #[derive(Copy, Clone)]
@@ -142,7 +146,7 @@ enum SuggestSlice {
 
 impl UselessVec {
     fn check_vec_macro<'tcx>(
-        self,
+        &mut self,
         cx: &LateContext<'tcx>,
         vec_args: &higher::VecArgs<'tcx>,
         mutability: Mutability,
