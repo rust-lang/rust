@@ -21,10 +21,9 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
-use crate::solve::inspect::DebugSolver;
 use crate::traits::specialization_graph;
 
-use super::inspect::InspectSolve;
+use super::inspect::ProofTreeBuilder;
 use super::search_graph::{self, OverflowHandler};
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
@@ -76,7 +75,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     // evaluation code.
     tainted: Result<(), NoSolution>,
 
-    inspect: Box<dyn InspectSolve<'tcx> + 'tcx>,
+    inspect: ProofTreeBuilder<'tcx>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -147,25 +146,20 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: match self.tcx.sess.opts.unstable_opts.dump_solver_proof_tree {
-                true => Box::new(DebugSolver::new()),
-                false => Box::new(()),
-            },
+            inspect: self
+                .tcx
+                .sess
+                .opts
+                .unstable_opts
+                .dump_solver_proof_tree
+                .then(ProofTreeBuilder::new_root)
+                .unwrap_or_else(ProofTreeBuilder::new_noop),
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
-        let tcx = ecx.tcx();
-        match ecx.inspect.into_debug_solver() {
-            Some(tree) => match Box::leak(tree) {
-                DebugSolver::GoalEvaluation(tree) => {
-                    if tcx.sess.opts.unstable_opts.dump_solver_proof_tree {
-                        println!("{:?}", tree);
-                    }
-                }
-                _ => unreachable!("unable to convert to `DebugSolver::GoalEvaluation`"),
-            },
-            _ => unreachable!("unable to convert to `DebugSolver::GoalEvaluation`"),
-        };
+        if let Some(tree) = ecx.inspect.into_proof_tree() {
+            println!("{:?}", tree);
+        }
 
         assert!(
             ecx.nested_goals.is_empty(),
@@ -196,7 +190,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        mut goal_evaluation: &mut dyn InspectSolve<'tcx>,
+        mut goal_evaluation: &mut ProofTreeBuilder<'tcx>,
     ) -> QueryResult<'tcx> {
         goal_evaluation.canonicalized_goal(canonical_input);
 
@@ -272,7 +266,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             self.tcx(),
             self.search_graph,
             canonical_goal,
-            &mut *goal_evaluation,
+            &mut goal_evaluation,
         );
         goal_evaluation.query_result(canonical_response);
         self.inspect.goal_evaluation(goal_evaluation);
@@ -309,7 +303,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 self.search_graph,
                 canonical_goal,
                 // FIXME(-Ztrait-solver=next): we do not track what happens in `evaluate_canonical_goal`
-                &mut (),
+                &mut ProofTreeBuilder::new_noop(),
             )?;
             // We only check for modulo regions as we convert all regions in
             // the input to new existentials, even if they're expected to be

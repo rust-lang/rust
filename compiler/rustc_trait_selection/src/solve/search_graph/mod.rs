@@ -13,7 +13,7 @@ use rustc_middle::traits::solve::{CanonicalInput, Certainty, MaybeCause, QueryRe
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
 
-use super::inspect::InspectSolve;
+use super::inspect::ProofTreeBuilder;
 use super::SolverMode;
 
 rustc_index::newtype_index! {
@@ -95,7 +95,7 @@ impl<'tcx> SearchGraph<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         input: CanonicalInput<'tcx>,
-        inspect: &mut dyn InspectSolve<'tcx>,
+        inspect: &mut ProofTreeBuilder<'tcx>,
     ) -> Result<(), QueryResult<'tcx>> {
         // Look at the provisional cache to check for cycles.
         let cache = &mut self.provisional_cache;
@@ -210,8 +210,8 @@ impl<'tcx> SearchGraph<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        inspect: &mut dyn InspectSolve<'tcx>,
-        mut loop_body: impl FnMut(&mut Self, &mut dyn InspectSolve<'tcx>) -> QueryResult<'tcx>,
+        inspect: &mut ProofTreeBuilder<'tcx>,
+        mut loop_body: impl FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
         if self.should_use_global_cache() {
             if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_input, tcx) {

@@ -15,101 +15,44 @@ pub enum DebugSolver<'tcx> {
     GoalCandidate(GoalCandidate<'tcx>),
 }
 
-pub trait InspectSolve<'tcx> {
-    fn into_debug_solver(self: Box<Self>) -> Option<Box<DebugSolver<'tcx>>>;
+pub struct ProofTreeBuilder<'tcx>(Option<Box<DebugSolver<'tcx>>>);
 
-    fn new_goal_evaluation(
+impl<'tcx> ProofTreeBuilder<'tcx> {
+    pub fn into_proof_tree(self) -> Option<DebugSolver<'tcx>> {
+        self.0.map(|tree| *tree)
+    }
+
+    pub fn new_root() -> ProofTreeBuilder<'tcx> {
+        Self(Some(Box::new(DebugSolver::Root)))
+    }
+
+    pub fn new_noop() -> ProofTreeBuilder<'tcx> {
+        Self(None)
+    }
+
+    pub fn new_goal_evaluation(
         &mut self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Box<dyn InspectSolve<'tcx> + 'tcx>;
-    fn canonicalized_goal(&mut self, canonical_goal: CanonicalInput<'tcx>);
-    fn cache_hit(&mut self, cache_hit: CacheHit);
-    fn goal_evaluation(&mut self, goal_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>);
+    ) -> ProofTreeBuilder<'tcx> {
+        if self.0.is_none() {
+            return ProofTreeBuilder(None);
+        }
 
-    fn new_goal_evaluation_step(
-        &mut self,
-        instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
-    ) -> Box<dyn InspectSolve<'tcx> + 'tcx>;
-    fn goal_evaluation_step(&mut self, goal_eval_step: Box<dyn InspectSolve<'tcx> + 'tcx>);
-
-    fn new_goal_candidate(&mut self) -> Box<dyn InspectSolve<'tcx> + 'tcx>;
-    fn candidate_name(&mut self, f: &mut dyn FnMut() -> String);
-    fn goal_candidate(&mut self, candidate: Box<dyn InspectSolve<'tcx> + 'tcx>);
-
-    fn new_evaluate_added_goals(&mut self) -> Box<dyn InspectSolve<'tcx> + 'tcx>;
-    fn evaluate_added_goals_loop_start(&mut self);
-    fn eval_added_goals_result(&mut self, result: Result<Certainty, NoSolution>);
-    fn added_goals_evaluation(&mut self, goals_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>);
-
-    fn query_result(&mut self, result: QueryResult<'tcx>);
-}
-
-/// No-op `InspectSolve` impl to use for normal trait solving when we do not want
-/// to take a performance hit from recording information about how things are being
-/// proven.
-impl<'tcx> InspectSolve<'tcx> for () {
-    fn into_debug_solver(self: Box<Self>) -> Option<Box<DebugSolver<'tcx>>> {
-        None
-    }
-
-    fn new_goal_evaluation(
-        &mut self,
-        _goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(())
-    }
-    fn canonicalized_goal(&mut self, _canonical_goal: CanonicalInput<'tcx>) {}
-    fn cache_hit(&mut self, _cache_hit: CacheHit) {}
-    fn goal_evaluation(&mut self, _goal_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>) {}
-
-    fn new_goal_evaluation_step(
-        &mut self,
-        _instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
-    ) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(())
-    }
-    fn goal_evaluation_step(&mut self, _goal_eval_step: Box<dyn InspectSolve<'tcx> + 'tcx>) {}
-
-    fn new_goal_candidate(&mut self) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(())
-    }
-    fn candidate_name(&mut self, _f: &mut dyn FnMut() -> String) {}
-    fn goal_candidate(&mut self, _candidate: Box<dyn InspectSolve<'tcx> + 'tcx>) {}
-
-    fn new_evaluate_added_goals(&mut self) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(())
-    }
-    fn evaluate_added_goals_loop_start(&mut self) {}
-    fn eval_added_goals_result(&mut self, _result: Result<Certainty, NoSolution>) {}
-    fn added_goals_evaluation(&mut self, _goals_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>) {}
-
-    fn query_result(&mut self, _result: QueryResult<'tcx>) {}
-}
-
-impl<'tcx> DebugSolver<'tcx> {
-    pub fn new() -> Self {
-        Self::Root
-    }
-}
-impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
-    fn into_debug_solver(self: Box<Self>) -> Option<Box<DebugSolver<'tcx>>> {
-        Some(self)
-    }
-
-    fn new_goal_evaluation(
-        &mut self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(DebugSolver::GoalEvaluation(GoalEvaluation {
+        Self(Some(Box::new(DebugSolver::GoalEvaluation(GoalEvaluation {
             uncanonicalized_goal: goal,
             canonicalized_goal: None,
             evaluation_steps: vec![],
             cache_hit: None,
             result: None,
-        }))
+        }))))
     }
-    fn canonicalized_goal(&mut self, canonical_goal: CanonicalInput<'tcx>) {
-        match self {
+    pub fn canonicalized_goal(&mut self, canonical_goal: CanonicalInput<'tcx>) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match this {
             DebugSolver::GoalEvaluation(goal_evaluation) => {
                 assert!(goal_evaluation.canonicalized_goal.is_none());
                 goal_evaluation.canonicalized_goal = Some(canonical_goal)
@@ -117,17 +60,26 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
             _ => unreachable!(),
         }
     }
-    fn cache_hit(&mut self, cache_hit: CacheHit) {
-        match self {
+    pub fn cache_hit(&mut self, cache_hit: CacheHit) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match this {
             DebugSolver::GoalEvaluation(goal_evaluation) => {
                 goal_evaluation.cache_hit = Some(cache_hit)
             }
             _ => unreachable!(),
         };
     }
-    fn goal_evaluation(&mut self, goal_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>) {
-        let goal_evaluation = goal_evaluation.into_debug_solver().unwrap();
-        match (self, *goal_evaluation) {
+    pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<'tcx>) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match (this, *goal_evaluation.0.unwrap()) {
             (
                 DebugSolver::AddedGoalsEvaluation(AddedGoalsEvaluation { evaluations, .. }),
                 DebugSolver::GoalEvaluation(goal_evaluation),
@@ -137,20 +89,24 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
         }
     }
 
-    fn new_goal_evaluation_step(
+    pub fn new_goal_evaluation_step(
         &mut self,
         instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
-    ) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(DebugSolver::GoalEvaluationStep(GoalEvaluationStep {
+    ) -> ProofTreeBuilder<'tcx> {
+        Self(Some(Box::new(DebugSolver::GoalEvaluationStep(GoalEvaluationStep {
             instantiated_goal,
             nested_goal_evaluations: vec![],
             candidates: vec![],
             result: None,
-        }))
+        }))))
     }
-    fn goal_evaluation_step(&mut self, goal_eval_step: Box<dyn InspectSolve<'tcx> + 'tcx>) {
-        let goal_eval_step = goal_eval_step.into_debug_solver().unwrap();
-        match (self, *goal_eval_step) {
+    pub fn goal_evaluation_step(&mut self, goal_eval_step: ProofTreeBuilder<'tcx>) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match (this, *goal_eval_step.0.unwrap()) {
             (DebugSolver::GoalEvaluation(goal_eval), DebugSolver::GoalEvaluationStep(step)) => {
                 goal_eval.evaluation_steps.push(step);
             }
@@ -158,28 +114,36 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
         }
     }
 
-    fn new_goal_candidate(&mut self) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(DebugSolver::GoalCandidate(GoalCandidate {
+    pub fn new_goal_candidate(&mut self) -> ProofTreeBuilder<'tcx> {
+        Self(Some(Box::new(DebugSolver::GoalCandidate(GoalCandidate {
             nested_goal_evaluations: vec![],
             candidates: vec![],
             name: None,
             result: None,
-        }))
+        }))))
     }
-    fn candidate_name(&mut self, f: &mut dyn FnMut() -> String) {
-        let name = f();
+    pub fn candidate_name(&mut self, f: &mut dyn FnMut() -> String) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
 
-        match self {
+        match this {
             DebugSolver::GoalCandidate(goal_candidate) => {
+                let name = f();
                 assert!(goal_candidate.name.is_none());
                 goal_candidate.name = Some(name);
             }
             _ => unreachable!(),
         }
     }
-    fn goal_candidate(&mut self, candidate: Box<dyn InspectSolve<'tcx> + 'tcx>) {
-        let candidate = candidate.into_debug_solver().unwrap();
-        match (self, *candidate) {
+    pub fn goal_candidate(&mut self, candidate: ProofTreeBuilder<'tcx>) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match (this, *candidate.0.unwrap()) {
             (
                 DebugSolver::GoalCandidate(GoalCandidate { candidates, .. })
                 | DebugSolver::GoalEvaluationStep(GoalEvaluationStep { candidates, .. }),
@@ -189,22 +153,32 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
         }
     }
 
-    fn new_evaluate_added_goals(&mut self) -> Box<dyn InspectSolve<'tcx> + 'tcx> {
-        Box::new(DebugSolver::AddedGoalsEvaluation(AddedGoalsEvaluation {
+    pub fn new_evaluate_added_goals(&mut self) -> ProofTreeBuilder<'tcx> {
+        Self(Some(Box::new(DebugSolver::AddedGoalsEvaluation(AddedGoalsEvaluation {
             evaluations: vec![],
             result: None,
-        }))
+        }))))
     }
-    fn evaluate_added_goals_loop_start(&mut self) {
-        match self {
+    pub fn evaluate_added_goals_loop_start(&mut self) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match this {
             DebugSolver::AddedGoalsEvaluation(this) => {
                 this.evaluations.push(vec![]);
             }
             _ => unreachable!(),
         }
     }
-    fn eval_added_goals_result(&mut self, result: Result<Certainty, NoSolution>) {
-        match self {
+    pub fn eval_added_goals_result(&mut self, result: Result<Certainty, NoSolution>) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match this {
             DebugSolver::AddedGoalsEvaluation(this) => {
                 assert!(this.result.is_none());
                 this.result = Some(result);
@@ -212,9 +186,13 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
             _ => unreachable!(),
         }
     }
-    fn added_goals_evaluation(&mut self, goals_evaluation: Box<dyn InspectSolve<'tcx> + 'tcx>) {
-        let goals_evaluation = goals_evaluation.into_debug_solver().unwrap();
-        match (self, *goals_evaluation) {
+    pub fn added_goals_evaluation(&mut self, goals_evaluation: ProofTreeBuilder<'tcx>) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match (this, *goals_evaluation.0.unwrap()) {
             (
                 DebugSolver::GoalEvaluationStep(GoalEvaluationStep {
                     nested_goal_evaluations, ..
@@ -226,8 +204,13 @@ impl<'tcx> InspectSolve<'tcx> for DebugSolver<'tcx> {
         }
     }
 
-    fn query_result(&mut self, result: QueryResult<'tcx>) {
-        match self {
+    pub fn query_result(&mut self, result: QueryResult<'tcx>) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match this {
             DebugSolver::GoalEvaluation(goal_evaluation) => {
                 assert!(goal_evaluation.result.is_none());
                 goal_evaluation.result = Some(result);
