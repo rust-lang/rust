@@ -9,7 +9,7 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::solve::inspect::CandidateKind;
+use rustc_middle::traits::solve::inspect::{self, CandidateKind};
 use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, MaybeCause, PredefinedOpaques,
     PredefinedOpaquesData, QueryResult,
@@ -108,6 +108,12 @@ impl NestedGoals<'_> {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
+pub enum GenerateProofTree {
+    Yes,
+    No,
+}
+
 pub trait InferCtxtEvalExt<'tcx> {
     /// Evaluates a goal from **outside** of the trait solver.
     ///
@@ -116,7 +122,11 @@ pub trait InferCtxtEvalExt<'tcx> {
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>;
+        generate_proof_tree: GenerateProofTree,
+    ) -> (
+        Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
+        Option<inspect::GoalEvaluation<'tcx>>,
+    );
 }
 
 impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
@@ -124,7 +134,11 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
+        generate_proof_tree: GenerateProofTree,
+    ) -> (
+        Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
+        Option<inspect::GoalEvaluation<'tcx>>,
+    ) {
         let mode = if self.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
         let mut search_graph = search_graph::SearchGraph::new(self.tcx, mode);
 
@@ -141,19 +155,16 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: self
-                .tcx
-                .sess
-                .opts
-                .unstable_opts
-                .dump_solver_proof_tree
-                .then(ProofTreeBuilder::new_root)
-                .unwrap_or_else(ProofTreeBuilder::new_noop),
+            inspect: (self.tcx.sess.opts.unstable_opts.dump_solver_proof_tree
+                || matches!(generate_proof_tree, GenerateProofTree::Yes))
+            .then(ProofTreeBuilder::new_root)
+            .unwrap_or_else(ProofTreeBuilder::new_noop),
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
-        if let Some(tree) = ecx.inspect.finalize() {
-            println!("{:?}", tree);
+        let tree = ecx.inspect.finalize();
+        if let Some(tree) = &tree {
+            debug!(?tree);
         }
 
         assert!(
@@ -162,7 +173,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         );
 
         assert!(search_graph.is_empty());
-        result
+        (result, tree)
     }
 }
 
