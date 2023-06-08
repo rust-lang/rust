@@ -1,8 +1,8 @@
-error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
   --> $DIR/issue-100313.rs:10:13
    |
 LL |             *(B as *const bool as *mut bool) = false;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[deny(invalid_reference_casting)]` on by default
 
