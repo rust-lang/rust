@@ -1,5 +1,5 @@
 error: using a potentially dangerous silent `as` conversion
-  --> $DIR/as_conversions.rs:10:13
+  --> $DIR/as_conversions.rs:11:13
    |
 LL |     let i = 0u32 as u64;
    |             ^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let i = 0u32 as u64;
    = note: `-D clippy::as-conversions` implied by `-D warnings`
 
 error: using a potentially dangerous silent `as` conversion
-  --> $DIR/as_conversions.rs:12:13
+  --> $DIR/as_conversions.rs:13:13
    |
 LL |     let j = &i as *const u64 as *mut u64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let j = &i as *const u64 as *mut u64;
    = help: consider using a safe wrapper for this conversion
 
 error: using a potentially dangerous silent `as` conversion
-  --> $DIR/as_conversions.rs:12:13
+  --> $DIR/as_conversions.rs:13:13
    |
 LL |     let j = &i as *const u64 as *mut u64;
    |             ^^^^^^^^^^^^^^^^

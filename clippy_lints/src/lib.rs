@@ -839,7 +839,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(large_stack_arrays::LargeStackArrays::new(array_size_threshold)));
     store.register_late_pass(move |_| Box::new(large_const_arrays::LargeConstArrays::new(array_size_threshold)));
     store.register_late_pass(|_| Box::new(floating_point_arithmetic::FloatingPointArithmetic));
-    store.register_early_pass(|| Box::new(as_conversions::AsConversions));
+    store.register_late_pass(|_| Box::new(as_conversions::AsConversions));
     store.register_late_pass(|_| Box::new(let_underscore::LetUnderscore));
     store.register_early_pass(|| Box::<single_component_path_imports::SingleComponentPathImports>::default());
     let max_fn_params_bools = conf.max_fn_params_bools;
