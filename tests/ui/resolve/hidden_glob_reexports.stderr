@@ -1,31 +1,54 @@
 warning: private item shadows public glob re-export
-  --> $DIR/hidden_glob_reexports.rs:11:5
+  --> $DIR/hidden_glob_reexports.rs:9:5
+   |
+LL |     struct Foo;
+   |     ^^^^^^^^^^^
+   |
+note: the name `Foo` in the type namespace is supposed to be publicly re-exported here
+  --> $DIR/hidden_glob_reexports.rs:12:13
    |
 LL |     pub use self::inner::*;
-   |             -------------- the name `Foo` in the type namespace is supposed to be publicly re-exported here
-LL |
-LL |     struct Foo;
-   |     ^^^^^^^^^^^ but the private item here shadows it
+   |             ^^^^^^^^^^^^^^
+note: but the private item here shadows it
+  --> $DIR/hidden_glob_reexports.rs:9:5
    |
+LL |     struct Foo;
+   |     ^^^^^^^^^^^
    = note: `#[warn(hidden_glob_reexports)]` on by default
 
 warning: private item shadows public glob re-export
   --> $DIR/hidden_glob_reexports.rs:27:9
    |
-LL |     pub use self::inner::*;
-   |             -------------- the name `Foo` in the type namespace is supposed to be publicly re-exported here
-LL |
 LL |     use self::other::Foo;
-   |         ^^^^^^^^^^^^^^^^ but the private item here shadows it
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: the name `Foo` in the type namespace is supposed to be publicly re-exported here
+  --> $DIR/hidden_glob_reexports.rs:25:13
+   |
+LL |     pub use self::inner::*;
+   |             ^^^^^^^^^^^^^^
+note: but the private item here shadows it
+  --> $DIR/hidden_glob_reexports.rs:27:9
+   |
+LL |     use self::other::Foo;
+   |         ^^^^^^^^^^^^^^^^
 
 warning: private item shadows public glob re-export
   --> $DIR/hidden_glob_reexports.rs:40:9
    |
-LL |     pub use self::no_def_id::*;
-   |             ------------------ the name `u8` in the type namespace is supposed to be publicly re-exported here
-LL |
 LL |     use std::primitive::u8;
-   |         ^^^^^^^^^^^^^^^^^^ but the private item here shadows it
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+note: the name `u8` in the type namespace is supposed to be publicly re-exported here
+  --> $DIR/hidden_glob_reexports.rs:38:13
+   |
+LL |     pub use self::no_def_id::*;
+   |             ^^^^^^^^^^^^^^^^^^
+note: but the private item here shadows it
+  --> $DIR/hidden_glob_reexports.rs:40:9
+   |
+LL |     use std::primitive::u8;
+   |         ^^^^^^^^^^^^^^^^^^
 
 warning: 3 warnings emitted
 
