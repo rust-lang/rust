@@ -366,11 +366,11 @@ pub unsafe trait Allocator {
 
     /// The mode of error handling for types using this allocator.
     ///
-    /// [`Fatal`] means that any allocation failures should be handled
+    /// `Fatal` means that any allocation failures should be handled
     /// globally, often by panicking or aborting. Functions performing
     /// allocation will simply return the value or nothing.
     ///
-    /// [`Fallible`] means that any allocation failures should be handled
+    /// `Fallible` means that any allocation failures should be handled
     /// at the point of use. Functions performing allocation will return
     /// `Result`.
     type ErrorHandling: ErrorHandling;
@@ -383,19 +383,27 @@ pub mod error_handling_sealed {
 }
 use error_handling_sealed::Sealed;
 
-// FIXME: this trait should be sealed
+/// The mode of error handling for types using an allocator.
+///
+/// `Fatal` means that any allocation failures should be handled
+/// globally, often by panicking or aborting. Functions performing
+/// allocation will simply return the value or nothing.
+///
+/// `Fallible` means that any allocation failures should be handled
+/// at the point of use. Functions performing allocation will return
+/// `Result`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub trait ErrorHandling: Sealed {
     /// Result type returned by functions that are conditionally fallible.
     ///
-    /// - "Infallible" allocators set `type Result<T, E> = T`
-    /// - "Fallible" allocators set `type Result<T, E> = Result<T, E>`
+    /// - `Fatal` allocators set `type Result<T, E> = T`
+    /// - `Fallible` allocators set `type Result<T, E> = Result<T, E>`
     type Result<T, E: Error>;
 
     /// Function to map allocation results into `Self::Result`.
     ///
-    /// - For "Infallible" allocators, this should call [`HandleAllocError::handle_alloc_error`]
-    /// - For "Fallible" allocators, this is just the identity function
+    /// - For `Fatal` allocators, this should unwrap the result
+    /// - For `Fallible` allocators, this is just the identity function
     #[must_use]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>;
 }
