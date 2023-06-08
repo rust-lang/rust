@@ -67,7 +67,7 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_in_type_const(
         &self,
-        id: (AstId<ast::Expr>, TypeOwnerId, Box<dyn OpaqueInternableThing>),
+        id: (AstId<ast::ConstArg>, TypeOwnerId, Box<dyn OpaqueInternableThing>),
     ) -> InTypeConstId;
 }
 

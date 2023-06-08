@@ -98,7 +98,7 @@ impl AstIdMap {
                 || ast::Variant::can_cast(kind)
                 || ast::RecordField::can_cast(kind)
                 || ast::TupleField::can_cast(kind)
-                || ast::Expr::can_cast(kind)
+                || ast::ConstArg::can_cast(kind)
             {
                 res.alloc(&it);
                 true

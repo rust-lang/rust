@@ -217,7 +217,7 @@ pub(super) fn lower_generic_args(
                 }
             }
             ast::GenericArg::ConstArg(arg) => {
-                let arg = ConstRef::from_expr_opt(lower_ctx, arg.expr());
+                let arg = ConstRef::from_const_arg(lower_ctx, Some(arg));
                 args.push(GenericArg::Const(arg))
             }
         }

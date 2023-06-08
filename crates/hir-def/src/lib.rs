@@ -537,11 +537,11 @@ impl Clone for Box<dyn OpaqueInternableThing> {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct InTypeConstId(InternId);
-type InTypeConstLoc = (AstId<ast::Expr>, TypeOwnerId, Box<dyn OpaqueInternableThing>);
+type InTypeConstLoc = (AstId<ast::ConstArg>, TypeOwnerId, Box<dyn OpaqueInternableThing>);
 impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
 
 impl InTypeConstId {
-    pub fn source(&self, db: &dyn db::DefDatabase) -> ast::Expr {
+    pub fn source(&self, db: &dyn db::DefDatabase) -> ast::ConstArg {
         let src = self.lookup(db).0;
         let file_id = src.file_id;
         let root = &db.parse_or_expand(file_id);

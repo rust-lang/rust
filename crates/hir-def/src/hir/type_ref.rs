@@ -186,11 +186,7 @@ impl TypeRef {
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
             ast::Type::ArrayType(inner) => {
-                // FIXME: This is a hack. We should probably reuse the machinery of
-                // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
-                // `hir_ty` level, which would allow knowing the type of:
-                // let v: [u8; 2 + 2] = [0u8; 4];
-                let len = ConstRef::from_expr_opt(ctx, inner.expr());
+                let len = ConstRef::from_const_arg(ctx, inner.const_arg());
                 TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
             }
             ast::Type::SliceType(inner) => {
@@ -383,18 +379,18 @@ impl TypeBound {
 pub enum ConstRef {
     Scalar(LiteralConstRef),
     Path(Name),
-    Complex(AstId<ast::Expr>),
+    Complex(AstId<ast::ConstArg>),
 }
 
 impl ConstRef {
-    pub(crate) fn from_expr_opt(lower_ctx: &LowerCtx<'_>, expr: Option<ast::Expr>) -> Self {
-        match expr {
-            Some(x) => {
-                let ast_id = lower_ctx.ast_id(&x);
-                Self::from_expr(x, ast_id)
+    pub(crate) fn from_const_arg(lower_ctx: &LowerCtx<'_>, arg: Option<ast::ConstArg>) -> Self {
+        if let Some(arg) = arg {
+            let ast_id = lower_ctx.ast_id(&arg);
+            if let Some(expr) = arg.expr() {
+                return Self::from_expr(expr, ast_id);
             }
-            None => Self::Scalar(LiteralConstRef::Unknown),
         }
+        Self::Scalar(LiteralConstRef::Unknown)
     }
 
     pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {
@@ -412,7 +408,7 @@ impl ConstRef {
     }
 
     // We special case literals and single identifiers, to speed up things.
-    fn from_expr(expr: ast::Expr, ast_id: Option<AstId<ast::Expr>>) -> Self {
+    fn from_expr(expr: ast::Expr, ast_id: Option<AstId<ast::ConstArg>>) -> Self {
         fn is_path_ident(p: &ast::PathExpr) -> bool {
             let Some(path) = p.path() else {
                 return false;

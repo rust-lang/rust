@@ -156,7 +156,7 @@ impl Body {
                     (src.file_id, variant.expr(), false)
                 }
                 DefWithBodyId::InTypeConstId(c) => {
-                    (c.lookup(db).0.file_id, Some(c.source(db)), false)
+                    (c.lookup(db).0.file_id, c.source(db).expr(), false)
                 }
             }
         };
