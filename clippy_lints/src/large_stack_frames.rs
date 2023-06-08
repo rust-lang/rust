@@ -1,6 +1,7 @@
 use std::ops::AddAssign;
 
 use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::fn_has_unsatisfiable_preds;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::Body;
@@ -27,7 +28,7 @@ declare_clippy_lint! {
     ///
     /// Keep in mind that the code path to construction of large types does not even need to be reachable;
     /// it purely needs to *exist* inside of the function to contribute to the stack size.
-    /// For example, this causes a stack overflow even though the branch is unreachable (with `-Zmir-opt-level=0`):
+    /// For example, this causes a stack overflow even though the branch is unreachable:
     /// ```rust,ignore
     /// fn main() {
     ///     if false {
@@ -43,11 +44,9 @@ declare_clippy_lint! {
     /// Modern compilers are very smart and are able to optimize away a lot of unnecessary stack allocations.
     /// In debug mode however, it is usually more accurate.
     ///
-    /// This lint works by summing up the size of all locals and comparing them against a (configurable, but high-by-default)
-    /// threshold.
-    /// Note that "locals" in this context refers to [MIR locals](https://rustc-dev-guide.rust-lang.org/mir/index.html#key-mir-vocabulary),
-    /// i.e. real local variables that the user typed, storage for temporary values, function arguments
-    /// and the return value.
+    /// This lint works by summing up the size of all variables that the user typed, variables that were
+    /// implicitly introduced by the compiler for temporaries, function arguments and the return value,
+    /// and comparing them against a (configurable, but high-by-default).
     ///
     /// ### Example
     /// This function creates four 500 KB arrays on the stack. Quite big but just small enough to not trigger `large_stack_arrays`.
@@ -133,6 +132,10 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         local_def_id: LocalDefId,
     ) {
         let def_id = local_def_id.to_def_id();
+        // Building MIR for `fn`s with unsatisfiable preds results in ICE.
+        if fn_has_unsatisfiable_preds(cx, def_id) {
+            return;
+        }
 
         let mir = cx.tcx.optimized_mir(def_id);
         let param_env = cx.tcx.param_env(def_id);
