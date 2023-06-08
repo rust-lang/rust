@@ -1146,6 +1146,42 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_field_name_maybe_tuple(&mut self) -> PResult<'a, ThinVec<Ident>> {
+        let token::Literal(token::Lit { kind: token::Float, symbol, suffix }) = self.token.kind
+        else {
+            return Ok(thin_vec![self.parse_field_name()?]);
+        };
+        Ok(match self.break_up_float(symbol) {
+            // 1e2
+            DestructuredFloat::Single(sym, sp) => {
+                self.bump();
+                thin_vec![Ident::new(sym, sp)]
+            }
+            // 1.
+            DestructuredFloat::TrailingDot(sym, sym_span, dot_span) => {
+                assert!(suffix.is_none());
+                // Analogous to `Self::break_and_eat`
+                self.token_cursor.break_last_token = true;
+                // This might work, in cases like `1. 2`, and might not,
+                // in cases like `offset_of!(Ty, 1.)`. It depends on what comes
+                // after the float-like token, and therefore we have to make
+                // the other parts of the parser think that there is a dot literal.
+                self.token = Token::new(token::Ident(sym, false), sym_span);
+                self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
+                thin_vec![Ident::new(sym, sym_span)]
+            }
+            // 1.2 | 1.2e3
+            DestructuredFloat::MiddleDot(symbol1, ident1_span, _dot_span, symbol2, ident2_span) => {
+                self.bump();
+                thin_vec![Ident::new(symbol1, ident1_span), Ident::new(symbol2, ident2_span)]
+            }
+            DestructuredFloat::Error => {
+                self.bump();
+                thin_vec![Ident::new(symbol, self.prev_token.span)]
+            }
+        })
+    }
+
     fn parse_expr_tuple_field_access(
         &mut self,
         lo: Span,
@@ -1852,49 +1888,7 @@ impl<'a> Parser<'a> {
         let (fields, _trailing, _recovered) = self.parse_seq_to_before_end(
             &TokenKind::CloseDelim(Delimiter::Parenthesis),
             seq_sep,
-            |this| {
-                let token::Literal(token::Lit { kind: token::Float, symbol, suffix }) = this.token.kind
-                else {
-                    return Ok(thin_vec![this.parse_field_name()?]);
-                };
-                let res = match this.break_up_float(symbol) {
-                    // 1e2
-                    DestructuredFloat::Single(sym, sp) => {
-                        this.bump();
-                        thin_vec![Ident::new(sym, sp)]
-                    }
-                    // 1.
-                    DestructuredFloat::TrailingDot(sym, sym_span, dot_span) => {
-                        assert!(suffix.is_none());
-                        // Analogous to Self::break_and_eat
-                        this.token_cursor.break_last_token = true;
-                        // This might work, in cases like `1. 2.3`, and might not,
-                        // in cases like `offset_of!(Ty, 1.)`.
-                        this.token = Token::new(token::Ident(sym, false), sym_span);
-                        this.bump_with((Token::new(token::Dot, dot_span), this.token_spacing));
-                        thin_vec![Ident::new(sym, sym_span)]
-                    }
-                    // 1.2 | 1.2e3
-                    DestructuredFloat::MiddleDot(
-                        symbol1,
-                        ident1_span,
-                        _dot_span,
-                        symbol2,
-                        ident2_span,
-                    ) => {
-                        this.bump();
-                        thin_vec![
-                            Ident::new(symbol1, ident1_span),
-                            Ident::new(symbol2, ident2_span)
-                        ]
-                    }
-                    DestructuredFloat::Error => {
-                        this.bump();
-                        thin_vec![Ident::new(symbol, this.prev_token.span)]
-                    }
-                };
-                Ok(res)
-            },
+            Parser::parse_field_name_maybe_tuple,
         )?;
         let fields = fields.into_iter().flatten().collect::<Vec<_>>();
         let span = lo.to(self.token.span);
