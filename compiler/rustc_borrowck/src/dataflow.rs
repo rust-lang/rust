@@ -59,7 +59,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_before_statement_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 stmt: &mir::Statement<'tcx>,
                 loc: Location,
@@ -69,7 +69,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_statement_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 stmt: &mir::Statement<'tcx>,
                 loc: Location,
@@ -79,7 +79,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_before_terminator_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 term: &mir::Terminator<'tcx>,
                 loc: Location,
@@ -89,7 +89,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_terminator_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 term: &mir::Terminator<'tcx>,
                 loc: Location,
@@ -343,7 +343,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
     fn before_statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -352,7 +352,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         stmt: &mir::Statement<'tcx>,
         location: Location,
@@ -400,7 +400,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn before_terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -409,7 +409,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -426,7 +426,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn call_return_effect(
-        &self,
+        &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
