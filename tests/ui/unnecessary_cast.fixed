@@ -45,6 +45,8 @@ fn main() {
     [1u8, 2].as_mut_ptr() as PtrConstU8;
     let _: *const u8 = [1u8, 2].as_ptr() as _;
     let _: *mut u8 = [1u8, 2].as_mut_ptr() as _;
+    let _: *const u8 = [1u8, 2].as_ptr() as *const _;
+    let _: *mut u8 = [1u8, 2].as_mut_ptr() as *mut _;
 
     owo::<u32>([1u32].as_ptr());
     uwu::<u32, u8>([1u32].as_ptr());
@@ -70,6 +72,17 @@ fn main() {
     // do not lint cast to alias type
     1 as I32Alias;
     &1 as &I32Alias;
+
+    let i8_ptr: *const i8 = &1;
+    let u8_ptr: *const u8 = &1;
+
+    // cfg dependant pointees
+    i8_ptr as *const std::os::raw::c_char;
+    u8_ptr as *const std::os::raw::c_char;
+
+    // type aliased pointees
+    i8_ptr as *const std::ffi::c_char;
+    u8_ptr as *const std::ffi::c_char;
 
     // issue #9960
     macro_rules! bind_var {
