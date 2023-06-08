@@ -72,7 +72,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         };
 
         let mut constraints = QueryRegionConstraints::default();
-        let Ok(InferOk { value, obligations }) = self
+        let Ok(InferOk { value: mut bounds, obligations }) = self
             .instantiate_nll_query_response_and_region_obligations(
                 &ObligationCause::dummy(),
                 param_env,
@@ -84,6 +84,10 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
             return vec![];
         };
         assert_eq!(&obligations, &[]);
+
+        // Because of #109628, we may have unexpected placeholders. Ignore them!
+        // FIXME(#109628): panic in this case once the issue is fixed.
+        bounds.retain(|bound| !bound.has_placeholders());
 
         if !constraints.is_empty() {
             let span = self.tcx.def_span(body_id);
@@ -114,7 +118,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
             }
         };
 
-        value
+        bounds
     }
 
     fn implied_bounds_tys(
