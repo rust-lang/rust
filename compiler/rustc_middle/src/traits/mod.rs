@@ -991,3 +991,9 @@ pub enum DefiningAnchor {
     /// Used to catch type mismatch errors when handling opaque types.
     Error,
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+pub enum IsNormalizesToHack {
+    Yes,
+    No,
+}

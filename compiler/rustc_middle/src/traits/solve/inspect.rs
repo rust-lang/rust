@@ -1,5 +1,5 @@
 use super::{CanonicalInput, Certainty, Goal, NoSolution, QueryInput, QueryResult};
-use crate::ty;
+use crate::{traits::IsNormalizesToHack, ty};
 use std::fmt::{Debug, Write};
 
 #[derive(Eq, PartialEq, Debug, Hash, HashStable)]
@@ -14,6 +14,8 @@ pub struct GoalEvaluation<'tcx> {
     pub canonicalized_goal: CanonicalInput<'tcx>,
 
     pub kind: GoalEvaluationKind<'tcx>,
+    pub is_normalizes_to_hack: IsNormalizesToHack,
+    pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 
     pub result: QueryResult<'tcx>,
 }
@@ -99,7 +101,13 @@ impl ProofTreeFormatter<'_, '_> {
 
     fn format_goal_evaluation(&mut self, goal: &GoalEvaluation<'_>) -> std::fmt::Result {
         let f = &mut *self.f;
-        writeln!(f, "GOAL: {:?}", goal.uncanonicalized_goal)?;
+
+        let goal_text = match goal.is_normalizes_to_hack {
+            IsNormalizesToHack::Yes => "NORMALIZES-TO HACK GOAL",
+            IsNormalizesToHack::No => "GOAL",
+        };
+
+        writeln!(f, "{}: {:?}", goal_text, goal.uncanonicalized_goal,)?;
         writeln!(f, "CANONICALIZED: {:?}", goal.canonicalized_goal)?;
 
         match &goal.kind {
@@ -120,7 +128,19 @@ impl ProofTreeFormatter<'_, '_> {
                 let f = &mut *self.f;
                 writeln!(f, "RESULT: {:?}", goal.result)
             }
+        }?;
+
+        if goal.returned_goals.len() > 0 {
+            let f = &mut *self.f;
+            writeln!(f, "NESTED GOALS ADDED TO CALLER: [")?;
+            let mut f = self.nested();
+            for goal in goal.returned_goals.iter() {
+                writeln!(f, "ADDED GOAL: {:?},", goal)?;
+            }
+            writeln!(self.f, "]")?;
         }
+
+        Ok(())
     }
 
     fn format_evaluation_step(

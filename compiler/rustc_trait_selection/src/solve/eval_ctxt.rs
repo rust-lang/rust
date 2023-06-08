@@ -14,7 +14,7 @@ use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, MaybeCause, PredefinedOpaques,
     PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::traits::DefiningAnchor;
+use rustc_middle::traits::{DefiningAnchor, IsNormalizesToHack};
 use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
@@ -77,12 +77,6 @@ pub struct EvalCtxt<'a, 'tcx> {
     tainted: Result<(), NoSolution>,
 
     inspect: ProofTreeBuilder<'tcx>,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
-pub(super) enum IsNormalizesToHack {
-    Yes,
-    No,
 }
 
 #[derive(Debug, Clone)]
@@ -262,7 +256,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
-        let mut goal_evaluation = self.inspect.new_goal_evaluation(goal);
+        let mut goal_evaluation = self.inspect.new_goal_evaluation(goal, is_normalizes_to_hack);
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.tcx(),
             self.search_graph,
@@ -270,16 +264,29 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             &mut goal_evaluation,
         );
         goal_evaluation.query_result(canonical_response);
-        self.inspect.goal_evaluation(goal_evaluation);
-        let canonical_response = canonical_response?;
+        let canonical_response = match canonical_response {
+            Err(e) => {
+                self.inspect.goal_evaluation(goal_evaluation);
+                return Err(e);
+            }
+            Ok(response) => response,
+        };
 
         let has_changed = !canonical_response.value.var_values.is_identity()
             || !canonical_response.value.external_constraints.opaque_types.is_empty();
-        let (certainty, nested_goals) = self.instantiate_and_apply_query_response(
+        let (certainty, nested_goals) = match self.instantiate_and_apply_query_response(
             goal.param_env,
             orig_values,
             canonical_response,
-        )?;
+        ) {
+            Err(e) => {
+                self.inspect.goal_evaluation(goal_evaluation);
+                return Err(e);
+            }
+            Ok(response) => response,
+        };
+        goal_evaluation.returned_goals(&nested_goals);
+        self.inspect.goal_evaluation(goal_evaluation);
 
         if !has_changed && !nested_goals.is_empty() {
             bug!("an unchanged goal shouldn't have any side-effects on instantiation");

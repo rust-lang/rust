@@ -5,6 +5,7 @@ use rustc_middle::{
             inspect::{self, CacheHit, CandidateKind},
             CanonicalInput, Certainty, Goal, QueryInput, QueryResult,
         },
+        IsNormalizesToHack,
     },
     ty,
 };
@@ -17,6 +18,8 @@ pub struct WipGoalEvaluation<'tcx> {
     pub evaluation_steps: Vec<WipGoalEvaluationStep<'tcx>>,
 
     pub cache_hit: Option<CacheHit>,
+    pub is_normalizes_to_hack: IsNormalizesToHack,
+    pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 
     pub result: Option<QueryResult<'tcx>>,
 }
@@ -35,6 +38,8 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
                         .collect(),
                 },
             },
+            is_normalizes_to_hack: self.is_normalizes_to_hack,
+            returned_goals: self.returned_goals,
             result: self.result.unwrap(),
         }
     }
@@ -116,13 +121,11 @@ pub enum DebugSolver<'tcx> {
 pub struct ProofTreeBuilder<'tcx>(Option<Box<DebugSolver<'tcx>>>);
 impl<'tcx> ProofTreeBuilder<'tcx> {
     pub fn finalize(self) -> Option<inspect::GoalEvaluation<'tcx>> {
-        let wip_tree = *(self.0?);
-
-        match wip_tree {
+        match *(self.0?) {
             DebugSolver::GoalEvaluation(wip_goal_evaluation) => {
                 Some(wip_goal_evaluation.finalize())
             }
-            _ => unreachable!(),
+            root => unreachable!("unexpected proof tree builder root node: {:?}", root),
         }
     }
 
@@ -141,6 +144,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     pub fn new_goal_evaluation(
         &mut self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        is_normalizes_to_hack: IsNormalizesToHack,
     ) -> ProofTreeBuilder<'tcx> {
         if self.0.is_none() {
             return ProofTreeBuilder(None);
@@ -150,7 +154,9 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             uncanonicalized_goal: goal,
             canonicalized_goal: None,
             evaluation_steps: vec![],
+            is_normalizes_to_hack,
             cache_hit: None,
+            returned_goals: vec![],
             result: None,
         }))))
     }
@@ -180,6 +186,20 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             }
             _ => unreachable!(),
         };
+    }
+    pub fn returned_goals(&mut self, goals: &[Goal<'tcx, ty::Predicate<'tcx>>]) {
+        let this = match self.0.as_mut() {
+            None => return,
+            Some(this) => &mut **this,
+        };
+
+        match this {
+            DebugSolver::GoalEvaluation(evaluation) => {
+                assert!(evaluation.returned_goals.is_empty());
+                evaluation.returned_goals.extend(goals);
+            }
+            _ => unreachable!(),
+        }
     }
     pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<'tcx>) {
         let this = match self.0.as_mut() {
