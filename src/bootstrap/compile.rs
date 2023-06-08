@@ -118,6 +118,10 @@ impl Step for Std {
             || builder.config.keep_stage_std.contains(&compiler.stage)
         {
             builder.info("Warning: Using a potentially old libstd. This may not behave well.");
+
+            copy_third_party_objects(builder, &compiler, target);
+            copy_self_contained_objects(builder, &compiler, target);
+
             builder.ensure(StdLink::from_std(self, compiler));
             return;
         }
