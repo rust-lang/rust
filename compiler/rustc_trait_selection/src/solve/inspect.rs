@@ -1,25 +1,129 @@
 use rustc_middle::{
     traits::{
         query::NoSolution,
-        solve::{inspect::*, CanonicalInput, Certainty, Goal, QueryInput, QueryResult},
+        solve::{
+            inspect::{self, CacheHit, CandidateKind},
+            CanonicalInput, Certainty, Goal, QueryInput, QueryResult,
+        },
     },
     ty,
 };
 
+#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+pub struct WipGoalEvaluation<'tcx> {
+    pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    pub canonicalized_goal: Option<CanonicalInput<'tcx>>,
+
+    pub evaluation_steps: Vec<WipGoalEvaluationStep<'tcx>>,
+
+    pub cache_hit: Option<CacheHit>,
+
+    pub result: Option<QueryResult<'tcx>>,
+}
+impl<'tcx> WipGoalEvaluation<'tcx> {
+    pub fn finalize(self) -> inspect::GoalEvaluation<'tcx> {
+        inspect::GoalEvaluation {
+            uncanonicalized_goal: self.uncanonicalized_goal,
+            canonicalized_goal: self.canonicalized_goal.unwrap(),
+            kind: match self.cache_hit {
+                Some(hit) => inspect::GoalEvaluationKind::CacheHit(hit),
+                None => inspect::GoalEvaluationKind::Uncached {
+                    revisions: self
+                        .evaluation_steps
+                        .into_iter()
+                        .map(WipGoalEvaluationStep::finalize)
+                        .collect(),
+                },
+            },
+            result: self.result.unwrap(),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+pub struct WipAddedGoalsEvaluation<'tcx> {
+    pub evaluations: Vec<Vec<WipGoalEvaluation<'tcx>>>,
+    pub result: Option<Result<Certainty, NoSolution>>,
+}
+impl<'tcx> WipAddedGoalsEvaluation<'tcx> {
+    pub fn finalize(self) -> inspect::AddedGoalsEvaluation<'tcx> {
+        inspect::AddedGoalsEvaluation {
+            evaluations: self
+                .evaluations
+                .into_iter()
+                .map(|evaluations| {
+                    evaluations.into_iter().map(WipGoalEvaluation::finalize).collect()
+                })
+                .collect(),
+            result: self.result.unwrap(),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+pub struct WipGoalEvaluationStep<'tcx> {
+    pub instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
+
+    pub nested_goal_evaluations: Vec<WipAddedGoalsEvaluation<'tcx>>,
+    pub candidates: Vec<WipGoalCandidate<'tcx>>,
+
+    pub result: Option<QueryResult<'tcx>>,
+}
+impl<'tcx> WipGoalEvaluationStep<'tcx> {
+    pub fn finalize(self) -> inspect::GoalEvaluationStep<'tcx> {
+        inspect::GoalEvaluationStep {
+            instantiated_goal: self.instantiated_goal,
+            nested_goal_evaluations: self
+                .nested_goal_evaluations
+                .into_iter()
+                .map(WipAddedGoalsEvaluation::finalize)
+                .collect(),
+            candidates: self.candidates.into_iter().map(WipGoalCandidate::finalize).collect(),
+            result: self.result.unwrap(),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+pub struct WipGoalCandidate<'tcx> {
+    pub nested_goal_evaluations: Vec<WipAddedGoalsEvaluation<'tcx>>,
+    pub candidates: Vec<WipGoalCandidate<'tcx>>,
+    pub kind: Option<CandidateKind<'tcx>>,
+}
+impl<'tcx> WipGoalCandidate<'tcx> {
+    pub fn finalize(self) -> inspect::GoalCandidate<'tcx> {
+        inspect::GoalCandidate {
+            nested_goal_evaluations: self
+                .nested_goal_evaluations
+                .into_iter()
+                .map(WipAddedGoalsEvaluation::finalize)
+                .collect(),
+            candidates: self.candidates.into_iter().map(WipGoalCandidate::finalize).collect(),
+            kind: self.kind.unwrap(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum DebugSolver<'tcx> {
     Root,
-    GoalEvaluation(GoalEvaluation<'tcx>),
-    AddedGoalsEvaluation(AddedGoalsEvaluation<'tcx>),
-    GoalEvaluationStep(GoalEvaluationStep<'tcx>),
-    GoalCandidate(GoalCandidate<'tcx>),
+    GoalEvaluation(WipGoalEvaluation<'tcx>),
+    AddedGoalsEvaluation(WipAddedGoalsEvaluation<'tcx>),
+    GoalEvaluationStep(WipGoalEvaluationStep<'tcx>),
+    GoalCandidate(WipGoalCandidate<'tcx>),
 }
 
 pub struct ProofTreeBuilder<'tcx>(Option<Box<DebugSolver<'tcx>>>);
-
 impl<'tcx> ProofTreeBuilder<'tcx> {
-    pub fn into_proof_tree(self) -> Option<DebugSolver<'tcx>> {
-        self.0.map(|tree| *tree)
+    pub fn finalize(self) -> Option<inspect::GoalEvaluation<'tcx>> {
+        let wip_tree = *(self.0?);
+
+        match wip_tree {
+            DebugSolver::GoalEvaluation(wip_goal_evaluation) => {
+                Some(wip_goal_evaluation.finalize())
+            }
+            _ => unreachable!(),
+        }
     }
 
     pub fn new_root() -> ProofTreeBuilder<'tcx> {
@@ -30,6 +134,10 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         Self(None)
     }
 
+    pub fn is_noop(&self) -> bool {
+        self.0.is_none()
+    }
+
     pub fn new_goal_evaluation(
         &mut self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
@@ -38,7 +146,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             return ProofTreeBuilder(None);
         }
 
-        Self(Some(Box::new(DebugSolver::GoalEvaluation(GoalEvaluation {
+        Self(Some(Box::new(DebugSolver::GoalEvaluation(WipGoalEvaluation {
             uncanonicalized_goal: goal,
             canonicalized_goal: None,
             evaluation_steps: vec![],
@@ -81,7 +189,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
         match (this, *goal_evaluation.0.unwrap()) {
             (
-                DebugSolver::AddedGoalsEvaluation(AddedGoalsEvaluation { evaluations, .. }),
+                DebugSolver::AddedGoalsEvaluation(WipAddedGoalsEvaluation { evaluations, .. }),
                 DebugSolver::GoalEvaluation(goal_evaluation),
             ) => evaluations.last_mut().unwrap().push(goal_evaluation),
             (this @ DebugSolver::Root, goal_evaluation) => *this = goal_evaluation,
@@ -93,7 +201,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         &mut self,
         instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
     ) -> ProofTreeBuilder<'tcx> {
-        Self(Some(Box::new(DebugSolver::GoalEvaluationStep(GoalEvaluationStep {
+        if self.0.is_none() {
+            return Self(None);
+        }
+
+        Self(Some(Box::new(DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
             instantiated_goal,
             nested_goal_evaluations: vec![],
             candidates: vec![],
@@ -115,24 +227,25 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     }
 
     pub fn new_goal_candidate(&mut self) -> ProofTreeBuilder<'tcx> {
-        Self(Some(Box::new(DebugSolver::GoalCandidate(GoalCandidate {
+        if self.0.is_none() {
+            return Self(None);
+        }
+
+        Self(Some(Box::new(DebugSolver::GoalCandidate(WipGoalCandidate {
             nested_goal_evaluations: vec![],
             candidates: vec![],
-            name: None,
-            result: None,
+            kind: None,
         }))))
     }
-    pub fn candidate_name(&mut self, f: &mut dyn FnMut() -> String) {
+    pub fn candidate_kind(&mut self, kind: CandidateKind<'tcx>) {
         let this = match self.0.as_mut() {
             None => return,
             Some(this) => &mut **this,
         };
 
         match this {
-            DebugSolver::GoalCandidate(goal_candidate) => {
-                let name = f();
-                assert!(goal_candidate.name.is_none());
-                goal_candidate.name = Some(name);
+            DebugSolver::GoalCandidate(WipGoalCandidate { kind: old_kind @ None, .. }) => {
+                *old_kind = Some(kind)
             }
             _ => unreachable!(),
         }
@@ -145,8 +258,8 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
         match (this, *candidate.0.unwrap()) {
             (
-                DebugSolver::GoalCandidate(GoalCandidate { candidates, .. })
-                | DebugSolver::GoalEvaluationStep(GoalEvaluationStep { candidates, .. }),
+                DebugSolver::GoalCandidate(WipGoalCandidate { candidates, .. })
+                | DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep { candidates, .. }),
                 DebugSolver::GoalCandidate(candidate),
             ) => candidates.push(candidate),
             _ => unreachable!(),
@@ -154,7 +267,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     }
 
     pub fn new_evaluate_added_goals(&mut self) -> ProofTreeBuilder<'tcx> {
-        Self(Some(Box::new(DebugSolver::AddedGoalsEvaluation(AddedGoalsEvaluation {
+        if self.0.is_none() {
+            return Self(None);
+        }
+
+        Self(Some(Box::new(DebugSolver::AddedGoalsEvaluation(WipAddedGoalsEvaluation {
             evaluations: vec![],
             result: None,
         }))))
@@ -194,10 +311,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
         match (this, *goals_evaluation.0.unwrap()) {
             (
-                DebugSolver::GoalEvaluationStep(GoalEvaluationStep {
-                    nested_goal_evaluations, ..
+                DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
+                    nested_goal_evaluations,
+                    ..
                 })
-                | DebugSolver::GoalCandidate(GoalCandidate { nested_goal_evaluations, .. }),
+                | DebugSolver::GoalCandidate(WipGoalCandidate { nested_goal_evaluations, .. }),
                 DebugSolver::AddedGoalsEvaluation(added_goals_evaluation),
             ) => nested_goal_evaluations.push(added_goals_evaluation),
             _ => unreachable!(),
@@ -215,14 +333,12 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 assert!(goal_evaluation.result.is_none());
                 goal_evaluation.result = Some(result);
             }
-            DebugSolver::Root | DebugSolver::AddedGoalsEvaluation(_) => unreachable!(),
+            DebugSolver::Root
+            | DebugSolver::AddedGoalsEvaluation(_)
+            | DebugSolver::GoalCandidate(_) => unreachable!(),
             DebugSolver::GoalEvaluationStep(evaluation_step) => {
                 assert!(evaluation_step.result.is_none());
                 evaluation_step.result = Some(result);
-            }
-            DebugSolver::GoalCandidate(candidate) => {
-                assert!(candidate.result.is_none());
-                candidate.result = Some(result);
             }
         }
     }

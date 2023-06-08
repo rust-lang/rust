@@ -9,6 +9,7 @@ use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
+use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
@@ -109,21 +110,30 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(projection_pred) = assumption.as_projection_clause()
-            && projection_pred.projection_def_id() == goal.predicate.def_id()
-        {
-            ecx.probe_candidate(|ecx| {
-                let assumption_projection_pred =
-                    ecx.instantiate_binder_with_infer(projection_pred);
-                ecx.eq(
-                    goal.param_env,
-                    goal.predicate.projection_ty,
-                    assumption_projection_pred.projection_ty,
-                )?;
-                ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
-                    .expect("expected goal term to be fully unconstrained");
-                then(ecx)
-            }, || "assumption".into())
+        if let Some(projection_pred) = assumption.as_projection_clause() {
+            if projection_pred.projection_def_id() == goal.predicate.def_id() {
+                ecx.probe(
+                    |ecx| {
+                        let assumption_projection_pred =
+                            ecx.instantiate_binder_with_infer(projection_pred);
+                        ecx.eq(
+                            goal.param_env,
+                            goal.predicate.projection_ty,
+                            assumption_projection_pred.projection_ty,
+                        )?;
+                        ecx.eq(
+                            goal.param_env,
+                            goal.predicate.term,
+                            assumption_projection_pred.term,
+                        )
+                        .expect("expected goal term to be fully unconstrained");
+                        then(ecx)
+                    },
+                    |r| CandidateKind::Candidate { name: "assumption".into(), result: *r },
+                )
+            } else {
+                Err(NoSolution)
+            }
         } else {
             Err(NoSolution)
         }
@@ -143,7 +153,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        ecx.probe_candidate(
+        ecx.probe(
             |ecx| {
                 let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
                 let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
@@ -225,7 +235,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     .expect("expected goal term to be fully unconstrained");
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             },
-            || "impl".into(),
+            |r| CandidateKind::Candidate { name: "impl".into(), result: *r },
         )
     }
 
@@ -321,7 +331,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
-        ecx.probe_candidate(
+        ecx.probe(
             |ecx| {
                 let metadata_ty = match goal.predicate.self_ty().kind() {
                     ty::Bool
@@ -406,7 +416,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     .expect("expected goal term to be fully unconstrained");
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             },
-            || "builtin pointee".into(),
+            |r| CandidateKind::Candidate { name: "builtin pointee".into(), result: *r },
         )
     }
 
@@ -542,13 +552,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             ),
         };
 
-        ecx.probe_candidate(
+        ecx.probe(
             |ecx| {
                 ecx.eq(goal.param_env, goal.predicate.term, discriminant_ty.into())
                     .expect("expected goal term to be fully unconstrained");
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             },
-            || "builtin discriminant kind".into(),
+            |r| CandidateKind::Candidate { name: "builtin discriminant kind".into(), result: *r },
         )
     }
 

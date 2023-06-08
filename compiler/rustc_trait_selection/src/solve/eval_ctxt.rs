@@ -9,6 +9,7 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, MaybeCause, PredefinedOpaques,
     PredefinedOpaquesData, QueryResult,
@@ -78,7 +79,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     inspect: ProofTreeBuilder<'tcx>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 pub(super) enum IsNormalizesToHack {
     Yes,
     No,
@@ -157,7 +158,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         };
         let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
 
-        if let Some(tree) = ecx.inspect.into_proof_tree() {
+        if let Some(tree) = ecx.inspect.finalize() {
             println!("{:?}", tree);
         }
 
@@ -509,7 +510,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    pub(super) fn probe<T>(&mut self, f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T) -> T {
+    /// `probe_kind` is only called when proof tree building is enabled so it can be
+    /// as expensive as necessary to output the desired information.
+    pub(super) fn probe<T>(
+        &mut self,
+        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T,
+        probe_kind: impl FnOnce(&T) -> CandidateKind<'tcx>,
+    ) -> T {
         let mut ecx = EvalCtxt {
             infcx: self.infcx,
             var_values: self.var_values,
@@ -521,21 +528,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             inspect: self.inspect.new_goal_candidate(),
         };
         let r = self.infcx.probe(|_| f(&mut ecx));
-        self.inspect.goal_candidate(ecx.inspect);
+        if !self.inspect.is_noop() {
+            let cand_kind = probe_kind(&r);
+            ecx.inspect.candidate_kind(cand_kind);
+            self.inspect.goal_candidate(ecx.inspect);
+        }
         r
-    }
-
-    pub(super) fn probe_candidate(
-        &mut self,
-        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
-        mut name: impl FnMut() -> String,
-    ) -> QueryResult<'tcx> {
-        self.probe(|ecx| {
-            let result = f(ecx);
-            ecx.inspect.candidate_name(&mut name);
-            ecx.inspect.query_result(result);
-            result
-        })
     }
 
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
@@ -858,7 +856,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     ecx.add_item_bounds_for_hidden_type(candidate_key, param_env, candidate_ty);
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 },
-                || "opaque type storage".into(),
+                |r| CandidateKind::Candidate { name: "opaque type storage".into(), result: *r },
             ));
         }
         values

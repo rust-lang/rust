@@ -2,7 +2,7 @@ use super::{CanonicalInput, Certainty, Goal, NoSolution, QueryInput, QueryResult
 use crate::ty;
 use std::fmt::{Debug, Write};
 
-#[derive(Eq, PartialEq, Hash, HashStable)]
+#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
 pub enum CacheHit {
     Provisional,
     Global,
@@ -11,16 +11,16 @@ pub enum CacheHit {
 #[derive(Eq, PartialEq, Hash, HashStable)]
 pub struct GoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    pub canonicalized_goal: Option<CanonicalInput<'tcx>>,
+    pub canonicalized_goal: CanonicalInput<'tcx>,
 
-    /// To handle coinductive cycles we can end up re-evaluating a goal
-    /// multiple times with different results for a nested goal. Each rerun
-    /// is represented as an entry in this vec.
-    pub evaluation_steps: Vec<GoalEvaluationStep<'tcx>>,
+    pub kind: GoalEvaluationKind<'tcx>,
 
-    pub cache_hit: Option<CacheHit>,
-
-    pub result: Option<QueryResult<'tcx>>,
+    pub result: QueryResult<'tcx>,
+}
+#[derive(Eq, PartialEq, Hash, HashStable)]
+pub enum GoalEvaluationKind<'tcx> {
+    CacheHit(CacheHit),
+    Uncached { revisions: Vec<GoalEvaluationStep<'tcx>> },
 }
 impl Debug for GoalEvaluation<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -31,7 +31,7 @@ impl Debug for GoalEvaluation<'_> {
 #[derive(Eq, PartialEq, Hash, HashStable)]
 pub struct AddedGoalsEvaluation<'tcx> {
     pub evaluations: Vec<Vec<GoalEvaluation<'tcx>>>,
-    pub result: Option<Result<Certainty, NoSolution>>,
+    pub result: Result<Certainty, NoSolution>,
 }
 impl Debug for AddedGoalsEvaluation<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -46,7 +46,7 @@ pub struct GoalEvaluationStep<'tcx> {
     pub nested_goal_evaluations: Vec<AddedGoalsEvaluation<'tcx>>,
     pub candidates: Vec<GoalCandidate<'tcx>>,
 
-    pub result: Option<QueryResult<'tcx>>,
+    pub result: QueryResult<'tcx>,
 }
 impl Debug for GoalEvaluationStep<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -58,9 +58,14 @@ impl Debug for GoalEvaluationStep<'_> {
 pub struct GoalCandidate<'tcx> {
     pub nested_goal_evaluations: Vec<AddedGoalsEvaluation<'tcx>>,
     pub candidates: Vec<GoalCandidate<'tcx>>,
-
-    pub name: Option<String>,
-    pub result: Option<QueryResult<'tcx>>,
+    pub kind: CandidateKind<'tcx>,
+}
+#[derive(Eq, PartialEq, Debug, Hash, HashStable)]
+pub enum CandidateKind<'tcx> {
+    /// Probe entered when normalizing the self ty during candidate assembly
+    NormalizedSelfTyAssembly,
+    /// A normal candidate for proving a goal
+    Candidate { name: String, result: QueryResult<'tcx> },
 }
 impl Debug for GoalCandidate<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -97,19 +102,23 @@ impl ProofTreeFormatter<'_, '_> {
         writeln!(f, "GOAL: {:?}", goal.uncanonicalized_goal)?;
         writeln!(f, "CANONICALIZED: {:?}", goal.canonicalized_goal)?;
 
-        match goal.cache_hit {
-            Some(CacheHit::Global) => writeln!(f, "GLOBAL CACHE HIT: {:?}", goal.result),
-            Some(CacheHit::Provisional) => writeln!(f, "PROVISIONAL CACHE HIT: {:?}", goal.result),
-            None => {
-                for (n, step) in goal.evaluation_steps.iter().enumerate() {
+        match &goal.kind {
+            GoalEvaluationKind::CacheHit(CacheHit::Global) => {
+                writeln!(f, "GLOBAL CACHE HIT: {:?}", goal.result)
+            }
+            GoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
+                writeln!(f, "PROVISIONAL CACHE HIT: {:?}", goal.result)
+            }
+            GoalEvaluationKind::Uncached { revisions } => {
+                for (n, step) in revisions.iter().enumerate() {
                     let f = &mut *self.f;
-                    writeln!(f, "REVISION {n}: {:?}", step.result.unwrap())?;
+                    writeln!(f, "REVISION {n}: {:?}", step.result)?;
                     let mut f = self.nested();
                     f.format_evaluation_step(step)?;
                 }
 
                 let f = &mut *self.f;
-                writeln!(f, "RESULT: {:?}", goal.result.unwrap())
+                writeln!(f, "RESULT: {:?}", goal.result)
             }
         }
     }
@@ -136,12 +145,14 @@ impl ProofTreeFormatter<'_, '_> {
     fn format_candidate(&mut self, candidate: &GoalCandidate<'_>) -> std::fmt::Result {
         let f = &mut *self.f;
 
-        match (candidate.name.as_ref(), candidate.result) {
-            (Some(name), Some(result)) => writeln!(f, "CANDIDATE {}: {:?}", name, result,)?,
-            (None, None) => writeln!(f, "MISC PROBE")?,
-            (None, Some(_)) => unreachable!("unexpected probe with no name but a result"),
-            (Some(_), None) => unreachable!("unexpected probe with a name but no candidate"),
-        };
+        match &candidate.kind {
+            CandidateKind::NormalizedSelfTyAssembly => {
+                writeln!(f, "NORMALIZING SELF TY FOR ASSEMBLY:")
+            }
+            CandidateKind::Candidate { name, result } => {
+                writeln!(f, "CANDIDATE {}: {:?}", name, result)
+            }
+        }?;
 
         let mut f = self.nested();
         for candidate in &candidate.candidates {
@@ -159,7 +170,7 @@ impl ProofTreeFormatter<'_, '_> {
         nested_goal_evaluation: &AddedGoalsEvaluation<'_>,
     ) -> std::fmt::Result {
         let f = &mut *self.f;
-        writeln!(f, "TRY_EVALUATE_ADDED_GOALS: {:?}", nested_goal_evaluation.result.unwrap())?;
+        writeln!(f, "TRY_EVALUATE_ADDED_GOALS: {:?}", nested_goal_evaluation.result)?;
 
         for (n, revision) in nested_goal_evaluation.evaluations.iter().enumerate() {
             let f = &mut *self.f;
