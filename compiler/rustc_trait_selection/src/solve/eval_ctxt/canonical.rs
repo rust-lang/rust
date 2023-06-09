@@ -16,7 +16,6 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
-use rustc_infer::infer::InferOk;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
@@ -321,12 +320,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
     ) -> Result<(), NoSolution> {
-        for &(a, b) in opaque_types {
-            let InferOk { value: (), obligations } =
-                self.infcx.register_hidden_type_in_new_solver(a, param_env, b)?;
-            // It's sound to drop these obligations, since the normalizes-to goal
-            // is responsible for proving these obligations.
-            let _ = obligations;
+        for &(key, ty) in opaque_types {
+            self.insert_hidden_type(key, param_env, ty)?;
         }
         Ok(())
     }
