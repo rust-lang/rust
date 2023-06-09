@@ -54,7 +54,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// ```rust,ignore
-    /// lib// .rs
+    /// // lib.rs
     /// pub mod a;
     /// ```
     #[clippy::version = "1.70.0"]
