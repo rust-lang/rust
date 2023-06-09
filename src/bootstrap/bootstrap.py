@@ -485,16 +485,6 @@ class RustBuild(object):
         self.color = args.color
         self.warnings = args.warnings
 
-        profile = self.get_toml('profile')
-        if profile is not None:
-            include_file = 'config.{}.toml'.format(profile)
-            include_dir = os.path.join(self.rust_root, 'src', 'bootstrap', 'defaults')
-            include_path = os.path.join(include_dir, include_file)
-            # HACK: This works because `self.get_toml()` returns the first match it finds for a
-            # specific key, so appending our defaults at the end allows the user to override them
-            with open(include_path) as included_toml:
-                self.config_toml += os.linesep + included_toml.read()
-
         config_verbose_count = self.get_toml('verbose', 'build')
         if config_verbose_count is not None:
             self.verbose = max(self.verbose, int(config_verbose_count))
@@ -794,9 +784,12 @@ class RustBuild(object):
         >>> rb.get_toml("key1")
         'true'
         """
+        return RustBuild.get_toml_static(self.config_toml, key, section)
 
+    @staticmethod
+    def get_toml_static(config_toml, key, section=None):
         cur_section = None
-        for line in self.config_toml.splitlines():
+        for line in config_toml.splitlines():
             section_match = re.match(r'^\s*\[(.*)\]\s*$', line)
             if section_match is not None:
                 cur_section = section_match.group(1)
@@ -805,7 +798,7 @@ class RustBuild(object):
             if match is not None:
                 value = match.group(1)
                 if section is None or section == cur_section:
-                    return self.get_string(value) or value.strip()
+                    return RustBuild.get_string(value) or value.strip()
         return None
 
     def cargo(self):
@@ -1053,6 +1046,16 @@ def bootstrap(args):
     if not using_default_path or os.path.exists(toml_path):
         with open(toml_path) as config:
             config_toml = config.read()
+
+    profile = RustBuild.get_toml_static(config_toml, 'profile')
+    if profile is not None:
+        include_file = 'config.{}.toml'.format(profile)
+        include_dir = os.path.join(rust_root, 'src', 'bootstrap', 'defaults')
+        include_path = os.path.join(include_dir, include_file)
+        # HACK: This works because `self.get_toml()` returns the first match it finds for a
+        # specific key, so appending our defaults at the end allows the user to override them
+        with open(include_path) as included_toml:
+            config_toml += os.linesep + included_toml.read()
 
     # Configure initial bootstrap
     build = RustBuild(config_toml, args)
