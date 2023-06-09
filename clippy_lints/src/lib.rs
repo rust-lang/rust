@@ -284,9 +284,9 @@ mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
 mod significant_drop_tightening;
+mod single_char_idents;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
-mod single_letter_idents;
 mod size_of_in_element_count;
 mod size_of_ref;
 mod slow_vector_initialization;
@@ -1036,7 +1036,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(needless_if::NeedlessIf));
     let allowed_idents = conf.allowed_idents.clone();
     store.register_early_pass(move || {
-        Box::new(single_letter_idents::SingleLetterIdents {
+        Box::new(single_char_idents::SingleCharIdents {
             allowed_idents: allowed_idents.clone(),
         })
     });

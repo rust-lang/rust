@@ -24,29 +24,29 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.72.0"]
-    pub SINGLE_LETTER_IDENTS,
+    pub SINGLE_CHAR_IDENTS,
     restriction,
     "disallows idents that can be represented as a char"
 }
-impl_lint_pass!(SingleLetterIdents => [SINGLE_LETTER_IDENTS]);
+impl_lint_pass!(SingleCharIdents => [SINGLE_CHAR_IDENTS]);
 
 #[derive(Clone)]
-pub struct SingleLetterIdents {
+pub struct SingleCharIdents {
     pub allowed_idents: FxHashSet<char>,
 }
 
-impl EarlyLintPass for SingleLetterIdents {
+impl EarlyLintPass for SingleCharIdents {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         let str = ident.name.as_str();
         let chars = str.chars();
-        if let [char, rest @ ..] = chars.collect_vec().as_slice()
+        if let [char, rest @ ..] = &*chars.collect_vec()
             && rest.is_empty()
             && self.allowed_idents.get(char).is_none()
             && !in_external_macro(cx.sess(), ident.span)
             // Ignore proc macros. Let's implement `WithSearchPat` for early lints someday :)
             && snippet(cx, ident.span, str) == str
         {
-            span_lint(cx, SINGLE_LETTER_IDENTS, ident.span, "this ident comprises of a single letter");
+            span_lint(cx, SINGLE_CHAR_IDENTS, ident.span, "this ident comprises of a single char");
         }
     }
 }
