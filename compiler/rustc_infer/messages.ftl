@@ -278,9 +278,6 @@ infer_ril_introduced_by = requirement introduced by this return type
 infer_ril_introduced_here = `'static` requirement introduced here
 infer_ril_static_introduced_by = "`'static` lifetime requirement introduced by the return type
 
-infer_sarwa_option = you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`
-infer_sarwa_result = you can convert from `&Result<T, E>` to `Result<&T, &E>` using `.as_ref()`
-
 infer_sbfrit_box_return_expr = if you change the return type to expect trait objects, box the returned expressions
 
 infer_sbfrit_change_return_type = you could change the return type to be a boxed trait object

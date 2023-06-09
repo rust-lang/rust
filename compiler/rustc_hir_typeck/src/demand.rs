@@ -3,7 +3,7 @@ use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::MultiSpan;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
+use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
@@ -91,6 +91,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_wrong_return_ty_due_to_generic_arg(err, expr, expr_ty);
     }
 
+    /// Really hacky heuristic to remap an `assert_eq!` error to the user
+    /// expressions provided to the macro.
+    fn adjust_expr_for_assert_eq_macro(
+        &self,
+        found_expr: &mut &'tcx hir::Expr<'tcx>,
+        expected_expr: &mut Option<&'tcx hir::Expr<'tcx>>,
+    ) {
+        let Some(expected_expr) = expected_expr else { return; };
+
+        if !found_expr.span.eq_ctxt(expected_expr.span) {
+            return;
+        }
+
+        if !found_expr
+            .span
+            .ctxt()
+            .outer_expn_data()
+            .macro_def_id
+            .is_some_and(|def_id| self.tcx.is_diagnostic_item(sym::assert_eq_macro, def_id))
+        {
+            return;
+        }
+
+        let hir::ExprKind::Unary(
+            hir::UnOp::Deref,
+            hir::Expr { kind: hir::ExprKind::Path(found_path), .. },
+        ) = found_expr.kind else { return; };
+        let hir::ExprKind::Unary(
+            hir::UnOp::Deref,
+            hir::Expr { kind: hir::ExprKind::Path(expected_path), .. },
+        ) = expected_expr.kind else { return; };
+
+        for (path, name, idx, var) in [
+            (expected_path, "left_val", 0, expected_expr),
+            (found_path, "right_val", 1, found_expr),
+        ] {
+            if let hir::QPath::Resolved(_, path) = path
+                && let [segment] = path.segments
+                && segment.ident.name.as_str() == name
+                && let Res::Local(hir_id) = path.res
+                && let Some((_, hir::Node::Expr(match_expr))) = self.tcx.hir().parent_iter(hir_id).nth(2)
+                && let hir::ExprKind::Match(scrutinee, _, _) = match_expr.kind
+                && let hir::ExprKind::Tup(exprs) = scrutinee.kind
+                && let hir::ExprKind::AddrOf(_, _, macro_arg) = exprs[idx].kind
+            {
+                *var = macro_arg;
+            }
+        }
+    }
+
     /// Requires that the two types unify, and prints an error message if
     /// they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
@@ -156,7 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn demand_coerce(
         &self,
-        expr: &hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
@@ -177,10 +227,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
     pub fn demand_coerce_diag(
         &self,
-        expr: &hir::Expr<'tcx>,
+        mut expr: &'tcx hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
-        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
     ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>) {
         let expected = self.resolve_vars_with_obligations(expected);
@@ -189,6 +239,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(ty) => return (ty, None),
             Err(e) => e,
         };
+
+        self.adjust_expr_for_assert_eq_macro(&mut expr, &mut expected_ty_expr);
 
         self.set_tainted_by_errors(self.tcx.sess.delay_span_bug(
             expr.span,

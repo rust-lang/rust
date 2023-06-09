@@ -374,12 +374,18 @@ impl<T> Trait<T> for X {
     ) {
         let tcx = self.tcx;
 
+        // Don't suggest constraining a projection to something containing itself
+        if self.tcx.erase_regions(values.found).contains(self.tcx.erase_regions(values.expected)) {
+            return;
+        }
+
         let msg = || {
             format!(
                 "consider constraining the associated type `{}` to `{}`",
                 values.expected, values.found
             )
         };
+
         let body_owner = tcx.hir().get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 

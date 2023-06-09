@@ -13,9 +13,9 @@ use rustc_span::{sym, BytePos, Span};
 
 use crate::errors::{
     ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
-    FunctionPointerSuggestion, SuggestAccessingField, SuggestAsRefWhereAppropriate,
-    SuggestBoxingForReturnImplTrait, SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany,
-    SuggestTuplePatternOne, TypeErrorAdditionalDiags,
+    FunctionPointerSuggestion, SuggestAccessingField, SuggestBoxingForReturnImplTrait,
+    SuggestRemoveSemiOrReturnBinding, SuggestTuplePatternMany, SuggestTuplePatternOne,
+    TypeErrorAdditionalDiags,
 };
 
 use super::TypeErrCtxt;
@@ -286,27 +286,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
             }
-        }
-    }
-
-    /// When encountering a case where `.as_ref()` on a `Result` or `Option` would be appropriate,
-    /// suggests it.
-    pub(super) fn suggest_as_ref_where_appropriate(
-        &self,
-        span: Span,
-        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
-        diag: &mut Diagnostic,
-    ) {
-        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-            && let Some(msg) = self.should_suggest_as_ref_kind(exp_found.expected, exp_found.found)
-        {
-            // HACK: fix issue# 100605, suggesting convert from &Option<T> to Option<&T>, remove the extra `&`
-            let snippet = snippet.trim_start_matches('&');
-            let subdiag = match msg {
-                SuggestAsRefKind::Option => SuggestAsRefWhereAppropriate::Option { span, snippet },
-                SuggestAsRefKind::Result => SuggestAsRefWhereAppropriate::Result { span, snippet },
-            };
-            diag.subdiagnostic(subdiag);
         }
     }
 
