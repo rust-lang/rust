@@ -7,7 +7,6 @@ use std::{fmt, iter, mem};
 
 use either::Either;
 
-use hir::OpaqueTyOrigin;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
@@ -28,6 +27,7 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
@@ -241,7 +241,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                 hidden_type.ty = infcx.tcx.ty_error(reported);
             }
 
-            (opaque_type_key, (hidden_type, decl.origin))
+            (opaque_type_key, hidden_type)
         })
         .collect();
 
@@ -878,8 +878,7 @@ struct BorrowCheckContext<'a, 'tcx> {
 pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    pub(crate) opaque_type_values:
-        FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+    pub(crate) opaque_type_values: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
 }
 
 /// A collection of region constraints that must be satisfied for the
@@ -1053,15 +1052,28 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             ConstraintCategory::OpaqueType,
             CustomTypeOp::new(
                 |ocx| {
-                    for (key, hidden_ty) in renumbered_opaques {
-                        ocx.register_infer_ok_obligations(
-                            ocx.infcx.register_hidden_type_in_new_solver(
-                                key,
-                                param_env,
-                                hidden_ty.ty,
-                            )?,
+                    let mut obligations = Vec::new();
+                    for (opaque_type_key, hidden_ty) in renumbered_opaques {
+                        let cause = ObligationCause::dummy();
+                        ocx.infcx.insert_hidden_type(
+                            opaque_type_key,
+                            &cause,
+                            param_env,
+                            hidden_ty.ty,
+                            true,
+                            &mut obligations,
+                        )?;
+
+                        ocx.infcx.add_item_bounds_for_hidden_type(
+                            opaque_type_key,
+                            cause,
+                            param_env,
+                            hidden_ty.ty,
+                            &mut obligations,
                         );
                     }
+
+                    ocx.register_obligations(obligations);
                     Ok(())
                 },
                 "register pre-defined opaques",
