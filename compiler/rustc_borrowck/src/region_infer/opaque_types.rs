@@ -251,91 +251,100 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             return self.tcx.ty_error(e);
         }
 
-        let definition_ty = instantiated_ty
-            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
-            .ty;
-
         if let Err(guar) =
             check_opaque_type_parameter_valid(self.tcx, opaque_type_key, instantiated_ty.span)
         {
             return self.tcx.ty_error(guar);
         }
 
-        // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
-        // on stable and we'd break that.
-        let opaque_ty_hir = self.tcx.hir().expect_item(opaque_type_key.def_id);
-        let OpaqueTyOrigin::TyAlias { .. } = opaque_ty_hir.expect_opaque_ty().origin else {
-            return definition_ty;
-        };
-        let def_id = opaque_type_key.def_id;
-        // This logic duplicates most of `check_opaque_meets_bounds`.
-        // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
-        let param_env = self.tcx.param_env(def_id);
-        // HACK This bubble is required for this tests to pass:
-        // nested-return-type2-tait2.rs
-        // nested-return-type2-tait3.rs
-        // FIXME(-Ztrait-solver=next): We probably should use `DefiningAnchor::Error`
-        // and prepopulate this `InferCtxt` with known opaque values, rather than
-        // using the `Bind` anchor here. For now it's fine.
-        let infcx = self
-            .tcx
-            .infer_ctxt()
-            .with_opaque_type_inference(if self.next_trait_solver() {
-                DefiningAnchor::Bind(def_id)
-            } else {
-                DefiningAnchor::Bubble
-            })
-            .build();
-        let ocx = ObligationCtxt::new(&infcx);
-        // Require the hidden type to be well-formed with only the generics of the opaque type.
-        // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
-        // hidden type is well formed even without those bounds.
-        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
+        let definition_ty = instantiated_ty
+            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
+            .ty;
 
-        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
-
-        // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
-        // the bounds that the function supplies.
-        let opaque_ty = self.tcx.mk_opaque(def_id.to_def_id(), id_substs);
-        if let Err(err) = ocx.eq(
-            &ObligationCause::misc(instantiated_ty.span, def_id),
-            param_env,
-            opaque_ty,
+        // `definition_ty` does not live in of the current inference context,
+        // so lets make sure that we don't accidentally misuse our current `infcx`.
+        match check_opaque_type_well_formed(
+            self.tcx,
+            self.next_trait_solver(),
+            opaque_type_key.def_id,
+            instantiated_ty.span,
             definition_ty,
         ) {
+            Ok(hidden_ty) => hidden_ty,
+            Err(guar) => self.tcx.ty_error(guar),
+        }
+    }
+}
+
+/// This logic duplicates most of `check_opaque_meets_bounds`.
+/// FIXME(oli-obk): Also do region checks here and then consider removing
+/// `check_opaque_meets_bounds` entirely.
+fn check_opaque_type_well_formed<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    next_trait_solver: bool,
+    def_id: LocalDefId,
+    definition_span: Span,
+    definition_ty: Ty<'tcx>,
+) -> Result<Ty<'tcx>, ErrorGuaranteed> {
+    // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
+    // on stable and we'd break that.
+    let opaque_ty_hir = tcx.hir().expect_item(def_id);
+    let OpaqueTyOrigin::TyAlias { .. } = opaque_ty_hir.expect_opaque_ty().origin else {
+        return Ok(definition_ty);
+    };
+    let param_env = tcx.param_env(def_id);
+    // HACK This bubble is required for this tests to pass:
+    // nested-return-type2-tait2.rs
+    // nested-return-type2-tait3.rs
+    // FIXME(-Ztrait-solver=next): We probably should use `DefiningAnchor::Error`
+    // and prepopulate this `InferCtxt` with known opaque values, rather than
+    // using the `Bind` anchor here. For now it's fine.
+    let infcx = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(next_trait_solver)
+        .with_opaque_type_inference(if next_trait_solver {
+            DefiningAnchor::Bind(def_id)
+        } else {
+            DefiningAnchor::Bubble
+        })
+        .build();
+    let ocx = ObligationCtxt::new(&infcx);
+    let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
+
+    // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
+    // the bounds that the function supplies.
+    let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), identity_substs);
+    ocx.eq(&ObligationCause::misc(definition_span, def_id), param_env, opaque_ty, definition_ty)
+        .map_err(|err| {
             infcx
                 .err_ctxt()
                 .report_mismatched_types(
-                    &ObligationCause::misc(instantiated_ty.span, def_id),
+                    &ObligationCause::misc(definition_span, def_id),
                     opaque_ty,
                     definition_ty,
                     err,
                 )
-                .emit();
-        }
+                .emit()
+        })?;
 
-        ocx.register_obligation(Obligation::misc(
-            infcx.tcx,
-            instantiated_ty.span,
-            def_id,
-            param_env,
-            predicate,
-        ));
+    // Require the hidden type to be well-formed with only the generics of the opaque type.
+    // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
+    // hidden type is well formed even without those bounds.
+    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
+    ocx.register_obligation(Obligation::misc(tcx, definition_span, def_id, param_env, predicate));
 
-        // Check that all obligations are satisfied by the implementation's
-        // version.
-        let errors = ocx.select_all_or_error();
+    // Check that all obligations are satisfied by the implementation's
+    // version.
+    let errors = ocx.select_all_or_error();
 
-        // This is still required for many(half of the tests in ui/type-alias-impl-trait)
-        // tests to pass
-        let _ = infcx.take_opaque_types();
+    // This is still required for many(half of the tests in ui/type-alias-impl-trait)
+    // tests to pass
+    let _ = infcx.take_opaque_types();
 
-        if errors.is_empty() {
-            definition_ty
-        } else {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
-            self.tcx.ty_error(reported)
-        }
+    if errors.is_empty() {
+        Ok(definition_ty)
+    } else {
+        Err(infcx.err_ctxt().report_fulfillment_errors(&errors))
     }
 }
 
