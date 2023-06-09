@@ -514,6 +514,10 @@ define_Conf! {
     ///
     /// The byte size a `T` in `Box<T>` can have, below which it triggers the `clippy::unnecessary_box` lint
     (unnecessary_box_size: u64 = 128),
+    /// Lint: MODULE_INCEPTION.
+    ///
+    /// Whether to allow module inception if it's not public.
+    (allow_private_module_inception: bool = false),
 }
 
 /// Search for the configuration file.

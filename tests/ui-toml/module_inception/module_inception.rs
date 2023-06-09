@@ -1,5 +1,6 @@
 #![warn(clippy::module_inception)]
 
+// Lint
 pub mod foo2 {
     pub mod bar2 {
         pub mod bar2 {
@@ -12,22 +13,22 @@ pub mod foo2 {
     }
 }
 
+// Don't lint
 mod foo {
-    mod bar {
-        mod bar {
-            mod foo {}
+    pub mod bar {
+        pub mod foo {
+            pub mod bar {}
         }
-        mod foo {}
     }
-    mod foo {
-        mod bar {}
+    pub mod foo {
+        pub mod bar {}
     }
 }
 
 // No warning. See <https://github.com/rust-lang/rust-clippy/issues/1220>.
-mod bar {
+pub mod bar {
     #[allow(clippy::module_inception)]
-    mod bar {}
+    pub mod bar {}
 }
 
 fn main() {}

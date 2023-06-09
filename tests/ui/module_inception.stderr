@@ -1,8 +1,8 @@
 error: module has the same name as its containing module
   --> $DIR/module_inception.rs:5:9
    |
-LL | /         mod bar {
-LL | |             mod foo {}
+LL | /         pub mod bar2 {
+LL | |             pub mod foo2 {}
 LL | |         }
    | |_________^
    |
@@ -11,10 +11,26 @@ LL | |         }
 error: module has the same name as its containing module
   --> $DIR/module_inception.rs:10:5
    |
+LL | /     pub mod foo2 {
+LL | |         pub mod bar2 {}
+LL | |     }
+   | |_____^
+
+error: module has the same name as its containing module
+  --> $DIR/module_inception.rs:17:9
+   |
+LL | /         mod bar {
+LL | |             mod foo {}
+LL | |         }
+   | |_________^
+
+error: module has the same name as its containing module
+  --> $DIR/module_inception.rs:22:5
+   |
 LL | /     mod foo {
 LL | |         mod bar {}
 LL | |     }
    | |_____^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 

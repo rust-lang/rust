@@ -3,6 +3,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
            allow-print-in-tests
+           allow-private-module-inception
            allow-unwrap-in-tests
            allowed-scripts
            arithmetic-side-effects-allowed
@@ -64,6 +65,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
            allow-print-in-tests
+           allow-private-module-inception
            allow-unwrap-in-tests
            allowed-scripts
            arithmetic-side-effects-allowed
