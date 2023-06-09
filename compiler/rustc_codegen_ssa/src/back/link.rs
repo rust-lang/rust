@@ -8,7 +8,7 @@ use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
-use rustc_metadata::fs::{emit_wrapper_file, METADATA_FILENAME};
+use rustc_metadata::fs::{copy_to_stdout, emit_wrapper_file, METADATA_FILENAME};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -68,6 +68,7 @@ pub fn link_binary<'a>(
 ) -> Result<(), ErrorGuaranteed> {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
+    let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
     for &crate_type in sess.crate_types().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
@@ -97,12 +98,15 @@ pub fn link_binary<'a>(
                 .tempdir()
                 .unwrap_or_else(|error| sess.emit_fatal(errors::CreateTempDir { error }));
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
-            let out_filename = out_filename(
+            let output = out_filename(
                 sess,
                 crate_type,
                 outputs,
                 codegen_results.crate_info.local_crate_name,
             );
+            let crate_name = format!("{}", codegen_results.crate_info.local_crate_name);
+            let out_filename =
+                output.file_for_writing(outputs, OutputType::Exe, Some(crate_name.as_str()));
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
@@ -152,6 +156,17 @@ pub fn link_binary<'a>(
                     );
                 }
             }
+
+            if output.is_stdout() {
+                if output.is_tty() {
+                    sess.emit_err(errors::BinaryOutputToTty {
+                        shorthand: OutputType::Exe.shorthand(),
+                    });
+                } else if let Err(e) = copy_to_stdout(&out_filename) {
+                    sess.emit_err(errors::CopyPath::new(&out_filename, output.as_path(), e));
+                }
+                tempfiles_for_stdout_output.push(out_filename);
+            }
         }
     }
 
@@ -187,6 +202,11 @@ pub fn link_binary<'a>(
 
         if let Some(ref allocator_module) = codegen_results.allocator_module {
             remove_temps_from_module(allocator_module);
+        }
+
+        // Remove the temporary files if output goes to stdout
+        for temp in tempfiles_for_stdout_output {
+            ensure_removed(sess.diagnostic(), &temp);
         }
 
         // If no requested outputs require linking, then the object temporaries should

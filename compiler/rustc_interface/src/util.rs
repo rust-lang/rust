@@ -11,7 +11,7 @@ use rustc_parse::validate_attr;
 use rustc_session as session;
 use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
-use rustc_session::config::{ErrorOutputType, OutputFilenames};
+use rustc_session::config::{ErrorOutputType, OutFileName, OutputFilenames, OutputTypes};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
@@ -500,7 +500,36 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     base
 }
 
+fn multiple_output_types_to_stdout(
+    output_types: &OutputTypes,
+    single_output_file_is_stdout: bool,
+) -> bool {
+    if atty::is(atty::Stream::Stdout) {
+        // If stdout is a tty, check if multiple text output types are
+        // specified by `--emit foo=- --emit bar=-` or `-o - --emit foo,bar`
+        let named_text_types = output_types
+            .iter()
+            .filter(|(f, o)| f.is_text_output() && *o == &Some(OutFileName::Stdout))
+            .count();
+        let unnamed_text_types =
+            output_types.iter().filter(|(f, o)| f.is_text_output() && o.is_none()).count();
+        named_text_types > 1 || unnamed_text_types > 1 && single_output_file_is_stdout
+    } else {
+        // Otherwise, all the output types should be checked
+        let named_types =
+            output_types.values().filter(|o| *o == &Some(OutFileName::Stdout)).count();
+        let unnamed_types = output_types.values().filter(|o| o.is_none()).count();
+        named_types > 1 || unnamed_types > 1 && single_output_file_is_stdout
+    }
+}
+
 pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> OutputFilenames {
+    if multiple_output_types_to_stdout(
+        &sess.opts.output_types,
+        sess.io.output_file == Some(OutFileName::Stdout),
+    ) {
+        sess.emit_fatal(errors::MultipleOutputTypesToStdout);
+    }
     match sess.io.output_file {
         None => {
             // "-" as input file will cause the parser to read from stdin so we
@@ -544,7 +573,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
 
             OutputFilenames::new(
                 out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
-                out_file.file_stem().unwrap_or_default().to_str().unwrap().to_string(),
+                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string(),
                 ofile,
                 sess.io.temps_dir.clone(),
                 sess.opts.cg.extra_filename.clone(),

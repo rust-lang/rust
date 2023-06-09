@@ -83,6 +83,12 @@ impl IntoDiagnosticArg for DebugArgPath<'_> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_binary_output_to_tty)]
+pub struct BinaryOutputToTty {
+    pub shorthand: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_ignoring_emit_path)]
 pub struct IgnoringEmitPath {
     pub extension: String,

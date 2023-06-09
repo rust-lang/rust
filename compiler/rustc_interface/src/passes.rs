@@ -24,7 +24,7 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_a
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::Resolver;
-use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
+use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::{MetadataLoader, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
@@ -373,18 +373,22 @@ fn generated_output_paths(
 ) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
-        let file = outputs.path(*output_type);
+        let out_filename = outputs.path(*output_type);
+        let file = out_filename.as_path().to_path_buf();
         match *output_type {
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => {
                 for crate_type in sess.crate_types().iter() {
                     let p = filename_for_input(sess, *crate_type, crate_name, outputs);
-                    out_filenames.push(p);
+                    out_filenames.push(p.as_path().to_path_buf());
                 }
             }
             OutputType::DepInfo if sess.opts.unstable_opts.dep_info_omit_d_target => {
                 // Don't add the dep-info output when omitting it from dep-info targets
+            }
+            OutputType::DepInfo if out_filename.is_stdout() => {
+                // Don't add the dep-info output when it goes to stdout
             }
             _ => {
                 out_filenames.push(file);
@@ -452,7 +456,8 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
     }
-    let deps_filename = outputs.path(OutputType::DepInfo);
+    let deps_output = outputs.path(OutputType::DepInfo);
+    let deps_filename = deps_output.as_path();
 
     let result: io::Result<()> = try {
         // Build a list of files used to compile the output and
@@ -515,33 +520,47 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
         }
 
-        let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
-        for path in out_filenames {
-            writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
-        }
+        let write_deps_to_file = |file: &mut dyn Write| -> io::Result<()> {
+            for path in out_filenames {
+                writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
+            }
 
-        // Emit a fake target for each input file to the compilation. This
-        // prevents `make` from spitting out an error if a file is later
-        // deleted. For more info see #28735
-        for path in files {
-            writeln!(file, "{path}:")?;
-        }
+            // Emit a fake target for each input file to the compilation. This
+            // prevents `make` from spitting out an error if a file is later
+            // deleted. For more info see #28735
+            for path in files {
+                writeln!(file, "{path}:")?;
+            }
 
-        // Emit special comments with information about accessed environment variables.
-        let env_depinfo = sess.parse_sess.env_depinfo.borrow();
-        if !env_depinfo.is_empty() {
-            let mut envs: Vec<_> = env_depinfo
-                .iter()
-                .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
-                .collect();
-            envs.sort_unstable();
-            writeln!(file)?;
-            for (k, v) in envs {
-                write!(file, "# env-dep:{k}")?;
-                if let Some(v) = v {
-                    write!(file, "={v}")?;
-                }
+            // Emit special comments with information about accessed environment variables.
+            let env_depinfo = sess.parse_sess.env_depinfo.borrow();
+            if !env_depinfo.is_empty() {
+                let mut envs: Vec<_> = env_depinfo
+                    .iter()
+                    .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
+                    .collect();
+                envs.sort_unstable();
                 writeln!(file)?;
+                for (k, v) in envs {
+                    write!(file, "# env-dep:{k}")?;
+                    if let Some(v) = v {
+                        write!(file, "={v}")?;
+                    }
+                    writeln!(file)?;
+                }
+            }
+
+            Ok(())
+        };
+
+        match deps_output {
+            OutFileName::Stdout => {
+                let mut file = BufWriter::new(io::stdout());
+                write_deps_to_file(&mut file)?;
+            }
+            OutFileName::Real(ref path) => {
+                let mut file = BufWriter::new(fs::File::create(path)?);
+                write_deps_to_file(&mut file)?;
             }
         }
     };

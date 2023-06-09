@@ -62,7 +62,7 @@ impl CodegenBackend for TheBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
-        use rustc_session::{config::CrateType, output::out_filename};
+        use rustc_session::{config::{CrateType, OutFileName}, output::out_filename};
         use std::io::Write;
         let crate_name = codegen_results.crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {
@@ -70,8 +70,16 @@ impl CodegenBackend for TheBackend {
                 sess.fatal(format!("Crate type is {:?}", crate_type));
             }
             let output_name = out_filename(sess, crate_type, &outputs, crate_name);
-            let mut out_file = ::std::fs::File::create(output_name).unwrap();
-            write!(out_file, "This has been \"compiled\" successfully.").unwrap();
+            match output_name {
+                OutFileName::Real(ref path) => {
+                    let mut out_file = ::std::fs::File::create(path).unwrap();
+                    write!(out_file, "This has been \"compiled\" successfully.").unwrap();
+                }
+                OutFileName::Stdout => {
+                    let mut stdout = std::io::stdout();
+                    write!(stdout, "This has been \"compiled\" successfully.").unwrap();
+                }
+            }
         }
         Ok(())
     }

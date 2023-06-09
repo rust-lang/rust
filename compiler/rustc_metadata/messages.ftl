@@ -4,6 +4,9 @@ metadata_as_needed_compatibility =
 metadata_bad_panic_strategy =
     the linked panic runtime `{$runtime}` is not compiled with this crate's panic strategy `{$strategy}`
 
+metadata_binary_output_to_tty =
+    option `-o` or `--emit` is used to write binary output type `metadata` to stdout, but stdout is a tty
+
 metadata_bundle_needs_static =
     linking modifier `bundle` is only compatible with `static` linking kind
 
@@ -62,6 +65,9 @@ metadata_fail_seek_file =
 
 metadata_fail_write_file =
     failed to write to the file: {$err}
+
+metadata_failed_copy_to_stdout =
+    failed to copy {$filename} to stdout: {$err}
 
 metadata_failed_create_encoded_metadata =
     failed to create encoded metadata from file: {$err}
