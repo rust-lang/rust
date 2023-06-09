@@ -10,6 +10,8 @@ use rustc_middle::{
     ty,
 };
 
+pub mod dump;
+
 #[derive(Eq, PartialEq, Debug, Hash, HashStable)]
 pub struct WipGoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,

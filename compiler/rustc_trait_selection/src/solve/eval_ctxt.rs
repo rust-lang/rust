@@ -164,7 +164,8 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
 
         let tree = ecx.inspect.finalize();
         if let Some(tree) = &tree {
-            debug!(?tree);
+            // module to allow more granular RUSTC_LOG filtering to just proof tree output
+            super::inspect::dump::print_tree(tree);
         }
 
         assert!(
