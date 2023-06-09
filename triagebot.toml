@@ -378,7 +378,7 @@ Portable SIMD is developed in its own repository. If possible, consider \
 making this change to [rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
 instead.
 """
-cc = ["@calebzulawski"]
+cc = ["@calebzulawski", "@programmerjake"]
 
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
