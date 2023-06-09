@@ -1632,7 +1632,6 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *hig
 enum class LLVMRustVisibility {
   Default = 0,
   Hidden = 1,
-  Protected = 2,
 };
 
 static LLVMRustVisibility toRust(LLVMVisibility Vis) {
@@ -1641,8 +1640,6 @@ static LLVMRustVisibility toRust(LLVMVisibility Vis) {
     return LLVMRustVisibility::Default;
   case LLVMHiddenVisibility:
     return LLVMRustVisibility::Hidden;
-  case LLVMProtectedVisibility:
-    return LLVMRustVisibility::Protected;
   }
   report_fatal_error("Invalid LLVMRustVisibility value!");
 }
@@ -1653,8 +1650,6 @@ static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
     return LLVMDefaultVisibility;
   case LLVMRustVisibility::Hidden:
     return LLVMHiddenVisibility;
-  case LLVMRustVisibility::Protected:
-    return LLVMProtectedVisibility;
   }
   report_fatal_error("Invalid LLVMRustVisibility value!");
 }

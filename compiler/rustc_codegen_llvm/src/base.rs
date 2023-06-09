@@ -171,6 +171,5 @@ pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
     match linkage {
         Visibility::Default => llvm::Visibility::Default,
         Visibility::Hidden => llvm::Visibility::Hidden,
-        Visibility::Protected => llvm::Visibility::Protected,
     }
 }

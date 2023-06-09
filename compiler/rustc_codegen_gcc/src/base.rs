@@ -27,7 +27,6 @@ pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {
     match linkage {
         Visibility::Default => gccjit::Visibility::Default,
         Visibility::Hidden => gccjit::Visibility::Hidden,
-        Visibility::Protected => gccjit::Visibility::Protected,
     }
 }
 

@@ -256,11 +256,15 @@ pub enum Linkage {
     Common,
 }
 
+/// Specifies the visibility style for a `MonoItem`.
+///
+/// See <https://llvm.org/docs/LangRef.html#visibility-styles> for more details.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum Visibility {
     Default,
     Hidden,
-    Protected,
+    // Unused within rustc. If it's ever needed, revert the commit in #112451.
+    //Protected,
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
