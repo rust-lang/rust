@@ -536,6 +536,22 @@ fn render_const_scalar(
                 }
                 f.write_str("]")
             }
+            TyKind::Dyn(_) => {
+                let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
+                let ty_id = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
+                let Ok(t) = memory_map.vtable.ty(ty_id) else {
+                    return f.write_str("<ty-missing-in-vtable-map>");
+                };
+                let Ok(layout) = f.db.layout_of_ty(t.clone(), krate) else {
+                    return f.write_str("<layout-error>");
+                };
+                let size = layout.size.bytes_usize();
+                let Some(bytes) = memory_map.get(addr, size) else {
+                    return f.write_str("<ref-data-not-available>");
+                };
+                f.write_str("&")?;
+                render_const_scalar(f, bytes, memory_map, t)
+            }
             _ => {
                 let addr = usize::from_le_bytes(b.try_into().unwrap());
                 let Ok(layout) = f.db.layout_of_ty(t.clone(), krate) else {
