@@ -286,6 +286,7 @@ mod shadow;
 mod significant_drop_tightening;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
+mod single_letter_idents;
 mod size_of_in_element_count;
 mod size_of_ref;
 mod slow_vector_initialization;
@@ -1033,6 +1034,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(redundant_type_annotations::RedundantTypeAnnotations));
     store.register_late_pass(|_| Box::new(arc_with_non_send_sync::ArcWithNonSendSync));
     store.register_late_pass(|_| Box::new(needless_if::NeedlessIf));
+    let allowed_idents = conf.allowed_idents.clone();
+    store.register_early_pass(move || {
+        Box::new(single_letter_idents::SingleLetterIdents {
+            allowed_idents: allowed_idents.clone(),
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -25,7 +25,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{Span, Symbol};
+use rustc_span::{symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 /// The search pattern to look for. Used by `span_matches_pat`
@@ -344,14 +344,18 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
     }
 }
 
-pub trait WithSearchPat {
+fn ident_search_pat(ident: Ident) -> (Pat, Pat) {
+    (Pat::OwnedStr(ident.name.as_str().to_owned()), Pat::Str(""))
+}
+
+pub trait WithSearchPat<'cx> {
     type Context: LintContext;
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
     fn span(&self) -> Span;
 }
 macro_rules! impl_with_search_pat {
     ($cx:ident: $ty:ident with $fn:ident $(($tcx:ident))?) => {
-        impl<'cx> WithSearchPat for $ty<'cx> {
+        impl<'cx> WithSearchPat<'cx> for $ty<'cx> {
             type Context = $cx<'cx>;
             #[allow(unused_variables)]
             fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat) {
@@ -372,7 +376,7 @@ impl_with_search_pat!(LateContext: FieldDef with field_def_search_pat);
 impl_with_search_pat!(LateContext: Variant with variant_search_pat);
 impl_with_search_pat!(LateContext: Ty with ty_search_pat);
 
-impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
+impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;
 
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat) {
@@ -385,7 +389,7 @@ impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
 }
 
 // `Attribute` does not have the `hir` associated lifetime, so we cannot use the macro
-impl<'cx> WithSearchPat for &'cx Attribute {
+impl<'cx> WithSearchPat<'cx> for &'cx Attribute {
     type Context = LateContext<'cx>;
 
     fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
@@ -397,11 +401,24 @@ impl<'cx> WithSearchPat for &'cx Attribute {
     }
 }
 
+// `Ident` does not have the `hir` associated lifetime, so we cannot use the macro
+impl<'cx> WithSearchPat<'cx> for Ident {
+    type Context = LateContext<'cx>;
+
+    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
+        ident_search_pat(*self)
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 /// Checks if the item likely came from a proc-macro.
 ///
 /// This should be called after `in_external_macro` and the initial pattern matching of the ast as
 /// it is significantly slower than both of those.
-pub fn is_from_proc_macro<T: WithSearchPat>(cx: &T::Context, item: &T) -> bool {
+pub fn is_from_proc_macro<'cx, T: WithSearchPat<'cx>>(cx: &T::Context, item: &T) -> bool {
     let (start_pat, end_pat) = item.search_pat(cx);
     !span_matches_pat(cx.sess(), item.span(), start_pat, end_pat)
 }

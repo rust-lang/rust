@@ -5160,6 +5160,7 @@ Released 2018-09-13
 [`single_char_push_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_push_str
 [`single_component_path_imports`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_component_path_imports
 [`single_element_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_element_loop
+[`single_letter_idents`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_letter_idents
 [`single_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match
 [`single_match_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match_else
 [`size_of_in_element_count`]: https://rust-lang.github.io/rust-clippy/master/index.html#size_of_in_element_count
