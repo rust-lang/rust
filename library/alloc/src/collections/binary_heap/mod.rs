@@ -280,7 +280,6 @@ pub struct BinaryHeap<
     data: Vec<T, A>,
 }
 
-// XXX: PeekMut<A>
 /// Structure wrapping a mutable reference to the greatest item on a
 /// `BinaryHeap`.
 ///
@@ -289,8 +288,12 @@ pub struct BinaryHeap<
 ///
 /// [`peek_mut`]: BinaryHeap::peek_mut
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-pub struct PeekMut<'a, T: 'a + Ord> {
-    heap: &'a mut BinaryHeap<T>,
+pub struct PeekMut<
+    'a,
+    T: 'a + Ord,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    heap: &'a mut BinaryHeap<T, A>,
     // If a set_len + sift_down are required, this is Some. If a &mut T has not
     // yet been exposed to peek_mut()'s caller, it's None.
     original_len: Option<NonZeroUsize>,
@@ -359,11 +362,10 @@ impl<'a, T: Ord, A: Allocator + 'a> DerefMut for PeekMut<'a, T, A> {
     }
 }
 
-// XXX: PeekMut<A>
 impl<'a, T: Ord, A: Allocator + 'a> PeekMut<'a, T, A> {
     /// Removes the peeked value from the heap and returns it.
     #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
-    pub fn pop(mut this: PeekMut<'a, T>) -> T {
+    pub fn pop(mut this: PeekMut<'a, T, A>) -> T {
         if let Some(original_len) = this.original_len.take() {
             // SAFETY: This is how many elements were in the Vec at the time of
             // the BinaryHeap::peek_mut call.
@@ -404,18 +406,21 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for BinaryHeap<T, A> {
     }
 }
 
-struct RebuildOnDrop<'a, T: Ord> {
-    heap: &'a mut BinaryHeap<T>,
+struct RebuildOnDrop<
+    'a,
+    T: Ord,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    heap: &'a mut BinaryHeap<T, A>,
     rebuild_from: usize,
 }
 
-impl<'a, T: Ord> Drop for RebuildOnDrop<'a, T> {
+impl<'a, T: Ord, A: Allocator> Drop for RebuildOnDrop<'a, T, A> {
     fn drop(&mut self) {
         self.heap.rebuild_tail(self.rebuild_from);
     }
 }
 
-// XXX: BinaryHeap<T, A>
 impl<T: Ord> BinaryHeap<T> {
     /// Creates an empty `BinaryHeap` as a max-heap.
     ///
@@ -501,7 +506,6 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::with_capacity_in(capacity, alloc) }
     }
 
-    // XXX: peek_mut
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
     ///
@@ -533,7 +537,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// If the item is modified then the worst case time complexity is *O*(log(*n*)),
     /// otherwise it's *O*(1).
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T, A>> {
         if self.is_empty() {
             None
         } else {
@@ -1813,7 +1817,7 @@ impl<T: Ord, A: Allocator> Extend<T> for BinaryHeap<T, A> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BinaryHeap<T> {
+impl<'a, T: 'a + Ord + Copy, A: Allocator> Extend<&'a T> for BinaryHeap<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
