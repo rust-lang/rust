@@ -61,7 +61,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'tcx>,
-        opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+        opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
     ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
 
@@ -72,7 +72,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .collect();
         debug!(?member_constraints);
 
-        for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
+        for (opaque_type_key, concrete_type) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
             debug!(?concrete_type, ?substs);
 
@@ -143,7 +143,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let ty = infcx.infer_opaque_definition_from_instantiation(
                 opaque_type_key,
                 universal_concrete_type,
-                origin,
             );
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
@@ -215,7 +214,6 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: OpaqueHiddenType<'tcx>,
-        origin: OpaqueTyOrigin,
     ) -> Ty<'tcx>;
 }
 
@@ -248,7 +246,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: OpaqueHiddenType<'tcx>,
-        origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         if let Some(e) = self.tainted_by_errors() {
             return self.tcx.ty_error(e);
@@ -258,18 +255,16 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
             .ty;
 
-        if let Err(guar) = check_opaque_type_parameter_valid(
-            self.tcx,
-            opaque_type_key,
-            origin,
-            instantiated_ty.span,
-        ) {
+        if let Err(guar) =
+            check_opaque_type_parameter_valid(self.tcx, opaque_type_key, instantiated_ty.span)
+        {
             return self.tcx.ty_error(guar);
         }
 
         // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
         // on stable and we'd break that.
-        let OpaqueTyOrigin::TyAlias { .. } = origin else {
+        let opaque_ty_hir = self.tcx.hir().expect_item(opaque_type_key.def_id);
+        let OpaqueTyOrigin::TyAlias { .. } = opaque_ty_hir.expect_opaque_ty().origin else {
             return definition_ty;
         };
         let def_id = opaque_type_key.def_id;
@@ -347,10 +342,10 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 fn check_opaque_type_parameter_valid(
     tcx: TyCtxt<'_>,
     opaque_type_key: OpaqueTypeKey<'_>,
-    origin: OpaqueTyOrigin,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    match origin {
+    let opaque_ty_hir = tcx.hir().expect_item(opaque_type_key.def_id);
+    match opaque_ty_hir.expect_opaque_ty().origin {
         // No need to check return position impl trait (RPIT)
         // because for type and const parameters they are correct
         // by construction: we convert

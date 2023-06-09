@@ -33,9 +33,6 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// There can be multiple, but they are all `lub`ed together at the end
     /// to obtain the canonical hidden type.
     pub hidden_type: OpaqueHiddenType<'tcx>,
-
-    /// The origin of the opaque type.
-    pub origin: hir::OpaqueTyOrigin,
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -108,7 +105,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
-                let origin = match self.defining_use_anchor {
+                match self.defining_use_anchor {
                     DefiningAnchor::Bind(_) => {
                         // Check that this is `impl Trait` type is
                         // declared by `parent_def_id` -- i.e., one whose
@@ -144,9 +141,11 @@ impl<'tcx> InferCtxt<'tcx> {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
                         // ```
-                        self.opaque_type_origin(def_id)?
+                        if self.opaque_type_origin(def_id).is_none() {
+                            return None;
+                        }
                     }
-                    DefiningAnchor::Bubble => self.opaque_type_origin_unchecked(def_id),
+                    DefiningAnchor::Bubble => {}
                     DefiningAnchor::Error => return None,
                 };
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
@@ -170,7 +169,6 @@ impl<'tcx> InferCtxt<'tcx> {
                     cause.clone(),
                     param_env,
                     b,
-                    origin,
                     a_is_expected,
                 ))
             }
@@ -524,7 +522,6 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        origin: hir::OpaqueTyOrigin,
         a_is_expected: bool,
     ) -> InferResult<'tcx, ()> {
         // Ideally, we'd get the span where *this specific `ty` came
@@ -544,11 +541,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::PredicateKind::Ambiguous,
             )]
         } else {
-            let prev = self.inner.borrow_mut().opaque_types().register(
-                opaque_type_key,
-                OpaqueHiddenType { ty: hidden_ty, span },
-                origin,
-            );
+            let prev = self
+                .inner
+                .borrow_mut()
+                .opaque_types()
+                .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
             if let Some(prev) = prev {
                 self.at(&cause, param_env)
                     .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
@@ -579,15 +576,11 @@ impl<'tcx> InferCtxt<'tcx> {
         hidden_ty: Ty<'tcx>,
     ) -> InferResult<'tcx, ()> {
         assert!(self.next_trait_solver());
-        let origin = self
-            .opaque_type_origin(opaque_type_key.def_id)
-            .expect("should be called for defining usages only");
         self.register_hidden_type(
             opaque_type_key,
             ObligationCause::dummy(),
             param_env,
             hidden_ty,
-            origin,
             true,
         )
     }
