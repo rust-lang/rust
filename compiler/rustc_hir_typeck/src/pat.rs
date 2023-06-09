@@ -393,9 +393,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // They can denote both statically and dynamically-sized byte arrays.
         let mut pat_ty = ty;
         if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(..), .. }) = lt.kind {
-            let expected = self.structurally_resolved_type(span, expected);
-            if let ty::Ref(_, inner_ty, _) = expected.kind()
-                && matches!(inner_ty.kind(), ty::Slice(_))
+            if let ty::Ref(_, inner_ty, _) = *self.structurally_resolved_type(span, expected).kind()
+                && self.structurally_resolved_type(span, inner_ty).is_slice()
             {
                 let tcx = self.tcx;
                 trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
