@@ -286,7 +286,9 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
 }
 
 declare_lint! {
-    /// The `unsafe_code` lint catches usage of `unsafe` code.
+    /// The `unsafe_code` lint catches usage of `unsafe` code and other
+    /// potentially unsound constructs like `no_mangle`, `export_name`,
+    /// and `link_section`.
     ///
     /// ### Example
     ///
@@ -297,17 +299,29 @@ declare_lint! {
     ///
     ///     }
     /// }
+    ///
+    /// #[no_mangle]
+    /// fn func_0() { }
+    ///
+    /// #[export_name = "exported_symbol_name"]
+    /// pub fn name_in_rust() { }
+    ///
+    /// #[no_mangle]
+    /// #[link_section = ".example_section"]
+    /// pub static VAR1: u32 = 1;
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// This lint is intended to restrict the usage of `unsafe`, which can be
-    /// difficult to use correctly.
+    /// This lint is intended to restrict the usage of `unsafe` blocks and other
+    /// constructs (including, but not limited to `no_mangle`, `link_section`
+    /// and `export_name` attributes) wrong usage of which causes undefined
+    /// behavior.
     UNSAFE_CODE,
     Allow,
-    "usage of `unsafe` code"
+    "usage of `unsafe` code and other potentially unsound constructs"
 }
 
 declare_lint_pass!(UnsafeCode => [UNSAFE_CODE]);
