@@ -1563,7 +1563,7 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
 #[doc(hidden)]
 unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {}
 
-unsafe impl<I> AsVecIntoIter for IntoIter<I, Global> {
+unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     type Item = I;
 
     fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
