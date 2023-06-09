@@ -91,6 +91,18 @@ impl From<P<Expr>> for LhsExpr {
     }
 }
 
+#[derive(Debug)]
+enum DestructuredFloat {
+    /// 1e2
+    Single(Symbol, Span),
+    /// 1.
+    TrailingDot(Symbol, Span, Span),
+    /// 1.2 | 1.2e3
+    MiddleDot(Symbol, Span, Span, Symbol, Span),
+    /// Invalid
+    Error,
+}
+
 impl<'a> Parser<'a> {
     /// Parses an expression.
     #[inline]
@@ -1013,13 +1025,8 @@ impl<'a> Parser<'a> {
     // support pushing "future tokens" (would be also helpful to `break_and_eat`), or
     // we should break everything including floats into more basic proc-macro style
     // tokens in the lexer (probably preferable).
-    fn parse_expr_tuple_field_access_float(
-        &mut self,
-        lo: Span,
-        base: P<Expr>,
-        float: Symbol,
-        suffix: Option<Symbol>,
-    ) -> P<Expr> {
+    // See also `TokenKind::break_two_token_op` which does similar splitting of `>>` into `>`.
+    fn break_up_float(&mut self, float: Symbol) -> DestructuredFloat {
         #[derive(Debug)]
         enum FloatComponent {
             IdentLike(String),
@@ -1056,7 +1063,7 @@ impl<'a> Parser<'a> {
         match &*components {
             // 1e2
             [IdentLike(i)] => {
-                self.parse_expr_tuple_field_access(lo, base, Symbol::intern(&i), suffix, None)
+                DestructuredFloat::Single(Symbol::intern(&i), span)
             }
             // 1.
             [IdentLike(i), Punct('.')] => {
@@ -1068,11 +1075,8 @@ impl<'a> Parser<'a> {
                 } else {
                     (span, span)
                 };
-                assert!(suffix.is_none());
                 let symbol = Symbol::intern(&i);
-                self.token = Token::new(token::Ident(symbol, false), ident_span);
-                let next_token = (Token::new(token::Dot, dot_span), self.token_spacing);
-                self.parse_expr_tuple_field_access(lo, base, symbol, None, Some(next_token))
+                DestructuredFloat::TrailingDot(symbol, ident_span, dot_span)
             }
             // 1.2 | 1.2e3
             [IdentLike(i1), Punct('.'), IdentLike(i2)] => {
@@ -1088,16 +1092,8 @@ impl<'a> Parser<'a> {
                     (span, span, span)
                 };
                 let symbol1 = Symbol::intern(&i1);
-                self.token = Token::new(token::Ident(symbol1, false), ident1_span);
-                // This needs to be `Spacing::Alone` to prevent regressions.
-                // See issue #76399 and PR #76285 for more details
-                let next_token1 = (Token::new(token::Dot, dot_span), Spacing::Alone);
-                let base1 =
-                    self.parse_expr_tuple_field_access(lo, base, symbol1, None, Some(next_token1));
                 let symbol2 = Symbol::intern(&i2);
-                let next_token2 = Token::new(token::Ident(symbol2, false), ident2_span);
-                self.bump_with((next_token2, self.token_spacing)); // `.`
-                self.parse_expr_tuple_field_access(lo, base1, symbol2, suffix, None)
+                DestructuredFloat::MiddleDot(symbol1, ident1_span, dot_span, symbol2, ident2_span)
             }
             // 1e+ | 1e- (recovered)
             [IdentLike(_), Punct('+' | '-')] |
@@ -1109,10 +1105,81 @@ impl<'a> Parser<'a> {
             [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
                 // See the FIXME about `TokenCursor` above.
                 self.error_unexpected_after_dot();
-                base
+                DestructuredFloat::Error
             }
             _ => panic!("unexpected components in a float token: {:?}", components),
         }
+    }
+
+    fn parse_expr_tuple_field_access_float(
+        &mut self,
+        lo: Span,
+        base: P<Expr>,
+        float: Symbol,
+        suffix: Option<Symbol>,
+    ) -> P<Expr> {
+        match self.break_up_float(float) {
+            // 1e2
+            DestructuredFloat::Single(sym, _sp) => {
+                self.parse_expr_tuple_field_access(lo, base, sym, suffix, None)
+            }
+            // 1.
+            DestructuredFloat::TrailingDot(sym, ident_span, dot_span) => {
+                assert!(suffix.is_none());
+                self.token = Token::new(token::Ident(sym, false), ident_span);
+                let next_token = (Token::new(token::Dot, dot_span), self.token_spacing);
+                self.parse_expr_tuple_field_access(lo, base, sym, None, Some(next_token))
+            }
+            // 1.2 | 1.2e3
+            DestructuredFloat::MiddleDot(symbol1, ident1_span, dot_span, symbol2, ident2_span) => {
+                self.token = Token::new(token::Ident(symbol1, false), ident1_span);
+                // This needs to be `Spacing::Alone` to prevent regressions.
+                // See issue #76399 and PR #76285 for more details
+                let next_token1 = (Token::new(token::Dot, dot_span), Spacing::Alone);
+                let base1 =
+                    self.parse_expr_tuple_field_access(lo, base, symbol1, None, Some(next_token1));
+                let next_token2 = Token::new(token::Ident(symbol2, false), ident2_span);
+                self.bump_with((next_token2, self.token_spacing)); // `.`
+                self.parse_expr_tuple_field_access(lo, base1, symbol2, suffix, None)
+            }
+            DestructuredFloat::Error => base,
+        }
+    }
+
+    fn parse_field_name_maybe_tuple(&mut self) -> PResult<'a, ThinVec<Ident>> {
+        let token::Literal(token::Lit { kind: token::Float, symbol, suffix }) = self.token.kind
+        else {
+            return Ok(thin_vec![self.parse_field_name()?]);
+        };
+        Ok(match self.break_up_float(symbol) {
+            // 1e2
+            DestructuredFloat::Single(sym, sp) => {
+                self.bump();
+                thin_vec![Ident::new(sym, sp)]
+            }
+            // 1.
+            DestructuredFloat::TrailingDot(sym, sym_span, dot_span) => {
+                assert!(suffix.is_none());
+                // Analogous to `Self::break_and_eat`
+                self.token_cursor.break_last_token = true;
+                // This might work, in cases like `1. 2`, and might not,
+                // in cases like `offset_of!(Ty, 1.)`. It depends on what comes
+                // after the float-like token, and therefore we have to make
+                // the other parts of the parser think that there is a dot literal.
+                self.token = Token::new(token::Ident(sym, false), sym_span);
+                self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
+                thin_vec![Ident::new(sym, sym_span)]
+            }
+            // 1.2 | 1.2e3
+            DestructuredFloat::MiddleDot(symbol1, ident1_span, _dot_span, symbol2, ident2_span) => {
+                self.bump();
+                thin_vec![Ident::new(symbol1, ident1_span), Ident::new(symbol2, ident2_span)]
+            }
+            DestructuredFloat::Error => {
+                self.bump();
+                thin_vec![Ident::new(symbol, self.prev_token.span)]
+            }
+        })
     }
 
     fn parse_expr_tuple_field_access(
@@ -1821,10 +1888,11 @@ impl<'a> Parser<'a> {
         let (fields, _trailing, _recovered) = self.parse_seq_to_before_end(
             &TokenKind::CloseDelim(Delimiter::Parenthesis),
             seq_sep,
-            Parser::parse_field_name,
+            Parser::parse_field_name_maybe_tuple,
         )?;
+        let fields = fields.into_iter().flatten().collect::<Vec<_>>();
         let span = lo.to(self.token.span);
-        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.to_vec().into())))
+        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.into())))
     }
 
     /// Returns a string literal if the next token is a string literal.
