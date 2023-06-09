@@ -4,8 +4,10 @@ error: cannot find macro `bla` in this scope
 LL |     bla!();
    |     ^^^
    |
-   = help: consider importing this macro:
-           crate::hey::bla
+help: consider importing this macro
+   |
+LL + use crate::hey::bla;
+   |
 
 error: cannot find derive macro `println` in this scope
   --> $DIR/issue-88228.rs:14:10
@@ -16,13 +18,15 @@ LL | #[derive(println)]
    = note: `println` is in scope, but it is a function-like macro
 
 error: cannot find derive macro `Bla` in this scope
-  --> $DIR/issue-88228.rs:9:10
+  --> $DIR/issue-88228.rs:10:10
    |
 LL | #[derive(Bla)]
    |          ^^^
    |
-   = help: consider importing this derive macro:
-           crate::hey::Bla
+help: consider importing this derive macro
+   |
+LL + use crate::hey::Bla;
+   |
 
 error: aborting due to 3 previous errors
 
