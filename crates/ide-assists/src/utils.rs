@@ -132,9 +132,9 @@ pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
     items: Vec<ast::AssocItem>,
     trait_: hir::Trait,
-    impl_: ast::Impl,
+    impl_: &ast::Impl,
     target_scope: hir::SemanticsScope<'_>,
-) -> (ast::Impl, ast::AssocItem) {
+) -> ast::AssocItem {
     let source_scope = sema.scope_for_def(trait_);
 
     let transform = PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
@@ -147,9 +147,7 @@ pub fn add_trait_assoc_items_to_impl(
         assoc_item
     });
 
-    let res = impl_.clone_for_update();
-
-    let assoc_item_list = res.get_or_create_assoc_item_list();
+    let assoc_item_list = impl_.get_or_create_assoc_item_list();
     let mut first_item = None;
     for item in items {
         first_item.get_or_insert_with(|| item.clone());
@@ -172,7 +170,7 @@ pub fn add_trait_assoc_items_to_impl(
         assoc_item_list.add_item(item)
     }
 
-    (res, first_item.unwrap())
+    first_item.unwrap()
 }
 
 #[derive(Clone, Copy, Debug)]

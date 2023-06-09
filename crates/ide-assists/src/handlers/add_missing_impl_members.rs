@@ -4,10 +4,7 @@ use syntax::ast::{self, make, AstNode};
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, render_snippet,
-        Cursor, DefaultMethods,
-    },
+    utils::{add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, DefaultMethods},
     AssistId, AssistKind,
 };
 
@@ -130,7 +127,8 @@ fn add_missing_impl_members_inner(
     }
 
     let target = impl_def.syntax().text_range();
-    acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |builder| {
+    acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |edit| {
+        let new_impl_def = edit.make_mut(impl_def.clone());
         let missing_items = missing_items
             .into_iter()
             .map(|it| {
@@ -142,38 +140,34 @@ fn add_missing_impl_members_inner(
                 it.clone_for_update()
             })
             .collect();
-        let (new_impl_def, first_new_item) = add_trait_assoc_items_to_impl(
+        let first_new_item = add_trait_assoc_items_to_impl(
             &ctx.sema,
             missing_items,
             trait_,
-            impl_def.clone(),
+            &new_impl_def,
             target_scope,
         );
-        match ctx.config.snippet_cap {
-            None => builder.replace(target, new_impl_def.to_string()),
-            Some(cap) => {
-                let mut cursor = Cursor::Before(first_new_item.syntax());
-                let placeholder;
-                if let DefaultMethods::No = mode {
-                    if let ast::AssocItem::Fn(func) = &first_new_item {
-                        if try_gen_trait_body(ctx, func, trait_ref, &impl_def).is_none() {
-                            if let Some(m) =
-                                func.syntax().descendants().find_map(ast::MacroCall::cast)
-                            {
-                                if m.syntax().text() == "todo!()" {
-                                    placeholder = m;
-                                    cursor = Cursor::Replace(placeholder.syntax());
-                                }
+
+        if let Some(cap) = ctx.config.snippet_cap {
+            let mut placeholder = None;
+            if let DefaultMethods::No = mode {
+                if let ast::AssocItem::Fn(func) = &first_new_item {
+                    if try_gen_trait_body(ctx, func, trait_ref, &impl_def).is_none() {
+                        if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
+                        {
+                            if m.syntax().text() == "todo!()" {
+                                placeholder = Some(m);
                             }
                         }
                     }
                 }
-                builder.replace_snippet(
-                    cap,
-                    target,
-                    render_snippet(cap, new_impl_def.syntax(), cursor),
-                )
             }
+
+            if let Some(macro_call) = placeholder {
+                edit.add_placeholder_snippet(cap, macro_call);
+            } else {
+                edit.add_tabstop_before(cap, first_new_item);
+            };
         };
     })
 }
