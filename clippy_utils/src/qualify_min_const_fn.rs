@@ -275,17 +275,21 @@ fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, b
 fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>, in_move: bool) -> McfResult {
     let mut cursor = place.projection.as_ref();
 
+    if let [proj_base] = cursor
+        && let ProjectionElem::Field(_, ty) = proj_base
+        && !is_ty_const_destruct(tcx, *ty, body)
+        && in_move
+    {
+        return Err((
+            span,
+            "cannot drop locals with a non constant destructor in const fn".into(),
+        ));
+    }
+
     while let [ref proj_base @ .., elem] = *cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Field(_, ty) => {
-                if !is_ty_const_destruct(tcx, ty, body) && in_move {
-                    return Err((
-                        span,
-                        "cannot drop locals with a non constant destructor in const fn".into(),
-                    ));
-                }
-
+            ProjectionElem::Field(..) => {
                 let base_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
                     // No union field accesses in `const fn`
@@ -328,7 +332,7 @@ fn check_terminator<'tcx>(
                     "cannot drop locals with a non constant destructor in const fn".into(),
                 ));
             }
-            check_place(tcx, *place, span, body, false)
+            Ok(())
         },
         TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
