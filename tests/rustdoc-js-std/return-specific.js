@@ -1,6 +1,5 @@
-const QUERY = 'struct:string';
-
 const EXPECTED = {
+    'query': 'struct:string',
     'in_args': [
         { 'path': 'std::string::String', 'name': 'ne' },
     ],
