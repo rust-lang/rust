@@ -542,6 +542,8 @@ pub struct TargetCfg {
     endian: Endian,
     #[serde(rename = "panic-strategy", default)]
     pub(crate) panic: PanicStrategy,
+    #[serde(default)]
+    pub(crate) dynamic_linking: bool,
 }
 
 impl TargetCfg {
