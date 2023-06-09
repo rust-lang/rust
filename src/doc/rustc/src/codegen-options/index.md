@@ -31,8 +31,8 @@ Supported values can also be discovered by running `rustc --print code-models`.
 
 ## codegen-units
 
-This flag controls how many code generation units the crate is split into. It
-takes an integer greater than 0.
+This flag controls the maximum number of code generation units the crate is
+split into. It takes an integer greater than 0.
 
 When a crate is split into multiple codegen units, LLVM is able to process
 them in parallel. Increasing parallelism may speed up compile times, but may

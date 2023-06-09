@@ -113,6 +113,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
 use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
+use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
 
 use crate::collector::UsageMap;
@@ -322,7 +323,7 @@ fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut Vec<CodegenUnit<'tcx>>,
 ) {
-    assert!(cx.tcx.sess.codegen_units() >= 1);
+    assert!(cx.tcx.sess.codegen_units().as_usize() >= 1);
 
     // A sorted order here ensures merging is deterministic.
     assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
@@ -331,11 +332,32 @@ fn merge_codegen_units<'tcx>(
     let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
-    // Merge the two smallest codegen units until the target size is
-    // reached.
-    while codegen_units.len() > cx.tcx.sess.codegen_units() {
-        // Sort small cgus to the back
+    // Having multiple CGUs can drastically speed up compilation. But for
+    // non-incremental builds, tiny CGUs slow down compilation *and* result in
+    // worse generated code. So we don't allow CGUs smaller than this (unless
+    // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
+    // common in larger programs, so this isn't all that large.
+    const NON_INCR_MIN_CGU_SIZE: usize = 1000;
+
+    // Repeatedly merge the two smallest codegen units as long as:
+    // - we have more CGUs than the upper limit, or
+    // - (Non-incremental builds only) the user didn't specify a CGU count, and
+    //   there are multiple CGUs, and some are below the minimum size.
+    //
+    // The "didn't specify a CGU count" condition is because when an explicit
+    // count is requested we observe it as closely as possible. For example,
+    // the `compiler_builtins` crate sets `codegen-units = 10000` and it's
+    // critical they aren't merged. Also, some tests use explicit small values
+    // and likewise won't work if small CGUs are merged.
+    while codegen_units.len() > cx.tcx.sess.codegen_units().as_usize()
+        || (cx.tcx.sess.opts.incremental.is_none()
+            && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
+            && codegen_units.len() > 1
+            && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE))
+    {
+        // Sort small cgus to the back.
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 
@@ -918,9 +940,13 @@ fn debug_dump<'a, 'tcx: 'a>(
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
                 let size = item.size_estimate(tcx);
+                let kind = match item.instantiation_mode(tcx) {
+                    InstantiationMode::GloballyShared { .. } => "root",
+                    InstantiationMode::LocalCopy => "inlined",
+                };
                 let _ = with_no_trimmed_paths!(writeln!(
                     s,
-                    "  - {item} [{linkage:?}] [{symbol_hash}] (size={size})"
+                    "  - {item} [{linkage:?}] [{symbol_hash}] ({kind}, size: {size})"
                 ));
             }
 
