@@ -4423,6 +4423,29 @@ const FOO$0: Option<&i32> = Some(2).as_ref();
 }
 
 #[test]
+fn hover_const_eval_dyn_trait() {
+    check(
+        r#"
+//- minicore: fmt, coerce_unsized, builtin_impls
+use core::fmt::Debug;
+
+const FOO$0: &dyn Debug = &2i32;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &dyn Debug = &2
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval_slice() {
     check(
         r#"
