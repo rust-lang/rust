@@ -1522,7 +1522,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.tcx.sess.time("check_hidden_glob_reexports", || {
                 self.check_hidden_glob_reexports(exported_ambiguities)
             });
-            self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
+            self.tcx
+                .sess
+                .time("finalize_macro_resolutions", || self.finalize_macro_resolutions(krate));
             self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
             self.tcx.sess.time("resolve_main", || self.resolve_main());
             self.tcx.sess.time("resolve_check_unused", || self.check_unused(krate));
