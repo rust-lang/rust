@@ -1,6 +1,5 @@
-const QUERY = 'Vec::new';
-
 const EXPECTED = {
+    'query': 'Vec::new',
     'others': [
         { 'path': 'std::vec::Vec', 'name': 'new' },
         { 'path': 'alloc::vec::Vec', 'name': 'new' },
