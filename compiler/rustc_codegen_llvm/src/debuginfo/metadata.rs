@@ -429,7 +429,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         return existing_di_node;
     }
 
-    debug!("type_di_node: {:?}", t);
+    debug!("type_di_node: {:?} kind: {:?}", t, t.kind());
 
     let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
