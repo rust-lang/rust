@@ -553,7 +553,17 @@ fn render_const_scalar(
                 render_const_scalar(f, bytes, memory_map, t)
             }
             _ => {
-                let addr = usize::from_le_bytes(b.try_into().unwrap());
+                let addr = usize::from_le_bytes(match b.try_into() {
+                    Ok(b) => b,
+                    Err(_) => {
+                        never!(
+                            "tried rendering ty {:?} in const ref with incorrect byte count {}",
+                            t,
+                            b.len()
+                        );
+                        return f.write_str("<layout-error>");
+                    }
+                });
                 let Ok(layout) = f.db.layout_of_ty(t.clone(), krate) else {
                     return f.write_str("<layout-error>");
                 };
