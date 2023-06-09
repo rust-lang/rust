@@ -6,7 +6,7 @@ use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{higher, is_adjusted, path_to_local, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, FnRetTy, Param, PatKind, TyKind, Unsafety};
+use rustc_hir::{BindingAnnotation, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
@@ -119,16 +119,8 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 
         match body.value.kind {
             ExprKind::Call(callee, args)
-                if matches!(callee.kind, ExprKind::Path(..)) =>
+                if matches!(callee.kind, ExprKind::Path(QPath::Resolved(..) | QPath::TypeRelative(..))) =>
             {
-                if matches!(higher::Range::hir(body.value), Some(higher::Range {
-                    start: Some(_),
-                    end: Some(_),
-                    limits: rustc_ast::RangeLimits::Closed
-                })) {
-                    return;
-                }
-
                 let callee_ty = typeck.expr_ty(callee).peel_refs();
                 if matches!(
                     type_diagnostic_name(cx, callee_ty),
