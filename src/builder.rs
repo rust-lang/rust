@@ -919,7 +919,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.context.new_bitcast(None, result, ptr_type)
     }
 
-    fn inbounds_gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+    fn inbounds_gep(&mut self, typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+        // NOTE: due to opaque pointers now being used, we need to cast here.
+        let ptr = self.context.new_cast(None, ptr, typ.make_pointer());
         // NOTE: array indexing is always considered in bounds in GCC (TODO(antoyo): to be verified).
         let mut indices = indices.into_iter();
         let index = indices.next().expect("first index in inbounds_gep");
