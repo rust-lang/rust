@@ -474,3 +474,36 @@ mod issue_10021 {
         Ok(())
     }
 }
+
+mod issue_10033 {
+    #![allow(dead_code)]
+    use std::{fmt::Display, ops::Deref};
+
+    fn _main() {
+        let f = Foo;
+
+        // Not actually unnecessary - this calls `Foo`'s `Display` impl, not `str`'s (even though `Foo` does
+        // deref to `str`)
+        foo(&f.to_string());
+    }
+
+    fn foo(s: &str) {
+        println!("{}", s);
+    }
+
+    struct Foo;
+
+    impl Deref for Foo {
+        type Target = str;
+
+        fn deref(&self) -> &Self::Target {
+            "str"
+        }
+    }
+
+    impl Display for Foo {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "Foo")
+        }
+    }
+}
