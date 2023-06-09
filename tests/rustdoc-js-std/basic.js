@@ -1,6 +1,5 @@
-const QUERY = 'String';
-
 const EXPECTED = {
+    'query': 'String',
     'others': [
         { 'path': 'std::string', 'name': 'String' },
         { 'path': 'std::ffi', 'name': 'CString' },

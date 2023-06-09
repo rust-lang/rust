@@ -1,17 +1,8 @@
 // ignore-tidy-tab
 
-const QUERY = [
-    'aaaaaa	b',
-    'a b',
-    'a,b',
-    'a\tb',
-    'a<b c>',
-    'a<b,c>',
-    'a<b\tc>',
-];
-
 const PARSED = [
     {
+        query: 'aaaaaa	b',
         elems: [
             {
                 name: 'aaaaaa',
@@ -37,6 +28,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'a b',
         elems: [
             {
                 name: 'a',
@@ -62,6 +54,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'a,b',
         elems: [
             {
                 name: 'a',
@@ -87,6 +80,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'a\tb',
         elems: [
             {
                 name: 'a',
@@ -112,6 +106,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'a<b c>',
         elems: [
             {
                 name: 'a',
@@ -144,6 +139,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'a<b,c>',
         elems: [
             {
                 name: 'a',
@@ -176,6 +172,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'a<b\tc>',
         elems: [
             {
                 name: 'a',
