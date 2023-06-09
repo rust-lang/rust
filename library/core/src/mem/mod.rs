@@ -1053,7 +1053,7 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
 pub const unsafe fn transmute_copy<Src: ?Sized, Dst>(src: &Src) -> Dst {
-    assert!(
+    debug_assert!(
         size_of_val(src) >= size_of::<Dst>(),
         "cannot transmute_copy if Dst is larger than Src"
     );
