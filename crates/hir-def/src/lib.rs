@@ -71,7 +71,7 @@ use hir_expand::{
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
-    eager::expand_eager_macro,
+    eager::expand_eager_macro_input,
     hygiene::Hygiene,
     proc_macro::ProcMacroExpander,
     AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
@@ -865,7 +865,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &h));
 
         let Some(path) = path else {
-            return Ok(ExpandResult::only_err(ExpandError::Other("malformed macro invocation".into())));
+            return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
 
         macro_call_as_call_id_(
@@ -913,7 +913,7 @@ fn macro_call_as_call_id_(
 
     let res = if let MacroDefKind::BuiltInEager(..) = def.kind {
         let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
-        expand_eager_macro(db, krate, macro_call, def, &resolver)?
+        expand_eager_macro_input(db, krate, macro_call, def, &resolver)?
     } else {
         ExpandResult {
             value: Some(def.as_lazy_macro(

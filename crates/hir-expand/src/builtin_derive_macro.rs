@@ -194,15 +194,15 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
     let (parsed, token_map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MacroItems);
     let macro_items = ast::MacroItems::cast(parsed.syntax_node()).ok_or_else(|| {
         debug!("derive node didn't parse");
-        ExpandError::Other("invalid item definition".into())
+        ExpandError::other("invalid item definition")
     })?;
     let item = macro_items.items().next().ok_or_else(|| {
         debug!("no module item parsed");
-        ExpandError::Other("no item found".into())
+        ExpandError::other("no item found")
     })?;
     let adt = ast::Adt::cast(item.syntax().clone()).ok_or_else(|| {
         debug!("expected adt, found: {:?}", item);
-        ExpandError::Other("expected struct, enum or union".into())
+        ExpandError::other("expected struct, enum or union")
     })?;
     let (name, generic_param_list, shape) = match &adt {
         ast::Adt::Struct(it) => (
@@ -305,7 +305,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
 fn name_to_token(token_map: &TokenMap, name: Option<ast::Name>) -> Result<tt::Ident, ExpandError> {
     let name = name.ok_or_else(|| {
         debug!("parsed item has no name");
-        ExpandError::Other("missing name".into())
+        ExpandError::other("missing name")
     })?;
     let name_token_id =
         token_map.token_by_range(name.syntax().text_range()).unwrap_or_else(TokenId::unspecified);
