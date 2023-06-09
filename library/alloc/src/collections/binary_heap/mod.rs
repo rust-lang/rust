@@ -1245,6 +1245,13 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
         self.into()
     }
 
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.data.allocator()
+    }
+
     /// Returns the length of the binary heap.
     ///
     /// # Examples
