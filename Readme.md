@@ -208,7 +208,16 @@ Then, do a sync with this command:
 
 ```bash
 PATH="$HOME/bin:$PATH" ~/bin/git-subtree push -P compiler/rustc_codegen_gcc/ ../rustc_codegen_gcc/ sync_branch_name
+cd ../rustc_codegen_gcc
+git checkout master
+git pull
+git checkout sync_branch_name
+git merge master
 ```
+
+TODO: write a script that does the above.
+
+https://rust-lang.zulipchat.com/#narrow/stream/301329-t-devtools/topic/subtree.20madness/near/258877725
 
 ### How to use [mem-trace](https://github.com/antoyo/mem-trace)
 
