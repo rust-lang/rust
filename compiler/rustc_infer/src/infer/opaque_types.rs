@@ -524,36 +524,16 @@ impl<'tcx> InferCtxt<'tcx> {
         hidden_ty: Ty<'tcx>,
         a_is_expected: bool,
     ) -> InferResult<'tcx, ()> {
-        // Ideally, we'd get the span where *this specific `ty` came
-        // from*, but right now we just use the span from the overall
-        // value being folded. In simple cases like `-> impl Foo`,
-        // these are the same span, but not in cases like `-> (impl
-        // Foo, impl Bar)`.
-        let span = cause.span;
-        let mut obligations = if self.intercrate {
-            // During intercrate we do not define opaque types but instead always
-            // force ambiguity unless the hidden type is known to not implement
-            // our trait.
-            vec![traits::Obligation::new(
-                self.tcx,
-                cause.clone(),
-                param_env,
-                ty::PredicateKind::Ambiguous,
-            )]
-        } else {
-            let prev = self
-                .inner
-                .borrow_mut()
-                .opaque_types()
-                .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
-            if let Some(prev) = prev {
-                self.at(&cause, param_env)
-                    .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
-                    .obligations
-            } else {
-                Vec::new()
-            }
-        };
+        let mut obligations = Vec::new();
+
+        self.insert_hidden_type(
+            opaque_type_key,
+            &cause,
+            param_env,
+            hidden_ty,
+            a_is_expected,
+            &mut obligations,
+        )?;
 
         self.add_item_bounds_for_hidden_type(
             opaque_type_key,
@@ -566,23 +546,54 @@ impl<'tcx> InferCtxt<'tcx> {
         Ok(InferOk { value: (), obligations })
     }
 
-    /// Registers an opaque's hidden type -- only should be used when the opaque
-    /// can be defined. For something more fallible -- checks the anchors, tries
-    /// to unify opaques in both dirs, etc. -- use `InferCtxt::handle_opaque_type`.
-    pub fn register_hidden_type_in_new_solver(
+    /// Insert a hidden type into the opaque type storage, equating it
+    /// with any previous entries if necessary.
+    ///
+    /// This **does not** add the item bounds of the opaque as nested
+    /// obligations. That is only necessary when normalizing the opaque
+    /// itself, not when getting the opaque type constraints from
+    /// somewhere else.
+    pub fn insert_hidden_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
+        cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-    ) -> InferResult<'tcx, ()> {
-        assert!(self.next_trait_solver());
-        self.register_hidden_type(
-            opaque_type_key,
-            ObligationCause::dummy(),
-            param_env,
-            hidden_ty,
-            true,
-        )
+        a_is_expected: bool,
+        obligations: &mut Vec<PredicateObligation<'tcx>>,
+    ) -> Result<(), TypeError<'tcx>> {
+        // Ideally, we'd get the span where *this specific `ty` came
+        // from*, but right now we just use the span from the overall
+        // value being folded. In simple cases like `-> impl Foo`,
+        // these are the same span, but not in cases like `-> (impl
+        // Foo, impl Bar)`.
+        let span = cause.span;
+        if self.intercrate {
+            // During intercrate we do not define opaque types but instead always
+            // force ambiguity unless the hidden type is known to not implement
+            // our trait.
+            obligations.push(traits::Obligation::new(
+                self.tcx,
+                cause.clone(),
+                param_env,
+                ty::PredicateKind::Ambiguous,
+            ))
+        } else {
+            let prev = self
+                .inner
+                .borrow_mut()
+                .opaque_types()
+                .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
+            if let Some(prev) = prev {
+                obligations.extend(
+                    self.at(&cause, param_env)
+                        .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
+                        .obligations,
+                );
+            }
+        };
+
+        Ok(())
     }
 
     pub fn add_item_bounds_for_hidden_type(
