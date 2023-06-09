@@ -11,6 +11,7 @@
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
 use crate::solve::{CanonicalResponse, QueryResult, Response};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
@@ -147,7 +148,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
-        let region_constraints = self.infcx.with_region_constraints(|region_constraints| {
+        let mut region_constraints = self.infcx.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 self.tcx(),
                 region_obligations
@@ -156,6 +157,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 region_constraints,
             )
         });
+
+        let mut seen = FxHashSet::default();
+        region_constraints.outlives.retain(|outlives| seen.insert(*outlives));
 
         let mut opaque_types = self.infcx.clone_opaque_types_for_query_response();
         // Only return opaque type keys for newly-defined opaques
