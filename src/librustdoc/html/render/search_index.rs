@@ -3,14 +3,11 @@ use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{
-    FnRetTy, Function, GenericBound, Generics, ItemId, Type, WherePredicate,
-};
+use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -24,32 +21,30 @@ pub(crate) fn build_index<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> String {
     let mut itemid_to_pathid = FxHashMap::default();
+    let mut primitives = FxHashMap::default();
     let mut crate_paths = vec![];
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
     for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
-        if let Some(&(ref fqp, _)) = cache.paths.get(&parent) {
-            let desc = item
-                .doc_value()
-                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
+        if let Some((fqp, _)) = cache.paths.get(&parent) {
+            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
-                name: item.name.unwrap().to_string(),
+                name: item.name.unwrap(),
                 path: join_with_double_colon(&fqp[..fqp.len() - 1]),
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
                 search_type: get_function_type_for_search(item, tcx, impl_generics.as_ref(), cache),
                 aliases: item.attrs.get_doc_aliases(),
+                deprecation: item.deprecation(tcx),
             });
         }
     }
 
-    let crate_doc = krate
-        .module
-        .doc_value()
-        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(cache)));
+    let crate_doc =
+        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
 
     // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     // we need the alias element to have an array of items.
@@ -58,9 +53,9 @@ pub(crate) fn build_index<'tcx>(
     // Sort search index items. This improves the compressibility of the search index.
     cache.search_index.sort_unstable_by(|k1, k2| {
         // `sort_unstable_by_key` produces lifetime errors
-        let k1 = (&k1.path, &k1.name, &k1.ty, &k1.parent);
-        let k2 = (&k2.path, &k2.name, &k2.ty, &k2.parent);
-        std::cmp::Ord::cmp(&k1, &k2)
+        let k1 = (&k1.path, k1.name.as_str(), &k1.ty, &k1.parent);
+        let k2 = (&k2.path, k2.name.as_str(), &k2.ty, &k2.parent);
+        Ord::cmp(&k1, &k2)
     });
 
     // Set up alias indexes.
@@ -78,42 +73,16 @@ pub(crate) fn build_index<'tcx>(
     // First, on function signatures
     let mut search_index = std::mem::replace(&mut cache.search_index, Vec::new());
     for item in search_index.iter_mut() {
-        fn convert_render_type(
+        fn insert_into_map<F: std::hash::Hash + Eq>(
             ty: &mut RenderType,
-            cache: &mut Cache,
-            itemid_to_pathid: &mut FxHashMap<ItemId, usize>,
+            map: &mut FxHashMap<F, usize>,
+            itemid: F,
             lastpathid: &mut usize,
             crate_paths: &mut Vec<(ItemType, Symbol)>,
+            item_type: ItemType,
+            path: Symbol,
         ) {
-            if let Some(generics) = &mut ty.generics {
-                for item in generics {
-                    convert_render_type(item, cache, itemid_to_pathid, lastpathid, crate_paths);
-                }
-            }
-            let Cache { ref paths, ref external_paths, .. } = *cache;
-            let Some(id) = ty.id.clone() else {
-                assert!(ty.generics.is_some());
-                return;
-            };
-            let (itemid, path, item_type) = match id {
-                RenderTypeId::DefId(defid) => {
-                    if let Some(&(ref fqp, item_type)) =
-                        paths.get(&defid).or_else(|| external_paths.get(&defid))
-                    {
-                        (ItemId::DefId(defid), *fqp.last().unwrap(), item_type)
-                    } else {
-                        ty.id = None;
-                        return;
-                    }
-                }
-                RenderTypeId::Primitive(primitive) => (
-                    ItemId::Primitive(primitive, LOCAL_CRATE),
-                    primitive.as_sym(),
-                    ItemType::Primitive,
-                ),
-                RenderTypeId::Index(_) => return,
-            };
-            match itemid_to_pathid.entry(itemid) {
+            match map.entry(itemid) {
                 Entry::Occupied(entry) => ty.id = Some(RenderTypeId::Index(*entry.get())),
                 Entry::Vacant(entry) => {
                     let pathid = *lastpathid;
@@ -124,12 +93,72 @@ pub(crate) fn build_index<'tcx>(
                 }
             }
         }
+
+        fn convert_render_type(
+            ty: &mut RenderType,
+            cache: &mut Cache,
+            itemid_to_pathid: &mut FxHashMap<ItemId, usize>,
+            primitives: &mut FxHashMap<Symbol, usize>,
+            lastpathid: &mut usize,
+            crate_paths: &mut Vec<(ItemType, Symbol)>,
+        ) {
+            if let Some(generics) = &mut ty.generics {
+                for item in generics {
+                    convert_render_type(
+                        item,
+                        cache,
+                        itemid_to_pathid,
+                        primitives,
+                        lastpathid,
+                        crate_paths,
+                    );
+                }
+            }
+            let Cache { ref paths, ref external_paths, .. } = *cache;
+            let Some(id) = ty.id.clone() else {
+                assert!(ty.generics.is_some());
+                return;
+            };
+            match id {
+                RenderTypeId::DefId(defid) => {
+                    if let Some(&(ref fqp, item_type)) =
+                        paths.get(&defid).or_else(|| external_paths.get(&defid))
+                    {
+                        insert_into_map(
+                            ty,
+                            itemid_to_pathid,
+                            ItemId::DefId(defid),
+                            lastpathid,
+                            crate_paths,
+                            item_type,
+                            *fqp.last().unwrap(),
+                        );
+                    } else {
+                        ty.id = None;
+                    }
+                }
+                RenderTypeId::Primitive(primitive) => {
+                    let sym = primitive.as_sym();
+                    insert_into_map(
+                        ty,
+                        primitives,
+                        sym,
+                        lastpathid,
+                        crate_paths,
+                        ItemType::Primitive,
+                        sym,
+                    );
+                }
+                RenderTypeId::Index(_) => {}
+            }
+        }
         if let Some(search_type) = &mut item.search_type {
             for item in &mut search_type.inputs {
                 convert_render_type(
                     item,
                     cache,
                     &mut itemid_to_pathid,
+                    &mut primitives,
                     &mut lastpathid,
                     &mut crate_paths,
                 );
@@ -139,6 +168,7 @@ pub(crate) fn build_index<'tcx>(
                     item,
                     cache,
                     &mut itemid_to_pathid,
+                    &mut primitives,
                     &mut lastpathid,
                     &mut crate_paths,
                 );
@@ -201,15 +231,34 @@ pub(crate) fn build_index<'tcx>(
             crate_data.serialize_field("doc", &self.doc)?;
             crate_data.serialize_field(
                 "t",
-                &self.items.iter().map(|item| &item.ty).collect::<Vec<_>>(),
+                &self
+                    .items
+                    .iter()
+                    .map(|item| {
+                        let n = item.ty as u8;
+                        let c = char::try_from(n + b'A').expect("item types must fit in ASCII");
+                        assert!(c <= 'z', "item types must fit within ASCII printables");
+                        c
+                    })
+                    .collect::<String>(),
             )?;
             crate_data.serialize_field(
                 "n",
-                &self.items.iter().map(|item| &item.name).collect::<Vec<_>>(),
+                &self.items.iter().map(|item| item.name.as_str()).collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
                 "q",
-                &self.items.iter().map(|item| &item.path).collect::<Vec<_>>(),
+                &self
+                    .items
+                    .iter()
+                    .enumerate()
+                    // Serialize as an array of item indices and full paths
+                    .filter_map(
+                        |(index, item)| {
+                            if item.path.is_empty() { None } else { Some((index, &item.path)) }
+                        },
+                    )
+                    .collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
                 "d",
@@ -263,8 +312,18 @@ pub(crate) fn build_index<'tcx>(
                     .collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
+                "c",
+                &self
+                    .items
+                    .iter()
+                    .enumerate()
+                    // Serialize as an array of deprecated item indices
+                    .filter_map(|(index, item)| item.deprecation.map(|_| index))
+                    .collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
                 "p",
-                &self.paths.iter().map(|(it, s)| (it, s.to_string())).collect::<Vec<_>>(),
+                &self.paths.iter().map(|(it, s)| (it, s.as_str())).collect::<Vec<_>>(),
             )?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
@@ -322,19 +381,20 @@ fn get_index_type_id(clean_type: &clean::Type) -> Option<RenderTypeId> {
     match *clean_type {
         clean::Type::Path { ref path, .. } => Some(RenderTypeId::DefId(path.def_id())),
         clean::DynTrait(ref bounds, _) => {
-            let path = &bounds[0].trait_;
-            Some(RenderTypeId::DefId(path.def_id()))
+            bounds.get(0).map(|b| RenderTypeId::DefId(b.trait_.def_id()))
         }
         clean::Primitive(p) => Some(RenderTypeId::Primitive(p)),
         clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
             get_index_type_id(type_)
         }
+        // The type parameters are converted to generics in `add_generics_and_bounds_as_types`
+        clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
+        clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
+        // Not supported yet
         clean::BareFunction(_)
         | clean::Generic(_)
         | clean::ImplTrait(_)
         | clean::Tuple(_)
-        | clean::Slice(_)
-        | clean::Array(_, _)
         | clean::QPath { .. }
         | clean::Infer => None,
     }
@@ -424,7 +484,7 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
     }
 
     // First, check if it's "Self".
-    let arg = if let Some(self_) = self_ {
+    let mut arg = if let Some(self_) = self_ {
         match &*arg {
             Type::BorrowedRef { type_, .. } if type_.is_self_type() => self_,
             type_ if type_.is_self_type() => self_,
@@ -434,34 +494,33 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
         arg
     };
 
+    // strip references from the argument type
+    while let Type::BorrowedRef { type_, .. } = &*arg {
+        arg = &*type_;
+    }
+
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
     if let Type::Generic(arg_s) = *arg {
         // First we check if the bounds are in a `where` predicate...
-        if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => ty.def_id(cache) == arg.def_id(cache),
+        for where_pred in generics.where_predicates.iter().filter(|g| match g {
+            WherePredicate::BoundPredicate { ty: Type::Generic(ty_s), .. } => *ty_s == arg_s,
             _ => false,
         }) {
             let mut ty_generics = Vec::new();
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
             for bound in bounds.iter() {
-                if let GenericBound::TraitBound(poly_trait, _) = bound {
-                    for param_def in poly_trait.generic_params.iter() {
-                        match &param_def.kind {
-                            clean::GenericParamDefKind::Type { default: Some(ty), .. } => {
-                                add_generics_and_bounds_as_types(
-                                    self_,
-                                    generics,
-                                    ty,
-                                    tcx,
-                                    recurse + 1,
-                                    &mut ty_generics,
-                                    cache,
-                                )
-                            }
-                            _ => {}
-                        }
-                    }
+                if let Some(path) = bound.get_trait_path() {
+                    let ty = Type::Path { path };
+                    add_generics_and_bounds_as_types(
+                        self_,
+                        generics,
+                        &ty,
+                        tcx,
+                        recurse + 1,
+                        &mut ty_generics,
+                        cache,
+                    );
                 }
             }
             insert_ty(res, arg.clone(), ty_generics);
@@ -502,6 +561,30 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
             }
         }
         insert_ty(res, arg.clone(), ty_generics);
+    } else if let Type::Slice(ref ty) = *arg {
+        let mut ty_generics = Vec::new();
+        add_generics_and_bounds_as_types(
+            self_,
+            generics,
+            &ty,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            cache,
+        );
+        insert_ty(res, arg.clone(), ty_generics);
+    } else if let Type::Array(ref ty, _) = *arg {
+        let mut ty_generics = Vec::new();
+        add_generics_and_bounds_as_types(
+            self_,
+            generics,
+            &ty,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            cache,
+        );
+        insert_ty(res, arg.clone(), ty_generics);
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
         // looking at `Option`, we enter this "else" condition, otherwise if it's `T`, we don't.
@@ -539,15 +622,20 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let decl = &func.decl;
 
     let combined_generics;
-    let (self_, generics) = if let Some(&(ref impl_self, ref impl_generics)) = impl_generics {
+    let (self_, generics) = if let Some((impl_self, impl_generics)) = impl_generics {
         match (impl_generics.is_empty(), func.generics.is_empty()) {
             (true, _) => (Some(impl_self), &func.generics),
             (_, true) => (Some(impl_self), impl_generics),
             (false, false) => {
-                let mut params = func.generics.params.clone();
-                params.extend(impl_generics.params.clone());
-                let mut where_predicates = func.generics.where_predicates.clone();
-                where_predicates.extend(impl_generics.where_predicates.clone());
+                let params =
+                    func.generics.params.iter().chain(&impl_generics.params).cloned().collect();
+                let where_predicates = func
+                    .generics
+                    .where_predicates
+                    .iter()
+                    .chain(&impl_generics.where_predicates)
+                    .cloned()
+                    .collect();
                 combined_generics = clean::Generics { params, where_predicates };
                 (Some(impl_self), &combined_generics)
             }
@@ -568,22 +656,9 @@ fn get_fn_inputs_and_outputs<'tcx>(
     }
 
     let mut ret_types = Vec::new();
-    match decl.output {
-        FnRetTy::Return(ref return_type) => {
-            add_generics_and_bounds_as_types(
-                self_,
-                generics,
-                return_type,
-                tcx,
-                0,
-                &mut ret_types,
-                cache,
-            );
-            if ret_types.is_empty() {
-                ret_types.push(get_index_type(return_type, vec![]));
-            }
-        }
-        _ => {}
-    };
+    add_generics_and_bounds_as_types(self_, generics, &decl.output, tcx, 0, &mut ret_types, cache);
+    if ret_types.is_empty() {
+        ret_types.push(get_index_type(&decl.output, vec![]));
+    }
     (all_types, ret_types)
 }

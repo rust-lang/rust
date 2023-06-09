@@ -1,0 +1,38 @@
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:32:25
+   |
+LL |     fn ptr(self: Ptr<Self>);
+   |                  --------- help: consider changing method `ptr`'s `self` parameter to be `&self`: `&Self`
+...
+LL |     Ptr(Box::new(4)) as Ptr<dyn Trait>;
+   |                         ^^^^^^^^^^^^^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:25:18
+   |
+LL | trait Trait {
+   |       ----- this trait cannot be made into an object...
+LL |     fn ptr(self: Ptr<Self>);
+   |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
+
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:32:5
+   |
+LL |     fn ptr(self: Ptr<Self>);
+   |                  --------- help: consider changing method `ptr`'s `self` parameter to be `&self`: `&Self`
+...
+LL |     Ptr(Box::new(4)) as Ptr<dyn Trait>;
+   |     ^^^^^^^^^^^^^^^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:25:18
+   |
+LL | trait Trait {
+   |       ----- this trait cannot be made into an object...
+LL |     fn ptr(self: Ptr<Self>);
+   |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
+   = note: required for the cast from `Ptr<{integer}>` to `Ptr<dyn Trait>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

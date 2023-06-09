@@ -13,7 +13,7 @@ def run_command(command, cwd=None):
         sys.exit(1)
 
 
-def clone_repository(repo_name, path, repo_url, sub_path=None):
+def clone_repository(repo_name, path, repo_url, sub_paths=None):
     if os.path.exists(path):
         while True:
             choice = input("There is already a `{}` folder, do you want to update it? [y/N]".format(path))
@@ -27,12 +27,12 @@ def clone_repository(repo_name, path, repo_url, sub_path=None):
             else:
                 print("Didn't understand answer...")
     print("Cloning {} repository...".format(repo_name))
-    if sub_path is None:
+    if sub_paths is None:
         run_command(["git", "clone", repo_url, "--depth", "1", path])
     else:
         run_command(["git", "clone", repo_url, "--filter=tree:0", "--no-checkout", path])
         run_command(["git", "sparse-checkout", "init"], cwd=path)
-        run_command(["git", "sparse-checkout", "set", "add", sub_path], cwd=path)
+        run_command(["git", "sparse-checkout", "set", *sub_paths], cwd=path)
         run_command(["git", "checkout"], cwd=path)
 
 
@@ -40,56 +40,45 @@ def append_intrinsic(array, intrinsic_name, translation):
     array.append((intrinsic_name, translation))
 
 
-def extract_instrinsics(intrinsics, file):
-    print("Extracting intrinsics from `{}`...".format(file))
-    with open(file, "r", encoding="utf8") as f:
-        content = f.read()
-
-    lines = content.splitlines()
-    pos = 0
-    current_arch = None
-    while pos < len(lines):
-        line = lines[pos].strip()
-        if line.startswith("let TargetPrefix ="):
-            current_arch = line.split('"')[1].strip()
-            if len(current_arch) == 0:
-                current_arch = None
-        elif current_arch is None:
-            pass
-        elif line == "}":
-            current_arch = None
-        elif line.startswith("def "):
-            content = ""
-            while not content.endswith(";") and not content.endswith("}") and pos < len(lines):
-                line = lines[pos].split(" // ")[0].strip()
-                content += line
-                pos += 1
-            entries = re.findall('GCCBuiltin<"(\\w+)">', content)
-            if len(entries) > 0:
-                intrinsic = content.split("def ")[1].strip().split(":")[0].strip()
-                intrinsic = intrinsic.split("_")
-                if len(intrinsic) < 2 or intrinsic[0] != "int":
-                    continue
-                intrinsic[0] = "llvm"
-                intrinsic = ".".join(intrinsic)
-                if current_arch not in intrinsics:
-                    intrinsics[current_arch] = []
-                for entry in entries:
-                    append_intrinsic(intrinsics[current_arch], intrinsic, entry)
-            continue
-        pos += 1
-        continue
-    print("Done!")
+def convert_to_string(content):
+    if content.__class__.__name__ == 'bytes':
+        return content.decode('utf-8')
+    return content
 
 
 def extract_instrinsics_from_llvm(llvm_path, intrinsics):
-    files = []
-    intrinsics_path = os.path.join(llvm_path, "llvm/include/llvm/IR")
-    for (dirpath, dirnames, filenames) in walk(intrinsics_path):
-        files.extend([os.path.join(intrinsics_path, f) for f in filenames if f.endswith(".td")])
-
-    for file in files:
-        extract_instrinsics(intrinsics, file)
+    p = subprocess.Popen(
+        ["llvm-tblgen", "llvm/IR/Intrinsics.td"],
+        cwd=os.path.join(llvm_path, "llvm/include"),
+        stdout=subprocess.PIPE)
+    output, err = p.communicate()
+    lines = convert_to_string(output).splitlines()
+    pos = 0
+    while pos < len(lines):
+        line = lines[pos]
+        if not line.startswith("def "):
+            pos += 1
+            continue
+        intrinsic = line.split(" ")[1].strip()
+        content = line
+        while pos < len(lines):
+            line = lines[pos].split(" // ")[0].strip()
+            content += line
+            pos += 1
+            if line == "}":
+                break
+        entries = re.findall('string ClangBuiltinName = "(\\w+)";', content)
+        current_arch = re.findall('string TargetPrefix = "(\\w+)";', content)
+        if len(entries) == 1 and len(current_arch) == 1:
+            current_arch = current_arch[0]
+            intrinsic = intrinsic.split("_")
+            if len(intrinsic) < 2 or intrinsic[0] != "int":
+                continue
+            intrinsic[0] = "llvm"
+            intrinsic = ".".join(intrinsic)
+            if current_arch not in intrinsics:
+                intrinsics[current_arch] = []
+            append_intrinsic(intrinsics[current_arch], intrinsic, entries[0])
 
 
 def append_translation(json_data, p, array):
@@ -193,6 +182,8 @@ def update_intrinsics(llvm_path, llvmint, llvmint2):
             for entry in intrinsics[arch]:
                 if entry[2] == True: # if it is a duplicate
                     out.write('    // [DUPLICATE]: "{}" => "{}",\n'.format(entry[0], entry[1]))
+                elif "_round_mask" in entry[1]:
+                    out.write('    // [INVALID CONVERSION]: "{}" => "{}",\n'.format(entry[0], entry[1]))
                 else:
                     out.write('    "{}" => "{}",\n'.format(entry[0], entry[1]))
         out.write('    _ => unimplemented!("***** unsupported LLVM intrinsic {}", name),\n')
@@ -219,7 +210,7 @@ def main():
         "llvm-project",
         llvm_path,
         "https://github.com/llvm/llvm-project",
-        sub_path="llvm/include/llvm/IR",
+        sub_paths=["llvm/include/llvm/IR", "llvm/include/llvm/CodeGen/"],
     )
     clone_repository(
         "llvmint",

@@ -1,0 +1,15 @@
+error: Undefined Behavior: trying to join a detached thread
+  --> $DIR/libc_pthread_join_detached.rs:LL:CC
+   |
+LL |         assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trying to join a detached thread
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/libc_pthread_join_detached.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

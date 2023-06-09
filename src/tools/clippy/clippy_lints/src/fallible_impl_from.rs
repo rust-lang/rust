@@ -55,8 +55,8 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
         // check for `impl From<???> for ..`
         if_chain! {
             if let hir::ItemKind::Impl(impl_) = &item.kind;
-            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
-            if cx.tcx.is_diagnostic_item(sym::From, impl_trait_ref.def_id);
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id);
+            if cx.tcx.is_diagnostic_item(sym::From, impl_trait_ref.skip_binder().def_id);
             then {
                 lint_impl_body(cx, item.span, impl_.items);
             }
@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
     }
 }
 
-fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef]) {
+fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::ImplItemRef]) {
     use rustc_hir::intravisit::{self, Visitor};
     use rustc_hir::{Expr, ImplItemKind};
 
@@ -84,7 +84,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
 
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                let receiver_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
+                let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
                 if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
                     || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
                 {
@@ -107,10 +107,10 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
                 let body = cx.tcx.hir().body(body_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    typeck_results: cx.tcx.typeck(impl_item.id.def_id),
+                    typeck_results: cx.tcx.typeck(impl_item.id.owner_id.def_id),
                     result: Vec::new(),
                 };
-                fpu.visit_expr(&body.value);
+                fpu.visit_expr(body.value);
 
                 // if we've found one, lint
                 if !fpu.result.is_empty() {

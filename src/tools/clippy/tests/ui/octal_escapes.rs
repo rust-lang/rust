@@ -17,4 +17,5 @@ fn main() {
     let _good3 = "\0\0";
     let _good4 = "X\0\0X";
     let _good5 = "锈\0锈";
+    let _good6 = "\0\\01";
 }

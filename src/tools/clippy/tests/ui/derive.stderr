@@ -8,7 +8,6 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
 note: consider deriving `Clone` or removing `Copy`
   --> $DIR/derive.rs:8:1
    |
@@ -18,6 +17,7 @@ LL | |         Qux
 LL | |     }
 LL | | }
    | |_^
+   = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
   --> $DIR/derive.rs:32:1

@@ -1,4 +1,8 @@
-use std::collections::VecDeque;
+use core::iter::Iterator;
+use std::{
+    collections::{vec_deque, VecDeque},
+    mem,
+};
 use test::{black_box, Bencher};
 
 #[bench]
@@ -51,6 +55,146 @@ fn bench_try_fold(b: &mut Bencher) {
     let ring: VecDeque<_> = (0..1000).collect();
 
     b.iter(|| black_box(ring.iter().try_fold(0, |a, b| Some(a + b))))
+}
+
+/// does the memory bookkeeping to reuse the buffer of the Vec between iterations.
+/// `setup` must not modify its argument's length or capacity. `g` must not move out of its argument.
+fn into_iter_helper<
+    T: Copy,
+    F: FnOnce(&mut VecDeque<T>),
+    G: FnOnce(&mut vec_deque::IntoIter<T>),
+>(
+    v: &mut Vec<T>,
+    setup: F,
+    g: G,
+) {
+    let ptr = v.as_mut_ptr();
+    let len = v.len();
+    // ensure that the vec is full, to make sure that any wrapping from the deque doesn't
+    // access uninitialized memory.
+    assert_eq!(v.len(), v.capacity());
+
+    let mut deque = VecDeque::from(mem::take(v));
+    setup(&mut deque);
+
+    let mut it = deque.into_iter();
+    g(&mut it);
+
+    mem::forget(it);
+
+    // SAFETY: the provided functions are not allowed to modify the allocation, so the buffer is still alive.
+    // len and capacity are accurate due to the above assertion.
+    // All the elements in the buffer are still valid, because of `T: Copy` which implies `T: !Drop`.
+    mem::forget(mem::replace(v, unsafe { Vec::from_raw_parts(ptr, len, len) }));
+}
+
+#[bench]
+fn bench_into_iter(b: &mut Bencher) {
+    let len = 1024;
+    // we reuse this allocation for every run
+    let mut vec: Vec<usize> = (0..len).collect();
+    vec.shrink_to_fit();
+
+    b.iter(|| {
+        let mut sum = 0;
+        into_iter_helper(
+            &mut vec,
+            |_| {},
+            |it| {
+                for i in it {
+                    sum += i;
+                }
+            },
+        );
+        black_box(sum);
+
+        let mut sum = 0;
+        // rotating a full deque doesn't move any memory.
+        into_iter_helper(
+            &mut vec,
+            |d| d.rotate_left(len / 2),
+            |it| {
+                for i in it {
+                    sum += i;
+                }
+            },
+        );
+        black_box(sum);
+    });
+}
+
+#[bench]
+fn bench_into_iter_fold(b: &mut Bencher) {
+    let len = 1024;
+
+    // because `fold` takes ownership of the iterator,
+    // we can't prevent it from dropping the memory,
+    // so we have to bite the bullet and reallocate
+    // for every iteration.
+    b.iter(|| {
+        let deque: VecDeque<usize> = (0..len).collect();
+        assert_eq!(deque.len(), deque.capacity());
+        let sum = deque.into_iter().fold(0, |a, b| a + b);
+        black_box(sum);
+
+        // rotating a full deque doesn't move any memory.
+        let mut deque: VecDeque<usize> = (0..len).collect();
+        assert_eq!(deque.len(), deque.capacity());
+        deque.rotate_left(len / 2);
+        let sum = deque.into_iter().fold(0, |a, b| a + b);
+        black_box(sum);
+    });
+}
+
+#[bench]
+fn bench_into_iter_try_fold(b: &mut Bencher) {
+    let len = 1024;
+    // we reuse this allocation for every run
+    let mut vec: Vec<usize> = (0..len).collect();
+    vec.shrink_to_fit();
+
+    // Iterator::any uses Iterator::try_fold under the hood
+    b.iter(|| {
+        let mut b = false;
+        into_iter_helper(&mut vec, |_| {}, |it| b = it.any(|i| i == len - 1));
+        black_box(b);
+
+        into_iter_helper(&mut vec, |d| d.rotate_left(len / 2), |it| b = it.any(|i| i == len - 1));
+        black_box(b);
+    });
+}
+
+#[bench]
+fn bench_into_iter_next_chunk(b: &mut Bencher) {
+    let len = 1024;
+    // we reuse this allocation for every run
+    let mut vec: Vec<usize> = (0..len).collect();
+    vec.shrink_to_fit();
+
+    b.iter(|| {
+        let mut buf = [0; 64];
+        into_iter_helper(
+            &mut vec,
+            |_| {},
+            |it| {
+                while let Ok(a) = it.next_chunk() {
+                    buf = a;
+                }
+            },
+        );
+        black_box(buf);
+
+        into_iter_helper(
+            &mut vec,
+            |d| d.rotate_left(len / 2),
+            |it| {
+                while let Ok(a) = it.next_chunk() {
+                    buf = a;
+                }
+            },
+        );
+        black_box(buf);
+    });
 }
 
 #[bench]

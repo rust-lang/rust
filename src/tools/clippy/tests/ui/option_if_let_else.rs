@@ -1,6 +1,7 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::option_if_let_else)]
 #![allow(
+    unused_tuple_struct_fields,
     clippy::redundant_closure,
     clippy::ref_option_ref,
     clippy::equatable_if_let,
@@ -32,7 +33,7 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
         *s += 1;
         s
     } else {
-        &mut 0
+        &0
     };
     let _ = if let Some(ref s) = num { s } else { &0 };
     let _ = if let Some(mut s) = num {
@@ -45,7 +46,7 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
         *s += 1;
         s
     } else {
-        &mut 0
+        &0
     };
 }
 
@@ -114,12 +115,21 @@ fn pattern_to_vec(pattern: &str) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+// #10335
+fn test_result_impure_else(variable: Result<u32, &str>) {
+    if let Ok(binding) = variable {
+        println!("Ok {binding}");
+    } else {
+        println!("Err");
+    }
+}
+
 enum DummyEnum {
     One(u8),
     Two,
 }
 
-// should not warn since there is a compled complex subpat
+// should not warn since there is a complex subpat
 // see #7991
 fn complex_subpat() -> DummyEnum {
     let x = Some(DummyEnum::One(1));
@@ -135,6 +145,7 @@ fn main() {
     unop_bad(&None, None);
     let _ = longer_body(None);
     test_map_or_else(None);
+    test_result_impure_else(Ok(42));
     let _ = negative_tests(None);
     let _ = impure_else(None);
 
@@ -207,4 +218,34 @@ fn main() {
 
     let _ = pattern_to_vec("hello world");
     let _ = complex_subpat();
+
+    // issue #8492
+    let _ = match s {
+        Some(string) => string.len(),
+        None => 1,
+    };
+    let _ = match Some(10) {
+        Some(a) => a + 1,
+        None => 5,
+    };
+
+    let res: Result<i32, i32> = Ok(5);
+    let _ = match res {
+        Ok(a) => a + 1,
+        _ => 1,
+    };
+    let _ = match res {
+        Err(_) => 1,
+        Ok(a) => a + 1,
+    };
+    let _ = if let Ok(a) = res { a + 1 } else { 5 };
+}
+
+#[allow(dead_code)]
+fn issue9742() -> Option<&'static str> {
+    // should not lint because of guards
+    match Some("foo  ") {
+        Some(name) if name.starts_with("foo") => Some(name.trim()),
+        _ => None,
+    }
 }

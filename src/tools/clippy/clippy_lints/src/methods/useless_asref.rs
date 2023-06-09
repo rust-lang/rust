@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::walk_ptrs_ty_depth;
-use clippy_utils::{get_parent_expr, match_trait_method, paths};
+use clippy_utils::{get_parent_expr, is_trait_method};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_span::sym;
 
 use super::USELESS_ASREF;
 
@@ -13,7 +14,7 @@ use super::USELESS_ASREF;
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, recvr: &hir::Expr<'_>) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
     // check if the call is to the actual `AsRef` or `AsMut` trait
-    if match_trait_method(cx, expr, &paths::ASREF_TRAIT) || match_trait_method(cx, expr, &paths::ASMUT_TRAIT) {
+    if is_trait_method(cx, expr, sym::AsRef) || is_trait_method(cx, expr, sym::AsMut) {
         // check if the type after `as_ref` or `as_mut` is the same as before
         let rcv_ty = cx.typeck_results().expr_ty(recvr);
         let res_ty = cx.typeck_results().expr_ty(expr);
@@ -35,7 +36,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
                 cx,
                 USELESS_ASREF,
                 expr.span,
-                &format!("this call to `{}` does nothing", call_name),
+                &format!("this call to `{call_name}` does nothing"),
                 "try this",
                 snippet_with_applicability(cx, recvr.span, "..", &mut applicability).to_string(),
                 applicability,

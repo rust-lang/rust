@@ -1,0 +1,27 @@
+error[E0013]: constants cannot refer to statics
+  --> $DIR/type-check-4.rs:21:25
+   |
+LL | global_asm!("{}", const S);
+   |                         ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/type-check-4.rs:24:35
+   |
+LL | global_asm!("{}", const const_foo(S));
+   |                                   ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error[E0013]: constants cannot refer to statics
+  --> $DIR/type-check-4.rs:27:35
+   |
+LL | global_asm!("{}", const const_bar(S));
+   |                                   ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0013`.

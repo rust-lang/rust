@@ -1,0 +1,35 @@
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/feature-gate-repr-simd.rs:1:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/feature-gate-repr-simd.rs:6:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+
+error[E0566]: conflicting representation hints
+  --> $DIR/feature-gate-repr-simd.rs:4:8
+   |
+LL | #[repr(C)]
+   |        ^
+LL |
+LL | #[repr(simd)]
+   |        ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` on by default
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0566, E0658.
+For more information about an error, try `rustc --explain E0566`.

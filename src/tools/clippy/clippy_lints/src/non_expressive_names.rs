@@ -15,6 +15,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for names that are very similar and thus confusing.
     ///
+    /// Note: this lint looks for similar names throughout each
+    /// scope. To allow it, you need to allow it on the scope
+    /// level, not on the name that is reported.
+    ///
     /// ### Why is this bad?
     /// It's hard to distinguish between names that differ only
     /// by a single character.
@@ -108,10 +112,7 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
                 self.cx,
                 MANY_SINGLE_CHAR_NAMES,
                 span,
-                &format!(
-                    "{} bindings with single-character names in scope",
-                    num_single_char_names
-                ),
+                &format!("{num_single_char_names} bindings with single-character names in scope"),
             );
         }
     }

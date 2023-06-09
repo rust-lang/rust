@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::manual_bits)]
 #![allow(
@@ -6,7 +6,8 @@
     clippy::useless_conversion,
     path_statements,
     unused_must_use,
-    clippy::unnecessary_operation
+    clippy::unnecessary_operation,
+    clippy::unnecessary_cast
 )]
 
 use std::mem::{size_of, size_of_val};

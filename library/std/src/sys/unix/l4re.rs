@@ -129,6 +129,7 @@ pub mod net {
     }
 
     impl AsInner<FileDesc> for Socket {
+        #[inline]
         fn as_inner(&self) -> &FileDesc {
             &self.0
         }
@@ -153,6 +154,7 @@ pub mod net {
     }
 
     impl AsRawFd for Socket {
+        #[inline]
         fn as_raw_fd(&self) -> RawFd {
             self.0.as_raw_fd()
         }
@@ -183,6 +185,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }
@@ -305,6 +308,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }
@@ -371,6 +375,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }

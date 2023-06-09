@@ -12,15 +12,23 @@ use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
-#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-type UserId = u32;
-#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
-type GroupId = u32;
+use cfg_if::cfg_if;
 
-#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
-type UserId = u16;
-#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
-type GroupId = u16;
+cfg_if! {
+    if #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
+        type UserId = u16;
+        type GroupId = u16;
+    } else if #[cfg(target_os = "nto")] {
+        // Both IDs are signed, see `sys/target_nto.h` of the QNX Neutrino SDP.
+        // Only positive values should be used, see e.g.
+        // https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/s/setuid.html
+        type UserId = i32;
+        type GroupId = i32;
+    } else {
+        type UserId = u32;
+        type GroupId = u32;
+    }
+}
 
 /// Unix-specific extensions to the [`process::Command`] builder.
 ///
@@ -148,9 +156,36 @@ pub trait CommandExt: Sealed {
     where
         S: AsRef<OsStr>;
 
-    /// Sets the process group ID of the child process. Translates to a `setpgid` call in the child
-    /// process.
-    #[unstable(feature = "process_set_process_group", issue = "93857")]
+    /// Sets the process group ID (PGID) of the child process. Equivalent to a
+    /// `setpgid` call in the child process, but may be more efficient.
+    ///
+    /// Process groups determine which processes receive signals.
+    ///
+    /// # Examples
+    ///
+    /// Pressing Ctrl-C in a terminal will send SIGINT to all processes in
+    /// the current foreground process group. By spawning the `sleep`
+    /// subprocess in a new process group, it will not receive SIGINT from the
+    /// terminal.
+    ///
+    /// The parent process could install a signal handler and manage the
+    /// subprocess on its own terms.
+    ///
+    /// A process group ID of 0 will use the process ID as the PGID.
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    /// use std::os::unix::process::CommandExt;
+    ///
+    /// Command::new("sleep")
+    ///     .arg("10")
+    ///     .process_group(0)
+    ///     .spawn()?
+    ///     .wait()?;
+    /// #
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    #[stable(feature = "process_set_process_group", since = "1.64.0")]
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
 }
 

@@ -1,4 +1,4 @@
-// ignore-64bit
+//@ignore-64bit
 #[warn(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,

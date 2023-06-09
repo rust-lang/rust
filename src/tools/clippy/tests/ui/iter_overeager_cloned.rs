@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::iter_overeager_cloned, clippy::redundant_clone, clippy::filter_next)]
 #![allow(dead_code, clippy::let_unit_value)]
 

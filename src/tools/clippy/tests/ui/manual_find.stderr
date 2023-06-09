@@ -9,8 +9,8 @@ LL | |     }
 LL | |     None
    | |________^ help: replace with an iterator: `strings.into_iter().find(|s| s == String::new())`
    |
-   = note: `-D clippy::manual-find` implied by `-D warnings`
    = note: you may need to dereference some variables
+   = note: `-D clippy::manual-find` implied by `-D warnings`
 
 error: manual implementation of `Iterator::find`
   --> $DIR/manual_find.rs:14:5

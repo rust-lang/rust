@@ -9,7 +9,7 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
 use crate::ptr;
-use crate::sys::c;
+use crate::sys;
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
@@ -190,14 +190,14 @@ impl BorrowedHandle<'_> {
     /// object as the existing `BorrowedHandle` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedHandle> {
-        self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
+        self.duplicate(0, false, sys::c::DUPLICATE_SAME_ACCESS)
     }
 
     pub(crate) fn duplicate(
         &self,
-        access: c::DWORD,
+        access: u32,
         inherit: bool,
-        options: c::DWORD,
+        options: u32,
     ) -> io::Result<OwnedHandle> {
         let handle = self.as_raw_handle();
 
@@ -211,14 +211,14 @@ impl BorrowedHandle<'_> {
 
         let mut ret = ptr::null_mut();
         cvt(unsafe {
-            let cur_proc = c::GetCurrentProcess();
-            c::DuplicateHandle(
+            let cur_proc = sys::c::GetCurrentProcess();
+            sys::c::DuplicateHandle(
                 cur_proc,
                 handle,
                 cur_proc,
                 &mut ret,
                 access,
-                inherit as c::BOOL,
+                inherit as sys::c::BOOL,
                 options,
             )
         })?;
@@ -233,7 +233,7 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
     #[inline]
     fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, InvalidHandleError> {
         let owned_handle = handle_or_invalid.0;
-        if owned_handle.handle == c::INVALID_HANDLE_VALUE {
+        if owned_handle.handle == sys::c::INVALID_HANDLE_VALUE {
             // Don't call `CloseHandle`; it'd be harmless, except that it could
             // overwrite the `GetLastError` error.
             forget(owned_handle);
@@ -365,7 +365,7 @@ impl Drop for OwnedHandle {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = c::CloseHandle(self.handle);
+            let _ = sys::c::CloseHandle(self.handle);
         }
     }
 }
@@ -383,6 +383,23 @@ impl fmt::Debug for OwnedHandle {
         f.debug_struct("OwnedHandle").field("handle", &self.handle).finish()
     }
 }
+
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+
+        #[stable(feature = "is_terminal", since = "1.70.0")]
+        impl crate::io::IsTerminal for $t {
+            #[inline]
+            fn is_terminal(&self) -> bool {
+                crate::sys::io::is_terminal(self)
+            }
+        }
+    )*}
+}
+
+impl_is_terminal!(BorrowedHandle<'_>, OwnedHandle);
 
 /// A trait to borrow the handle from an underlying object.
 #[stable(feature = "io_safety", since = "1.63.0")]
@@ -420,6 +437,42 @@ impl<T: AsHandle> AsHandle for &mut T {
     }
 }
 
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
+/// This impl allows implementing traits that require `AsHandle` on Arc.
+/// ```
+/// # #[cfg(windows)] mod group_cfg {
+/// # use std::os::windows::io::AsHandle;
+/// use std::fs::File;
+/// use std::sync::Arc;
+///
+/// trait MyTrait: AsHandle {}
+/// impl MyTrait for Arc<File> {}
+/// impl MyTrait for Box<File> {}
+/// # }
+/// ```
+impl<T: AsHandle> AsHandle for crate::sync::Arc<T> {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        (**self).as_handle()
+    }
+}
+
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
+impl<T: AsHandle> AsHandle for crate::rc::Rc<T> {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        (**self).as_handle()
+    }
+}
+
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
+impl<T: AsHandle> AsHandle for Box<T> {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        (**self).as_handle()
+    }
+}
+
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for BorrowedHandle<'_> {
     #[inline]
@@ -433,7 +486,7 @@ impl AsHandle for OwnedHandle {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         // Safety: `OwnedHandle` and `BorrowedHandle` have the same validity
-        // invariants, and the `BorrowdHandle` is bounded by the lifetime
+        // invariants, and the `BorrowedHandle` is bounded by the lifetime
         // of `&self`.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }

@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{
-    intravisit, Body, Expr, ExprKind, FnDecl, HirId, Let, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind,
-};
+use rustc_hir::{intravisit, Body, Expr, ExprKind, FnDecl, Let, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
@@ -116,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         for param in body.params {
             apply_lint(cx, param.pat, DerefPossible::Impossible);
@@ -130,7 +129,7 @@ enum DerefPossible {
     Impossible,
 }
 
-fn apply_lint<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, deref_possible: DerefPossible) -> bool {
+fn apply_lint(cx: &LateContext<'_>, pat: &Pat<'_>, deref_possible: DerefPossible) -> bool {
     let maybe_mismatch = find_first_mismatch(cx, pat);
     if let Some((span, mutability, level)) = maybe_mismatch {
         span_lint_and_help(
@@ -163,7 +162,7 @@ enum Level {
     Lower,
 }
 
-fn find_first_mismatch<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>) -> Option<(Span, Mutability, Level)> {
+fn find_first_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(Span, Mutability, Level)> {
     let mut result = None;
     pat.walk(|p| {
         if result.is_some() {

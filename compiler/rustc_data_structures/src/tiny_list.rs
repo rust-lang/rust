@@ -37,9 +37,9 @@ impl<T: PartialEq> TinyList<T> {
 
     #[inline]
     pub fn remove(&mut self, data: &T) -> bool {
-        self.head = match self.head {
-            Some(ref mut head) if head.data == *data => head.next.take().map(|x| *x),
-            Some(ref mut head) => return head.remove_next(data),
+        self.head = match &mut self.head {
+            Some(head) if head.data == *data => head.next.take().map(|x| *x),
+            Some(head) => return head.remove_next(data),
             None => return false,
         };
         true
@@ -48,7 +48,7 @@ impl<T: PartialEq> TinyList<T> {
     #[inline]
     pub fn contains(&self, data: &T) -> bool {
         let mut elem = self.head.as_ref();
-        while let Some(ref e) = elem {
+        while let Some(e) = elem {
             if &e.data == data {
                 return true;
             }
@@ -65,15 +65,14 @@ struct Element<T> {
 }
 
 impl<T: PartialEq> Element<T> {
-    fn remove_next(&mut self, data: &T) -> bool {
-        let mut n = self;
+    fn remove_next(mut self: &mut Self, data: &T) -> bool {
         loop {
-            match n.next {
+            match self.next {
                 Some(ref mut next) if next.data == *data => {
-                    n.next = next.next.take();
+                    self.next = next.next.take();
                     return true;
                 }
-                Some(ref mut next) => n = next,
+                Some(ref mut next) => self = next,
                 None => return false,
             }
         }

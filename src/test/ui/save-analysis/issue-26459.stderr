@@ -1,9 +1,0 @@
-error[E0574]: expected struct, variant or union type, found builtin type `char`
-  --> $DIR/issue-26459.rs:5:9
-   |
-LL |         char{ch} => true
-   |         ^^^^ not a struct, variant or union type
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0574`.

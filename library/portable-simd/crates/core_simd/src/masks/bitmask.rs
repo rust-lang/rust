@@ -26,6 +26,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
@@ -36,6 +37,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.0.as_ref() == other.0.as_ref()
     }
@@ -46,6 +48,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.0.as_ref().partial_cmp(other.0.as_ref())
     }
@@ -63,6 +66,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.0.as_ref().cmp(other.0.as_ref())
     }
@@ -113,6 +117,26 @@ where
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
         unsafe { Self(intrinsics::simd_bitmask(value), PhantomData) }
+    }
+
+    #[cfg(feature = "generic_const_exprs")]
+    #[inline]
+    #[must_use = "method returns a new array and does not mutate the original value"]
+    pub fn to_bitmask_array<const N: usize>(self) -> [u8; N] {
+        assert!(core::mem::size_of::<Self>() == N);
+
+        // Safety: converting an integer to an array of bytes of the same size is safe
+        unsafe { core::mem::transmute_copy(&self.0) }
+    }
+
+    #[cfg(feature = "generic_const_exprs")]
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn from_bitmask_array<const N: usize>(bitmask: [u8; N]) -> Self {
+        assert!(core::mem::size_of::<Self>() == N);
+
+        // Safety: converting an array of bytes to an integer of the same size is safe
+        Self(unsafe { core::mem::transmute_copy(&bitmask) }, PhantomData)
     }
 
     #[inline]

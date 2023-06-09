@@ -18,7 +18,7 @@ impl Handler {
     }
 }
 
-extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
+unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
     unsafe {
         let rec = &(*(*ExceptionInfo).ExceptionRecord);
         let code = rec.ExceptionCode;
@@ -34,7 +34,7 @@ extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -
 }
 
 pub unsafe fn init() {
-    if c::AddVectoredExceptionHandler(0, vectored_handler).is_null() {
+    if c::AddVectoredExceptionHandler(0, Some(vectored_handler)).is_null() {
         panic!("failed to install exception handler");
     }
     // Set the thread stack guarantee for the main thread.

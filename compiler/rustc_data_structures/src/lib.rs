@@ -1,5 +1,5 @@
 //! Various data structures used by the Rust compiler. The intention
-//! is that code in here should be not be *specific* to rustc, so that
+//! is that code in here should not be *specific* to rustc, so that
 //! it can be easily unit tested and so forth.
 //!
 //! # Note
@@ -11,9 +11,8 @@
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cell_leak)]
-#![feature(control_flow_enum)]
+#![feature(core_intrinsics)]
 #![feature(extend_one)]
-#![feature(let_else)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(maybe_uninit_uninit_array)]
@@ -21,13 +20,24 @@
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]
 #![feature(new_uninit)]
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
+#![feature(negative_impls)]
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
+#![feature(allocator_api)]
+#![feature(get_mut_unchecked)]
+#![feature(lint_reasons)]
+#![feature(unwrap_infallible)]
+#![feature(strict_provenance)]
+#![feature(ptr_alignment_type)]
+#![feature(macro_metavar_expr)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[macro_use]
 extern crate tracing;
@@ -47,6 +57,7 @@ pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
 pub mod base_n;
 pub mod binary_search_util;
 pub mod captures;
+pub mod flat_map_in_place;
 pub mod flock;
 pub mod functor;
 pub mod fx;
@@ -54,59 +65,64 @@ pub mod graph;
 pub mod intern;
 pub mod jobserver;
 pub mod macros;
-pub mod map_in_place;
 pub mod obligation_forest;
-pub mod owning_ref;
 pub mod sip128;
 pub mod small_c_str;
 pub mod small_str;
 pub mod snapshot_map;
-pub mod stable_map;
 pub mod svh;
 pub use ena::snapshot_vec;
 pub mod memmap;
 pub mod sorted_map;
-pub mod stable_set;
 #[macro_use]
 pub mod stable_hasher;
 mod atomic_ref;
 pub mod fingerprint;
+pub mod marker;
 pub mod profiling;
 pub mod sharded;
 pub mod stack;
 pub mod sync;
-pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod vec_linked_list;
-pub mod vec_map;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
+pub mod aligned;
 pub mod frozen;
+mod hashes;
+pub mod owned_slice;
 pub mod sso;
 pub mod steal;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod unhash;
+pub mod unord;
 
 pub use ena::undo_log;
 pub use ena::unify;
 
-pub struct OnDrop<F: Fn()>(pub F);
+/// Returns a structure that calls `f` when dropped.
+pub fn defer<F: FnOnce()>(f: F) -> OnDrop<F> {
+    OnDrop(Some(f))
+}
 
-impl<F: Fn()> OnDrop<F> {
-    /// Forgets the function which prevents it from running.
-    /// Ensure that the function owns no memory, otherwise it will be leaked.
+pub struct OnDrop<F: FnOnce()>(Option<F>);
+
+impl<F: FnOnce()> OnDrop<F> {
+    /// Disables on-drop call.
     #[inline]
-    pub fn disable(self) {
-        std::mem::forget(self);
+    pub fn disable(mut self) {
+        self.0.take();
     }
 }
 
-impl<F: Fn()> Drop for OnDrop<F> {
+impl<F: FnOnce()> Drop for OnDrop<F> {
     #[inline]
     fn drop(&mut self) {
-        (self.0)();
+        if let Some(f) = self.0.take() {
+            f();
+        }
     }
 }
 

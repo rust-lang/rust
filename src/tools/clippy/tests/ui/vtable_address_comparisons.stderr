@@ -4,8 +4,8 @@ error: comparing trait object pointers compares a non-unique vtable address
 LL |     let _ = a == b;
    |             ^^^^^^
    |
-   = note: `-D clippy::vtable-address-comparisons` implied by `-D warnings`
    = help: consider extracting and comparing data pointers only
+   = note: `-D clippy::vtable-address-comparisons` implied by `-D warnings`
 
 error: comparing trait object pointers compares a non-unique vtable address
   --> $DIR/vtable_address_comparisons.rs:15:13

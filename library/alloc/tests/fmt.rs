@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::fmt::{self, Write};
+use std::ptr;
 
 #[test]
 fn test_format() {
@@ -76,14 +77,14 @@ fn test_format_macro_interface() {
     t!(format!("{}", "foo"), "foo");
     t!(format!("{}", "foo".to_string()), "foo");
     if cfg!(target_pointer_width = "32") {
-        t!(format!("{:#p}", 0x1234 as *const isize), "0x00001234");
-        t!(format!("{:#p}", 0x1234 as *mut isize), "0x00001234");
+        t!(format!("{:#p}", ptr::invalid::<isize>(0x1234)), "0x00001234");
+        t!(format!("{:#p}", ptr::invalid_mut::<isize>(0x1234)), "0x00001234");
     } else {
-        t!(format!("{:#p}", 0x1234 as *const isize), "0x0000000000001234");
-        t!(format!("{:#p}", 0x1234 as *mut isize), "0x0000000000001234");
+        t!(format!("{:#p}", ptr::invalid::<isize>(0x1234)), "0x0000000000001234");
+        t!(format!("{:#p}", ptr::invalid_mut::<isize>(0x1234)), "0x0000000000001234");
     }
-    t!(format!("{:p}", 0x1234 as *const isize), "0x1234");
-    t!(format!("{:p}", 0x1234 as *mut isize), "0x1234");
+    t!(format!("{:p}", ptr::invalid::<isize>(0x1234)), "0x1234");
+    t!(format!("{:p}", ptr::invalid_mut::<isize>(0x1234)), "0x1234");
     t!(format!("{A:x}"), "aloha");
     t!(format!("{B:X}"), "adios");
     t!(format!("foo {} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");

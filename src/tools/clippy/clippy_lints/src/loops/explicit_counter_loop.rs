@@ -34,7 +34,8 @@ pub(super) fn check<'tcx>(
                 if let Some((name, ty, initializer)) = initialize_visitor.get_result();
                 if is_integer_const(cx, initializer, 0);
                 then {
-                    let mut applicability = Applicability::MachineApplicable;
+                    let mut applicability = Applicability::MaybeIncorrect;
+                    let span = expr.span.with_hi(arg.span.hi());
 
                     let int_name = match ty.map(Ty::kind) {
                         // usize or inferred
@@ -42,12 +43,11 @@ pub(super) fn check<'tcx>(
                             span_lint_and_sugg(
                                 cx,
                                 EXPLICIT_COUNTER_LOOP,
-                                expr.span.with_hi(arg.span.hi()),
-                                &format!("the variable `{}` is used as a loop counter", name),
+                                span,
+                                &format!("the variable `{name}` is used as a loop counter"),
                                 "consider using",
                                 format!(
-                                    "for ({}, {}) in {}.enumerate()",
-                                    name,
+                                    "for ({name}, {}) in {}.enumerate()",
                                     snippet_with_applicability(cx, pat.span, "item", &mut applicability),
                                     make_iterator_snippet(cx, arg, &mut applicability),
                                 ),
@@ -63,25 +63,22 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(
                         cx,
                         EXPLICIT_COUNTER_LOOP,
-                        expr.span.with_hi(arg.span.hi()),
-                        &format!("the variable `{}` is used as a loop counter", name),
+                        span,
+                        &format!("the variable `{name}` is used as a loop counter"),
                         |diag| {
                             diag.span_suggestion(
-                                expr.span.with_hi(arg.span.hi()),
+                                span,
                                 "consider using",
                                 format!(
-                                    "for ({}, {}) in (0_{}..).zip({})",
-                                    name,
+                                    "for ({name}, {}) in (0_{int_name}..).zip({})",
                                     snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                                    int_name,
                                     make_iterator_snippet(cx, arg, &mut applicability),
                                 ),
                                 applicability,
                             );
 
-                            diag.note(&format!(
-                                "`{}` is of type `{}`, making it ineligible for `Iterator::enumerate`",
-                                name, int_name
+                            diag.note(format!(
+                                "`{name}` is of type `{int_name}`, making it ineligible for `Iterator::enumerate`"
                             ));
                         },
                     );

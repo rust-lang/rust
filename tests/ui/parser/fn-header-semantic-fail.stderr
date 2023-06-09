@@ -1,0 +1,194 @@
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:12:5
+   |
+LL |     const async unsafe extern "C" fn ff5() {}
+   |     ^^^^^-^^^^^------------------------------
+   |     |     |
+   |     |     `async` because of this
+   |     `const` because of this
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:18:9
+   |
+LL |         const fn ft3();
+   |         ^^^^^ functions in traits cannot be const
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:20:9
+   |
+LL |         const async unsafe extern "C" fn ft5();
+   |         ^^^^^ functions in traits cannot be const
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:20:9
+   |
+LL |         const async unsafe extern "C" fn ft5();
+   |         ^^^^^-^^^^^----------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:30:9
+   |
+LL |         const fn ft3() {}
+   |         ^^^^^ functions in traits cannot be const
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:32:9
+   |
+LL |         const async unsafe extern "C" fn ft5() {}
+   |         ^^^^^ functions in traits cannot be const
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:32:9
+   |
+LL |         const async unsafe extern "C" fn ft5() {}
+   |         ^^^^^-^^^^^------------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:43:9
+   |
+LL |         const async unsafe extern "C" fn fi5() {}
+   |         ^^^^^-^^^^^------------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:48:18
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+LL |         async fn fe1();
+   |                  ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe1();
+   |         ~~
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:49:19
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+LL |         async fn fe1();
+LL |         unsafe fn fe2();
+   |                   ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe2();
+   |         ~~
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:50:18
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const fn fe3();
+   |                  ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe3();
+   |         ~~
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:51:23
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         extern "C" fn fe4();
+   |                       ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe4();
+   |         ~~
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:52:42
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const async unsafe extern "C" fn fe5();
+   |                                          ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe5();
+   |         ~~
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:52:9
+   |
+LL |         const async unsafe extern "C" fn fe5();
+   |         ^^^^^-^^^^^----------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:16:9
+   |
+LL |         async fn ft1();
+   |         -----^^^^^^^^^^
+   |         |
+   |         `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:20:9
+   |
+LL |         const async unsafe extern "C" fn ft5();
+   |         ^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               |
+   |               `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:28:9
+   |
+LL |         async fn ft1() {}
+   |         -----^^^^^^^^^
+   |         |
+   |         `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:32:9
+   |
+LL |         const async unsafe extern "C" fn ft5() {}
+   |         ^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               |
+   |               `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0379, E0706.
+For more information about an error, try `rustc --explain E0379`.

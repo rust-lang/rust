@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 #[allow(unused_assignments)]
 #[warn(clippy::misrefactored_assign_op, clippy::assign_op_pattern)]
 fn main() {

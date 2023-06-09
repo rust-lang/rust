@@ -2,7 +2,7 @@
 
 use rustc_ast::ast;
 use rustc_ast::HasAttrs;
-use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_span::{symbol::sym, Span};
 
 use self::doc_comment::DocCommentFormatter;
 use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};
@@ -18,20 +18,6 @@ use crate::types::{rewrite_path, PathContext};
 use crate::utils::{count_newlines, mk_sp};
 
 mod doc_comment;
-
-pub(crate) fn contains_name(attrs: &[ast::Attribute], name: Symbol) -> bool {
-    attrs.iter().any(|attr| attr.has_name(name))
-}
-
-pub(crate) fn first_attr_value_str_by_name(
-    attrs: &[ast::Attribute],
-    name: Symbol,
-) -> Option<Symbol> {
-    attrs
-        .iter()
-        .find(|attr| attr.has_name(name))
-        .and_then(|attr| attr.value_str())
-}
 
 /// Returns attributes on the given statement.
 pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
@@ -49,10 +35,7 @@ pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
 }
 
 /// Returns attributes that are within `outer_span`.
-pub(crate) fn filter_inline_attrs(
-    attrs: &[ast::Attribute],
-    outer_span: Span,
-) -> Vec<ast::Attribute> {
+pub(crate) fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> ast::AttrVec {
     attrs
         .iter()
         .filter(|a| outer_span.lo() <= a.span.lo() && a.span.hi() <= outer_span.hi())
@@ -263,7 +246,9 @@ impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
             ast::NestedMetaItem::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
-            ast::NestedMetaItem::Literal(ref l) => rewrite_literal(context, l, shape),
+            ast::NestedMetaItem::Lit(ref l) => {
+                rewrite_literal(context, l.as_token_lit(), l.span, shape)
+            }
         }
     }
 }
@@ -291,10 +276,10 @@ impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         Some(match self.kind {
             ast::MetaItemKind::Word => {
-                rewrite_path(context, PathContext::Type, None, &self.path, shape)?
+                rewrite_path(context, PathContext::Type, &None, &self.path, shape)?
             }
             ast::MetaItemKind::List(ref list) => {
-                let path = rewrite_path(context, PathContext::Type, None, &self.path, shape)?;
+                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
                 let has_trailing_comma = crate::expr::span_ends_with_comma(context, self.span);
                 overflow::rewrite_with_parens(
                     context,
@@ -311,18 +296,18 @@ impl Rewrite for ast::MetaItem {
                     }),
                 )?
             }
-            ast::MetaItemKind::NameValue(ref literal) => {
-                let path = rewrite_path(context, PathContext::Type, None, &self.path, shape)?;
+            ast::MetaItemKind::NameValue(ref lit) => {
+                let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
                 // 3 = ` = `
                 let lit_shape = shape.shrink_left(path.len() + 3)?;
-                // `rewrite_literal` returns `None` when `literal` exceeds max
+                // `rewrite_literal` returns `None` when `lit` exceeds max
                 // width. Since a literal is basically unformattable unless it
                 // is a string literal (and only if `format_strings` is set),
                 // we might be better off ignoring the fact that the attribute
                 // is longer than the max width and continue on formatting.
                 // See #2479 for example.
-                let value = rewrite_literal(context, literal, lit_shape)
-                    .unwrap_or_else(|| context.snippet(literal.span).to_owned());
+                let value = rewrite_literal(context, lit.as_token_lit(), lit.span, lit_shape)
+                    .unwrap_or_else(|| context.snippet(lit.span).to_owned());
                 format!("{} = {}", path, value)
             }
         })
@@ -337,7 +322,7 @@ impl Rewrite for ast::Attribute {
         } else {
             let should_skip = self
                 .ident()
-                .map(|s| context.skip_context.skip_attribute(s.name.as_str()))
+                .map(|s| context.skip_context.attributes.skip(s.name.as_str()))
                 .unwrap_or(false);
             let prefix = attr_prefix(self);
 
@@ -391,7 +376,7 @@ impl Rewrite for [ast::Attribute] {
 
         // Determine if the source text is annotated with `#[rustfmt::skip::attributes(derive)]`
         // or `#![rustfmt::skip::attributes(derive)]`
-        let skip_derives = context.skip_context.skip_attribute("derive");
+        let skip_derives = context.skip_context.attributes.skip("derive");
 
         // This is not just a simple map because we need to handle doc comments
         // (where we take as many doc comment attributes as possible) and possibly
@@ -528,14 +513,19 @@ pub(crate) trait MetaVisitor<'ast> {
 
     fn visit_meta_word(&mut self, _meta_item: &'ast ast::MetaItem) {}
 
-    fn visit_meta_name_value(&mut self, _meta_item: &'ast ast::MetaItem, _lit: &'ast ast::Lit) {}
+    fn visit_meta_name_value(
+        &mut self,
+        _meta_item: &'ast ast::MetaItem,
+        _lit: &'ast ast::MetaItemLit,
+    ) {
+    }
 
     fn visit_nested_meta_item(&mut self, nm: &'ast ast::NestedMetaItem) {
         match nm {
             ast::NestedMetaItem::MetaItem(ref meta_item) => self.visit_meta_item(meta_item),
-            ast::NestedMetaItem::Literal(ref lit) => self.visit_literal(lit),
+            ast::NestedMetaItem::Lit(ref lit) => self.visit_meta_item_lit(lit),
         }
     }
 
-    fn visit_literal(&mut self, _lit: &'ast ast::Lit) {}
+    fn visit_meta_item_lit(&mut self, _lit: &'ast ast::MetaItemLit) {}
 }

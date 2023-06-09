@@ -7,15 +7,12 @@ LL | fn the_answer(ref mut x: u8) {
    = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
 
 error: `ref` directly on a function argument is ignored. Consider using a reference type instead
-  --> $DIR/toplevel_ref_arg_non_rustfix.rs:15:24
+  --> $DIR/toplevel_ref_arg_non_rustfix.rs:20:24
    |
 LL |         fn fun_example(ref _x: usize) {}
    |                        ^^^^^^
-...
-LL |         gen_function!();
-   |         --------------- in this macro invocation
    |
-   = note: this error originates in the macro `gen_function` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

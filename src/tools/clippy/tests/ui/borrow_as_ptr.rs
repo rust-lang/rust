@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::borrow_as_ptr)]
 
 fn main() {

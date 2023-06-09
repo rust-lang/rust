@@ -1,6 +1,6 @@
 use crate::traits::*;
 
-use rustc_middle::ty::{self, subst::GenericArgKind, ExistentialPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
 use rustc_session::config::Lto;
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::call::FnAbi;
@@ -28,18 +28,18 @@ impl<'a, 'tcx> VirtualIndex {
         if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
             && bx.cx().sess().lto() == Lto::Fat
         {
-            let typeid =
-                bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), get_trait_ref(bx.tcx(), ty)));
+            let typeid = bx
+                .typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)))
+                .unwrap();
             let vtable_byte_offset = self.0 * bx.data_layout().pointer_size.bytes();
-            let type_checked_load = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
-            let func = bx.extract_value(type_checked_load, 0);
+            let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             bx.pointercast(func, llty)
         } else {
             let ptr_align = bx.tcx().data_layout.pointer_align.abi;
             let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
             let ptr = bx.load(llty, gep, ptr_align);
             bx.nonnull_metadata(ptr);
-            // Vtable loads are invariant.
+            // VTable loads are invariant.
             bx.set_invariant_load(ptr);
             ptr
         }
@@ -58,24 +58,20 @@ impl<'a, 'tcx> VirtualIndex {
         let usize_align = bx.tcx().data_layout.pointer_align.abi;
         let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(llty, gep, usize_align);
-        // Vtable loads are invariant.
+        // VTable loads are invariant.
         bx.set_invariant_load(ptr);
         ptr
     }
 }
 
-fn get_trait_ref<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::PolyExistentialTraitRef<'tcx> {
+/// This takes a valid `self` receiver type and extracts the principal trait
+/// ref of the type.
+fn expect_dyn_trait_in_self(ty: Ty<'_>) -> ty::PolyExistentialTraitRef<'_> {
     for arg in ty.peel_refs().walk() {
-        if let GenericArgKind::Type(ty) = arg.unpack() {
-            if let ty::Dynamic(trait_refs, _) = ty.kind() {
-                return trait_refs[0].map_bound(|trait_ref| match trait_ref {
-                    ExistentialPredicate::Trait(tr) => tr,
-                    ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
-                    ExistentialPredicate::AutoTrait(_) => {
-                        bug!("auto traits don't have functions")
-                    }
-                });
-            }
+        if let GenericArgKind::Type(ty) = arg.unpack()
+            && let ty::Dynamic(data, _, _) = ty.kind()
+        {
+            return data.principal().expect("expected principal trait object");
         }
     }
 
@@ -90,14 +86,13 @@ fn get_trait_ref<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::PolyExistentialTr
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<dyn Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T: Trait`.
+#[instrument(level = "debug", skip(cx))]
 pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
-
-    debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
     if let Some(&val) = cx.vtables().borrow().get(&(ty, trait_ref)) {

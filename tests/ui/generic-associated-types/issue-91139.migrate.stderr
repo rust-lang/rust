@@ -1,0 +1,8 @@
+error: expected identifier, found `<<`
+  --> $DIR/issue-91139.rs:1:1
+   |
+LL | <<<<<<< HEAD
+   | ^^ expected identifier
+
+error: aborting due to previous error
+

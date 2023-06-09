@@ -1,8 +1,9 @@
 use super::*;
 use crate::boxed::Box;
+use crate::testing::crash_test::{CrashTestDummy, Panic};
+use core::mem;
 use std::iter::TrustedLen;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicU32, Ordering};
 
 #[test]
 fn test_iterator() {
@@ -144,6 +145,24 @@ fn test_peek_mut() {
         *top -= 2;
     }
     assert_eq!(heap.peek(), Some(&9));
+}
+
+#[test]
+fn test_peek_mut_leek() {
+    let data = vec![4, 2, 7];
+    let mut heap = BinaryHeap::from(data);
+    let mut max = heap.peek_mut().unwrap();
+    *max = -1;
+
+    // The PeekMut object's Drop impl would have been responsible for moving the
+    // -1 out of the max position of the BinaryHeap, but we don't run it.
+    mem::forget(max);
+
+    // Absent some mitigation like leak amplification, the -1 would incorrectly
+    // end up in the last position of the returned Vec, with the rest of the
+    // heap's original contents in front of it in sorted order.
+    let sorted_vec = heap.into_sorted_vec();
+    assert!(sorted_vec.is_sorted(), "{:?}", sorted_vec);
 }
 
 #[test]
@@ -291,33 +310,83 @@ fn test_drain_sorted() {
 
 #[test]
 fn test_drain_sorted_leak() {
-    static DROPS: AtomicU32 = AtomicU32::new(0);
-
-    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-    struct D(u32, bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            DROPS.fetch_add(1, Ordering::SeqCst);
-
-            if self.1 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let d0 = CrashTestDummy::new(0);
+    let d1 = CrashTestDummy::new(1);
+    let d2 = CrashTestDummy::new(2);
+    let d3 = CrashTestDummy::new(3);
+    let d4 = CrashTestDummy::new(4);
+    let d5 = CrashTestDummy::new(5);
     let mut q = BinaryHeap::from(vec![
-        D(0, false),
-        D(1, false),
-        D(2, false),
-        D(3, true),
-        D(4, false),
-        D(5, false),
+        d0.spawn(Panic::Never),
+        d1.spawn(Panic::Never),
+        d2.spawn(Panic::Never),
+        d3.spawn(Panic::InDrop),
+        d4.spawn(Panic::Never),
+        d5.spawn(Panic::Never),
     ]);
 
-    catch_unwind(AssertUnwindSafe(|| drop(q.drain_sorted()))).ok();
+    catch_unwind(AssertUnwindSafe(|| drop(q.drain_sorted()))).unwrap_err();
 
-    assert_eq!(DROPS.load(Ordering::SeqCst), 6);
+    assert_eq!(d0.dropped(), 1);
+    assert_eq!(d1.dropped(), 1);
+    assert_eq!(d2.dropped(), 1);
+    assert_eq!(d3.dropped(), 1);
+    assert_eq!(d4.dropped(), 1);
+    assert_eq!(d5.dropped(), 1);
+    assert!(q.is_empty());
+}
+
+#[test]
+fn test_drain_forget() {
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+    let mut q =
+        BinaryHeap::from(vec![a.spawn(Panic::Never), b.spawn(Panic::Never), c.spawn(Panic::Never)]);
+
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut it = q.drain();
+        it.next();
+        mem::forget(it);
+    }))
+    .unwrap();
+    // Behaviour after leaking is explicitly unspecified and order is arbitrary,
+    // so it's fine if these start failing, but probably worth knowing.
+    assert!(q.is_empty());
+    assert_eq!(a.dropped() + b.dropped() + c.dropped(), 1);
+    assert_eq!(a.dropped(), 0);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 1);
+    drop(q);
+    assert_eq!(a.dropped(), 0);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 1);
+}
+
+#[test]
+fn test_drain_sorted_forget() {
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+    let mut q =
+        BinaryHeap::from(vec![a.spawn(Panic::Never), b.spawn(Panic::Never), c.spawn(Panic::Never)]);
+
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut it = q.drain_sorted();
+        it.next();
+        mem::forget(it);
+    }))
+    .unwrap();
+    // Behaviour after leaking is explicitly unspecified,
+    // so it's fine if these start failing, but probably worth knowing.
+    assert_eq!(q.len(), 2);
+    assert_eq!(a.dropped(), 0);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 1);
+    drop(q);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
 }
 
 #[test]
@@ -405,6 +474,25 @@ fn test_retain() {
     assert!(a.is_empty());
 }
 
+#[test]
+fn test_retain_catch_unwind() {
+    let mut heap = BinaryHeap::from(vec![3, 1, 2]);
+
+    // Removes the 3, then unwinds out of retain.
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        heap.retain(|e| {
+            if *e == 1 {
+                panic!();
+            }
+            false
+        });
+    }));
+
+    // Naively this would be [1, 2] (an invalid heap) if BinaryHeap delegates to
+    // Vec's retain impl and then does not rebuild the heap after that unwinds.
+    assert_eq!(heap.into_vec(), [2, 1]);
+}
+
 // old binaryheap failed this test
 //
 // Integrity means that all elements are present after a comparison panics,
@@ -415,7 +503,7 @@ fn test_retain() {
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn panic_safe() {
-    use rand::{seq::SliceRandom, thread_rng};
+    use rand::seq::SliceRandom;
     use std::cmp;
     use std::panic::{self, AssertUnwindSafe};
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -440,7 +528,7 @@ fn panic_safe() {
             self.0.partial_cmp(&other.0)
         }
     }
-    let mut rng = thread_rng();
+    let mut rng = crate::test_helpers::test_rng();
     const DATASZ: usize = 32;
     // Miri is too slow
     let ntest = if cfg!(miri) { 1 } else { 10 };

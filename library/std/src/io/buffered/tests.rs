@@ -1,5 +1,7 @@
 use crate::io::prelude::*;
-use crate::io::{self, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, ReadBuf, SeekFrom};
+use crate::io::{
+    self, BorrowedBuf, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom,
+};
 use crate::mem::MaybeUninit;
 use crate::panic;
 use crate::sync::atomic::{AtomicUsize, Ordering};
@@ -61,48 +63,48 @@ fn test_buffered_reader_read_buf() {
     let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
     let mut reader = BufReader::with_capacity(2, inner);
 
-    let mut buf = [MaybeUninit::uninit(); 3];
-    let mut buf = ReadBuf::uninit(&mut buf);
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.unfilled()).unwrap();
 
     assert_eq!(buf.filled(), [5, 6, 7]);
     assert_eq!(reader.buffer(), []);
 
-    let mut buf = [MaybeUninit::uninit(); 2];
-    let mut buf = ReadBuf::uninit(&mut buf);
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 2];
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.unfilled()).unwrap();
 
     assert_eq!(buf.filled(), [0, 1]);
     assert_eq!(reader.buffer(), []);
 
-    let mut buf = [MaybeUninit::uninit(); 1];
-    let mut buf = ReadBuf::uninit(&mut buf);
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 1];
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.unfilled()).unwrap();
 
     assert_eq!(buf.filled(), [2]);
     assert_eq!(reader.buffer(), [3]);
 
-    let mut buf = [MaybeUninit::uninit(); 3];
-    let mut buf = ReadBuf::uninit(&mut buf);
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.unfilled()).unwrap();
 
     assert_eq!(buf.filled(), [3]);
     assert_eq!(reader.buffer(), []);
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.unfilled()).unwrap();
 
     assert_eq!(buf.filled(), [3, 4]);
     assert_eq!(reader.buffer(), []);
 
     buf.clear();
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.unfilled()).unwrap();
 
-    assert_eq!(buf.filled_len(), 0);
+    assert!(buf.filled().is_empty());
 }
 
 #[test]
@@ -286,8 +288,8 @@ fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
     let mut reader = BufReader::with_capacity(5, ErrAfterFirstSeekReader { first_seek: true });
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 0, 0, 0, 0][..]));
 
-    // The following seek will require two underlying seeks.  The first will
-    // succeed but the second will fail.  This should still invalidate the
+    // The following seek will require two underlying seeks. The first will
+    // succeed but the second will fail. This should still invalidate the
     // buffer.
     assert!(reader.seek(SeekFrom::Current(i64::MIN)).is_err());
     assert_eq!(reader.buffer().len(), 0);
@@ -523,6 +525,7 @@ fn bench_buffered_reader_small_reads(b: &mut test::Bencher) {
         let mut buf = [0u8; 4];
         for _ in 0..1024 {
             reader.read_exact(&mut buf).unwrap();
+            core::hint::black_box(&buf);
         }
     });
 }
@@ -828,9 +831,9 @@ fn partial_line_buffered_after_line_write() {
     assert_eq!(&writer.get_ref().buffer, b"Line 1\nLine 2\nLine 3");
 }
 
-/// Test that, given a partial line that exceeds the length of
-/// LineBuffer's buffer (that is, without a trailing newline), that that
-/// line is written to the inner writer
+/// Test that for calls to LineBuffer::write where the passed bytes do not contain
+/// a newline and on their own are greater in length than the internal buffer, the
+/// passed bytes are immediately written to the inner writer.
 #[test]
 fn long_line_flushed() {
     let writer = ProgrammableSink::default();
@@ -841,9 +844,10 @@ fn long_line_flushed() {
 }
 
 /// Test that, given a very long partial line *after* successfully
-/// flushing a complete line, that that line is buffered unconditionally,
-/// and no additional writes take place. This assures the property that
-/// `write` should make at-most-one attempt to write new data.
+/// flushing a complete line, the very long partial line is buffered
+/// unconditionally, and no additional writes take place. This assures
+/// the property that `write` should make at-most-one attempt to write
+/// new data.
 #[test]
 fn line_long_tail_not_flushed() {
     let writer = ProgrammableSink::default();
@@ -1035,4 +1039,28 @@ fn single_formatted_write() {
     // have this limitation.
     writeln!(&mut writer, "{}, {}!", "hello", "world").unwrap();
     assert_eq!(writer.get_ref().events, [RecordedEvent::Write("hello, world!\n".to_string())]);
+}
+
+#[test]
+fn bufreader_full_initialize() {
+    struct OneByteReader;
+    impl Read for OneByteReader {
+        fn read(&mut self, buf: &mut [u8]) -> crate::io::Result<usize> {
+            if buf.len() > 0 {
+                buf[0] = 0;
+                Ok(1)
+            } else {
+                Ok(0)
+            }
+        }
+    }
+    let mut reader = BufReader::new(OneByteReader);
+    // Nothing is initialized yet.
+    assert_eq!(reader.initialized(), 0);
+
+    let buf = reader.fill_buf().unwrap();
+    // We read one byte...
+    assert_eq!(buf.len(), 1);
+    // But we initialized the whole buffer!
+    assert_eq!(reader.initialized(), reader.capacity());
 }

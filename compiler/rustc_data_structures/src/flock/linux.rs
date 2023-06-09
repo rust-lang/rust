@@ -14,12 +14,7 @@ pub struct Lock {
 
 impl Lock {
     pub fn new(p: &Path, wait: bool, create: bool, exclusive: bool) -> io::Result<Lock> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(create)
-            .mode(libc::S_IRWXU as u32)
-            .open(p)?;
+        let file = OpenOptions::new().read(true).write(true).create(create).mode(0o600).open(p)?;
 
         let mut operation = if exclusive { libc::LOCK_EX } else { libc::LOCK_SH };
         if !wait {

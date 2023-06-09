@@ -12,13 +12,6 @@ use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{map_try_reserve_error, RandomState};
 
-// Future Optimization (FIXME!)
-// ============================
-//
-// Iteration over zero sized values is a noop. There is no need
-// for `bucket.val` in the case of HashSet. I suppose we would need HKT
-// to get rid of it properly.
-
 /// A [hash set] implemented as a `HashMap` where the value is `()`.
 ///
 /// As with the [`HashMap`] type, a `HashSet` requires that the elements
@@ -239,7 +232,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// If the returned iterator is dropped before being fully consumed, it
     /// drops the remaining elements. The returned iterator keeps a mutable
-    /// borrow on the vector to optimize its implementation.
+    /// borrow on the set to optimize its implementation.
     ///
     /// # Examples
     ///
@@ -317,7 +310,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// let mut set = HashSet::from([1, 2, 3, 4, 5, 6]);
     /// set.retain(|&k| k % 2 == 0);
-    /// assert_eq!(set.len(), 3);
+    /// assert_eq!(set, HashSet::from([2, 4, 6]));
     /// ```
     ///
     /// # Performance
@@ -376,7 +369,8 @@ impl<T, S> HashSet<T, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_hasher(hasher: S) -> HashSet<T, S> {
+    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
         HashSet { base: base::HashSet::with_hasher(hasher) }
     }
 
@@ -461,7 +455,7 @@ where
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to speculatively
-    /// avoid frequent reallocations. After calling `reserve`,
+    /// avoid frequent reallocations. After calling `try_reserve`,
     /// capacity will be greater than or equal to `self.len() + additional` if
     /// it returns `Ok(())`.
     /// Does nothing if capacity is already sufficient.
@@ -1278,7 +1272,6 @@ pub struct Iter<'a, K: 'a> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
-/// [`IntoIterator`]: crate::iter::IntoIterator
 ///
 /// # Examples
 ///

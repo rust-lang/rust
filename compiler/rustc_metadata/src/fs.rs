@@ -1,11 +1,14 @@
+use crate::errors::{
+    FailedCreateEncodedMetadata, FailedCreateFile, FailedCreateTempdir, FailedWriteError,
+};
 use crate::{encode_metadata, EncodedMetadata};
 
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, OutputFilenames, OutputType};
+use rustc_session::config::OutputType;
 use rustc_session::output::filename_for_metadata;
-use rustc_session::Session;
+use rustc_session::{MetadataKind, Session};
 use tempfile::Builder as TempFileBuilder;
 
 use std::fs;
@@ -19,44 +22,25 @@ pub const METADATA_FILENAME: &str = "lib.rmeta";
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> PathBuf {
-    let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, metadata);
+pub fn emit_wrapper_file(
+    sess: &Session,
+    data: &[u8],
+    tmpdir: &MaybeTempDir,
+    name: &str,
+) -> PathBuf {
+    let out_filename = tmpdir.as_ref().join(name);
+    let result = fs::write(&out_filename, data);
 
-    if let Err(e) = result {
-        sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+    if let Err(err) = result {
+        sess.emit_fatal(FailedWriteError { filename: out_filename, err });
     }
 
     out_filename
 }
 
-pub fn encode_and_write_metadata(
-    tcx: TyCtxt<'_>,
-    outputs: &OutputFilenames,
-) -> (EncodedMetadata, bool) {
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    enum MetadataKind {
-        None,
-        Uncompressed,
-        Compressed,
-    }
-
-    let metadata_kind = tcx
-        .sess
-        .crate_types()
-        .iter()
-        .map(|ty| match *ty {
-            CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => MetadataKind::None,
-
-            CrateType::Rlib => MetadataKind::Uncompressed,
-
-            CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
-        })
-        .max()
-        .unwrap_or(MetadataKind::None);
-
+pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let out_filename = filename_for_metadata(tcx.sess, crate_name.as_str(), outputs);
+    let out_filename = filename_for_metadata(tcx.sess, crate_name, tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
     // we need to write the file somewhere else and atomically move it to its
     // final destination, with an `fs::rename` call. In order for the rename to
@@ -65,20 +49,17 @@ pub fn encode_and_write_metadata(
     let metadata_tmpdir = TempFileBuilder::new()
         .prefix("rmeta")
         .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("")))
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
+        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailedCreateTempdir { err }));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
 
     // Always create a file at `metadata_filename`, even if we have nothing to write to it.
     // This simplifies the creation of the output `out_filename` when requested.
+    let metadata_kind = tcx.sess.metadata_kind();
     match metadata_kind {
         MetadataKind::None => {
-            std::fs::File::create(&metadata_filename).unwrap_or_else(|e| {
-                tcx.sess.fatal(&format!(
-                    "failed to create the file {}: {}",
-                    metadata_filename.display(),
-                    e
-                ))
+            std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {
+                tcx.sess.emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
             });
         }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
@@ -89,12 +70,12 @@ pub fn encode_and_write_metadata(
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
     // If the user requests metadata as output, rename `metadata_filename`
-    // to the expected output `out_filename`.  The match above should ensure
+    // to the expected output `out_filename`. The match above should ensure
     // this file always exists.
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
-        if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
-            tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+        if let Err(err) = non_durable_rename(&metadata_filename, &out_filename) {
+            tcx.sess.emit_fatal(FailedWriteError { filename: out_filename, err });
         }
         if tcx.sess.opts.json_artifact_notifications {
             tcx.sess
@@ -109,8 +90,8 @@ pub fn encode_and_write_metadata(
 
     // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =
-        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|e| {
-            tcx.sess.fatal(&format!("failed to create encoded metadata from file: {}", e))
+        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|err| {
+            tcx.sess.emit_fatal(FailedCreateEncodedMetadata { err });
         });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;

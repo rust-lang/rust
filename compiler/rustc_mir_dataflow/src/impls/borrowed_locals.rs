@@ -10,6 +10,7 @@ use rustc_middle::mir::*;
 /// At present, this is used as a very limited form of alias analysis. For example,
 /// `MaybeBorrowedLocals` is used to compute which locals are live during a yield expression for
 /// immovable generators.
+#[derive(Clone, Copy)]
 pub struct MaybeBorrowedLocals;
 
 impl MaybeBorrowedLocals {
@@ -36,7 +37,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
     type Idx = Local;
 
     fn statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -45,7 +46,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
     }
 
     fn terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -54,7 +55,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
     }
 
     fn call_return_effect(
-        &self,
+        &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
@@ -111,8 +112,7 @@ where
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            mir::TerminatorKind::Drop { place: dropped_place, .. }
-            | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 // Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut
                 // self` as a parameter. In the general case, a drop impl could launder that
                 // reference into the surrounding environment through a raw pointer, thus creating
@@ -121,10 +121,12 @@ where
                 // for now. See discussion on [#61069].
                 //
                 // [#61069]: https://github.com/rust-lang/rust/pull/61069
-                self.trans.gen(dropped_place.local);
+                if !dropped_place.is_indirect() {
+                    self.trans.gen(dropped_place.local);
+                }
             }
 
-            TerminatorKind::Abort
+            TerminatorKind::Terminate
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::FalseEdge { .. }

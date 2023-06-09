@@ -4,12 +4,12 @@ error: binding's name is too similar to existing binding
 LL |     let bpple: i32;
    |         ^^^^^
    |
-   = note: `-D clippy::similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> $DIR/similar_names.rs:19:9
    |
 LL |     let apple: i32;
    |         ^^^^^
+   = note: `-D clippy::similar-names` implied by `-D warnings`
 
 error: binding's name is too similar to existing binding
   --> $DIR/similar_names.rs:23:9

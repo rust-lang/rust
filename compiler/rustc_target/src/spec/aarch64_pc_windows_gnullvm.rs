@@ -2,8 +2,8 @@ use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::windows_gnullvm_base::opts();
-    base.max_atomic_width = Some(64);
-    base.features = "+neon,+fp-armv8".into();
+    base.max_atomic_width = Some(128);
+    base.features = "+v8a,+neon,+fp-armv8".into();
     base.linker = Some("aarch64-w64-mingw32-clang".into());
 
     Target {

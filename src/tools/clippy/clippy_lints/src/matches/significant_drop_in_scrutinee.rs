@@ -50,13 +50,13 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
     let trailing_indent = " ".repeat(indent_of(cx, found.found_span).unwrap_or(0));
 
     let replacement = if found.lint_suggestion == LintSuggestion::MoveAndDerefToCopy {
-        format!("let value = *{};\n{}", original, trailing_indent)
+        format!("let value = *{original};\n{trailing_indent}")
     } else if found.is_unit_return_val {
         // If the return value of the expression to be moved is unit, then we don't need to
         // capture the result in a temporary -- we can just replace it completely with `()`.
-        format!("{};\n{}", original, trailing_indent)
+        format!("{original};\n{trailing_indent}")
     } else {
-        format!("let value = {};\n{}", original, trailing_indent)
+        format!("let value = {original};\n{trailing_indent}")
     };
 
     let suggestion_message = if found.lint_suggestion == LintSuggestion::MoveOnly {
@@ -83,12 +83,16 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
 
 /// If the expression is an `ExprKind::Match`, check if the scrutinee has a significant drop that
 /// may have a surprising lifetime.
-fn has_significant_drop_in_scrutinee<'tcx, 'a>(
-    cx: &'a LateContext<'tcx>,
+fn has_significant_drop_in_scrutinee<'tcx>(
+    cx: &LateContext<'tcx>,
     scrutinee: &'tcx Expr<'tcx>,
     source: MatchSource,
 ) -> Option<(Vec<FoundSigDrop>, &'static str)> {
     let mut helper = SigDropHelper::new(cx);
+    let scrutinee = match (source, &scrutinee.kind) {
+        (MatchSource::ForLoopDesugar, ExprKind::Call(_, [e])) => e,
+        _ => scrutinee,
+    };
     helper.find_sig_drop(scrutinee).map(|drops| {
         let message = if source == MatchSource::Normal {
             "temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression"
@@ -222,7 +226,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
     /// This will try to set the current suggestion (so it can be moved into the suggestions vec
     /// later). If `allow_move_and_clone` is false, the suggestion *won't* be set -- this gives us
     /// an opportunity to look for another type in the chain that will be trivially copyable.
-    /// However, if we are at the the end of the chain, we want to accept whatever is there. (The
+    /// However, if we are at the end of the chain, we want to accept whatever is there. (The
     /// suggestion won't actually be output, but the diagnostic message will be output, so the user
     /// can determine the best way to handle the lint.)
     fn try_setting_current_suggestion(&mut self, expr: &'tcx Expr<'_>, allow_move_and_clone: bool) {
@@ -287,7 +291,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
         self.is_chain_end = false;
 
         match ex.kind {
-            ExprKind::MethodCall(_, [ref expr, ..], _) => {
+            ExprKind::MethodCall(_, expr, ..) => {
                 self.visit_expr(expr);
             }
             ExprKind::Binary(_, left, right) => {
@@ -317,7 +321,6 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
                     self.has_significant_drop = true;
                 }
             }
-            ExprKind::Box(..) |
             ExprKind::Array(..) |
             ExprKind::Call(..) |
             ExprKind::Unary(..) |
@@ -327,8 +330,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Index(..) |
             ExprKind::Ret(..) |
             ExprKind::Repeat(..) |
-            ExprKind::Yield(..) |
-            ExprKind::MethodCall(..) => walk_expr(self, ex),
+            ExprKind::Yield(..) => walk_expr(self, ex),
             ExprKind::AddrOf(_, _, _) |
             ExprKind::Block(_, _) |
             ExprKind::Break(_, _) |
@@ -338,8 +340,9 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::ConstBlock(_) |
             ExprKind::Continue(_) |
             ExprKind::DropTemps(_) |
-            ExprKind::Err |
+            ExprKind::Err(_) |
             ExprKind::InlineAsm(_) |
+            ExprKind::OffsetOf(_, _) |
             ExprKind::Let(_) |
             ExprKind::Lit(_) |
             ExprKind::Loop(_, _, _, _) |
@@ -374,7 +377,7 @@ impl<'a, 'tcx> ArmSigDropHelper<'a, 'tcx> {
     }
 }
 
-fn has_significant_drop_in_arms<'tcx, 'a>(cx: &'a LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> FxHashSet<Span> {
+fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> FxHashSet<Span> {
     let mut helper = ArmSigDropHelper::new(cx);
     for arm in arms {
         helper.visit_expr(arm.body);

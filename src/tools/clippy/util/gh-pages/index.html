@@ -15,7 +15,8 @@ Otherwise, have a great day =^.^=
     <title>Clippy Lints</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/styles/github.min.css"/>
+    <link id="githubLightHighlight" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/github.min.css" disabled="true" />
+    <link id="githubDarkHighlight" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/github-dark.min.css" disabled="true" />
 
     <!-- The files are not copied over into the Clippy project since they use the MPL-2.0 License -->
     <link rel="stylesheet" href="https://rust-lang.github.io/mdBook/css/variables.css"/>
@@ -442,6 +443,12 @@ Otherwise, have a great day =^.^=
                                     </label>
                                 </li>
                                 <li class="checkbox">
+                                    <label ng-click="resetGroupsToDefault()">
+                                        <input type="checkbox" class="invisible" />
+                                        Default
+                                    </label>
+                                </li>
+                                <li class="checkbox">
                                     <label ng-click="toggleGroups(false)">
                                         <input type="checkbox" class="invisible" />
                                         None
@@ -557,12 +564,12 @@ Otherwise, have a great day =^.^=
     </div>
 
     <a href="https://github.com/rust-lang/rust-clippy">
-        <img style="position: absolute; top: 0; right: 0; border: 0; clip-path: polygon(0% 0%, 100% 0%, 100% 100%);" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on Github"/>
+        <img style="position: absolute; top: 0; right: 0; border: 0; clip-path: polygon(0% 0%, 100% 0%, 100% 100%);" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"/>
     </a>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/languages/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/languages/rust.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
     <script src="script.js"></script>
 </body>

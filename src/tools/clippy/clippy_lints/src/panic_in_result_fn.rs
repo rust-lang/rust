@@ -2,11 +2,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::return_ty;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::visitors::expr_visitor_no_bodies;
+use clippy_utils::visitors::{for_each_expr, Descend};
+use core::ops::ControlFlow;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{FnKind, Visitor};
+use rustc_hir::intravisit::FnKind;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -48,9 +50,13 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
         _: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,
         span: Span,
-        hir_id: hir::HirId,
+        def_id: LocalDefId,
     ) {
-        if !matches!(fn_kind, FnKind::Closure) && is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::Result) {
+        if matches!(fn_kind, FnKind::Closure) {
+            return;
+        }
+        let owner = cx.tcx.hir().local_def_id_to_hir_id(def_id).expect_owner();
+        if is_type_diagnostic_item(cx, return_ty(cx, owner), sym::Result) {
             lint_impl_body(cx, span, body);
         }
     }
@@ -58,18 +64,20 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
     let mut panics = Vec::new();
-    expr_visitor_no_bodies(|expr| {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return true };
+    let _: Option<!> = for_each_expr(body.value, |e| {
+        let Some(macro_call) = root_macro_call_first_node(cx, e) else {
+            return ControlFlow::Continue(Descend::Yes);
+        };
         if matches!(
             cx.tcx.item_name(macro_call.def_id).as_str(),
             "unimplemented" | "unreachable" | "panic" | "todo" | "assert" | "assert_eq" | "assert_ne"
         ) {
             panics.push(macro_call.span);
-            return false;
+            ControlFlow::Continue(Descend::No)
+        } else {
+            ControlFlow::Continue(Descend::Yes)
         }
-        true
-    })
-    .visit_expr(&body.value);
+    });
     if !panics.is_empty() {
         span_lint_and_then(
             cx,

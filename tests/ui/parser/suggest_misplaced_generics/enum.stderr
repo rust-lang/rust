@@ -1,0 +1,14 @@
+error: expected identifier, found `<`
+  --> $DIR/enum.rs:5:5
+   |
+LL | enum<T> Foo { Variant(T) }
+   |     ^ expected identifier
+   |
+help: place the generic parameter name after the enum name
+   |
+LL - enum<T> Foo { Variant(T) }
+LL + enum Foo<T> { Variant(T) }
+   |
+
+error: aborting due to previous error
+

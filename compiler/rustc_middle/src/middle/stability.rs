@@ -3,9 +3,9 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::ty::{self, DefIdTree, TyCtxt};
+use crate::ty::{self, TyCtxt};
 use rustc_ast::NodeId;
-use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
+use rustc_attr::{self as attr, ConstStability, DefaultBodyStability, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
@@ -61,7 +61,21 @@ pub struct Index {
     /// are filled by the annotator.
     pub stab_map: FxHashMap<LocalDefId, Stability>,
     pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
+    pub default_body_stab_map: FxHashMap<LocalDefId, DefaultBodyStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
+    /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
+    /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
+    /// exists, then this map will have a `impliee -> implier` entry.
+    ///
+    /// This mapping is necessary unless both the `#[stable]` and `#[unstable]` attributes should
+    /// specify their implications (both `implies` and `implied_by`). If only one of the two
+    /// attributes do (as in the current implementation, `implied_by` in `#[unstable]`), then this
+    /// mapping is necessary for diagnostics. When a "unnecessary feature attribute" error is
+    /// reported, only the `#[stable]` attribute information is available, so the map is necessary
+    /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
+    /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
+    /// unstable feature" error for a feature that was implied.
+    pub implications: FxHashMap<Symbol, Symbol>,
 }
 
 impl Index {
@@ -71,6 +85,10 @@ impl Index {
 
     pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
         self.const_stab_map.get(&def_id).copied()
+    }
+
+    pub fn local_default_body_stability(&self, def_id: LocalDefId) -> Option<DefaultBodyStability> {
+        self.default_body_stab_map.get(&def_id).copied()
     }
 
     pub fn local_deprecation_entry(&self, def_id: LocalDefId) -> Option<DeprecationEntry> {
@@ -86,7 +104,7 @@ pub fn report_unstable(
     suggestion: Option<(Span, String, String, Applicability)>,
     is_soft: bool,
     span: Span,
-    soft_handler: impl FnOnce(&'static Lint, Span, &str),
+    soft_handler: impl FnOnce(&'static Lint, Span, String),
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
@@ -94,11 +112,11 @@ pub fn report_unstable(
     };
 
     if is_soft {
-        soft_handler(SOFT_UNSTABLE, span, &msg)
+        soft_handler(SOFT_UNSTABLE, span, msg)
     } else {
         let mut err =
-            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
-        if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
+            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), msg);
+        if let Some((inner_types, msg, sugg, applicability)) = suggestion {
             err.span_suggestion(inner_types, msg, sugg, applicability);
         }
         err.emit();
@@ -152,7 +170,7 @@ pub fn deprecation_suggestion(
     if let Some(suggestion) = suggestion {
         diag.span_suggestion_verbose(
             span,
-            &format!("replace the use of the deprecated {}", kind),
+            format!("replace the use of the deprecated {}", kind),
             suggestion,
             Applicability::MachineApplicable,
         );
@@ -205,9 +223,9 @@ pub fn deprecation_message_and_lint(
     )
 }
 
-pub fn early_report_deprecation<'a>(
-    lint_buffer: &'a mut LintBuffer,
-    message: &str,
+pub fn early_report_deprecation(
+    lint_buffer: &mut LintBuffer,
+    message: String,
     suggestion: Option<Symbol>,
     lint: &'static Lint,
     span: Span,
@@ -223,7 +241,7 @@ pub fn early_report_deprecation<'a>(
 
 fn late_report_deprecation(
     tcx: TyCtxt<'_>,
-    message: &str,
+    message: String,
     suggestion: Option<Symbol>,
     lint: &'static Lint,
     span: Span,
@@ -235,13 +253,12 @@ fn late_report_deprecation(
         return;
     }
     let method_span = method_span.unwrap_or(span);
-    tcx.struct_span_lint_hir(lint, hir_id, method_span, |lint| {
-        let mut diag = lint.build(message);
+    tcx.struct_span_lint_hir(lint, hir_id, method_span, message, |diag| {
         if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
-            let kind = tcx.def_kind(def_id).descr(def_id);
-            deprecation_suggestion(&mut diag, kind, suggestion, method_span);
+            let kind = tcx.def_descr(def_id);
+            deprecation_suggestion(diag, kind, suggestion, method_span);
         }
-        diag.emit();
+        diag
     });
 }
 
@@ -275,7 +292,7 @@ fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
         // These are not visible outside crate; therefore
         // stability markers are irrelevant, if even present.
-        ty::Visibility::Restricted(..) | ty::Visibility::Invisible => true,
+        ty::Visibility::Restricted(..) => true,
     }
 }
 
@@ -358,7 +375,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let parent_def_id = self.hir().get_parent_item(id);
                 let skip = self
                     .lookup_deprecation_entry(parent_def_id.to_def_id())
-                    .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
+                    .is_some_and(|parent_depr| parent_depr.same_origin(&depr_entry));
 
                 // #[deprecated] doesn't emit a notice if we're not on the
                 // topmost deprecation. For example, if a struct is deprecated,
@@ -375,11 +392,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
                         let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));
-                        let def_kind = self.def_kind(def_id).descr(def_id);
+                        let def_kind = self.def_descr(def_id);
 
                         late_report_deprecation(
                             self,
-                            &deprecation_message(
+                            deprecation_message(
                                 is_in_effect,
                                 depr_attr.since,
                                 depr_attr.note,
@@ -403,18 +420,18 @@ impl<'tcx> TyCtxt<'tcx> {
             return EvalResult::Allow;
         }
 
+        // Only the cross-crate scenario matters when checking unstable APIs
+        let cross_crate = !def_id.is_local();
+        if !cross_crate {
+            return EvalResult::Allow;
+        }
+
         let stability = self.lookup_stability(def_id);
         debug!(
             "stability: \
                 inspecting def_id={:?} span={:?} of stability={:?}",
             def_id, span, stability
         );
-
-        // Only the cross-crate scenario matters when checking unstable APIs
-        let cross_crate = !def_id.is_local();
-        if !cross_crate {
-            return EvalResult::Allow;
-        }
 
         // Issue #38412: private items lack stability markers.
         if skip_stability_check_due_to_privacy(self, def_id) {
@@ -423,13 +440,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft }, feature, ..
+                level: attr::Unstable { reason, issue, is_soft, implied_by },
+                feature,
+                ..
             }) => {
                 if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
                 }
                 if self.features().active(feature) {
+                    return EvalResult::Allow;
+                }
+
+                // If this item was previously part of a now-stabilized feature which is still
+                // active (i.e. the user hasn't removed the attribute for the stabilized feature
+                // yet) then allow use of this item.
+                if let Some(implied_by) = implied_by && self.features().active(implied_by) {
                     return EvalResult::Allow;
                 }
 
@@ -453,11 +479,73 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
 
                 let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
-                EvalResult::Deny { feature, reason, issue, suggestion, is_soft }
+                EvalResult::Deny {
+                    feature,
+                    reason: reason.to_opt_reason(),
+                    issue,
+                    suggestion,
+                    is_soft,
+                }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
                 // handled by the lint emitting logic above.
+                EvalResult::Allow
+            }
+            None => EvalResult::Unmarked,
+        }
+    }
+
+    /// Evaluates the default-impl stability of an item.
+    ///
+    /// Returns `EvalResult::Allow` if the item's default implementation is stable, or unstable but the corresponding
+    /// `#![feature]` has been provided. Returns `EvalResult::Deny` which describes the offending
+    /// unstable feature otherwise.
+    pub fn eval_default_body_stability(self, def_id: DefId, span: Span) -> EvalResult {
+        let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();
+        if !is_staged_api {
+            return EvalResult::Allow;
+        }
+
+        // Only the cross-crate scenario matters when checking unstable APIs
+        let cross_crate = !def_id.is_local();
+        if !cross_crate {
+            return EvalResult::Allow;
+        }
+
+        let stability = self.lookup_default_body_stability(def_id);
+        debug!(
+            "body stability: inspecting def_id={def_id:?} span={span:?} of stability={stability:?}"
+        );
+
+        // Issue #38412: private items lack stability markers.
+        if skip_stability_check_due_to_privacy(self, def_id) {
+            return EvalResult::Allow;
+        }
+
+        match stability {
+            Some(DefaultBodyStability {
+                level: attr::Unstable { reason, issue, is_soft, .. },
+                feature,
+            }) => {
+                if span.allows_unstable(feature) {
+                    debug!("body stability: skipping span={:?} since it is internal", span);
+                    return EvalResult::Allow;
+                }
+                if self.features().active(feature) {
+                    return EvalResult::Allow;
+                }
+
+                EvalResult::Deny {
+                    feature,
+                    reason: reason.to_opt_reason(),
+                    issue,
+                    suggestion: None,
+                    is_soft,
+                }
+            }
+            Some(_) => {
+                // Stable APIs are always ok to call
                 EvalResult::Allow
             }
             None => EvalResult::Unmarked,
@@ -511,7 +599,7 @@ impl<'tcx> TyCtxt<'tcx> {
             |span, def_id| {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
-                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
+                self.sess.delay_span_bug(span, format!("encountered unmarked API: {:?}", def_id));
             },
         )
     }
@@ -531,10 +619,8 @@ impl<'tcx> TyCtxt<'tcx> {
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
-        let soft_handler = |lint, span, msg: &_| {
-            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.build(msg).emit();
-            })
+        let soft_handler = |lint, span, msg: String| {
+            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |lint| lint)
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

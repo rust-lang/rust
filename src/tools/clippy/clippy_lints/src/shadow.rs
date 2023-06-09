@@ -99,19 +99,16 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub(crate) struct Shadow {
-    bindings: Vec<FxHashMap<Symbol, Vec<ItemLocalId>>>,
+    bindings: Vec<(FxHashMap<Symbol, Vec<ItemLocalId>>, LocalDefId)>,
 }
 
 impl_lint_pass!(Shadow => [SHADOW_SAME, SHADOW_REUSE, SHADOW_UNRELATED]);
 
 impl<'tcx> LateLintPass<'tcx> for Shadow {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
-        let (id, ident) = match pat.kind {
-            PatKind::Binding(_, hir_id, ident, _) => (hir_id, ident),
-            _ => return,
-        };
+        let PatKind::Binding(_, id, ident, _) = pat.kind else { return };
 
-        if pat.span.desugaring_kind().is_some() {
+        if pat.span.desugaring_kind().is_some() || pat.span.from_expansion() {
             return;
         }
 
@@ -121,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
         let HirId { owner, local_id } = id;
         // get (or insert) the list of items for this owner and symbol
-        let data = self.bindings.last_mut().unwrap();
+        let (ref mut data, scope_owner) = *self.bindings.last_mut().unwrap();
         let items_with_name = data.entry(ident.name).or_default();
 
         // check other bindings with the same name, most recently seen first
@@ -131,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
                 return;
             }
 
-            if is_shadow(cx, owner, prev, local_id) {
+            if is_shadow(cx, scope_owner, prev, local_id) {
                 let prev_hir_id = HirId { owner, local_id: prev };
                 lint_shadow(cx, pat, prev_hir_id, ident.span);
                 // only lint against the "nearest" shadowed binding
@@ -144,11 +141,9 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let hir = cx.tcx.hir();
-        if !matches!(
-            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
-            BodyOwnerKind::Closure
-        ) {
-            self.bindings.push(FxHashMap::default());
+        let owner_id = hir.body_owner_def_id(body.id());
+        if !matches!(hir.body_owner_kind(owner_id), BodyOwnerKind::Closure) {
+            self.bindings.push((FxHashMap::default(), owner_id));
         }
     }
 
@@ -218,8 +213,7 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
     }
     loop {
         expr = match expr.kind {
-            ExprKind::Box(e)
-            | ExprKind::AddrOf(_, _, e)
+            ExprKind::AddrOf(_, _, e)
             | ExprKind::Block(
                 &Block {
                     stmts: [],

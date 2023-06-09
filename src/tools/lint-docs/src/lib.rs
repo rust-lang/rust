@@ -37,16 +37,44 @@ impl Lint {
     }
 
     fn is_ignored(&self) -> bool {
-        self.doc
-            .iter()
-            .filter(|line| line.starts_with("```rust"))
-            .all(|line| line.contains(",ignore"))
+        let blocks: Vec<_> = self.doc.iter().filter(|line| line.starts_with("```rust")).collect();
+        !blocks.is_empty() && blocks.iter().all(|line| line.contains(",ignore"))
     }
 
     /// Checks the doc style of the lint.
     fn check_style(&self) -> Result<(), Box<dyn Error>> {
         for &expected in &["### Example", "### Explanation", "{{produces}}"] {
             if expected == "{{produces}}" && self.is_ignored() {
+                if self.doc_contains("{{produces}}") {
+                    return Err(format!(
+                        "the lint example has `ignore`, but also contains the {{{{produces}}}} marker\n\
+                        \n\
+                        The documentation generator cannot generate the example output when the \
+                        example is ignored.\n\
+                        Manually include the sample output below the example. For example:\n\
+                        \n\
+                        /// ```rust,ignore (needs command line option)\n\
+                        /// #[cfg(widnows)]\n\
+                        /// fn foo() {{}}\n\
+                        /// ```\n\
+                        ///\n\
+                        /// This will produce:\n\
+                        /// \n\
+                        /// ```text\n\
+                        /// warning: unknown condition name used\n\
+                        ///  --> lint_example.rs:1:7\n\
+                        ///   |\n\
+                        /// 1 | #[cfg(widnows)]\n\
+                        ///   |       ^^^^^^^\n\
+                        ///   |\n\
+                        ///   = note: `#[warn(unexpected_cfgs)]` on by default\n\
+                        /// ```\n\
+                        \n\
+                        Replacing the output with the text of the example you \
+                        compiled manually yourself.\n\
+                        "
+                    ).into());
+                }
                 continue;
             }
             if !self.doc_contains(expected) {
@@ -319,10 +347,10 @@ impl<'a> LintExtractor<'a> {
                             ..,
                             &format!(
                                 "This will produce:\n\
-                            \n\
-                            ```text\n\
-                            {}\
-                            ```",
+                                \n\
+                                ```text\n\
+                                {}\
+                                ```",
                                 output
                             ),
                         );
@@ -375,6 +403,12 @@ impl<'a> LintExtractor<'a> {
         fs::write(&tempfile, source)
             .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
         let mut cmd = Command::new(self.rustc_path);
+        // NOTE: bootstrap sets `LD_LIBRARY_PATH` for building lint-docs itself.
+        // Unfortunately, lint-docs is a bootstrap tool while rustc is built from source,
+        // and sometimes the paths conflict. In particular, when using `download-rustc`,
+        // the LLVM versions can differ between `ci-llvm` and `ci-rustc-sysroot`.
+        // Unset LD_LIBRARY_PATH here so it doesn't interfere with running the compiler.
+        cmd.env_remove("LD_LIBRARY_PATH");
         if options.contains(&"edition2015") {
             cmd.arg("--edition=2015");
         } else {
@@ -387,6 +421,9 @@ impl<'a> LintExtractor<'a> {
         }
         cmd.arg("lint_example.rs");
         cmd.current_dir(tempdir.path());
+        if self.verbose {
+            eprintln!("running: {cmd:?}");
+        }
         let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
         let stderr = std::str::from_utf8(&output.stderr).unwrap();
         let msgs = stderr
@@ -394,37 +431,36 @@ impl<'a> LintExtractor<'a> {
             .filter(|line| line.starts_with('{'))
             .map(serde_json::from_str)
             .collect::<Result<Vec<serde_json::Value>, _>>()?;
-        match msgs
+        // First try to find the messages with the `code` field set to our lint.
+        let matches: Vec<_> = msgs
             .iter()
-            .find(|msg| matches!(&msg["code"]["code"], serde_json::Value::String(s) if s==name))
-        {
-            Some(msg) => {
-                let rendered = msg["rendered"].as_str().expect("rendered field should exist");
-                Ok(rendered.to_string())
+            .filter(|msg| matches!(&msg["code"]["code"], serde_json::Value::String(s) if s==name))
+            .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
+            .collect();
+        if matches.is_empty() {
+            // Some lints override their code to something else (E0566).
+            // Try to find something that looks like it could be our lint.
+            let matches: Vec<_> = msgs.iter().filter(|msg|
+                matches!(&msg["rendered"], serde_json::Value::String(s) if s.contains(name)))
+                .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
+                .collect();
+            if matches.is_empty() {
+                let rendered: Vec<&str> =
+                    msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
+                let non_json: Vec<&str> =
+                    stderr.lines().filter(|line| !line.starts_with('{')).collect();
+                Err(format!(
+                    "did not find lint `{}` in output of example, got:\n{}\n{}",
+                    name,
+                    non_json.join("\n"),
+                    rendered.join("\n")
+                )
+                .into())
+            } else {
+                Ok(matches.join("\n"))
             }
-            None => {
-                match msgs.iter().find(
-                    |msg| matches!(&msg["rendered"], serde_json::Value::String(s) if s.contains(name)),
-                ) {
-                    Some(msg) => {
-                        let rendered = msg["rendered"].as_str().expect("rendered field should exist");
-                        Ok(rendered.to_string())
-                    }
-                    None => {
-                        let rendered: Vec<&str> =
-                            msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
-                        let non_json: Vec<&str> =
-                            stderr.lines().filter(|line| !line.starts_with('{')).collect();
-                        Err(format!(
-                            "did not find lint `{}` in output of example, got:\n{}\n{}",
-                            name,
-                            non_json.join("\n"),
-                            rendered.join("\n")
-                        )
-                        .into())
-                    }
-                }
-            }
+        } else {
+            Ok(matches.join("\n"))
         }
     }
 

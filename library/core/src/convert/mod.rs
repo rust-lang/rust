@@ -25,6 +25,7 @@
 //! # Generic Implementations
 //!
 //! - [`AsRef`] and [`AsMut`] auto-dereference if the inner type is a reference
+//!   (but not generally for all [dereferenceable types][core::ops::Deref])
 //! - [`From`]`<U> for T` implies [`Into`]`<T> for U`
 //! - [`TryFrom`]`<U> for T` implies [`TryInto`]`<T> for U`
 //! - [`From`] and [`Into`] are reflexive, which means that all types can
@@ -34,6 +35,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::error::Error;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 
@@ -97,7 +99,7 @@ pub use num::FloatToInt;
 /// ```
 #[stable(feature = "convert_id", since = "1.33.0")]
 #[rustc_const_stable(feature = "const_identity", since = "1.33.0")]
-#[inline]
+#[inline(always)]
 pub const fn identity<T>(x: T) -> T {
     x
 }
@@ -108,10 +110,12 @@ pub const fn identity<T>(x: T) -> T {
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
+/// # Relation to `Borrow`
+///
 /// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in a few aspects:
 ///
 /// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
-///   a reference or a value.
+///   a reference or a value. (See also note on `AsRef`'s reflexibility below.)
 /// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for a borrowed value are
 ///   equivalent to those of the owned value. For this reason, if you want to
 ///   borrow only a single field of a struct you can implement `AsRef`, but not [`Borrow`].
@@ -121,9 +125,66 @@ pub const fn identity<T>(x: T) -> T {
 ///
 /// # Generic Implementations
 ///
-/// - `AsRef` auto-dereferences if the inner type is a reference or a mutable
-///   reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
-///   `&mut Foo` or `&&mut Foo`)
+/// `AsRef` auto-dereferences if the inner type is a reference or a mutable reference
+/// (e.g.: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`).
+///
+/// Note that due to historic reasons, the above currently does not hold generally for all
+/// [dereferenceable types], e.g. `foo.as_ref()` will *not* work the same as
+/// `Box::new(foo).as_ref()`. Instead, many smart pointers provide an `as_ref` implementation which
+/// simply returns a reference to the [pointed-to value] (but do not perform a cheap
+/// reference-to-reference conversion for that value). However, [`AsRef::as_ref`] should not be
+/// used for the sole purpose of dereferencing; instead ['`Deref` coercion'] can be used:
+///
+/// [dereferenceable types]: core::ops::Deref
+/// [pointed-to value]: core::ops::Deref::Target
+/// ['`Deref` coercion']: core::ops::Deref#more-on-deref-coercion
+///
+/// ```
+/// let x = Box::new(5i32);
+/// // Avoid this:
+/// // let y: &i32 = x.as_ref();
+/// // Better just write:
+/// let y: &i32 = &x;
+/// ```
+///
+/// Types which implement [`Deref`] should consider implementing `AsRef<T>` as follows:
+///
+/// [`Deref`]: core::ops::Deref
+///
+/// ```
+/// # use core::ops::Deref;
+/// # struct SomeType;
+/// # impl Deref for SomeType {
+/// #     type Target = [u8];
+/// #     fn deref(&self) -> &[u8] {
+/// #         &[]
+/// #     }
+/// # }
+/// impl<T> AsRef<T> for SomeType
+/// where
+///     T: ?Sized,
+///     <SomeType as Deref>::Target: AsRef<T>,
+/// {
+///     fn as_ref(&self) -> &T {
+///         self.deref().as_ref()
+///     }
+/// }
+/// ```
+///
+/// # Reflexivity
+///
+/// Ideally, `AsRef` would be reflexive, i.e. there would be an `impl<T: ?Sized> AsRef<T> for T`
+/// with [`as_ref`] simply returning its argument unchanged.
+/// Such a blanket implementation is currently *not* provided due to technical restrictions of
+/// Rust's type system (it would be overlapping with another existing blanket implementation for
+/// `&T where T: AsRef<U>` which allows `AsRef` to auto-dereference, see "Generic Implementations"
+/// above).
+///
+/// [`as_ref`]: AsRef::as_ref
+///
+/// A trivial implementation of `AsRef<T> for T` must be added explicitly for a particular type `T`
+/// where needed or desired. Note, however, that not all types from `std` contain such an
+/// implementation, and those cannot be added by external code due to orphan rules.
 ///
 /// # Examples
 ///
@@ -170,29 +231,138 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// # Generic Implementations
 ///
-/// - `AsMut` auto-dereferences if the inner type is a mutable reference
-///   (e.g.: `foo.as_mut()` will work the same if `foo` has type `&mut Foo`
-///   or `&mut &mut Foo`)
+/// `AsMut` auto-dereferences if the inner type is a mutable reference
+/// (e.g.: `foo.as_mut()` will work the same if `foo` has type `&mut Foo` or `&mut &mut Foo`).
+///
+/// Note that due to historic reasons, the above currently does not hold generally for all
+/// [mutably dereferenceable types], e.g. `foo.as_mut()` will *not* work the same as
+/// `Box::new(foo).as_mut()`. Instead, many smart pointers provide an `as_mut` implementation which
+/// simply returns a reference to the [pointed-to value] (but do not perform a cheap
+/// reference-to-reference conversion for that value). However, [`AsMut::as_mut`] should not be
+/// used for the sole purpose of mutable dereferencing; instead ['`Deref` coercion'] can be used:
+///
+/// [mutably dereferenceable types]: core::ops::DerefMut
+/// [pointed-to value]: core::ops::Deref::Target
+/// ['`Deref` coercion']: core::ops::DerefMut#more-on-deref-coercion
+///
+/// ```
+/// let mut x = Box::new(5i32);
+/// // Avoid this:
+/// // let y: &mut i32 = x.as_mut();
+/// // Better just write:
+/// let y: &mut i32 = &mut x;
+/// ```
+///
+/// Types which implement [`DerefMut`] should consider to add an implementation of `AsMut<T>` as
+/// follows:
+///
+/// [`DerefMut`]: core::ops::DerefMut
+///
+/// ```
+/// # use core::ops::{Deref, DerefMut};
+/// # struct SomeType;
+/// # impl Deref for SomeType {
+/// #     type Target = [u8];
+/// #     fn deref(&self) -> &[u8] {
+/// #         &[]
+/// #     }
+/// # }
+/// # impl DerefMut for SomeType {
+/// #     fn deref_mut(&mut self) -> &mut [u8] {
+/// #         &mut []
+/// #     }
+/// # }
+/// impl<T> AsMut<T> for SomeType
+/// where
+///     <SomeType as Deref>::Target: AsMut<T>,
+/// {
+///     fn as_mut(&mut self) -> &mut T {
+///         self.deref_mut().as_mut()
+///     }
+/// }
+/// ```
+///
+/// # Reflexivity
+///
+/// Ideally, `AsMut` would be reflexive, i.e. there would be an `impl<T: ?Sized> AsMut<T> for T`
+/// with [`as_mut`] simply returning its argument unchanged.
+/// Such a blanket implementation is currently *not* provided due to technical restrictions of
+/// Rust's type system (it would be overlapping with another existing blanket implementation for
+/// `&mut T where T: AsMut<U>` which allows `AsMut` to auto-dereference, see "Generic
+/// Implementations" above).
+///
+/// [`as_mut`]: AsMut::as_mut
+///
+/// A trivial implementation of `AsMut<T> for T` must be added explicitly for a particular type `T`
+/// where needed or desired. Note, however, that not all types from `std` contain such an
+/// implementation, and those cannot be added by external code due to orphan rules.
 ///
 /// # Examples
 ///
-/// Using `AsMut` as trait bound for a generic function we can accept all mutable references
-/// that can be converted to type `&mut T`. Because [`Box<T>`] implements `AsMut<T>` we can
-/// write a function `add_one` that takes all arguments that can be converted to `&mut u64`.
-/// Because [`Box<T>`] implements `AsMut<T>`, `add_one` accepts arguments of type
-/// `&mut Box<u64>` as well:
+/// Using `AsMut` as trait bound for a generic function, we can accept all mutable references that
+/// can be converted to type `&mut T`. Unlike [dereference], which has a single [target type],
+/// there can be multiple implementations of `AsMut` for a type. In particular, `Vec<T>` implements
+/// both `AsMut<Vec<T>>` and `AsMut<[T]>`.
+///
+/// In the following, the example functions `caesar` and `null_terminate` provide a generic
+/// interface which work with any type that can be converted by cheap mutable-to-mutable conversion
+/// into a byte slice (`[u8]`) or byte vector (`Vec<u8>`), respectively.
+///
+/// [dereference]: core::ops::DerefMut
+/// [target type]: core::ops::Deref::Target
 ///
 /// ```
-/// fn add_one<T: AsMut<u64>>(num: &mut T) {
-///     *num.as_mut() += 1;
+/// struct Document {
+///     info: String,
+///     content: Vec<u8>,
 /// }
 ///
-/// let mut boxed_num = Box::new(0);
-/// add_one(&mut boxed_num);
-/// assert_eq!(*boxed_num, 1);
+/// impl<T: ?Sized> AsMut<T> for Document
+/// where
+///     Vec<u8>: AsMut<T>,
+/// {
+///     fn as_mut(&mut self) -> &mut T {
+///         self.content.as_mut()
+///     }
+/// }
+///
+/// fn caesar<T: AsMut<[u8]>>(data: &mut T, key: u8) {
+///     for byte in data.as_mut() {
+///         *byte = byte.wrapping_add(key);
+///     }
+/// }
+///
+/// fn null_terminate<T: AsMut<Vec<u8>>>(data: &mut T) {
+///     // Using a non-generic inner function, which contains most of the
+///     // functionality, helps to minimize monomorphization overhead.
+///     fn doit(data: &mut Vec<u8>) {
+///         let len = data.len();
+///         if len == 0 || data[len-1] != 0 {
+///             data.push(0);
+///         }
+///     }
+///     doit(data.as_mut());
+/// }
+///
+/// fn main() {
+///     let mut v: Vec<u8> = vec![1, 2, 3];
+///     caesar(&mut v, 5);
+///     assert_eq!(v, [6, 7, 8]);
+///     null_terminate(&mut v);
+///     assert_eq!(v, [6, 7, 8, 0]);
+///     let mut doc = Document {
+///         info: String::from("Example"),
+///         content: vec![17, 19, 8],
+///     };
+///     caesar(&mut doc, 1);
+///     assert_eq!(doc.content, [18, 20, 9]);
+///     null_terminate(&mut doc);
+///     assert_eq!(doc.content, [18, 20, 9, 0]);
+/// }
 /// ```
 ///
-/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+/// Note, however, that APIs don't need to be generic. In many cases taking a `&mut [u8]` or
+/// `&mut Vec<u8>`, for example, is the better choice (callers need to pass the correct type then).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsMut")]
 pub trait AsMut<T: ?Sized> {
@@ -325,8 +495,7 @@ pub trait Into<T>: Sized {
 /// By converting underlying error types to our own custom error type that encapsulates the
 /// underlying error type, we can return a single error type without losing information on the
 /// underlying cause. The '?' operator automatically converts the underlying error type to our
-/// custom error type by calling `Into<CliError>::into` which is automatically provided when
-/// implementing `From`. The compiler then infers which implementation of `Into` should be used.
+/// custom error type with `From::from`.
 ///
 /// ```
 /// use std::fs;
@@ -368,10 +537,10 @@ pub trait Into<T>: Sized {
 ))]
 pub trait From<T>: Sized {
     /// Converts to this type from the input type.
-    #[lang = "from"]
+    #[rustc_diagnostic_item = "from_fn"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from(_: T) -> Self;
+    fn from(value: T) -> Self;
 }
 
 /// An attempted conversion that consumes `self`, which may or may not be
@@ -434,7 +603,7 @@ pub trait TryInto<T>: Sized {
 ///
 ///     fn try_from(value: i32) -> Result<Self, Self::Error> {
 ///         if value <= 0 {
-///             Err("GreaterThanZero only accepts value superior than zero!")
+///             Err("GreaterThanZero only accepts values greater than zero!")
 ///         } else {
 ///             Ok(GreaterThanZero(value))
 ///         }
@@ -482,10 +651,9 @@ pub trait TryFrom<T>: Sized {
 
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized, U: ?Sized> const AsRef<U> for &T
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &T
 where
-    T: ~const AsRef<U>,
+    T: AsRef<U>,
 {
     #[inline]
     fn as_ref(&self) -> &U {
@@ -495,10 +663,9 @@ where
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized, U: ?Sized> const AsRef<U> for &mut T
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T
 where
-    T: ~const AsRef<U>,
+    T: AsRef<U>,
 {
     #[inline]
     fn as_ref(&self) -> &U {
@@ -516,10 +683,9 @@ where
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized, U: ?Sized> const AsMut<U> for &mut T
+impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T
 where
-    T: ~const AsMut<U>,
+    T: AsMut<U>,
 {
     #[inline]
     fn as_mut(&mut self) -> &mut U {
@@ -537,15 +703,15 @@ where
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T, U> const Into<U> for T
+impl<T, U> Into<U> for T
 where
-    U: ~const From<T>,
+    U: From<T>,
 {
     /// Calls `U::from(self)`.
     ///
     /// That is, this conversion is whatever the implementation of
     /// <code>[From]&lt;T&gt; for U</code> chooses to do.
+    #[inline]
     fn into(self) -> U {
         U::from(self)
     }
@@ -553,9 +719,9 @@ where
 
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<T> for T {
+impl<T> From<T> for T {
     /// Returns the argument unchanged.
+    #[inline(always)]
     fn from(t: T) -> T {
         t
     }
@@ -570,8 +736,7 @@ impl<T> const From<T> for T {
 #[allow(unused_attributes)] // FIXME(#58633): do a principled fix instead.
 #[rustc_reservation_impl = "permitting this impl would forbid us from adding \
                             `impl<T> From<!> for T` later; see rust-lang/rust#64715 for details"]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T> const From<!> for T {
+impl<T> From<!> for T {
     fn from(t: !) -> T {
         t
     }
@@ -579,13 +744,13 @@ impl<T> const From<!> for T {
 
 // TryFrom implies TryInto
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T, U> const TryInto<U> for T
+impl<T, U> TryInto<U> for T
 where
-    U: ~const TryFrom<T>,
+    U: TryFrom<T>,
 {
     type Error = U::Error;
 
+    #[inline]
     fn try_into(self) -> Result<U, U::Error> {
         U::try_from(self)
     }
@@ -594,13 +759,13 @@ where
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T, U> const TryFrom<U> for T
+impl<T, U> TryFrom<U> for T
 where
-    U: ~const Into<T>,
+    U: Into<T>,
 {
     type Error = Infallible;
 
+    #[inline]
     fn try_from(value: U) -> Result<Self, Self::Error> {
         Ok(U::into(value))
     }
@@ -612,6 +777,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsRef<[T]> for [T] {
+    #[inline(always)]
     fn as_ref(&self) -> &[T] {
         self
     }
@@ -619,6 +785,7 @@ impl<T> AsRef<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsMut<[T]> for [T] {
+    #[inline(always)]
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
@@ -626,7 +793,7 @@ impl<T> AsMut<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for str {
-    #[inline]
+    #[inline(always)]
     fn as_ref(&self) -> &str {
         self
     }
@@ -634,7 +801,7 @@ impl AsRef<str> for str {
 
 #[stable(feature = "as_mut_str_for_str", since = "1.51.0")]
 impl AsMut<str> for str {
-    #[inline]
+    #[inline(always)]
     fn as_mut(&mut self) -> &mut str {
         self
     }
@@ -694,8 +861,7 @@ impl AsMut<str> for str {
 pub enum Infallible {}
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-impl const Clone for Infallible {
+impl Clone for Infallible {
     fn clone(&self) -> Infallible {
         match *self {}
     }
@@ -711,6 +877,13 @@ impl fmt::Debug for Infallible {
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl fmt::Display for Infallible {
     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[stable(feature = "str_parse_error2", since = "1.8.0")]
+impl Error for Infallible {
+    fn description(&self) -> &str {
         match *self {}
     }
 }
@@ -740,8 +913,8 @@ impl Ord for Infallible {
 }
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<!> for Infallible {
+impl From<!> for Infallible {
+    #[inline]
     fn from(x: !) -> Self {
         x
     }

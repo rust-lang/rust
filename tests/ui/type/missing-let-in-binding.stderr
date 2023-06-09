@@ -1,0 +1,14 @@
+error: expected identifier, found `:`
+  --> $DIR/missing-let-in-binding.rs:4:9
+   |
+LL |     _foo: i32 = 4;
+   |         ^ expected identifier
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+help: you might have meant to introduce a new binding
+   |
+LL |     let _foo: i32 = 4;
+   |     +++
+
+error: aborting due to previous error
+

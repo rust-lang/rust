@@ -4,13 +4,12 @@ Rust MIR: a lowered representation of Rust.
 
 */
 
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(slice_ptr_get)]
@@ -21,9 +20,8 @@ Rust MIR: a lowered representation of Rust.
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![feature(is_some_with)]
+#![feature(if_let_guard)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
@@ -36,8 +34,14 @@ pub mod interpret;
 pub mod transform;
 pub mod util;
 
+pub use errors::ReportErrorExt;
+
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
+use rustc_middle::query::Providers;
 use rustc_middle::ty;
-use rustc_middle::ty::query::Providers;
+
+fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);
@@ -55,8 +59,7 @@ pub fn provide(providers: &mut Providers) {
     providers.valtree_to_const_val = |tcx, (ty, valtree)| {
         const_eval::valtree_to_const_value(tcx, ty::ParamEnv::empty().and(ty), valtree)
     };
-    providers.deref_mir_constant = |tcx, param_env_and_value| {
-        let (param_env, value) = param_env_and_value.into_parts();
-        const_eval::deref_mir_constant(tcx, param_env, value)
+    providers.check_validity_requirement = |tcx, (init_kind, param_env_and_ty)| {
+        util::check_validity_requirement(tcx, init_kind, param_env_and_ty)
     };
 }

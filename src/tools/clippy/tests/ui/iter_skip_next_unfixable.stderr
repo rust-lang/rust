@@ -4,12 +4,12 @@ error: called `skip(..).next()` on an iterator
 LL |     let _: Vec<&str> = sp.skip(1).next().unwrap().split(' ').collect();
    |                          ^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(1)`
    |
-   = note: `-D clippy::iter-skip-next` implied by `-D warnings`
 help: for this change `sp` has to be mutable
   --> $DIR/iter_skip_next_unfixable.rs:8:9
    |
 LL |     let sp = test_string.split('|').map(|s| s.trim());
    |         ^^
+   = note: `-D clippy::iter-skip-next` implied by `-D warnings`
 
 error: called `skip(..).next()` on an iterator
   --> $DIR/iter_skip_next_unfixable.rs:11:29

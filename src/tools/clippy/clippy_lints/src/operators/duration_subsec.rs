@@ -17,9 +17,9 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if op == BinOpKind::Div
-        && let ExprKind::MethodCall(method_path, [self_arg], _) = left.kind
+        && let ExprKind::MethodCall(method_path, self_arg, [], _) = left.kind
         && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_arg).peel_refs(), sym::Duration)
-        && let Some((Constant::Int(divisor), _)) = constant(cx, cx.typeck_results(), right)
+        && let Some(Constant::Int(divisor)) = constant(cx, cx.typeck_results(), right)
     {
         let suggested_fn = match (method_path.ident.as_str(), divisor) {
             ("subsec_micros", 1_000) | ("subsec_nanos", 1_000_000) => "subsec_millis",
@@ -31,12 +31,11 @@ pub(crate) fn check<'tcx>(
             cx,
             DURATION_SUBSEC,
             expr.span,
-            &format!("calling `{}()` is more concise than this calculation", suggested_fn),
+            &format!("calling `{suggested_fn}()` is more concise than this calculation"),
             "try",
             format!(
-                "{}.{}()",
-                snippet_with_applicability(cx, self_arg.span, "_", &mut applicability),
-                suggested_fn
+                "{}.{suggested_fn}()",
+                snippet_with_applicability(cx, self_arg.span, "_", &mut applicability)
             ),
             applicability,
         );

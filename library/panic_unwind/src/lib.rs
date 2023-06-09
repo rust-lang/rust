@@ -42,7 +42,8 @@ cfg_if::cfg_if! {
         // L4Re is unix family but does not yet support unwinding.
         #[path = "dummy.rs"]
         mod real_imp;
-    } else if #[cfg(target_env = "msvc")] {
+    } else if #[cfg(all(target_env = "msvc", not(target_arch = "arm")))] {
+        // LLVM does not support unwinding on 32 bit ARM msvc (thumbv7a-pc-windows-msvc)
         #[path = "seh.rs"]
         mod real_imp;
     } else if #[cfg(any(
@@ -52,9 +53,6 @@ cfg_if::cfg_if! {
         all(target_family = "unix", not(target_os = "espidf")),
         all(target_vendor = "fortanix", target_env = "sgx"),
     ))] {
-        // Rust runtime's startup objects depend on these symbols, so make them public.
-        #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-        pub use real_imp::eh_frame_registry::*;
         #[path = "gcc.rs"]
         mod real_imp;
     } else {
@@ -84,15 +82,13 @@ cfg_if::cfg_if! {
 }
 
 extern "C" {
-    /// Handler in libstd called when a panic object is dropped outside of
+    /// Handler in std called when a panic object is dropped outside of
     /// `catch_unwind`.
     fn __rust_drop_panic() -> !;
 
-    /// Handler in libstd called when a foreign exception is caught.
+    /// Handler in std called when a foreign exception is caught.
     fn __rust_foreign_exception() -> !;
 }
-
-mod dwarf;
 
 #[rustc_std_internal_symbol]
 #[allow(improper_ctypes_definitions)]
@@ -103,8 +99,8 @@ pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[rustc_std_internal_symbol]
-pub unsafe fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32 {
-    let payload = Box::from_raw((*payload).take_box());
+pub unsafe fn __rust_start_panic(payload: &mut dyn BoxMeUp) -> u32 {
+    let payload = Box::from_raw(payload.take_box());
 
     imp::panic(payload)
 }

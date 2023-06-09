@@ -1,0 +1,65 @@
+error[E0412]: cannot find type `PhantomData` in this scope
+  --> $DIR/issue-78372.rs:2:23
+   |
+LL | struct Smaht<T, MISC>(PhantomData);
+   |                       ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::marker::PhantomData;
+   |
+
+error[E0412]: cannot find type `U` in this scope
+  --> $DIR/issue-78372.rs:3:31
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |      -                        ^
+   |      |
+   |      similarly named type parameter `T` defined here
+   |
+help: a type parameter with a similar name exists
+   |
+LL | impl<T> DispatchFromDyn<Smaht<T, MISC>> for T {}
+   |                               ~
+help: you might be missing a type parameter
+   |
+LL | impl<T, U> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |       +++
+
+error[E0412]: cannot find type `MISC` in this scope
+  --> $DIR/issue-78372.rs:3:34
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |                                  ^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<T, MISC> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |       ++++++
+
+error[E0658]: use of unstable library feature 'dispatch_from_dyn'
+  --> $DIR/issue-78372.rs:1:5
+   |
+LL | use std::ops::DispatchFromDyn;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'dispatch_from_dyn'
+  --> $DIR/issue-78372.rs:3:9
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
+
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+  --> $DIR/issue-78372.rs:3:1
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0378, E0412, E0658.
+For more information about an error, try `rustc --explain E0378`.

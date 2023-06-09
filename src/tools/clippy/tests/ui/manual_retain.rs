@@ -1,7 +1,6 @@
-// run-rustfix
-#![feature(custom_inner_attributes)]
+//@run-rustfix
 #![warn(clippy::manual_retain)]
-#![allow(unused)]
+#![allow(unused, clippy::redundant_clone)]
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::BinaryHeap;
@@ -24,8 +23,8 @@ fn main() {
 }
 
 fn binary_heap_retain() {
-    // NOTE: Do not lint now, because binary_heap_retain is nighyly API.
-    // And we need to add a test case for msrv if we update this implmention.
+    // NOTE: Do not lint now, because binary_heap_retain is nightly API.
+    // And we need to add a test case for msrv if we update this implementation.
     // https://github.com/rust-lang/rust/issues/71503
     let mut heap = BinaryHeap::from([1, 2, 3]);
     heap = heap.into_iter().filter(|x| x % 2 == 0).collect();
@@ -222,8 +221,8 @@ fn vec_deque_retain() {
     bar = foobar.into_iter().filter(|x| x % 2 == 0).collect();
 }
 
+#[clippy::msrv = "1.52"]
 fn _msrv_153() {
-    #![clippy::msrv = "1.52"]
     let mut btree_map: BTreeMap<i8, i8> = (0..8).map(|x| (x, x * 10)).collect();
     btree_map = btree_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
 
@@ -231,14 +230,14 @@ fn _msrv_153() {
     btree_set = btree_set.iter().filter(|&x| x % 2 == 0).copied().collect();
 }
 
+#[clippy::msrv = "1.25"]
 fn _msrv_126() {
-    #![clippy::msrv = "1.25"]
     let mut s = String::from("foobar");
     s = s.chars().filter(|&c| c != 'o').to_owned().collect();
 }
 
+#[clippy::msrv = "1.17"]
 fn _msrv_118() {
-    #![clippy::msrv = "1.17"]
     let mut hash_set = HashSet::from([1, 2, 3, 4, 5, 6]);
     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect();
     let mut hash_map: HashMap<i8, i8> = (0..8).map(|x| (x, x * 10)).collect();

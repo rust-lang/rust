@@ -12,6 +12,7 @@
 
 #[cfg(not(windows))]
 use std::fs::Permissions;
+use std::net::SocketAddr;
 #[cfg(not(windows))]
 use std::os::unix::prelude::*;
 
@@ -38,36 +39,76 @@ macro_rules! t {
 }
 
 static TEST: AtomicUsize = AtomicUsize::new(0);
+const RETRY_INTERVAL: u64 = 1;
+const NUMBER_OF_RETRIES: usize = 5;
 
 #[derive(Copy, Clone)]
 struct Config {
-    pub remote: bool,
-    pub verbose: bool,
+    verbose: bool,
+    sequential: bool,
+    batch: bool,
+    bind: SocketAddr,
 }
 
 impl Config {
     pub fn default() -> Config {
-        Config { remote: false, verbose: false }
+        Config {
+            verbose: false,
+            sequential: false,
+            batch: false,
+            bind: if cfg!(target_os = "android") || cfg!(windows) {
+                ([0, 0, 0, 0], 12345).into()
+            } else {
+                ([10, 0, 2, 15], 12345).into()
+            },
+        }
     }
 
     pub fn parse_args() -> Config {
         let mut config = Config::default();
 
         let args = env::args().skip(1);
+        let mut next_is_bind = false;
         for argument in args {
             match &argument[..] {
-                "remote" => {
-                    config.remote = true;
+                bind if next_is_bind => {
+                    config.bind = t!(bind.parse());
+                    next_is_bind = false;
                 }
-                "verbose" | "-v" => {
-                    config.verbose = true;
+                "--bind" => next_is_bind = true,
+                "--sequential" => config.sequential = true,
+                "--batch" => config.batch = true,
+                "--verbose" | "-v" => config.verbose = true,
+                "--help" | "-h" => {
+                    show_help();
+                    std::process::exit(0);
                 }
-                arg => panic!("unknown argument: {}", arg),
+                arg => panic!("unknown argument: {}, use `--help` for known arguments", arg),
             }
+        }
+        if next_is_bind {
+            panic!("missing value for --bind");
         }
 
         config
     }
+}
+
+fn show_help() {
+    eprintln!(
+        r#"Usage:
+
+{} [OPTIONS]
+
+OPTIONS:
+    --bind <IP>:<PORT>   Specify IP address and port to listen for requests, e.g. "0.0.0.0:12345"
+    --sequential         Run only one test at a time
+    --batch              Send stdout and stderr in batch instead of streaming
+    -v, --verbose        Show status messages
+    -h, --help           Show this help screen
+"#,
+        std::env::args().next().unwrap()
+    );
 }
 
 fn print_verbose(s: &str, conf: Config) {
@@ -77,19 +118,12 @@ fn print_verbose(s: &str, conf: Config) {
 }
 
 fn main() {
+    let config = Config::parse_args();
     println!("starting test server");
 
-    let config = Config::parse_args();
-
-    let bind_addr = if cfg!(target_os = "android") || cfg!(windows) || config.remote {
-        "0.0.0.0:12345"
-    } else {
-        "10.0.2.15:12345"
-    };
-
-    let listener = t!(TcpListener::bind(bind_addr));
+    let listener = bind_socket(config.bind);
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
-        ("/data/tmp/work".into(), "/data/tmp/work/tmp".into())
+        ("/data/local/tmp/work".into(), "/data/local/tmp/work/tmp".into())
     } else {
         let mut work_dir = env::temp_dir();
         work_dir.push("work");
@@ -97,7 +131,7 @@ fn main() {
         tmp_dir.push("tmp");
         (work_dir, tmp_dir)
     };
-    println!("listening on {}!", bind_addr);
+    println!("listening on {}!", config.bind);
 
     t!(fs::create_dir_all(&work));
     t!(fs::create_dir_all(&tmp));
@@ -119,11 +153,26 @@ fn main() {
             let lock = lock.clone();
             let work = work.clone();
             let tmp = tmp.clone();
-            thread::spawn(move || handle_run(socket, &work, &tmp, &lock, config));
+            let f = move || handle_run(socket, &work, &tmp, &lock, config);
+            if config.sequential {
+                f();
+            } else {
+                thread::spawn(f);
+            }
         } else {
             panic!("unknown command {:?}", buf);
         }
     }
+}
+
+fn bind_socket(addr: SocketAddr) -> TcpListener {
+    for _ in 0..(NUMBER_OF_RETRIES - 1) {
+        if let Ok(x) = TcpListener::bind(addr) {
+            return x;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(RETRY_INTERVAL));
+    }
+    TcpListener::bind(addr).unwrap()
 }
 
 fn handle_push(socket: TcpStream, work: &Path, config: Config) {
@@ -235,22 +284,30 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     // Some tests assume RUST_TEST_TMPDIR exists
     cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());
 
-    // Spawn the child and ferry over stdout/stderr to the socket in a framed
-    // fashion (poor man's style)
-    let mut child =
-        t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn());
-    drop(lock);
-    let mut stdout = child.stdout.take().unwrap();
-    let mut stderr = child.stderr.take().unwrap();
     let socket = Arc::new(Mutex::new(reader.into_inner()));
-    let socket2 = socket.clone();
-    let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
-    my_copy(&mut stderr, 1, &*socket);
-    thread.join().unwrap();
+
+    let status = if config.batch {
+        let child =
+            t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).output());
+        batch_copy(&child.stdout, 0, &*socket);
+        batch_copy(&child.stderr, 1, &*socket);
+        child.status
+    } else {
+        // Spawn the child and ferry over stdout/stderr to the socket in a framed
+        // fashion (poor man's style)
+        let mut child =
+            t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn());
+        drop(lock);
+        let mut stdout = child.stdout.take().unwrap();
+        let mut stderr = child.stderr.take().unwrap();
+        let socket2 = socket.clone();
+        let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
+        my_copy(&mut stderr, 1, &*socket);
+        thread.join().unwrap();
+        t!(child.wait())
+    };
 
     // Finally send over the exit status.
-    let status = t!(child.wait());
-
     let (which, code) = get_status_code(&status);
 
     t!(socket.lock().unwrap().write_all(&[
@@ -308,13 +365,7 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
     loop {
         let n = t!(src.read(&mut b));
         let mut dst = dst.lock().unwrap();
-        t!(dst.write_all(&[
-            which,
-            (n >> 24) as u8,
-            (n >> 16) as u8,
-            (n >> 8) as u8,
-            (n >> 0) as u8,
-        ]));
+        t!(dst.write_all(&create_header(which, n as u32)));
         if n > 0 {
             t!(dst.write_all(&b[..n]));
         } else {
@@ -323,11 +374,24 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
     }
 }
 
+fn batch_copy(buf: &[u8], which: u8, dst: &Mutex<dyn Write>) {
+    let n = buf.len();
+    let mut dst = dst.lock().unwrap();
+    t!(dst.write_all(&create_header(which, n as u32)));
+    if n > 0 {
+        t!(dst.write_all(buf));
+        // Marking buf finished
+        t!(dst.write_all(&[which, 0, 0, 0, 0,]));
+    }
+}
+
+const fn create_header(which: u8, n: u32) -> [u8; 5] {
+    let bytes = n.to_be_bytes();
+    [which, bytes[0], bytes[1], bytes[2], bytes[3]]
+}
+
 fn read_u32(r: &mut dyn Read) -> u32 {
     let mut len = [0; 4];
     t!(r.read_exact(&mut len));
-    ((len[0] as u32) << 24)
-        | ((len[1] as u32) << 16)
-        | ((len[2] as u32) << 8)
-        | ((len[3] as u32) << 0)
+    u32::from_be_bytes(len)
 }

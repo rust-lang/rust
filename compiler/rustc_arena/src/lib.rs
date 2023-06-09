@@ -16,17 +16,21 @@
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
 #![feature(decl_macro)]
+#![feature(pointer_byte_offsets)]
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]
-#![feature(ptr_const_cast)]
+#![deny(unsafe_op_in_unsafe_fn)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![allow(clippy::mut_from_ref)] // Arena allocators are one of the places where this pattern is fine.
 
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::marker::{PhantomData, Send};
+use std::marker::PhantomData;
 use std::mem::{self, MaybeUninit};
 use std::ptr::{self, NonNull};
 use std::slice;
@@ -71,19 +75,27 @@ impl<T> ArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> ArenaChunk<T> {
         ArenaChunk {
-            storage: NonNull::new(Box::into_raw(Box::new_uninit_slice(capacity))).unwrap(),
+            storage: NonNull::from(Box::leak(Box::new_uninit_slice(capacity))),
             entries: 0,
         }
     }
 
     /// Destroys this arena chunk.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `len` elements of this chunk have been initialized.
     #[inline]
     unsafe fn destroy(&mut self, len: usize) {
         // The branch on needs_drop() is an -O1 performance optimization.
-        // Without the branch, dropping TypedArena<u8> takes linear time.
+        // Without the branch, dropping TypedArena<T> takes linear time.
         if mem::needs_drop::<T>() {
-            let slice = &mut *(self.storage.as_mut());
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut slice[..len]));
+            // SAFETY: The caller must ensure that `len` elements of this chunk have
+            // been initialized.
+            unsafe {
+                let slice = self.storage.as_mut();
+                ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(&mut slice[..len]));
+            }
         }
     }
 
@@ -101,7 +113,7 @@ impl<T> ArenaChunk<T> {
                 // A pointer as large as possible for zero-sized elements.
                 ptr::invalid_mut(!0)
             } else {
-                self.start().add((*self.storage.as_ptr()).len())
+                self.start().add(self.storage.len())
             }
         }
     }
@@ -210,7 +222,7 @@ impl<T> TypedArena<T> {
 
         unsafe {
             if mem::size_of::<T>() == 0 {
-                self.ptr.set((self.ptr.get() as *mut u8).wrapping_offset(1) as *mut T);
+                self.ptr.set(self.ptr.get().wrapping_byte_add(1));
                 let ptr = ptr::NonNull::<T>::dangling().as_ptr();
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
@@ -218,7 +230,7 @@ impl<T> TypedArena<T> {
             } else {
                 let ptr = self.ptr.get();
                 // Advance the pointer.
-                self.ptr.set(self.ptr.get().offset(1));
+                self.ptr.set(self.ptr.get().add(1));
                 // Write into uninitialized memory.
                 ptr::write(ptr, object);
                 &mut *ptr
@@ -252,7 +264,9 @@ impl<T> TypedArena<T> {
         self.ensure_capacity(len);
 
         let start_ptr = self.ptr.get();
-        self.ptr.set(start_ptr.add(len));
+        // SAFETY: `self.ensure_capacity` makes sure that there is enough space
+        // for `len` elements.
+        unsafe { self.ptr.set(start_ptr.add(len)) };
         start_ptr
     }
 
@@ -285,7 +299,7 @@ impl<T> TypedArena<T> {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = (*last_chunk.storage.as_ptr()).len().min(HUGE_PAGE / elem_size / 2);
+                new_cap = last_chunk.storage.len().min(HUGE_PAGE / elem_size / 2);
                 new_cap *= 2;
             } else {
                 new_cap = PAGE / elem_size;
@@ -393,7 +407,7 @@ impl DroplessArena {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = (*last_chunk.storage.as_ptr()).len().min(HUGE_PAGE / 2);
+                new_cap = last_chunk.storage.len().min(HUGE_PAGE / 2);
                 new_cap *= 2;
             } else {
                 new_cap = PAGE;
@@ -480,6 +494,10 @@ impl DroplessArena {
         }
     }
 
+    /// # Safety
+    ///
+    /// The caller must ensure that `mem` is valid for writes up to
+    /// `size_of::<T>() * len`.
     #[inline]
     unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
         &self,
@@ -491,13 +509,18 @@ impl DroplessArena {
         // Use a manual loop since LLVM manages to optimize it better for
         // slice iterators
         loop {
-            let value = iter.next();
-            if i >= len || value.is_none() {
-                // We only return as many items as the iterator gave us, even
-                // though it was supposed to give us `len`
-                return slice::from_raw_parts_mut(mem, i);
+            // SAFETY: The caller must ensure that `mem` is valid for writes up to
+            // `size_of::<T>() * len`.
+            unsafe {
+                match iter.next() {
+                    Some(value) if i < len => mem.add(i).write(value),
+                    Some(_) | None => {
+                        // We only return as many items as the iterator gave us, even
+                        // though it was supposed to give us `len`
+                        return slice::from_raw_parts_mut(mem, i);
+                    }
+                }
             }
-            ptr::write(mem.add(i), value.unwrap());
             i += 1;
         }
     }
@@ -566,7 +589,9 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     }
 
     pub trait ArenaAllocatable<'tcx, C = rustc_arena::IsNotCopy>: Sized {
+        #[allow(clippy::mut_from_ref)]
         fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self;
+        #[allow(clippy::mut_from_ref)]
         fn allocate_from_iter<'a>(
             arena: &'a Arena<'tcx>,
             iter: impl ::std::iter::IntoIterator<Item = Self>,
@@ -576,10 +601,12 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     // Any type that impls `Copy` can be arena-allocated in the `DroplessArena`.
     impl<'tcx, T: Copy> ArenaAllocatable<'tcx, rustc_arena::IsCopy> for T {
         #[inline]
+        #[allow(clippy::mut_from_ref)]
         fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self {
             arena.dropless.alloc(self)
         }
         #[inline]
+        #[allow(clippy::mut_from_ref)]
         fn allocate_from_iter<'a>(
             arena: &'a Arena<'tcx>,
             iter: impl ::std::iter::IntoIterator<Item = Self>,
@@ -599,6 +626,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
             }
 
             #[inline]
+            #[allow(clippy::mut_from_ref)]
             fn allocate_from_iter<'a>(
                 arena: &'a Arena<'tcx>,
                 iter: impl ::std::iter::IntoIterator<Item = Self>,
@@ -614,12 +642,14 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
 
     impl<'tcx> Arena<'tcx> {
         #[inline]
+        #[allow(clippy::mut_from_ref)]
         pub fn alloc<T: ArenaAllocatable<'tcx, C>, C>(&self, value: T) -> &mut T {
             value.allocate_on(self)
         }
 
         // Any type that impls `Copy` can have slices be arena-allocated in the `DroplessArena`.
         #[inline]
+        #[allow(clippy::mut_from_ref)]
         pub fn alloc_slice<T: ::std::marker::Copy>(&self, value: &[T]) -> &mut [T] {
             if value.is_empty() {
                 return &mut [];
@@ -627,6 +657,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
             self.dropless.alloc_slice(value)
         }
 
+        #[allow(clippy::mut_from_ref)]
         pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx, C>, C>(
             &'a self,
             iter: impl ::std::iter::IntoIterator<Item = T>,

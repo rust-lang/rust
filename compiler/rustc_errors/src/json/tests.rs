@@ -4,7 +4,7 @@ use crate::json::JsonEmitter;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{ColorConfig, HumanReadableErrorType};
-use crate::Handler;
+use crate::{Handler, TerminalUrl};
 use rustc_span::{BytePos, Span};
 
 use std::str;
@@ -46,7 +46,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         sm.new_source_file(Path::new("test.rs").to_owned().into(), code.to_owned());
         let fallback_bundle =
-            crate::fallback_fluent_bundle(rustc_error_messages::DEFAULT_LOCALE_RESOURCES, false);
+            crate::fallback_fluent_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
 
         let output = Arc::new(Mutex::new(Vec::new()));
         let je = JsonEmitter::new(
@@ -59,6 +59,8 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
             HumanReadableErrorType::Short(ColorConfig::Never),
             None,
             false,
+            false,
+            TerminalUrl::No,
         );
 
         let span = Span::with_root_ctxt(BytePos(span.0), BytePos(span.1));

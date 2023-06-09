@@ -4,7 +4,7 @@ use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 /// Checks for `useless_transmute` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 USELESS_TRANSMUTE,
                 e.span,
-                &format!("transmute from a type (`{}`) to itself", from_ty),
+                &format!("transmute from a type (`{from_ty}`) to itself"),
             );
             true
         },
@@ -61,7 +61,7 @@ pub(super) fn check<'tcx>(
                 "transmute from an integer to a pointer",
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
-                        diag.span_suggestion(e.span, "try", arg.as_ty(&to_ty.to_string()), Applicability::Unspecified);
+                        diag.span_suggestion(e.span, "try", arg.as_ty(to_ty.to_string()), Applicability::Unspecified);
                     }
                 },
             );

@@ -161,5 +161,50 @@ help: move the body of the async block to the enclosing function
 LL | fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b { 42 }
    |                                                                                    ~~~~~~
 
-error: aborting due to 10 previous errors
+error: this function can be simplified using the `async fn` syntax
+  --> $DIR/manual_async_fn.rs:130:1
+   |
+LL | pub fn issue_10450() -> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL | pub async fn issue_10450() -> i32 {
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: move the body of the async block to the enclosing function
+   |
+LL | pub fn issue_10450() -> impl Future<Output = i32> { 42 }
+   |                                                   ~~~~~~
+
+error: this function can be simplified using the `async fn` syntax
+  --> $DIR/manual_async_fn.rs:134:1
+   |
+LL | pub(crate) fn issue_10450_2() -> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL | pub(crate) async fn issue_10450_2() -> i32 {
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: move the body of the async block to the enclosing function
+   |
+LL | pub(crate) fn issue_10450_2() -> impl Future<Output = i32> { 42 }
+   |                                                            ~~~~~~
+
+error: this function can be simplified using the `async fn` syntax
+  --> $DIR/manual_async_fn.rs:138:1
+   |
+LL | pub(self) fn issue_10450_3() -> impl Future<Output = i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function `async` and return the output of the future directly
+   |
+LL | pub(self) async fn issue_10450_3() -> i32 {
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: move the body of the async block to the enclosing function
+   |
+LL | pub(self) fn issue_10450_3() -> impl Future<Output = i32> { 42 }
+   |                                                           ~~~~~~
+
+error: aborting due to 13 previous errors
 

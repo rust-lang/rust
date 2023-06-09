@@ -1,17 +1,18 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use crate::parse_in;
+use crate::{errors, parse_in};
 
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{self as ast, Attribute, MacArgs, MacArgsEq, MacDelimiter, MetaItem, MetaItemKind};
+use rustc_ast::MetaItemKind;
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MacDelimiter, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Span, Symbol};
 
-pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
+pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {
         return;
     }
@@ -24,7 +25,7 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
             check_builtin_attribute(sess, attr, *name, *template)
         }
-        _ if let MacArgs::Eq(..) = attr.get_normal_item().args => {
+        _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
             parse_meta(sess, attr)
                 .map_err(|mut err| {
@@ -42,17 +43,19 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
         span: attr.span,
         path: item.path.clone(),
         kind: match &item.args {
-            MacArgs::Empty => MetaItemKind::Word,
-            MacArgs::Delimited(dspan, delim, t) => {
-                check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
-                let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
+            AttrArgs::Empty => MetaItemKind::Word,
+            AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
+                check_meta_bad_delim(sess, *dspan, *delim);
+                let nmis = parse_in(sess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
-                if let ast::ExprKind::Lit(lit) = &expr.kind {
-                    if !lit.kind.is_unsuffixed() {
+            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
+                if let ast::ExprKind::Lit(token_lit) = expr.kind
+                    && let Ok(lit) = ast::MetaItemLit::from_token_lit(token_lit, expr.span)
+                {
+                    if token_lit.suffix.is_some() {
                         let mut err = sess.span_diagnostic.struct_span_err(
-                            lit.span,
+                            expr.span,
                             "suffixed literals are not allowed in attributes",
                         );
                         err.help(
@@ -61,11 +64,11 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                         );
                         return Err(err);
                     } else {
-                        MetaItemKind::NameValue(lit.clone())
+                        MetaItemKind::NameValue(lit)
                     }
                 } else {
                     // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can
-                    // happen with e.g. `#[foo = include_str!("non-existent-file.rs")]`; in that
+                    // happen with e.g. `#[foo = include_str!("nonexistent-file.rs")]`; in that
                     // case we delay the error because an earlier error will have already been
                     // reported.
                     let msg = format!("unexpected expression: `{}`", pprust::expr_to_string(expr));
@@ -76,24 +79,29 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     return Err(err);
                 }
             }
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
+            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
         },
     })
 }
 
-pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
+pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
     if let ast::MacDelimiter::Parenthesis = delim {
         return;
     }
+    sess.emit_err(errors::MetaBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
+}
 
-    sess.span_diagnostic
-        .struct_span_err(span.entire(), msg)
-        .multipart_suggestion(
-            "the delimiters should be `(` and `)`",
-            vec![(span.open, "(".to_string()), (span.close, ")".to_string())],
-            Applicability::MachineApplicable,
-        )
-        .emit();
+pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
+    if let ast::MacDelimiter::Parenthesis = delim {
+        return;
+    }
+    sess.emit_err(errors::CfgAttrBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
 }
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.
@@ -112,25 +120,34 @@ pub fn check_builtin_attribute(
     name: Symbol,
     template: AttributeTemplate,
 ) {
-    // Some special attributes like `cfg` must be checked
-    // before the generic check, so we skip them here.
-    let should_skip = |name| name == sym::cfg;
-
     match parse_meta(sess, attr) {
-        Ok(meta) => {
-            if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
-                emit_malformed_attribute(sess, attr, name, template);
-            }
-        }
+        Ok(meta) => check_builtin_meta_item(sess, &meta, attr.style, name, template),
         Err(mut err) => {
             err.emit();
         }
     }
 }
 
+pub fn check_builtin_meta_item(
+    sess: &ParseSess,
+    meta: &MetaItem,
+    style: ast::AttrStyle,
+    name: Symbol,
+    template: AttributeTemplate,
+) {
+    // Some special attributes like `cfg` must be checked
+    // before the generic check, so we skip them here.
+    let should_skip = |name| name == sym::cfg;
+
+    if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
+        emit_malformed_attribute(sess, style, meta.span, name, template);
+    }
+}
+
 fn emit_malformed_attribute(
     sess: &ParseSess,
-    attr: &Attribute,
+    style: ast::AttrStyle,
+    span: Span,
     name: Symbol,
     template: AttributeTemplate,
 ) {
@@ -144,7 +161,7 @@ fn emit_malformed_attribute(
     let mut msg = "attribute must be of the form ".to_owned();
     let mut suggestions = vec![];
     let mut first = true;
-    let inner = if attr.style == ast::AttrStyle::Inner { "!" } else { "" };
+    let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
     if template.word {
         first = false;
         let code = format!("#{}[{}]", inner, name);
@@ -169,12 +186,12 @@ fn emit_malformed_attribute(
         suggestions.push(code);
     }
     if should_warn(name) {
-        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, attr.span, ast::CRATE_NODE_ID, &msg);
+        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
     } else {
         sess.span_diagnostic
-            .struct_span_err(attr.span, &error_msg)
+            .struct_span_err(span, error_msg)
             .span_suggestions(
-                attr.span,
+                span,
                 if suggestions.len() == 1 {
                     "must be of the form"
                 } else {
@@ -193,7 +210,7 @@ pub fn emit_fatal_malformed_builtin_attribute(
     name: Symbol,
 ) -> ! {
     let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").template;
-    emit_malformed_attribute(sess, attr, name, template);
+    emit_malformed_attribute(sess, attr.style, attr.span, name, template);
     // This is fatal, otherwise it will likely cause a cascade of other errors
     // (and an error here is expected to be very rare).
     FatalError.raise()

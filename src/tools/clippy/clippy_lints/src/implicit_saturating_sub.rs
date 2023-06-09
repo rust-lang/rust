@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{higher, peel_blocks_with_stmt, SpanlessEq};
+use clippy_utils::{higher, is_integer_literal, peel_blocks_with_stmt, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.44.0"]
     pub IMPLICIT_SATURATING_SUB,
-    pedantic,
+    style,
     "Perform saturating subtraction instead of implicitly checking lower bound of data type"
 }
 
@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                 // Get the variable name
                 let var_name = ares_path.segments[0].ident.name.as_str();
                 match cond_num_val.kind {
-                    ExprKind::Lit(ref cond_lit) => {
+                    ExprKind::Lit(cond_lit) => {
                         // Check if the constant is zero
                         if let LitKind::Int(0, _) = cond_lit.node {
                             if cx.typeck_results().expr_ty(cond_left).is_signed() {
@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             if let Some(const_id) = cx.typeck_results().type_dependent_def_id(cond_num_val.hir_id);
                             if let Some(impl_id) = cx.tcx.impl_of_method(const_id);
                             if let None = cx.tcx.impl_trait_ref(impl_id); // An inherent impl
-                            if cx.tcx.type_of(impl_id).is_integral();
+                            if cx.tcx.type_of(impl_id).subst_identity().is_integral();
                             then {
                                 print_lint_and_sugg(cx, var_name, expr)
                             }
@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             if let Some(func_id) = cx.typeck_results().type_dependent_def_id(func.hir_id);
                             if let Some(impl_id) = cx.tcx.impl_of_method(func_id);
                             if let None = cx.tcx.impl_trait_ref(impl_id); // An inherent impl
-                            if cx.tcx.type_of(impl_id).is_integral();
+                            if cx.tcx.type_of(impl_id).subst_identity().is_integral();
                             then {
                                 print_lint_and_sugg(cx, var_name, expr)
                             }
@@ -131,17 +131,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
 fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a Expr<'a>> {
     match peel_blocks_with_stmt(expr).kind {
         ExprKind::AssignOp(ref op1, target, value) => {
-            if_chain! {
-                if BinOpKind::Sub == op1.node;
-                // Check if literal being subtracted is one
-                if let ExprKind::Lit(ref lit1) = value.kind;
-                if let LitKind::Int(1, _) = lit1.node;
-                then {
-                    Some(target)
-                } else {
-                    None
-                }
-            }
+            // Check if literal being subtracted is one
+            (BinOpKind::Sub == op1.node && is_integer_literal(value, 1)).then_some(target)
         },
         ExprKind::Assign(target, value, _) => {
             if_chain! {
@@ -150,8 +141,7 @@ fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a Exp
 
                 if SpanlessEq::new(cx).eq_expr(left1, target);
 
-                if let ExprKind::Lit(ref lit1) = right1.kind;
-                if let LitKind::Int(1, _) = lit1.node;
+                if is_integer_literal(right1, 1);
                 then {
                     Some(target)
                 } else {
@@ -170,7 +160,7 @@ fn print_lint_and_sugg(cx: &LateContext<'_>, var_name: &str, expr: &Expr<'_>) {
         expr.span,
         "implicitly performing saturating subtraction",
         "try",
-        format!("{} = {}.saturating_sub({});", var_name, var_name, '1'),
+        format!("{var_name} = {var_name}.saturating_sub({});", '1'),
         Applicability::MachineApplicable,
     );
 }

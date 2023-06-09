@@ -5,8 +5,9 @@ use crate::deriving::path_std;
 use rustc_ast::{self as ast, MetaItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
+use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_eq(
     cx: &mut ExtCtxt<'_>,
@@ -14,19 +15,15 @@ pub fn expand_deriving_eq(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
-    let inline = cx.meta_word(span, sym::inline);
-    let hidden = rustc_ast::attr::mk_nested_word_item(Ident::new(sym::hidden, span));
-    let doc = rustc_ast::attr::mk_list_item(Ident::new(sym::doc, span), vec![hidden]);
-    let no_coverage = cx.meta_word(span, sym::no_coverage);
-    let attrs = vec![cx.attribute(inline), cx.attribute(doc), cx.attribute(no_coverage)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: path_std!(cmp::Eq),
+        skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::assert_receiver_is_total_eq,
@@ -34,13 +31,18 @@ pub fn expand_deriving_eq(
             explicit_self: true,
             nonself_args: vec![],
             ret_ty: Unit,
-            attributes: attrs,
-            unify_fieldless_variants: true,
+            attributes: thin_vec![
+                cx.attr_word(sym::inline, span),
+                cx.attr_nested_word(sym::doc, sym::hidden, span),
+                cx.attr_word(sym::no_coverage, span)
+            ],
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 cs_total_eq_assert(a, b, c)
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     super::inject_impl_of_structural_trait(cx, span, item, path_std!(marker::StructuralEq), push);
@@ -53,7 +55,7 @@ fn cs_total_eq_assert(
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
-    let mut stmts = Vec::new();
+    let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {
         for field in variant.fields() {

@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:proc_macro_derive.rs
+//@run-rustfix
+//@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::use_self)]
 #![allow(dead_code, unreachable_code)]
@@ -605,6 +605,55 @@ mod issue8845 {
         fn use_crate(&self) -> u8 {
             let crate::issue8845::Bar { x, .. } = self;
             *x
+        }
+    }
+}
+
+mod issue6902 {
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    pub enum Foo {
+        Bar = 1,
+    }
+}
+
+#[clippy::msrv = "1.36"]
+fn msrv_1_36() {
+    enum E {
+        A,
+    }
+
+    impl E {
+        fn foo(self) {
+            match self {
+                E::A => {},
+            }
+        }
+    }
+}
+
+#[clippy::msrv = "1.37"]
+fn msrv_1_37() {
+    enum E {
+        A,
+    }
+
+    impl E {
+        fn foo(self) {
+            match self {
+                E::A => {},
+            }
+        }
+    }
+}
+
+mod issue_10371 {
+    struct Val<const V: i32> {}
+
+    impl<const V: i32> From<Val<V>> for i32 {
+        fn from(_: Val<V>) -> Self {
+            todo!()
         }
     }
 }

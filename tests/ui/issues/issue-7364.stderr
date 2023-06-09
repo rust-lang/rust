@@ -1,0 +1,16 @@
+error[E0277]: `RefCell<isize>` cannot be shared between threads safely
+  --> $DIR/issue-7364.rs:4:15
+   |
+LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
+   |               ^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<isize>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+   = note: required for `Unique<RefCell<isize>>` to implement `Sync`
+note: required because it appears within the type `Box<RefCell<isize>>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   = note: shared static variables must have a type that implements `Sync`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -69,3 +69,16 @@ pub fn stable_only_test(_args: TokenStream, input: TokenStream) -> TokenStream {
         TokenStream::from_str("").unwrap()
     }
 }
+
+/// Used to conditionally output the TokenStream for tests that should be run as part of rustfmts
+/// test suite, but should be ignored when running in the rust-lang/rust test suite.
+#[proc_macro_attribute]
+pub fn rustfmt_only_ci_test(_args: TokenStream, input: TokenStream) -> TokenStream {
+    if option_env!("RUSTFMT_CI").is_some() {
+        input
+    } else {
+        let mut token_stream = TokenStream::from_str("#[ignore]").unwrap();
+        token_stream.extend(input);
+        token_stream
+    }
+}

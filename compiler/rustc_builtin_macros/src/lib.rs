@@ -1,7 +1,6 @@
 //! This crate contains implementations of built-in macros and other code generating facilities
 //! injecting code into the crate before it is lowered to HIR.
 
-#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
 #![feature(box_patterns)]
@@ -9,19 +8,25 @@
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![feature(lint_reasons)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![recursion_limit = "256"]
 
 extern crate proc_macro;
 
+#[macro_use]
+extern crate tracing;
+
 use crate::deriving::*;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
+use rustc_fluent_macro::fluent_messages;
 use rustc_span::symbol::sym;
 
+mod alloc_error_handler;
 mod assert;
 mod cfg;
 mod cfg_accessible;
@@ -34,6 +39,7 @@ mod derive;
 mod deriving;
 mod edition_panic;
 mod env;
+mod errors;
 mod format;
 mod format_foreign;
 mod global_allocator;
@@ -41,6 +47,7 @@ mod log_syntax;
 mod source_util;
 mod test;
 mod trace_macros;
+mod type_ascribe;
 mod util;
 
 pub mod asm;
@@ -48,6 +55,8 @@ pub mod cmdline_attrs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
+
+fluent_messages! { "../messages.ftl" }
 
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
@@ -88,13 +97,16 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         unreachable: edition_panic::expand_unreachable,
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
+        type_ascribe: type_ascribe::expand_type_ascribe,
     }
 
     register_attr! {
+        alloc_error_handler: alloc_error_handler::expand,
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
-        derive: derive::Expander,
+        derive: derive::Expander(false),
+        derive_const: derive::Expander(true),
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
@@ -103,6 +115,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     register_derive! {
         Clone: clone::expand_deriving_clone,
         Copy: bounds::expand_deriving_copy,
+        ConstParamTy: bounds::expand_deriving_const_param_ty,
         Debug: debug::expand_deriving_debug,
         Default: default::expand_deriving_default,
         Eq: eq::expand_deriving_eq,

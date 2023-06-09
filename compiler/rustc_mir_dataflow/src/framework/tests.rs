@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
@@ -39,7 +39,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             args: vec![],
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
-            cleanup: None,
+            unwind: mir::UnwindAction::Continue,
             from_hir_call: false,
             fn_span: DUMMY_SP,
         },
@@ -53,7 +53,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             args: vec![],
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
-            cleanup: None,
+            unwind: mir::UnwindAction::Continue,
             from_hir_call: false,
             fn_span: DUMMY_SP,
         },
@@ -100,9 +100,9 @@ impl<D: Direction> MockAnalysis<'_, D> {
 
     fn mock_entry_sets(&self) -> IndexVec<BasicBlock, BitSet<usize>> {
         let empty = self.bottom_value(self.body);
-        let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks());
+        let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks);
 
-        for (bb, _) in self.body.basic_blocks().iter_enumerated() {
+        for (bb, _) in self.body.basic_blocks.iter_enumerated() {
             ret[bb] = self.mock_entry_set(bb);
         }
 
@@ -169,7 +169,7 @@ impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
     const NAME: &'static str = "mock";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks().len())
+        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
@@ -179,7 +179,7 @@ impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
 
 impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -189,7 +189,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     }
 
     fn apply_before_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -199,7 +199,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     }
 
     fn apply_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -209,7 +209,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     }
 
     fn apply_before_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -219,7 +219,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
@@ -266,14 +266,13 @@ fn test_cursor<D: Direction>(analysis: MockAnalysis<'_, D>) {
     let body = analysis.body;
 
     let mut cursor =
-        Results { entry_sets: analysis.mock_entry_sets(), analysis }.into_results_cursor(body);
+        Results { entry_sets: analysis.mock_entry_sets(), analysis, _marker: PhantomData }
+            .into_results_cursor(body);
 
     cursor.allow_unreachable();
 
     let every_target = || {
-        body.basic_blocks()
-            .iter_enumerated()
-            .flat_map(|(bb, _)| SeekTarget::iter_in_block(body, bb))
+        body.basic_blocks.iter_enumerated().flat_map(|(bb, _)| SeekTarget::iter_in_block(body, bb))
     };
 
     let mut seek_to_target = |targ| {

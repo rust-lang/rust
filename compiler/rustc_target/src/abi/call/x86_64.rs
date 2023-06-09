@@ -1,5 +1,5 @@
 // The classification code for the x86_64 ABI is taken from the clay language
-// https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
+// https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
 use crate::abi::call::{ArgAbi, CastTarget, FnAbi, Reg, RegKind};
 use crate::abi::{self, Abi, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
@@ -50,7 +50,7 @@ where
             Abi::Uninhabited => return Ok(()),
 
             Abi::Scalar(scalar) => match scalar.primitive() {
-                abi::Int(..) | abi::Pointer => Class::Int,
+                abi::Int(..) | abi::Pointer(_) => Class::Int,
                 abi::F32 | abi::F64 => Class::Sse,
             },
 
@@ -239,7 +239,7 @@ where
         x86_64_arg_or_ret(&mut fn_abi.ret, false);
     }
 
-    for arg in &mut fn_abi.args {
+    for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }

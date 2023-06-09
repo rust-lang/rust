@@ -2,21 +2,21 @@ error: called `.bytes().nth()` on a `String`
   --> $DIR/bytes_nth.rs:8:13
    |
 LL |     let _ = s.bytes().nth(3);
-   |             ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3)`
+   |             ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3).copied()`
    |
    = note: `-D clippy::bytes-nth` implied by `-D warnings`
 
-error: called `.bytes().nth()` on a `String`
+error: called `.bytes().nth().unwrap()` on a `String`
   --> $DIR/bytes_nth.rs:9:14
    |
-LL |     let _ = &s.bytes().nth(3);
-   |              ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3)`
+LL |     let _ = &s.bytes().nth(3).unwrap();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.as_bytes()[3]`
 
 error: called `.bytes().nth()` on a `str`
   --> $DIR/bytes_nth.rs:10:13
    |
 LL |     let _ = s[..].bytes().nth(3);
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `s[..].as_bytes().get(3)`
+   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `s[..].as_bytes().get(3).copied()`
 
 error: aborting due to 3 previous errors
 

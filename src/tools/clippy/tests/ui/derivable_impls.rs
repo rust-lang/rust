@@ -1,3 +1,7 @@
+//@run-rustfix
+
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 struct FooDefault<'a> {
@@ -237,6 +241,66 @@ pub enum IntOrString {
 impl Default for IntOrString {
     fn default() -> Self {
         IntOrString::Int(0)
+    }
+}
+
+pub enum SimpleEnum {
+    Foo,
+    Bar,
+}
+
+impl Default for SimpleEnum {
+    fn default() -> Self {
+        SimpleEnum::Bar
+    }
+}
+
+pub enum NonExhaustiveEnum {
+    Foo,
+    #[non_exhaustive]
+    Bar,
+}
+
+impl Default for NonExhaustiveEnum {
+    fn default() -> Self {
+        NonExhaustiveEnum::Bar
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/10396
+
+#[derive(Default)]
+struct DefaultType;
+
+struct GenericType<T = DefaultType> {
+    t: T,
+}
+
+impl Default for GenericType {
+    fn default() -> Self {
+        Self { t: Default::default() }
+    }
+}
+
+struct InnerGenericType<T> {
+    t: T,
+}
+
+impl Default for InnerGenericType<DefaultType> {
+    fn default() -> Self {
+        Self { t: Default::default() }
+    }
+}
+
+struct OtherGenericType<T = DefaultType> {
+    inner: InnerGenericType<T>,
+}
+
+impl Default for OtherGenericType {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
     }
 }
 

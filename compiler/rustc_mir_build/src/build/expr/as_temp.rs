@@ -23,6 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr, mutability))
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn as_temp_inner(
         &mut self,
         mut block: BasicBlock,
@@ -30,10 +31,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
-        debug!(
-            "as_temp(block={:?}, temp_lifetime={:?}, expr={:?}, mutability={:?})",
-            block, temp_lifetime, expr, mutability
-        );
         let this = self;
 
         let expr_span = expr.span;
@@ -47,34 +44,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_ty = expr.ty;
         let temp = {
             let mut local_decl = LocalDecl::new(expr_ty, expr_span);
-            if mutability == Mutability::Not {
+            if mutability.is_not() {
                 local_decl = local_decl.immutable();
             }
 
             debug!("creating temp {:?} with block_context: {:?}", local_decl, this.block_context);
-            // Find out whether this temp is being created within the
-            // tail expression of a block whose result is ignored.
-            if let Some(tail_info) = this.block_context.currently_in_block_tail() {
-                local_decl = local_decl.block_tail(tail_info);
-            }
-            match expr.kind {
+            let local_info = match expr.kind {
                 ExprKind::StaticRef { def_id, .. } => {
                     assert!(!this.tcx.is_thread_local_static(def_id));
                     local_decl.internal = true;
-                    local_decl.local_info =
-                        Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: false }));
+                    LocalInfo::StaticRef { def_id, is_thread_local: false }
                 }
                 ExprKind::ThreadLocalRef(def_id) => {
                     assert!(this.tcx.is_thread_local_static(def_id));
                     local_decl.internal = true;
-                    local_decl.local_info =
-                        Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: true }));
+                    LocalInfo::StaticRef { def_id, is_thread_local: true }
                 }
                 ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {
-                    local_decl.local_info = Some(Box::new(LocalInfo::ConstRef { def_id }));
+                    LocalInfo::ConstRef { def_id }
                 }
-                _ => {}
-            }
+                // Find out whether this temp is being created within the
+                // tail expression of a block whose result is ignored.
+                _ if let Some(tail_info) = this.block_context.currently_in_block_tail() => {
+                    LocalInfo::BlockTailTemp(tail_info)
+                }
+                _ => LocalInfo::Boring,
+            };
+            **local_decl.local_info.as_mut().assert_crate_local() = local_info;
             this.local_decls.push(local_decl)
         };
         let temp_place = Place::from(temp);
@@ -83,8 +79,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Don't bother with StorageLive and Dead for these temporaries,
             // they are never assigned.
             ExprKind::Break { .. } | ExprKind::Continue { .. } | ExprKind::Return { .. } => (),
-            ExprKind::Block { body: Block { expr: None, targeted_by_break: false, .. } }
-                if expr_ty.is_never() => {}
+            ExprKind::Block { block }
+                if let Block { expr: None, targeted_by_break: false, .. } = this.thir[block]
+                    && expr_ty.is_never() => {}
             _ => {
                 this.cfg
                     .push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });

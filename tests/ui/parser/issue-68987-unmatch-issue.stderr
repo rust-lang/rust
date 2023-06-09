@@ -1,0 +1,16 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/issue-68987-unmatch-issue.rs:10:1
+   |
+LL |     match o {
+   |             - this delimiter might not be properly closed...
+LL |         Some(_x) =>   // Missing '{'
+LL |             let _ = if true {};
+   |                             -- block is empty, you might have not meant to close it
+LL |         }
+   |         - ...as it matches this but it has different indentation
+...
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to previous error
+

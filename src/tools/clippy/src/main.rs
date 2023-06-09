@@ -2,7 +2,6 @@
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use rustc_tools_util::VersionInfo;
 use std::env;
 use std::path::PathBuf;
 use std::process::{self, Command};
@@ -14,11 +13,12 @@ Usage:
 
 Common options:
     --no-deps                Run Clippy only on the given crate, without linting the dependencies
-    --fix                    Automatically apply lint suggestions. This flag implies `--no-deps`
+    --fix                    Automatically apply lint suggestions. This flag implies `--no-deps` and `--all-targets`
     -h, --help               Print this message
     -V, --version            Print version info and exit
+    --explain LINT           Print the documentation for a given lint
 
-Other options are the same as `cargo check`.
+For the other options see `cargo check --help`.
 
 To allow or deny a lint from the command line you can use `cargo clippy --`
 with:
@@ -28,18 +28,18 @@ with:
     -D --deny OPT       Set lint denied
     -F --forbid OPT     Set lint forbidden
 
-You can use tool lints to allow or deny lints from your code, eg.:
+You can use tool lints to allow or deny lints from your code, e.g.:
 
     #[allow(clippy::needless_lifetimes)]
 "#;
 
 fn show_help() {
-    println!("{}", CARGO_CLIPPY_HELP);
+    println!("{CARGO_CLIPPY_HELP}");
 }
 
 fn show_version() {
     let version_info = rustc_tools_util::get_version_info!();
-    println!("{}", version_info);
+    println!("{version_info}");
 }
 
 pub fn main() {
@@ -51,6 +51,16 @@ pub fn main() {
 
     if env::args().any(|a| a == "--version" || a == "-V") {
         show_version();
+        return;
+    }
+
+    if let Some(pos) = env::args().position(|a| a == "--explain") {
+        if let Some(mut lint) = env::args().nth(pos + 1) {
+            lint.make_ascii_lowercase();
+            clippy_lints::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"));
+        } else {
+            show_help();
+        }
         return;
     }
 
@@ -120,7 +130,7 @@ impl ClippyCmd {
         let clippy_args: String = self
             .clippy_args
             .iter()
-            .map(|arg| format!("{}__CLIPPY_HACKERY__", arg))
+            .map(|arg| format!("{arg}__CLIPPY_HACKERY__"))
             .collect();
 
         // Currently, `CLIPPY_TERMINAL_WIDTH` is used only to format "unknown field" error messages.

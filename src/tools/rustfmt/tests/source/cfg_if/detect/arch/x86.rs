@@ -329,7 +329,7 @@ pub enum Feature {
     tbm,
     /// POPCNT (Population Count)
     popcnt,
-    /// FXSR (Floating-point context fast save and restor)
+    /// FXSR (Floating-point context fast save and restore)
     fxsr,
     /// XSAVE (Save Processor Extended States)
     xsave,

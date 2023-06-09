@@ -1,32 +1,21 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
-
-# Ubuntu 16.04 (this container) ships with make 4, but something in the
-# toolchains we build below chokes on that, so go back to make 3
-COPY scripts/make3.sh /scripts/
-RUN sh /scripts/make3.sh
 
 COPY scripts/crosstool-ng.sh /scripts/
 RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
-USER rustbuild
 WORKDIR /tmp
 
-COPY host-x86_64/dist-powerpc-linux/patches/ /tmp/patches/
-COPY host-x86_64/dist-powerpc-linux/powerpc-linux-gnu.config host-x86_64/dist-powerpc-linux/build-powerpc-toolchain.sh /tmp/
-RUN ./build-powerpc-toolchain.sh
-
-USER root
+COPY scripts/crosstool-ng-build.sh /scripts/
+COPY host-x86_64/dist-powerpc-linux/powerpc-linux-gnu.defconfig /tmp/crosstool.defconfig
+RUN /scripts/crosstool-ng-build.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 ENV PATH=$PATH:/x-tools/powerpc-unknown-linux-gnu/bin
 

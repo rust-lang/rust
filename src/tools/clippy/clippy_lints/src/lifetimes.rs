@@ -1,6 +1,7 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::trait_ref_of_method;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
     walk_fn_decl, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
@@ -8,13 +9,15 @@ use rustc_hir::intravisit::{
 };
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
-    BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, LifetimeParamKind, ParamName, PolyTraitRef,
-    PredicateOrigin, TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    lang_items, BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics,
+    Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
+    PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Ident, Symbol};
 
@@ -31,8 +34,6 @@ declare_clippy_lint! {
     /// ### Known problems
     /// - We bail out if the function has a `where` clause where lifetimes
     /// are mentioned due to potential false positives.
-    /// - Lifetime bounds such as `impl Foo + 'a` and `T: 'a` must be elided with the
-    /// placeholder notation `'_` because the fully elided notation leaves the type bound to `'static`.
     ///
     /// ### Example
     /// ```rust
@@ -90,7 +91,7 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, generics, id) = item.kind {
-            check_fn_inner(cx, sig.decl, Some(id), None, generics, item.span, true);
+            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true);
         } else if let ItemKind::Impl(impl_) = item.kind {
             if !item.span.from_expansion() {
                 report_extra_impl_lifetimes(cx, impl_);
@@ -100,10 +101,10 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, id) = item.kind {
-            let report_extra_lifetimes = trait_ref_of_method(cx, item.def_id).is_none();
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id.def_id).is_none();
             check_fn_inner(
                 cx,
-                sig.decl,
+                sig,
                 Some(id),
                 None,
                 item.generics,
@@ -119,29 +120,21 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 TraitFn::Required(sig) => (None, Some(sig)),
                 TraitFn::Provided(id) => (Some(id), None),
             };
-            check_fn_inner(cx, sig.decl, body, trait_sig, item.generics, item.span, true);
+            check_fn_inner(cx, sig, body, trait_sig, item.generics, item.span, true);
         }
     }
 }
 
-/// The lifetime of a &-reference.
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-enum RefLt {
-    Unnamed,
-    Static,
-    Named(Symbol),
-}
-
 fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
-    decl: &'tcx FnDecl<'_>,
+    sig: &'tcx FnSig<'_>,
     body: Option<BodyId>,
     trait_sig: Option<&[Ident]>,
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
 ) {
-    if span.from_expansion() || has_where_lifetimes(cx, generics) {
+    if in_external_macro(cx.sess(), span) || has_where_lifetimes(cx, generics) {
         return;
     }
 
@@ -149,8 +142,13 @@ fn check_fn_inner<'tcx>(
         .params
         .iter()
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
+
     for typ in types {
-        for pred in generics.bounds_for_param(cx.tcx.hir().local_def_id(typ.hir_id)) {
+        if !typ.span.eq_ctxt(span) {
+            return;
+        }
+
+        for pred in generics.bounds_for_param(typ.def_id) {
             if pred.origin == PredicateOrigin::WhereClause {
                 // has_where_lifetimes checked that this predicate contains no lifetime.
                 continue;
@@ -159,7 +157,7 @@ fn check_fn_inner<'tcx>(
             for bound in pred.bounds {
                 let mut visitor = RefVisitor::new(cx);
                 walk_param_bound(&mut visitor, bound);
-                if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
+                if visitor.lts.iter().any(|lt| matches!(lt.res, LifetimeName::Param(_))) {
                     return;
                 }
                 if let GenericBound::Trait(ref trait_ref, _) = *bound {
@@ -176,7 +174,7 @@ fn check_fn_inner<'tcx>(
                             _ => None,
                         });
                         for bound in lifetimes {
-                            if bound.name != LifetimeName::Static && !bound.is_elided() {
+                            if !bound.is_static() && !bound.is_elided() {
                                 return;
                             }
                         }
@@ -185,18 +183,115 @@ fn check_fn_inner<'tcx>(
             }
         }
     }
-    if could_use_elision(cx, decl, body, trait_sig, generics.params) {
-        span_lint(
+
+    if let Some((elidable_lts, usages)) = could_use_elision(cx, sig.decl, body, trait_sig, generics.params) {
+        if usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)) {
+            return;
+        }
+
+        let lts = elidable_lts
+            .iter()
+            // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
+            // `Node::GenericParam`.
+            .filter_map(|&def_id| cx.tcx.hir().get_by_def_id(def_id).ident())
+            .map(|ident| ident.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        span_lint_and_then(
             cx,
             NEEDLESS_LIFETIMES,
-            span.with_hi(decl.output.span().hi()),
-            "explicit lifetimes given in parameter types where they could be elided \
-             (or replaced with `'_` if needed by type declaration)",
+            span.with_hi(sig.decl.output.span().hi()),
+            &format!("the following explicit lifetimes could be elided: {lts}"),
+            |diag| {
+                if sig.header.is_async() {
+                    // async functions have usages whose spans point at the lifetime declaration which messes up
+                    // suggestions
+                    return;
+                };
+
+                if let Some(suggestions) = elision_suggestions(cx, generics, &elidable_lts, &usages) {
+                    diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);
+                }
+            },
         );
     }
+
     if report_extra_lifetimes {
-        self::report_extra_lifetimes(cx, decl, generics);
+        self::report_extra_lifetimes(cx, sig.decl, generics);
     }
+}
+
+fn elision_suggestions(
+    cx: &LateContext<'_>,
+    generics: &Generics<'_>,
+    elidable_lts: &[LocalDefId],
+    usages: &[Lifetime],
+) -> Option<Vec<(Span, String)>> {
+    let explicit_params = generics
+        .params
+        .iter()
+        .filter(|param| !param.is_elided_lifetime() && !param.is_impl_trait())
+        .collect::<Vec<_>>();
+
+    let mut suggestions = if elidable_lts.len() == explicit_params.len() {
+        // if all the params are elided remove the whole generic block
+        //
+        // fn x<'a>() {}
+        //     ^^^^
+        vec![(generics.span, String::new())]
+    } else {
+        elidable_lts
+            .iter()
+            .map(|&id| {
+                let pos = explicit_params.iter().position(|param| param.def_id == id)?;
+                let param = explicit_params.get(pos)?;
+
+                let span = if let Some(next) = explicit_params.get(pos + 1) {
+                    // fn x<'prev, 'a, 'next>() {}
+                    //             ^^^^
+                    param.span.until(next.span)
+                } else {
+                    // `pos` should be at least 1 here, because the param in position 0 would either have a `next`
+                    // param or would have taken the `elidable_lts.len() == explicit_params.len()` branch.
+                    let prev = explicit_params.get(pos - 1)?;
+
+                    // fn x<'prev, 'a>() {}
+                    //           ^^^^
+                    param.span.with_lo(prev.span.hi())
+                };
+
+                Some((span, String::new()))
+            })
+            .collect::<Option<Vec<_>>>()?
+    };
+
+    suggestions.extend(
+        usages
+            .iter()
+            .filter(|usage| named_lifetime(usage).map_or(false, |id| elidable_lts.contains(&id)))
+            .map(|usage| {
+                match cx.tcx.hir().get_parent(usage.hir_id) {
+                    Node::Ty(Ty {
+                        kind: TyKind::Ref(..), ..
+                    }) => {
+                        // expand `&'a T` to `&'a T`
+                        //          ^^         ^^^
+                        let span = cx
+                            .sess()
+                            .source_map()
+                            .span_extend_while(usage.ident.span, |ch| ch.is_ascii_whitespace())
+                            .unwrap_or(usage.ident.span);
+
+                        (span, String::new())
+                    },
+                    // `T<'a>` and `impl Foo + 'a` should be replaced by `'_`
+                    _ => (usage.ident.span, String::from("'_")),
+                }
+            }),
+    );
+
+    Some(suggestions)
 }
 
 // elision doesn't work for explicit self types, see rust-lang/rust#69064
@@ -218,13 +313,20 @@ fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: 
     }
 }
 
+fn named_lifetime(lt: &Lifetime) -> Option<LocalDefId> {
+    match lt.res {
+        LifetimeName::Param(id) if !lt.is_anonymous() => Some(id),
+        _ => None,
+    }
+}
+
 fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
     trait_sig: Option<&[Ident]>,
     named_generics: &'tcx [GenericParam<'_>],
-) -> bool {
+) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT
@@ -251,23 +353,7 @@ fn could_use_elision<'tcx>(
     }
 
     if input_visitor.abort() || output_visitor.abort() {
-        return false;
-    }
-
-    if allowed_lts
-        .intersection(
-            &input_visitor
-                .nested_elision_site_lts
-                .iter()
-                .chain(output_visitor.nested_elision_site_lts.iter())
-                .cloned()
-                .filter(|v| matches!(v, RefLt::Named(_)))
-                .collect(),
-        )
-        .next()
-        .is_some()
-    {
-        return false;
+        return None;
     }
 
     let input_lts = input_visitor.lts;
@@ -275,7 +361,7 @@ fn could_use_elision<'tcx>(
 
     if let Some(trait_sig) = trait_sig {
         if explicit_self_type(cx, func, trait_sig.first().copied()) {
-            return false;
+            return None;
         }
     }
 
@@ -284,85 +370,105 @@ fn could_use_elision<'tcx>(
 
         let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
         if explicit_self_type(cx, func, first_ident) {
-            return false;
+            return None;
         }
 
         let mut checker = BodyLifetimeChecker {
             lifetimes_used_in_body: false,
         };
-        checker.visit_expr(&body.value);
+        checker.visit_expr(body.value);
         if checker.lifetimes_used_in_body {
-            return false;
+            return None;
         }
     }
 
     // check for lifetimes from higher scopes
     for lt in input_lts.iter().chain(output_lts.iter()) {
-        if !allowed_lts.contains(lt) {
-            return false;
-        }
-    }
-
-    // no input lifetimes? easy case!
-    if input_lts.is_empty() {
-        false
-    } else if output_lts.is_empty() {
-        // no output lifetimes, check distinctness of input lifetimes
-
-        // only unnamed and static, ok
-        let unnamed_and_static = input_lts.iter().all(|lt| *lt == RefLt::Unnamed || *lt == RefLt::Static);
-        if unnamed_and_static {
-            return false;
-        }
-        // we have no output reference, so we only need all distinct lifetimes
-        input_lts.len() == unique_lifetimes(&input_lts)
-    } else {
-        // we have output references, so we need one input reference,
-        // and all output lifetimes must be the same
-        if unique_lifetimes(&output_lts) > 1 {
-            return false;
-        }
-        if input_lts.len() == 1 {
-            match (&input_lts[0], &output_lts[0]) {
-                (&RefLt::Named(n1), &RefLt::Named(n2)) if n1 == n2 => true,
-                (&RefLt::Named(_), &RefLt::Unnamed) => true,
-                _ => false, /* already elided, different named lifetimes
-                             * or something static going on */
-            }
-        } else {
-            false
-        }
-    }
-}
-
-fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
-    let mut allowed_lts = FxHashSet::default();
-    for par in named_generics.iter() {
-        if let GenericParamKind::Lifetime {
-            kind: LifetimeParamKind::Explicit,
-        } = par.kind
+        if let Some(id) = named_lifetime(lt)
+            && !allowed_lts.contains(&id)
         {
-            allowed_lts.insert(RefLt::Named(par.name.ident().name));
+            return None;
         }
     }
-    allowed_lts.insert(RefLt::Unnamed);
-    allowed_lts.insert(RefLt::Static);
-    allowed_lts
+
+    // check for higher-ranked trait bounds
+    if !input_visitor.nested_elision_site_lts.is_empty() || !output_visitor.nested_elision_site_lts.is_empty() {
+        let allowed_lts: FxHashSet<_> = allowed_lts.iter().map(|id| cx.tcx.item_name(id.to_def_id())).collect();
+        for lt in input_visitor.nested_elision_site_lts {
+            if allowed_lts.contains(&lt.ident.name) {
+                return None;
+            }
+        }
+        for lt in output_visitor.nested_elision_site_lts {
+            if allowed_lts.contains(&lt.ident.name) {
+                return None;
+            }
+        }
+    }
+
+    // A lifetime can be newly elided if:
+    // - It occurs only once among the inputs.
+    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the
+    //   outputs (because eliding such an lifetime would create an ambiguity).
+    let elidable_lts = named_lifetime_occurrences(&input_lts)
+        .into_iter()
+        .filter_map(|(def_id, occurrences)| {
+            if occurrences == 1
+                && (input_lts.len() == 1 || !output_lts.iter().any(|lt| named_lifetime(lt) == Some(def_id)))
+            {
+                Some(def_id)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if elidable_lts.is_empty() {
+        return None;
+    }
+
+    let usages = itertools::chain(input_lts, output_lts).collect();
+
+    Some((elidable_lts, usages))
 }
 
-/// Number of unique lifetimes in the given vector.
+fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<LocalDefId> {
+    named_generics
+        .iter()
+        .filter_map(|par| {
+            if let GenericParamKind::Lifetime { .. } = par.kind {
+                Some(par.def_id)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Number of times each named lifetime occurs in the given slice. Returns a vector to preserve
+/// relative order.
 #[must_use]
-fn unique_lifetimes(lts: &[RefLt]) -> usize {
-    lts.iter().collect::<FxHashSet<_>>().len()
+fn named_lifetime_occurrences(lts: &[Lifetime]) -> Vec<(LocalDefId, usize)> {
+    let mut occurrences = Vec::new();
+    for lt in lts {
+        if let Some(curr_def_id) = named_lifetime(lt) {
+            if let Some(pair) = occurrences
+                .iter_mut()
+                .find(|(prev_def_id, _)| *prev_def_id == curr_def_id)
+            {
+                pair.1 += 1;
+            } else {
+                occurrences.push((curr_def_id, 1));
+            }
+        }
+    }
+    occurrences
 }
 
-const CLOSURE_TRAIT_BOUNDS: [LangItem; 3] = [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce];
-
-/// A visitor usable for `rustc_front::visit::walk_ty()`.
 struct RefVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    lts: Vec<RefLt>,
-    nested_elision_site_lts: Vec<RefLt>,
+    lts: Vec<Lifetime>,
+    nested_elision_site_lts: Vec<Lifetime>,
     unelided_trait_object_lifetime: bool,
 }
 
@@ -376,28 +482,11 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
         }
     }
 
-    fn record(&mut self, lifetime: &Option<Lifetime>) {
-        if let Some(ref lt) = *lifetime {
-            if lt.name == LifetimeName::Static {
-                self.lts.push(RefLt::Static);
-            } else if let LifetimeName::Param(_, ParamName::Fresh) = lt.name {
-                // Fresh lifetimes generated should be ignored.
-                self.lts.push(RefLt::Unnamed);
-            } else if lt.is_elided() {
-                self.lts.push(RefLt::Unnamed);
-            } else {
-                self.lts.push(RefLt::Named(lt.name.ident().name));
-            }
-        } else {
-            self.lts.push(RefLt::Unnamed);
-        }
-    }
-
-    fn all_lts(&self) -> Vec<RefLt> {
+    fn all_lts(&self) -> Vec<Lifetime> {
         self.lts
             .iter()
             .chain(self.nested_elision_site_lts.iter())
-            .cloned()
+            .copied()
             .collect::<Vec<_>>()
     }
 
@@ -409,35 +498,32 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        self.record(&Some(*lifetime));
+        self.lts.push(*lifetime);
     }
 
-    fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>, tbm: TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>) {
         let trait_ref = &poly_tref.trait_ref;
-        if CLOSURE_TRAIT_BOUNDS.iter().any(|&item| {
-            self.cx
-                .tcx
-                .lang_items()
-                .require(item)
-                .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
+        if let Some(id) = trait_ref.trait_def_id() && lang_items::FN_TRAITS.iter().any(|&item| {
+            self.cx.tcx.lang_items().get(item) == Some(id)
         }) {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);
             self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
         } else {
-            walk_poly_trait_ref(self, poly_tref, tbm);
+            walk_poly_trait_ref(self, poly_tref);
         }
     }
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
         match ty.kind {
-            TyKind::OpaqueDef(item, bounds) => {
+            TyKind::OpaqueDef(item, bounds, _) => {
                 let map = self.cx.tcx.hir();
                 let item = map.item(item);
+                let len = self.lts.len();
                 walk_item(self, item);
-                walk_ty(self, ty);
+                self.lts.truncate(len);
                 self.lts.extend(bounds.iter().filter_map(|bound| match bound {
-                    GenericArg::Lifetime(l) => Some(RefLt::Named(l.name.ident().name)),
+                    GenericArg::Lifetime(&l) => Some(l),
                     _ => None,
                 }));
             },
@@ -445,20 +531,17 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 let mut sub_visitor = RefVisitor::new(self.cx);
                 sub_visitor.visit_fn_decl(decl);
                 self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
-                return;
             },
-            TyKind::TraitObject(bounds, ref lt, _) => {
+            TyKind::TraitObject(bounds, lt, _) => {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }
                 for bound in bounds {
-                    self.visit_poly_trait_ref(bound, TraitBoundModifier::None);
+                    self.visit_poly_trait_ref(bound);
                 }
-                return;
             },
-            _ => (),
+            _ => walk_ty(self, ty),
         }
-        walk_ty(self, ty);
     }
 }
 
@@ -483,8 +566,12 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                     walk_param_bound(&mut visitor, bound);
                 }
                 // and check that all lifetimes are allowed
-                if visitor.all_lts().iter().any(|it| !allowed_lts.contains(it)) {
-                    return true;
+                for lt in visitor.all_lts() {
+                    if let Some(id) = named_lifetime(&lt)
+                        && !allowed_lts.contains(&id)
+                    {
+                        return true;
+                    }
                 }
             },
             WherePredicate::EqPredicate(ref pred) => {
@@ -525,7 +612,7 @@ where
 
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        self.map.remove(&lifetime.name.ident().name);
+        self.map.remove(&lifetime.ident.name);
     }
 
     fn visit_generic_param(&mut self, param: &'tcx GenericParam<'_>) {
@@ -549,7 +636,9 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
         .params
         .iter()
         .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
+            GenericParamKind::Lifetime {
+                kind: LifetimeParamKind::Explicit,
+            } => Some((par.name.ident().name, par.span)),
             _ => None,
         })
         .collect();
@@ -574,7 +663,9 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
         .params
         .iter()
         .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
+            GenericParamKind::Lifetime {
+                kind: LifetimeParamKind::Explicit,
+            } => Some((par.name.ident().name, par.span)),
             _ => None,
         })
         .collect();
@@ -601,7 +692,7 @@ struct BodyLifetimeChecker {
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if lifetime.name.ident().name != kw::Empty && lifetime.name.ident().name != kw::StaticLifetime {
+        if !lifetime.is_anonymous() && lifetime.ident.name != kw::StaticLifetime {
             self.lifetimes_used_in_body = true;
         }
     }

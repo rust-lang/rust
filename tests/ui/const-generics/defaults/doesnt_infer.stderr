@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `Foo<N>`
+  --> $DIR/doesnt_infer.rs:11:9
+   |
+LL |     let foo = Foo::foo();
+   |         ^^^
+   |
+help: consider giving `foo` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let foo: Foo<N> = Foo::foo();
+   |            ++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

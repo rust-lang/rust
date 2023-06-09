@@ -1,0 +1,20 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/fn-help-with-err-generic-is-not-function.rs:2:13
+   |
+LL | impl Struct<T>
+   |             ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<T> Struct<T>
+   |     +++
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/fn-help-with-err-generic-is-not-function.rs:7:5
+   |
+LL |     T: Copy,
+   |     ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

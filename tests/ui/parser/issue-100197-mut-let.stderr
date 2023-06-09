@@ -1,0 +1,8 @@
+error: invalid variable declaration
+  --> $DIR/issue-100197-mut-let.rs:4:5
+   |
+LL |     mut let _x = 123;
+   |     ^^^^^^^ help: switch the order of `mut` and `let`: `let mut`
+
+error: aborting due to previous error
+

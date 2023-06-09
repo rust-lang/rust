@@ -83,14 +83,14 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     let contents = match fs::read(file_path) {
         Ok(bytes) => bytes,
         Err(e) => {
-            diag.struct_err(&format!("error reading `{}`: {}", file_path.display(), e)).emit();
+            diag.struct_err(format!("error reading `{}`: {}", file_path.display(), e)).emit();
             return Err(LoadStringError::ReadFail);
         }
     };
     match str::from_utf8(&contents) {
         Ok(s) => Ok(s.to_string()),
         Err(_) => {
-            diag.struct_err(&format!("error reading `{}`: not UTF-8", file_path.display())).emit();
+            diag.struct_err(format!("error reading `{}`: not UTF-8", file_path.display())).emit();
             Err(LoadStringError::BadUtf8)
         }
     }

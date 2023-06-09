@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{get_enclosing_block, is_expr_path_def_path, path_to_local, path_to_local_id, paths, SpanlessEq};
+use clippy_utils::{
+    get_enclosing_block, is_integer_literal, is_path_diagnostic_item, path_to_local, path_to_local_id, SpanlessEq,
+};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, QPath, Stmt, StmtKind};
@@ -73,7 +74,7 @@ enum InitializationType<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // Matches initialization on reassignements. For example: `vec = Vec::with_capacity(100)`
+        // Matches initialization on reassignments. For example: `vec = Vec::with_capacity(100)`
         if_chain! {
             if let ExprKind::Assign(left, right, _) = expr.kind;
 
@@ -99,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         if_chain! {
             if let StmtKind::Local(local) = stmt.kind;
-            if let PatKind::Binding(BindingAnnotation::Mutable, local_id, _, None) = local.pat.kind;
+            if let PatKind::Binding(BindingAnnotation::MUT, local_id, _, None) = local.pat.kind;
             if let Some(init) = local.init;
             if let Some(len_arg) = Self::is_vec_with_capacity(cx, init);
 
@@ -167,14 +168,14 @@ impl SlowVectorInit {
         };
     }
 
-    fn emit_lint<'tcx>(cx: &LateContext<'tcx>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &str) {
+    fn emit_lint(cx: &LateContext<'_>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &str) {
         let len_expr = Sugg::hir(cx, vec_alloc.len_expr, "len");
 
         span_lint_and_then(cx, SLOW_VECTOR_INITIALIZATION, slow_fill.span, msg, |diag| {
             diag.span_suggestion(
                 vec_alloc.allocation_expr.span,
                 "consider replace allocation with",
-                format!("vec![0; {}]", len_expr),
+                format!("vec![0; {len_expr}]"),
                 Applicability::Unspecified,
             );
         });
@@ -201,7 +202,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(path, [self_arg, extend_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind;
             if path_to_local_id(self_arg, self.vec_alloc.local_id);
             if path.ident.name == sym!(extend);
             if self.is_repeat_take(extend_arg);
@@ -215,16 +216,15 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Checks if the given expression is resizing a vector with 0
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
         if self.initialization_found
-            && let ExprKind::MethodCall(path, [self_arg, len_arg, fill_arg], _) = expr.kind
+            && let ExprKind::MethodCall(path, self_arg, [len_arg, fill_arg], _) = expr.kind
             && path_to_local_id(self_arg, self.vec_alloc.local_id)
             && path.ident.name == sym!(resize)
             // Check that is filled with 0
-            && let ExprKind::Lit(ref lit) = fill_arg.kind
-            && let LitKind::Int(0, _) = lit.node {
+            && is_integer_literal(fill_arg, 0) {
                 // Check that len expression is equals to `with_capacity` expression
                 if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
                     self.slow_expression = Some(InitializationType::Resize(expr));
-                } else if let ExprKind::MethodCall(path, _, _) = len_arg.kind && path.ident.as_str() == "capacity" {
+                } else if let ExprKind::MethodCall(path, ..) = len_arg.kind && path.ident.as_str() == "capacity" {
                     self.slow_expression = Some(InitializationType::Resize(expr));
                 }
             }
@@ -233,20 +233,15 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::MethodCall(take_path, take_args, _) = expr.kind;
+            if let ExprKind::MethodCall(take_path, recv, [len_arg, ..], _) = expr.kind;
             if take_path.ident.name == sym!(take);
-
             // Check that take is applied to `repeat(0)`
-            if let Some(repeat_expr) = take_args.get(0);
-            if self.is_repeat_zero(repeat_expr);
-
-            if let Some(len_arg) = take_args.get(1);
-
+            if self.is_repeat_zero(recv);
             then {
                 // Check that len expression is equals to `with_capacity` expression
                 if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
                     return true;
-                } else if let ExprKind::MethodCall(path, _, _) = len_arg.kind && path.ident.as_str() == "capacity" {
+                } else if let ExprKind::MethodCall(path, ..) = len_arg.kind && path.ident.as_str() == "capacity" {
                     return true;
                 }
             }
@@ -259,10 +254,8 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn is_repeat_zero(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
             if let ExprKind::Call(fn_expr, [repeat_arg]) = expr.kind;
-            if is_expr_path_def_path(self.cx, fn_expr, &paths::ITER_REPEAT);
-            if let ExprKind::Lit(ref lit) = repeat_arg.kind;
-            if let LitKind::Int(0, _) = lit.node;
-
+            if is_path_diagnostic_item(self.cx, fn_expr, sym::iter_repeat);
+            if is_integer_literal(repeat_arg, 0);
             then {
                 true
             } else {

@@ -1,0 +1,51 @@
+error[E0107]: missing generics for associated type `SuperTrait::SubType`
+  --> $DIR/issue-76535.rs:39:33
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                 ^^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-76535.rs:9:10
+   |
+LL |     type SubType<'a>: SubTrait where Self: 'a;
+   |          ^^^^^^^ --
+help: add missing lifetime argument
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType<'a> = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                        ++++
+
+error[E0038]: the trait `SuperTrait` cannot be made into an object
+  --> $DIR/issue-76535.rs:39:14
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-76535.rs:9:10
+   |
+LL | pub trait SuperTrait {
+   |           ---------- this trait cannot be made into an object...
+LL |     type SubType<'a>: SubTrait where Self: 'a;
+   |          ^^^^^^^ ...because it contains the generic associated type `SubType`
+   = help: consider moving `SubType` to another trait
+
+error[E0038]: the trait `SuperTrait` cannot be made into an object
+  --> $DIR/issue-76535.rs:39:57
+   |
+LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-76535.rs:9:10
+   |
+LL | pub trait SuperTrait {
+   |           ---------- this trait cannot be made into an object...
+LL |     type SubType<'a>: SubTrait where Self: 'a;
+   |          ^^^^^^^ ...because it contains the generic associated type `SubType`
+   = help: consider moving `SubType` to another trait
+   = note: required for the cast from `Box<SuperStruct>` to `Box<dyn SuperTrait<SubType = SubStruct<'_>>>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.

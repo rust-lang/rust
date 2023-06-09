@@ -1,0 +1,16 @@
+[package]
+name = "text-edit"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+itertools = "0.10.5"
+text-size.workspace = true

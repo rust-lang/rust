@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/relate_binop_arg_tys.rs:13:5
+   |
+LL |     Bar::<{ make_generic(N, 1_u8 == 0_u8) }>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ make_generic(N, true == false) }`, found `{ make_generic(N, 1_u8 == 0_u8) }`
+   |
+   = note: expected constant `{ make_generic(N, true == false) }`
+              found constant `{ make_generic(N, 1_u8 == 0_u8) }`
+
+error: unconstrained generic constant
+  --> $DIR/relate_binop_arg_tys.rs:13:11
+   |
+LL |     Bar::<{ make_generic(N, 1_u8 == 0_u8) }>
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { make_generic(N, 1_u8 == 0_u8) }]:`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

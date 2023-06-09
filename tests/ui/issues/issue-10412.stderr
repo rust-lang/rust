@@ -1,0 +1,74 @@
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:1:20
+   |
+LL | trait Serializable<'self, T> {
+   |                    ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:3:24
+   |
+LL |     fn serialize(val: &'self T) -> Vec<u8>;
+   |                        ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:4:37
+   |
+LL |     fn deserialize(repr: &[u8]) -> &'self T;
+   |                                     ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:7:6
+   |
+LL | impl<'self> Serializable<str> for &'self str {
+   |      ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:7:36
+   |
+LL | impl<'self> Serializable<str> for &'self str {
+   |                                    ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:12:24
+   |
+LL |     fn serialize(val: &'self str) -> Vec<u8> {
+   |                        ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:16:37
+   |
+LL |     fn deserialize(repr: &[u8]) -> &'self str {
+   |                                     ^^^^^
+
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/issue-10412.rs:7:13
+   |
+LL | impl<'self> Serializable<str> for &'self str {
+   |             ^^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | impl<'self> Serializable<'_, str> for &'self str {
+   |                          +++
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/issue-10412.rs:7:13
+   |
+LL | impl<'self> Serializable<str> for &'self str {
+   |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by a bound in `Serializable`
+  --> $DIR/issue-10412.rs:1:27
+   |
+LL | trait Serializable<'self, T> {
+   |                           ^ required by this bound in `Serializable`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait Serializable<'self, T: ?Sized> {
+   |                            ++++++++
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0277, E0726.
+For more information about an error, try `rustc --explain E0277`.

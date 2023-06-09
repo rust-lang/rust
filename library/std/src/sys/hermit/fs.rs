@@ -1,23 +1,22 @@
-use crate::ffi::{CStr, CString, OsString};
+use crate::ffi::{CStr, OsString};
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, Error, ErrorKind};
-use crate::io::{IoSlice, IoSliceMut, ReadBuf, SeekFrom};
-use crate::os::unix::ffi::OsStrExt;
+use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
+use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
+use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::cvt;
-use crate::sys::hermit::abi;
-use crate::sys::hermit::abi::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
+use crate::sys::hermit::abi::{
+    self, O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY,
+};
 use crate::sys::hermit::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
+use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 pub use crate::sys_common::fs::{copy, try_exists};
 //pub use crate::sys_common::fs::remove_dir_all;
-
-fn cstr(path: &Path) -> io::Result<CString> {
-    Ok(CString::new(path.as_os_str().as_bytes())?)
-}
 
 #[derive(Debug)]
 pub struct File(FileDesc);
@@ -40,6 +39,9 @@ pub struct OpenOptions {
     // system-specific
     mode: i32,
 }
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {}
 
 pub struct FilePermissions(!);
 
@@ -108,6 +110,11 @@ impl fmt::Debug for FilePermissions {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0
     }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, _t: SystemTime) {}
+    pub fn set_modified(&mut self, _t: SystemTime) {}
 }
 
 impl FileType {
@@ -195,7 +202,7 @@ impl OpenOptions {
             create: false,
             create_new: false,
             // system-specific
-            mode: 0x777,
+            mode: 0o777,
         }
     }
 
@@ -264,8 +271,7 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = cstr(path)?;
-        File::open_c(&path, opts)
+        run_path_with_cstr(path, |path| File::open_c(&path, opts))
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
@@ -280,7 +286,7 @@ impl File {
         }
 
         let fd = unsafe { cvt(abi::open(path.as_ptr(), flags, mode))? };
-        Ok(File(FileDesc::new(fd as i32)))
+        Ok(File(unsafe { FileDesc::from_raw_fd(fd as i32) }))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
@@ -312,8 +318,8 @@ impl File {
         false
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|buf| self.read(buf), buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -344,6 +350,10 @@ impl File {
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
         Err(Error::from_raw_os_error(22))
     }
+
+    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
+        Err(Error::from_raw_os_error(22))
+    }
 }
 
 impl DirBuilder {
@@ -356,14 +366,63 @@ impl DirBuilder {
     }
 }
 
+impl AsInner<FileDesc> for File {
+    #[inline]
+    fn as_inner(&self) -> &FileDesc {
+        &self.0
+    }
+}
+
+impl AsInnerMut<FileDesc> for File {
+    #[inline]
+    fn as_inner_mut(&mut self) -> &mut FileDesc {
+        &mut self.0
+    }
+}
+
+impl IntoInner<FileDesc> for File {
+    fn into_inner(self) -> FileDesc {
+        self.0
+    }
+}
+
+impl FromInner<FileDesc> for File {
+    fn from_inner(file_desc: FileDesc) -> Self {
+        Self(file_desc)
+    }
+}
+
+impl AsFd for File {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+
+impl AsRawFd for File {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for File {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_raw_fd()
+    }
+}
+
+impl FromRawFd for File {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        Self(FromRawFd::from_raw_fd(raw_fd))
+    }
+}
+
 pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
     unsupported()
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
-    let name = cstr(path)?;
-    let _ = unsafe { cvt(abi::unlink(name.as_ptr()))? };
-    Ok(())
+    run_path_with_cstr(path, |path| cvt(unsafe { abi::unlink(path.as_ptr()) }).map(|_| ()))
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {

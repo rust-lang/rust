@@ -7,6 +7,7 @@
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
+use crate::translation::{to_fluent_args, Translate};
 use crate::{
     CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Emitter, FluentBundle,
     LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
@@ -32,16 +33,25 @@ pub struct AnnotateSnippetEmitterWriter {
     macro_backtrace: bool,
 }
 
+impl Translate for AnnotateSnippetEmitterWriter {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+        self.fluent_bundle.as_ref()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &self.fallback_bundle
+    }
+}
+
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
-        let fluent_args = self.to_fluent_args(diag.args());
+        let fluent_args = to_fluent_args(diag.args());
 
         let mut children = diag.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(&diag, &fluent_args);
+        let (mut primary_span, suggestions) = self.primary_span_formatted(diag, &fluent_args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
-            &self.source_map,
             &mut primary_span,
             &mut children,
             &diag.level,
@@ -55,20 +65,12 @@ impl Emitter for AnnotateSnippetEmitterWriter {
             &diag.code,
             &primary_span,
             &children,
-            &suggestions,
+            suggestions,
         );
     }
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         self.source_map.as_ref()
-    }
-
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
     }
 
     fn should_show_explain(&self) -> bool {
@@ -183,7 +185,11 @@ impl AnnotateSnippetEmitterWriter {
                     annotation_type: annotation_type_for_level(*level),
                 }),
                 footer: vec![],
-                opt: FormatOptions { color: true, anonymized_line_numbers: self.ui_testing },
+                opt: FormatOptions {
+                    color: true,
+                    anonymized_line_numbers: self.ui_testing,
+                    margin: None,
+                },
                 slices: annotated_files
                     .iter()
                     .map(|(source, line_index, annotations)| {
@@ -196,7 +202,10 @@ impl AnnotateSnippetEmitterWriter {
                             annotations: annotations
                                 .iter()
                                 .map(|annotation| SourceAnnotation {
-                                    range: (annotation.start_col, annotation.end_col),
+                                    range: (
+                                        annotation.start_col.display,
+                                        annotation.end_col.display,
+                                    ),
                                     label: annotation.label.as_deref().unwrap_or_default(),
                                     annotation_type: annotation_type_for_level(*level),
                                 })

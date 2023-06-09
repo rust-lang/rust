@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `uwu` in module `inner`
+  --> $DIR/diagnostics-reexport.rs:14:12
+   |
+LL |     inner::uwu();
+   |            ^^^ not found in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport.rs:8:20
+   |
+LL |     pub use super::uwu;
+   |                    ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

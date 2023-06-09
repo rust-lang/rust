@@ -1,0 +1,35 @@
+error[E0601]: `main` function not found in crate `issue_109768`
+  --> $DIR/issue-109768.rs:11:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/issue-109768.rs`
+
+error[E0107]: missing generics for struct `Local`
+  --> $DIR/issue-109768.rs:7:9
+   |
+LL | impl<T> Local {
+   |         ^^^^^ expected 2 generic arguments
+   |
+note: struct defined here, with 2 generic parameters: `T`, `U`
+  --> $DIR/issue-109768.rs:5:8
+   |
+LL | struct Local<T, U>(T, U);
+   |        ^^^^^ -  -
+help: add missing generic arguments
+   |
+LL | impl<T> Local<T, U> {
+   |              ++++++
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/issue-109768.rs:8:5
+   |
+LL |     type AssocType3 = T;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0601, E0658.
+For more information about an error, try `rustc --explain E0107`.

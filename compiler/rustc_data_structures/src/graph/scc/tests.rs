@@ -56,7 +56,7 @@ fn test_three_sccs() {
     assert_eq!(sccs.scc(1), 0);
     assert_eq!(sccs.scc(2), 0);
     assert_eq!(sccs.scc(3), 2);
-    assert_eq!(sccs.successors(0), &[]);
+    assert_eq!(sccs.successors(0), &[] as &[usize]);
     assert_eq!(sccs.successors(1), &[0]);
     assert_eq!(sccs.successors(2), &[0]);
 }
@@ -84,7 +84,7 @@ fn test_find_state_2() {
     // 0 -> 1 -> 2 -> 1
     //
     // and at this point detect a cycle. The state of 2 will thus be
-    // `InCycleWith { 1 }`.  We will then visit the 1 -> 3 edge, which
+    // `InCycleWith { 1 }`. We will then visit the 1 -> 3 edge, which
     // will attempt to visit 0 as well, thus going to the state
     // `InCycleWith { 0 }`. Finally, node 1 will complete; the lowest
     // depth of any successor was 3 which had depth 0, and thus it
@@ -113,7 +113,7 @@ fn test_find_state_2() {
     assert_eq!(sccs.scc(2), 0);
     assert_eq!(sccs.scc(3), 0);
     assert_eq!(sccs.scc(4), 0);
-    assert_eq!(sccs.successors(0), &[]);
+    assert_eq!(sccs.successors(0), &[] as &[usize]);
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn test_find_state_3() {
     assert_eq!(sccs.scc(3), 0);
     assert_eq!(sccs.scc(4), 0);
     assert_eq!(sccs.scc(5), 1);
-    assert_eq!(sccs.successors(0), &[]);
+    assert_eq!(sccs.successors(0), &[] as &[usize]);
     assert_eq!(sccs.successors(1), &[0]);
 }
 

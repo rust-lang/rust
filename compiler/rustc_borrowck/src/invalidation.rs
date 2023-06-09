@@ -1,6 +1,8 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{BasicBlock, Body, Location, Place, Rvalue};
+use rustc_middle::mir::{self, BasicBlock, Body, Location, NonDivergingIntrinsic, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
@@ -44,7 +46,7 @@ struct InvalidationGenerator<'cx, 'tcx> {
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
-    dominators: Dominators<BasicBlock>,
+    dominators: &'cx Dominators<BasicBlock>,
     borrow_set: &'cx BorrowSet<'tcx>,
 }
 
@@ -63,23 +65,26 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             StatementKind::FakeRead(box (_, _)) => {
                 // Only relevant for initialized/liveness/safety checks.
             }
-            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-                ref src,
-                ref dst,
-                ref count,
-            }) => {
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
+                self.consume_operand(location, op);
+            }
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
+                src,
+                dst,
+                count,
+            })) => {
                 self.consume_operand(location, src);
                 self.consume_operand(location, dst);
                 self.consume_operand(location, count);
             }
-            StatementKind::Nop
+            // Only relevant for mir typeck
+            StatementKind::AscribeUserType(..)
+            // Only relevant for liveness and unsafeck
+            | StatementKind::PlaceMention(..)
+            // Doesn't have any language semantics
             | StatementKind::Coverage(..)
-            | StatementKind::AscribeUserType(..)
-            | StatementKind::Retag { .. }
-            | StatementKind::StorageLive(..) => {
-                // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
-                // to borrow check.
-            }
+            // Does not actually affect borrowck
+            | StatementKind::StorageLive(..) => {}
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
@@ -88,7 +93,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
+            | StatementKind::Retag { .. }
+            | StatementKind::Deinit(..)
+            | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
         }
@@ -100,32 +109,25 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
         self.check_activations(location);
 
         match &terminator.kind {
-            TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
+            TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place: drop_place, target: _, unwind: _, replace } => {
+                let write_kind =
+                    if *replace { WriteKind::Replace } else { WriteKind::StorageDeadOrDrop };
                 self.access_place(
                     location,
                     *drop_place,
-                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    (AccessDepth::Drop, Write(write_kind)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: ref new_value,
-                target: _,
-                unwind: _,
-            } => {
-                self.mutate_place(location, *drop_place, Deep);
-                self.consume_operand(location, new_value);
-            }
             TerminatorKind::Call {
-                ref func,
-                ref args,
+                func,
+                args,
                 destination,
                 target: _,
-                cleanup: _,
+                unwind: _,
                 from_hir_call: _,
                 fn_span: _,
             } => {
@@ -135,15 +137,15 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 }
                 self.mutate_place(location, *destination, Deep);
             }
-            TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
+            TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(location, cond);
                 use rustc_middle::mir::AssertKind;
-                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { len, index } = &**msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);
                 }
             }
-            TerminatorKind::Yield { ref value, resume, resume_arg, drop: _ } => {
+            TerminatorKind::Yield { value, resume, resume_arg, drop: _ } => {
                 self.consume_operand(location, value);
 
                 // Invalidate all borrows of local places
@@ -169,25 +171,25 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             TerminatorKind::InlineAsm {
                 template: _,
-                ref operands,
+                operands,
                 options: _,
                 line_spans: _,
                 destination: _,
-                cleanup: _,
+                unwind: _,
             } => {
                 for op in operands {
-                    match *op {
-                        InlineAsmOperand::In { reg: _, ref value } => {
+                    match op {
+                        InlineAsmOperand::In { reg: _, value } => {
                             self.consume_operand(location, value);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
-                            if let Some(place) = place {
+                            if let &Some(place) = place {
                                 self.mutate_place(location, place, Shallow(None));
                             }
                         }
-                        InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
+                        InlineAsmOperand::InOut { reg: _, late: _, in_value, out_place } => {
                             self.consume_operand(location, in_value);
-                            if let Some(out_place) = out_place {
+                            if let &Some(out_place) = out_place {
                                 self.mutate_place(location, out_place, Shallow(None));
                             }
                         }
@@ -198,7 +200,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 }
             }
             TerminatorKind::Goto { target: _ }
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {
@@ -246,8 +248,8 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
     // Simulates consumption of an rvalue
     fn consume_rvalue(&mut self, location: Location, rvalue: &Rvalue<'tcx>) {
-        match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, place) => {
+        match rvalue {
+            &Rvalue::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -266,7 +268,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            Rvalue::AddressOf(mutability, place) => {
+            &Rvalue::AddressOf(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,
@@ -282,20 +284,19 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
             Rvalue::ThreadLocalRef(_) => {}
 
-            Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {
-                self.consume_operand(location, operand)
-            }
-            Rvalue::CopyForDeref(ref place) => {
-                let op = &Operand::Copy(*place);
+            Rvalue::Use(operand)
+            | Rvalue::Repeat(operand, _)
+            | Rvalue::UnaryOp(_ /*un_op*/, operand)
+            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
+            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
+
+            &Rvalue::CopyForDeref(place) => {
+                let op = &Operand::Copy(place);
                 self.consume_operand(location, op);
             }
 
-            Rvalue::Len(place) | Rvalue::Discriminant(place) => {
-                let af = match *rvalue {
+            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
+                let af = match rvalue {
                     Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
                     Rvalue::Discriminant(..) => None,
                     _ => unreachable!(),
@@ -308,15 +309,15 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, box (ref operand1, ref operand2))
-            | Rvalue::CheckedBinaryOp(_bin_op, box (ref operand1, ref operand2)) => {
+            Rvalue::BinaryOp(_bin_op, box (operand1, operand2))
+            | Rvalue::CheckedBinaryOp(_bin_op, box (operand1, operand2)) => {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }
 
             Rvalue::NullaryOp(_op, _ty) => {}
 
-            Rvalue::Aggregate(_, ref operands) => {
+            Rvalue::Aggregate(_, operands) => {
                 for operand in operands {
                     self.consume_operand(location, operand);
                 }

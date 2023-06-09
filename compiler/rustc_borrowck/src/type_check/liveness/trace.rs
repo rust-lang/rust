@@ -1,10 +1,11 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
-use rustc_middle::ty::{Ty, TypeVisitable};
-use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
+use rustc_middle::traits::query::DropckOutlivesResult;
+use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use std::rc::Rc;
@@ -56,7 +57,7 @@ pub(super) fn trace<'mir, 'tcx>(
         elements,
         local_use_map,
         move_data,
-        drop_data: FxHashMap::default(),
+        drop_data: FxIndexMap::default(),
     };
 
     let mut results = LivenessResults::new(cx);
@@ -85,7 +86,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     move_data: &'me MoveData<'tcx>,
 
     /// Cache for the results of `dropck_outlives` query.
-    drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
+    drop_data: FxIndexMap<Ty<'tcx>, DropData<'tcx>>,
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
@@ -98,7 +99,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
 
 struct DropData<'tcx> {
     dropck_result: DropckOutlivesResult<'tcx>,
-    region_constraint_data: Option<Rc<QueryRegionConstraints<'tcx>>>,
+    region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
 struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
@@ -185,7 +186,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     fn add_extra_drop_facts(
         &mut self,
         drop_used: Vec<(Local, Location)>,
-        relevant_live_locals: FxHashSet<Local>,
+        relevant_live_locals: FxIndexSet<Local>,
     ) {
         let locations = IntervalSet::new(self.cx.elements.num_points());
 
@@ -328,7 +329,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         debug_assert!(self.drop_live_at.contains(term_point));
 
         // Otherwise, scan backwards through the statements in the
-        // block.  One of them may be either a definition or use
+        // block. One of them may be either a definition or use
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
         debug_assert_eq!(self.cx.body.terminator_loc(term_location.block), term_location,);
@@ -435,8 +436,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         //
         // What we *actually* generate is a store to a temporary
         // for the call (`TMP = call()...`) and then a
-        // `DropAndReplace` to swap that with `X`
-        // (`DropAndReplace` has very particular semantics).
+        // `Drop(X)` followed by `X = TMP`  to swap that with `X`.
     }
 }
 
@@ -477,7 +477,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// points `live_at`.
     fn add_use_live_facts_for(
         &mut self,
-        value: impl TypeVisitable<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
@@ -542,7 +542,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     fn make_all_regions_live(
         elements: &RegionValueElements,
         typeck: &mut TypeChecker<'_, 'tcx>,
-        value: impl TypeVisitable<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
@@ -569,10 +569,15 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     ) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
-        let param_env = typeck.param_env;
-        let TypeOpOutput { output, constraints, .. } =
-            param_env.and(DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx).unwrap();
-
-        DropData { dropck_result: output, region_constraint_data: constraints }
+        match typeck
+            .param_env
+            .and(DropckOutlives::new(dropped_ty))
+            .fully_perform(typeck.infcx, DUMMY_SP)
+        {
+            Ok(TypeOpOutput { output, constraints, .. }) => {
+                DropData { dropck_result: output, region_constraint_data: constraints }
+            }
+            Err(_) => DropData { dropck_result: Default::default(), region_constraint_data: None },
+        }
     }
 }

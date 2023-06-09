@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::HirNode;
-use clippy_utils::source::{indent_of, snippet, snippet_block, snippet_with_applicability};
-use clippy_utils::sugg::Sugg;
+use clippy_utils::source::{indent_of, snippet, snippet_block_with_context, snippet_with_applicability};
 use clippy_utils::{get_parent_expr, is_refutable, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind};
+use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -24,29 +23,30 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     let matched_vars = ex.span;
     let bind_names = arms[0].pat.span;
     let match_body = peel_blocks(arms[0].body);
-    let mut snippet_body = if match_body.span.from_expansion() {
-        Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
-    } else {
-        snippet_block(cx, match_body.span, "..", Some(expr.span)).to_string()
-    };
+    let mut app = Applicability::MaybeIncorrect;
+    let mut snippet_body = snippet_block_with_context(
+        cx,
+        match_body.span,
+        arms[0].span.ctxt(),
+        "..",
+        Some(expr.span),
+        &mut app,
+    )
+    .0
+    .to_string();
 
     // Do we need to add ';' to suggestion ?
-    match match_body.kind {
-        ExprKind::Block(block, _) => {
-            // macro + expr_ty(body) == ()
-            if block.span.from_expansion() && cx.typeck_results().expr_ty(match_body).is_unit() {
-                snippet_body.push(';');
-            }
-        },
-        _ => {
-            // expr_ty(body) == ()
-            if cx.typeck_results().expr_ty(match_body).is_unit() {
-                snippet_body.push(';');
-            }
-        },
+    if let Node::Stmt(stmt) = cx.tcx.hir().get_parent(expr.hir_id)
+        && let StmtKind::Expr(_) = stmt.kind
+        && match match_body.kind {
+            // We don't need to add a ; to blocks, unless that block is from a macro expansion
+            ExprKind::Block(block, _) => block.span.from_expansion(),
+            _ => true,
+        }
+    {
+        snippet_body.push(';');
     }
 
-    let mut applicability = Applicability::MaybeIncorrect;
     match arms[0].pat.kind {
         PatKind::Binding(..) | PatKind::Tuple(_, _) | PatKind::Struct(..) => {
             let (target_span, sugg) = match opt_parent_assign_span(cx, ex) {
@@ -56,8 +56,9 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         (ex, expr),
                         (bind_names, matched_vars),
                         &snippet_body,
-                        &mut applicability,
+                        &mut app,
                         Some(span),
+                        true,
                     );
 
                     span_lint_and_sugg(
@@ -67,7 +68,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         "this assignment could be simplified",
                         "consider removing the `match` expression",
                         sugg,
-                        applicability,
+                        app,
                     );
 
                     return;
@@ -75,12 +76,11 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                 Some(AssignmentExpr::Local { span, pat_span }) => (
                     span,
                     format!(
-                        "let {} = {};\n{}let {} = {};",
-                        snippet_with_applicability(cx, bind_names, "..", &mut applicability),
-                        snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
+                        "let {} = {};\n{}let {} = {snippet_body};",
+                        snippet_with_applicability(cx, bind_names, "..", &mut app),
+                        snippet_with_applicability(cx, matched_vars, "..", &mut app),
                         " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
-                        snippet_with_applicability(cx, pat_span, "..", &mut applicability),
-                        snippet_body
+                        snippet_with_applicability(cx, pat_span, "..", &mut app)
                     ),
                 ),
                 None => {
@@ -89,8 +89,9 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         (ex, expr),
                         (bind_names, matched_vars),
                         &snippet_body,
-                        &mut applicability,
+                        &mut app,
                         None,
+                        true,
                     );
                     (expr.span, sugg)
                 },
@@ -103,17 +104,19 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                 "this match could be written as a `let` statement",
                 "consider using a `let` statement",
                 sugg,
-                applicability,
+                app,
             );
         },
         PatKind::Wild => {
             if ex.can_have_side_effects() {
-                let indent = " ".repeat(indent_of(cx, expr.span).unwrap_or(0));
-                let sugg = format!(
-                    "{};\n{}{}",
-                    snippet_with_applicability(cx, ex.span, "..", &mut applicability),
-                    indent,
-                    snippet_body
+                let sugg = sugg_with_curlies(
+                    cx,
+                    (ex, expr),
+                    (bind_names, matched_vars),
+                    &snippet_body,
+                    &mut app,
+                    None,
+                    false,
                 );
 
                 span_lint_and_sugg(
@@ -123,7 +126,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                     "this match could be replaced by its scrutinee and body",
                     "consider using the scrutinee and body instead",
                     sugg,
-                    applicability,
+                    app,
                 );
             } else {
                 span_lint_and_sugg(
@@ -145,8 +148,8 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
 fn opt_parent_assign_span<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<AssignmentExpr> {
     let map = &cx.tcx.hir();
 
-    if let Some(Node::Expr(parent_arm_expr)) = map.find(map.get_parent_node(ex.hir_id)) {
-        return match map.find(map.get_parent_node(parent_arm_expr.hir_id)) {
+    if let Some(Node::Expr(parent_arm_expr)) = map.find_parent(ex.hir_id) {
+        return match map.find_parent(parent_arm_expr.hir_id) {
             Some(Node::Local(parent_let_expr)) => Some(AssignmentExpr::Local {
                 span: parent_let_expr.span,
                 pat_span: parent_let_expr.pat.span(),
@@ -172,28 +175,28 @@ fn sugg_with_curlies<'a>(
     snippet_body: &str,
     applicability: &mut Applicability,
     assignment: Option<Span>,
+    needs_var_binding: bool,
 ) -> String {
     let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
 
     let (mut cbrace_start, mut cbrace_end) = (String::new(), String::new());
     if let Some(parent_expr) = get_parent_expr(cx, match_expr) {
         if let ExprKind::Closure { .. } = parent_expr.kind {
-            cbrace_end = format!("\n{}}}", indent);
+            cbrace_end = format!("\n{indent}}}");
             // Fix body indent due to the closure
             indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
-            cbrace_start = format!("{{\n{}", indent);
+            cbrace_start = format!("{{\n{indent}");
         }
     }
 
     // If the parent is already an arm, and the body is another match statement,
     // we need curly braces around suggestion
-    let parent_node_id = cx.tcx.hir().get_parent_node(match_expr.hir_id);
-    if let Node::Arm(arm) = &cx.tcx.hir().get(parent_node_id) {
+    if let Node::Arm(arm) = &cx.tcx.hir().get_parent(match_expr.hir_id) {
         if let ExprKind::Match(..) = arm.body.kind {
-            cbrace_end = format!("\n{}}}", indent);
+            cbrace_end = format!("\n{indent}}}");
             // Fix body indent due to the match
             indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
-            cbrace_start = format!("{{\n{}", indent);
+            cbrace_start = format!("{{\n{indent}");
         }
     }
 
@@ -203,14 +206,15 @@ fn sugg_with_curlies<'a>(
         s
     });
 
-    format!(
-        "{}let {} = {};\n{}{}{}{}",
-        cbrace_start,
-        snippet_with_applicability(cx, bind_names, "..", applicability),
-        snippet_with_applicability(cx, matched_vars, "..", applicability),
-        indent,
-        assignment_str,
-        snippet_body,
-        cbrace_end
-    )
+    let scrutinee = if needs_var_binding {
+        format!(
+            "let {} = {}",
+            snippet_with_applicability(cx, bind_names, "..", applicability),
+            snippet_with_applicability(cx, matched_vars, "..", applicability)
+        )
+    } else {
+        snippet_with_applicability(cx, matched_vars, "..", applicability).to_string()
+    };
+
+    format!("{cbrace_start}{scrutinee};\n{indent}{assignment_str}{snippet_body}{cbrace_end}")
 }

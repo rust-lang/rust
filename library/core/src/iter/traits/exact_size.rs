@@ -21,6 +21,16 @@
 ///
 /// [`len`]: ExactSizeIterator::len
 ///
+/// # When *shouldn't* an adapter be `ExactSizeIterator`?
+///
+/// If an adapter makes an iterator *longer*, then it's usually incorrect for
+/// that adapter to implement `ExactSizeIterator`.  The inner exact-sized
+/// iterator might already be `usize::MAX`-long, and thus the length of the
+/// longer adapted iterator would no longer be exactly representable in `usize`.
+///
+/// This is why [`Chain<A, B>`](crate::iter::Chain) isn't `ExactSizeIterator`,
+/// even when `A` and `B` are both `ExactSizeIterator`.
+///
 /// # Examples
 ///
 /// Basic usage:

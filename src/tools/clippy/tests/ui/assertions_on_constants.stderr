@@ -4,8 +4,8 @@ error: `assert!(true)` will be optimized out by the compiler
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
    = help: remove it
+   = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
 
 error: `assert!(false)` should probably be replaced
   --> $DIR/assertions_on_constants.rs:11:5

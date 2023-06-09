@@ -7,21 +7,20 @@ use crate::fmt;
 use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
-use crate::sys_common::mutex::StaticMutex;
+use crate::sync::{Mutex, PoisonError};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
-// SAFETY: Don't attempt to lock this reentrantly.
-pub unsafe fn lock() -> impl Drop {
-    static LOCK: StaticMutex = StaticMutex::new();
-    LOCK.lock()
+pub fn lock() -> impl Drop {
+    static LOCK: Mutex<()> = Mutex::new(());
+    LOCK.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Prints the current backtrace.
 pub fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     // There are issues currently linking libbacktrace into tests, and in
-    // general during libstd's own unit tests we're not testing this path. In
+    // general during std's own unit tests we're not testing this path. In
     // test mode immediately return here to optimize away any references to the
     // libbacktrace symbols
     if cfg!(test) {
@@ -69,13 +68,17 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
         }
 
         let mut hit = false;
-        let mut stop = false;
         backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
             hit = true;
+
+            // Any frames between `__rust_begin_short_backtrace` and `__rust_end_short_backtrace`
+            // are omitted from the backtrace in short mode, `__rust_end_short_backtrace` will be
+            // called before the panic hook, so we won't ignore any frames if there is no
+            // invoke of `__rust_begin_short_backtrace`.
             if print_fmt == PrintFmt::Short {
                 if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
                     if start && sym.contains("__rust_begin_short_backtrace") {
-                        stop = true;
+                        start = false;
                         return;
                     }
                     if sym.contains("__rust_end_short_backtrace") {
@@ -89,7 +92,17 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                 res = bt_fmt.frame().symbol(frame, symbol);
             }
         });
-        if stop {
+        #[cfg(target_os = "nto")]
+        if libc::__my_thread_exit as *mut libc::c_void == frame.ip() {
+            if !hit && start {
+                use crate::backtrace_rs::SymbolName;
+                res = bt_fmt.frame().print_raw(
+                    frame.ip(),
+                    Some(SymbolName::new("__my_thread_exit".as_bytes())),
+                    None,
+                    None,
+                );
+            }
             return false;
         }
         if !hit && start {
@@ -112,7 +125,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
@@ -128,7 +141,7 @@ where
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
 pub fn __rust_end_short_backtrace<F, T>(f: F) -> T

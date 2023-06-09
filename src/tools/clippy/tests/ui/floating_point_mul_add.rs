@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![feature(const_fn_floating_point_arithmetic)]
 #![warn(clippy::suboptimal_flops)]
 
@@ -19,7 +19,9 @@ fn main() {
     let d: f64 = 0.0001;
 
     let _ = a * b + c;
+    let _ = a * b - c;
     let _ = c + a * b;
+    let _ = c - a * b;
     let _ = a + 2.0 * 4.0;
     let _ = a + 2. * 4.;
 

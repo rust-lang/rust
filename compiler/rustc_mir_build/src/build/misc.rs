@@ -5,7 +5,7 @@ use crate::build::Builder;
 
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -34,8 +34,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Operand::Constant(constant)
     }
 
-    // Returns a zero literal operand for the appropriate type, works for
-    // bool, char and integers.
+    /// Returns a zero literal operand for the appropriate type, works for
+    /// bool, char and integers.
     pub(crate) fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = ConstantKind::from_bits(self.tcx, 0, ty::ParamEnv::empty().and(ty));
 
@@ -66,7 +66,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.tcx;
         let ty = place.ty(&self.local_decls, tcx).ty;
-        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, DUMMY_SP) {
+        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty) {
             Operand::Move(place)
         } else {
             Operand::Copy(place)

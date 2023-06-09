@@ -1,4 +1,7 @@
 use core::alloc::{Allocator, Layout};
+use core::assert_eq;
+use core::iter::IntoIterator;
+use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 use std::alloc::System;
 use std::assert_matches::assert_matches;
@@ -6,7 +9,9 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
 use std::fmt::Debug;
+use std::hint;
 use std::iter::InPlaceIterable;
+use std::mem;
 use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -293,6 +298,22 @@ fn test_retain() {
 }
 
 #[test]
+fn test_retain_predicate_order() {
+    for to_keep in [true, false] {
+        let mut number_of_executions = 0;
+        let mut vec = vec![1, 2, 3, 4];
+        let mut next_expected = 1;
+        vec.retain(|&x| {
+            assert_eq!(next_expected, x);
+            next_expected += 1;
+            number_of_executions += 1;
+            to_keep
+        });
+        assert_eq!(number_of_executions, 4);
+    }
+}
+
+#[test]
 fn test_retain_pred_panic_with_hole() {
     let v = (0..5).map(Rc::new).collect::<Vec<_>>();
     catch_unwind(AssertUnwindSafe(|| {
@@ -351,6 +372,35 @@ fn test_retain_drop_panic() {
     // Other elements are dropped when `drop` of one element panicked.
     // The panicked wrapper also has its Rc dropped.
     assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_maybeuninits() {
+    // This test aimed to be run under miri.
+    use core::mem::MaybeUninit;
+    let mut vec: Vec<_> = [1i32, 2, 3, 4].map(|v| MaybeUninit::new(vec![v])).into();
+    vec.retain(|x| {
+        // SAFETY: Retain must visit every element of Vec in original order and exactly once.
+        // Our values is initialized at creation of Vec.
+        let v = unsafe { x.assume_init_ref()[0] };
+        if v & 1 == 0 {
+            return true;
+        }
+        // SAFETY: Value is initialized.
+        // Value wouldn't be dropped by `Vec::retain`
+        // because `MaybeUninit` doesn't drop content.
+        drop(unsafe { x.assume_init_read() });
+        false
+    });
+    let vec: Vec<i32> = vec
+        .into_iter()
+        .map(|x| unsafe {
+            // SAFETY: All values dropped in retain predicate must be removed by `Vec::retain`.
+            // Remaining values are initialized.
+            x.assume_init()[0]
+        })
+        .collect();
+    assert_eq!(vec, [2, 4]);
 }
 
 #[test]
@@ -794,6 +844,36 @@ fn test_drain_leak() {
 }
 
 #[test]
+fn test_drain_keep_rest() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain(1..6);
+    assert_eq!(drain.next(), Some(1));
+    assert_eq!(drain.next_back(), Some(5));
+    assert_eq!(drain.next(), Some(2));
+
+    drain.keep_rest();
+    assert_eq!(v, &[0, 3, 4, 6]);
+}
+
+#[test]
+fn test_drain_keep_rest_all() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    v.drain(1..6).keep_rest();
+    assert_eq!(v, &[0, 1, 2, 3, 4, 5, 6]);
+}
+
+#[test]
+fn test_drain_keep_rest_none() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain(1..6);
+
+    drain.by_ref().for_each(drop);
+
+    drain.keep_rest();
+    assert_eq!(v, &[0, 6]);
+}
+
+#[test]
 fn test_splice() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
@@ -931,6 +1011,15 @@ fn test_into_iter_count() {
 }
 
 #[test]
+fn test_into_iter_next_chunk() {
+    let mut iter = b"lorem".to_vec().into_iter();
+
+    assert_eq!(iter.next_chunk().unwrap(), [b'l', b'o']); // N is inferred as 2
+    assert_eq!(iter.next_chunk().unwrap(), [b'r', b'e', b'm']); // N is inferred as 3
+    assert_eq!(iter.next_chunk::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+}
+
+#[test]
 fn test_into_iter_clone() {
     fn iter_equal<I: Iterator<Item = i32>>(it: I, slice: &[i32]) {
         let v: Vec<i32> = it.collect();
@@ -975,21 +1064,21 @@ fn test_into_iter_leak() {
 
 #[test]
 fn test_into_iter_advance_by() {
-    let mut i = [1, 2, 3, 4, 5].into_iter();
-    i.advance_by(0).unwrap();
-    i.advance_back_by(0).unwrap();
+    let mut i = vec![1, 2, 3, 4, 5].into_iter();
+    assert_eq!(i.advance_by(0), Ok(()));
+    assert_eq!(i.advance_back_by(0), Ok(()));
     assert_eq!(i.as_slice(), [1, 2, 3, 4, 5]);
 
-    i.advance_by(1).unwrap();
-    i.advance_back_by(1).unwrap();
+    assert_eq!(i.advance_by(1), Ok(()));
+    assert_eq!(i.advance_back_by(1), Ok(()));
     assert_eq!(i.as_slice(), [2, 3, 4]);
 
-    assert_eq!(i.advance_back_by(usize::MAX), Err(3));
+    assert_eq!(i.advance_back_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX - 3).unwrap()));
 
-    assert_eq!(i.advance_by(usize::MAX), Err(0));
+    assert_eq!(i.advance_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX).unwrap()));
 
-    i.advance_by(0).unwrap();
-    i.advance_back_by(0).unwrap();
+    assert_eq!(i.advance_by(0), Ok(()));
+    assert_eq!(i.advance_back_by(0), Ok(()));
 
     assert_eq!(i.len(), 0);
 }
@@ -1004,7 +1093,8 @@ fn test_into_iter_drop_allocator() {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            System.deallocate(ptr, layout)
+            // Safety: Invariants passed to caller.
+            unsafe { System.deallocate(ptr, layout) }
         }
     }
 
@@ -1017,6 +1107,35 @@ fn test_into_iter_drop_allocator() {
     let allocator = ReferenceCountedAllocator(DropCounter { count: &mut drop_count });
     let _ = Vec::<u32, _>::new_in(allocator).into_iter();
     assert_eq!(drop_count, 2);
+}
+
+#[test]
+fn test_into_iter_zst() {
+    #[derive(Debug, Clone)]
+    struct AlignedZstWithDrop([u64; 0]);
+    impl Drop for AlignedZstWithDrop {
+        fn drop(&mut self) {
+            let addr = self as *mut _ as usize;
+            assert!(hint::black_box(addr) % mem::align_of::<u64>() == 0);
+        }
+    }
+
+    const C: AlignedZstWithDrop = AlignedZstWithDrop([0u64; 0]);
+
+    for _ in vec![C].into_iter() {}
+    for _ in vec![C; 5].into_iter().rev() {}
+
+    let mut it = vec![C, C].into_iter();
+    assert_eq!(it.advance_by(1), Ok(()));
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk::<4>().unwrap_err();
+    drop(it);
 }
 
 #[test]
@@ -1100,48 +1219,53 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
 }
 
 #[test]
-fn test_from_iter_specialization_panic_during_drop_leaks() {
-    static mut DROP_COUNTER: usize = 0;
+fn test_from_iter_specialization_panic_during_drop_doesnt_leak() {
+    static mut DROP_COUNTER_OLD: [usize; 5] = [0; 5];
+    static mut DROP_COUNTER_NEW: [usize; 2] = [0; 2];
 
     #[derive(Debug)]
-    enum Droppable {
-        DroppedTwice(Box<i32>),
-        PanicOnDrop,
-    }
+    struct Old(usize);
 
-    impl Drop for Droppable {
+    impl Drop for Old {
         fn drop(&mut self) {
-            match self {
-                Droppable::DroppedTwice(_) => {
-                    unsafe {
-                        DROP_COUNTER += 1;
-                    }
-                    println!("Dropping!")
-                }
-                Droppable::PanicOnDrop => {
-                    if !std::thread::panicking() {
-                        panic!();
-                    }
-                }
+            unsafe {
+                DROP_COUNTER_OLD[self.0] += 1;
             }
+
+            if self.0 == 3 {
+                panic!();
+            }
+
+            println!("Dropped Old: {}", self.0);
         }
     }
 
-    let mut to_free: *mut Droppable = core::ptr::null_mut();
-    let mut cap = 0;
+    #[derive(Debug)]
+    struct New(usize);
+
+    impl Drop for New {
+        fn drop(&mut self) {
+            unsafe {
+                DROP_COUNTER_NEW[self.0] += 1;
+            }
+
+            println!("Dropped New: {}", self.0);
+        }
+    }
 
     let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        let mut v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
-        to_free = v.as_mut_ptr();
-        cap = v.capacity();
-        let _ = v.into_iter().take(0).collect::<Vec<_>>();
+        let v = vec![Old(0), Old(1), Old(2), Old(3), Old(4)];
+        let _ = v.into_iter().map(|x| New(x.0)).take(2).collect::<Vec<_>>();
     }));
 
-    assert_eq!(unsafe { DROP_COUNTER }, 1);
-    // clean up the leak to keep miri happy
-    unsafe {
-        drop(Vec::from_raw_parts(to_free, 0, cap));
-    }
+    assert_eq!(unsafe { DROP_COUNTER_OLD[0] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[1] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[2] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[3] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[4] }, 1);
+
+    assert_eq!(unsafe { DROP_COUNTER_NEW[0] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_NEW[1] }, 1);
 }
 
 // regression test for issue #85322. Peekable previously implemented InPlaceIterable,
@@ -1479,6 +1603,35 @@ fn drain_filter_unconsumed() {
 }
 
 #[test]
+fn test_drain_filter_keep_rest() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain_filter(|&mut x| x % 2 == 0);
+    assert_eq!(drain.next(), Some(0));
+    assert_eq!(drain.next(), Some(2));
+
+    drain.keep_rest();
+    assert_eq!(v, &[1, 3, 4, 5, 6]);
+}
+
+#[test]
+fn test_drain_filter_keep_rest_all() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    v.drain_filter(|_| true).keep_rest();
+    assert_eq!(v, &[0, 1, 2, 3, 4, 5, 6]);
+}
+
+#[test]
+fn test_drain_filter_keep_rest_none() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain_filter(|_| true);
+
+    drain.by_ref().for_each(drop);
+
+    drain.keep_rest();
+    assert_eq!(v, &[]);
+}
+
+#[test]
 fn test_reserve_exact() {
     // This is all the same as test_reserve
 
@@ -1698,7 +1851,7 @@ fn test_stable_pointers() {
     }
 
     // Test that, if we reserved enough space, adding and removing elements does not
-    // invalidate references into the vector (such as `v0`).  This test also
+    // invalidate references into the vector (such as `v0`). This test also
     // runs in Miri, which would detect such problems.
     // Note that this test does *not* constitute a stable guarantee that all these functions do not
     // reallocate! Only what is explicitly documented at
@@ -2317,7 +2470,7 @@ fn test_vec_dedup_panicking() {
 
 // Regression test for issue #82533
 #[test]
-fn test_extend_from_within_panicing_clone() {
+fn test_extend_from_within_panicking_clone() {
     struct Panic<'dc> {
         drop_count: &'dc AtomicU32,
         aaaaa: bool,

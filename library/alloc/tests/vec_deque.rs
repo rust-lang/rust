@@ -1,3 +1,4 @@
+use core::num::NonZeroUsize;
 use std::assert_matches::assert_matches;
 use std::collections::TryReserveErrorKind::*;
 use std::collections::{vec_deque::Drain, VecDeque};
@@ -426,6 +427,28 @@ fn test_into_iter() {
         assert_eq!(it.next(), Some(7));
         assert_eq!(it.size_hint(), (5, Some(5)));
     }
+
+    // advance_by
+    {
+        let mut d = VecDeque::new();
+        for i in 0..=4 {
+            d.push_back(i);
+        }
+        for i in 6..=8 {
+            d.push_front(i);
+        }
+
+        let mut it = d.into_iter();
+        assert_eq!(it.advance_by(1), Ok(()));
+        assert_eq!(it.next(), Some(7));
+        assert_eq!(it.advance_back_by(1), Ok(()));
+        assert_eq!(it.next_back(), Some(3));
+
+        let mut it = VecDeque::from(vec![1, 2, 3, 4, 5]).into_iter();
+        assert_eq!(it.advance_by(10), Err(NonZeroUsize::new(5).unwrap()));
+        let mut it = VecDeque::from(vec![1, 2, 3, 4, 5]).into_iter();
+        assert_eq!(it.advance_back_by(10), Err(NonZeroUsize::new(5).unwrap()));
+    }
 }
 
 #[test]
@@ -465,7 +488,6 @@ fn test_drain() {
         for i in 6..9 {
             d.push_front(i);
         }
-
         assert_eq!(d.drain(..).collect::<Vec<_>>(), [8, 7, 6, 0, 1, 2, 3, 4]);
         assert!(d.is_empty());
     }
@@ -1047,6 +1069,20 @@ fn test_append_double_drop() {
 }
 
 #[test]
+#[should_panic]
+fn test_append_zst_capacity_overflow() {
+    let mut v = Vec::with_capacity(usize::MAX);
+    // note: using resize instead of set_len here would
+    //       be *extremely* slow in unoptimized builds.
+    // SAFETY: `v` has capacity `usize::MAX`, and no initialization
+    //         is needed for empty tuples.
+    unsafe { v.set_len(usize::MAX) };
+    let mut v = VecDeque::from(v);
+    let mut w = vec![()].into();
+    v.append(&mut w);
+}
+
+#[test]
 fn test_retain() {
     let mut buf = VecDeque::new();
     buf.extend(1..5);
@@ -1142,7 +1178,7 @@ fn test_reserve_exact_2() {
     v.push_back(16);
 
     v.reserve_exact(16);
-    assert!(v.capacity() >= 48)
+    assert!(v.capacity() >= 33)
 }
 
 #[test]
@@ -1157,7 +1193,7 @@ fn test_try_reserve() {
     // * overflow may trigger when adding `len` to `cap` (in number of elements)
     // * overflow may trigger when multiplying `new_cap` by size_of::<T> (to get bytes)
 
-    const MAX_CAP: usize = (isize::MAX as usize + 1) / 2 - 1;
+    const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
     {
@@ -1248,7 +1284,7 @@ fn test_try_reserve_exact() {
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.
 
-    const MAX_CAP: usize = (isize::MAX as usize + 1) / 2 - 1;
+    const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
     {
@@ -1391,7 +1427,8 @@ fn test_rotate_nop() {
 
 #[test]
 fn test_rotate_left_parts() {
-    let mut v: VecDeque<_> = (1..=7).collect();
+    let mut v: VecDeque<_> = VecDeque::with_capacity(8);
+    v.extend(1..=7);
     v.rotate_left(2);
     assert_eq!(v.as_slices(), (&[3, 4, 5, 6, 7, 1][..], &[2][..]));
     v.rotate_left(2);
@@ -1410,7 +1447,8 @@ fn test_rotate_left_parts() {
 
 #[test]
 fn test_rotate_right_parts() {
-    let mut v: VecDeque<_> = (1..=7).collect();
+    let mut v: VecDeque<_> = VecDeque::with_capacity(8);
+    v.extend(1..=7);
     v.rotate_right(2);
     assert_eq!(v.as_slices(), (&[6, 7][..], &[1, 2, 3, 4, 5][..]));
     v.rotate_right(2);
@@ -1726,4 +1764,48 @@ fn test_from_zero_sized_vec() {
     let v = vec![(); 100];
     let queue = VecDeque::from(v);
     assert_eq!(queue.len(), 100);
+}
+
+#[test]
+fn test_resize_keeps_reserved_space_from_item() {
+    let v = Vec::<i32>::with_capacity(1234);
+    let mut d = VecDeque::new();
+    d.resize(1, v);
+    assert_eq!(d[0].capacity(), 1234);
+}
+
+#[test]
+fn test_collect_from_into_iter_keeps_allocation() {
+    let mut v = Vec::with_capacity(13);
+    v.extend(0..7);
+    check(v.as_ptr(), v.last().unwrap(), v.into_iter());
+
+    let mut v = VecDeque::with_capacity(13);
+    v.extend(0..7);
+    check(&v[0], &v[v.len() - 1], v.into_iter());
+
+    fn check(buf: *const i32, last: *const i32, mut it: impl Iterator<Item = i32>) {
+        assert_eq!(it.next(), Some(0));
+        assert_eq!(it.next(), Some(1));
+
+        let mut v: VecDeque<i32> = it.collect();
+        assert_eq!(v.capacity(), 13);
+        assert_eq!(v.as_slices().0.as_ptr(), buf.wrapping_add(2));
+        assert_eq!(&v[v.len() - 1] as *const _, last);
+
+        assert_eq!(v.as_slices(), ([2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+        v.push_front(7);
+        assert_eq!(v.as_slices(), ([7, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+        v.push_front(8);
+        assert_eq!(v.as_slices(), ([8, 7, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+
+        // Now that we've adding thing in place of the two that we removed from
+        // the front of the iterator, we're back to matching the buffer pointer.
+        assert_eq!(v.as_slices().0.as_ptr(), buf);
+        assert_eq!(&v[v.len() - 1] as *const _, last);
+
+        v.push_front(9);
+        assert_eq!(v.as_slices(), ([9].as_slice(), [8, 7, 2, 3, 4, 5, 6].as_slice()));
+        assert_eq!(v.capacity(), 13);
+    }
 }

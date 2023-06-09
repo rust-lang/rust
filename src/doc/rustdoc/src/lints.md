@@ -261,7 +261,7 @@ typo mistakes for some common attributes.
 
 ## `invalid_html_tags`
 
-This lint is **allowed by default** and is **nightly-only**. It detects unclosed
+This lint **warns by default**. It detects unclosed
 or invalid HTML tags. For example:
 
 ```rust
@@ -373,4 +373,42 @@ warning: this URL is not a hyperlink
   |      ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.net>`
 
 warning: 2 warnings emitted
+```
+
+## `unescaped_backticks`
+
+This lint is **allowed by default**. It detects backticks (\`) that are not escaped.
+This usually means broken inline code. For example:
+
+```rust
+#![warn(rustdoc::unescaped_backticks)]
+
+/// `add(a, b) is the same as `add(b, a)`.
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+```
+
+Which will give:
+
+```text
+warning: unescaped backtick
+ --> src/lib.rs:3:41
+  |
+3 | /// `add(a, b) is the same as `add(b, a)`.
+  |                                         ^
+  |
+note: the lint level is defined here
+ --> src/lib.rs:1:9
+  |
+1 | #![warn(rustdoc::unescaped_backticks)]
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: a previous inline code might be longer than expected
+  |
+3 | /// `add(a, b)` is the same as `add(b, a)`.
+  |               +
+help: if you meant to use a literal backtick, escape it
+  |
+3 | /// `add(a, b) is the same as `add(b, a)\`.
+  |                                         +
+
+warning: 1 warning emitted
 ```

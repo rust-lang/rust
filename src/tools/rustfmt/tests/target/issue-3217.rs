@@ -1,5 +1,3 @@
-#![feature(label_break_value)]
-
 fn main() {
     let mut res = 0;
     's_39: {

@@ -6,9 +6,10 @@
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::fmt;
 use crate::fs;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
-#[cfg(not(any(target_arch = "wasm32", target_env = "sgx")))]
+#[cfg(not(any(target_arch = "wasm32", target_env = "sgx", target_os = "hermit")))]
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
@@ -88,7 +89,7 @@ impl OwnedFd {
 impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(any(target_arch = "wasm32", target_os = "hermit")))]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
         // We want to atomically duplicate this file descriptor and set the
@@ -99,18 +100,19 @@ impl BorrowedFd<'_> {
 
         // For ESP-IDF, F_DUPFD is used instead, because the CLOEXEC semantics
         // will never be supported, as this is a bare metal framework with
-        // no capabilities for multi-process execution.  While F_DUPFD is also
+        // no capabilities for multi-process execution. While F_DUPFD is also
         // not supported yet, it might be (currently it returns ENOSYS).
         #[cfg(target_os = "espidf")]
         let cmd = libc::F_DUPFD;
 
-        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 0) })?;
+        // Avoid using file descriptors below 3 as they are used for stdio
+        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 3) })?;
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(any(target_arch = "wasm32", target_os = "hermit"))]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
         Err(crate::io::const_io_error!(
@@ -172,7 +174,10 @@ impl Drop for OwnedFd {
             // the file descriptor was closed or not, and if we retried (for
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
+            #[cfg(not(target_os = "hermit"))]
             let _ = libc::close(self.fd);
+            #[cfg(target_os = "hermit")]
+            let _ = hermit_abi::close(self.fd);
         }
     }
 }
@@ -191,6 +196,23 @@ impl fmt::Debug for OwnedFd {
     }
 }
 
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+
+        #[stable(feature = "is_terminal", since = "1.70.0")]
+        impl crate::io::IsTerminal for $t {
+            #[inline]
+            fn is_terminal(&self) -> bool {
+                crate::sys::io::is_terminal(self)
+            }
+        }
+    )*}
+}
+
+impl_is_terminal!(BorrowedFd<'_>, OwnedFd);
+
 /// A trait to borrow the file descriptor from an underlying object.
 ///
 /// This is only available on unix platforms and must be imported in order to
@@ -205,10 +227,8 @@ pub trait AsFd {
     /// ```rust,no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// # #[cfg(target_os = "wasi")]
-    /// # use std::os::wasi::io::{AsFd, BorrowedFd};
-    /// # #[cfg(unix)]
-    /// # use std::os::unix::io::{AsFd, BorrowedFd};
+    /// # #[cfg(any(unix, target_os = "wasi"))]
+    /// # use std::os::fd::{AsFd, BorrowedFd};
     ///
     /// let mut f = File::open("foo.txt")?;
     /// # #[cfg(any(unix, target_os = "wasi"))]
@@ -248,7 +268,7 @@ impl AsFd for OwnedFd {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         // Safety: `OwnedFd` and `BorrowedFd` have the same validity
-        // invariants, and the `BorrowdFd` is bounded by the lifetime
+        // invariants, and the `BorrowedFd` is bounded by the lifetime
         // of `&self`.
         unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
@@ -356,7 +376,7 @@ impl From<OwnedFd> for crate::net::UdpSocket {
     }
 }
 
-#[stable(feature = "io_safety", since = "1.63.0")]
+#[stable(feature = "asfd_ptrs", since = "1.64.0")]
 /// This impl allows implementing traits that require `AsFd` on Arc.
 /// ```
 /// # #[cfg(any(unix, target_os = "wasi"))] mod group_cfg {
@@ -379,10 +399,69 @@ impl<T: AsFd> AsFd for crate::sync::Arc<T> {
     }
 }
 
-#[stable(feature = "io_safety", since = "1.63.0")]
+#[stable(feature = "asfd_rc", since = "1.69.0")]
+impl<T: AsFd> AsFd for crate::rc::Rc<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
+
+#[stable(feature = "asfd_ptrs", since = "1.64.0")]
 impl<T: AsFd> AsFd for Box<T> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stdin {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdinLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdin out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stdout {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdoutLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stdout out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stderr {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(2) }
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StderrLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: user code should not close stderr out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(2) }
     }
 }

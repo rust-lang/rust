@@ -1,0 +1,12 @@
+error: path separator must be a double colon
+  --> $DIR/single-colon-path-not-const-generics.rs:8:18
+   |
+LL | pub struct Foo {
+   |            --- while parsing this struct
+LL |   a: Vec<foo::bar:A>,
+   |                  ^ help: use a double colon instead: `::`
+   |
+   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+
+error: aborting due to previous error
+

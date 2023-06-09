@@ -21,7 +21,6 @@ use Cow::*;
 impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
 where
     B: ToOwned,
-    <B as ToOwned>::Owned: 'a,
 {
     fn borrow(&self) -> &B {
         &**self
@@ -116,7 +115,7 @@ where
 /// ```
 /// use std::borrow::Cow;
 ///
-/// fn abs_all(input: &mut Cow<[i32]>) {
+/// fn abs_all(input: &mut Cow<'_, [i32]>) {
 ///     for i in 0..input.len() {
 ///         let v = input[i];
 ///         if v < 0 {
@@ -146,7 +145,7 @@ where
 /// ```
 /// use std::borrow::Cow;
 ///
-/// struct Items<'a, X: 'a> where [X]: ToOwned<Owned = Vec<X>> {
+/// struct Items<'a, X> where [X]: ToOwned<Owned = Vec<X>> {
 ///     values: Cow<'a, [X]>,
 /// }
 ///
@@ -268,7 +267,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     ///
     /// assert_eq!(
     ///   cow,
-    ///   Cow::Owned(String::from("FOO")) as Cow<str>
+    ///   Cow::Owned(String::from("FOO")) as Cow<'_, str>
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -312,7 +311,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// use std::borrow::Cow;
     ///
     /// let s = "Hello world!";
-    /// let cow: Cow<str> = Cow::Owned(String::from(s));
+    /// let cow: Cow<'_, str> = Cow::Owned(String::from(s));
     ///
     /// assert_eq!(
     ///   cow.into_owned(),
@@ -329,10 +328,9 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-impl<B: ?Sized + ToOwned> const Deref for Cow<'_, B>
+impl<B: ?Sized + ToOwned> Deref for Cow<'_, B>
 where
-    B::Owned: ~const Borrow<B>,
+    B::Owned: Borrow<B>,
 {
     type Target = B;
 

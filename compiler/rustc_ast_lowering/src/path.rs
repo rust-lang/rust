@@ -1,40 +1,41 @@
 use crate::ImplTraitPosition;
 
+use super::errors::{GenericTypeWithParentheses, UseAngleBrackets};
 use super::ResolverAstLoweringExt;
 use super::{GenericArgsCtor, LifetimeRes, ParenthesizedGenericArgs};
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
 use rustc_ast::{self as ast, *};
-use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::GenericArg;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
-use smallvec::smallvec;
-use tracing::debug;
+use smallvec::{smallvec, SmallVec};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn lower_qpath(
         &mut self,
         id: NodeId,
-        qself: &Option<QSelf>,
+        qself: &Option<ptr::P<QSelf>>,
         p: &Path,
         param_mode: ParamMode,
-        itctx: ImplTraitContext,
+        itctx: &ImplTraitContext,
     ) -> hir::QPath<'hir> {
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
+        let base_res = partial_res.base_res();
+        let unresolved_segments = partial_res.unresolved_segments();
 
         let path_span_lo = p.span.shrink_to_lo();
-        let proj_start = p.segments.len() - partial_res.unresolved_segments();
+        let proj_start = p.segments.len() - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
-            res: self.lower_res(partial_res.base_res()),
+            res: self.lower_res(base_res),
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
                 |(i, segment)| {
                     let param_mode = match (qself_position, param_mode) {
@@ -47,10 +48,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => param_mode,
                     };
 
-                    let parenthesized_generic_args = match partial_res.base_res() {
+                    let parenthesized_generic_args = match base_res {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
-                            ParenthesizedGenericArgs::Ok
+                            ParenthesizedGenericArgs::ParenSugar
                         }
                         // `a::b::Trait(Args)::TraitItem`
                         Res::Def(DefKind::AssocFn, _)
@@ -58,10 +59,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>
                         {
-                            ParenthesizedGenericArgs::Ok
+                            ParenthesizedGenericArgs::ParenSugar
                         }
                         // Avoid duplicated errors.
-                        Res::Err => ParenthesizedGenericArgs::Ok,
+                        Res::Err => ParenthesizedGenericArgs::ParenSugar,
                         // An error
                         _ => ParenthesizedGenericArgs::Err,
                     };
@@ -84,7 +85,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Simple case, either no projections, or only fully-qualified.
         // E.g., `std::mem::size_of` or `<I as Iterator>::Item`.
-        if partial_res.unresolved_segments() == 0 {
+        if unresolved_segments == 0 {
             return hir::QPath::Resolved(qself, path);
         }
 
@@ -135,7 +136,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.diagnostic().span_bug(
             p.span,
-            &format!(
+            format!(
                 "lower_qpath: no final extension segment in {}..{}",
                 proj_start,
                 p.segments.len()
@@ -143,13 +144,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
     }
 
-    pub(crate) fn lower_path_extra(
+    pub(crate) fn lower_use_path(
         &mut self,
-        res: Res,
+        res: SmallVec<[Res; 3]>,
         p: &Path,
         param_mode: ParamMode,
-    ) -> &'hir hir::Path<'hir> {
-        self.arena.alloc(hir::Path {
+    ) -> &'hir hir::UsePath<'hir> {
+        self.arena.alloc(hir::UsePath {
             res,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
                 self.lower_path_segment(
@@ -157,22 +158,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     segment,
                     param_mode,
                     ParenthesizedGenericArgs::Err,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 )
             })),
             span: self.lower_span(p.span),
         })
-    }
-
-    pub(crate) fn lower_path(
-        &mut self,
-        id: NodeId,
-        p: &Path,
-        param_mode: ParamMode,
-    ) -> &'hir hir::Path<'hir> {
-        let res = self.expect_full_res(id);
-        let res = self.lower_res(res);
-        self.lower_path_extra(res, p, param_mode)
     }
 
     pub(crate) fn lower_path_segment(
@@ -181,22 +171,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         segment: &PathSegment,
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext,
+        itctx: &ImplTraitContext,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
-        let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
-            let msg = "parenthesized type parameters may only be used with a `Fn` trait";
-            match **generic_args {
-                GenericArgs::AngleBracketed(ref data) => {
+        let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
+            match generic_args {
+                GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
-                GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
+                GenericArgs::Parenthesized(data) => match parenthesized_generic_args {
+                    ParenthesizedGenericArgs::ParenSugar => {
+                        self.lower_parenthesized_parameter_data(data, itctx)
+                    }
                     ParenthesizedGenericArgs::Err => {
-                        let mut err = struct_span_err!(self.tcx.sess, data.span, E0214, "{}", msg);
-                        err.span_label(data.span, "only `Fn` traits may use parentheses");
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
-                        if !data.inputs.is_empty() {
+                        let sub = if !data.inputs.is_empty() {
                             // Start of the span to the 1st character of 1st argument
                             let open_param = data.inputs_span.shrink_to_lo().to(data
                                 .inputs
@@ -212,16 +201,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 .span
                                 .shrink_to_hi()
                                 .to(data.inputs_span.shrink_to_hi());
-                            err.multipart_suggestion(
-                                &format!("use angle brackets instead",),
-                                vec![
-                                    (open_param, String::from("<")),
-                                    (close_param, String::from(">")),
-                                ],
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        err.emit();
+
+                            Some(UseAngleBrackets { open_param, close_param })
+                        } else {
+                            None
+                        };
+                        self.tcx.sess.emit_err(GenericTypeWithParentheses { span: data.span, sub });
                         (
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),
@@ -239,7 +224,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgsCtor {
                     args: Default::default(),
                     bindings: &[],
-                    parenthesized: false,
+                    parenthesized: hir::GenericArgsParentheses::No,
                     span: path_span.shrink_to_hi(),
                 },
                 param_mode == ParamMode::Optional,
@@ -248,7 +233,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let has_lifetimes =
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
-        if !generic_args.parenthesized && !has_lifetimes {
+
+        // FIXME(return_type_notation): Is this correct? I think so.
+        if generic_args.parenthesized != hir::GenericArgsParentheses::ParenSugar && !has_lifetimes {
             self.maybe_insert_elided_lifetimes_in_path(
                 path_span,
                 segment.id,
@@ -258,16 +245,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let res = self.expect_full_res(segment.id);
-        let id = self.lower_node_id(segment.id);
+        let hir_id = self.lower_node_id(segment.id);
         debug!(
             "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
-            segment.ident, segment.id, id,
+            segment.ident, segment.id, hir_id,
         );
 
         hir::PathSegment {
             ident: self.lower_ident(segment.ident),
-            hir_id: Some(id),
-            res: Some(self.lower_res(res)),
+            hir_id,
+            res: self.lower_res(res),
             infer_args,
             args: if generic_args.is_empty() && generic_args.span.is_empty() {
                 None
@@ -313,7 +300,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let id = NodeId::from_u32(i);
                 let l = self.lower_lifetime(&Lifetime {
                     id,
-                    ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
+                    ident: Ident::new(kw::Empty, elided_lifetime_span),
                 });
                 GenericArg::Lifetime(l)
             }),
@@ -324,7 +311,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         data: &AngleBracketedArgs,
         param_mode: ParamMode,
-        itctx: ImplTraitContext,
+        itctx: &ImplTraitContext,
     ) -> (GenericArgsCtor<'hir>, bool) {
         let has_non_lt_args = data.args.iter().any(|arg| match arg {
             AngleBracketedArg::Arg(ast::GenericArg::Lifetime(_))
@@ -343,13 +330,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AngleBracketedArg::Constraint(c) => Some(self.lower_assoc_ty_constraint(c, itctx)),
             AngleBracketedArg::Arg(_) => None,
         }));
-        let ctor = GenericArgsCtor { args, bindings, parenthesized: false, span: data.span };
+        let ctor = GenericArgsCtor {
+            args,
+            bindings,
+            parenthesized: hir::GenericArgsParentheses::No,
+            span: data.span,
+        };
         (ctor, !has_non_lt_args && param_mode == ParamMode::Optional)
     }
 
     fn lower_parenthesized_parameter_data(
         &mut self,
         data: &ParenthesizedArgs,
+        itctx: &ImplTraitContext,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has
@@ -358,21 +351,39 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we generally don't permit such things (see #51008).
         let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
+            self.lower_ty_direct(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
         }));
         let output_ty = match output {
+            // Only allow `impl Trait` in return position. i.e.:
+            // ```rust
+            // fn f(_: impl Fn() -> impl Debug) -> impl Fn() -> impl Debug
+            // //      disallowed --^^^^^^^^^^        allowed --^^^^^^^^^^
+            // ```
+            FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. }) => {
+                if self.tcx.features().impl_trait_in_fn_trait_return {
+                    self.lower_ty(&ty, itctx)
+                } else {
+                    self.lower_ty(
+                        &ty,
+                        &ImplTraitContext::FeatureGated(
+                            ImplTraitPosition::FnTraitReturn,
+                            sym::impl_trait_in_fn_trait_return,
+                        ),
+                    )
+                }
+            }
             FnRetTy::Ty(ty) => {
-                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
+                self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
             }
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
-        let args = smallvec![GenericArg::Type(self.ty_tup(*inputs_span, inputs))];
+        let args = smallvec![GenericArg::Type(self.arena.alloc(self.ty_tup(*inputs_span, inputs)))];
         let binding = self.output_ty_binding(output_ty.span, output_ty);
         (
             GenericArgsCtor {
                 args,
                 bindings: arena_vec![self; binding],
-                parenthesized: true,
+                parenthesized: hir::GenericArgsParentheses::ParenSugar,
                 span: data.inputs_span,
             },
             false,
@@ -392,7 +403,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let gen_args = self.arena.alloc(hir::GenericArgs {
             args,
             bindings,
-            parenthesized: false,
+            parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
         hir::TypeBinding {

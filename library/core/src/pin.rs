@@ -393,6 +393,8 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 /// value in place, preventing the value referenced by that pointer from being moved
 /// unless it implements [`Unpin`].
 ///
+/// `Pin<P>` is guaranteed to have the same memory layout and ABI as `P`.
+///
 /// *See the [`pin` module] documentation for an explanation of pinning.*
 ///
 /// [`pin` module]: self
@@ -485,6 +487,16 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
     /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::pin::Pin;
+    ///
+    /// let mut val: u8 = 5;
+    /// // We can pin the value, since it doesn't care about being moved
+    /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
+    /// ```
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
@@ -496,8 +508,20 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
 
     /// Unwraps this `Pin<P>` returning the underlying pointer.
     ///
-    /// This requires that the data inside this `Pin` is [`Unpin`] so that we
+    /// This requires that the data inside this `Pin` implements [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::pin::Pin;
+    ///
+    /// let mut val: u8 = 5;
+    /// let pinned: Pin<&mut u8> = Pin::new(&mut val);
+    /// // Unwrap the pin to get a reference to the value
+    /// let r = Pin::into_inner(pinned);
+    /// assert_eq!(*r, 5);
+    /// ```
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
@@ -543,7 +567,7 @@ impl<P: Deref> Pin<P> {
     ///         let p: Pin<&mut T> = Pin::new_unchecked(&mut a);
     ///         // This should mean the pointee `a` can never move again.
     ///     }
-    ///     mem::swap(&mut a, &mut b);
+    ///     mem::swap(&mut a, &mut b); // Potential UB down the road ⚠️
     ///     // The address of `a` changed to `b`'s stack slot, so `a` got moved even
     ///     // though we have previously pinned it! We have violated the pinning API contract.
     /// }
@@ -563,12 +587,64 @@ impl<P: Deref> Pin<P> {
     ///         // This should mean the pointee can never move again.
     ///     }
     ///     drop(pinned);
-    ///     let content = Rc::get_mut(&mut x).unwrap();
+    ///     let content = Rc::get_mut(&mut x).unwrap(); // Potential UB down the road ⚠️
     ///     // Now, if `x` was the only reference, we have a mutable reference to
     ///     // data that we pinned above, which we could use to move it as we have
     ///     // seen in the previous example. We have violated the pinning API contract.
     ///  }
     ///  ```
+    ///
+    /// ## Pinning of closure captures
+    ///
+    /// Particular care is required when using `Pin::new_unchecked` in a closure:
+    /// `Pin::new_unchecked(&mut var)` where `var` is a by-value (moved) closure capture
+    /// implicitly makes the promise that the closure itself is pinned, and that *all* uses
+    /// of this closure capture respect that pinning.
+    /// ```
+    /// use std::pin::Pin;
+    /// use std::task::Context;
+    /// use std::future::Future;
+    ///
+    /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
+    ///     // Create a closure that moves `x`, and then internally uses it in a pinned way.
+    ///     let mut closure = move || unsafe {
+    ///         let _ignore = Pin::new_unchecked(&mut x).poll(cx);
+    ///     };
+    ///     // Call the closure, so the future can assume it has been pinned.
+    ///     closure();
+    ///     // Move the closure somewhere else. This also moves `x`!
+    ///     let mut moved = closure;
+    ///     // Calling it again means we polled the future from two different locations,
+    ///     // violating the pinning API contract.
+    ///     moved(); // Potential UB ⚠️
+    /// }
+    /// ```
+    /// When passing a closure to another API, it might be moving the closure any time, so
+    /// `Pin::new_unchecked` on closure captures may only be used if the API explicitly documents
+    /// that the closure is pinned.
+    ///
+    /// The better alternative is to avoid all that trouble and do the pinning in the outer function
+    /// instead (here using the [`pin!`][crate::pin::pin] macro):
+    /// ```
+    /// use std::pin::pin;
+    /// use std::task::Context;
+    /// use std::future::Future;
+    ///
+    /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
+    ///     let mut x = pin!(x);
+    ///     // Create a closure that captures `x: Pin<&mut _>`, which is safe to move.
+    ///     let mut closure = move || {
+    ///         let _ignore = x.as_mut().poll(cx);
+    ///     };
+    ///     // Call the closure, so the future can assume it has been pinned.
+    ///     closure();
+    ///     // Move the closure somewhere else.
+    ///     let mut moved = closure;
+    ///     // Calling it again here is fine (except that we might be polling a future that already
+    ///     // returned `Poll::Ready`, but that is a separate problem).
+    ///     moved();
+    /// }
+    /// ```
     ///
     /// [`mem::swap`]: crate::mem::swap
     #[lang = "new_unchecked"]
@@ -654,6 +730,18 @@ impl<P: DerefMut> Pin<P> {
     ///
     /// This overwrites pinned data, but that is okay: its destructor gets
     /// run before being overwritten, so no pinning guarantee is violated.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::pin::Pin;
+    ///
+    /// let mut val: u8 = 5;
+    /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
+    /// println!("{}", pinned); // 5
+    /// pinned.as_mut().set(10);
+    /// println!("{}", pinned); // 10
+    /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn set(&mut self, value: P::Target)
@@ -667,7 +755,7 @@ impl<P: DerefMut> Pin<P> {
 impl<'a, T: ?Sized> Pin<&'a T> {
     /// Constructs a new pin by mapping the interior value.
     ///
-    /// For example, if you  wanted to get a `Pin` of a field of something,
+    /// For example, if you wanted to get a `Pin` of a field of something,
     /// you could use this to get access to that field in one line of code.
     /// However, there are several gotchas with these "pinning projections";
     /// see the [`pin` module] documentation for further details on that topic.
@@ -770,7 +858,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
 
     /// Construct a new pin by mapping the interior value.
     ///
-    /// For example, if you  wanted to get a `Pin` of a field of something,
+    /// For example, if you wanted to get a `Pin` of a field of something,
     /// you could use this to get access to that field in one line of code.
     /// However, there are several gotchas with these "pinning projections";
     /// see the [`pin` module] documentation for further details on that topic.
@@ -917,29 +1005,31 @@ impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 
-/// Constructs a <code>[Pin]<[&mut] T></code>, by pinning[^1] a `value: T` _locally_[^2].
+/// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///
-/// Unlike [`Box::pin`], this does not involve a heap allocation.
+/// Unlike [`Box::pin`], this does not create a new heap allocation. As explained
+/// below, the element might still end up on the heap however.
 ///
-/// [^1]: If the (type `T` of the) given value does not implement [`Unpin`], then this
-/// effectively pins the `value` in memory, where it will be unable to be moved.
-/// Otherwise, <code>[Pin]<[&mut] T></code> behaves like <code>[&mut] T</code>, and operations such
-/// as [`mem::replace()`][crate::mem::replace] will allow extracting that value, and therefore,
-/// moving it.
-/// See [the `Unpin` section of the `pin` module][self#unpin] for more info.
+/// The local pinning performed by this macro is usually dubbed "stack"-pinning.
+/// Outside of `async` contexts locals do indeed get stored on the stack. In
+/// `async` functions or blocks however, any locals crossing an `.await` point
+/// are part of the state captured by the `Future`, and will use the storage of
+/// those. That storage can either be on the heap or on the stack. Therefore,
+/// local pinning is a more accurate term.
 ///
-/// [^2]: This is usually dubbed "stack"-pinning. And whilst local values are almost always located
-/// in the stack (_e.g._, when within the body of a non-`async` function), the truth is that inside
-/// the body of an `async fn` or block —more generally, the body of a generator— any locals crossing
-/// an `.await` point —a `yield` point— end up being part of the state captured by the `Future` —by
-/// the `Generator`—, and thus will be stored wherever that one is.
+/// If the type of the given value does not implement [`Unpin`], then this macro
+/// pins the value in memory in a way that prevents moves. On the other hand,
+/// if the type does implement [`Unpin`], <code>[Pin]<[&mut] T></code> behaves
+/// like <code>[&mut] T</code>, and operations such as
+/// [`mem::replace()`][crate::mem::replace] or [`mem::take()`](crate::mem::take)
+/// will allow moves of the value.
+/// See [the `Unpin` section of the `pin` module][self#unpin] for details.
 ///
 /// ## Examples
 ///
 /// ### Basic usage
 ///
 /// ```rust
-/// #![feature(pin_macro)]
 /// # use core::marker::PhantomPinned as Foo;
 /// use core::pin::{pin, Pin};
 ///
@@ -957,7 +1047,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### Manually polling a `Future` (without `Unpin` bounds)
 ///
 /// ```rust
-/// #![feature(pin_macro)]
 /// use std::{
 ///     future::Future,
 ///     pin::pin,
@@ -996,7 +1085,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### With `Generator`s
 ///
 /// ```rust
-/// #![feature(generators, generator_trait, pin_macro)]
+/// #![feature(generators, generator_trait)]
 /// use core::{
 ///     ops::{Generator, GeneratorState},
 ///     pin::pin,
@@ -1039,7 +1128,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// The following, for instance, fails to compile:
 ///
 /// ```rust,compile_fail
-/// #![feature(pin_macro)]
 /// use core::pin::{pin, Pin};
 /// # use core::{marker::PhantomPinned as Foo, mem::drop as stuff};
 ///
@@ -1059,7 +1147,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// 8  | let x: Pin<&mut Foo> = {
 ///    |     - borrow later stored here
 /// 9  |     let x: Pin<&mut Foo> = pin!(Foo { /* … */ });
-///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
 /// 10 |     x
 /// 11 | }; // <- Foo is dropped
 ///    | - temporary value is freed at the end of this statement
@@ -1075,13 +1163,13 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 ///
 /// If you really need to return a pinned value, consider using [`Box::pin`] instead.
 ///
-/// On the other hand, pinning to the stack[<sup>2</sup>](#fn2) using [`pin!`] is likely to be
-/// cheaper than pinning into a fresh heap allocation using [`Box::pin`]. Moreover, by virtue of not
-/// even needing an allocator, [`pin!`] is the main non-`unsafe` `#![no_std]`-compatible [`Pin`]
+/// On the other hand, local pinning using [`pin!`] is likely to be cheaper than
+/// pinning into a fresh heap allocation using [`Box::pin`]. Moreover, by virtue of not
+/// requiring an allocator, [`pin!`] is the main non-`unsafe` `#![no_std]`-compatible [`Pin`]
 /// constructor.
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
-#[unstable(feature = "pin_macro", issue = "93178")]
+#[stable(feature = "pin_macro", since = "1.68.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(unsafe_pin_internals)]
 pub macro pin($value:expr $(,)?) {

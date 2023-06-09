@@ -2,6 +2,7 @@ use crate::cmp::Ordering;
 use crate::convert::From;
 use crate::fmt;
 use crate::hash;
+use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
 use crate::num::NonZeroUsize;
@@ -195,7 +196,10 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
-        unsafe { NonNull { pointer: ptr as _ } }
+        unsafe {
+            assert_unsafe_precondition!("NonNull::new_unchecked requires that the pointer is non-null", [T: ?Sized](ptr: *mut T) => !ptr.is_null());
+            NonNull { pointer: ptr as _ }
+        }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
@@ -264,10 +268,7 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn addr(self) -> NonZeroUsize
-    where
-        T: Sized,
-    {
+    pub fn addr(self) -> NonZeroUsize {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
         unsafe { NonZeroUsize::new_unchecked(self.pointer.addr()) }
@@ -282,10 +283,7 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn with_addr(self, addr: NonZeroUsize) -> Self
-    where
-        T: Sized,
-    {
+    pub fn with_addr(self, addr: NonZeroUsize) -> Self {
         // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
         unsafe { NonNull::new_unchecked(self.pointer.with_addr(addr.get()) as *mut _) }
     }
@@ -299,10 +297,7 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn map_addr(self, f: impl FnOnce(NonZeroUsize) -> NonZeroUsize) -> Self
-    where
-        T: Sized,
-    {
+    pub fn map_addr(self, f: impl FnOnce(NonZeroUsize) -> NonZeroUsize) -> Self {
         self.with_addr(f(self.addr()))
     }
 
@@ -326,7 +321,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer as *mut T
     }
@@ -374,7 +369,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -425,7 +420,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
@@ -454,6 +449,19 @@ impl<T: ?Sized> NonNull<T> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }
+
+    /// See [`pointer::add`] for semantics and safety requirements.
+    #[inline]
+    pub(crate) const unsafe fn add(self, delta: usize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: We require that the delta stays in-bounds of the object, and
+        // thus it cannot become null, as that would require wrapping the
+        // address space, which no legal objects are allowed to do.
+        // And the caller promised the `delta` is sound to add.
+        unsafe { NonNull { pointer: self.pointer.add(delta) } }
+    }
 }
 
 impl<T> NonNull<[T]> {
@@ -467,8 +475,6 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(nonnull_slice_from_raw_parts)]
-    ///
     /// use std::ptr::NonNull;
     ///
     /// // create a slice pointer when starting out with a pointer to the first element
@@ -480,8 +486,8 @@ impl<T> NonNull<[T]> {
     ///
     /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
-    #[unstable(feature = "nonnull_slice_from_raw_parts", issue = "71941")]
-    #[rustc_const_unstable(feature = "const_nonnull_slice_from_raw_parts", issue = "71941")]
+    #[stable(feature = "nonnull_slice_from_raw_parts", since = "1.70.0")]
+    #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
     #[must_use]
     #[inline]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
@@ -499,7 +505,6 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(nonnull_slice_from_raw_parts)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
@@ -519,7 +524,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// #![feature(slice_ptr_get)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
@@ -539,7 +544,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// #![feature(slice_ptr_get)]
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
@@ -673,7 +678,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// #![feature(slice_ptr_get)]
     /// use std::ptr::NonNull;
     ///
     /// let x = &mut [1, 2, 4];
@@ -684,11 +689,10 @@ impl<T> NonNull<[T]> {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
+    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
     where
-        I: ~const SliceIndex<[T]>,
+        I: SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         // As a consequence, the resulting pointer cannot be null.
@@ -697,9 +701,8 @@ impl<T> NonNull<[T]> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-impl<T: ?Sized> const Clone for NonNull<T> {
-    #[inline]
+impl<T: ?Sized> Clone for NonNull<T> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
@@ -708,7 +711,7 @@ impl<T: ?Sized> const Clone for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Copy for NonNull<T> {}
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
@@ -764,8 +767,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized> const From<Unique<T>> for NonNull<T> {
+impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
         // SAFETY: A Unique pointer cannot be null, so the conditions for
@@ -775,8 +777,7 @@ impl<T: ?Sized> const From<Unique<T>> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized> const From<&mut T> for NonNull<T> {
+impl<T: ?Sized> From<&mut T> for NonNull<T> {
     /// Converts a `&mut T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.
@@ -788,8 +789,7 @@ impl<T: ?Sized> const From<&mut T> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl<T: ?Sized> const From<&T> for NonNull<T> {
+impl<T: ?Sized> From<&T> for NonNull<T> {
     /// Converts a `&T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.

@@ -6,7 +6,7 @@ use test::{black_box, Bencher};
 impl<T> TinyList<T> {
     fn len(&self) -> usize {
         let (mut elem, mut count) = (self.head.as_ref(), 0);
-        while let Some(ref e) = elem {
+        while let Some(e) = elem {
             count += 1;
             elem = e.next.as_deref();
         }

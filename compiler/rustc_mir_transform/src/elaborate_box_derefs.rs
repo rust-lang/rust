@@ -4,12 +4,12 @@
 
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_target::abi::FieldIdx;
 
 /// Constructs the types used when accessing a Box's pointer
 pub fn build_ptr_tys<'tcx>(
@@ -18,24 +18,24 @@ pub fn build_ptr_tys<'tcx>(
     unique_did: DefId,
     nonnull_did: DefId,
 ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-    let substs = tcx.intern_substs(&[pointee.into()]);
-    let unique_ty = tcx.bound_type_of(unique_did).subst(tcx, substs);
-    let nonnull_ty = tcx.bound_type_of(nonnull_did).subst(tcx, substs);
+    let substs = tcx.mk_substs(&[pointee.into()]);
+    let unique_ty = tcx.type_of(unique_did).subst(tcx, substs);
+    let nonnull_ty = tcx.type_of(nonnull_did).subst(tcx, substs);
     let ptr_ty = tcx.mk_imm_ptr(pointee);
 
     (unique_ty, nonnull_ty, ptr_ty)
 }
 
-// Constructs the projection needed to access a Box's pointer
+/// Constructs the projection needed to access a Box's pointer
 pub fn build_projection<'tcx>(
     unique_ty: Ty<'tcx>,
     nonnull_ty: Ty<'tcx>,
     ptr_ty: Ty<'tcx>,
 ) -> [PlaceElem<'tcx>; 3] {
     [
-        PlaceElem::Field(Field::new(0), unique_ty),
-        PlaceElem::Field(Field::new(0), nonnull_ty),
-        PlaceElem::Field(Field::new(0), ptr_ty),
+        PlaceElem::Field(FieldIdx::new(0), unique_ty),
+        PlaceElem::Field(FieldIdx::new(0), nonnull_ty),
+        PlaceElem::Field(FieldIdx::new(0), ptr_ty),
     ]
 }
 
@@ -69,10 +69,7 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
             let (unique_ty, nonnull_ty, ptr_ty) =
                 build_ptr_tys(tcx, base_ty.boxed_ty(), self.unique_did, self.nonnull_did);
 
-            let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
-            self.local_decls.push(LocalDecl::new(ptr_ty, source_info.span));
-
-            self.patch.add_statement(location, StatementKind::StorageLive(ptr_local));
+            let ptr_local = self.patch.new_internal(ptr_ty, source_info.span);
 
             self.patch.add_assign(
                 location,
@@ -84,11 +81,6 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
             );
 
             place.local = ptr_local;
-
-            self.patch.add_statement(
-                Location { block: location.block, statement_index: location.statement_index + 1 },
-                StatementKind::StorageDead(ptr_local),
-            );
         }
 
         self.super_place(place, context, location);
@@ -100,13 +92,14 @@ pub struct ElaborateBoxDerefs;
 impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if let Some(def_id) = tcx.lang_items().owned_box() {
-            let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[0].did;
+            let unique_did =
+                tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::from_u32(0)].did;
 
-            let Some(nonnull_def) = tcx.type_of(unique_did).ty_adt_def() else {
+            let Some(nonnull_def) = tcx.type_of(unique_did).subst_identity().ty_adt_def() else {
                 span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
             };
 
-            let nonnull_did = nonnull_def.non_enum_variant().fields[0].did;
+            let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::from_u32(0)].did;
 
             let patch = MirPatch::new(body);
 
@@ -115,34 +108,8 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
             let mut visitor =
                 ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
 
-            for (block, BasicBlockData { statements, terminator, .. }) in
-                body.basic_blocks.as_mut().iter_enumerated_mut()
-            {
-                let mut index = 0;
-                for statement in statements {
-                    let location = Location { block, statement_index: index };
-                    visitor.visit_statement(statement, location);
-                    index += 1;
-                }
-
-                if let Some(terminator) = terminator
-                && !matches!(terminator.kind, TerminatorKind::Yield{..})
-                {
-                    let location = Location { block, statement_index: index };
-                    visitor.visit_terminator(terminator, location);
-                }
-
-                let location = Location { block, statement_index: index };
-                match terminator {
-                    // yielding into a box is handled when lowering generators
-                    Some(Terminator { kind: TerminatorKind::Yield { value, .. }, .. }) => {
-                        visitor.visit_operand(value, location);
-                    }
-                    Some(terminator) => {
-                        visitor.visit_terminator(terminator, location);
-                    }
-                    None => {}
-                }
+            for (block, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
+                visitor.visit_basic_block_data(block, data);
             }
 
             visitor.patch.apply(body);
@@ -173,7 +140,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
 
                     if let Some(mut new_projections) = new_projections {
                         new_projections.extend_from_slice(&place.projection[last_deref..]);
-                        place.projection = tcx.intern_place_elems(&new_projections);
+                        place.projection = tcx.mk_place_elems(&new_projections);
                     }
                 }
             }

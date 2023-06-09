@@ -24,7 +24,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
             .iter()
             .filter(|attr| {
                 !attr.is_doc_comment()
-                    && !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))
+                    && !attr.ident().is_some_and(|ident| hcx.is_ignored_attr(ident.name))
             })
             .collect();
 
@@ -38,16 +38,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
 impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
     fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
-        debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));
+        debug_assert!(!attr.ident().is_some_and(|ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
 
         let ast::Attribute { kind, id: _, style, span } = attr;
-        if let ast::AttrKind::Normal(item, tokens) = kind {
-            item.hash_stable(self, hasher);
+        if let ast::AttrKind::Normal(normal) = kind {
+            normal.item.hash_stable(self, hasher);
             style.hash_stable(self, hasher);
             span.hash_stable(self, hasher);
             assert_matches!(
-                tokens.as_ref(),
+                normal.tokens.as_ref(),
                 None,
                 "Tokens should have been removed during lowering!"
             );
@@ -75,7 +75,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             ref normalized_pos,
         } = *self;
 
-        (name_hash as u64).hash_stable(hcx, hasher);
+        name_hash.hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 
@@ -148,3 +148,5 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
         });
     }
 }
+
+impl<'ctx> rustc_type_ir::HashStableContext for StableHashingContext<'ctx> {}

@@ -1,0 +1,51 @@
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "std"
+      COLON2 "::"
+      USE_TREE_LIST
+        L_CURLY "{"
+        USE_TREE
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "error"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Error"
+        ERROR
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        ERROR
+          USE_KW "use"
+        WHITESPACE " "
+        USE_TREE
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "std"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "io"
+        ERROR
+          SEMICOLON ";"
+  WHITESPACE "\n"
+error 22: expected COMMA
+error 22: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 23: expected COMMA
+error 24: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 27: expected COMMA
+error 35: expected COMMA
+error 35: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 36: expected COMMA
+error 36: expected R_CURLY
+error 36: expected SEMICOLON

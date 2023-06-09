@@ -1,5 +1,5 @@
 error: this loop could be written as a `for` loop
-  --> $DIR/issue_2356.rs:17:9
+  --> $DIR/issue_2356.rs:18:9
    |
 LL |         while let Some(e) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for e in it`

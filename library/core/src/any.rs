@@ -1,7 +1,4 @@
-//! This module contains the `Any` trait, which enables dynamic typing
-//! of any `'static` type through runtime reflection. It also contains the
-//! `Provider` trait and accompanying API, which enable trait objects to provide
-//! data based on typed requests, an alternate form of runtime reflection.
+//! Utilities for dynamic typing or type reflection.
 //!
 //! # `Any` and `TypeId`
 //!
@@ -59,7 +56,7 @@
 //!     let value_any = value as &dyn Any;
 //!
 //!     // Try to convert our value to a `String`. If successful, we want to
-//!     // output the String`'s length as well as its value. If not, it's a
+//!     // output the `String`'s length as well as its value. If not, it's a
 //!     // different type: just print it out unadorned.
 //!     match value_any.downcast_ref::<String>() {
 //!         Some(as_string) => {
@@ -125,7 +122,7 @@
 //! impl dyn MyTrait + '_ {
 //!     /// Get a reference to a field of the implementing struct.
 //!     pub fn get_context_by_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
-//!         request_ref::<T, _>(self)
+//!         request_ref::<T>(self)
 //!     }
 //! }
 //!
@@ -151,11 +148,12 @@
 //! ```
 //!
 //! In this example, if the concrete type of `obj` in `use_my_trait` is `SomeConcreteType`, then
-//! the `get_context_ref` call will return a reference to `obj.some_string` with type `&String`.
+//! the `get_context_by_ref` call will return a reference to `obj.some_string` with type `&String`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
+use crate::hash;
 use crate::intrinsics;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -665,10 +663,18 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
-    t: u64,
+    t: u128,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialEq for TypeId {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.t == other.t
+    }
 }
 
 impl TypeId {
@@ -691,7 +697,31 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        TypeId { t: intrinsics::type_id::<T>() }
+        #[cfg(bootstrap)]
+        let t = intrinsics::type_id::<T>() as u128;
+        #[cfg(not(bootstrap))]
+        let t: u128 = intrinsics::type_id::<T>();
+        TypeId { t }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl hash::Hash for TypeId {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        // We only hash the lower 64 bits of our (128 bit) internal numeric ID,
+        // because:
+        // - The hashing algorithm which backs `TypeId` is expected to be
+        //   unbiased and high quality, meaning further mixing would be somewhat
+        //   redundant compared to choosing (the lower) 64 bits arbitrarily.
+        // - `Hasher::finish` returns a u64 anyway, so the extra entropy we'd
+        //   get from hashing the full value would probably not be useful
+        //   (especially given the previous point about the lower 64 bits being
+        //   high quality on their own).
+        // - It is correct to do so -- only hashing a subset of `self` is still
+        //   with an `Eq` implementation that considers the entire value, as
+        //   ours does.
+        (self.t as u64).hash(state);
     }
 }
 
@@ -799,7 +829,7 @@ pub trait Provider {
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand.provide_ref::<str>(&self.field)
-    ///             .provide_value::<i32, _>(|| self.num_field);
+    ///             .provide_value::<i32>(self.num_field);
     ///     }
     /// }
     /// ```
@@ -817,17 +847,16 @@ pub trait Provider {
 /// # #![feature(provide_any)]
 /// use std::any::{Provider, request_value};
 ///
-/// fn get_string<P: Provider>(provider: &P) -> String {
-///     request_value::<String, _>(provider).unwrap()
+/// fn get_string(provider: &impl Provider) -> String {
+///     request_value::<String>(provider).unwrap()
 /// }
 /// ```
 #[unstable(feature = "provide_any", issue = "96024")]
-pub fn request_value<'a, T, P>(provider: &'a P) -> Option<T>
+pub fn request_value<'a, T>(provider: &'a (impl Provider + ?Sized)) -> Option<T>
 where
     T: 'static,
-    P: Provider + ?Sized,
 {
-    request_by_type_tag::<'a, tags::Value<T>, P>(provider)
+    request_by_type_tag::<'a, tags::Value<T>>(provider)
 }
 
 /// Request a reference from the `Provider`.
@@ -840,24 +869,22 @@ where
 /// # #![feature(provide_any)]
 /// use std::any::{Provider, request_ref};
 ///
-/// fn get_str<P: Provider>(provider: &P) -> &str {
-///     request_ref::<str, _>(provider).unwrap()
+/// fn get_str(provider: &impl Provider) -> &str {
+///     request_ref::<str>(provider).unwrap()
 /// }
 /// ```
 #[unstable(feature = "provide_any", issue = "96024")]
-pub fn request_ref<'a, T, P>(provider: &'a P) -> Option<&'a T>
+pub fn request_ref<'a, T>(provider: &'a (impl Provider + ?Sized)) -> Option<&'a T>
 where
     T: 'static + ?Sized,
-    P: Provider + ?Sized,
 {
-    request_by_type_tag::<'a, tags::Ref<tags::MaybeSizedValue<T>>, P>(provider)
+    request_by_type_tag::<'a, tags::Ref<tags::MaybeSizedValue<T>>>(provider)
 }
 
 /// Request a specific value by tag from the `Provider`.
-fn request_by_type_tag<'a, I, P>(provider: &'a P) -> Option<I::Reified>
+fn request_by_type_tag<'a, I>(provider: &'a (impl Provider + ?Sized)) -> Option<I::Reified>
 where
     I: tags::Type<'a>,
-    P: Provider + ?Sized,
 {
     let mut tagged = TaggedOption::<'a, I>(None);
     provider.provide(tagged.as_demand());
@@ -872,7 +899,7 @@ where
 ///
 /// A data provider provides values by calling this type's provide methods.
 #[unstable(feature = "provide_any", issue = "96024")]
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 pub struct Demand<'a>(dyn Erased<'a> + 'a);
 
 impl<'a> Demand<'a> {
@@ -887,29 +914,55 @@ impl<'a> Demand<'a> {
     ///
     /// # Examples
     ///
+    /// Provides an `u8`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { field: u8 }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_value::<u8>(self.field);
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_value<T>(&mut self, value: T) -> &mut Self
+    where
+        T: 'static,
+    {
+        self.provide::<tags::Value<T>>(value)
+    }
+
+    /// Provide a value or other type with only static lifetimes computed using a closure.
+    ///
+    /// # Examples
+    ///
     /// Provides a `String` by cloning.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_value::<String, _>(|| self.field.clone());
+    ///         demand.provide_value_with::<String>(|| self.field.clone());
     ///     }
     /// }
     /// ```
     #[unstable(feature = "provide_any", issue = "96024")]
-    pub fn provide_value<T, F>(&mut self, fulfil: F) -> &mut Self
+    pub fn provide_value_with<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
     where
         T: 'static,
-        F: FnOnce() -> T,
     {
-        self.provide_with::<tags::Value<T>, F>(fulfil)
+        self.provide_with::<tags::Value<T>>(fulfil)
     }
 
-    /// Provide a reference, note that the referee type must be bounded by `'static`,
+    /// Provide a reference. The referee type must be bounded by `'static`,
     /// but may be unsized.
     ///
     /// # Examples
@@ -917,7 +970,8 @@ impl<'a> Demand<'a> {
     /// Provides a reference to a field as a `&str`.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
@@ -932,6 +986,40 @@ impl<'a> Demand<'a> {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
     }
 
+    /// Provide a reference computed using a closure. The referee type
+    /// must be bounded by `'static`, but may be unsized.
+    ///
+    /// # Examples
+    ///
+    /// Provides a reference to a field as a `&str`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { business: String, party: String }
+    /// # fn today_is_a_weekday() -> bool { true }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref_with::<str>(|| {
+    ///             if today_is_a_weekday() {
+    ///                 &self.business
+    ///             } else {
+    ///                 &self.party
+    ///             }
+    ///         });
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_ref_with<T: ?Sized + 'static>(
+        &mut self,
+        fulfil: impl FnOnce() -> &'a T,
+    ) -> &mut Self {
+        self.provide_with::<tags::Ref<tags::MaybeSizedValue<T>>>(fulfil)
+    }
+
     /// Provide a value with the given `Type` tag.
     fn provide<I>(&mut self, value: I::Reified) -> &mut Self
     where
@@ -944,15 +1032,164 @@ impl<'a> Demand<'a> {
     }
 
     /// Provide a value with the given `Type` tag, using a closure to prevent unnecessary work.
-    fn provide_with<I, F>(&mut self, fulfil: F) -> &mut Self
+    fn provide_with<I>(&mut self, fulfil: impl FnOnce() -> I::Reified) -> &mut Self
     where
         I: tags::Type<'a>,
-        F: FnOnce() -> I::Reified,
     {
         if let Some(res @ TaggedOption(None)) = self.0.downcast_mut::<I>() {
             res.0 = Some(fulfil());
         }
         self
+    }
+
+    /// Check if the `Demand` would be satisfied if provided with a
+    /// value of the specified type. If the type does not match or has
+    /// already been provided, returns false.
+    ///
+    /// # Examples
+    ///
+    /// Check if an `u8` still needs to be provided and then provides
+    /// it.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    ///
+    /// struct Parent(Option<u8>);
+    ///
+    /// impl Provider for Parent {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         if let Some(v) = self.0 {
+    ///             demand.provide_value::<u8>(v);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// struct Child {
+    ///     parent: Parent,
+    /// }
+    ///
+    /// impl Child {
+    ///     // Pretend that this takes a lot of resources to evaluate.
+    ///     fn an_expensive_computation(&self) -> Option<u8> {
+    ///         Some(99)
+    ///     }
+    /// }
+    ///
+    /// impl Provider for Child {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         // In general, we don't know if this call will provide
+    ///         // an `u8` value or not...
+    ///         self.parent.provide(demand);
+    ///
+    ///         // ...so we check to see if the `u8` is needed before
+    ///         // we run our expensive computation.
+    ///         if demand.would_be_satisfied_by_value_of::<u8>() {
+    ///             if let Some(v) = self.an_expensive_computation() {
+    ///                 demand.provide_value::<u8>(v);
+    ///             }
+    ///         }
+    ///
+    ///         // The demand will be satisfied now, regardless of if
+    ///         // the parent provided the value or we did.
+    ///         assert!(!demand.would_be_satisfied_by_value_of::<u8>());
+    ///     }
+    /// }
+    ///
+    /// let parent = Parent(Some(42));
+    /// let child = Child { parent };
+    /// assert_eq!(Some(42), std::any::request_value::<u8>(&child));
+    ///
+    /// let parent = Parent(None);
+    /// let child = Child { parent };
+    /// assert_eq!(Some(99), std::any::request_value::<u8>(&child));
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn would_be_satisfied_by_value_of<T>(&self) -> bool
+    where
+        T: 'static,
+    {
+        self.would_be_satisfied_by::<tags::Value<T>>()
+    }
+
+    /// Check if the `Demand` would be satisfied if provided with a
+    /// reference to a value of the specified type. If the type does
+    /// not match or has already been provided, returns false.
+    ///
+    /// # Examples
+    ///
+    /// Check if a `&str` still needs to be provided and then provides
+    /// it.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    ///
+    /// struct Parent(Option<String>);
+    ///
+    /// impl Provider for Parent {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         if let Some(v) = &self.0 {
+    ///             demand.provide_ref::<str>(v);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// struct Child {
+    ///     parent: Parent,
+    ///     name: String,
+    /// }
+    ///
+    /// impl Child {
+    ///     // Pretend that this takes a lot of resources to evaluate.
+    ///     fn an_expensive_computation(&self) -> Option<&str> {
+    ///         Some(&self.name)
+    ///     }
+    /// }
+    ///
+    /// impl Provider for Child {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         // In general, we don't know if this call will provide
+    ///         // a `str` reference or not...
+    ///         self.parent.provide(demand);
+    ///
+    ///         // ...so we check to see if the `&str` is needed before
+    ///         // we run our expensive computation.
+    ///         if demand.would_be_satisfied_by_ref_of::<str>() {
+    ///             if let Some(v) = self.an_expensive_computation() {
+    ///                 demand.provide_ref::<str>(v);
+    ///             }
+    ///         }
+    ///
+    ///         // The demand will be satisfied now, regardless of if
+    ///         // the parent provided the reference or we did.
+    ///         assert!(!demand.would_be_satisfied_by_ref_of::<str>());
+    ///     }
+    /// }
+    ///
+    /// let parent = Parent(Some("parent".into()));
+    /// let child = Child { parent, name: "child".into() };
+    /// assert_eq!(Some("parent"), std::any::request_ref::<str>(&child));
+    ///
+    /// let parent = Parent(None);
+    /// let child = Child { parent, name: "child".into() };
+    /// assert_eq!(Some("child"), std::any::request_ref::<str>(&child));
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn would_be_satisfied_by_ref_of<T>(&self) -> bool
+    where
+        T: ?Sized + 'static,
+    {
+        self.would_be_satisfied_by::<tags::Ref<tags::MaybeSizedValue<T>>>()
+    }
+
+    fn would_be_satisfied_by<I>(&self) -> bool
+    where
+        I: tags::Type<'a>,
+    {
+        matches!(self.0.downcast::<I>(), Some(TaggedOption(None)))
     }
 }
 
@@ -1056,6 +1293,21 @@ unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
 #[unstable(feature = "provide_any", issue = "96024")]
 impl<'a> dyn Erased<'a> + 'a {
     /// Returns some reference to the dynamic value if it is tagged with `I`,
+    /// or `None` otherwise.
+    #[inline]
+    fn downcast<I>(&self) -> Option<&TaggedOption<'a, I>>
+    where
+        I: tags::Type<'a>,
+    {
+        if self.tag_id() == TypeId::of::<I>() {
+            // SAFETY: Just checked whether we're pointing to an I.
+            Some(unsafe { &*(self as *const Self).cast::<TaggedOption<'a, I>>() })
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the dynamic value if it is tagged with `I`,
     /// or `None` otherwise.
     #[inline]
     fn downcast_mut<I>(&mut self) -> Option<&mut TaggedOption<'a, I>>

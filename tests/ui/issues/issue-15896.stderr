@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-15896.rs:11:11
+   |
+LL |     let u = match e {
+   |                   - this expression has type `E`
+LL |         E::B(
+LL |           Tau{t: x},
+   |           ^^^^^^^^^ expected `R`, found `Tau`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

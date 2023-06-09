@@ -1,0 +1,18 @@
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/issue-91803.rs:3:43
+   |
+LL | fn or<'a>(first: &'static dyn Foo<'a>) -> dyn Foo<'a> {
+   |                                           ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+   |
+LL | fn or<'a>(first: &'static dyn Foo<'a>) -> impl Foo<'a> {
+   |                                           ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn or<'a>(first: &'static dyn Foo<'a>) -> Box<dyn Foo<'a>> {
+   |                                           ++++           +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0746`.

@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::cmp;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf};
+use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, Read};
 use crate::mem;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
@@ -34,6 +34,7 @@ impl Handle {
 }
 
 impl AsInner<OwnedHandle> for Handle {
+    #[inline]
     fn as_inner(&self) -> &OwnedHandle {
         &self.0
     }
@@ -112,18 +113,16 @@ impl Handle {
         }
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        let res = unsafe {
-            self.synchronous_read(buf.unfilled_mut().as_mut_ptr(), buf.remaining(), None)
-        };
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let res =
+            unsafe { self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), None) };
 
         match res {
             Ok(read) => {
                 // Safety: `read` bytes were written to the initialized portion of the buffer
                 unsafe {
-                    buf.assume_init(read as usize);
+                    cursor.advance(read as usize);
                 }
-                buf.add_filled(read as usize);
                 Ok(())
             }
 
@@ -145,7 +144,7 @@ impl Handle {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let mut amt = 0;
         let res = cvt(c::ReadFile(
-            self.as_handle(),
+            self.as_raw_handle(),
             buf.as_ptr() as c::LPVOID,
             len,
             &mut amt,
@@ -236,7 +235,7 @@ impl Handle {
         len: usize,
         offset: Option<u64>,
     ) -> io::Result<usize> {
-        let mut io_status = c::IO_STATUS_BLOCK::default();
+        let mut io_status = c::IO_STATUS_BLOCK::PENDING;
 
         // The length is clamped at u32::MAX.
         let len = cmp::min(len, c::DWORD::MAX as usize) as c::DWORD;
@@ -284,7 +283,7 @@ impl Handle {
     ///
     /// If `offset` is `None` then the current file position is used.
     fn synchronous_write(&self, buf: &[u8], offset: Option<u64>) -> io::Result<usize> {
-        let mut io_status = c::IO_STATUS_BLOCK::default();
+        let mut io_status = c::IO_STATUS_BLOCK::PENDING;
 
         // The length is clamped at u32::MAX.
         let len = cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
@@ -329,7 +328,16 @@ impl<'a> Read for &'a Handle {
         (**self).read(buf)
     }
 
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(buf)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         (**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
     }
 }

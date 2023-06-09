@@ -1,0 +1,14 @@
+// compile-flags: -Zunpretty=hir
+// check-pass
+
+#![feature(stmt_expr_attributes, rustc_attrs)]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+
+fn main() {
+        let _ =
+            #[rustc_box]
+            Box::new(1);
+    }

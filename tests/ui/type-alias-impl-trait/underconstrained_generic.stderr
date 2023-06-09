@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/underconstrained_generic.rs:22:5
+   |
+LL |     ()
+   |     ^^ the trait `Trait` is not implemented for `T`
+   |
+note: required for `()` to implement `ProofForConversion<T>`
+  --> $DIR/underconstrained_generic.rs:13:16
+   |
+LL | impl<X: Trait> ProofForConversion<X> for () {
+   |         -----  ^^^^^^^^^^^^^^^^^^^^^     ^^
+   |         |
+   |         unsatisfied trait bound introduced here
+help: consider restricting type parameter `T`
+   |
+LL | type Converter<T: Trait> = impl ProofForConversion<T>;
+   |                 +++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

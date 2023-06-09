@@ -1,15 +1,20 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
+use clippy_utils::ty::{is_interior_mut_ty, needs_ordered_drop};
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    eq_expr_value, get_enclosing_block, hash_expr, hash_stmt, if_sequence, is_else_clause, is_lint_allowed,
-    search_same, ContainsName, HirEqInterExpr, SpanlessEq,
+    capture_local_usage, def_path_def_ids, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt,
+    if_sequence, is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
 };
 use core::iter;
+use core::ops::ControlFlow;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::intravisit;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_middle::query::Key;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Span, Symbol};
@@ -156,7 +161,21 @@ declare_clippy_lint! {
     "`if` statement with shared code in all blocks"
 }
 
-declare_lint_pass!(CopyAndPaste => [
+pub struct CopyAndPaste {
+    ignore_interior_mutability: Vec<String>,
+    ignored_ty_ids: DefIdSet,
+}
+
+impl CopyAndPaste {
+    pub fn new(ignore_interior_mutability: Vec<String>) -> Self {
+        Self {
+            ignore_interior_mutability,
+            ignored_ty_ids: DefIdSet::new(),
+        }
+    }
+}
+
+impl_lint_pass!(CopyAndPaste => [
     IFS_SAME_COND,
     SAME_FUNCTIONS_IN_IF_CONDITION,
     IF_SAME_THEN_ELSE,
@@ -164,10 +183,18 @@ declare_lint_pass!(CopyAndPaste => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        for ignored_ty in &self.ignore_interior_mutability {
+            let path: Vec<&str> = ignored_ty.split("::").collect();
+            for id in def_path_def_ids(cx, path.as_slice()) {
+                self.ignored_ty_ids.insert(id);
+            }
+        }
+    }
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() && matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {
             let (conds, blocks) = if_sequence(expr);
-            lint_same_cond(cx, &conds);
+            lint_same_cond(cx, &conds, &self.ignored_ty_ids);
             lint_same_fns_in_if_cond(cx, &conds);
             let all_same =
                 !is_lint_allowed(cx, IF_SAME_THEN_ELSE, expr.hir_id) && lint_if_same_then_else(cx, &conds, &blocks);
@@ -214,7 +241,7 @@ fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&
 fn lint_branches_sharing_code<'tcx>(
     cx: &LateContext<'tcx>,
     conds: &[&'tcx Expr<'_>],
-    blocks: &[&Block<'tcx>],
+    blocks: &[&'tcx Block<'_>],
     expr: &'tcx Expr<'_>,
 ) {
     // We only lint ifs with multiple blocks
@@ -340,6 +367,21 @@ fn eq_binding_names(s: &Stmt<'_>, names: &[(HirId, Symbol)]) -> bool {
     }
 }
 
+/// Checks if the statement modifies or moves any of the given locals.
+fn modifies_any_local<'tcx>(cx: &LateContext<'tcx>, s: &'tcx Stmt<'_>, locals: &HirIdSet) -> bool {
+    for_each_expr(s, |e| {
+        if let Some(id) = path_to_local(e)
+            && locals.contains(&id)
+            && !capture_local_usage(cx, e).is_imm_ref()
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
+}
+
 /// Checks if the given statement should be considered equal to the statement in the same position
 /// for each block.
 fn eq_stmts(
@@ -365,17 +407,51 @@ fn eq_stmts(
         .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
 }
 
-fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'_>, blocks: &[&Block<'_>]) -> BlockEq {
+#[expect(clippy::too_many_lines)]
+fn scan_block_for_eq<'tcx>(
+    cx: &LateContext<'tcx>,
+    conds: &[&'tcx Expr<'_>],
+    block: &'tcx Block<'_>,
+    blocks: &[&'tcx Block<'_>],
+) -> BlockEq {
     let mut eq = SpanlessEq::new(cx);
     let mut eq = eq.inter_expr();
     let mut moved_locals = Vec::new();
 
+    let mut cond_locals = HirIdSet::default();
+    for &cond in conds {
+        let _: Option<!> = for_each_expr(cond, |e| {
+            if let Some(id) = path_to_local(e) {
+                cond_locals.insert(id);
+            }
+            ControlFlow::Continue(())
+        });
+    }
+
+    let mut local_needs_ordered_drop = false;
     let start_end_eq = block
         .stmts
         .iter()
         .enumerate()
-        .find(|&(i, stmt)| !eq_stmts(stmt, blocks, |b| b.stmts.get(i), &mut eq, &mut moved_locals))
+        .find(|&(i, stmt)| {
+            if let StmtKind::Local(l) = stmt.kind
+                && needs_ordered_drop(cx, cx.typeck_results().node_type(l.hir_id))
+            {
+                local_needs_ordered_drop = true;
+                return true;
+            }
+            modifies_any_local(cx, stmt, &cond_locals)
+                || !eq_stmts(stmt, blocks, |b| b.stmts.get(i), &mut eq, &mut moved_locals)
+        })
         .map_or(block.stmts.len(), |(i, _)| i);
+
+    if local_needs_ordered_drop {
+        return BlockEq {
+            start_end_eq,
+            end_begin_eq: None,
+            moved_locals,
+        };
+    }
 
     // Walk backwards through the final expression/statements so long as their hashes are equal. Note
     // `SpanlessHash` treats all local references as equal allowing locals declared earlier in the block
@@ -473,7 +549,11 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
             .iter()
             .filter(|&&(_, name)| !name.as_str().starts_with('_'))
             .any(|&(_, name)| {
-                let mut walker = ContainsName { name, result: false };
+                let mut walker = ContainsName {
+                    name,
+                    result: false,
+                    cx,
+                };
 
                 // Scan block
                 block
@@ -491,9 +571,39 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
     })
 }
 
+fn method_caller_is_mutable(cx: &LateContext<'_>, caller_expr: &Expr<'_>, ignored_ty_ids: &DefIdSet) -> bool {
+    let caller_ty = cx.typeck_results().expr_ty(caller_expr);
+    // Check if given type has inner mutability and was not set to ignored by the configuration
+    let is_inner_mut_ty = is_interior_mut_ty(cx, caller_ty)
+        && !matches!(caller_ty.ty_adt_id(), Some(adt_id) if ignored_ty_ids.contains(&adt_id));
+
+    is_inner_mut_ty
+        || caller_ty.is_mutable_ptr()
+        // `find_binding_init` will return the binding iff its not mutable
+        || path_to_local(caller_expr)
+            .and_then(|hid| find_binding_init(cx, hid))
+            .is_none()
+}
+
 /// Implementation of `IFS_SAME_COND`.
-fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
-    for (i, j) in search_same(conds, |e| hash_expr(cx, e), |lhs, rhs| eq_expr_value(cx, lhs, rhs)) {
+fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>], ignored_ty_ids: &DefIdSet) {
+    for (i, j) in search_same(
+        conds,
+        |e| hash_expr(cx, e),
+        |lhs, rhs| {
+            // Ignore eq_expr side effects iff one of the expression kind is a method call
+            // and the caller is not a mutable, including inner mutable type.
+            if let ExprKind::MethodCall(_, caller, _, _) = lhs.kind {
+                if method_caller_is_mutable(cx, caller, ignored_ty_ids) {
+                    false
+                } else {
+                    SpanlessEq::new(cx).eq_expr(lhs, rhs)
+                }
+            } else {
+                eq_expr_value(cx, lhs, rhs)
+            }
+        },
+    ) {
         span_lint_and_note(
             cx,
             IFS_SAME_COND,

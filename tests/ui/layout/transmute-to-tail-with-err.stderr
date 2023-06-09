@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/transmute-to-tail-with-err.rs:3:26
+   |
+LL | struct Bar(Box<dyn Trait<T>>);
+   |                          ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | struct Bar<T>(Box<dyn Trait<T>>);
+   |           +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

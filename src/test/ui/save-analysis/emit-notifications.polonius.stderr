@@ -1,2 +1,0 @@
-{"artifact":"$TEST_BUILD_DIR/save-analysis/emit-notifications.polonius/save-analysis/libemit_notifications.json","emit":"save-analysis"}
-{"artifact":"$TEST_BUILD_DIR/save-analysis/emit-notifications.polonius/libemit_notifications.rlib","emit":"link"}

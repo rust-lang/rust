@@ -1,3 +1,5 @@
+cargo-features = ["public-dependency"]
+
 [package]
 name = "std"
 version = "0.0.0"
@@ -10,39 +12,40 @@ edition = "2021"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-alloc = { path = "../alloc" }
-cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
+alloc = { path = "../alloc", public = true }
+cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
-core = { path = "../core" }
-libc = { version = "0.2.126", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.73" }
+core = { path = "../core", public = true }
+libc = { version = "0.2.146", default-features = false, features = ['rustc-dep-of-std'], public = true }
+compiler_builtins = { version = "0.1.92" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.12", default-features = false, features = ['rustc-dep-of-std'] }
+hashbrown = { version = "0.13", default-features = false, features = ['rustc-dep-of-std'] }
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
-addr2line = { version = "0.16.0", optional = true, default-features = false }
+addr2line = { version = "0.19.0", optional = true, default-features = false }
 rustc-demangle = { version = "0.1.21", features = ['rustc-dep-of-std'] }
-miniz_oxide = { version = "0.4.0", optional = true, default-features = false }
+miniz_oxide = { version = "0.6.0", optional = true, default-features = false, public = false }
 [dependencies.object]
-version = "0.26.1"
+version = "0.30.0"
 optional = true
 default-features = false
 features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive']
 
 [dev-dependencies]
-rand = "0.7"
+rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.3.0"
 
 [target.'cfg(any(all(target_family = "wasm", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.2.3", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
+fortanix-sgx-abi = { version = "0.5.0", features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
-hermit-abi = { version = "0.2.0", features = ['rustc-dep-of-std'] }
+hermit-abi = { version = "0.3.0", features = ['rustc-dep-of-std'] }
 
 [target.wasm32-wasi.dependencies]
 wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }

@@ -1,15 +1,13 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use rustc_hir::Mutability;
+use crate::errors::MaxNumNodesInConstErr;
+use crate::interpret::{
+    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, Scalar,
+};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
-
-use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MemPlaceMeta,
-    Scalar,
-};
 
 mod error;
 mod eval_queries;
@@ -72,15 +70,11 @@ pub(crate) fn eval_to_valtree<'tcx>(
         Ok(valtree) => Ok(Some(valtree)),
         Err(err) => {
             let did = cid.instance.def_id();
-            let s = cid.display(tcx);
+            let global_const_id = cid.display(tcx);
             match err {
                 ValTreeCreationError::NodesOverflow => {
-                    let msg = format!("maximum number of nodes exceeded in constant {}", &s);
-                    let mut diag = match tcx.hir().span_if_local(did) {
-                        Some(span) => tcx.sess.struct_span_err(span, &msg),
-                        None => tcx.sess.struct_err(&msg),
-                    };
-                    diag.emit();
+                    let span = tcx.hir().span_if_local(did);
+                    tcx.sess.emit_err(MaxNumNodesInConstErr { span, global_const_id });
 
                     Ok(None)
                 }
@@ -95,14 +89,14 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     val: mir::ConstantKind<'tcx>,
-) -> InterpResult<'tcx, mir::DestructuredMirConstant<'tcx>> {
+) -> InterpResult<'tcx, mir::DestructuredConstant<'tcx>> {
     trace!("destructure_mir_constant: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.mir_const_to_op(&val, None)?;
+    let op = ecx.eval_mir_constant(&val, None, None)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match val.ty().kind() {
-        ty::Array(_, len) => (len.eval_usize(tcx, param_env) as usize, None, op),
+        ty::Array(_, len) => (len.eval_target_usize(tcx, param_env) as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             throw_ub!(Unreachable)
         }
@@ -124,40 +118,5 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
         .collect::<InterpResult<'tcx, Vec<_>>>()?;
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
-    Ok(mir::DestructuredMirConstant { variant, fields })
-}
-
-#[instrument(skip(tcx), level = "debug")]
-pub(crate) fn deref_mir_constant<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    val: mir::ConstantKind<'tcx>,
-) -> mir::ConstantKind<'tcx> {
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.mir_const_to_op(&val, None).unwrap();
-    let mplace = ecx.deref_operand(&op).unwrap();
-    if let Some(alloc_id) = mplace.ptr.provenance {
-        assert_eq!(
-            tcx.get_global_alloc(alloc_id).unwrap().unwrap_memory().0.0.mutability,
-            Mutability::Not,
-            "deref_mir_constant cannot be used with mutable allocations as \
-            that could allow pattern matching to observe mutable statics",
-        );
-    }
-
-    let ty = match mplace.meta {
-        MemPlaceMeta::None => mplace.layout.ty,
-        // In case of unsized types, figure out the real type behind.
-        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
-            ty::Str => bug!("there's no sized equivalent of a `str`"),
-            ty::Slice(elem_ty) => tcx.mk_array(*elem_ty, scalar.to_machine_usize(&tcx).unwrap()),
-            _ => bug!(
-                "type {} should not have metadata, but had {:?}",
-                mplace.layout.ty,
-                mplace.meta
-            ),
-        },
-    };
-
-    mir::ConstantKind::Val(op_to_const(&ecx, &mplace.into()), ty)
+    Ok(mir::DestructuredConstant { variant, fields })
 }

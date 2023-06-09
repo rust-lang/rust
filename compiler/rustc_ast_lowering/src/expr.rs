@@ -1,19 +1,24 @@
+use super::errors::{
+    AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
+    BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignment,
+    GeneratorTooManyParameters, InclusiveRangeWithNoEnd, NotSupportedForLifetimeBinderAsyncClosure,
+    UnderscoreExprLhsAssign,
+};
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 use crate::{FnDeclKind, ImplTraitPosition};
-
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
+use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -26,254 +31,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
         ensure_sufficient_stack(|| {
-            let kind = match e.kind {
-                ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
-                ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
-                ExprKind::ConstBlock(ref anon_const) => {
-                    let anon_const = self.lower_anon_const(anon_const);
-                    hir::ExprKind::ConstBlock(anon_const)
-                }
-                ExprKind::Repeat(ref expr, ref count) => {
-                    let expr = self.lower_expr(expr);
-                    let count = self.lower_array_length(count);
-                    hir::ExprKind::Repeat(expr, count)
-                }
-                ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
-                ExprKind::Call(ref f, ref args) => {
-                    if e.attrs.get(0).map_or(false, |a| a.has_name(sym::rustc_box)) {
-                        if let [inner] = &args[..] && e.attrs.len() == 1 {
-                            let kind = hir::ExprKind::Box(self.lower_expr(&inner));
-                            let hir_id = self.lower_node_id(e.id);
-                            return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
-                        } else {
-                            self.tcx.sess
-                                .struct_span_err(
-                                    e.span,
-                                    "#[rustc_box] requires precisely one argument \
-                                    and no other attributes are allowed",
-                                )
-                                .emit();
-                            hir::ExprKind::Err
-                        }
-                    } else if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
-                        self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
-                    } else {
-                        let f = self.lower_expr(f);
-                        hir::ExprKind::Call(f, self.lower_exprs(args))
-                    }
-                }
-                ExprKind::MethodCall(ref seg, ref args, span) => {
-                    let hir_seg = self.arena.alloc(self.lower_path_segment(
-                        e.span,
-                        seg,
-                        ParamMode::Optional,
-                        ParenthesizedGenericArgs::Err,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                    ));
-                    let args = self.lower_exprs(args);
-                    hir::ExprKind::MethodCall(hir_seg, args, self.lower_span(span))
-                }
-                ExprKind::Binary(binop, ref lhs, ref rhs) => {
-                    let binop = self.lower_binop(binop);
-                    let lhs = self.lower_expr(lhs);
-                    let rhs = self.lower_expr(rhs);
-                    hir::ExprKind::Binary(binop, lhs, rhs)
-                }
-                ExprKind::Unary(op, ref ohs) => {
-                    let op = self.lower_unop(op);
-                    let ohs = self.lower_expr(ohs);
-                    hir::ExprKind::Unary(op, ohs)
-                }
-                ExprKind::Lit(ref l) => {
-                    hir::ExprKind::Lit(respan(self.lower_span(l.span), l.kind.clone()))
-                }
-                ExprKind::Cast(ref expr, ref ty) => {
-                    let expr = self.lower_expr(expr);
-                    let ty =
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
-                    hir::ExprKind::Cast(expr, ty)
-                }
-                ExprKind::Type(ref expr, ref ty) => {
-                    let expr = self.lower_expr(expr);
-                    let ty =
-                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
-                    hir::ExprKind::Type(expr, ty)
-                }
-                ExprKind::AddrOf(k, m, ref ohs) => {
-                    let ohs = self.lower_expr(ohs);
-                    hir::ExprKind::AddrOf(k, m, ohs)
-                }
-                ExprKind::Let(ref pat, ref scrutinee, span) => {
-                    hir::ExprKind::Let(self.arena.alloc(hir::Let {
-                        hir_id: self.next_id(),
-                        span: self.lower_span(span),
-                        pat: self.lower_pat(pat),
-                        ty: None,
-                        init: self.lower_expr(scrutinee),
-                    }))
-                }
-                ExprKind::If(ref cond, ref then, ref else_opt) => {
-                    self.lower_expr_if(cond, then, else_opt.as_deref())
-                }
-                ExprKind::While(ref cond, ref body, opt_label) => {
-                    self.with_loop_scope(e.id, |this| {
-                        let span =
-                            this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
-                        this.lower_expr_while_in_loop_scope(span, cond, body, opt_label)
-                    })
-                }
-                ExprKind::Loop(ref body, opt_label) => self.with_loop_scope(e.id, |this| {
-                    hir::ExprKind::Loop(
-                        this.lower_block(body, false),
-                        this.lower_label(opt_label),
-                        hir::LoopSource::Loop,
-                        DUMMY_SP,
-                    )
-                }),
-                ExprKind::TryBlock(ref body) => self.lower_expr_try_block(body),
-                ExprKind::Match(ref expr, ref arms) => hir::ExprKind::Match(
-                    self.lower_expr(expr),
-                    self.arena.alloc_from_iter(arms.iter().map(|x| self.lower_arm(x))),
-                    hir::MatchSource::Normal,
-                ),
-                ExprKind::Async(capture_clause, closure_node_id, ref block) => self
-                    .make_async_expr(
-                        capture_clause,
-                        closure_node_id,
-                        None,
-                        block.span,
-                        hir::AsyncGeneratorKind::Block,
-                        |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
-                    ),
-                ExprKind::Await(ref expr) => {
-                    let span = if expr.span.hi() < e.span.hi() {
-                        expr.span.shrink_to_hi().with_hi(e.span.hi())
-                    } else {
-                        // this is a recovered `await expr`
-                        e.span
-                    };
-                    self.lower_expr_await(span, expr)
-                }
-                ExprKind::Closure(
-                    ref binder,
-                    capture_clause,
-                    asyncness,
-                    movability,
-                    ref decl,
-                    ref body,
-                    fn_decl_span,
-                ) => {
-                    if let Async::Yes { closure_id, .. } = asyncness {
-                        self.lower_expr_async_closure(
-                            binder,
-                            capture_clause,
-                            e.id,
-                            closure_id,
-                            decl,
-                            body,
-                            fn_decl_span,
-                        )
-                    } else {
-                        self.lower_expr_closure(
-                            binder,
-                            capture_clause,
-                            e.id,
-                            movability,
-                            decl,
-                            body,
-                            fn_decl_span,
-                        )
-                    }
-                }
-                ExprKind::Block(ref blk, opt_label) => {
-                    let opt_label = self.lower_label(opt_label);
-                    hir::ExprKind::Block(self.lower_block(blk, opt_label.is_some()), opt_label)
-                }
-                ExprKind::Assign(ref el, ref er, span) => {
-                    self.lower_expr_assign(el, er, span, e.span)
-                }
-                ExprKind::AssignOp(op, ref el, ref er) => hir::ExprKind::AssignOp(
-                    self.lower_binop(op),
-                    self.lower_expr(el),
-                    self.lower_expr(er),
-                ),
-                ExprKind::Field(ref el, ident) => {
-                    hir::ExprKind::Field(self.lower_expr(el), self.lower_ident(ident))
-                }
-                ExprKind::Index(ref el, ref er) => {
-                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er))
-                }
-                ExprKind::Range(Some(ref e1), Some(ref e2), RangeLimits::Closed) => {
-                    self.lower_expr_range_closed(e.span, e1, e2)
-                }
-                ExprKind::Range(ref e1, ref e2, lims) => {
-                    self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
-                }
-                ExprKind::Underscore => {
-                    self.tcx
-                        .sess.struct_span_err(
-                            e.span,
-                            "in expressions, `_` can only be used on the left-hand side of an assignment",
-                        )
-                        .span_label(e.span, "`_` not allowed here")
-                        .emit();
-                    hir::ExprKind::Err
-                }
-                ExprKind::Path(ref qself, ref path) => {
-                    let qpath = self.lower_qpath(
-                        e.id,
-                        qself,
-                        path,
-                        ParamMode::Optional,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                    );
-                    hir::ExprKind::Path(qpath)
-                }
-                ExprKind::Break(opt_label, ref opt_expr) => {
-                    let opt_expr = opt_expr.as_ref().map(|x| self.lower_expr(x));
-                    hir::ExprKind::Break(self.lower_jump_destination(e.id, opt_label), opt_expr)
-                }
-                ExprKind::Continue(opt_label) => {
-                    hir::ExprKind::Continue(self.lower_jump_destination(e.id, opt_label))
-                }
-                ExprKind::Ret(ref e) => {
-                    let e = e.as_ref().map(|x| self.lower_expr(x));
-                    hir::ExprKind::Ret(e)
-                }
-                ExprKind::Yeet(ref sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
-                ExprKind::InlineAsm(ref asm) => {
-                    hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
-                }
-                ExprKind::Struct(ref se) => {
-                    let rest = match &se.rest {
-                        StructRest::Base(e) => Some(self.lower_expr(e)),
-                        StructRest::Rest(sp) => {
-                            self.tcx
-                                .sess
-                                .struct_span_err(*sp, "base expression required after `..`")
-                                .span_label(*sp, "add a base expression here")
-                                .emit();
-                            Some(&*self.arena.alloc(self.expr_err(*sp)))
-                        }
-                        StructRest::None => None,
-                    };
-                    hir::ExprKind::Struct(
-                        self.arena.alloc(self.lower_qpath(
-                            e.id,
-                            &se.qself,
-                            &se.path,
-                            ParamMode::Optional,
-                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                        )),
-                        self.arena
-                            .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
-                        rest,
-                    )
-                }
-                ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
-                ExprKind::Err => hir::ExprKind::Err,
-                ExprKind::Try(ref sub_expr) => self.lower_expr_try(e.span, sub_expr),
-                ExprKind::Paren(ref ex) => {
+            match &e.kind {
+                // Parenthesis expression does not have a HirId and is handled specially.
+                ExprKind::Paren(ex) => {
                     let mut ex = self.lower_expr_mut(ex);
                     // Include parens in span, but only if it is a super-span.
                     if e.span.contains(ex.span) {
@@ -295,17 +55,273 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     return ex;
                 }
-
                 // Desugar `ExprForLoop`
                 // from: `[opt_ident]: for <pat> in <head> <body>`
-                ExprKind::ForLoop(ref pat, ref head, ref body, opt_label) => {
-                    return self.lower_expr_for(e, pat, head, body, opt_label);
+                //
+                // This also needs special handling because the HirId of the returned `hir::Expr` will not
+                // correspond to the `e.id`, so `lower_expr_for` handles attribute lowering itself.
+                ExprKind::ForLoop(pat, head, body, opt_label) => {
+                    return self.lower_expr_for(e, pat, head, body, *opt_label);
                 }
-                ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
-            };
+                _ => (),
+            }
 
             let hir_id = self.lower_node_id(e.id);
             self.lower_attrs(hir_id, &e.attrs);
+
+            let kind = match &e.kind {
+                ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
+                ExprKind::ConstBlock(c) => {
+                    let c = self.with_new_scopes(|this| hir::ConstBlock {
+                        def_id: this.local_def_id(c.id),
+                        hir_id: this.lower_node_id(c.id),
+                        body: this.lower_const_body(c.value.span, Some(&c.value)),
+                    });
+                    hir::ExprKind::ConstBlock(c)
+                }
+                ExprKind::Repeat(expr, count) => {
+                    let expr = self.lower_expr(expr);
+                    let count = self.lower_array_length(count);
+                    hir::ExprKind::Repeat(expr, count)
+                }
+                ExprKind::Tup(elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
+                ExprKind::Call(f, args) => {
+                    if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
+                        self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
+                    } else {
+                        let f = self.lower_expr(f);
+                        hir::ExprKind::Call(f, self.lower_exprs(args))
+                    }
+                }
+                ExprKind::MethodCall(box MethodCall { seg, receiver, args, span }) => {
+                    let hir_seg = self.arena.alloc(self.lower_path_segment(
+                        e.span,
+                        seg,
+                        ParamMode::Optional,
+                        ParenthesizedGenericArgs::Err,
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    ));
+                    let receiver = self.lower_expr(receiver);
+                    let args =
+                        self.arena.alloc_from_iter(args.iter().map(|x| self.lower_expr_mut(x)));
+                    hir::ExprKind::MethodCall(hir_seg, receiver, args, self.lower_span(*span))
+                }
+                ExprKind::Binary(binop, lhs, rhs) => {
+                    let binop = self.lower_binop(*binop);
+                    let lhs = self.lower_expr(lhs);
+                    let rhs = self.lower_expr(rhs);
+                    hir::ExprKind::Binary(binop, lhs, rhs)
+                }
+                ExprKind::Unary(op, ohs) => {
+                    let op = self.lower_unop(*op);
+                    let ohs = self.lower_expr(ohs);
+                    hir::ExprKind::Unary(op, ohs)
+                }
+                ExprKind::Lit(token_lit) => {
+                    let lit_kind = match LitKind::from_token_lit(*token_lit) {
+                        Ok(lit_kind) => lit_kind,
+                        Err(err) => {
+                            report_lit_error(&self.tcx.sess.parse_sess, err, *token_lit, e.span);
+                            LitKind::Err
+                        }
+                    };
+                    let lit = self.arena.alloc(respan(self.lower_span(e.span), lit_kind));
+                    hir::ExprKind::Lit(lit)
+                }
+                ExprKind::IncludedBytes(bytes) => {
+                    let lit = self.arena.alloc(respan(
+                        self.lower_span(e.span),
+                        LitKind::ByteStr(bytes.clone(), StrStyle::Cooked),
+                    ));
+                    hir::ExprKind::Lit(lit)
+                }
+                ExprKind::Cast(expr, ty) => {
+                    let expr = self.lower_expr(expr);
+                    let ty =
+                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                    hir::ExprKind::Cast(expr, ty)
+                }
+                ExprKind::Type(expr, ty) => {
+                    let expr = self.lower_expr(expr);
+                    let ty =
+                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                    hir::ExprKind::Type(expr, ty)
+                }
+                ExprKind::AddrOf(k, m, ohs) => {
+                    let ohs = self.lower_expr(ohs);
+                    hir::ExprKind::AddrOf(*k, *m, ohs)
+                }
+                ExprKind::Let(pat, scrutinee, span) => {
+                    hir::ExprKind::Let(self.arena.alloc(hir::Let {
+                        hir_id: self.next_id(),
+                        span: self.lower_span(*span),
+                        pat: self.lower_pat(pat),
+                        ty: None,
+                        init: self.lower_expr(scrutinee),
+                    }))
+                }
+                ExprKind::If(cond, then, else_opt) => {
+                    self.lower_expr_if(cond, then, else_opt.as_deref())
+                }
+                ExprKind::While(cond, body, opt_label) => self.with_loop_scope(e.id, |this| {
+                    let span = this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
+                    this.lower_expr_while_in_loop_scope(span, cond, body, *opt_label)
+                }),
+                ExprKind::Loop(body, opt_label, span) => self.with_loop_scope(e.id, |this| {
+                    hir::ExprKind::Loop(
+                        this.lower_block(body, false),
+                        this.lower_label(*opt_label),
+                        hir::LoopSource::Loop,
+                        this.lower_span(*span),
+                    )
+                }),
+                ExprKind::TryBlock(body) => self.lower_expr_try_block(body),
+                ExprKind::Match(expr, arms) => hir::ExprKind::Match(
+                    self.lower_expr(expr),
+                    self.arena.alloc_from_iter(arms.iter().map(|x| self.lower_arm(x))),
+                    hir::MatchSource::Normal,
+                ),
+                ExprKind::Async(capture_clause, block) => self.make_async_expr(
+                    *capture_clause,
+                    e.id,
+                    None,
+                    e.span,
+                    hir::AsyncGeneratorKind::Block,
+                    |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
+                ),
+                ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
+                ExprKind::Closure(box Closure {
+                    binder,
+                    capture_clause,
+                    constness,
+                    asyncness,
+                    movability,
+                    fn_decl,
+                    body,
+                    fn_decl_span,
+                    fn_arg_span,
+                }) => {
+                    if let Async::Yes { closure_id, .. } = asyncness {
+                        self.lower_expr_async_closure(
+                            binder,
+                            *capture_clause,
+                            e.id,
+                            hir_id,
+                            *closure_id,
+                            fn_decl,
+                            body,
+                            *fn_decl_span,
+                            *fn_arg_span,
+                        )
+                    } else {
+                        self.lower_expr_closure(
+                            binder,
+                            *capture_clause,
+                            e.id,
+                            *constness,
+                            *movability,
+                            fn_decl,
+                            body,
+                            *fn_decl_span,
+                            *fn_arg_span,
+                        )
+                    }
+                }
+                ExprKind::Block(blk, opt_label) => {
+                    let opt_label = self.lower_label(*opt_label);
+                    hir::ExprKind::Block(self.lower_block(blk, opt_label.is_some()), opt_label)
+                }
+                ExprKind::Assign(el, er, span) => self.lower_expr_assign(el, er, *span, e.span),
+                ExprKind::AssignOp(op, el, er) => hir::ExprKind::AssignOp(
+                    self.lower_binop(*op),
+                    self.lower_expr(el),
+                    self.lower_expr(er),
+                ),
+                ExprKind::Field(el, ident) => {
+                    hir::ExprKind::Field(self.lower_expr(el), self.lower_ident(*ident))
+                }
+                ExprKind::Index(el, er) => {
+                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er))
+                }
+                ExprKind::Range(Some(e1), Some(e2), RangeLimits::Closed) => {
+                    self.lower_expr_range_closed(e.span, e1, e2)
+                }
+                ExprKind::Range(e1, e2, lims) => {
+                    self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), *lims)
+                }
+                ExprKind::Underscore => {
+                    let guar = self.tcx.sess.emit_err(UnderscoreExprLhsAssign { span: e.span });
+                    hir::ExprKind::Err(guar)
+                }
+                ExprKind::Path(qself, path) => {
+                    let qpath = self.lower_qpath(
+                        e.id,
+                        qself,
+                        path,
+                        ParamMode::Optional,
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    );
+                    hir::ExprKind::Path(qpath)
+                }
+                ExprKind::Break(opt_label, opt_expr) => {
+                    let opt_expr = opt_expr.as_ref().map(|x| self.lower_expr(x));
+                    hir::ExprKind::Break(self.lower_jump_destination(e.id, *opt_label), opt_expr)
+                }
+                ExprKind::Continue(opt_label) => {
+                    hir::ExprKind::Continue(self.lower_jump_destination(e.id, *opt_label))
+                }
+                ExprKind::Ret(e) => {
+                    let e = e.as_ref().map(|x| self.lower_expr(x));
+                    hir::ExprKind::Ret(e)
+                }
+                ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
+                ExprKind::InlineAsm(asm) => {
+                    hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
+                }
+                ExprKind::FormatArgs(fmt) => self.lower_format_args(e.span, fmt),
+                ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
+                    self.lower_ty(
+                        container,
+                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
+                    ),
+                    self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
+                ),
+                ExprKind::Struct(se) => {
+                    let rest = match &se.rest {
+                        StructRest::Base(e) => Some(self.lower_expr(e)),
+                        StructRest::Rest(sp) => {
+                            let guar =
+                                self.tcx.sess.emit_err(BaseExpressionDoubleDot { span: *sp });
+                            Some(&*self.arena.alloc(self.expr_err(*sp, guar)))
+                        }
+                        StructRest::None => None,
+                    };
+                    hir::ExprKind::Struct(
+                        self.arena.alloc(self.lower_qpath(
+                            e.id,
+                            &se.qself,
+                            &se.path,
+                            ParamMode::Optional,
+                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        )),
+                        self.arena
+                            .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
+                        rest,
+                    )
+                }
+                ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
+                ExprKind::Err => hir::ExprKind::Err(
+                    self.tcx.sess.delay_span_bug(e.span, "lowered ExprKind::Err"),
+                ),
+                ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
+
+                ExprKind::Paren(_) | ExprKind::ForLoop(..) => {
+                    unreachable!("already handled")
+                }
+
+                ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
+            };
+
             hir::Expr { hir_id, kind, span: self.lower_span(e.span) }
         })
     }
@@ -347,23 +363,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
-        args: Vec<AstP<Expr>>,
+        args: ThinVec<AstP<Expr>>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
-        let ExprKind::Path(None, ref mut path) = f.kind else {
+        let ExprKind::Path(None, path) = &mut f.kind else {
             unreachable!();
         };
 
         // Split the arguments into const generics and normal arguments
         let mut real_args = vec![];
-        let mut generic_args = vec![];
+        let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner;
                 let node_id = self.next_node_id();
 
                 // Add a definition for the in-band const def.
-                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
+                self.create_def(parent_def_id.def_id, node_id, DefPathData::AnonConst, f.span);
 
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
@@ -391,32 +407,54 @@ impl<'hir> LoweringContext<'_, 'hir> {
         then: &Block,
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.lower_expr(cond);
-        let new_cond = self.manage_let_cond(lowered_cond);
+        let lowered_cond = self.lower_cond(cond);
         let then_expr = self.lower_block_expr(then);
         if let Some(rslt) = else_opt {
-            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), Some(self.lower_expr(rslt)))
+            hir::ExprKind::If(
+                lowered_cond,
+                self.arena.alloc(then_expr),
+                Some(self.lower_expr(rslt)),
+            )
         } else {
-            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), None)
+            hir::ExprKind::If(lowered_cond, self.arena.alloc(then_expr), None)
         }
     }
 
-    // If `cond` kind is `let`, returns `let`. Otherwise, wraps and returns `cond`
-    // in a temporary block.
-    fn manage_let_cond(&mut self, cond: &'hir hir::Expr<'hir>) -> &'hir hir::Expr<'hir> {
-        fn has_let_expr<'hir>(expr: &'hir hir::Expr<'hir>) -> bool {
-            match expr.kind {
-                hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
-                hir::ExprKind::Let(..) => true,
+    // Lowers a condition (i.e. `cond` in `if cond` or `while cond`), wrapping it in a terminating scope
+    // so that temporaries created in the condition don't live beyond it.
+    fn lower_cond(&mut self, cond: &Expr) -> &'hir hir::Expr<'hir> {
+        fn has_let_expr(expr: &Expr) -> bool {
+            match &expr.kind {
+                ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+                ExprKind::Let(..) => true,
                 _ => false,
             }
         }
-        if has_let_expr(cond) {
-            cond
-        } else {
-            let reason = DesugaringKind::CondTemporary;
-            let span_block = self.mark_span_with_reason(reason, cond.span, None);
-            self.expr_drop_temps(span_block, cond, AttrVec::new())
+
+        // We have to take special care for `let` exprs in the condition, e.g. in
+        // `if let pat = val` or `if foo && let pat = val`, as we _do_ want `val` to live beyond the
+        // condition in this case.
+        //
+        // In order to maintain the drop behavior for the non `let` parts of the condition,
+        // we still wrap them in terminating scopes, e.g. `if foo && let pat = val` essentially
+        // gets transformed into `if { let _t = foo; _t } && let pat = val`
+        match &cond.kind {
+            ExprKind::Binary(op @ Spanned { node: ast::BinOpKind::And, .. }, lhs, rhs)
+                if has_let_expr(cond) =>
+            {
+                let op = self.lower_binop(*op);
+                let lhs = self.lower_cond(lhs);
+                let rhs = self.lower_cond(rhs);
+
+                self.arena.alloc(self.expr(cond.span, hir::ExprKind::Binary(op, lhs, rhs)))
+            }
+            ExprKind::Let(..) => self.lower_expr(cond),
+            _ => {
+                let cond = self.lower_expr(cond);
+                let reason = DesugaringKind::CondTemporary;
+                let span_block = self.mark_span_with_reason(reason, cond.span, None);
+                self.expr_drop_temps(span_block, cond)
+            }
         }
     }
 
@@ -443,15 +481,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_expr(cond));
-        let new_cond = self.manage_let_cond(lowered_cond);
+        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_cond(cond));
         let then = self.lower_block_expr(body);
-        let expr_break = self.expr_break(span, ThinVec::new());
+        let expr_break = self.expr_break(span);
         let stmt_break = self.stmt_expr(span, expr_break);
         let else_blk = self.block_all(span, arena_vec![self; stmt_break], None);
-        let else_expr = self.arena.alloc(self.expr_block(else_blk, ThinVec::new()));
-        let if_kind = hir::ExprKind::If(new_cond, self.arena.alloc(then), Some(else_expr));
-        let if_expr = self.expr(span, if_kind, ThinVec::new());
+        let else_expr = self.arena.alloc(self.expr_block(else_blk));
+        let if_kind = hir::ExprKind::If(lowered_cond, self.arena.alloc(then), Some(else_expr));
+        let if_expr = self.expr(span, if_kind);
         let block = self.block_expr(self.arena.alloc(if_expr));
         let span = self.lower_span(span.with_hi(cond.span.hi()));
         let opt_label = self.lower_label(opt_label);
@@ -507,22 +544,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         expr: &'hir hir::Expr<'hir>,
         overall_span: Span,
     ) -> &'hir hir::Expr<'hir> {
-        let constructor = self.arena.alloc(self.expr_lang_item_path(
-            method_span,
-            lang_item,
-            ThinVec::new(),
-            None,
-        ));
+        let constructor = self.arena.alloc(self.expr_lang_item_path(method_span, lang_item, None));
         self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
         let guard = arm.guard.as_ref().map(|cond| {
-            if let ExprKind::Let(ref pat, ref scrutinee, span) = cond.kind {
+            if let ExprKind::Let(pat, scrutinee, span) = &cond.kind {
                 hir::Guard::IfLet(self.arena.alloc(hir::Let {
                     hir_id: self.next_id(),
-                    span: self.lower_span(span),
+                    span: self.lower_span(*span),
                     pat: self.lower_pat(pat),
                     ty: None,
                     init: self.lower_expr(scrutinee),
@@ -542,37 +574,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    /// Lower an `async` construct to a generator that is then wrapped so it implements `Future`.
+    /// Lower an `async` construct to a generator that implements `Future`.
     ///
     /// This results in:
     ///
     /// ```text
-    /// std::future::from_generator(static move? |_task_context| -> <ret_ty> {
+    /// static move? |_task_context| -> <ret_ty> {
     ///     <body>
-    /// })
+    /// }
     /// ```
     pub(super) fn make_async_expr(
         &mut self,
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
-        ret_ty: Option<AstP<Ty>>,
+        ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
-        let output = match ret_ty {
-            Some(ty) => hir::FnRetTy::Return(
-                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock)),
-            ),
-            None => hir::FnRetTy::DefaultReturn(self.lower_span(span)),
-        };
+        let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
 
-        // Resume argument type. We let the compiler infer this to simplify the lowering. It is
-        // fully constrained by `future::from_generator`.
+        // Resume argument type: `ResumeTy`
+        let unstable_span =
+            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+        let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span, None);
         let input_ty = hir::Ty {
             hir_id: self.next_id(),
-            kind: hir::TyKind::Infer,
-            span: self.lower_span(span),
+            kind: hir::TyKind::Path(resume_ty),
+            span: unstable_span,
         };
 
         // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
@@ -581,13 +610,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             output,
             c_variadic: false,
             implicit_self: hir::ImplicitSelfKind::None,
+            lifetime_elision_allowed: false,
         });
 
         // Lower the argument pattern/ident. The ident is used again in the `.await` lowering.
         let (pat, task_context_hid) = self.pat_ident_binding_mode(
             span,
             Ident::with_dummy_span(sym::_task_context),
-            hir::BindingAnnotation::Mutable,
+            hir::BindingAnnotation::MUT,
         );
         let param = hir::Param {
             hir_id: self.next_id(),
@@ -608,37 +638,51 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // `static |_task_context| -> <ret_ty> { body }`:
-        let generator_kind = {
-            let c = self.arena.alloc(hir::Closure {
-                binder: hir::ClosureBinder::Default,
-                capture_clause,
-                bound_generic_params: &[],
-                fn_decl,
-                body,
-                fn_decl_span: self.lower_span(span),
-                movability: Some(hir::Movability::Static),
-            });
+        hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_node_id),
+            binder: hir::ClosureBinder::Default,
+            capture_clause,
+            bound_generic_params: &[],
+            fn_decl,
+            body,
+            fn_decl_span: self.lower_span(span),
+            fn_arg_span: None,
+            movability: Some(hir::Movability::Static),
+            constness: hir::Constness::NotConst,
+        }))
+    }
 
-            hir::ExprKind::Closure(c)
-        };
-        let generator = hir::Expr {
-            hir_id: self.lower_node_id(closure_node_id),
-            kind: generator_kind,
-            span: self.lower_span(span),
-        };
-
-        // `future::from_generator`:
-        let unstable_span =
-            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
-        let gen_future = self.expr_lang_item_path(
-            unstable_span,
-            hir::LangItem::FromGenerator,
-            ThinVec::new(),
-            None,
-        );
-
-        // `future::from_generator(generator)`:
-        hir::ExprKind::Call(self.arena.alloc(gen_future), arena_vec![self; generator])
+    /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
+    /// `inner_hir_id` in case the `closure_track_caller` feature is enabled.
+    pub(super) fn maybe_forward_track_caller(
+        &mut self,
+        span: Span,
+        outer_hir_id: hir::HirId,
+        inner_hir_id: hir::HirId,
+    ) {
+        if self.tcx.features().closure_track_caller
+            && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
+            && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
+        {
+            let unstable_span =
+                self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+            self.lower_attrs(
+                inner_hir_id,
+                &[Attribute {
+                    kind: AttrKind::Normal(ptr::P(NormalAttr {
+                        item: AttrItem {
+                            path: Path::from_ident(Ident::new(sym::track_caller, span)),
+                            args: AttrArgs::Empty,
+                            tokens: None,
+                        },
+                        tokens: None,
+                    })),
+                    id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
+                    style: AttrStyle::Outer,
+                    span: unstable_span,
+                }],
+            );
+        }
     }
 
     /// Desugar `<expr>.await` into:
@@ -656,25 +700,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     }
     /// }
     /// ```
-    fn lower_expr_await(&mut self, dot_await_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
-        let full_span = expr.span.to(dot_await_span);
+    fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        let full_span = expr.span.to(await_kw_span);
         match self.generator_kind {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    dot_await_span,
-                    E0728,
-                    "`await` is only allowed inside `async` functions and blocks"
-                );
-                err.span_label(dot_await_span, "only allowed inside `async` functions and blocks");
-                if let Some(item_sp) = self.current_item {
-                    err.span_label(item_sp, "this is not `async`");
-                }
-                err.emit();
+                self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
+                    await_kw_span,
+                    item_span: self.current_item,
+                });
             }
         }
-        let span = self.mark_span_with_reason(DesugaringKind::Await, dot_await_span, None);
+        let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
             full_span,
@@ -688,7 +725,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // this name to identify what is being awaited by a suspended async functions.
         let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
         let (awaitee_pat, awaitee_pat_hid) =
-            self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::Mutable);
+            self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::MUT);
 
         let task_context_ident = Ident::with_dummy_span(sym::_task_context);
 
@@ -705,7 +742,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.expr_ident_mut(span, task_context_ident, task_context_hid)
             } else {
                 // Use of `await` outside of an async context, we cannot use `task_context` here.
-                self.expr_err(span)
+                self.expr_err(span, self.tcx.sess.delay_span_bug(span, "no task_context hir id"))
             };
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
@@ -745,7 +782,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
-                this.arena.alloc(this.expr(gen_future_span, expr_break, ThinVec::new()))
+                this.arena.alloc(this.expr(gen_future_span, expr_break))
             });
             self.arm(ready_pat, break_x)
         };
@@ -778,17 +815,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let yield_expr = self.expr(
                 span,
                 hir::ExprKind::Yield(unit, hir::YieldSource::Await { expr: Some(expr_hir_id) }),
-                ThinVec::new(),
             );
             let yield_expr = self.arena.alloc(yield_expr);
 
             if let Some(task_context_hid) = self.task_context {
                 let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
-                let assign = self.expr(
-                    span,
-                    hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span)),
-                    AttrVec::new(),
-                );
+                let assign =
+                    self.expr(span, hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span)));
                 self.stmt_expr(span, assign)
             } else {
                 // Use of `await` outside of an async context. Return `yield_expr` so that we can
@@ -815,13 +848,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let awaitee_arm = self.arm(awaitee_pat, loop_expr);
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
-        let into_future_span = self.mark_span_with_reason(
-            DesugaringKind::Await,
-            dot_await_span,
-            self.allow_into_future.clone(),
-        );
         let into_future_expr = self.expr_call_lang_item_fn(
-            into_future_span,
+            span,
             hir::LangItem::IntoFutureIntoFuture,
             arena_vec![self; expr],
             Some(expr_hir_id),
@@ -842,10 +870,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        constness: Const,
         movability: Movability,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
+        fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
@@ -864,22 +894,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (body_id, generator_option)
         });
 
-        self.with_lifetime_binder(closure_id, generic_params, |this, bound_generic_params| {
-            // Lower outside new scope to preserve `is_in_loop_condition`.
-            let fn_decl = this.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
+        let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
+        // Lower outside new scope to preserve `is_in_loop_condition`.
+        let fn_decl = self.lower_fn_decl(decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
-            let c = self.arena.alloc(hir::Closure {
-                binder: binder_clause,
-                capture_clause,
-                bound_generic_params,
-                fn_decl,
-                body: body_id,
-                fn_decl_span: this.lower_span(fn_decl_span),
-                movability: generator_option,
-            });
+        let c = self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_id),
+            binder: binder_clause,
+            capture_clause,
+            bound_generic_params,
+            fn_decl,
+            body: body_id,
+            fn_decl_span: self.lower_span(fn_decl_span),
+            fn_arg_span: Some(self.lower_span(fn_arg_span)),
+            movability: generator_option,
+            constness: self.lower_constness(constness),
+        });
 
-            hir::ExprKind::Closure(c)
-        })
+        hir::ExprKind::Closure(c)
     }
 
     fn generator_movability_for_fn(
@@ -892,13 +924,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) => {
                 if decl.inputs.len() > 1 {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        fn_decl_span,
-                        E0628,
-                        "too many parameters for a generator (expected 0 or 1 parameters)"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(GeneratorTooManyParameters { fn_decl_span });
                 }
                 Some(movability)
             }
@@ -907,13 +933,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        fn_decl_span,
-                        E0697,
-                        "closures cannot be static"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(ClosureCannotBeStatic { fn_decl_span });
                 }
                 None
             }
@@ -926,8 +946,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> (hir::ClosureBinder, &'c [GenericParam]) {
         let (binder, params) = match binder {
             ClosureBinder::NotPresent => (hir::ClosureBinder::Default, &[][..]),
-            &ClosureBinder::For { span, ref generic_params } => {
-                let span = self.lower_span(span);
+            ClosureBinder::For { span, generic_params } => {
+                let span = self.lower_span(*span);
                 (hir::ClosureBinder::For { span }, &**generic_params)
             }
         };
@@ -940,16 +960,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        closure_hir_id: hir::HirId,
         inner_closure_id: NodeId,
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
+        fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
         if let &ClosureBinder::For { span, .. } = binder {
-            self.tcx.sess.span_err(
-                span,
-                "`for<...>` binders on `async` closures are not currently supported",
-            );
+            self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }
 
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -960,24 +979,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let body = self.with_new_scopes(|this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
-                struct_span_err!(
-                    this.tcx.sess,
-                    fn_decl_span,
-                    E0708,
-                    "`async` non-`move` closures with parameters are not currently supported",
-                )
-                .help(
-                    "consider using `let` statements to manually capture \
-                    variables by reference before entering an `async move` closure",
-                )
-                .emit();
+                this.tcx.sess.emit_err(AsyncNonMoveClosureNotSupported { fn_decl_span });
             }
 
             // Transform `async |x: u8| -> X { ... }` into
-            // `|x: u8| future_from_generator(|| -> X { ... })`.
+            // `|x: u8| || -> X { ... }`.
             let body_id = this.lower_fn_body(&outer_decl, |this| {
-                let async_ret_ty =
-                    if let FnRetTy::Ty(ty) = &decl.output { Some(ty.clone()) } else { None };
+                let async_ret_ty = if let FnRetTy::Ty(ty) = &decl.output {
+                    let itctx = ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock);
+                    Some(hir::FnRetTy::Return(this.lower_ty(&ty, &itctx)))
+                } else {
+                    None
+                };
+
                 let async_body = this.make_async_expr(
                     capture_clause,
                     inner_closure_id,
@@ -986,28 +1000,33 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::AsyncGeneratorKind::Closure,
                     |this| this.with_new_scopes(|this| this.lower_expr_mut(body)),
                 );
-                this.expr(fn_decl_span, async_body, ThinVec::new())
+                let hir_id = this.lower_node_id(inner_closure_id);
+                this.maybe_forward_track_caller(body.span, closure_hir_id, hir_id);
+                hir::Expr { hir_id, kind: async_body, span: this.lower_span(body.span) }
             });
             body_id
         });
 
-        self.with_lifetime_binder(closure_id, generic_params, |this, bound_generic_params| {
-            // We need to lower the declaration outside the new scope, because we
-            // have to conserve the state of being inside a loop condition for the
-            // closure argument types.
-            let fn_decl = this.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
+        let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
+        // We need to lower the declaration outside the new scope, because we
+        // have to conserve the state of being inside a loop condition for the
+        // closure argument types.
+        let fn_decl =
+            self.lower_fn_decl(&outer_decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
-            let c = self.arena.alloc(hir::Closure {
-                binder: binder_clause,
-                capture_clause,
-                bound_generic_params,
-                fn_decl,
-                body,
-                fn_decl_span: this.lower_span(fn_decl_span),
-                movability: None,
-            });
-            hir::ExprKind::Closure(c)
-        })
+        let c = self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_id),
+            binder: binder_clause,
+            capture_clause,
+            bound_generic_params,
+            fn_decl,
+            body,
+            fn_decl_span: self.lower_span(fn_decl_span),
+            fn_arg_span: Some(self.lower_span(fn_arg_span)),
+            movability: None,
+            constness: hir::Constness::NotConst,
+        });
+        hir::ExprKind::Closure(c)
     }
 
     /// Destructure the LHS of complex assignments.
@@ -1077,13 +1096,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_tuple_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<QSelf>, &'a Path)> {
+    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() == 0
-                    && !partial_res.base_res().expected_in_tuple_struct_pat()
-                {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_tuple_struct_pat() {
                     return None;
                 }
             }
@@ -1099,13 +1116,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_unit_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<QSelf>, &'a Path)> {
+    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() == 0
-                    && !partial_res.base_res().expected_in_unit_struct_pat()
-                {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_unit_struct_pat() {
                     return None;
                 }
             }
@@ -1166,11 +1181,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     );
                     // Destructure like a tuple struct.
-                    let tuple_struct_pat =
-                        hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
+                    let tuple_struct_pat = hir::PatKind::TupleStruct(
+                        qpath,
+                        pats,
+                        hir::DotDotPos::new(rest.map(|r| r.0)),
+                    );
                     return self.pat_without_dbm(lhs.span, tuple_struct_pat);
                 }
             }
@@ -1182,7 +1200,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     );
                     // Destructure like a unit struct.
                     let unit_struct_pat = hir::PatKind::Path(qpath);
@@ -1206,24 +1224,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &se.qself,
                     &se.path,
                     ParamMode::Optional,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                e.span,
-                                "functional record updates are not allowed in destructuring \
-                                    assignments",
-                            )
-                            .span_suggestion(
-                                e.span,
-                                "consider removing the trailing pattern",
-                                "",
-                                rustc_errors::Applicability::MachineApplicable,
-                            )
-                            .emit();
+                        self.tcx.sess.emit_err(FunctionalRecordUpdateDestructuringAssignment {
+                            span: e.span,
+                        });
                         true
                     }
                     StructRest::Rest(_) => true,
@@ -1236,13 +1243,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Tup(elements) => {
                 let (pats, rest) =
                     self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
-                let tuple_pat = hir::PatKind::Tuple(pats, rest.map(|r| r.0));
+                let tuple_pat = hir::PatKind::Tuple(pats, hir::DotDotPos::new(rest.map(|r| r.0)));
                 return self.pat_without_dbm(lhs.span, tuple_pat);
             }
             ExprKind::Paren(e) => {
                 // We special-case `(..)` for consistency with patterns.
                 if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
-                    let tuple_pat = hir::PatKind::Tuple(&[], Some(0));
+                    let tuple_pat = hir::PatKind::Tuple(&[], hir::DotDotPos::new(Some(0)));
                     return self.pat_without_dbm(lhs.span, tuple_pat);
                 } else {
                     return self.destructure_assign_mut(e, eq_sign_span, assignments);
@@ -1256,7 +1263,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let ident = self.expr_ident(lhs.span, ident, binding);
         let assign =
             hir::ExprKind::Assign(self.lower_expr(lhs), ident, self.lower_span(eq_sign_span));
-        let expr = self.expr(lhs.span, assign, ThinVec::new());
+        let expr = self.expr(lhs.span, assign);
         assignments.push(self.stmt_expr(lhs.span, expr));
         pat
     }
@@ -1297,8 +1304,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let e2 = self.lower_expr_mut(e2);
         let fn_path =
             hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, self.lower_span(span), None);
-        let fn_expr =
-            self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
+        let fn_expr = self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path)));
         hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
     }
 
@@ -1318,7 +1324,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (Some(..), Some(..), HalfOpen) => hir::LangItem::Range,
             (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
-            (_, None, Closed) => self.diagnostic().span_fatal(span, "inclusive range with no end"),
+            (start, None, Closed) => {
+                self.tcx.sess.emit_err(InclusiveRangeWithNoEnd { span });
+                match start {
+                    Some(..) => hir::LangItem::RangeFrom,
+                    None => hir::LangItem::RangeFull,
+                }
+            }
         };
 
         let fields = self.arena.alloc_from_iter(
@@ -1405,8 +1417,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
+        let hir_id = self.lower_node_id(f.id);
+        self.lower_attrs(hir_id, &f.attrs);
         hir::ExprField {
-            hir_id: self.next_id(),
+            hir_id,
             ident: self.lower_ident(f.ident),
             expr: self.lower_expr(&f.expr),
             span: self.lower_span(f.span),
@@ -1418,13 +1432,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Gen) => {}
             Some(hir::GeneratorKind::Async(_)) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0727,
-                    "`async` generators are not yet supported"
-                )
-                .emit();
+                self.tcx.sess.emit_err(AsyncGeneratorsNotSupported { span });
             }
             None => self.generator_kind = Some(hir::GeneratorKind::Gen),
         }
@@ -1468,8 +1476,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `None => break`
         let none_arm = {
-            let break_expr =
-                self.with_loop_scope(e.id, |this| this.expr_break_alloc(for_span, ThinVec::new()));
+            let break_expr = self.with_loop_scope(e.id, |this| this.expr_break_alloc(for_span));
             let pat = self.pat_none(for_span);
             self.arm(pat, break_expr)
         };
@@ -1478,14 +1485,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let some_arm = {
             let some_pat = self.pat_some(pat_span, pat);
             let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
-            let body_expr = self.arena.alloc(self.expr_block(body_block, ThinVec::new()));
+            let body_expr = self.arena.alloc(self.expr_block(body_block));
             self.arm(some_pat, body_expr)
         };
 
         // `mut iter`
         let iter = Ident::with_dummy_span(sym::iter);
         let (iter_pat, iter_pat_nid) =
-            self.pat_ident_binding_mode(head_span, iter, hir::BindingAnnotation::Mutable);
+            self.pat_ident_binding_mode(head_span, iter, hir::BindingAnnotation::MUT);
 
         // `match Iterator::next(&mut iter) { ... }`
         let match_expr = {
@@ -1535,15 +1542,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::MatchSource::ForLoopDesugar,
         ));
 
-        let attrs: Vec<_> = e.attrs.iter().map(|a| self.lower_attr(a)).collect();
-
         // This is effectively `{ let _result = ...; _result }`.
         // The construct was introduced in #21984 and is necessary to make sure that
         // temporaries in the `head` expression are dropped and do not leak to the
         // surrounding scope of the `match` since the `match` is not a terminating scope.
         //
         // Also, add the attributes to the outer returned expr node.
-        self.expr_drop_temps_mut(for_span, match_expr, attrs.into())
+        let expr = self.expr_drop_temps_mut(for_span, match_expr);
+        self.lower_attrs(expr.hir_id, &e.attrs);
+        expr
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
@@ -1585,28 +1592,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // `#[allow(unreachable_code)]`
-        let attr = {
-            // `allow(unreachable_code)`
-            let allow = {
-                let allow_ident = Ident::new(sym::allow, self.lower_span(span));
-                let uc_ident = Ident::new(sym::unreachable_code, self.lower_span(span));
-                let uc_nested = attr::mk_nested_word_item(uc_ident);
-                attr::mk_list_item(allow_ident, vec![uc_nested])
-            };
-            attr::mk_attr_outer(allow)
-        };
-        let attrs = vec![attr];
+        let attr = attr::mk_attr_nested_word(
+            &self.tcx.sess.parse_sess.attr_id_generator,
+            AttrStyle::Outer,
+            sym::allow,
+            sym::unreachable_code,
+            self.lower_span(span),
+        );
+        let attrs: AttrVec = thin_vec![attr];
 
         // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
         let continue_arm = {
             let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
-            let val_expr = self.arena.alloc(self.expr_ident_with_attrs(
-                span,
-                val_ident,
-                val_pat_nid,
-                ThinVec::from(attrs.clone()),
-            ));
+            let val_expr = self.expr_ident(span, val_ident, val_pat_nid);
+            self.lower_attrs(val_expr.hir_id, &attrs);
             let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
             self.arm(continue_pat, val_expr)
         };
@@ -1624,7 +1624,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.arena.alloc(residual_expr),
                 unstable_span,
             );
-            let thin_attrs = ThinVec::from(attrs);
             let ret_expr = if let Some(catch_node) = self.catch_scope {
                 let target_id = Ok(self.lower_node_id(catch_node));
                 self.arena.alloc(self.expr(
@@ -1633,15 +1632,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::Destination { label: None, target_id },
                         Some(from_residual_expr),
                     ),
-                    thin_attrs,
                 ))
             } else {
-                self.arena.alloc(self.expr(
-                    try_span,
-                    hir::ExprKind::Ret(Some(from_residual_expr)),
-                    thin_attrs,
-                ))
+                self.arena.alloc(self.expr(try_span, hir::ExprKind::Ret(Some(from_residual_expr))))
             };
+            self.lower_attrs(ret_expr.hir_id, &attrs);
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
             self.arm(break_pat, ret_expr)
@@ -1655,11 +1650,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `ExprKind::Yeet` from: `do yeet <expr>` into:
-    /// ```rust
+    /// ```ignore(illustrative)
     /// // If there is an enclosing `try {...}`:
-    /// break 'catch_target FromResidual::from_residual(Yeet(residual)),
+    /// break 'catch_target FromResidual::from_residual(Yeet(residual));
     /// // Otherwise:
-    /// return FromResidual::from_residual(Yeet(residual)),
+    /// return FromResidual::from_residual(Yeet(residual));
     /// ```
     /// But to simplify this, there's a `from_yeet` lang item function which
     /// handles the combined `FromResidual::from_residual(Yeet(residual))`.
@@ -1706,62 +1701,84 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         expr: &'hir hir::Expr<'hir>,
-        attrs: AttrVec,
     ) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr_drop_temps_mut(span, expr, attrs))
+        self.arena.alloc(self.expr_drop_temps_mut(span, expr))
     }
 
     pub(super) fn expr_drop_temps_mut(
         &mut self,
         span: Span,
         expr: &'hir hir::Expr<'hir>,
-        attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::DropTemps(expr), attrs)
+        self.expr(span, hir::ExprKind::DropTemps(expr))
     }
 
-    fn expr_match(
+    pub(super) fn expr_match(
         &mut self,
         span: Span,
         arg: &'hir hir::Expr<'hir>,
         arms: &'hir [hir::Arm<'hir>],
         source: hir::MatchSource,
     ) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Match(arg, arms, source), ThinVec::new())
+        self.expr(span, hir::ExprKind::Match(arg, arms, source))
     }
 
-    fn expr_break(&mut self, span: Span, attrs: AttrVec) -> hir::Expr<'hir> {
+    fn expr_break(&mut self, span: Span) -> hir::Expr<'hir> {
         let expr_break = hir::ExprKind::Break(self.lower_loop_destination(None), None);
-        self.expr(span, expr_break, attrs)
+        self.expr(span, expr_break)
     }
 
-    fn expr_break_alloc(&mut self, span: Span, attrs: AttrVec) -> &'hir hir::Expr<'hir> {
-        let expr_break = self.expr_break(span, attrs);
+    fn expr_break_alloc(&mut self, span: Span) -> &'hir hir::Expr<'hir> {
+        let expr_break = self.expr_break(span);
         self.arena.alloc(expr_break)
     }
 
     fn expr_mut_addr_of(&mut self, span: Span, e: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
-        self.expr(
-            span,
-            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e),
-            ThinVec::new(),
-        )
+        self.expr(span, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e))
     }
 
     fn expr_unit(&mut self, sp: Span) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[]), ThinVec::new()))
+        self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[])))
     }
 
-    fn expr_call_mut(
+    pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
+        let lit = self.arena.alloc(hir::Lit {
+            span: sp,
+            node: ast::LitKind::Int(value as u128, ast::LitIntType::Unsigned(ast::UintTy::Usize)),
+        });
+        self.expr(sp, hir::ExprKind::Lit(lit))
+    }
+
+    pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
+        let lit = self.arena.alloc(hir::Lit {
+            span: sp,
+            node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ast::UintTy::U32)),
+        });
+        self.expr(sp, hir::ExprKind::Lit(lit))
+    }
+
+    pub(super) fn expr_char(&mut self, sp: Span, value: char) -> hir::Expr<'hir> {
+        let lit = self.arena.alloc(hir::Lit { span: sp, node: ast::LitKind::Char(value) });
+        self.expr(sp, hir::ExprKind::Lit(lit))
+    }
+
+    pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {
+        let lit = self
+            .arena
+            .alloc(hir::Lit { span: sp, node: ast::LitKind::Str(value, ast::StrStyle::Cooked) });
+        self.expr(sp, hir::ExprKind::Lit(lit))
+    }
+
+    pub(super) fn expr_call_mut(
         &mut self,
         span: Span,
         e: &'hir hir::Expr<'hir>,
         args: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Call(e, args), ThinVec::new())
+        self.expr(span, hir::ExprKind::Call(e, args))
     }
 
-    fn expr_call(
+    pub(super) fn expr_call(
         &mut self,
         span: Span,
         e: &'hir hir::Expr<'hir>,
@@ -1777,8 +1794,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         args: &'hir [hir::Expr<'hir>],
         hir_id: Option<hir::HirId>,
     ) -> hir::Expr<'hir> {
-        let path =
-            self.arena.alloc(self.expr_lang_item_path(span, lang_item, ThinVec::new(), hir_id));
+        let path = self.arena.alloc(self.expr_lang_item_path(span, lang_item, hir_id));
         self.expr_call_mut(span, path, args)
     }
 
@@ -1796,14 +1812,33 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
-        attrs: AttrVec,
         hir_id: Option<hir::HirId>,
     ) -> hir::Expr<'hir> {
         self.expr(
             span,
             hir::ExprKind::Path(hir::QPath::LangItem(lang_item, self.lower_span(span), hir_id)),
-            attrs,
         )
+    }
+
+    /// `<LangItem>::name`
+    pub(super) fn expr_lang_item_type_relative(
+        &mut self,
+        span: Span,
+        lang_item: hir::LangItem,
+        name: Symbol,
+    ) -> hir::Expr<'hir> {
+        let path = hir::ExprKind::Path(hir::QPath::TypeRelative(
+            self.arena.alloc(self.ty(
+                span,
+                hir::TyKind::Path(hir::QPath::LangItem(lang_item, self.lower_span(span), None)),
+            )),
+            self.arena.alloc(hir::PathSegment::new(
+                Ident::new(name, span),
+                self.next_id(),
+                Res::Err,
+            )),
+        ));
+        self.expr(span, path)
     }
 
     pub(super) fn expr_ident(
@@ -1817,30 +1852,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn expr_ident_mut(
         &mut self,
-        sp: Span,
-        ident: Ident,
-        binding: hir::HirId,
-    ) -> hir::Expr<'hir> {
-        self.expr_ident_with_attrs(sp, ident, binding, ThinVec::new())
-    }
-
-    fn expr_ident_with_attrs(
-        &mut self,
         span: Span,
         ident: Ident,
         binding: hir::HirId,
-        attrs: AttrVec,
     ) -> hir::Expr<'hir> {
+        let hir_id = self.next_id();
+        let res = Res::Local(binding);
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
                 span: self.lower_span(span),
-                res: Res::Local(binding),
-                segments: arena_vec![self; hir::PathSegment::from_ident(ident)],
+                res,
+                segments: arena_vec![self; hir::PathSegment::new(ident, hir_id, res)],
             }),
         ));
 
-        self.expr(span, expr_path, attrs)
+        self.expr(span, expr_path)
     }
 
     fn expr_unsafe(&mut self, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
@@ -1859,36 +1886,38 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }),
                 None,
             ),
-            ThinVec::new(),
         )
     }
 
     fn expr_block_empty(&mut self, span: Span) -> &'hir hir::Expr<'hir> {
         let blk = self.block_all(span, &[], None);
-        let expr = self.expr_block(blk, ThinVec::new());
+        let expr = self.expr_block(blk);
         self.arena.alloc(expr)
     }
 
-    pub(super) fn expr_block(
-        &mut self,
-        b: &'hir hir::Block<'hir>,
-        attrs: AttrVec,
-    ) -> hir::Expr<'hir> {
-        self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
+    pub(super) fn expr_block(&mut self, b: &'hir hir::Block<'hir>) -> hir::Expr<'hir> {
+        self.expr(b.span, hir::ExprKind::Block(b, None))
     }
 
-    pub(super) fn expr(
+    pub(super) fn expr_array_ref(
         &mut self,
         span: Span,
-        kind: hir::ExprKind<'hir>,
-        attrs: AttrVec,
+        elements: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
+        let addrof = hir::ExprKind::AddrOf(
+            hir::BorrowKind::Ref,
+            hir::Mutability::Not,
+            self.arena.alloc(self.expr(span, hir::ExprKind::Array(elements))),
+        );
+        self.expr(span, addrof)
+    }
+
+    pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind<'hir>) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
-        self.lower_attrs(hir_id, &attrs);
         hir::Expr { hir_id, kind, span: self.lower_span(span) }
     }
 
-    fn expr_field(
+    pub(super) fn expr_field(
         &mut self,
         ident: Ident,
         expr: &'hir hir::Expr<'hir>,
@@ -1903,7 +1932,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
+    pub(super) fn arm(
+        &mut self,
+        pat: &'hir hir::Pat<'hir>,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> hir::Arm<'hir> {
         hir::Arm {
             hir_id: self.next_id(),
             pat,

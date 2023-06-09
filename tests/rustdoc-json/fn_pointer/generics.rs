@@ -1,0 +1,13 @@
+// ignore-tidy-linelength
+
+#![feature(no_core)]
+#![no_core]
+
+// @count "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.typedef.type.function_pointer.decl.inputs[*]" 1
+// @is "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.typedef.type.function_pointer.decl.inputs[0][0]" '"val"'
+// @is "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.typedef.type.function_pointer.decl.inputs[0][1].borrowed_ref.lifetime" \"\'c\"
+// @is "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.typedef.type.function_pointer.decl.output.primitive" \"i32\"
+// @count "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.typedef.type.function_pointer.generic_params[*]" 1
+// @is "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.typedef.type.function_pointer.generic_params[0].name" \"\'c\"
+// @is "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.typedef.type.function_pointer.generic_params[0].kind" '{ "lifetime": { "outlives": [] } }'
+pub type WithHigherRankTraitBounds = for<'c> fn(val: &'c i32) -> i32;

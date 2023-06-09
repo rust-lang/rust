@@ -107,5 +107,11 @@ LL |     let _ = !(a == b || c == d);
 LL |     let _ = a != b && c != d;
    |             ~~~~~~~~~~~~~~~~
 
-error: aborting due to 12 previous errors
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:62:8
+   |
+LL |     if matches!(true, true) && true {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(true, true)`
+
+error: aborting due to 13 previous errors
 

@@ -1,9 +1,11 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::IntervalSet;
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_index::vec::Idx;
-use rustc_index::vec::IndexVec;
+use rustc_index::Idx;
+use rustc_index::IndexVec;
 use rustc_middle::mir::{BasicBlock, Body, Location};
 use rustc_middle::ty::{self, RegionVid};
 use std::fmt::Debug;
@@ -25,7 +27,7 @@ impl RegionValueElements {
     pub(crate) fn new(body: &Body<'_>) -> Self {
         let mut num_points = 0;
         let statements_before_block: IndexVec<BasicBlock, usize> = body
-            .basic_blocks()
+            .basic_blocks
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -37,7 +39,7 @@ impl RegionValueElements {
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
-        for (bb, bb_data) in body.basic_blocks().iter_enumerated() {
+        for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
 
@@ -88,12 +90,14 @@ impl RegionValueElements {
 rustc_index::newtype_index! {
     /// A single integer representing a `Location` in the MIR control-flow
     /// graph. Constructed efficiently from `RegionValueElements`.
-    pub struct PointIndex { DEBUG_FORMAT = "PointIndex({})" }
+    #[debug_format = "PointIndex({})"]
+    pub struct PointIndex {}
 }
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
-    pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
+    #[debug_format = "PlaceholderIndex({})"]
+    pub struct PlaceholderIndex {}
 }
 
 /// An individual element in a region value -- the value of a
@@ -155,7 +159,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Returns `true` if the region `r` contains the given element.
     pub(crate) fn contains(&self, row: N, location: Location) -> bool {
         let index = self.elements.point_from_location(location);
-        self.points.row(row).map_or(false, |r| r.contains(index))
+        self.points.row(row).is_some_and(|r| r.contains(index))
     }
 
     /// Returns an iterator of all the elements contained by the region `r`
@@ -177,12 +181,13 @@ impl<N: Idx> LivenessValues<N> {
 /// Maps from `ty::PlaceholderRegion` values that are used in the rest of
 /// rustc to the internal `PlaceholderIndex` values that are used in
 /// NLL.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct PlaceholderIndices {
     indices: FxIndexSet<ty::PlaceholderRegion>,
 }
 
 impl PlaceholderIndices {
+    /// Returns the `PlaceholderIndex` for the inserted `PlaceholderRegion`
     pub(crate) fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
         let (index, _) = self.indices.insert_full(placeholder);
         index.into()
@@ -230,7 +235,7 @@ pub(crate) struct RegionValues<N: Idx> {
     free_regions: SparseBitMatrix<N, RegionVid>,
 
     /// Placeholders represent bound regions -- so something like `'a`
-    /// in for<'a> fn(&'a u32)`.
+    /// in `for<'a> fn(&'a u32)`.
     placeholders: SparseBitMatrix<N, PlaceholderIndex>,
 }
 
@@ -276,6 +281,22 @@ impl<N: Idx> RegionValues<N> {
     /// Returns `true` if the region `r` contains the given element.
     pub(crate) fn contains(&self, r: N, elem: impl ToElementIndex) -> bool {
         elem.contained_in_row(self, r)
+    }
+
+    /// Returns the lowest statement index in `start..=end` which is not contained by `r`.
+    pub(crate) fn first_non_contained_inclusive(
+        &self,
+        r: N,
+        block: BasicBlock,
+        start: usize,
+        end: usize,
+    ) -> Option<usize> {
+        let row = self.points.row(r)?;
+        let block = self.elements.entry_point(block);
+        let start = block.plus(start);
+        let end = block.plus(end);
+        let first_unset = row.first_unset_in(start..=end)?;
+        Some(first_unset.index() - block.index())
     }
 
     /// `self[to] |= values[from]`, essentially: that is, take all the

@@ -15,19 +15,17 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 sym::String => "",
                 _ => "<..>",
             };
+
+            let box_content = format!("{item_type}{generic}");
             span_lint_and_help(
                 cx,
                 BOX_COLLECTION,
                 hir_ty.span,
                 &format!(
-                    "you seem to be trying to use `Box<{outer}{generic}>`. Consider using just `{outer}{generic}`",
-                    outer=item_type,
-                    generic = generic),
+                    "you seem to be trying to use `Box<{box_content}>`. Consider using just `{box_content}`"),
                 None,
                 &format!(
-                    "`{outer}{generic}` is already on the heap, `Box<{outer}{generic}>` makes an extra allocation",
-                    outer=item_type,
-                    generic = generic)
+                    "`{box_content}` is already on the heap, `Box<{box_content}>` makes an extra allocation")
             );
             true
         } else {
@@ -41,5 +39,24 @@ fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Symbol>
     let id = path_def_id(cx, param)?;
     cx.tcx
         .get_diagnostic_name(id)
-        .filter(|&name| matches!(name, sym::HashMap | sym::String | sym::Vec))
+        .filter(|&name| {
+            matches!(
+                name,
+                sym::HashMap
+                    | sym::Vec
+                    | sym::HashSet
+                    | sym::VecDeque
+                    | sym::LinkedList
+                    | sym::BTreeMap
+                    | sym::BTreeSet
+                    | sym::BinaryHeap
+            )
+        })
+        .or_else(|| {
+            cx.tcx
+                .lang_items()
+                .string()
+                .filter(|did| id == *did)
+                .map(|_| sym::String)
+        })
 }

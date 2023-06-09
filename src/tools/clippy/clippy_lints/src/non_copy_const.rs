@@ -1,4 +1,4 @@
-//! Checks for uses of const which the type is not `Freeze` (`Cell`-free).
+//! Checks for usage of const which the type is not `Freeze` (`Cell`-free).
 //!
 //! This lint is **warn** by default.
 
@@ -13,14 +13,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, InnerSpan, Span, DUMMY_SP};
-use rustc_typeck::hir_ty_to_ty;
+use rustc_span::{sym, InnerSpan, Span};
 
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
@@ -136,7 +136,7 @@ fn is_unfrozen<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     // since it works when a pointer indirection involves (`Cell<*const T>`).
     // Making up a `ParamEnv` where every generic params and assoc types are `Freeze`is another option;
     // but I'm not sure whether it's a decent way, if possible.
-    cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)
+    cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx, cx.param_env)
 }
 
 fn is_value_unfrozen_raw<'tcx>(
@@ -149,6 +149,9 @@ fn is_value_unfrozen_raw<'tcx>(
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
             ty::Adt(ty_def, ..) if ty_def.is_unsafe_cell() => true,
+            // As of 2022-09-08 miri doesn't track which union field is active so there's no safe way to check the
+            // contained value.
+            ty::Adt(def, ..) if def.is_union() => false,
             ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
                 let val = cx.tcx.destructure_mir_constant(cx.param_env, val);
                 val.fields.iter().any(|field| inner(cx, *field))
@@ -193,11 +196,9 @@ fn is_value_unfrozen_poly<'tcx>(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<
 fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
     let substs = cx.typeck_results().node_substs(hir_id);
 
-    let result = cx.tcx.const_eval_resolve(
-        cx.param_env,
-        ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
-        None,
-    );
+    let result = cx
+        .tcx
+        .const_eval_resolve(cx.param_env, mir::UnevaluatedConst::new(def_id, substs), None);
     is_value_unfrozen_raw(cx, result, ty)
 }
 
@@ -251,14 +252,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
         if let ItemKind::Const(hir_ty, body_id) = it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            if !macro_backtrace(it.span).last().map_or(false, |macro_call| {
-                matches!(
-                    cx.tcx.get_diagnostic_name(macro_call.def_id),
-                    Some(sym::thread_local_macro)
-                )
-            }) && is_unfrozen(cx, ty)
-                && is_value_unfrozen_poly(cx, body_id, ty)
-            {
+            if !ignored_macro(cx, it) && is_unfrozen(cx, ty) && is_value_unfrozen_poly(cx, body_id, ty) {
                 lint(cx, Source::Item { item: it.span });
             }
         }
@@ -293,7 +287,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Const(hir_ty, body_id) = &impl_item.kind {
-            let item_def_id = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+            let item_def_id = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
             let item = cx.tcx.hir().expect_item(item_def_id);
 
             match &item.kind {
@@ -307,7 +301,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
                         if let Some(of_assoc_item) = cx
                             .tcx
-                            .associated_item(impl_item.def_id)
+                            .associated_item(impl_item.owner_id)
                             .trait_item_def_id;
                         if cx
                             .tcx
@@ -317,7 +311,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                                 // and, in that case, the definition is *not* generic.
                                 cx.tcx.normalize_erasing_regions(
                                     cx.tcx.param_env(of_trait_def_id),
-                                    cx.tcx.type_of(of_assoc_item),
+                                    cx.tcx.type_of(of_assoc_item).subst_identity(),
                                 ),
                             ))
                             .is_err();
@@ -361,9 +355,8 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             }
 
             // Make sure it is a const item.
-            let item_def_id = match cx.qpath_res(qpath, expr.hir_id) {
-                Res::Def(DefKind::Const | DefKind::AssocConst, did) => did,
-                _ => return,
+            let Res::Def(DefKind::Const | DefKind::AssocConst, item_def_id) = cx.qpath_res(qpath, expr.hir_id) else {
+                return
             };
 
             // Climb up to resolve any field access and explicit referencing.
@@ -371,7 +364,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             let mut dereferenced_expr = expr;
             let mut needs_check_adjustment = true;
             loop {
-                let parent_id = cx.tcx.hir().get_parent_node(cur_expr.hir_id);
+                let parent_id = cx.tcx.hir().parent_id(cur_expr.hir_id);
                 if parent_id == cur_expr.hir_id {
                     break;
                 }
@@ -444,4 +437,13 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             }
         }
     }
+}
+
+fn ignored_macro(cx: &LateContext<'_>, it: &rustc_hir::Item<'_>) -> bool {
+    macro_backtrace(it.span).any(|macro_call| {
+        matches!(
+            cx.tcx.get_diagnostic_name(macro_call.def_id),
+            Some(sym::thread_local_macro)
+        )
+    })
 }

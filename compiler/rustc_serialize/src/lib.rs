@@ -14,10 +14,13 @@ Core encoding and decoding interfaces.
 #![feature(min_specialization)]
 #![feature(core_intrinsics)]
 #![feature(maybe_uninit_slice)]
-#![feature(let_else)]
 #![feature(new_uninit)]
+#![feature(allocator_api)]
+#![feature(ptr_sub_ptr)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 

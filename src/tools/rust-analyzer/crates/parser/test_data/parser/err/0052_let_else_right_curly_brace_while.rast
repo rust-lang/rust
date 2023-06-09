@@ -1,0 +1,49 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          WHILE_EXPR
+            WHILE_KW "while"
+            WHITESPACE " "
+            LITERAL
+              TRUE_KW "true"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE "\n    "
+                R_CURLY "}"
+          WHITESPACE " "
+          LET_ELSE
+            ELSE_KW "else"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE "\n        "
+                RETURN_EXPR
+                  RETURN_KW "return"
+                WHITESPACE "\n    "
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+error 39: right curly brace `}` before `else` in a `let...else` statement not allowed

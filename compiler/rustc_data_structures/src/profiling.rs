@@ -86,9 +86,10 @@ use crate::fx::FxHashMap;
 
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
-use std::convert::Into;
 use std::error::Error;
+use std::fmt::Display;
 use std::fs;
+use std::intrinsics::unlikely;
 use std::path::Path;
 use std::process;
 use std::sync::Arc;
@@ -100,7 +101,7 @@ use parking_lot::RwLock;
 use smallvec::SmallVec;
 
 bitflags::bitflags! {
-    struct EventFilter: u32 {
+    struct EventFilter: u16 {
         const GENERIC_ACTIVITIES  = 1 << 0;
         const QUERY_PROVIDERS     = 1 << 1;
         const QUERY_CACHE_HITS    = 1 << 2;
@@ -145,6 +146,15 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
 /// Something that uniquely identifies a query invocation.
 pub struct QueryInvocationId(pub u32);
 
+/// Which format to use for `-Z time-passes`
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum TimePassesFormat {
+    /// Emit human readable text
+    Text,
+    /// Emit structured JSON
+    Json,
+}
+
 /// A reference to the SelfProfiler. It can be cloned and sent across thread
 /// boundaries at will.
 #[derive(Clone)]
@@ -158,30 +168,21 @@ pub struct SelfProfilerRef {
     // actually enabled.
     event_filter_mask: EventFilter,
 
-    // Print verbose generic activities to stdout
-    print_verbose_generic_activities: bool,
-
-    // Print extra verbose generic activities to stdout
-    print_extra_verbose_generic_activities: bool,
+    // Print verbose generic activities to stderr.
+    print_verbose_generic_activities: Option<TimePassesFormat>,
 }
 
 impl SelfProfilerRef {
     pub fn new(
         profiler: Option<Arc<SelfProfiler>>,
-        print_verbose_generic_activities: bool,
-        print_extra_verbose_generic_activities: bool,
+        print_verbose_generic_activities: Option<TimePassesFormat>,
     ) -> SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
         let event_filter_mask =
             profiler.as_ref().map_or(EventFilter::empty(), |p| p.event_filter_mask);
 
-        SelfProfilerRef {
-            profiler,
-            event_filter_mask,
-            print_verbose_generic_activities,
-            print_extra_verbose_generic_activities,
-        }
+        SelfProfilerRef { profiler, event_filter_mask, print_verbose_generic_activities }
     }
 
     /// This shim makes sure that calls only get executed if the filter mask
@@ -201,7 +202,7 @@ impl SelfProfilerRef {
             F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
         {
             let profiler = profiler_ref.profiler.as_ref().unwrap();
-            f(&**profiler)
+            f(profiler)
         }
 
         if self.event_filter_mask.contains(event_filter) {
@@ -214,36 +215,31 @@ impl SelfProfilerRef {
     /// Start profiling a verbose generic activity. Profiling continues until the
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
-    pub fn verbose_generic_activity<'a>(
-        &'a self,
-        event_label: &'static str,
-    ) -> VerboseTimingGuard<'a> {
-        let message =
-            if self.print_verbose_generic_activities { Some(event_label.to_owned()) } else { None };
+    /// stderr if the compiler is invoked with -Ztime-passes.
+    pub fn verbose_generic_activity(&self, event_label: &'static str) -> VerboseTimingGuard<'_> {
+        let message_and_format =
+            self.print_verbose_generic_activities.map(|format| (event_label.to_owned(), format));
 
-        VerboseTimingGuard::start(message, self.generic_activity(event_label))
+        VerboseTimingGuard::start(message_and_format, self.generic_activity(event_label))
     }
 
-    /// Start profiling an extra verbose generic activity. Profiling continues until the
-    /// VerboseTimingGuard returned from this call is dropped. In addition to recording
-    /// a measureme event, "extra verbose" generic activities also print a timing entry to
-    /// stdout if the compiler is invoked with -Ztime-passes.
-    pub fn extra_verbose_generic_activity<'a, A>(
-        &'a self,
+    /// Like `verbose_generic_activity`, but with an extra arg.
+    pub fn verbose_generic_activity_with_arg<A>(
+        &self,
         event_label: &'static str,
         event_arg: A,
-    ) -> VerboseTimingGuard<'a>
+    ) -> VerboseTimingGuard<'_>
     where
         A: Borrow<str> + Into<String>,
     {
-        let message = if self.print_extra_verbose_generic_activities {
-            Some(format!("{}({})", event_label, event_arg.borrow()))
-        } else {
-            None
-        };
+        let message_and_format = self
+            .print_verbose_generic_activities
+            .map(|format| (format!("{}({})", event_label, event_arg.borrow()), format));
 
-        VerboseTimingGuard::start(message, self.generic_activity_with_arg(event_label, event_arg))
+        VerboseTimingGuard::start(
+            message_and_format,
+            self.generic_activity_with_arg(event_label, event_arg),
+        )
     }
 
     /// Start profiling a generic activity. Profiling continues until the
@@ -411,11 +407,18 @@ impl SelfProfilerRef {
     /// Record a query in-memory cache hit.
     #[inline(always)]
     pub fn query_cache_hit(&self, query_invocation_id: QueryInvocationId) {
-        self.instant_query_event(
-            |profiler| profiler.query_cache_hit_event_kind,
-            query_invocation_id,
-            EventFilter::QUERY_CACHE_HITS,
-        );
+        #[inline(never)]
+        #[cold]
+        fn cold_call(profiler_ref: &SelfProfilerRef, query_invocation_id: QueryInvocationId) {
+            profiler_ref.instant_query_event(
+                |profiler| profiler.query_cache_hit_event_kind,
+                query_invocation_id,
+            );
+        }
+
+        if unlikely(self.event_filter_mask.contains(EventFilter::QUERY_CACHE_HITS)) {
+            cold_call(self, query_invocation_id);
+        }
     }
 
     /// Start profiling a query being blocked on a concurrent execution.
@@ -460,25 +463,20 @@ impl SelfProfilerRef {
         &self,
         event_kind: fn(&SelfProfiler) -> StringId,
         query_invocation_id: QueryInvocationId,
-        event_filter: EventFilter,
     ) {
-        drop(self.exec(event_filter, |profiler| {
-            let event_id = StringId::new_virtual(query_invocation_id.0);
-            let thread_id = get_thread_id();
-
-            profiler.profiler.record_instant_event(
-                event_kind(profiler),
-                EventId::from_virtual(event_id),
-                thread_id,
-            );
-
-            TimingGuard::none()
-        }));
+        let event_id = StringId::new_virtual(query_invocation_id.0);
+        let thread_id = get_thread_id();
+        let profiler = self.profiler.as_ref().unwrap();
+        profiler.profiler.record_instant_event(
+            event_kind(profiler),
+            EventId::from_virtual(event_id),
+            thread_id,
+        );
     }
 
     pub fn with_profiler(&self, f: impl FnOnce(&SelfProfiler)) {
         if let Some(profiler) = &self.profiler {
-            f(&profiler)
+            f(profiler)
         }
     }
 
@@ -559,9 +557,9 @@ impl SelfProfiler {
         let crate_name = crate_name.unwrap_or("unknown-crate");
         // HACK(eddyb) we need to pad the PID, strange as it may seem, as its
         // length can behave as a source of entropy for heap addresses, when
-        // ASLR is disabled and the heap is otherwise determinic.
+        // ASLR is disabled and the heap is otherwise deterministic.
         let pid: u32 = process::id();
-        let filename = format!("{}-{:07}.rustc_profile", crate_name, pid);
+        let filename = format!("{crate_name}-{pid:07}.rustc_profile");
         let path = output_directory.join(&filename);
         let profiler =
             Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
@@ -719,17 +717,32 @@ impl<'a> TimingGuard<'a> {
     }
 }
 
+struct VerboseInfo {
+    start_time: Instant,
+    start_rss: Option<usize>,
+    message: String,
+    format: TimePassesFormat,
+}
+
 #[must_use]
 pub struct VerboseTimingGuard<'a> {
-    start_and_message: Option<(Instant, Option<usize>, String)>,
+    info: Option<VerboseInfo>,
     _guard: TimingGuard<'a>,
 }
 
 impl<'a> VerboseTimingGuard<'a> {
-    pub fn start(message: Option<String>, _guard: TimingGuard<'a>) -> Self {
+    pub fn start(
+        message_and_format: Option<(String, TimePassesFormat)>,
+        _guard: TimingGuard<'a>,
+    ) -> Self {
         VerboseTimingGuard {
             _guard,
-            start_and_message: message.map(|msg| (Instant::now(), get_resident_set_size(), msg)),
+            info: message_and_format.map(|(message, format)| VerboseInfo {
+                start_time: Instant::now(),
+                start_rss: get_resident_set_size(),
+                message,
+                format,
+            }),
         }
     }
 
@@ -742,30 +755,37 @@ impl<'a> VerboseTimingGuard<'a> {
 
 impl Drop for VerboseTimingGuard<'_> {
     fn drop(&mut self) {
-        if let Some((start_time, start_rss, ref message)) = self.start_and_message {
+        if let Some(info) = &self.info {
             let end_rss = get_resident_set_size();
-            let dur = start_time.elapsed();
-
-            if should_print_passes(dur, start_rss, end_rss) {
-                print_time_passes_entry(&message, dur, start_rss, end_rss);
-            }
+            let dur = info.start_time.elapsed();
+            print_time_passes_entry(&info.message, dur, info.start_rss, end_rss, info.format);
         }
     }
 }
 
-fn should_print_passes(dur: Duration, start_rss: Option<usize>, end_rss: Option<usize>) -> bool {
-    if dur.as_millis() > 5 {
-        return true;
-    }
+struct JsonTimePassesEntry<'a> {
+    pass: &'a str,
+    time: f64,
+    start_rss: Option<usize>,
+    end_rss: Option<usize>,
+}
 
-    if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
-        let change_rss = end_rss.abs_diff(start_rss);
-        if change_rss > 0 {
-            return true;
+impl Display for JsonTimePassesEntry<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { pass: what, time, start_rss, end_rss } = self;
+        write!(f, r#"{{"pass":"{what}","time":{time},"rss_start":"#).unwrap();
+        match start_rss {
+            Some(rss) => write!(f, "{rss}")?,
+            None => write!(f, "null")?,
         }
+        write!(f, r#","rss_end":"#)?;
+        match end_rss {
+            Some(rss) => write!(f, "{rss}")?,
+            None => write!(f, "null")?,
+        }
+        write!(f, "}}")?;
+        Ok(())
     }
-
-    false
 }
 
 pub fn print_time_passes_entry(
@@ -773,7 +793,39 @@ pub fn print_time_passes_entry(
     dur: Duration,
     start_rss: Option<usize>,
     end_rss: Option<usize>,
+    format: TimePassesFormat,
 ) {
+    match format {
+        TimePassesFormat::Json => {
+            let entry =
+                JsonTimePassesEntry { pass: what, time: dur.as_secs_f64(), start_rss, end_rss };
+
+            eprintln!(r#"time: {entry}"#);
+            return;
+        }
+        TimePassesFormat::Text => (),
+    }
+
+    // Print the pass if its duration is greater than 5 ms, or it changed the
+    // measured RSS.
+    let is_notable = || {
+        if dur.as_millis() > 5 {
+            return true;
+        }
+
+        if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
+            let change_rss = end_rss.abs_diff(start_rss);
+            if change_rss > 0 {
+                return true;
+            }
+        }
+
+        false
+    };
+    if !is_notable() {
+        return;
+    }
+
     let rss_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as usize;
     let rss_change_to_mb = |rss| (rss as f64 / 1_000_000.0).round() as i128;
 
@@ -810,21 +862,28 @@ fn get_thread_id() -> u32 {
 cfg_if! {
     if #[cfg(windows)] {
         pub fn get_resident_set_size() -> Option<usize> {
-            use std::mem::{self, MaybeUninit};
-            use winapi::shared::minwindef::DWORD;
-            use winapi::um::processthreadsapi::GetCurrentProcess;
-            use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
+            use std::mem;
 
-            let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
-            match unsafe {
-                GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
-            } {
-                0 => None,
-                _ => {
-                    let pmc = unsafe { pmc.assume_init() };
-                    Some(pmc.WorkingSetSize as usize)
-                }
+            use windows::{
+                // FIXME: change back to K32GetProcessMemoryInfo when windows crate
+                // updated to 0.49.0+ to drop dependency on psapi.dll
+                Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS},
+                Win32::System::Threading::GetCurrentProcess,
+            };
+
+            let mut pmc = PROCESS_MEMORY_COUNTERS::default();
+            let pmc_size = mem::size_of_val(&pmc);
+            unsafe {
+                GetProcessMemoryInfo(
+                    GetCurrentProcess(),
+                    &mut pmc,
+                    pmc_size as u32,
+                )
             }
+            .ok()
+            .ok()?;
+
+            Some(pmc.WorkingSetSize)
         }
     } else if #[cfg(target_os = "macos")] {
         pub fn get_resident_set_size() -> Option<usize> {
@@ -859,3 +918,6 @@ cfg_if! {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

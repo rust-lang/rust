@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 use std::fmt::{self, Display};
 

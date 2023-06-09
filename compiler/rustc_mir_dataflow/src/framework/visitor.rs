@@ -1,16 +1,18 @@
+use std::borrow::Borrow;
+
 use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Direction, Results};
+use super::{Analysis, Direction, EntrySets, Results};
 
 /// Calls the corresponding method in `ResultsVisitor` for every location in a `mir::Body` with the
 /// dataflow state at that location.
-pub fn visit_results<'mir, 'tcx, F, V>(
+pub fn visit_results<'mir, 'tcx, F, R>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
-    results: &V,
-    vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = F>,
+    results: &mut R,
+    vis: &mut impl ResultsVisitor<'mir, 'tcx, R, FlowState = F>,
 ) where
-    V: ResultsVisitable<'tcx, FlowState = F>,
+    R: ResultsVisitable<'tcx, FlowState = F>,
 {
     let mut state = results.new_flow_state(body);
 
@@ -22,15 +24,18 @@ pub fn visit_results<'mir, 'tcx, F, V>(
         assert!(reachable_blocks.contains(block));
 
         let block_data = &body[block];
-        V::Direction::visit_results_in_block(&mut state, block, block_data, results, vis);
+        R::Direction::visit_results_in_block(&mut state, block, block_data, results, vis);
     }
 }
 
-pub trait ResultsVisitor<'mir, 'tcx> {
+/// A visitor over the results of an `Analysis`. The type parameter `R` is the results type being
+/// visited.
+pub trait ResultsVisitor<'mir, 'tcx, R> {
     type FlowState;
 
     fn visit_block_start(
         &mut self,
+        _results: &R,
         _state: &Self::FlowState,
         _block_data: &'mir mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
@@ -41,6 +46,7 @@ pub trait ResultsVisitor<'mir, 'tcx> {
     /// its `statement_effect`.
     fn visit_statement_before_primary_effect(
         &mut self,
+        _results: &R,
         _state: &Self::FlowState,
         _statement: &'mir mir::Statement<'tcx>,
         _location: Location,
@@ -51,6 +57,7 @@ pub trait ResultsVisitor<'mir, 'tcx> {
     /// statement applied to `state`.
     fn visit_statement_after_primary_effect(
         &mut self,
+        _results: &R,
         _state: &Self::FlowState,
         _statement: &'mir mir::Statement<'tcx>,
         _location: Location,
@@ -61,6 +68,7 @@ pub trait ResultsVisitor<'mir, 'tcx> {
     /// its `terminator_effect`.
     fn visit_terminator_before_primary_effect(
         &mut self,
+        _results: &R,
         _state: &Self::FlowState,
         _terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
@@ -73,6 +81,7 @@ pub trait ResultsVisitor<'mir, 'tcx> {
     /// The `call_return_effect` (if one exists) will *not* be applied to `state`.
     fn visit_terminator_after_primary_effect(
         &mut self,
+        _results: &R,
         _state: &Self::FlowState,
         _terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
@@ -81,6 +90,7 @@ pub trait ResultsVisitor<'mir, 'tcx> {
 
     fn visit_block_end(
         &mut self,
+        _results: &R,
         _state: &Self::FlowState,
         _block_data: &'mir mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
@@ -105,37 +115,38 @@ pub trait ResultsVisitable<'tcx> {
     fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock);
 
     fn reconstruct_before_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         statement: &mir::Statement<'tcx>,
         location: Location,
     );
 
     fn reconstruct_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         statement: &mir::Statement<'tcx>,
         location: Location,
     );
 
     fn reconstruct_before_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     );
 
     fn reconstruct_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     );
 }
 
-impl<'tcx, A> ResultsVisitable<'tcx> for Results<'tcx, A>
+impl<'tcx, A, E> ResultsVisitable<'tcx> for Results<'tcx, A, E>
 where
     A: Analysis<'tcx>,
+    E: Borrow<EntrySets<'tcx, A>>,
 {
     type FlowState = A::Domain;
 
@@ -146,11 +157,11 @@ where
     }
 
     fn reset_to_block_entry(&self, state: &mut Self::FlowState, block: BasicBlock) {
-        state.clone_from(&self.entry_set_for_block(block));
+        state.clone_from(self.entry_set_for_block(block));
     }
 
     fn reconstruct_before_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -159,7 +170,7 @@ where
     }
 
     fn reconstruct_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -168,7 +179,7 @@ where
     }
 
     fn reconstruct_before_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         term: &mir::Terminator<'tcx>,
         loc: Location,
@@ -177,7 +188,7 @@ where
     }
 
     fn reconstruct_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::FlowState,
         term: &mir::Terminator<'tcx>,
         loc: Location,

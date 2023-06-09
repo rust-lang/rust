@@ -1,13 +1,14 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(lint_reasons)]
-#![feature(let_else)]
+#![feature(yeet_expr)]
 #![allow(unused)]
 #![allow(
     clippy::if_same_then_else,
     clippy::single_match,
     clippy::needless_bool,
-    clippy::equatable_if_let
+    clippy::equatable_if_let,
+    clippy::needless_else
 )]
 #![warn(clippy::needless_return)]
 
@@ -29,6 +30,16 @@ fn test_end_of_fn() -> bool {
 
 fn test_no_semicolon() -> bool {
     return true;
+}
+
+#[rustfmt::skip]
+fn test_multiple_semicolon() -> bool {
+    return true;;;
+}
+
+#[rustfmt::skip]
+fn test_multiple_semicolon_with_spaces() -> bool {
+    return true;; ; ;
 }
 
 fn test_if_block() -> bool {
@@ -228,13 +239,93 @@ fn needless_return_macro() -> String {
     return format!("Hello {}", "world!");
 }
 
-fn check_expect() -> bool {
-    if true {
-        // no error!
+fn issue_9361() -> i32 {
+    let n = 1;
+    #[allow(clippy::arithmetic_side_effects)]
+    return n + n;
+}
+
+fn issue8336(x: i32) -> bool {
+    if x > 0 {
+        println!("something");
         return true;
+    } else {
+        return false;
+    };
+}
+
+fn issue8156(x: u8) -> u64 {
+    match x {
+        80 => {
+            return 10;
+        },
+        _ => {
+            return 100;
+        },
+    };
+}
+
+// Ideally the compiler should throw `unused_braces` in this case
+fn issue9192() -> i32 {
+    {
+        return 0;
+    };
+}
+
+fn issue9503(x: usize) -> isize {
+    unsafe {
+        if x > 12 {
+            return *(x as *const isize);
+        } else {
+            return !*(x as *const isize);
+        };
+    };
+}
+
+mod issue9416 {
+    pub fn with_newline() {
+        let _ = 42;
+
+        return;
     }
-    #[expect(clippy::needless_return)]
-    return true;
+
+    #[rustfmt::skip]
+    pub fn oneline() {
+        let _ = 42; return;
+    }
+}
+
+fn issue9947() -> Result<(), String> {
+    do yeet "hello";
+}
+
+// without anyhow, but triggers the same bug I believe
+#[expect(clippy::useless_format)]
+fn issue10051() -> Result<String, String> {
+    if true {
+        return Ok(format!("ok!"));
+    } else {
+        return Err(format!("err!"));
+    }
+}
+
+mod issue10049 {
+    fn single() -> u32 {
+        return if true { 1 } else { 2 };
+    }
+
+    fn multiple(b1: bool, b2: bool, b3: bool) -> u32 {
+        return if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else { 5 };
+    }
+}
+
+fn test_match_as_stmt() {
+    let x = 9;
+    match x {
+        1 => 2,
+        2 => return,
+        _ => 0,
+    };
 }
 
 fn main() {}

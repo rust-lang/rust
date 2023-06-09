@@ -77,10 +77,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-mod fd;
-mod raw;
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-pub use fd::*;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use raw::*;
+pub use crate::os::fd::*;
+
+// Tests for this module
+#[cfg(test)]
+mod tests;

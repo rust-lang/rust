@@ -55,30 +55,6 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
 
 #[rustfmt::skip]
 const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
-    // This will never have links that are not in other pages.
-    // To avoid repeating the exceptions twice, an empty list means all broken links are allowed.
-    ("reference/print.html", &[]),
-    // All the reference 'links' are actually ENBF highlighted as code
-    ("reference/comments.html", &[
-         "/</code> <code>!",
-         "*</code> <code>!",
-    ]),
-    ("reference/identifiers.html", &[
-         "a</code>-<code>z</code> <code>A</code>-<code>Z",
-         "a</code>-<code>z</code> <code>A</code>-<code>Z</code> <code>0</code>-<code>9</code> <code>_",
-         "a</code>-<code>z</code> <code>A</code>-<code>Z</code>] [<code>a</code>-<code>z</code> <code>A</code>-<code>Z</code> <code>0</code>-<code>9</code> <code>_",
-    ]),
-    ("reference/tokens.html", &[
-         "0</code>-<code>1",
-         "0</code>-<code>7",
-         "0</code>-<code>9",
-         "0</code>-<code>9",
-         "0</code>-<code>9</code> <code>a</code>-<code>f</code> <code>A</code>-<code>F",
-    ]),
-    ("reference/notation.html", &[
-         "b</code> <code>B",
-         "a</code>-<code>z",
-    ]),
     // This is being used in the sense of 'inclusive range', not a markdown link
     ("core/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("std/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
@@ -163,18 +139,18 @@ enum FileEntry {
 type Cache = HashMap<String, FileEntry>;
 
 fn small_url_encode(s: &str) -> String {
-    s.replace("<", "%3C")
-        .replace(">", "%3E")
-        .replace(" ", "%20")
-        .replace("?", "%3F")
-        .replace("'", "%27")
-        .replace("&", "%26")
-        .replace(",", "%2C")
-        .replace(":", "%3A")
-        .replace(";", "%3B")
-        .replace("[", "%5B")
-        .replace("]", "%5D")
-        .replace("\"", "%22")
+    s.replace('<', "%3C")
+        .replace('>', "%3E")
+        .replace(' ', "%20")
+        .replace('?', "%3F")
+        .replace('\'', "%27")
+        .replace('&', "%26")
+        .replace(',', "%2C")
+        .replace(':', "%3A")
+        .replace(';', "%3B")
+        .replace('[', "%5B")
+        .replace(']', "%5D")
+        .replace('\"', "%22")
 }
 
 impl Checker {
@@ -215,6 +191,7 @@ impl Checker {
                 || url.starts_with("ftp:")
                 || url.starts_with("irc:")
                 || url.starts_with("data:")
+                || url.starts_with("mailto:")
             {
                 report.links_ignored_external += 1;
                 return;
@@ -290,7 +267,6 @@ impl Checker {
                 FileEntry::OtherFile => return,
                 FileEntry::Redirect { target } => {
                     let t = target.clone();
-                    drop(target);
                     let (target, redir_entry) = self.load_file(&t, report);
                     match redir_entry {
                         FileEntry::Missing => {
@@ -348,11 +324,6 @@ impl Checker {
                     return;
                 }
 
-                // These appear to be broken in mdbook right now?
-                if fragment.starts_with('-') {
-                    return;
-                }
-
                 parse_ids(&mut target_ids.borrow_mut(), &pretty_path, target_source, report);
 
                 if target_ids.borrow().contains(*fragment) {
@@ -369,6 +340,33 @@ impl Checker {
             }
         });
 
+        self.check_intra_doc_links(file, &pretty_path, &source, report);
+
+        // we don't need the source anymore,
+        // so drop to reduce memory-usage
+        match self.cache.get_mut(&pretty_path).unwrap() {
+            FileEntry::HtmlFile { source, .. } => *source = Rc::new(String::new()),
+            _ => unreachable!("must be html file"),
+        }
+    }
+
+    fn check_intra_doc_links(
+        &mut self,
+        file: &Path,
+        pretty_path: &str,
+        source: &str,
+        report: &mut Report,
+    ) {
+        let relative = file.strip_prefix(&self.root).expect("should always be relative to root");
+        // Don't check the reference. It has several legitimate things that
+        // look like [<code>…</code>]. The reference has its own broken link
+        // checker in its CI which handles this using pulldown_cmark.
+        //
+        // This checks both the end of the root (when checking just the
+        // reference directory) or the beginning (when checking all docs).
+        if self.root.ends_with("reference") || relative.starts_with("reference") {
+            return;
+        }
         // Search for intra-doc links that rustdoc didn't warn about
         // FIXME(#77199, 77200) Rustdoc should just warn about these directly.
         // NOTE: only looks at one line at a time; in practice this should find most links
@@ -383,12 +381,6 @@ impl Checker {
                 }
             }
         }
-        // we don't need the source anymore,
-        // so drop to reduce memory-usage
-        match self.cache.get_mut(&pretty_path).unwrap() {
-            FileEntry::HtmlFile { source, .. } => *source = Rc::new(String::new()),
-            _ => unreachable!("must be html file"),
-        }
     }
 
     /// Load a file from disk, or from the cache if available.
@@ -398,7 +390,7 @@ impl Checker {
         const ERROR_INVALID_NAME: i32 = 123;
 
         let pretty_path =
-            file.strip_prefix(&self.root).unwrap_or(&file).to_str().unwrap().to_string();
+            file.strip_prefix(&self.root).unwrap_or(file).to_str().unwrap().to_string();
 
         let entry =
             self.cache.entry(pretty_path.clone()).or_insert_with(|| match fs::metadata(file) {
@@ -477,10 +469,8 @@ fn is_exception(file: &Path, link: &str) -> bool {
         // NOTE: This cannot be added to `LINKCHECK_EXCEPTIONS` because the resolved path
         // calculated in `check` function is outside `build/<triple>/doc` dir.
         // So the `strip_prefix` method just returns the old absolute broken path.
-        if file.ends_with("std/primitive.slice.html") {
-            if link.ends_with("primitive.slice.html") {
-                return true;
-            }
+        if file.ends_with("std/primitive.slice.html") && link.ends_with("primitive.slice.html") {
+            return true;
         }
         false
     }
@@ -552,7 +542,7 @@ fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(source: &str, attr: &str, m
 fn parse_ids(ids: &mut HashSet<String>, file: &str, source: &str, report: &mut Report) {
     if ids.is_empty() {
         with_attrs_in_source(source, " id", |fragment, i, _| {
-            let frag = fragment.trim_start_matches("#").to_owned();
+            let frag = fragment.trim_start_matches('#').to_owned();
             let encoded = small_url_encode(&frag);
             if !ids.insert(frag) {
                 report.errors += 1;

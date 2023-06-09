@@ -3,6 +3,7 @@
 //! Simple things like testing the various filesystem operations here and there,
 //! not a lot of interesting happenings here unfortunately.
 
+use build_helper::util::{fail, try_run};
 use std::env;
 use std::fs;
 use std::io;
@@ -13,6 +14,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
+use crate::OnceCell;
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
@@ -43,7 +45,13 @@ pub use t;
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    if target.contains("windows") { format!("{}.exe", name) } else { name.to_string() }
+    if target.contains("windows") {
+        format!("{}.exe", name)
+    } else if target.contains("uefi") {
+        format!("{}.efi", name)
+    } else {
+        name.to_string()
+    }
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
@@ -104,7 +112,7 @@ pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
 pub fn timeit(builder: &Builder<'_>) -> TimeIt {
-    TimeIt(builder.config.dry_run, Instant::now())
+    TimeIt(builder.config.dry_run(), Instant::now())
 }
 
 impl Drop for TimeIt {
@@ -127,7 +135,7 @@ pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
 pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
-    if config.dry_run {
+    if config.dry_run() {
         return Ok(());
     }
     let _ = fs::remove_dir(dest);
@@ -139,98 +147,9 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
         fs::symlink(src, dest)
     }
 
-    // Creating a directory junction on windows involves dealing with reparse
-    // points and the DeviceIoControl function, and this code is a skeleton of
-    // what can be found here:
-    //
-    // http://www.flexhex.com/docs/articles/hard-links.phtml
     #[cfg(windows)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
-        use std::ffi::OsStr;
-        use std::os::windows::ffi::OsStrExt;
-        use std::ptr;
-
-        use winapi::shared::minwindef::{DWORD, WORD};
-        use winapi::um::fileapi::{CreateFileW, OPEN_EXISTING};
-        use winapi::um::handleapi::CloseHandle;
-        use winapi::um::ioapiset::DeviceIoControl;
-        use winapi::um::winbase::{FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT};
-        use winapi::um::winioctl::FSCTL_SET_REPARSE_POINT;
-        use winapi::um::winnt::{
-            FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_WRITE,
-            IO_REPARSE_TAG_MOUNT_POINT, MAXIMUM_REPARSE_DATA_BUFFER_SIZE, WCHAR,
-        };
-
-        #[allow(non_snake_case)]
-        #[repr(C)]
-        struct REPARSE_MOUNTPOINT_DATA_BUFFER {
-            ReparseTag: DWORD,
-            ReparseDataLength: DWORD,
-            Reserved: WORD,
-            ReparseTargetLength: WORD,
-            ReparseTargetMaximumLength: WORD,
-            Reserved1: WORD,
-            ReparseTarget: WCHAR,
-        }
-
-        fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
-            Ok(s.as_ref().encode_wide().chain(Some(0)).collect())
-        }
-
-        // We're using low-level APIs to create the junction, and these are more
-        // picky about paths. For example, forward slashes cannot be used as a
-        // path separator, so we should try to canonicalize the path first.
-        let target = fs::canonicalize(target)?;
-
-        fs::create_dir(junction)?;
-
-        let path = to_u16s(junction)?;
-
-        unsafe {
-            let h = CreateFileW(
-                path.as_ptr(),
-                GENERIC_WRITE,
-                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                ptr::null_mut(),
-                OPEN_EXISTING,
-                FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
-                ptr::null_mut(),
-            );
-
-            let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize];
-            let db = data.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
-            let buf = &mut (*db).ReparseTarget as *mut u16;
-            let mut i = 0;
-            // FIXME: this conversion is very hacky
-            let v = br"\??\";
-            let v = v.iter().map(|x| *x as u16);
-            for c in v.chain(target.as_os_str().encode_wide().skip(4)) {
-                *buf.offset(i) = c;
-                i += 1;
-            }
-            *buf.offset(i) = 0;
-            i += 1;
-            (*db).ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
-            (*db).ReparseTargetMaximumLength = (i * 2) as WORD;
-            (*db).ReparseTargetLength = ((i - 1) * 2) as WORD;
-            (*db).ReparseDataLength = (*db).ReparseTargetLength as DWORD + 12;
-
-            let mut ret = 0;
-            let res = DeviceIoControl(
-                h as *mut _,
-                FSCTL_SET_REPARSE_POINT,
-                data.as_ptr() as *mut _,
-                (*db).ReparseDataLength + 8,
-                ptr::null_mut(),
-                0,
-                &mut ret,
-                ptr::null_mut(),
-            );
-
-            let out = if res == 0 { Err(io::Error::last_os_error()) } else { Ok(()) };
-            CloseHandle(h);
-            out
-        }
+        junction::create(&target, &junction)
     }
 }
 
@@ -244,31 +163,6 @@ pub enum CiEnv {
     AzurePipelines,
     /// The GitHub Actions environment, for Linux (including Docker), Windows and macOS builds.
     GitHubActions,
-}
-
-impl CiEnv {
-    /// Obtains the current CI environment.
-    pub fn current() -> CiEnv {
-        if env::var("TF_BUILD").map_or(false, |e| e == "True") {
-            CiEnv::AzurePipelines
-        } else if env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
-            CiEnv::GitHubActions
-        } else {
-            CiEnv::None
-        }
-    }
-
-    /// If in a CI environment, forces the command to run with colors.
-    pub fn force_coloring_in_ci(self, cmd: &mut Command) {
-        if self != CiEnv::None {
-            // Due to use of stamp/docker, the output stream of rustbuild is not
-            // a TTY in CI, so coloring is by-default turned off.
-            // The explicit `TERM=xterm` environment is needed for
-            // `--color always` to actually work. This env var was lost when
-            // compiling through the Makefile. Very strange.
-            cmd.env("TERM", "xterm").args(&["--color", "always"]);
-        }
-    }
 }
 
 pub fn forcing_clang_based_tests() -> bool {
@@ -337,23 +231,8 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 
 pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
     if !try_run(cmd, print_cmd_on_fail) {
-        crate::detail_exit(1);
+        crate::detail_exit_macro!(1);
     }
-}
-
-pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.status() {
-        Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
-    };
-    if !status.success() && print_cmd_on_fail {
-        println!(
-            "\n\ncommand did not execute successfully: {:?}\n\
-             expected success, got: {}\n\n",
-            cmd, status
-        );
-    }
-    status.success()
 }
 
 pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
@@ -376,7 +255,7 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
 
 pub fn run_suppressed(cmd: &mut Command) {
     if !try_run_suppressed(cmd) {
-        crate::detail_exit(1);
+        crate::detail_exit_macro!(1);
     }
 }
 
@@ -428,6 +307,23 @@ pub fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+pub fn output_result(cmd: &mut Command) -> Result<String, String> {
+    let output = match cmd.stderr(Stdio::inherit()).output() {
+        Ok(status) => status,
+        Err(e) => return Err(format!("failed to run command: {:?}: {}", cmd, e)),
+    };
+    if !output.status.success() {
+        return Err(format!(
+            "command did not execute successfully: {:?}\n\
+             expected success, got: {}\n{}",
+            cmd,
+            output.status,
+            String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
+        ));
+    }
+    Ok(String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?)
+}
+
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> SystemTime {
     fs::metadata(path).and_then(|f| f.modified()).unwrap_or(UNIX_EPOCH)
@@ -462,11 +358,6 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
             meta.modified().unwrap_or(UNIX_EPOCH) < threshold
         }
     })
-}
-
-fn fail(s: &str) -> ! {
-    eprintln!("\n\n{}\n\n", s);
-    crate::detail_exit(1);
 }
 
 /// Copied from `std::path::absolute` until it stabilizes.
@@ -578,7 +469,7 @@ fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBu
     }
 }
 
-/// Adapted from https://github.com/llvm/llvm-project/blob/782e91224601e461c019e0a4573bbccc6094fbcd/llvm/cmake/modules/HandleLLVMOptions.cmake#L1058-L1079
+/// Adapted from <https://github.com/llvm/llvm-project/blob/782e91224601e461c019e0a4573bbccc6094fbcd/llvm/cmake/modules/HandleLLVMOptions.cmake#L1058-L1079>
 ///
 /// When `clang-cl` is used with instrumentation, we need to add clang's runtime library resource
 /// directory to the linker flags, otherwise there will be linker errors about the profiler runtime
@@ -600,4 +491,17 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
     // `$LLVM_DISTRO_ROOT/lib/clang/$LLVM_VERSION/lib/windows`.
     let clang_rt_dir = clang_rt_builtins.parent().expect("The clang lib folder should exist");
     clang_rt_dir.to_path_buf()
+}
+
+pub fn lld_flag_no_threads(is_windows: bool) -> &'static str {
+    static LLD_NO_THREADS: OnceCell<(&'static str, &'static str)> = OnceCell::new();
+    let (windows, other) = LLD_NO_THREADS.get_or_init(|| {
+        let out = output(Command::new("lld").arg("-flavor").arg("ld").arg("--version"));
+        let newer = match (out.find(char::is_numeric), out.find('.')) {
+            (Some(b), Some(e)) => out.as_str()[b..e].parse::<i32>().ok().unwrap_or(14) > 10,
+            _ => true,
+        };
+        if newer { ("/threads:1", "--threads=1") } else { ("/no-threads", "--no-threads") }
+    });
+    if is_windows { windows } else { other }
 }

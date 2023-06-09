@@ -1,0 +1,17 @@
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/async-example-desugared-boxed-in-trait.rs:17:28
+   |
+LL |     async fn foo(&self) -> i32 {
+   |                            ^^^ expected `Pin<Box<dyn Future<Output = i32>>>`, found future
+   |
+note: type in trait
+  --> $DIR/async-example-desugared-boxed-in-trait.rs:13:22
+   |
+LL |     fn foo(&self) -> Pin<Box<dyn Future<Output = i32> + '_>>;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn(&i32) -> Pin<Box<dyn Future<Output = i32>>>`
+              found signature `fn(&i32) -> impl Future<Output = i32>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

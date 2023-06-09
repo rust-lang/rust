@@ -13,13 +13,14 @@ mod tests;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
+use crate::sealed::Sealed;
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 
-/// A reference to an open file on the filesystem.
+/// An object providing access to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
 /// it was opened with. Files also implement [`Seek`] to alter the logical cursor
@@ -184,6 +185,11 @@ pub struct DirEntry(fs_imp::DirEntry);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
+/// Representation of the various timestamps on a file.
+#[derive(Copy, Clone, Debug, Default)]
+#[unstable(feature = "file_set_times", issue = "98245")]
+pub struct FileTimes(fs_imp::FileTimes);
+
 /// Representation of the various permissions on a file.
 ///
 /// This module only currently provides one bit of information,
@@ -244,8 +250,9 @@ pub struct DirBuilder {
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)?;
+        let size = file.metadata().map(|m| m.len() as usize).ok();
+        let mut bytes = Vec::with_capacity(size.unwrap_or(0));
+        io::default_read_to_end(&mut file, &mut bytes, size)?;
         Ok(bytes)
     }
     inner(path.as_ref())
@@ -283,8 +290,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
-        let mut string = String::new();
-        file.read_to_string(&mut string)?;
+        let size = file.metadata().map(|m| m.len() as usize).ok();
+        let mut string = String::with_capacity(size.unwrap_or(0));
+        io::default_read_to_string(&mut file, &mut string, size)?;
         Ok(string)
     }
     inner(path.as_ref())
@@ -294,6 +302,9 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 ///
 /// This function will create a file if it does not exist,
 /// and will entirely replace its contents if it does.
+///
+/// Depending on the platform, this function may fail if the
+/// full directory path does not exist.
 ///
 /// This is a convenience function for using [`File::create`] and [`write_all`]
 /// with fewer imports.
@@ -324,6 +335,10 @@ impl File {
     ///
     /// See the [`OpenOptions::open`] method for more details.
     ///
+    /// If you only need to read the entire file contents,
+    /// consider [`std::fs::read()`][self::read] or
+    /// [`std::fs::read_to_string()`][self::read_to_string] instead.
+    ///
     /// # Errors
     ///
     /// This function will return an error if `path` does not already exist.
@@ -333,9 +348,12 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Read;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
     ///     Ok(())
     /// }
     /// ```
@@ -349,21 +367,59 @@ impl File {
     /// This function will create a file if it does not exist,
     /// and will truncate it if it does.
     ///
+    /// Depending on the platform, this function may fail if the
+    /// full directory path does not exist.
     /// See the [`OpenOptions::open`] function for more details.
+    ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with a given data.
     ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
+    ///     f.write_all(&1234_u32.to_be_bytes())?;
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
+    }
+
+    /// Creates a new file in read-write mode; error if the file exists.
+    ///
+    /// This function will create a file if it does not exist, or return an error if it does. This
+    /// way, if the call succeeds, the file returned is guaranteed to be new.
+    ///
+    /// This option is useful because it is atomic. Otherwise between checking whether a file
+    /// exists and creating a new one, the file may have been created by another process (a TOCTOU
+    /// race condition / attack).
+    ///
+    /// This can also be written using
+    /// `File::options().read(true).write(true).create_new(true).open(...)`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_create_new)]
+    ///
+    /// use std::fs::File;
+    /// use std::io::Write;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create_new("foo.txt")?;
+    ///     f.write_all("Hello, world!".as_bytes())?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_create_new", issue = "105135")]
+    pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
+        OpenOptions::new().read(true).write(true).create_new(true).open(path.as_ref())
     }
 
     /// Returns a new OpenOptions object.
@@ -384,9 +440,11 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::options().append(true).open("example.log")?;
+    ///     writeln!(&mut f, "new line")?;
     ///     Ok(())
     /// }
     /// ```
@@ -470,8 +528,9 @@ impl File {
     /// # Errors
     ///
     /// This function will return an error if the file is not opened for writing.
-    /// Also, std::io::ErrorKind::InvalidInput will be returned if the desired
-    /// length would cause an overflow due to the implementation specifics.
+    /// Also, [`std::io::ErrorKind::InvalidInput`](crate::io::ErrorKind::InvalidInput)
+    /// will be returned if the desired length would cause an overflow due to
+    /// the implementation specifics.
     ///
     /// # Examples
     ///
@@ -590,6 +649,58 @@ impl File {
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
     }
+
+    /// Changes the timestamps of the underlying file.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `futimens` function on Unix (falling back to
+    /// `futimes` on macOS before 10.13) and the `SetFileTime` function on Windows. Note that this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the user lacks permission to change timestamps on the
+    /// underlying file. It may also return an error in other os-specific unspecified cases.
+    ///
+    /// This function may return an error if the operating system lacks support to change one or
+    /// more of the timestamps set in the `FileTimes` structure.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_set_times)]
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs::{self, File, FileTimes};
+    ///
+    ///     let src = fs::metadata("src")?;
+    ///     let dest = File::options().write(true).open("dest")?;
+    ///     let times = FileTimes::new()
+    ///         .set_accessed(src.accessed()?)
+    ///         .set_modified(src.modified()?);
+    ///     dest.set_times(times)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    #[doc(alias = "futimens")]
+    #[doc(alias = "futimes")]
+    #[doc(alias = "SetFileTime")]
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        self.inner.set_times(times.0)
+    }
+
+    /// Changes the modification time of the underlying file.
+    ///
+    /// This is an alias for `set_times(FileTimes::new().set_modified(time))`.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    #[inline]
+    pub fn set_modified(&self, time: SystemTime) -> io::Result<()> {
+        self.set_times(FileTimes::new().set_modified(time))
+    }
 }
 
 // In addition to the `impl`s here, `File` also has `impl`s for
@@ -599,6 +710,7 @@ impl File {
 // `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
 
 impl AsInner<fs_imp::File> for File {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::File {
         &self.inner
     }
@@ -622,12 +734,12 @@ impl fmt::Debug for File {
 }
 
 /// Indicates how much extra capacity is needed to read the rest of the file.
-fn buffer_capacity_required(mut file: &File) -> usize {
-    let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-    let pos = file.stream_position().unwrap_or(0);
+fn buffer_capacity_required(mut file: &File) -> Option<usize> {
+    let size = file.metadata().map(|m| m.len()).ok()?;
+    let pos = file.stream_position().ok()?;
     // Don't worry about `usize` overflow because reading will fail regardless
     // in that case.
-    size.saturating_sub(pos) as usize
+    Some(size.saturating_sub(pos) as usize)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -640,8 +752,8 @@ impl Read for File {
         self.inner.read_vectored(bufs)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        self.inner.read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(cursor)
     }
 
     #[inline]
@@ -651,14 +763,16 @@ impl Read for File {
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_end(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_string(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_string(self, buf, size)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -692,8 +806,8 @@ impl Read for &File {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        self.inner.read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(cursor)
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -707,14 +821,16 @@ impl Read for &File {
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_end(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        buf.reserve(buffer_capacity_required(self));
-        io::default_read_to_string(self, buf)
+        let size = buffer_capacity_required(self);
+        buf.reserve(size.unwrap_or(0));
+        io::default_read_to_string(self, buf, size)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -871,6 +987,9 @@ impl OpenOptions {
     /// In order for the file to be created, [`OpenOptions::write`] or
     /// [`OpenOptions::append`] access must be used.
     ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with a given data.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -970,12 +1089,14 @@ impl OpenOptions {
 }
 
 impl AsInner<fs_imp::OpenOptions> for OpenOptions {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::OpenOptions {
         &self.0
     }
 }
 
 impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut fs_imp::OpenOptions {
         &mut self.0
     }
@@ -1235,6 +1356,7 @@ impl fmt::Debug for Metadata {
 }
 
 impl AsInner<fs_imp::FileAttr> for Metadata {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::FileAttr {
         &self.0
     }
@@ -1246,8 +1368,70 @@ impl FromInner<fs_imp::FileAttr> for Metadata {
     }
 }
 
+impl FileTimes {
+    /// Create a new `FileTimes` with no times set.
+    ///
+    /// Using the resulting `FileTimes` in [`File::set_times`] will not modify any timestamps.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the last access time of a file.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn set_accessed(mut self, t: SystemTime) -> Self {
+        self.0.set_accessed(t.into_inner());
+        self
+    }
+
+    /// Set the last modified time of a file.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn set_modified(mut self, t: SystemTime) -> Self {
+        self.0.set_modified(t.into_inner());
+        self
+    }
+}
+
+impl AsInnerMut<fs_imp::FileTimes> for FileTimes {
+    fn as_inner_mut(&mut self) -> &mut fs_imp::FileTimes {
+        &mut self.0
+    }
+}
+
+// For implementing OS extension traits in `std::os`
+#[unstable(feature = "file_set_times", issue = "98245")]
+impl Sealed for FileTimes {}
+
 impl Permissions {
     /// Returns `true` if these permissions describe a readonly (unwritable) file.
+    ///
+    /// # Note
+    ///
+    /// This function does not take Access Control Lists (ACLs) or Unix group
+    /// membership into account.
+    ///
+    /// # Windows
+    ///
+    /// On Windows this returns [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
+    /// but the user may still have permission to change this flag. If
+    /// `FILE_ATTRIBUTE_READONLY` is *not* set then writes may still fail due
+    /// to lack of write permission.
+    /// The behavior of this attribute for directories depends on the Windows
+    /// version.
+    ///
+    /// # Unix (including macOS)
+    ///
+    /// On Unix-based platforms this checks if *any* of the owner, group or others
+    /// write permission bits are set. It does not check if the current
+    /// user is in the file's assigned group. It also does not check ACLs.
+    /// Therefore even if this returns true you may not be able to write to the
+    /// file, and vice versa. The [`PermissionsExt`] trait gives direct access
+    /// to the permission bits but also does not read ACLs. If you need to
+    /// accurately know whether or not a file is writable use the `access()`
+    /// function from libc.
+    ///
+    /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
     ///
     /// # Examples
     ///
@@ -1274,8 +1458,40 @@ impl Permissions {
     /// using the resulting `Permission` will update file permissions to allow
     /// writing.
     ///
-    /// This operation does **not** modify the filesystem. To modify the
-    /// filesystem use the [`set_permissions`] function.
+    /// This operation does **not** modify the files attributes. This only
+    /// changes the in-memory value of these attributes for this `Permissions`
+    /// instance. To modify the files attributes use the [`set_permissions`]
+    /// function which commits these attribute changes to the file.
+    ///
+    /// # Note
+    ///
+    /// `set_readonly(false)` makes the file *world-writable* on Unix.
+    /// You can use the [`PermissionsExt`] trait on Unix to avoid this issue.
+    ///
+    /// It also does not take Access Control Lists (ACLs) or Unix group
+    /// membership into account.
+    ///
+    /// # Windows
+    ///
+    /// On Windows this sets or clears [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
+    /// but the user may still have permission to change this flag. If
+    /// `FILE_ATTRIBUTE_READONLY` is *not* set then the write may still fail if
+    /// the user does not have permission to write to the file.
+    ///
+    /// In Windows 7 and earlier this attribute prevents deleting empty
+    /// directories. It does not prevent modifying the directory contents.
+    /// On later versions of Windows this attribute is ignored for directories.
+    ///
+    /// # Unix (including macOS)
+    ///
+    /// On Unix-based platforms this sets or clears the write access bit for
+    /// the owner, group *and* others, equivalent to `chmod a+w <file>`
+    /// or `chmod a-w <file>` respectively. The latter will grant write access
+    /// to all users! You can use the [`PermissionsExt`] trait on Unix
+    /// to avoid this issue.
+    ///
+    /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
     ///
     /// # Examples
     ///
@@ -1289,7 +1505,8 @@ impl Permissions {
     ///
     ///     permissions.set_readonly(true);
     ///
-    ///     // filesystem doesn't change
+    ///     // filesystem doesn't change, only the in memory state of the
+    ///     // readonly permission
     ///     assert_eq!(false, metadata.permissions().readonly());
     ///
     ///     // just this particular `permissions`.
@@ -1332,7 +1549,7 @@ impl FileType {
     }
 
     /// Tests whether this file type represents a regular file.
-    /// The result is  mutually exclusive to the results of
+    /// The result is mutually exclusive to the results of
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
@@ -1402,6 +1619,7 @@ impl FileType {
 }
 
 impl AsInner<fs_imp::FileType> for FileType {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::FileType {
         &self.0
     }
@@ -1414,6 +1632,7 @@ impl FromInner<fs_imp::FilePermissions> for Permissions {
 }
 
 impl AsInner<fs_imp::FilePermissions> for Permissions {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::FilePermissions {
         &self.0
     }
@@ -1568,6 +1787,7 @@ impl fmt::Debug for DirEntry {
 }
 
 impl AsInner<fs_imp::DirEntry> for DirEntry {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::DirEntry {
         &self.0
     }
@@ -1737,7 +1957,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// On success, the total number of bytes copied is returned and it is equal to
 /// the length of the `to` file as reported by `metadata`.
 ///
-/// If you’re wanting to copy the contents of one file to another and you’re
+/// If you want to copy the contents of one file to another and you’re
 /// working with [`File`]s, see the [`io::copy()`] function.
 ///
 /// # Platform-specific behavior
@@ -2082,6 +2302,11 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// See [`fs::remove_file`] and [`fs::remove_dir`].
 ///
+/// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths, including the root path.
+/// As a result, the directory you are deleting must exist, meaning that this function is not idempotent.
+///
+/// Consider ignoring the error if validating the removal is not required for your use case.
+///
 /// [`fs::remove_file`]: remove_file
 /// [`fs::remove_dir`]: remove_dir
 ///
@@ -2303,6 +2528,7 @@ impl DirBuilder {
 }
 
 impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut fs_imp::DirBuilder {
         &mut self.inner
     }
@@ -2313,9 +2539,10 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// This function will traverse symbolic links to query information about the
 /// destination file. In case of broken symbolic links this will return `Ok(false)`.
 ///
-/// As opposed to the [`Path::exists`] method, this one doesn't silently ignore errors
-/// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
-/// denied on some of the parent directories.)
+/// As opposed to the [`Path::exists`] method, this will only return `Ok(true)` or `Ok(false)`
+/// if the path was _verified_ to exist or not exist. If its existence can neither be confirmed
+/// nor denied, an `Err(_)` will be propagated instead. This can be the case if e.g. listing
+/// permission is denied on one of the parent directories.
 ///
 /// Note that while this avoids some pitfalls of the `exists()` method, it still can not
 /// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios

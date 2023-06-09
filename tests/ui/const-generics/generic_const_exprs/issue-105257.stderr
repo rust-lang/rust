@@ -1,0 +1,14 @@
+error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/issue-105257.rs:5:12
+   |
+LL |     fn fnc<const N: usize = "">(&self) {}
+   |            ^^^^^^^^^^^^^^^^^^^
+
+error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/issue-105257.rs:6:12
+   |
+LL |     fn foo<const N: usize = { std::mem::size_of::<T>() }>(&self) {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

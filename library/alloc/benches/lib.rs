@@ -2,10 +2,12 @@
 // See https://github.com/rust-lang/rust/issues/73535#event-3477699747
 #![cfg(not(target_os = "android"))]
 #![feature(btree_drain_filter)]
-#![feature(map_first_last)]
+#![feature(iter_next_chunk)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]
+#![feature(strict_provenance)]
 #![feature(test)]
+#![deny(fuzzy_provenance_casts)]
 
 extern crate test;
 

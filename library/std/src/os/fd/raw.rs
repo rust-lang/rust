@@ -4,6 +4,9 @@
 
 use crate::fs;
 use crate::io;
+#[cfg(target_os = "hermit")]
+use crate::os::hermit::io::OwnedFd;
+#[cfg(not(target_os = "hermit"))]
 use crate::os::raw;
 #[cfg(all(doc, not(target_arch = "wasm32")))]
 use crate::os::unix::io::AsFd;
@@ -12,16 +15,25 @@ use crate::os::unix::io::OwnedFd;
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};
+#[cfg(target_os = "hermit")]
+use hermit_abi as libc;
 
 /// Raw file descriptors.
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_os = "hermit"))]
 pub type RawFd = raw::c_int;
+#[rustc_allowed_through_unstable_modules]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(target_os = "hermit")]
+pub type RawFd = i32;
 
 /// A trait to extract the raw file descriptor from an underlying object.
 ///
 /// This is only available on unix and WASI platforms and must be imported in
 /// order to call the method. Windows platforms have a corresponding
 /// `AsRawHandle` and `AsRawSocket` set of traits.
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRawFd {
     /// Extracts the raw file descriptor.
@@ -40,10 +52,8 @@ pub trait AsRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// #[cfg(unix)]
-    /// use std::os::unix::io::{AsRawFd, RawFd};
-    /// #[cfg(target_os = "wasi")]
-    /// use std::os::wasi::io::{AsRawFd, RawFd};
+    /// #[cfg(any(unix, target_os = "wasi"))]
+    /// use std::os::fd::{AsRawFd, RawFd};
     ///
     /// let mut f = File::open("foo.txt")?;
     /// // Note that `raw_fd` is only valid as long as `f` exists.
@@ -57,6 +67,7 @@ pub trait AsRawFd {
 
 /// A trait to express the ability to construct an object from a raw file
 /// descriptor.
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawFd {
     /// Constructs a new instance of `Self` from the given raw file
@@ -80,10 +91,8 @@ pub trait FromRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// #[cfg(unix)]
-    /// use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
-    /// #[cfg(target_os = "wasi")]
-    /// use std::os::wasi::io::{FromRawFd, IntoRawFd, RawFd};
+    /// #[cfg(any(unix, target_os = "wasi"))]
+    /// use std::os::fd::{FromRawFd, IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
     /// # #[cfg(any(unix, target_os = "wasi"))]
@@ -100,6 +109,7 @@ pub trait FromRawFd {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw file descriptor.
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 pub trait IntoRawFd {
     /// Consumes this object, returning the raw underlying file descriptor.
@@ -117,10 +127,8 @@ pub trait IntoRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// #[cfg(unix)]
-    /// use std::os::unix::io::{IntoRawFd, RawFd};
-    /// #[cfg(target_os = "wasi")]
-    /// use std::os::wasi::io::{IntoRawFd, RawFd};
+    /// #[cfg(any(unix, target_os = "wasi"))]
+    /// use std::os::fd::{IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
     /// #[cfg(any(unix, target_os = "wasi"))]
@@ -240,6 +248,14 @@ impl<'a> AsRawFd for io::StderrLock<'a> {
 /// ```
 #[stable(feature = "asrawfd_ptrs", since = "1.63.0")]
 impl<T: AsRawFd> AsRawFd for crate::sync::Arc<T> {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
+
+#[stable(feature = "asfd_rc", since = "1.69.0")]
+impl<T: AsRawFd> AsRawFd for crate::rc::Rc<T> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
         (**self).as_raw_fd()

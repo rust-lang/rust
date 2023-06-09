@@ -34,13 +34,12 @@ pub(super) fn check<'tcx>(
         };
 
         let help = format!(
-            "because `{}` is the {} value for this type, {}",
+            "because `{}` is the {} value for this type, {conclusion}",
             snippet(cx, culprit.expr.span, "x"),
             match culprit.which {
                 ExtremeType::Minimum => "minimum",
                 ExtremeType::Maximum => "maximum",
-            },
-            conclusion
+            }
         );
 
         span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
@@ -122,7 +121,7 @@ fn detect_absurd_comparison<'tcx>(
 fn detect_extreme_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<ExtremeExpr<'tcx>> {
     let ty = cx.typeck_results().expr_ty(expr);
 
-    let cv = constant(cx, cx.typeck_results(), expr)?.0;
+    let cv = constant(cx, cx.typeck_results(), expr)?;
 
     let which = match (ty.kind(), cv) {
         (&ty::Bool, Constant::Bool(false)) | (&ty::Uint(_), Constant::Int(0)) => ExtremeType::Minimum,

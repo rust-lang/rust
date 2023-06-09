@@ -22,9 +22,8 @@ pub(super) fn check_fn(
         return;
     }
 
-    let code_snippet = match snippet_opt(cx, body.value.span) {
-        Some(s) => s,
-        _ => return,
+    let Some(code_snippet) = snippet_opt(cx, body.value.span) else {
+        return
     };
     let mut line_count: u64 = 0;
     let mut in_comment = false;
@@ -78,10 +77,7 @@ pub(super) fn check_fn(
             cx,
             TOO_MANY_LINES,
             span,
-            &format!(
-                "this function has too many lines ({}/{})",
-                line_count, too_many_lines_threshold
-            ),
+            &format!("this function has too many lines ({line_count}/{too_many_lines_threshold})"),
         );
     }
 }

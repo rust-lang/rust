@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::is_doc_hidden;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{is_doc_hidden, meets_msrv, msrvs};
 use rustc_ast::ast::{self, VisibilityKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{self as hir, Expr, ExprKind, QPath};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::DefIdTree;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{sym, Span};
@@ -63,12 +62,12 @@ declare_clippy_lint! {
 
 #[expect(clippy::module_name_repetitions)]
 pub struct ManualNonExhaustiveStruct {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ManualNonExhaustiveStruct {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -77,14 +76,14 @@ impl_lint_pass!(ManualNonExhaustiveStruct => [MANUAL_NON_EXHAUSTIVE]);
 
 #[expect(clippy::module_name_repetitions)]
 pub struct ManualNonExhaustiveEnum {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
     constructed_enum_variants: FxHashSet<(DefId, DefId)>,
     potential_enums: Vec<(LocalDefId, LocalDefId, Span, Span)>,
 }
 
 impl ManualNonExhaustiveEnum {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self {
             msrv,
             constructed_enum_variants: FxHashSet::default(),
@@ -97,7 +96,7 @@ impl_lint_pass!(ManualNonExhaustiveEnum => [MANUAL_NON_EXHAUSTIVE]);
 
 impl EarlyLintPass for ManualNonExhaustiveStruct {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if !meets_msrv(self.msrv, msrvs::NON_EXHAUSTIVE) {
+        if !self.msrv.meets(msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
@@ -133,7 +132,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
                             diag.span_suggestion(
                                 header_span,
                                 "add the attribute",
-                                format!("#[non_exhaustive] {}", snippet),
+                                format!("#[non_exhaustive] {snippet}"),
                                 Applicability::Unspecified,
                             );
                         }
@@ -149,7 +148,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
 
 impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !meets_msrv(self.msrv, msrvs::NON_EXHAUSTIVE) {
+        if !self.msrv.meets(msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
@@ -157,16 +156,15 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
             && def.variants.len() > 1
         {
             let mut iter = def.variants.iter().filter_map(|v| {
-                let id = cx.tcx.hir().local_def_id(v.id);
-                (matches!(v.data, hir::VariantData::Unit(_))
+                (matches!(v.data, hir::VariantData::Unit(_, _))
                     && v.ident.as_str().starts_with('_')
-                    && is_doc_hidden(cx.tcx.hir().attrs(v.id)))
-                .then(|| (id, v.span))
+                    && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id)))
+                .then_some((v.def_id, v.span))
             });
             if let Some((id, span)) = iter.next()
                 && iter.next().is_none()
             {
-                self.potential_enums.push((item.def_id, id, item.span, span));
+                self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
             }
         }
     }
@@ -207,7 +205,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                             diag.span_suggestion(
                                 header_span,
                                 "add the attribute",
-                                format!("#[non_exhaustive] {}", snippet),
+                                format!("#[non_exhaustive] {snippet}"),
                                 Applicability::Unspecified,
                             );
                     }

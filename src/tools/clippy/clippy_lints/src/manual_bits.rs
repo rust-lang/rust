@@ -1,18 +1,19 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{get_parent_expr, meets_msrv, msrvs};
+use clippy_utils::get_parent_expr;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for uses of `std::mem::size_of::<T>() * 8` when
+    /// Checks for usage of `std::mem::size_of::<T>() * 8` when
     /// `T::BITS` is available.
     ///
     /// ### Why is this bad?
@@ -34,12 +35,12 @@ declare_clippy_lint! {
 
 #[derive(Clone)]
 pub struct ManualBits {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ManualBits {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -48,20 +49,24 @@ impl_lint_pass!(ManualBits => [MANUAL_BITS]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualBits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !meets_msrv(self.msrv, msrvs::MANUAL_BITS) {
+        if !self.msrv.meets(msrvs::MANUAL_BITS) {
             return;
         }
 
         if_chain! {
             if let ExprKind::Binary(bin_op, left_expr, right_expr) = expr.kind;
             if let BinOpKind::Mul = &bin_op.node;
+            if !in_external_macro(cx.sess(), expr.span);
+            let ctxt = expr.span.ctxt();
+            if left_expr.span.ctxt() == ctxt;
+            if right_expr.span.ctxt() == ctxt;
             if let Some((real_ty, resolved_ty, other_expr)) = get_one_size_of_ty(cx, left_expr, right_expr);
             if matches!(resolved_ty.kind(), ty::Int(_) | ty::Uint(_));
             if let ExprKind::Lit(lit) = &other_expr.kind;
             if let LitKind::Int(8, _) = lit.node;
             then {
                 let mut app = Applicability::MachineApplicable;
-                let ty_snip = snippet_with_applicability(cx, real_ty.span, "..", &mut app);
+                let ty_snip = snippet_with_context(cx, real_ty.span, ctxt, "..", &mut app).0;
                 let sugg = create_sugg(cx, expr, format!("{ty_snip}::BITS"));
 
                 span_lint_and_sugg(
@@ -105,7 +110,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
         if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
         if cx.tcx.is_diagnostic_item(sym::mem_size_of, def_id);
         then {
-            cx.typeck_results().node_substs(count_func.hir_id).types().next().map(|resolved_ty| (real_ty, resolved_ty))
+            cx.typeck_results().node_substs(count_func.hir_id).types().next().map(|resolved_ty| (*real_ty, resolved_ty))
         } else {
             None
         }
@@ -134,7 +139,7 @@ fn create_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, base_sugg: String) -> Stri
 fn is_ty_conversion(expr: &Expr<'_>) -> bool {
     if let ExprKind::Cast(..) = expr.kind {
         true
-    } else if let ExprKind::MethodCall(path, [_], _) = expr.kind
+    } else if let ExprKind::MethodCall(path, _, [], _) = expr.kind
         && path.ident.name == rustc_span::sym::try_into
     {
         // This is only called for `usize` which implements `TryInto`. Therefore,

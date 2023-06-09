@@ -2,7 +2,7 @@ use super::{abi, error};
 use crate::{
     ffi::{CStr, CString, OsStr, OsString},
     fmt,
-    io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom},
+    io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom},
     mem::MaybeUninit,
     os::raw::{c_int, c_short},
     os::solid::ffi::OsStrExt,
@@ -77,6 +77,9 @@ pub struct OpenOptions {
     custom_flags: i32,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions(c_short);
 
@@ -126,6 +129,11 @@ impl FilePermissions {
     }
 }
 
+impl FileTimes {
+    pub fn set_accessed(&mut self, _t: SystemTime) {}
+    pub fn set_modified(&mut self, _t: SystemTime) {}
+}
+
 impl FileType {
     pub fn is_dir(&self) -> bool {
         self.is(abi::S_IFDIR)
@@ -167,15 +175,19 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        unsafe {
-            let mut out_dirent = MaybeUninit::uninit();
-            error::SolidError::err_if_negative(abi::SOLID_FS_ReadDir(
+        let entry = unsafe {
+            let mut out_entry = MaybeUninit::uninit();
+            match error::SolidError::err_if_negative(abi::SOLID_FS_ReadDir(
                 self.inner.dirp,
-                out_dirent.as_mut_ptr(),
-            ))
-            .ok()?;
-            Some(Ok(DirEntry { entry: out_dirent.assume_init(), inner: Arc::clone(&self.inner) }))
-        }
+                out_entry.as_mut_ptr(),
+            )) {
+                Ok(_) => out_entry.assume_init(),
+                Err(e) if e.as_raw() == abi::SOLID_ERR_NOTFOUND => return None,
+                Err(e) => return Some(Err(e.as_io_error())),
+            }
+        };
+
+        (entry.d_name[0] != 0).then(|| Ok(DirEntry { entry, inner: Arc::clone(&self.inner) }))
     }
 }
 
@@ -358,13 +370,13 @@ impl File {
         }
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         unsafe {
-            let len = buf.remaining();
+            let len = cursor.capacity();
             let mut out_num_bytes = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Read(
                 self.fd.raw(),
-                buf.unfilled_mut().as_mut_ptr() as *mut u8,
+                cursor.as_mut().as_mut_ptr() as *mut u8,
                 len,
                 out_num_bytes.as_mut_ptr(),
             ))
@@ -376,9 +388,7 @@ impl File {
 
             // Safety: `num_bytes_read` bytes were written to the unfilled
             // portion of the buffer
-            buf.assume_init(num_bytes_read);
-
-            buf.add_filled(num_bytes_read);
+            cursor.advance(num_bytes_read);
 
             Ok(())
         }
@@ -450,6 +460,10 @@ impl File {
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
         unsupported()
     }
 }

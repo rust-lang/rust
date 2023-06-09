@@ -17,7 +17,7 @@ The different lint groups were defined in the [Clippy 1.0 RFC].
 The `clippy::correctness` group is the only lint group in Clippy which lints are
 deny-by-default and abort the compilation when triggered. This is for good
 reason: If you see a `correctness` lint, it means that your code is outright
-wrong or useless and you should try to fix it.
+wrong or useless, and you should try to fix it.
 
 Lints in this category are carefully picked and should be free of false
 positives. So just `#[allow]`ing those lints is not recommended.
@@ -41,7 +41,7 @@ simplify your code. It mostly focuses on code that can be written in a shorter
 and more readable way, while preserving the semantics.
 
 If you should see a complexity lint, it usually means that you can remove or
-replace some code and it is recommended to do so. However, if you need the more
+replace some code, and it is recommended to do so. However, if you need the more
 complex code for some expressiveness reason, it is recommended to allow
 complexity lints on a case-by-case basis.
 
@@ -50,9 +50,9 @@ complexity lints on a case-by-case basis.
 The `clippy::perf` group gives you suggestions on how you can increase the
 performance of your code. Those lints are mostly about code that the compiler
 can't trivially optimize, but has to be written in a slightly different way to
-make the optimizer's job easier.
+make the optimizer job easier.
 
-Perf lints are usually easy to apply and it is recommended to do so.
+Perf lints are usually easy to apply, and it is recommended to do so.
 
 ## Style
 
@@ -91,7 +91,7 @@ and your use case.
 
 Lints from this group will restrict you in some way. If you enable a restriction
 lint for your crate it is recommended to also fix code that this lint triggers
-on. However, those lints are really strict by design and you might want to
+on. However, those lints are really strict by design, and you might want to
 `#[allow]` them in some special cases, with a comment justifying that.
 
 ## Cargo

@@ -1,0 +1,25 @@
+error: unexpected closing delimiter: `)`
+  --> $DIR/invalid-punct-ident-4.rs:7:1
+   |
+LL | lexer_failure!();
+   | ^^^^^^^^^^^^^^^^ unexpected closing delimiter
+   |
+   = note: this error originates in the macro `lexer_failure` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: proc macro panicked
+  --> $DIR/invalid-punct-ident-4.rs:7:1
+   |
+LL | lexer_failure!();
+   | ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-punct-ident-4.rs:12:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/conditional_array_execution.rs:3:19
+   |
+LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
+   |                   ^^^^^ attempt to compute `5_u32 - 6_u32`, which would overflow
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

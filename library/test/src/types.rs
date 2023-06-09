@@ -47,7 +47,7 @@ impl TestName {
         match *self {
             StaticTestName(s) => s,
             DynTestName(ref s) => s,
-            AlignedTestName(ref s, _) => &*s,
+            AlignedTestName(ref s, _) => s,
         }
     }
 
@@ -75,14 +75,15 @@ impl fmt::Display for TestName {
 }
 
 // A function that runs a test. If the function returns successfully,
-// the test succeeds; if the function panics then the test fails. We
-// may need to come up with a more clever definition of test in order
-// to support isolation of tests into threads.
+// the test succeeds; if the function panics or returns Result::Err
+// then the test fails. We may need to come up with a more clever
+// definition of test in order to support isolation of tests into
+// threads.
 pub enum TestFn {
-    StaticTestFn(fn()),
-    StaticBenchFn(fn(&mut Bencher)),
-    DynTestFn(Box<dyn FnOnce() + Send>),
-    DynBenchFn(Box<dyn Fn(&mut Bencher) + Send>),
+    StaticTestFn(fn() -> Result<(), String>),
+    StaticBenchFn(fn(&mut Bencher) -> Result<(), String>),
+    DynTestFn(Box<dyn FnOnce() -> Result<(), String> + Send>),
+    DynBenchFn(Box<dyn Fn(&mut Bencher) -> Result<(), String> + Send>),
 }
 
 impl TestFn {
@@ -118,6 +119,11 @@ pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub ignore_message: Option<&'static str>,
+    pub source_file: &'static str,
+    pub start_line: usize,
+    pub start_col: usize,
+    pub end_line: usize,
+    pub end_col: usize,
     pub should_panic: options::ShouldPanic,
     pub compile_fail: bool,
     pub no_run: bool,

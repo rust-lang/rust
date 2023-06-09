@@ -1,0 +1,8 @@
+error: unexpected default lifetime parameter
+  --> $DIR/issue-107492-default-value-for-lifetime.rs:1:35
+   |
+LL | pub struct DefaultLifetime<'a, 'b = 'static> {
+   |                                   ^^^^^^^^^ lifetime parameters cannot have default values
+
+error: aborting due to previous error
+

@@ -1,0 +1,17 @@
+[package]
+name = "tt"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+smol_str.workspace = true
+
+stdx.workspace = true

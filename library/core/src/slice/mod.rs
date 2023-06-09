@@ -7,9 +7,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Greater, Less};
+use crate::fmt;
 use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
@@ -28,14 +29,25 @@ use crate::slice;
 /// Pure rust memchr implementation, taken from rust-memchr
 pub mod memchr;
 
+#[unstable(
+    feature = "slice_internals",
+    issue = "none",
+    reason = "exposed from core to be reused in std;"
+)]
+pub mod sort;
+
 mod ascii;
 mod cmp;
 mod index;
 mod iter;
 mod raw;
 mod rotate;
-mod sort;
+mod select;
 mod specialize;
+
+#[unstable(feature = "str_internals", issue = "none")]
+#[doc(hidden)]
+pub use ascii::is_ascii_simple;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
@@ -123,18 +135,11 @@ impl<T> [T] {
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[inline]
     #[must_use]
-    // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     pub const fn len(&self) -> usize {
-        // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
-        // As of this writing this causes a "Const-stable functions can only call other
-        // const-stable functions" error.
-
-        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-        // and PtrComponents<T> have the same memory layouts. Only std can make this
-        // guarantee.
-        unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
+        ptr::metadata(self)
     }
 
     /// Returns `true` if the slice has a length of 0.
@@ -315,6 +320,264 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
+    /// Returns the first `N` elements of the slice, or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let u = [10, 40, 30];
+    /// assert_eq!(Some(&[10, 40]), u.first_chunk::<2>());
+    ///
+    /// let v: &[i32] = &[10];
+    /// assert_eq!(None, v.first_chunk::<2>());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(Some(&[]), w.first_chunk::<0>());
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn first_chunk<const N: usize>(&self) -> Option<&[T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the reference outlive the slice.
+            Some(unsafe { &*(self.as_ptr() as *const [T; N]) })
+        }
+    }
+
+    /// Returns a mutable reference to the first `N` elements of the slice,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some(first) = x.first_chunk_mut::<2>() {
+    ///     first[0] = 5;
+    ///     first[1] = 4;
+    /// }
+    /// assert_eq!(x, &[5, 4, 2]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn first_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and require exclusive access to the entire slice to mutate the chunk.
+            Some(unsafe { &mut *(self.as_mut_ptr() as *mut [T; N]) })
+        }
+    }
+
+    /// Returns the first `N` elements of the slice and the remainder,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &[0, 1, 2];
+    ///
+    /// if let Some((first, elements)) = x.split_first_chunk::<2>() {
+    ///     assert_eq!(first, &[0, 1]);
+    ///     assert_eq!(elements, &[2]);
+    /// }
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_first_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (first, tail) = unsafe { self.split_at_unchecked(N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the references outlive the slice.
+            Some((unsafe { &*(first.as_ptr() as *const [T; N]) }, tail))
+        }
+    }
+
+    /// Returns a mutable reference to the first `N` elements of the slice and the remainder,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some((first, elements)) = x.split_first_chunk_mut::<2>() {
+    ///     first[0] = 3;
+    ///     first[1] = 4;
+    ///     elements[0] = 5;
+    /// }
+    /// assert_eq!(x, &[3, 4, 5]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_first_chunk_mut<const N: usize>(
+        &mut self,
+    ) -> Option<(&mut [T; N], &mut [T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (first, tail) = unsafe { self.split_at_mut_unchecked(N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and enforce exclusive mutability of the chunk by the split.
+            Some((unsafe { &mut *(first.as_mut_ptr() as *mut [T; N]) }, tail))
+        }
+    }
+
+    /// Returns the last `N` elements of the slice and the remainder,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &[0, 1, 2];
+    ///
+    /// if let Some((last, elements)) = x.split_last_chunk::<2>() {
+    ///     assert_eq!(last, &[1, 2]);
+    ///     assert_eq!(elements, &[0]);
+    /// }
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (init, last) = unsafe { self.split_at_unchecked(self.len() - N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the references outlive the slice.
+            Some((unsafe { &*(last.as_ptr() as *const [T; N]) }, init))
+        }
+    }
+
+    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some((last, elements)) = x.split_last_chunk_mut::<2>() {
+    ///     last[0] = 3;
+    ///     last[1] = 4;
+    ///     elements[0] = 5;
+    /// }
+    /// assert_eq!(x, &[5, 3, 4]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_last_chunk_mut<const N: usize>(
+        &mut self,
+    ) -> Option<(&mut [T; N], &mut [T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (init, last) = unsafe { self.split_at_mut_unchecked(self.len() - N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and enforce exclusive mutability of the chunk by the split.
+            Some((unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) }, init))
+        }
+    }
+
+    /// Returns the last element of the slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let u = [10, 40, 30];
+    /// assert_eq!(Some(&[40, 30]), u.last_chunk::<2>());
+    ///
+    /// let v: &[i32] = &[10];
+    /// assert_eq!(None, v.last_chunk::<2>());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(Some(&[]), w.last_chunk::<0>());
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn last_chunk<const N: usize>(&self) -> Option<&[T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the slice.
+            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            let last = unsafe { self.split_at_unchecked(self.len() - N).1 };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the references outlive the slice.
+            Some(unsafe { &*(last.as_ptr() as *const [T; N]) })
+        }
+    }
+
+    /// Returns a mutable pointer to the last item in the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some(last) = x.last_chunk_mut::<2>() {
+    ///     last[0] = 10;
+    ///     last[1] = 20;
+    /// }
+    /// assert_eq!(x, &[0, 10, 20]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn last_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the slice.
+            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            let last = unsafe { self.split_at_mut_unchecked(self.len() - N).1 };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and require exclusive access to the entire slice to mutate the chunk.
+            Some(unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) })
+        }
+    }
+
     /// Returns a reference to an element or subslice depending on the type of
     /// index.
     ///
@@ -333,12 +596,11 @@ impl<T> [T] {
     /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const fn get<I>(&self, index: I) -> Option<&I::Output>
+    pub fn get<I>(&self, index: I) -> Option<&I::Output>
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         index.get(self)
     }
@@ -359,12 +621,11 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
+    pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         index.get_mut(self)
     }
@@ -392,12 +653,11 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
+    pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         // SAFETY: the caller must uphold most of the safety requirements for `get_unchecked`;
         // the slice is dereferenceable because `self` is a safe reference.
@@ -430,12 +690,11 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 13, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
     #[must_use]
-    pub const unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+    pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
-        I: ~const SliceIndex<Self>,
+        I: SliceIndex<Self>,
     {
         // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`;
         // the slice is dereferenceable because `self` is a safe reference.
@@ -471,7 +730,7 @@ impl<T> [T] {
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
@@ -501,7 +760,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_allow_const_fn_unstable(const_mut_refs)]
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
@@ -656,10 +915,14 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        let ptr = self.as_mut_ptr();
+        let this = self;
+        let ptr = this.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!(a < self.len() && b < self.len());
+            assert_unsafe_precondition!(
+                "slice::swap_unchecked requires that the indices are within the slice",
+                [T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len()
+            );
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -699,17 +962,19 @@ impl<T> [T] {
 
         #[inline]
         fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
-            debug_assert_eq!(a.len(), n);
-            debug_assert_eq!(b.len(), n);
+            debug_assert!(a.len() == n);
+            debug_assert!(b.len() == n);
 
             // Because this function is first compiled in isolation,
             // this check tells LLVM that the indexing below is
-            // in-bounds.  Then after inlining -- once the actual
+            // in-bounds. Then after inlining -- once the actual
             // lengths of the slices are known -- it's removed.
             let (a, b) = (&mut a[..n], &mut b[..n]);
 
-            for i in 0..n {
+            let mut i = 0;
+            while i < n {
                 mem::swap(&mut a[i], &mut b[n - 1 - i]);
+                i += 1;
             }
         }
     }
@@ -780,10 +1045,27 @@ impl<T> [T] {
     /// let mut iter = slice.windows(4);
     /// assert!(iter.next().is_none());
     /// ```
+    ///
+    /// There's no `windows_mut`, as that existing would let safe code violate the
+    /// "only one `&mut` at a time to the same thing" rule.  However, you can sometimes
+    /// use [`Cell::as_slice_of_cells`](crate::cell::Cell::as_slice_of_cells) in
+    /// conjunction with `windows` to accomplish something similar:
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let mut array = ['R', 'u', 's', 't', ' ', '2', '0', '1', '5'];
+    /// let slice = &mut array[..];
+    /// let slice_of_cells: &[Cell<char>] = Cell::from_mut(slice).as_slice_of_cells();
+    /// for w in slice_of_cells.windows(3) {
+    ///     Cell::swap(&w[0], &w[2]);
+    /// }
+    /// assert_eq!(array, ['s', 't', ' ', '2', '0', '1', '5', 'u', 'R']);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[track_caller]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        let size = NonZeroUsize::new(size).expect("size is zero");
+        let size = NonZeroUsize::new(size).expect("window size must be non-zero");
         Windows::new(self, size)
     }
 
@@ -816,8 +1098,9 @@ impl<T> [T] {
     /// [`rchunks`]: slice::rchunks
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[track_caller]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
-        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         Chunks::new(self, chunk_size)
     }
 
@@ -854,8 +1137,9 @@ impl<T> [T] {
     /// [`rchunks_mut`]: slice::rchunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[track_caller]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
-        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         ChunksMut::new(self, chunk_size)
     }
 
@@ -891,8 +1175,9 @@ impl<T> [T] {
     /// [`rchunks_exact`]: slice::rchunks_exact
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
+    #[track_caller]
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         ChunksExact::new(self, chunk_size)
     }
 
@@ -933,8 +1218,9 @@ impl<T> [T] {
     /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
+    #[track_caller]
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         ChunksExactMut::new(self, chunk_size)
     }
 
@@ -968,10 +1254,14 @@ impl<T> [T] {
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
-    pub unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
+    pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
+        let this = self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
             exact_div(self.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -997,11 +1287,23 @@ impl<T> [T] {
     /// assert_eq!(chunks, &[['l', 'o'], ['r', 'e']]);
     /// assert_eq!(remainder, &['m']);
     /// ```
+    ///
+    /// If you expect the slice to be an exact multiple, you can combine
+    /// `let`-`else` with an empty slice pattern:
+    /// ```
+    /// #![feature(slice_as_chunks)]
+    /// let slice = ['R', 'u', 's', 't'];
+    /// let (chunks, []) = slice.as_chunks::<2>() else {
+    ///     panic!("slice didn't have even length")
+    /// };
+    /// assert_eq!(chunks, &[['R', 'u'], ['s', 't']]);
+    /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
+    #[track_caller]
     #[must_use]
-    pub fn as_chunks<const N: usize>(&self) -> (&[[T; N]], &[T]) {
-        assert_ne!(N, 0);
+    pub const fn as_chunks<const N: usize>(&self) -> (&[[T; N]], &[T]) {
+        assert!(N != 0, "chunk size must be non-zero");
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at(len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1030,9 +1332,10 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
+    #[track_caller]
     #[must_use]
-    pub fn as_rchunks<const N: usize>(&self) -> (&[T], &[[T; N]]) {
-        assert_ne!(N, 0);
+    pub const fn as_rchunks<const N: usize>(&self) -> (&[T], &[[T; N]]) {
+        assert!(N != 0, "chunk size must be non-zero");
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at(self.len() - len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1070,8 +1373,9 @@ impl<T> [T] {
     /// [`chunks_exact`]: slice::chunks_exact
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
+    #[track_caller]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
-        assert_ne!(N, 0);
+        assert!(N != 0, "chunk size must be non-zero");
         ArrayChunks::new(self)
     }
 
@@ -1107,11 +1411,15 @@ impl<T> [T] {
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
-    pub unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
+    pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
+        let this = &*self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
-            exact_div(self.len(), N)
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked_mut requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
+            exact_div(this.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
@@ -1144,9 +1452,10 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
+    #[track_caller]
     #[must_use]
-    pub fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[T; N]], &mut [T]) {
-        assert_ne!(N, 0);
+    pub const fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[T; N]], &mut [T]) {
+        assert!(N != 0, "chunk size must be non-zero");
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at_mut(len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1181,9 +1490,10 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
+    #[track_caller]
     #[must_use]
-    pub fn as_rchunks_mut<const N: usize>(&mut self) -> (&mut [T], &mut [[T; N]]) {
-        assert_ne!(N, 0);
+    pub const fn as_rchunks_mut<const N: usize>(&mut self) -> (&mut [T], &mut [[T; N]]) {
+        assert!(N != 0, "chunk size must be non-zero");
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at_mut(self.len() - len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1223,12 +1533,13 @@ impl<T> [T] {
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
+    #[track_caller]
     pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
-        assert_ne!(N, 0);
+        assert!(N != 0, "chunk size must be non-zero");
         ArrayChunksMut::new(self)
     }
 
-    /// Returns an iterator over overlapping windows of `N` elements of  a slice,
+    /// Returns an iterator over overlapping windows of `N` elements of a slice,
     /// starting at the beginning of the slice.
     ///
     /// This is the const generic equivalent of [`windows`].
@@ -1255,8 +1566,9 @@ impl<T> [T] {
     /// [`windows`]: slice::windows
     #[unstable(feature = "array_windows", issue = "75027")]
     #[inline]
+    #[track_caller]
     pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
-        assert_ne!(N, 0);
+        assert!(N != 0, "window size must be non-zero");
         ArrayWindows::new(self)
     }
 
@@ -1289,8 +1601,9 @@ impl<T> [T] {
     /// [`chunks`]: slice::chunks
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
+    #[track_caller]
     pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
-        assert!(chunk_size != 0);
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunks::new(self, chunk_size)
     }
 
@@ -1327,8 +1640,9 @@ impl<T> [T] {
     /// [`chunks_mut`]: slice::chunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
+    #[track_caller]
     pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunksMut::new(self, chunk_size)
     }
 
@@ -1340,7 +1654,7 @@ impl<T> [T] {
     /// from the `remainder` function of the iterator.
     ///
     /// Due to each chunk having exactly `chunk_size` elements, the compiler can often optimize the
-    /// resulting code better than in the case of [`chunks`].
+    /// resulting code better than in the case of [`rchunks`].
     ///
     /// See [`rchunks`] for a variant of this iterator that also returns the remainder as a smaller
     /// chunk, and [`chunks_exact`] for the same iterator but starting at the beginning of the
@@ -1366,8 +1680,9 @@ impl<T> [T] {
     /// [`chunks_exact`]: slice::chunks_exact
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
+    #[track_caller]
     pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
-        assert!(chunk_size != 0);
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunksExact::new(self, chunk_size)
     }
 
@@ -1409,8 +1724,9 @@ impl<T> [T] {
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
+    #[track_caller]
     pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunksExactMut::new(self, chunk_size)
     }
 
@@ -1538,13 +1854,15 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_slice_split_at_not_mut", since = "1.71.0")]
+    #[rustc_allow_const_fn_unstable(slice_split_at_unchecked)]
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
+    pub const fn split_at(&self, mid: usize) -> (&[T], &[T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
+        // fulfills the requirements of `split_at_unchecked`.
         unsafe { self.split_at_unchecked(mid) }
     }
 
@@ -1573,7 +1891,8 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
+    pub const fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
         // fulfills the requirements of `from_raw_parts_mut`.
@@ -1623,11 +1942,25 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "slice_split_at_unchecked", issue = "76014")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+    pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+        // HACK: the const function `from_raw_parts` is used to make this
+        // function const; previously the implementation used
+        // `(self.get_unchecked(..mid), self.get_unchecked(mid..))`
+
+        let len = self.len();
+        let ptr = self.as_ptr();
+
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) }
+        unsafe {
+            assert_unsafe_precondition!(
+                "slice::split_at_unchecked requires the index to be within the slice",
+                (mid: usize, len: usize) => mid <= len
+            );
+            (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid))
+        }
     }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.
@@ -1664,9 +1997,10 @@ impl<T> [T] {
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
@@ -1675,7 +2009,10 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe {
-            assert_unsafe_precondition!(mid <= len);
+            assert_unsafe_precondition!(
+                "slice::split_at_mut_unchecked requires the index to be within the slice",
+                (mid: usize, len: usize) => mid <= len
+            );
             (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
         }
     }
@@ -2059,7 +2396,7 @@ impl<T> [T] {
         SplitN::new(self.split(pred), n)
     }
 
-    /// Returns an iterator over subslices separated by elements that match
+    /// Returns an iterator over mutable subslices separated by elements that match
     /// `pred`, limited to returning at most `n` items. The matched element is
     /// not contained in the subslices.
     ///
@@ -2309,7 +2646,8 @@ impl<T> [T] {
     }
 
     /// Binary searches this slice for a given element.
-    /// This behaves similary to [`contains`] if this slice is sorted.
+    /// If the slice is not sorted, the returned result is unspecified and
+    /// meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2321,7 +2659,6 @@ impl<T> [T] {
     ///
     /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
     ///
-    /// [`contains`]: slice::contains
     /// [`binary_search_by`]: slice::binary_search_by
     /// [`binary_search_by_key`]: slice::binary_search_by_key
     /// [`partition_point`]: slice::partition_point
@@ -2340,6 +2677,28 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search(&100), Err(13));
     /// let r = s.binary_search(&1);
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
+    /// ```
+    ///
+    /// If you want to find that whole *range* of matching items, rather than
+    /// an arbitrary matching one, that can be done using [`partition_point`]:
+    /// ```
+    /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    ///
+    /// let low = s.partition_point(|x| x < &1);
+    /// assert_eq!(low, 1);
+    /// let high = s.partition_point(|x| x <= &1);
+    /// assert_eq!(high, 5);
+    /// let r = s.binary_search(&1);
+    /// assert!((low..high).contains(&r.unwrap()));
+    ///
+    /// assert!(s[..low].iter().all(|&x| x < 1));
+    /// assert!(s[low..high].iter().all(|&x| x == 1));
+    /// assert!(s[high..].iter().all(|&x| x > 1));
+    ///
+    /// // For something not found, the "range" of equal items is empty
+    /// assert_eq!(s.partition_point(|x| x < &11), 9);
+    /// assert_eq!(s.partition_point(|x| x <= &11), 9);
+    /// assert_eq!(s.binary_search(&11), Err(9));
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining
@@ -2362,12 +2721,13 @@ impl<T> [T] {
     }
 
     /// Binary searches this slice with a comparator function.
-    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
-    /// The comparator function should implement an order consistent
-    /// with the sort order of the underlying slice, returning an
-    /// order code that indicates whether its argument is `Less`,
-    /// `Equal` or `Greater` the desired target.
+    /// The comparator function should return an order code that indicates
+    /// whether its argument is `Less`, `Equal` or `Greater` the desired
+    /// target.
+    /// If the slice is not sorted or if the comparator function does not
+    /// implement an order consistent with the sort order of the underlying
+    /// slice, the returned result is unspecified and meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2379,7 +2739,6 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
     ///
-    /// [`contains`]: slice::contains
     /// [`binary_search`]: slice::binary_search
     /// [`binary_search_by_key`]: slice::binary_search_by_key
     /// [`partition_point`]: slice::partition_point
@@ -2409,15 +2768,20 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
+        // INVARIANTS:
+        // - 0 <= left <= left + size = right <= self.len()
+        // - f returns Less for everything in self[..left]
+        // - f returns Greater for everything in self[right..]
         let mut size = self.len();
         let mut left = 0;
         let mut right = size;
         while left < right {
             let mid = left + size / 2;
 
-            // SAFETY: the call is made safe by the following invariants:
-            // - `mid >= 0`
-            // - `mid < size`: `mid` is limited by `[left; right)` bound.
+            // SAFETY: the while condition means `size` is strictly positive, so
+            // `size/2 < size`. Thus `left + size/2 < left + size`, which
+            // coupled with the `left + size <= self.len()` invariant means
+            // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
             // The reason why we use if/else control flow rather than match
@@ -2435,14 +2799,19 @@ impl<T> [T] {
 
             size = right - left;
         }
+
+        // SAFETY: directly true from the overall invariant.
+        // Note that this is `<=`, unlike the assume in the `Ok` path.
+        unsafe { crate::intrinsics::assume(left <= self.len()) };
         Err(left)
     }
 
     /// Binary searches this slice with a key extraction function.
-    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
     /// Assumes that the slice is sorted by the key, for instance with
     /// [`sort_by_key`] using the same key extraction function.
+    /// If the slice is not sorted by the key, the returned result is
+    /// unspecified and meaningless.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2454,7 +2823,6 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
-    /// [`contains`]: slice::contains
     /// [`sort_by_key`]: slice::sort_by_key
     /// [`binary_search`]: slice::binary_search
     /// [`binary_search_by`]: slice::binary_search_by
@@ -2525,7 +2893,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        sort::quicksort(self, |a, b| a.lt(b));
+        sort::quicksort(self, T::lt);
     }
 
     /// Sorts the slice with a comparator function, but might not preserve the order of equal
@@ -2627,15 +2995,19 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
-    /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
-    /// element" in other libraries. It returns a triplet of the following values: all elements less
-    /// than the one at the given index, the value at the given index, and all elements greater than
-    /// the one at the given index.
+    /// (i.e. does not allocate), and *O*(*n*) on average. The worst-case performance is *O*(*n* log *n*).
+    /// This function is also known as "kth element" in other libraries.
+    ///
+    /// It returns a triplet of the following from the reordered slice:
+    /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
+    /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
+    /// and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
-    /// used for [`sort_unstable`].
+    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
+    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
+    /// pivot selection, which guarantees linear runtime for all inputs.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -2664,8 +3036,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        let mut f = |a: &T, b: &T| a.lt(b);
-        sort::partition_at_index(self, index, &mut f)
+        select::partition_at_index(self, index, T::lt)
     }
 
     /// Reorder the slice with a comparator function such that the element at `index` is at its
@@ -2674,16 +3045,21 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index,
-    /// and all elements greater than the one at the given index, using the provided comparator
-    /// function.
+    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) on average.
+    /// The worst-case performance is *O*(*n* log *n*). This function is also known as
+    /// "kth element" in other libraries.
+    ///
+    /// It returns a triplet of the following from
+    /// the slice reordered according to the provided comparator function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
-    /// used for [`sort_unstable`].
+    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
+    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
+    /// pivot selection, which guarantees linear runtime for all inputs.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -2716,8 +3092,7 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        let mut f = |a: &T, b: &T| compare(a, b) == Less;
-        sort::partition_at_index(self, index, &mut f)
+        select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
     /// Reorder the slice with a key extraction function such that the element at `index` is at its
@@ -2726,16 +3101,21 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index, and
-    /// all elements greater than the one at the given index, using the provided key extraction
-    /// function.
+    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) on average.
+    /// The worst-case performance is *O*(*n* log *n*).
+    /// This function is also known as "kth element" in other libraries.
+    ///
+    /// It returns a triplet of the following from
+    /// the slice reordered according to the provided key extraction function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
-    /// used for [`sort_unstable`].
+    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
+    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
+    /// pivot selection, which guarantees linear runtime for all inputs.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -2769,8 +3149,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        let mut g = |a: &T, b: &T| f(a).lt(&f(b));
-        sort::partition_at_index(self, index, &mut g)
+        select::partition_at_index(self, index, |a: &T, b: &T| f(a).lt(&f(b)))
     }
 
     /// Moves all consecutive repeated elements to the end of the slice according to the
@@ -2844,7 +3223,7 @@ impl<T> [T] {
         // This operation is still `O(n)`.
         //
         // Example: We start in this state, where `r` represents "next
-        // read" and `w` represents "next_write`.
+        // read" and `w` represents "next_write".
         //
         //           r
         //     +---+---+---+---+---+---+
@@ -2921,7 +3300,7 @@ impl<T> [T] {
                 let prev_ptr_write = ptr.add(next_write - 1);
                 if !same_bucket(&mut *ptr_read, &mut *prev_ptr_write) {
                     if next_read != next_write {
-                        let ptr_write = prev_ptr_write.offset(1);
+                        let ptr_write = prev_ptr_write.add(1);
                         mem::swap(&mut *ptr_read, &mut *ptr_write);
                     }
                     next_write += 1;
@@ -3362,44 +3741,13 @@ impl<T> [T] {
         // Ts = size_of::<U> / gcd(size_of::<T>, size_of::<U>)
         //
         // Luckily since all this is constant-evaluated... performance here matters not!
-        #[inline]
-        fn gcd(a: usize, b: usize) -> usize {
-            use crate::intrinsics;
-            // iterative stein’s algorithm
-            // We should still make this `const fn` (and revert to recursive algorithm if we do)
-            // because relying on llvm to consteval all this is… well, it makes me uncomfortable.
-
-            // SAFETY: `a` and `b` are checked to be non-zero values.
-            let (ctz_a, mut ctz_b) = unsafe {
-                if a == 0 {
-                    return b;
-                }
-                if b == 0 {
-                    return a;
-                }
-                (intrinsics::cttz_nonzero(a), intrinsics::cttz_nonzero(b))
-            };
-            let k = ctz_a.min(ctz_b);
-            let mut a = a >> ctz_a;
-            let mut b = b;
-            loop {
-                // remove all factors of 2 from b
-                b >>= ctz_b;
-                if a > b {
-                    mem::swap(&mut a, &mut b);
-                }
-                b = b - a;
-                // SAFETY: `b` is checked to be non-zero.
-                unsafe {
-                    if b == 0 {
-                        break;
-                    }
-                    ctz_b = intrinsics::cttz_nonzero(b);
-                }
-            }
-            a << k
+        const fn gcd(a: usize, b: usize) -> usize {
+            if b == 0 { a } else { gcd(b, a % b) }
         }
-        let gcd: usize = gcd(mem::size_of::<T>(), mem::size_of::<U>());
+
+        // Explicitly wrap the function call in a const block so it gets
+        // constant-evaluated even in debug mode.
+        let gcd: usize = const { gcd(mem::size_of::<T>(), mem::size_of::<U>()) };
         let ts: usize = mem::size_of::<U>() / gcd;
         let us: usize = mem::size_of::<T>() / gcd;
 
@@ -3414,10 +3762,11 @@ impl<T> [T] {
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
-    /// length possible for a given type and input slice, but only your algorithm's performance
-    /// should depend on that, not its correctness. It is permissible for all of the input data to
-    /// be returned as the prefix or suffix slice.
+    /// slice of a new type, and the suffix slice. How exactly the slice is split up is not
+    /// specified; the middle part may be smaller than necessary. However, if this fails to return a
+    /// maximal middle part, that is because code is running in a context where performance does not
+    /// matter, such as a sanitizer attempting to find alignment bugs. Regular code running
+    /// in a default (debug or release) execution *will* return a maximal middle part.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
@@ -3444,7 +3793,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
@@ -3471,14 +3820,15 @@ impl<T> [T] {
         }
     }
 
-    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
-    /// maintained.
+    /// Transmute the mutable slice to a mutable slice of another type, ensuring alignment of the
+    /// types is maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
-    /// length possible for a given type and input slice, but only your algorithm's performance
-    /// should depend on that, not its correctness. It is permissible for all of the input data to
-    /// be returned as the prefix or suffix slice.
+    /// slice of a new type, and the suffix slice. How exactly the slice is split up is not
+    /// specified; the middle part may be smaller than necessary. However, if this fails to return a
+    /// maximal middle part, that is because code is running in a context where performance does not
+    /// matter, such as a sanitizer attempting to find alignment bugs. Regular code running
+    /// in a default (debug or release) execution *will* return a maximal middle part.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
@@ -3505,7 +3855,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &mut [], &mut []);
         }
@@ -3518,7 +3868,7 @@ impl<T> [T] {
         // alignment targeted for U.
         // `crate::ptr::align_offset` is called with a correctly aligned and
         // valid pointer `ptr` (it comes from a reference to `self`) and with
-        // a size that is a power of two (since it comes from the alignement for U),
+        // a size that is a power of two (since it comes from the alignment for U),
         // satisfying its safety constraints.
         let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
         if offset > self.len() {
@@ -3569,6 +3919,7 @@ impl<T> [T] {
     ///
     /// ```
     /// #![feature(portable_simd)]
+    /// use core::simd::SimdFloat;
     ///
     /// let short = &[1, 2, 3];
     /// let (prefix, middle, suffix) = short.as_simd::<4>();
@@ -3613,7 +3964,8 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
+    /// Split a mutable slice into a mutable prefix, a middle of aligned SIMD types,
+    /// and a mutable suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to_mut`], so has the same weak
     /// postconditions as that method.  You're only assured that
@@ -3697,11 +4049,11 @@ impl<T> [T] {
     /// [`is_sorted`]: slice::is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     #[must_use]
-    pub fn is_sorted_by<F>(&self, mut compare: F) -> bool
+    pub fn is_sorted_by<'a, F>(&'a self, mut compare: F) -> bool
     where
-        F: FnMut(&T, &T) -> Option<Ordering>,
+        F: FnMut(&'a T, &'a T) -> Option<Ordering>,
     {
-        self.iter().is_sorted_by(|a, b| compare(*a, *b))
+        self.array_windows().all(|[a, b]| compare(a, b).map_or(false, Ordering::is_le))
     }
 
     /// Checks if the elements of this slice are sorted using the given key extraction function.
@@ -3723,9 +4075,9 @@ impl<T> [T] {
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     #[must_use]
-    pub fn is_sorted_by_key<F, K>(&self, f: F) -> bool
+    pub fn is_sorted_by_key<'a, F, K>(&'a self, f: F) -> bool
     where
-        F: FnMut(&T) -> K,
+        F: FnMut(&'a T) -> K,
         K: PartialOrd,
     {
         self.iter().is_sorted_by_key(f)
@@ -3737,7 +4089,7 @@ impl<T> [T] {
     /// The slice is assumed to be partitioned according to the given predicate.
     /// This means that all elements for which the predicate returns true are at the start of the slice
     /// and all elements for which the predicate returns false are at the end.
-    /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
+    /// For example, `[7, 15, 3, 5, 4, 12, 6]` is partitioned under the predicate `x % 2 != 0`
     /// (all odd numbers are at the start, all even at the end).
     ///
     /// If this slice is not partitioned, the returned result is unspecified and meaningless,
@@ -3758,6 +4110,16 @@ impl<T> [T] {
     /// assert_eq!(i, 4);
     /// assert!(v[..i].iter().all(|&x| x < 5));
     /// assert!(v[i..].iter().all(|&x| !(x < 5)));
+    /// ```
+    ///
+    /// If all elements of the slice match the predicate, including if the slice
+    /// is empty, then the length of the slice will be returned:
+    ///
+    /// ```
+    /// let a = [2, 4, 8];
+    /// assert_eq!(a.partition_point(|x| x < &100), a.len());
+    /// let a: [i32; 0] = [];
+    /// assert_eq!(a.partition_point(|x| x < &100), 0);
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining
@@ -4017,6 +4379,88 @@ impl<T> [T] {
         *self = rem;
         Some(last)
     }
+
+    /// Returns mutable references to many indices at once, without doing any checks.
+    ///
+    /// For a safe alternative see [`get_many_mut`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping or out-of-bounds indices is *[undefined behavior]*
+    /// even if the resulting references are not used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many_mut)]
+    ///
+    /// let x = &mut [1, 2, 4];
+    ///
+    /// unsafe {
+    ///     let [a, b] = x.get_many_unchecked_mut([0, 2]);
+    ///     *a *= 10;
+    ///     *b *= 100;
+    /// }
+    /// assert_eq!(x, &[10, 2, 400]);
+    /// ```
+    ///
+    /// [`get_many_mut`]: slice::get_many_mut
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[inline]
+    pub unsafe fn get_many_unchecked_mut<const N: usize>(
+        &mut self,
+        indices: [usize; N],
+    ) -> [&mut T; N] {
+        // NB: This implementation is written as it is because any variation of
+        // `indices.map(|i| self.get_unchecked_mut(i))` would make miri unhappy,
+        // or generate worse code otherwise. This is also why we need to go
+        // through a raw pointer here.
+        let slice: *mut [T] = self;
+        let mut arr: mem::MaybeUninit<[&mut T; N]> = mem::MaybeUninit::uninit();
+        let arr_ptr = arr.as_mut_ptr();
+
+        // SAFETY: We expect `indices` to contain disjunct values that are
+        // in bounds of `self`.
+        unsafe {
+            for i in 0..N {
+                let idx = *indices.get_unchecked(i);
+                *(*arr_ptr).get_unchecked_mut(i) = &mut *slice.get_unchecked_mut(idx);
+            }
+            arr.assume_init()
+        }
+    }
+
+    /// Returns mutable references to many indices at once.
+    ///
+    /// Returns an error if any index is out-of-bounds, or if the same index was
+    /// passed more than once.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many_mut)]
+    ///
+    /// let v = &mut [1, 2, 3];
+    /// if let Ok([a, b]) = v.get_many_mut([0, 2]) {
+    ///     *a = 413;
+    ///     *b = 612;
+    /// }
+    /// assert_eq!(v, &[413, 2, 612]);
+    /// ```
+    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[inline]
+    pub fn get_many_mut<const N: usize>(
+        &mut self,
+        indices: [usize; N],
+    ) -> Result<[&mut T; N], GetManyMutError<N>> {
+        if !get_many_check_valid(&indices, self.len()) {
+            return Err(GetManyMutError { _private: () });
+        }
+        // SAFETY: The `get_many_check_valid()` call checked that all indices
+        // are disjunct and in bounds.
+        unsafe { Ok(self.get_many_unchecked_mut(indices)) }
+    }
 }
 
 impl<T, const N: usize> [[T; N]] {
@@ -4049,8 +4493,8 @@ impl<T, const N: usize> [[T; N]] {
     /// assert!(empty_slice_of_arrays.flatten().is_empty());
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
-    pub fn flatten(&self) -> &[T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+    pub const fn flatten(&self) -> &[T] {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is
@@ -4088,7 +4532,7 @@ impl<T, const N: usize> [[T; N]] {
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn flatten_mut(&mut self) -> &mut [T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is
@@ -4097,6 +4541,64 @@ impl<T, const N: usize> [[T; N]] {
         };
         // SAFETY: `[T]` is layout-identical to `[T; N]`
         unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), len) }
+    }
+}
+
+#[cfg(not(test))]
+impl [f32] {
+    /// Sorts the slice of floats.
+    ///
+    /// This sort is in-place (i.e. does not allocate), *O*(*n* \* log(*n*)) worst-case, and uses
+    /// the ordering defined by [`f32::total_cmp`].
+    ///
+    /// # Current implementation
+    ///
+    /// This uses the same sorting algorithm as [`sort_unstable_by`](slice::sort_unstable_by).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_floats)]
+    /// let mut v = [2.6, -5e-8, f32::NAN, 8.29, f32::INFINITY, -1.0, 0.0, -f32::INFINITY, -0.0];
+    ///
+    /// v.sort_floats();
+    /// let sorted = [-f32::INFINITY, -1.0, -5e-8, -0.0, 0.0, 2.6, 8.29, f32::INFINITY, f32::NAN];
+    /// assert_eq!(&v[..8], &sorted[..8]);
+    /// assert!(v[8].is_nan());
+    /// ```
+    #[unstable(feature = "sort_floats", issue = "93396")]
+    #[inline]
+    pub fn sort_floats(&mut self) {
+        self.sort_unstable_by(f32::total_cmp);
+    }
+}
+
+#[cfg(not(test))]
+impl [f64] {
+    /// Sorts the slice of floats.
+    ///
+    /// This sort is in-place (i.e. does not allocate), *O*(*n* \* log(*n*)) worst-case, and uses
+    /// the ordering defined by [`f64::total_cmp`].
+    ///
+    /// # Current implementation
+    ///
+    /// This uses the same sorting algorithm as [`sort_unstable_by`](slice::sort_unstable_by).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_floats)]
+    /// let mut v = [2.6, -5e-8, f64::NAN, 8.29, f64::INFINITY, -1.0, 0.0, -f64::INFINITY, -0.0];
+    ///
+    /// v.sort_floats();
+    /// let sorted = [-f64::INFINITY, -1.0, -5e-8, -0.0, 0.0, 2.6, 8.29, f64::INFINITY, f64::NAN];
+    /// assert_eq!(&v[..8], &sorted[..8]);
+    /// assert!(v[8].is_nan());
+    /// ```
+    #[unstable(feature = "sort_floats", issue = "93396")]
+    #[inline]
+    pub fn sort_floats(&mut self) {
+        self.sort_unstable_by(f64::total_cmp);
     }
 }
 
@@ -4133,8 +4635,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T> const Default for &[T] {
+impl<T> Default for &[T] {
     /// Creates an empty slice.
     fn default() -> Self {
         &[]
@@ -4142,8 +4643,7 @@ impl<T> const Default for &[T] {
 }
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T> const Default for &mut [T] {
+impl<T> Default for &mut [T] {
     /// Creates a mutable empty slice.
     fn default() -> Self {
         &mut []
@@ -4179,5 +4679,58 @@ impl<T, const N: usize> SlicePattern for [T; N] {
     #[inline]
     fn as_slice(&self) -> &[Self::Item] {
         self
+    }
+}
+
+/// This checks every index against each other, and against `len`.
+///
+/// This will do `binomial(N + 1, 2) = N * (N + 1) / 2 = 0, 1, 3, 6, 10, ..`
+/// comparison operations.
+fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> bool {
+    // NB: The optimizer should inline the loops into a sequence
+    // of instructions without additional branching.
+    let mut valid = true;
+    for (i, &idx) in indices.iter().enumerate() {
+        valid &= idx < len;
+        for &idx2 in &indices[..i] {
+            valid &= idx != idx2;
+        }
+    }
+    valid
+}
+
+/// The error type returned by [`get_many_mut<N>`][`slice::get_many_mut`].
+///
+/// It indicates one of two possible errors:
+/// - An index is out-of-bounds.
+/// - The same index appeared multiple times in the array.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(get_many_mut)]
+///
+/// let v = &mut [1, 2, 3];
+/// assert!(v.get_many_mut([0, 999]).is_err());
+/// assert!(v.get_many_mut([1, 1]).is_err());
+/// ```
+#[unstable(feature = "get_many_mut", issue = "104642")]
+// NB: The N here is there to be forward-compatible with adding more details
+// to the error type at a later point
+pub struct GetManyMutError<const N: usize> {
+    _private: (),
+}
+
+#[unstable(feature = "get_many_mut", issue = "104642")]
+impl<const N: usize> fmt::Debug for GetManyMutError<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GetManyMutError").finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "get_many_mut", issue = "104642")]
+impl<const N: usize> fmt::Display for GetManyMutError<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt("an index is out of bounds or appeared multiple times in the array", f)
     }
 }

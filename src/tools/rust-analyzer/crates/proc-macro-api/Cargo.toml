@@ -1,0 +1,35 @@
+[package]
+name = "proc-macro-api"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+object = { version = "0.30.2", default-features = false, features = [
+    "std",
+    "read_core",
+    "elf",
+    "macho",
+    "pe",
+] }
+serde.workspace = true
+serde_json = { workspace = true, features = ["unbounded_depth"] }
+tracing = "0.1.37"
+triomphe.workspace = true
+memmap2 = "0.5.4"
+snap = "1.1.0"
+
+# local deps
+paths.workspace = true
+tt.workspace = true
+stdx.workspace = true
+profile.workspace = true
+# Intentionally *not* depend on anything salsa-related
+# base-db.workspace = true

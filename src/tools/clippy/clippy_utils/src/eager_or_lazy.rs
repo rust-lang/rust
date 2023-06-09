@@ -45,21 +45,16 @@ impl ops::BitOrAssign for EagernessSuggestion {
 }
 
 /// Determine the eagerness of the given function call.
-fn fn_eagerness<'tcx>(
-    cx: &LateContext<'tcx>,
-    fn_id: DefId,
-    name: Symbol,
-    args: &'tcx [Expr<'_>],
-) -> EagernessSuggestion {
+fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
     use EagernessSuggestion::{Eager, Lazy, NoChange};
     let name = name.as_str();
 
     let ty = match cx.tcx.impl_of_method(fn_id) {
-        Some(id) => cx.tcx.type_of(id),
+        Some(id) => cx.tcx.type_of(id).subst_identity(),
         None => return Lazy,
     };
 
-    if (name.starts_with("as_") || name == "len" || name == "is_empty") && args.len() == 1 {
+    if (name.starts_with("as_") || name == "len" || name == "is_empty") && have_one_arg {
         if matches!(
             cx.tcx.crate_name(fn_id.krate),
             sym::std | sym::core | sym::alloc | sym::proc_macro
@@ -76,15 +71,15 @@ fn fn_eagerness<'tcx>(
             .variants()
             .iter()
             .flat_map(|v| v.fields.iter())
-            .any(|x| matches!(cx.tcx.type_of(x.did).peel_refs().kind(), ty::Param(_)))
+            .any(|x| matches!(cx.tcx.type_of(x.did).subst_identity().peel_refs().kind(), ty::Param(_)))
             && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
-                PredicateKind::Trait(pred) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
+                PredicateKind::Clause(ty::Clause::Trait(pred)) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
                 _ => true,
             })
             && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
         {
             // Limit the function to either `(self) -> bool` or `(&self) -> bool`
-            match &**cx.tcx.fn_sig(fn_id).skip_binder().inputs_and_output {
+            match &**cx.tcx.fn_sig(fn_id).subst_identity().skip_binder().inputs_and_output {
                 [arg, res] if !arg.is_mutable_ptr() && arg.peel_refs() == ty && res.is_bool() => NoChange,
                 _ => Lazy,
             }
@@ -93,6 +88,16 @@ fn fn_eagerness<'tcx>(
         }
     } else {
         Lazy
+    }
+}
+
+fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+    if let Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) = res {
+        cx.typeck_results()
+            .expr_ty(e)
+            .has_significant_drop(cx.tcx, cx.param_env)
+    } else {
+        false
     }
 }
 
@@ -118,7 +123,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     },
                     args,
                 ) => match self.cx.qpath_res(path, hir_id) {
-                    Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) => (),
+                    res @ (Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_)) => {
+                        if res_has_significant_drop(res, self.cx, e) {
+                            self.eagerness = ForceNoChange;
+                            return;
+                        }
+                    },
                     Res::Def(_, id) if self.cx.tcx.is_promotable_const_fn(id) => (),
                     // No need to walk the arguments here, `is_const_evaluatable` already did
                     Res::Def(..) if is_const_evaluatable(self.cx, e) => {
@@ -127,10 +137,11 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     },
                     Res::Def(_, id) => match path {
                         QPath::Resolved(_, p) => {
-                            self.eagerness |= fn_eagerness(self.cx, id, p.segments.last().unwrap().ident.name, args);
+                            self.eagerness |=
+                                fn_eagerness(self.cx, id, p.segments.last().unwrap().ident.name, !args.is_empty());
                         },
                         QPath::TypeRelative(_, name) => {
-                            self.eagerness |= fn_eagerness(self.cx, id, name.ident.name, args);
+                            self.eagerness |= fn_eagerness(self.cx, id, name.ident.name, !args.is_empty());
                         },
                         QPath::LangItem(..) => self.eagerness = Lazy,
                     },
@@ -141,12 +152,18 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                     return;
                 },
-                ExprKind::MethodCall(name, args, _) => {
+                ExprKind::Path(ref path) => {
+                    if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
+                        self.eagerness = ForceNoChange;
+                        return;
+                    }
+                },
+                ExprKind::MethodCall(name, ..) => {
                     self.eagerness |= self
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, args));
+                        .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, true));
                 },
                 ExprKind::Index(_, e) => {
                     let ty = self.cx.typeck_results().expr_ty_adjusted(e);
@@ -176,17 +193,15 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Ret(_)
                 | ExprKind::InlineAsm(_)
                 | ExprKind::Yield(..)
-                | ExprKind::Err => {
+                | ExprKind::Err(_) => {
                     self.eagerness = ForceNoChange;
                     return;
                 },
 
                 // Memory allocation, custom operator, loop, or call to an unknown function
-                ExprKind::Box(_)
-                | ExprKind::Unary(..)
-                | ExprKind::Binary(..)
-                | ExprKind::Loop(..)
-                | ExprKind::Call(..) => self.eagerness = Lazy,
+                ExprKind::Unary(..) | ExprKind::Binary(..) | ExprKind::Loop(..) | ExprKind::Call(..) => {
+                    self.eagerness = Lazy;
+                },
 
                 ExprKind::ConstBlock(_)
                 | ExprKind::Array(_)
@@ -200,11 +215,11 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Match(..)
                 | ExprKind::Closure { .. }
                 | ExprKind::Field(..)
-                | ExprKind::Path(_)
                 | ExprKind::AddrOf(..)
                 | ExprKind::Struct(..)
                 | ExprKind::Repeat(..)
-                | ExprKind::Block(Block { stmts: [], .. }, _) => (),
+                | ExprKind::Block(Block { stmts: [], .. }, _)
+                | ExprKind::OffsetOf(..) => (),
 
                 // Assignment might be to a local defined earlier, so don't eagerly evaluate.
                 // Blocks with multiple statements might be expensive, so don't eagerly evaluate.

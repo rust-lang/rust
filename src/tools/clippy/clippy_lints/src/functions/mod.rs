@@ -1,6 +1,8 @@
+mod impl_trait_in_params;
+mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
-mod result_unit_err;
+mod result;
 mod too_many_arguments;
 mod too_many_lines;
 
@@ -8,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -62,23 +65,40 @@ declare_clippy_lint! {
     /// arguments but are not marked `unsafe`.
     ///
     /// ### Why is this bad?
-    /// The function should probably be marked `unsafe`, since
-    /// for an arbitrary raw pointer, there is no way of telling for sure if it is
-    /// valid.
+    /// The function should almost definitely be marked `unsafe`, since for an
+    /// arbitrary raw pointer, there is no way of telling for sure if it is valid.
+    ///
+    /// In general, this lint should **never be disabled** unless it is definitely a
+    /// false positive (please submit an issue if so) since it breaks Rust's
+    /// soundness guarantees, directly exposing API users to potentially dangerous
+    /// program behavior. This is also true for internal APIs, as it is easy to leak
+    /// unsoundness.
+    ///
+    /// ### Context
+    /// In Rust, an `unsafe {...}` block is used to indicate that the code in that
+    /// section has been verified in some way that the compiler can not. For a
+    /// function that accepts a raw pointer then accesses the pointer's data, this is
+    /// generally impossible as the incoming pointer could point anywhere, valid or
+    /// not. So, the signature should be marked `unsafe fn`: this indicates that the
+    /// function's caller must provide some verification that the arguments it sends
+    /// are valid (and then call the function within an `unsafe` block).
     ///
     /// ### Known problems
     /// * It does not check functions recursively so if the pointer is passed to a
     /// private non-`unsafe` function which does the dereferencing, the lint won't
-    /// trigger.
+    /// trigger (false negative).
     /// * It only checks for arguments whose type are raw pointers, not raw pointers
     /// got from an argument in some other way (`fn foo(bar: &[*const u8])` or
-    /// `some_argument.get_raw_ptr()`).
+    /// `some_argument.get_raw_ptr()`) (false negative).
     ///
     /// ### Example
     /// ```rust,ignore
     /// pub fn foo(x: *const u8) {
     ///     println!("{}", unsafe { *x });
     /// }
+    ///
+    /// // this call "looks" safe but will segfault or worse!
+    /// // foo(invalid_ptr);
     /// ```
     ///
     /// Use instead:
@@ -86,6 +106,12 @@ declare_clippy_lint! {
     /// pub unsafe fn foo(x: *const u8) {
     ///     println!("{}", unsafe { *x });
     /// }
+    ///
+    /// // this would cause a compiler error for calling without `unsafe`
+    /// // foo(invalid_ptr);
+    ///
+    /// // sound call if the caller knows the pointer is valid
+    /// unsafe { foo(valid_ptr); }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NOT_UNSAFE_PTR_ARG_DEREF,
@@ -159,7 +185,7 @@ declare_clippy_lint! {
     /// ### Examples
     /// ```rust
     /// // this could be annotated with `#[must_use]`.
-    /// fn id<T>(t: T) -> T { t }
+    /// pub fn id<T>(t: T) -> T { t }
     /// ```
     #[clippy::version = "1.40.0"]
     pub MUST_USE_CANDIDATE,
@@ -217,17 +243,135 @@ declare_clippy_lint! {
     "public function returning `Result` with an `Err` type of `()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for functions that return `Result` with an unusually large
+    /// `Err`-variant.
+    ///
+    /// ### Why is this bad?
+    /// A `Result` is at least as large as the `Err`-variant. While we
+    /// expect that variant to be seldomly used, the compiler needs to reserve
+    /// and move that much memory every single time.
+    /// Furthermore, errors are often simply passed up the call-stack, making
+    /// use of the `?`-operator and its type-conversion mechanics. If the
+    /// `Err`-variant further up the call-stack stores the `Err`-variant in
+    /// question (as library code often does), it itself needs to be at least
+    /// as large, propagating the problem.
+    ///
+    /// ### Known problems
+    /// The size determined by Clippy is platform-dependent.
+    ///
+    /// ### Examples
+    /// ```rust
+    /// pub enum ParseError {
+    ///     UnparsedBytes([u8; 512]),
+    ///     UnexpectedEof,
+    /// }
+    ///
+    /// // The `Result` has at least 512 bytes, even in the `Ok`-case
+    /// pub fn parse() -> Result<(), ParseError> {
+    ///     Ok(())
+    /// }
+    /// ```
+    /// should be
+    /// ```
+    /// pub enum ParseError {
+    ///     UnparsedBytes(Box<[u8; 512]>),
+    ///     UnexpectedEof,
+    /// }
+    ///
+    /// // The `Result` is slightly larger than a pointer
+    /// pub fn parse() -> Result<(), ParseError> {
+    ///     Ok(())
+    /// }
+    /// ```
+    #[clippy::version = "1.65.0"]
+    pub RESULT_LARGE_ERR,
+    perf,
+    "function returning `Result` with large `Err` type"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for getter methods that return a field that doesn't correspond
+    /// to the name of the method, when there is a field's whose name matches that of the method.
+    ///
+    /// ### Why is this bad?
+    /// It is most likely that such a  method is a bug caused by a typo or by copy-pasting.
+    ///
+    /// ### Example
+
+    /// ```rust
+    /// struct A {
+    ///     a: String,
+    ///     b: String,
+    /// }
+    ///
+    /// impl A {
+    ///     fn a(&self) -> &str{
+    ///         &self.b
+    ///     }
+    /// }
+
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// struct A {
+    ///     a: String,
+    ///     b: String,
+    /// }
+    ///
+    /// impl A {
+    ///     fn a(&self) -> &str{
+    ///         &self.a
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.67.0"]
+    pub MISNAMED_GETTERS,
+    suspicious,
+    "getter method returning the wrong field"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Lints when `impl Trait` is being used in a function's parameters.
+    /// ### Why is this bad?
+    /// Turbofish syntax (`::<>`) cannot be used when `impl Trait` is being used, making `impl Trait` less powerful. Readability may also be a factor.
+    ///
+    /// ### Example
+    /// ```rust
+    /// trait MyTrait {}
+    /// fn foo(a: impl MyTrait) {
+    /// 	// [...]
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// trait MyTrait {}
+    /// fn foo<T: MyTrait>(a: T) {
+    /// 	// [...]
+    /// }
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub IMPL_TRAIT_IN_PARAMS,
+    restriction,
+    "`impl Trait` is used in the function's parameters"
+}
+
 #[derive(Copy, Clone)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,
+    large_error_threshold: u64,
 }
 
 impl Functions {
-    pub fn new(too_many_arguments_threshold: u64, too_many_lines_threshold: u64) -> Self {
+    pub fn new(too_many_arguments_threshold: u64, too_many_lines_threshold: u64, large_error_threshold: u64) -> Self {
         Self {
             too_many_arguments_threshold,
             too_many_lines_threshold,
+            large_error_threshold,
         }
     }
 }
@@ -240,6 +384,9 @@ impl_lint_pass!(Functions => [
     DOUBLE_MUST_USE,
     MUST_USE_CANDIDATE,
     RESULT_UNIT_ERR,
+    RESULT_LARGE_ERR,
+    MISNAMED_GETTERS,
+    IMPL_TRAIT_IN_PARAMS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -250,27 +397,30 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         decl: &'tcx hir::FnDecl<'_>,
         body: &'tcx hir::Body<'_>,
         span: Span,
-        hir_id: hir::HirId,
+        def_id: LocalDefId,
     ) {
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
         too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
-        not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, hir_id);
+        not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, def_id);
+        misnamed_getters::check_fn(cx, kind, decl, body, span);
+        impl_trait_in_params::check_fn(cx, &kind, body, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         must_use::check_item(cx, item);
-        result_unit_err::check_item(cx, item);
+        result::check_item(cx, item, self.large_error_threshold);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         must_use::check_impl_item(cx, item);
-        result_unit_err::check_impl_item(cx, item);
+        result::check_impl_item(cx, item, self.large_error_threshold);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         too_many_arguments::check_trait_item(cx, item, self.too_many_arguments_threshold);
         not_unsafe_ptr_arg_deref::check_trait_item(cx, item);
         must_use::check_trait_item(cx, item);
-        result_unit_err::check_trait_item(cx, item);
+        result::check_trait_item(cx, item, self.large_error_threshold);
     }
 }

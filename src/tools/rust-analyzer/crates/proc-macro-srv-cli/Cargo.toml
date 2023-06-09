@@ -1,0 +1,20 @@
+[package]
+name = "proc-macro-srv-cli"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+proc-macro-srv.workspace = true
+proc-macro-api.workspace = true
+
+[features]
+sysroot-abi = ["proc-macro-srv/sysroot-abi"]
+
+[[bin]]
+name = "rust-analyzer-proc-macro-srv"
+path = "src/main.rs"

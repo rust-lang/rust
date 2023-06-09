@@ -8,8 +8,8 @@ use rustc_middle::dep_graph::WorkProduct;
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;
     type TargetMachine;
+    type TargetMachineError;
     type ModuleBuffer: ModuleBufferMethods;
-    type Context: ?Sized;
     type ThinData: Send + Sync;
     type ThinBuffer: ThinBufferMethods;
 

@@ -1,3 +1,4 @@
+use crate::fmt;
 use crate::ops::{Generator, GeneratorState};
 use crate::pin::Pin;
 
@@ -23,14 +24,21 @@ use crate::pin::Pin;
 /// ```
 #[inline]
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
-pub fn from_generator<G: Generator<Return = ()> + Unpin>(
-    generator: G,
-) -> impl Iterator<Item = G::Yield> {
+pub fn from_generator<G: Generator<Return = ()> + Unpin>(generator: G) -> FromGenerator<G> {
     FromGenerator(generator)
 }
 
-struct FromGenerator<G>(G);
+/// An iterator over the values yielded by an underlying generator.
+///
+/// This `struct` is created by the [`iter::from_generator()`] function. See its documentation for
+/// more.
+///
+/// [`iter::from_generator()`]: from_generator
+#[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
+#[derive(Clone)]
+pub struct FromGenerator<G>(G);
 
+#[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
 impl<G: Generator<Return = ()> + Unpin> Iterator for FromGenerator<G> {
     type Item = G::Yield;
 
@@ -39,5 +47,12 @@ impl<G: Generator<Return = ()> + Unpin> Iterator for FromGenerator<G> {
             GeneratorState::Yielded(n) => Some(n),
             GeneratorState::Complete(()) => None,
         }
+    }
+}
+
+#[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
+impl<G> fmt::Debug for FromGenerator<G> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FromGenerator").finish()
     }
 }

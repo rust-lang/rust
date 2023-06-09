@@ -6,9 +6,10 @@ use crate::cmp;
 use crate::collections::VecDeque;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
+    self, BorrowedCursor, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
 };
 use crate::mem;
+use crate::str;
 
 // =============================================================================
 // Forwarding implementations
@@ -21,8 +22,8 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        (**self).read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
     }
 
     #[inline]
@@ -125,8 +126,8 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        (**self).read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
     }
 
     #[inline]
@@ -249,11 +250,11 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        let amt = cmp::min(buf.remaining(), self.len());
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let amt = cmp::min(cursor.capacity(), self.len());
         let (a, b) = self.split_at(amt);
 
-        buf.append(a);
+        cursor.append(a);
 
         *self = b;
         Ok(())
@@ -307,6 +308,17 @@ impl Read for &[u8] {
         *self = &self[len..];
         Ok(len)
     }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        let content = str::from_utf8(self).map_err(|_| {
+            io::const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8")
+        })?;
+        buf.push_str(content);
+        let len = self.len();
+        *self = &self[len..];
+        Ok(len)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -336,7 +348,7 @@ impl Write for &mut [u8] {
     #[inline]
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(data.len(), self.len());
-        let (a, b) = mem::replace(self, &mut []).split_at_mut(amt);
+        let (a, b) = mem::take(self).split_at_mut(amt);
         a.copy_from_slice(&data[..amt]);
         *self = b;
         Ok(amt)
@@ -427,12 +439,39 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let (ref mut front, _) = self.as_slices();
-        let n = cmp::min(buf.remaining(), front.len());
-        Read::read_buf(front, buf)?;
+        let n = cmp::min(cursor.capacity(), front.len());
+        Read::read_buf(front, cursor)?;
         self.drain(..n);
         Ok(())
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        // The total len is known upfront so we can reserve it in a single call.
+        let len = self.len();
+        buf.reserve(len);
+
+        let (front, back) = self.as_slices();
+        buf.extend_from_slice(front);
+        buf.extend_from_slice(back);
+        self.clear();
+        Ok(len)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        // We have to use a single contiguous slice because the `VecDequeue` might be split in the
+        // middle of an UTF-8 character.
+        let len = self.len();
+        let content = self.make_contiguous();
+        let string = str::from_utf8(content).map_err(|_| {
+            io::const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8")
+        })?;
+        buf.push_str(string);
+        self.clear();
+        Ok(len)
     }
 }
 
@@ -443,6 +482,21 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.extend(buf);
         Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let len = bufs.iter().map(|b| b.len()).sum();
+        self.reserve(len);
+        for buf in bufs {
+            self.extend(&**buf);
+        }
+        Ok(len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     #[inline]

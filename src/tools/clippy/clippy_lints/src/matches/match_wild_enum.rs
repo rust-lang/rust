@@ -30,7 +30,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let mut has_non_wild = false;
     for arm in arms {
         match peel_hir_pat_refs(arm.pat).0.kind {
-            PatKind::Wild => wildcard_span = Some(arm.pat.span),
+            PatKind::Wild if arm.guard.is_none() => wildcard_span = Some(arm.pat.span),
             PatKind::Binding(_, _, ident, None) => {
                 wildcard_span = Some(arm.pat.span);
                 wildcard_ident = Some(ident);
@@ -45,8 +45,13 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
 
     // Accumulate the variants which should be put in place of the wildcard because they're not
     // already covered.
-    let has_hidden = adt_def.variants().iter().any(|x| is_hidden(cx, x));
-    let mut missing_variants: Vec<_> = adt_def.variants().iter().filter(|x| !is_hidden(cx, x)).collect();
+    let is_external = adt_def.did().as_local().is_none();
+    let has_external_hidden = is_external && adt_def.variants().iter().any(|x| is_hidden(cx, x));
+    let mut missing_variants: Vec<_> = adt_def
+        .variants()
+        .iter()
+        .filter(|x| !(is_external && is_hidden(cx, x)))
+        .collect();
 
     let mut path_prefix = CommonPrefixSearcher::None;
     for arm in arms {
@@ -65,14 +70,14 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                         _ => return,
                     };
                     if arm.guard.is_none() {
-                        missing_variants.retain(|e| e.ctor_def_id != Some(id));
+                        missing_variants.retain(|e| e.ctor_def_id() != Some(id));
                     }
                     path
                 },
                 PatKind::TupleStruct(path, patterns, ..) => {
                     if let Some(id) = cx.qpath_res(path, pat.hir_id).opt_def_id() {
                         if arm.guard.is_none() && patterns.iter().all(|p| !is_refutable(cx, p)) {
-                            missing_variants.retain(|e| e.ctor_def_id != Some(id));
+                            missing_variants.retain(|e| e.ctor_def_id() != Some(id));
                         }
                     }
                     path
@@ -122,18 +127,18 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                 s
             },
             variant.name,
-            match variant.ctor_kind {
-                CtorKind::Fn if variant.fields.len() == 1 => "(_)",
-                CtorKind::Fn => "(..)",
-                CtorKind::Const => "",
-                CtorKind::Fictive => "{ .. }",
+            match variant.ctor_kind() {
+                Some(CtorKind::Fn) if variant.fields.len() == 1 => "(_)",
+                Some(CtorKind::Fn) => "(..)",
+                Some(CtorKind::Const) => "",
+                None => "{ .. }",
             }
         )
     };
 
     match missing_variants.as_slice() {
         [] => (),
-        [x] if !adt_def.is_variant_list_non_exhaustive() && !has_hidden => span_lint_and_sugg(
+        [x] if !adt_def.is_variant_list_non_exhaustive() && !has_external_hidden => span_lint_and_sugg(
             cx,
             MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
             wildcard_span,
@@ -144,7 +149,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
         ),
         variants => {
             let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
-            let message = if adt_def.is_variant_list_non_exhaustive() || has_hidden {
+            let message = if adt_def.is_variant_list_non_exhaustive() || has_external_hidden {
                 suggestions.push("_".into());
                 "wildcard matches known variants and will also match future added variants"
             } else {

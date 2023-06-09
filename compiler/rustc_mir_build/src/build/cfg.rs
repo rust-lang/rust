@@ -90,6 +90,17 @@ impl<'tcx> CFG<'tcx> {
         self.push(block, stmt);
     }
 
+    pub(crate) fn push_place_mention(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        place: Place<'tcx>,
+    ) {
+        let kind = StatementKind::PlaceMention(Box::new(place));
+        let stmt = Statement { source_info, kind };
+        self.push(block, stmt);
+    }
+
     pub(crate) fn terminate(
         &mut self,
         block: BasicBlock,

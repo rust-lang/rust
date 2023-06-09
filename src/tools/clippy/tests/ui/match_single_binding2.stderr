@@ -27,7 +27,7 @@ LL | |             }
 help: consider using a `let` statement
    |
 LL ~             let (a, b) = get_tup();
-LL +             println!("a {:?} and b {:?}", a, b);
+LL +             println!("a {:?} and b {:?}", a, b)
    |
 
 error: this match could be replaced by its scrutinee and body
@@ -61,7 +61,7 @@ LL ~     match x {
 LL +         0 => 1,
 LL +         _ => 2,
 LL +     };
-LL +     println!("Single branch");
+LL +     println!("Single branch")
    |
 
 error: aborting due to 4 previous errors

@@ -1,6 +1,6 @@
 use std::{mem, ptr};
 
-use rand::distributions::{Alphanumeric, Standard};
+use rand::distributions::{Alphanumeric, DistString, Standard};
 use rand::Rng;
 use test::{black_box, Bencher};
 
@@ -218,7 +218,7 @@ fn gen_strings(len: usize) -> Vec<String> {
     let mut v = vec![];
     for _ in 0..len {
         let n = rng.gen::<usize>() % 20 + 1;
-        v.push((&mut rng).sample_iter(&Alphanumeric).take(n).collect());
+        v.push(Alphanumeric.sample_string(&mut rng, n));
     }
     v
 }

@@ -1,0 +1,14 @@
+error: unsupported operation: cannot close stdout
+  --> $DIR/close_stdout.rs:LL:CC
+   |
+LL |         libc::close(1);
+   |         ^^^^^^^^^^^^^^ cannot close stdout
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/close_stdout.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -1,12 +1,5 @@
 //! Enums denoting options for test execution.
 
-/// Whether to execute tests concurrently or not
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Concurrent {
-    Yes,
-    No,
-}
-
 /// Number of times to run a benchmarked function
 #[derive(Clone, PartialEq, Eq)]
 pub enum BenchMode {
@@ -23,19 +16,21 @@ pub enum ShouldPanic {
 }
 
 /// Whether should console output be colored or not
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub enum ColorConfig {
+    #[default]
     AutoColor,
     AlwaysColor,
     NeverColor,
 }
 
 /// Format of the test results output
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum OutputFormat {
     /// Verbose output
     Pretty,
     /// Quiet output
+    #[default]
     Terse,
     /// JSON output
     Json,

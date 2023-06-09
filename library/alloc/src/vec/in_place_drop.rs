@@ -22,3 +22,18 @@ impl<T> Drop for InPlaceDrop<T> {
         }
     }
 }
+
+// A helper struct for in-place collection that drops the destination allocation and elements,
+// to avoid leaking them if some other destructor panics.
+pub(super) struct InPlaceDstBufDrop<T> {
+    pub(super) ptr: *mut T,
+    pub(super) len: usize,
+    pub(super) cap: usize,
+}
+
+impl<T> Drop for InPlaceDstBufDrop<T> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { super::Vec::from_raw_parts(self.ptr, self.len, self.cap) };
+    }
+}

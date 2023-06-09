@@ -1,5 +1,4 @@
 use std::assert_matches::assert_matches;
-use std::convert::TryFrom;
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
@@ -15,13 +14,15 @@ use super::{
     util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
 };
 
+use crate::fluent_generated as fluent;
+
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
-        src: &OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::Provenance>,
         cast_kind: CastKind,
         cast_ty: Ty<'tcx>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::CastKind::*;
         // FIXME: In which cases should we trigger UB when the source is uninit?
@@ -43,9 +44,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(res, dest)?;
             }
 
-            Misc => {
+            IntToInt | IntToFloat => {
                 let src = self.read_immediate(src)?;
-                let res = self.misc_cast(&src, cast_ty)?;
+                let res = self.int_to_int_or_float(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
+            }
+
+            FloatToFloat | FloatToInt => {
+                let src = self.read_immediate(src)?;
+                let res = self.float_to_float_or_int(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
+            }
+
+            FnPtrToPtr | PtrToPtr => {
+                let src = self.read_immediate(&src)?;
+                let res = self.ptr_to_ptr(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
@@ -56,12 +69,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Pointer(PointerCast::ReifyFnPointer) => {
+                // All reifications must be monomorphic, bail out otherwise.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::FnDef(def_id, substs) => {
-                        // All reifications must be monomorphic, bail out otherwise.
-                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
-
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
                             self.param_env,
@@ -89,12 +102,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Pointer(PointerCast::ClosureFnPointer(_)) => {
+                // All reifications must be monomorphic, bail out otherwise.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::Closure(def_id, substs) => {
-                        // All reifications must be monomorphic, bail out otherwise.
-                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
-
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
@@ -108,79 +121,120 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
                 }
             }
+
+            DynStar => {
+                if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
+                    // Initial cast from sized to dyn trait
+                    let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
+                    let vtable = Scalar::from_maybe_pointer(vtable, self);
+                    let data = self.read_immediate(src)?.to_scalar();
+                    let _assert_pointer_like = data.to_pointer(self)?;
+                    let val = Immediate::ScalarPair(data, vtable);
+                    self.write_immediate(val, dest)?;
+                } else {
+                    bug!()
+                }
+            }
+
+            Transmute => {
+                assert!(src.layout.is_sized());
+                assert!(dest.layout.is_sized());
+                if src.layout.size != dest.layout.size {
+                    let src_bytes = src.layout.size.bytes();
+                    let dest_bytes = dest.layout.size.bytes();
+                    let src_ty = format!("{}", src.layout.ty);
+                    let dest_ty = format!("{}", dest.layout.ty);
+                    throw_ub_custom!(
+                        fluent::const_eval_invalid_transmute,
+                        src_bytes = src_bytes,
+                        dest_bytes = dest_bytes,
+                        src = src_ty,
+                        dest = dest_ty,
+                    );
+                }
+
+                self.copy_op(src, dest, /*allow_transmute*/ true)?;
+            }
         }
         Ok(())
     }
 
-    pub fn misc_cast(
-        &mut self,
-        src: &ImmTy<'tcx, M::PointerTag>,
+    /// Handles 'IntToInt' and 'IntToFloat' casts.
+    pub fn int_to_int_or_float(
+        &self,
+        src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
+        assert!(src.layout.ty.is_integral() || src.layout.ty.is_char() || src.layout.ty.is_bool());
+        assert!(cast_ty.is_floating_point() || cast_ty.is_integral() || cast_ty.is_char());
+
+        Ok(self.cast_from_int_like(src.to_scalar(), src.layout, cast_ty)?.into())
+    }
+
+    /// Handles 'FloatToFloat' and 'FloatToInt' casts.
+    pub fn float_to_float_or_int(
+        &self,
+        src: &ImmTy<'tcx, M::Provenance>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         use rustc_type_ir::sty::TyKind::*;
-        trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, cast_ty);
 
         match src.layout.ty.kind() {
             // Floating point
             Float(FloatTy::F32) => {
-                return Ok(self.cast_from_float(src.to_scalar()?.to_f32()?, cast_ty).into());
+                return Ok(self.cast_from_float(src.to_scalar().to_f32()?, cast_ty).into());
             }
             Float(FloatTy::F64) => {
-                return Ok(self.cast_from_float(src.to_scalar()?.to_f64()?, cast_ty).into());
+                return Ok(self.cast_from_float(src.to_scalar().to_f64()?, cast_ty).into());
             }
-            // The rest is integer/pointer-"like", including fn ptr casts
-            _ => assert!(
-                src.layout.ty.is_bool()
-                    || src.layout.ty.is_char()
-                    || src.layout.ty.is_integral()
-                    || src.layout.ty.is_any_ptr(),
-                "Unexpected cast from type {:?}",
-                src.layout.ty
-            ),
+            _ => {
+                bug!("Can't cast 'Float' type into {:?}", cast_ty);
+            }
         }
+    }
 
-        // # First handle non-scalar source values.
-
+    /// Handles 'FnPtrToPtr' and 'PtrToPtr' casts.
+    pub fn ptr_to_ptr(
+        &self,
+        src: &ImmTy<'tcx, M::Provenance>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
+        assert!(src.layout.ty.is_any_ptr());
+        assert!(cast_ty.is_unsafe_ptr());
         // Handle casting any ptr to raw ptr (might be a fat ptr).
-        if src.layout.ty.is_any_ptr() && cast_ty.is_unsafe_ptr() {
-            let dest_layout = self.layout_of(cast_ty)?;
-            if dest_layout.size == src.layout.size {
-                // Thin or fat pointer that just hast the ptr kind of target type changed.
-                return Ok(**src);
-            } else {
-                // Casting the metadata away from a fat ptr.
-                assert_eq!(src.layout.size, 2 * self.pointer_size());
-                assert_eq!(dest_layout.size, self.pointer_size());
-                assert!(src.layout.ty.is_unsafe_ptr());
-                return match **src {
-                    Immediate::ScalarPair(data, _) => Ok(data.check_init()?.into()),
-                    Immediate::Scalar(..) => span_bug!(
-                        self.cur_span(),
-                        "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
-                        *src,
-                        src.layout.ty,
-                        cast_ty
-                    ),
-                    Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
-                };
-            }
+        let dest_layout = self.layout_of(cast_ty)?;
+        if dest_layout.size == src.layout.size {
+            // Thin or fat pointer that just hast the ptr kind of target type changed.
+            return Ok(**src);
+        } else {
+            // Casting the metadata away from a fat ptr.
+            assert_eq!(src.layout.size, 2 * self.pointer_size());
+            assert_eq!(dest_layout.size, self.pointer_size());
+            assert!(src.layout.ty.is_unsafe_ptr());
+            return match **src {
+                Immediate::ScalarPair(data, _) => Ok(data.into()),
+                Immediate::Scalar(..) => span_bug!(
+                    self.cur_span(),
+                    "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
+                    *src,
+                    src.layout.ty,
+                    cast_ty
+                ),
+                Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
+            };
         }
-
-        // # The remaining source values are scalar and "int-like".
-        let scalar = src.to_scalar()?;
-        Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
     }
 
     pub fn pointer_expose_address_cast(
         &mut self,
-        src: &ImmTy<'tcx, M::PointerTag>,
+        src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         assert_matches!(src.layout.ty.kind(), ty::RawPtr(_) | ty::FnPtr(_));
         assert!(cast_ty.is_integral());
 
-        let scalar = src.to_scalar()?;
-        let ptr = self.scalar_to_ptr(scalar)?;
+        let scalar = src.to_scalar();
+        let ptr = scalar.to_pointer(self)?;
         match ptr.into_pointer_or_addr() {
             Ok(ptr) => M::expose_ptr(self, ptr)?,
             Err(_) => {} // Do nothing, exposing an invalid pointer (`None` provenance) is a NOP.
@@ -189,29 +243,31 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn pointer_from_exposed_address_cast(
-        &mut self,
-        src: &ImmTy<'tcx, M::PointerTag>,
+        &self,
+        src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         assert!(src.layout.ty.is_integral());
         assert_matches!(cast_ty.kind(), ty::RawPtr(_));
 
         // First cast to usize.
-        let scalar = src.to_scalar()?;
+        let scalar = src.to_scalar();
         let addr = self.cast_from_int_like(scalar, src.layout, self.tcx.types.usize)?;
-        let addr = addr.to_machine_usize(self)?;
+        let addr = addr.to_target_usize(self)?;
 
         // Then turn address into pointer.
         let ptr = M::ptr_from_addr_cast(&self, addr)?;
         Ok(Scalar::from_maybe_pointer(ptr, self).into())
     }
 
+    /// Low-level cast helper function. This works directly on scalars and can take 'int-like' input
+    /// type (basically everything with a scalar layout) to int/float/char types.
     pub fn cast_from_int_like(
         &self,
-        scalar: Scalar<M::PointerTag>, // input value (there is no ScalarTy so we separate data+layout)
+        scalar: Scalar<M::Provenance>, // input value (there is no ScalarTy so we separate data+layout)
         src_layout: TyAndLayout<'tcx>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
 
@@ -245,9 +301,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
-    fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::PointerTag>
+    /// Low-level cast helper function. Converts an apfloat `f` into int or float types.
+    fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::Provenance>
     where
-        F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
+        F: Float + Into<Scalar<M::Provenance>> + FloatConvert<Single> + FloatConvert<Double>,
     {
         use rustc_type_ir::sty::TyKind::*;
         match *dest_ty.kind() {
@@ -277,10 +334,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// `src` is a *pointer to* a `source_ty`, and in `dest` we should store a pointer to th same
+    /// data at type `cast_ty`.
     fn unsize_into_ptr(
         &mut self,
-        src: &OpTy<'tcx, M::PointerTag>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
         // The pointee types
         source_ty: Ty<'tcx>,
         cast_ty: Ty<'tcx>,
@@ -291,53 +350,57 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
-                let ptr = self.read_immediate(src)?.to_scalar()?;
+                let ptr = self.read_scalar(src)?;
                 // u64 cast is from usize to u64, which is always good
-                let val =
-                    Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
+                let val = Immediate::new_slice(
+                    ptr,
+                    length.eval_target_usize(*self.tcx, self.param_env),
+                    self,
+                );
                 self.write_immediate(val, dest)
             }
-            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            (ty::Dynamic(data_a, _, ty::Dyn), ty::Dynamic(data_b, _, ty::Dyn)) => {
                 let val = self.read_immediate(src)?;
-                if data_a.principal_def_id() == data_b.principal_def_id() {
+                if data_a.principal() == data_b.principal() {
+                    // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.
                     return self.write_immediate(*val, dest);
                 }
-                // trait upcasting coercion
-                let vptr_entry_idx = self.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((
-                    src_pointee_ty,
-                    dest_pointee_ty,
-                ));
-
-                if let Some(entry_idx) = vptr_entry_idx {
-                    let entry_idx = u64::try_from(entry_idx).unwrap();
-                    let (old_data, old_vptr) = val.to_scalar_pair()?;
-                    let old_vptr = self.scalar_to_ptr(old_vptr)?;
-                    let new_vptr = self
-                        .read_new_vtable_after_trait_upcasting_from_vtable(old_vptr, entry_idx)?;
-                    self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
-                } else {
-                    self.write_immediate(*val, dest)
+                let (old_data, old_vptr) = val.to_scalar_pair();
+                let old_vptr = old_vptr.to_pointer(self)?;
+                let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
+                if old_trait != data_a.principal() {
+                    throw_ub_custom!(fluent::const_eval_upcast_mismatch);
                 }
+                let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
+                self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
-            (_, &ty::Dynamic(ref data, _)) => {
+            (_, &ty::Dynamic(data, _, ty::Dyn)) => {
                 // Initial cast from sized to dyn trait
-                let vtable = self.get_vtable(src_pointee_ty, data.principal())?;
-                let ptr = self.read_immediate(src)?.to_scalar()?;
+                let vtable = self.get_vtable_ptr(src_pointee_ty, data.principal())?;
+                let ptr = self.read_scalar(src)?;
                 let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
                 self.write_immediate(val, dest)
             }
-
             _ => {
-                span_bug!(self.cur_span(), "invalid unsizing {:?} -> {:?}", src.layout.ty, cast_ty)
+                // Do not ICE if we are not monomorphic enough.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                ensure_monomorphic_enough(*self.tcx, cast_ty)?;
+
+                span_bug!(
+                    self.cur_span(),
+                    "invalid pointer unsizing {:?} -> {:?}",
+                    src.layout.ty,
+                    cast_ty
+                )
             }
         }
     }
 
     fn unsize_into(
         &mut self,
-        src: &OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::Provenance>,
         cast_ty: TyAndLayout<'tcx>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
@@ -366,12 +429,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 Ok(())
             }
-            _ => span_bug!(
-                self.cur_span(),
-                "unsize_into: invalid conversion: {:?} -> {:?}",
-                src.layout,
-                dest.layout
-            ),
+            _ => {
+                // Do not ICE if we are not monomorphic enough.
+                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                ensure_monomorphic_enough(*self.tcx, cast_ty.ty)?;
+
+                span_bug!(
+                    self.cur_span(),
+                    "unsize_into: invalid conversion: {:?} -> {:?}",
+                    src.layout,
+                    dest.layout
+                )
+            }
         }
     }
 }

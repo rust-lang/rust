@@ -1,5 +1,5 @@
 use rustc_data_structures::base_n;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -7,12 +7,12 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, UintTy,
+    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
+    UintTy,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
-use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 
@@ -42,7 +42,8 @@ pub(super) fn mangle<'tcx>(
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceDef::VtableShim(_) => Some("vtable"),
+        ty::InstanceDef::ThreadLocalShim(_) => Some("tls"),
+        ty::InstanceDef::VTableShim(_) => Some("vtable"),
         ty::InstanceDef::ReifyShim(_) => Some("reify"),
 
         _ => None,
@@ -57,41 +58,6 @@ pub(super) fn mangle<'tcx>(
         cx = cx.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
     }
     std::mem::take(&mut cx.out)
-}
-
-pub(super) fn mangle_typeid_for_fnabi<'tcx>(
-    _tcx: TyCtxt<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-) -> String {
-    // LLVM uses type metadata to allow IR modules to aggregate pointers by their types.[1] This
-    // type metadata is used by LLVM Control Flow Integrity to test whether a given pointer is
-    // associated with a type identifier (i.e., test type membership).
-    //
-    // Clang uses the Itanium C++ ABI's[2] virtual tables and RTTI typeinfo structure name[3] as
-    // type metadata identifiers for function pointers. The typeinfo name encoding is a
-    // two-character code (i.e., “TS”) prefixed to the type encoding for the function.
-    //
-    // For cross-language LLVM CFI support, a compatible encoding must be used by either
-    //
-    //  a. Using a superset of types that encompasses types used by Clang (i.e., Itanium C++ ABI's
-    //     type encodings[4]), or at least types used at the FFI boundary.
-    //  b. Reducing the types to the least common denominator between types used by Clang (or at
-    //     least types used at the FFI boundary) and Rust compilers (if even possible).
-    //  c. Creating a new ABI for cross-language CFI and using it for Clang and Rust compilers (and
-    //     possibly other compilers).
-    //
-    // Option (b) may weaken the protection for Rust-compiled only code, so it should be provided
-    // as an alternative to a Rust-specific encoding for when mixing Rust and C and C++ -compiled
-    // code. Option (c) would require changes to Clang to use the new ABI.
-    //
-    // [1] https://llvm.org/docs/TypeMetadata.html
-    // [2] https://itanium-cxx-abi.github.io/cxx-abi/abi.html
-    // [3] https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-special-vtables
-    // [4] https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-type
-    //
-    // FIXME(rcvalle): See comment above.
-    let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
-    format!("typeid{}", arg_count)
 }
 
 pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
@@ -115,9 +81,9 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
 struct BinderLevel {
     /// The range of distances from the root of what's
     /// being printed, to the lifetimes in a binder.
-    /// Specifically, a `BrAnon(i)` lifetime has depth
-    /// `lifetime_depths.start + i`, going away from the
-    /// the root and towards its use site, as `i` increases.
+    /// Specifically, a `BrAnon` lifetime has depth
+    /// `lifetime_depths.start + index`, going away from the
+    /// the root and towards its use site, as the var index increases.
     /// This is used to flatten rustc's pairing of `BrAnon`
     /// (intra-binder disambiguation) with a `DebruijnIndex`
     /// (binder addressing), to "true" de Bruijn indices,
@@ -240,25 +206,17 @@ impl<'tcx> SymbolMangler<'tcx> {
         print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, !>,
     ) -> Result<&'a mut Self, !>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        let regions = if value.has_late_bound_regions() {
-            self.tcx.collect_referenced_late_bound_regions(value)
-        } else {
-            FxHashSet::default()
-        };
-
         let mut lifetime_depths =
             self.binders.last().map(|b| b.lifetime_depths.end).map_or(0..0, |i| i..i);
 
-        let lifetimes = regions
-            .into_iter()
-            .map(|br| match br {
-                ty::BrAnon(i) => i,
-                _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
-            })
-            .max()
-            .map_or(0, |max| max + 1);
+        // FIXME(non-lifetime-binders): What to do here?
+        let lifetimes = value
+            .bound_vars()
+            .iter()
+            .filter(|var| matches!(var, ty::BoundVariableKind::Region(..)))
+            .count() as u32;
 
         self.push_opt_integer_62("G", lifetimes as u64);
         lifetime_depths.end += lifetimes;
@@ -316,7 +274,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         let mut param_env = self.tcx.param_env_reveal_all_normalized(impl_def_id);
         if !substs.is_empty() {
-            param_env = EarlyBinder(param_env).subst(self.tcx, substs);
+            param_env = EarlyBinder::bind(param_env).subst(self.tcx, substs);
         }
 
         match &mut impl_trait_ref {
@@ -337,7 +295,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         // Encode impl generic params if the substitutions contain parameters (implying
         // polymorphization is enabled) and this isn't an inherent impl.
-        if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_param_types_or_consts()) {
+        if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_non_region_param()) {
             self = self.path_generic_args(
                 |this| {
                     this.path_append_ns(
@@ -371,9 +329,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReLateBound(debruijn, ty::BoundRegion { kind: ty::BrAnon(i), .. }) => {
+            ty::ReLateBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon(_) }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
-                let depth = binder.lifetime_depths.start + i;
+                let depth = binder.lifetime_depths.start + var.as_u32();
 
                 1 + (self.binders.last().unwrap().lifetime_depths.end - 1 - depth)
             }
@@ -475,8 +433,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
             | ty::FnDef(def_id, substs)
-            | ty::Opaque(def_id, substs)
-            | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
@@ -515,13 +472,19 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 })?;
             }
 
-            ty::Dynamic(predicates, r) => {
-                self.push("D");
+            ty::Dynamic(predicates, r, kind) => {
+                self.push(match kind {
+                    ty::Dyn => "D",
+                    // FIXME(dyn-star): need to update v0 mangling docs
+                    ty::DynStar => "D*",
+                });
                 self = self.print_dyn_existential(predicates)?;
                 self = r.print(self)?;
             }
 
+            ty::Alias(ty::Inherent, _) => bug!("symbol_names: unexpected inherent projection"),
             ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
+            ty::GeneratorWitnessMIR(..) => bug!("symbol_names: unexpected `GeneratorWitnessMIR`"),
         }
 
         // Only cache types that do not refer to an enclosing
@@ -534,7 +497,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         // Okay, so this is a bit tricky. Imagine we have a trait object like
         // `dyn for<'a> Foo<'a, Bar = &'a ()>`. When we mangle this, the
@@ -571,17 +534,17 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 match predicate.as_ref().skip_binder() {
                     ty::ExistentialPredicate::Trait(trait_ref) => {
                         // Use a type that can't appear in defaults of type parameters.
-                        let dummy_self = cx.tcx.mk_ty_infer(ty::FreshTy(0));
+                        let dummy_self = cx.tcx.mk_fresh_ty(0);
                         let trait_ref = trait_ref.with_self_ty(cx.tcx, dummy_self);
                         cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
-                        let name = cx.tcx.associated_item(projection.item_def_id).name;
+                        let name = cx.tcx.associated_item(projection.def_id).name;
                         cx.push("p");
                         cx.push_ident(name.as_str());
-                        cx = match projection.term {
-                            ty::Term::Ty(ty) => ty.print(cx),
-                            ty::Term::Const(c) => c.print(cx),
+                        cx = match projection.term.unpack() {
+                            ty::TermKind::Ty(ty) => ty.print(cx),
+                            ty::TermKind::Const(c) => c.print(cx),
                         }?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {
@@ -607,6 +570,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // a path), even for it we still need to encode a placeholder, as
             // the path could refer back to e.g. an `impl` using the constant.
             ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Expr(_)
             | ty::ConstKind::Param(_)
             | ty::ConstKind::Infer(_)
             | ty::ConstKind::Bound(..)
@@ -641,7 +605,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     bits = val.unsigned_abs();
                 }
 
-                let _ = write!(self.out, "{:x}_", bits);
+                let _ = write!(self.out, "{bits:x}_");
             }
 
             // FIXME(valtrees): Remove the special case for `str`
@@ -653,7 +617,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 });
 
                 match inner_ty.kind() {
-                    ty::Str if *mutbl == hir::Mutability::Not => {
+                    ty::Str if mutbl.is_not() => {
                         match ct.kind() {
                             ty::ConstKind::Value(valtree) => {
                                 let slice =
@@ -669,7 +633,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
                                 // FIXME(eddyb) use a specialized hex-encoding loop.
                                 for byte in s.bytes() {
-                                    let _ = write!(self.out, "{:02x}", byte);
+                                    let _ = write!(self.out, "{byte:02x}");
                                 }
 
                                 self.push("_");
@@ -686,8 +650,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                             .builtin_deref(true)
                             .expect("tried to dereference on non-ptr type")
                             .ty;
-                        let dereferenced_const =
-                            self.tcx.mk_const(ty::ConstS { kind: ct.kind(), ty: pointee_ty });
+                        let dereferenced_const = self.tcx.mk_const(ct.kind(), pointee_ty);
                         self = dereferenced_const.print(self)?;
                     }
                 }
@@ -722,15 +685,15 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         self.push("V");
                         self = self.print_def_path(variant_def.def_id, substs)?;
 
-                        match variant_def.ctor_kind {
-                            CtorKind::Const => {
+                        match variant_def.ctor_kind() {
+                            Some(CtorKind::Const) => {
                                 self.push("U");
                             }
-                            CtorKind::Fn => {
+                            Some(CtorKind::Fn) => {
                                 self.push("T");
                                 self = print_field_list(self)?;
                             }
-                            CtorKind::Fictive => {
+                            None => {
                                 self.push("S");
                                 for (field_def, field) in iter::zip(&variant_def.fields, fields) {
                                     // HACK(eddyb) this mimics `path_append`,
@@ -769,7 +732,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.push("C");
         let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-        self.push_disambiguator(stable_crate_id.to_u64());
+        self.push_disambiguator(stable_crate_id.as_u64());
         let name = self.tcx.crate_name(cnum);
         self.push_ident(name.as_str());
         Ok(self)
@@ -822,6 +785,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             | DefPathData::Use
             | DefPathData::GlobalAsm
             | DefPathData::Impl
+            | DefPathData::ImplTraitAssocTy
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

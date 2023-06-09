@@ -1,4 +1,5 @@
 #![deny(clippy::type_repetition_in_bounds)]
+#![allow(clippy::extra_unused_type_parameters)]
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
@@ -77,6 +78,18 @@ where
 {
     t: T,
     u: U,
+}
+
+// Check for the `?` in `?Sized`
+pub fn f<T: ?Sized>()
+where
+    T: Clone,
+{
+}
+pub fn g<T: Clone>()
+where
+    T: ?Sized,
+{
 }
 
 // This should not lint

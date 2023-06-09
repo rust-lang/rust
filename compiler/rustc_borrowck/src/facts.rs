@@ -1,8 +1,9 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::location::{LocationIndex, LocationTable};
 use crate::BorrowIndex;
 use polonius_engine::AllFacts as PoloniusFacts;
 use polonius_engine::Atom;
-use rustc_index::vec::Idx;
 use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MovePathIndex;
@@ -91,13 +92,13 @@ impl AllFactsExt for AllFacts {
 
 impl Atom for BorrowIndex {
     fn index(self) -> usize {
-        Idx::index(self)
+        self.as_usize()
     }
 }
 
 impl Atom for LocationIndex {
     fn index(self) -> usize {
-        Idx::index(self)
+        self.as_usize()
     }
 }
 
@@ -190,7 +191,7 @@ fn write_row(
 ) -> Result<(), Box<dyn Error>> {
     for (index, c) in columns.iter().enumerate() {
         let tail = if index == columns.len() - 1 { "\n" } else { "\t" };
-        write!(out, "{:?}{}", c.to_string(location_table), tail)?;
+        write!(out, "{:?}{tail}", c.to_string(location_table))?;
     }
     Ok(())
 }

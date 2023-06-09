@@ -9,7 +9,7 @@ use rustc_span::{symbol::sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for use of `crate` as opposed to `$crate` in a macro definition.
+    /// Checks for usage of `crate` as opposed to `$crate` in a macro definition.
     ///
     /// ### Why is this bad?
     /// `crate` refers to the macro call's crate, whereas `$crate` refers to the macro definition's
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// #[allow(clippy::crate_in_macro_def)]
     /// macro_rules! ok { ... crate::foo ... }
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub CRATE_IN_MACRO_DEF,
     suspicious,
     "using `crate` in a macro definition"
@@ -55,7 +55,7 @@ impl EarlyLintPass for CrateInMacroDef {
         if_chain! {
             if item.attrs.iter().any(is_macro_export);
             if let ItemKind::MacroDef(macro_def) = &item.kind;
-            let tts = macro_def.body.inner_tokens();
+            let tts = macro_def.body.tokens.clone();
             if let Some(span) = contains_unhygienic_crate_reference(&tts);
             then {
                 span_lint_and_sugg(
@@ -74,8 +74,8 @@ impl EarlyLintPass for CrateInMacroDef {
 
 fn is_macro_export(attr: &Attribute) -> bool {
     if_chain! {
-        if let AttrKind::Normal(attr_item, _) = &attr.kind;
-        if let [segment] = attr_item.path.segments.as_slice();
+        if let AttrKind::Normal(normal) = &attr.kind;
+        if let [segment] = normal.item.path.segments.as_slice();
         then {
             segment.ident.name == sym::macro_export
         } else {
@@ -110,14 +110,14 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
 
 fn is_crate_keyword(tt: &TokenTree) -> Option<Span> {
     if_chain! {
-        if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }) = tt;
+        if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }, _) = tt;
         if symbol.as_str() == "crate";
         then { Some(*span) } else { None }
     }
 }
 
 fn is_token(tt: &TokenTree, kind: &TokenKind) -> bool {
-    if let TokenTree::Token(Token { kind: other, .. }) = tt {
+    if let TokenTree::Token(Token { kind: other, .. }, _) = tt {
         kind == other
     } else {
         false

@@ -1,5 +1,6 @@
-// run-rustfix
+//@run-rustfix
 
+#![feature(closure_lifetime_binder)]
 #![warn(clippy::explicit_auto_deref)]
 #![allow(
     dead_code,
@@ -67,6 +68,8 @@ fn main() {
     let s = String::new();
 
     let _: &str = &s;
+    let _: &str = &{ String::new() };
+    let _: &str = &mut { String::new() };
     let _ = &*s; // Don't lint. Inferred type would change.
     let _: &_ = &*s; // Don't lint. Inferred type would change.
 
@@ -210,5 +213,86 @@ fn main() {
     let x = &&40;
     unsafe {
         var(0, &**x);
+    }
+
+    let s = &"str";
+    let _ = || return *s;
+    let _ = || -> &'static str { return s };
+
+    struct X;
+    struct Y(X);
+    impl core::ops::Deref for Y {
+        type Target = X;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    let _: &X = &*{ Y(X) };
+    let _: &X = &*match 0 {
+        #[rustfmt::skip]
+        0 => { Y(X) },
+        _ => panic!(),
+    };
+    let _: &X = &*if true { Y(X) } else { panic!() };
+
+    fn deref_to_u<U, T: core::ops::Deref<Target = U>>(x: &T) -> &U {
+        x
+    }
+
+    let _ = |x: &'static Box<dyn Iterator<Item = u32>>| -> &'static dyn Iterator<Item = u32> { &**x };
+    fn ret_any(x: &Box<dyn std::any::Any>) -> &dyn std::any::Any {
+        &**x
+    }
+
+    let x = String::new();
+    let _: *const str = &*x;
+
+    struct S7([u32; 1]);
+    impl core::ops::Deref for S7 {
+        type Target = [u32; 1];
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    let x = S7([0]);
+    let _: &[u32] = &*x;
+
+    let c1 = |_: &Vec<&u32>| {};
+    let x = &&vec![&1u32];
+    c1(x);
+    let _ = for<'a, 'b> |x: &'a &'a Vec<&'b u32>, b: bool| -> &'a Vec<&'b u32> {
+        if b {
+            return x;
+        }
+        x
+    };
+
+    trait WithAssoc {
+        type Assoc: ?Sized;
+        fn to_assoc(&self) -> &Self::Assoc {
+            panic!()
+        }
+    }
+    impl WithAssoc for String {
+        type Assoc = str;
+    }
+    fn takes_assoc<T: WithAssoc>(_: &T::Assoc) -> T {
+        unimplemented!()
+    }
+    let _: String = takes_assoc(&*String::new());
+
+    // Issue #9901
+    fn takes_ref(_: &i32) {}
+    takes_ref(*Box::new(&0i32));
+
+    // Issue #10384
+    impl<'a> WithAssoc for &'a u32 {
+        type Assoc = dyn core::fmt::Display;
+        fn to_assoc(&self) -> &Self::Assoc {
+            *self
+        }
+    }
+    fn return_dyn_assoc<'a>(x: &'a &'a u32) -> &'a <&'a u32 as WithAssoc>::Assoc {
+        *x
     }
 }

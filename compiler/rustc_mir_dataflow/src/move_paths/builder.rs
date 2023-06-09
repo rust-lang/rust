@@ -1,5 +1,6 @@
+use crate::move_paths::FxHashMap;
 use crate::un_derefer::UnDerefer;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -125,7 +126,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         BorrowedContent {
                             target_place: Place {
                                 local: place.local,
-                                projection: tcx.intern_place_elems(proj),
+                                projection: tcx.mk_place_elems(proj),
                             },
                         },
                     ));
@@ -164,7 +165,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             if union_path.is_none() {
                 base = self.add_move_path(base, elem, |tcx| Place {
                     local: place.local,
-                    projection: tcx.intern_place_elems(&place.projection[..i + 1]),
+                    projection: tcx.mk_place_elems(&place.projection[..i + 1]),
                 });
             }
         }
@@ -206,10 +207,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
+pub type MoveDat<'tcx> = Result<
+    (FxHashMap<Local, Place<'tcx>>, MoveData<'tcx>),
+    (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
+>;
+
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn finalize(
-        self,
-    ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    fn finalize(self) -> MoveDat<'tcx> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -222,7 +226,11 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             "done dumping moves"
         });
 
-        if !self.errors.is_empty() { Err((self.data, self.errors)) } else { Ok(self.data) }
+        if self.errors.is_empty() {
+            Ok((self.un_derefer.derefer_sidetable, self.data))
+        } else {
+            Err((self.data, self.errors))
+        }
     }
 }
 
@@ -230,12 +238,12 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+) -> MoveDat<'tcx> {
     let mut builder = MoveDataBuilder::new(body, tcx, param_env);
 
     builder.gather_args();
 
-    for (bb, block) in body.basic_blocks().iter_enumerated() {
+    for (bb, block) in body.basic_blocks.iter_enumerated() {
         for (i, stmt) in block.statements.iter().enumerate() {
             let source = Location { block: bb, statement_index: i };
             builder.gather_statement(source, stmt);
@@ -321,8 +329,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
         }
     }
@@ -350,7 +360,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {}
         }
     }
 
@@ -365,9 +375,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // need recording.
             | TerminatorKind::Return
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Unreachable => {}
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Drop { .. } => {}
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);
@@ -382,21 +393,12 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.create_move_path(place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
-
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
-                self.gather_move(place);
-            }
-            TerminatorKind::DropAndReplace { place, ref value, .. } => {
-                self.create_move_path(place);
-                self.gather_operand(value);
-                self.gather_init(place.as_ref(), InitKind::Deep);
-            }
             TerminatorKind::Call {
                 ref func,
                 ref args,
                 destination,
                 target,
-                cleanup: _,
+                unwind: _,
                 from_hir_call: _,
                 fn_span: _,
             } => {
@@ -415,7 +417,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 options: _,
                 line_spans: _,
                 destination: _,
-                cleanup: _,
+                unwind: _,
             } => {
                 for op in operands {
                     match *op {
@@ -470,7 +472,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // `ConstIndex` patterns. This is done to ensure that all move paths
             // are disjoint, which is expected by drop elaboration.
             let base_place =
-                Place { local: place.local, projection: self.builder.tcx.intern_place_elems(base) };
+                Place { local: place.local, projection: self.builder.tcx.mk_place_elems(base) };
             let base_path = match self.move_path_for(base_place) {
                 Ok(path) => path,
                 Err(MoveError::UnionMove { path }) => {
@@ -484,7 +486,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
             let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
             let len: u64 = match base_ty.kind() {
-                ty::Array(_, size) => size.eval_usize(self.builder.tcx, self.builder.param_env),
+                ty::Array(_, size) => {
+                    size.eval_target_usize(self.builder.tcx, self.builder.param_env)
+                }
                 _ => bug!("from_end: false slice pattern of non-array type"),
             };
             for offset in from..to {

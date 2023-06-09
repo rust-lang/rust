@@ -1,0 +1,37 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-70594.rs:4:12
+   |
+LL | async fn fun() {
+   |          --- this is not `async`
+LL |     [1; ().await];
+   |            ^^^^^ only allowed inside `async` functions and blocks
+
+error[E0744]: `.await` is not allowed in a `const`
+  --> $DIR/issue-70594.rs:4:9
+   |
+LL |     [1; ().await];
+   |         ^^^^^^^^
+
+error[E0744]: `.await` is not allowed in a `const`
+  --> $DIR/issue-70594.rs:4:12
+   |
+LL |     [1; ().await];
+   |            ^^^^^
+
+error[E0277]: `()` is not a future
+  --> $DIR/issue-70594.rs:4:12
+   |
+LL |     [1; ().await];
+   |           -^^^^^
+   |           ||
+   |           |`()` is not a future
+   |           help: remove the `.await`
+   |
+   = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `()` to implement `IntoFuture`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0728, E0744.
+For more information about an error, try `rustc --explain E0277`.

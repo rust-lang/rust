@@ -7,13 +7,13 @@ LL | |         panic!("error");
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn.rs:8:9
    |
 LL |         panic!("error");
    |         ^^^^^^^^^^^^^^^
+   = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
   --> $DIR/panic_in_result_fn.rs:11:5

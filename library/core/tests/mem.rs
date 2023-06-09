@@ -1,4 +1,5 @@
 use core::mem::*;
+use core::ptr;
 
 #[cfg(panic = "unwind")]
 use std::rc::Rc;
@@ -76,6 +77,24 @@ fn align_of_val_basic() {
 }
 
 #[test]
+fn align_of_val_raw_packed() {
+    #[repr(C, packed)]
+    struct B {
+        f: [u32],
+    }
+    let storage = [0u8; 4];
+    let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+    assert_eq!(unsafe { align_of_val_raw(b) }, 1);
+
+    const ALIGN_OF_VAL_RAW: usize = {
+        let storage = [0u8; 4];
+        let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+        unsafe { align_of_val_raw(b) }
+    };
+    assert_eq!(ALIGN_OF_VAL_RAW, 1);
+}
+
+#[test]
 fn test_swap() {
     let mut x = 31337;
     let mut y = 42;
@@ -95,6 +114,50 @@ fn test_replace() {
 #[test]
 fn test_transmute_copy() {
     assert_eq!(1, unsafe { transmute_copy(&1) });
+}
+
+#[test]
+fn test_transmute_copy_shrink() {
+    assert_eq!(0_u8, unsafe { transmute_copy(&0_u64) });
+}
+
+#[test]
+fn test_transmute_copy_unaligned() {
+    #[repr(C)]
+    #[derive(Default)]
+    struct Unaligned {
+        a: u8,
+        b: [u8; 8],
+    }
+
+    let u = Unaligned::default();
+    assert_eq!(0_u64, unsafe { transmute_copy(&u.b) });
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn test_transmute_copy_grow_panics() {
+    use std::panic;
+
+    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
+        let _unused: u64 = transmute_copy(&1_u8);
+    }));
+
+    match err {
+        Ok(_) => unreachable!(),
+        Err(payload) => {
+            payload
+                .downcast::<&'static str>()
+                .and_then(|s| {
+                    if *s == "cannot transmute_copy if Dst is larger than Src" {
+                        Ok(s)
+                    } else {
+                        Err(s)
+                    }
+                })
+                .unwrap_or_else(|p| panic::resume_unwind(p));
+        }
+    }
 }
 
 #[test]
@@ -123,18 +186,18 @@ fn assume_init_good() {
 
 #[test]
 fn uninit_array_assume_init() {
-    let mut array: [MaybeUninit<i16>; 5] = MaybeUninit::uninit_array();
+    let mut array = [MaybeUninit::<i16>::uninit(); 5];
     array[0].write(3);
     array[1].write(1);
     array[2].write(4);
     array[3].write(1);
     array[4].write(5);
 
-    let array = unsafe { MaybeUninit::array_assume_init(array) };
+    let array = unsafe { array.transpose().assume_init() };
 
     assert_eq!(array, [3, 1, 4, 1, 5]);
 
-    let [] = unsafe { MaybeUninit::<!>::array_assume_init([]) };
+    let [] = unsafe { [MaybeUninit::<!>::uninit(); 0].transpose().assume_init() };
 }
 
 #[test]
@@ -300,4 +363,205 @@ fn const_maybe_uninit() {
     }
 
     assert_eq!(FIELD_BY_FIELD, Foo { x: 1, y: 2 });
+}
+
+#[test]
+fn offset_of() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+        z: Bar,
+    }
+
+    #[repr(C)]
+    struct Bar(u8, u8);
+
+    assert_eq!(offset_of!(Foo, x), 0);
+    assert_eq!(offset_of!(Foo, y), 2);
+    assert_eq!(offset_of!(Foo, z.0), 4);
+    assert_eq!(offset_of!(Foo, z.1), 5);
+
+    // Layout of tuples is unstable
+    assert!(offset_of!((u8, u16), 0) <= size_of::<(u8, u16)>() - 1);
+    assert!(offset_of!((u8, u16), 1) <= size_of::<(u8, u16)>() - 2);
+
+    #[repr(C)]
+    struct Generic<T> {
+        x: u8,
+        y: u32,
+        z: T,
+    }
+
+    trait Trait {}
+
+    // Ensure that this type of generics works
+    fn offs_of_z<T>() -> usize {
+        offset_of!(Generic<T>, z)
+    }
+
+    assert_eq!(offset_of!(Generic<u8>, z), 8);
+    assert_eq!(offs_of_z::<u8>(), 8);
+
+    // Ensure that it works with the implicit lifetime in `Box<dyn Trait + '_>`.
+    assert_eq!(offset_of!(Generic<Box<dyn Trait>>, z), 8);
+}
+
+#[test]
+fn offset_of_union() {
+    #[repr(C)]
+    union Foo {
+        x: u8,
+        y: u16,
+        z: Bar,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    struct Bar(u8, u8);
+
+    assert_eq!(offset_of!(Foo, x), 0);
+    assert_eq!(offset_of!(Foo, y), 0);
+    assert_eq!(offset_of!(Foo, z.0), 0);
+    assert_eq!(offset_of!(Foo, z.1), 1);
+}
+
+#[test]
+fn offset_of_dst() {
+    #[repr(C)]
+    struct Alpha {
+        x: u8,
+        y: u16,
+        z: [u8],
+    }
+
+    trait Trait {}
+
+    #[repr(C)]
+    struct Beta {
+        x: u8,
+        y: u16,
+        z: dyn Trait,
+    }
+
+    extern "C" {
+        type Extern;
+    }
+
+    #[repr(C)]
+    struct Gamma {
+        x: u8,
+        y: u16,
+        z: Extern,
+    }
+
+    assert_eq!(offset_of!(Alpha, x), 0);
+    assert_eq!(offset_of!(Alpha, y), 2);
+
+    assert_eq!(offset_of!(Beta, x), 0);
+    assert_eq!(offset_of!(Beta, y), 2);
+
+    assert_eq!(offset_of!(Gamma, x), 0);
+    assert_eq!(offset_of!(Gamma, y), 2);
+}
+
+#[test]
+fn offset_of_packed() {
+    #[repr(C, packed)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    assert_eq!(offset_of!(Foo, x), 0);
+    assert_eq!(offset_of!(Foo, y), 1);
+}
+
+#[test]
+fn offset_of_projection() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    trait Projector {
+        type Type;
+    }
+
+    impl Projector for () {
+        type Type = Foo;
+    }
+
+    assert_eq!(offset_of!(<() as Projector>::Type, x), 0);
+    assert_eq!(offset_of!(<() as Projector>::Type, y), 2);
+}
+
+#[test]
+fn offset_of_alias() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    type Bar = Foo;
+
+    assert_eq!(offset_of!(Bar, x), 0);
+    assert_eq!(offset_of!(Bar, y), 2);
+}
+
+#[test]
+fn const_offset_of() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    const X_OFFSET: usize = offset_of!(Foo, x);
+    const Y_OFFSET: usize = offset_of!(Foo, y);
+
+    assert_eq!(X_OFFSET, 0);
+    assert_eq!(Y_OFFSET, 2);
+}
+
+#[test]
+fn offset_of_without_const_promotion() {
+    #[repr(C)]
+    struct Foo<SuppressConstPromotion> {
+        x: u8,
+        y: u16,
+        _scp: SuppressConstPromotion,
+    }
+
+    // Normally, offset_of is always const promoted.
+    // The generic parameter prevents this from happening.
+    // This is needed to test the codegen impl of offset_of
+    fn inner<SuppressConstPromotion>() {
+        assert_eq!(offset_of!(Foo<SuppressConstPromotion>, x), 0);
+        assert_eq!(offset_of!(Foo<SuppressConstPromotion>, y), 2);
+    }
+
+    inner::<()>();
+}
+
+#[test]
+fn offset_of_addr() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+        z: Bar,
+    }
+
+    #[repr(C)]
+    struct Bar(u8, u8);
+
+    let base = Foo { x: 0, y: 0, z: Bar(0, 0) };
+
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, x), ptr::addr_of!(base.x).addr());
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, y), ptr::addr_of!(base.y).addr());
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.0), ptr::addr_of!(base.z.0).addr());
+    assert_eq!(ptr::addr_of!(base).addr() + offset_of!(Foo, z.1), ptr::addr_of!(base.z.1).addr());
 }

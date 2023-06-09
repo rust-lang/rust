@@ -59,8 +59,8 @@ pub fn get_attr<'a>(
     name: &'static str,
 ) -> impl Iterator<Item = &'a ast::Attribute> {
     attrs.iter().filter(move |attr| {
-        let attr = if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr
+        let attr = if let ast::AttrKind::Normal(ref normal) = attr.kind {
+            &normal.item
         } else {
             return false;
         };
@@ -125,19 +125,19 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
     }
 }
 
-pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'static str) -> Option<ast::Attribute> {
-    let mut unique_attr = None;
+pub fn get_unique_attr<'a>(
+    sess: &'a Session,
+    attrs: &'a [ast::Attribute],
+    name: &'static str,
+) -> Option<&'a ast::Attribute> {
+    let mut unique_attr: Option<&ast::Attribute> = None;
     for attr in get_attr(sess, attrs, name) {
-        match attr.style {
-            ast::AttrStyle::Inner if unique_attr.is_none() => unique_attr = Some(attr.clone()),
-            ast::AttrStyle::Inner => {
-                sess.struct_span_err(attr.span, &format!("`{}` is defined multiple times", name))
-                    .span_note(unique_attr.as_ref().unwrap().span, "first definition found here")
-                    .emit();
-            },
-            ast::AttrStyle::Outer => {
-                sess.span_err(attr.span, &format!("`{}` cannot be an outer attribute", name));
-            },
+        if let Some(duplicate) = unique_attr {
+            sess.struct_span_err(attr.span, format!("`{name}` is defined multiple times"))
+                .span_note(duplicate.span, "first definition found here")
+                .emit();
+        } else {
+            unique_attr = Some(attr);
         }
     }
     unique_attr
@@ -145,8 +145,8 @@ pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'s
 
 /// Return true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
-pub fn is_proc_macro(sess: &Session, attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| sess.is_proc_macro_attr(attr))
+pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().any(rustc_ast::Attribute::is_proc_macro_attr)
 }
 
 /// Return true if the attributes contain `#[doc(hidden)]`

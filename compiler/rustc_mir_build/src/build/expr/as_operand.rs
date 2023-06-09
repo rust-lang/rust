@@ -20,14 +20,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_operand(block, Some(local_scope), expr, None, NeedsTemporary::Maybe)
+        self.as_operand(block, Some(local_scope), expr, LocalInfo::Boring, NeedsTemporary::Maybe)
     }
 
     /// Returns an operand suitable for use until the end of the current scope expression and
     /// suitable also to be passed as function arguments.
     ///
     /// The operand returned from this function will *not be valid* after an ExprKind::Scope is
-    /// passed, so please do *not* return it from functions to avoid bad miscompiles.  Returns an
+    /// passed, so please do *not* return it from functions to avoid bad miscompiles. Returns an
     /// operand suitable for use as a call argument. This is almost always equivalent to
     /// `as_operand`, except for the particular case of passing values of (potentially) unsized
     /// types "by value" (see details below).
@@ -72,7 +72,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// will actually provide a pointer to the interior of the box, and not move the `dyn Debug`
     /// value to the stack.
     ///
-    /// See #68034 for more details.
+    /// See #68304 for more details.
     pub(crate) fn as_local_call_operand(
         &mut self,
         block: BasicBlock,
@@ -102,7 +102,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
-        local_info: Option<Box<LocalInfo<'tcx>>>,
+        local_info: LocalInfo<'tcx>,
         needs_temporary: NeedsTemporary,
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
@@ -118,14 +118,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let category = Category::of(&expr.kind).unwrap();
         debug!(?category, ?expr.kind);
         match category {
-            Category::Constant if let NeedsTemporary::No = needs_temporary || !expr.ty.needs_drop(this.tcx, this.param_env) => {
+            Category::Constant
+                if matches!(needs_temporary, NeedsTemporary::No)
+                    || !expr.ty.needs_drop(this.tcx, this.param_env) =>
+            {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(Box::new(constant)))
             }
             Category::Constant | Category::Place | Category::Rvalue(..) => {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
-                if this.local_decls[operand].local_info.is_none() {
-                    this.local_decls[operand].local_info = local_info;
+                // Overwrite temp local info if we have something more interesting to record.
+                if !matches!(local_info, LocalInfo::Boring) {
+                    let decl_info =
+                        this.local_decls[operand].local_info.as_mut().assert_crate_local();
+                    if let LocalInfo::Boring | LocalInfo::BlockTailTemp(_) = **decl_info {
+                        **decl_info = local_info;
+                    }
                 }
                 block.and(Operand::Move(Place::from(operand)))
             }
@@ -153,12 +161,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         if tcx.features().unsized_fn_params {
             let ty = expr.ty;
-            let span = expr.span;
             let param_env = this.param_env;
 
-            if !ty.is_sized(tcx.at(span), param_env) {
+            if !ty.is_sized(tcx, param_env) {
                 // !sized means !copy, so this is an unsized move
-                assert!(!ty.is_copy_modulo_regions(tcx.at(span), param_env));
+                assert!(!ty.is_copy_modulo_regions(tcx, param_env));
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.
@@ -171,7 +178,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Return the operand *tmp0 to be used as the call argument
                     let place = Place {
                         local: operand,
-                        projection: tcx.intern_place_elems(&[PlaceElem::Deref]),
+                        projection: tcx.mk_place_elems(&[PlaceElem::Deref]),
                     };
 
                     return block.and(Operand::Move(place));
@@ -179,6 +186,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        this.as_operand(block, scope, expr, None, NeedsTemporary::Maybe)
+        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::Maybe)
     }
 }

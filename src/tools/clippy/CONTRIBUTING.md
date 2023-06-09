@@ -16,7 +16,6 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [The Clippy book](#the-clippy-book)
   - [High level approach](#high-level-approach)
   - [Finding something to fix/improve](#finding-something-to-fiximprove)
-  - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
     - [IntelliJ Rust](#intellij-rust)
     - [Rust Analyzer](#rust-analyzer)
@@ -24,17 +23,18 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Issue and PR triage](#issue-and-pr-triage)
   - [Bors and Homu](#bors-and-homu)
   - [Contributions](#contributions)
+  - [License](#license)
 
 [Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
 ## The Clippy book
 
-If you're new to Clippy and don't know where to start the [Clippy book] includes
-a developer guide and is a good place to start your journey.
+If you're new to Clippy and don't know where to start, the [Clippy book] includes
+a [developer guide] and is a good place to start your journey.
 
-<!-- FIXME: Link to the deployed book, once it is deployed through CI -->
-[Clippy book]: book/src
+[Clippy book]: https://doc.rust-lang.org/nightly/clippy/index.html
+[developer guide]: https://doc.rust-lang.org/nightly/clippy/development/index.html
 
 ## High level approach
 
@@ -50,7 +50,7 @@ a developer guide and is a good place to start your journey.
 All issues on Clippy are mentored, if you want help simply ask someone from the
 Clippy team directly by mentioning them in the issue or over on [Zulip]. All
 currently active team members can be found
-[here](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust-clippy.json#L3)
+[here](https://github.com/rust-lang/rust-clippy/blob/master/triagebot.toml#L18)
 
 Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy
 issues. You can use `@rustbot claim` to assign the issue to yourself.
@@ -111,23 +111,28 @@ Just make sure to remove the dependencies again before finally making a pull req
 [IntelliJ_rust_homepage]: https://intellij-rust.github.io/
 
 ### Rust Analyzer
-As of [#6869][6869], [`rust-analyzer`][ra_homepage] can understand that Clippy uses compiler-internals
-using `extern crate` when `package.metadata.rust-analyzer.rustc_private` is set to `true` in Clippy's `Cargo.toml.`
-You will require a `nightly` toolchain with the `rustc-dev` component installed.
-Make sure that in the `rust-analyzer` configuration, you set
+For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust-analyzer` configuration you set
+
+```json
+{ "rust-analyzer.rustc.source": "discover" }
 ```
-{ "rust-analyzer.rustcSource": "discover" }
-```
-and
-```
-{ "rust-analyzer.updates.channel": "nightly" }
-```
+
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
 a lot more type hints.
-This will work with `rust-analyzer 2021-03-15` shipped in nightly `1.52.0-nightly (107896c32 2021-03-15)` or later.
+
+To have `rust-analyzer` also work in the `clippy_dev` and `lintcheck` crates, add the following configuration
+
+```json
+{
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "clippy_dev/Cargo.toml",
+        "lintcheck/Cargo.toml",
+    ]
+}
+```
 
 [ra_homepage]: https://rust-analyzer.github.io/
-[6869]: https://github.com/rust-lang/rust-clippy/pull/6869
 
 ## How Clippy works
 
@@ -240,6 +245,38 @@ commands [here][homu_instructions].
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
 be reviewed by a core contributor (someone with permission to land patches) and either landed in the
 main tree or given feedback for changes that would be required.
+
+All PRs should include a `changelog` entry with a short comment explaining the change. The rule of thumb is basically,
+"what do you believe is important from an outsider's perspective?" Often, PRs are only related to a single property of a
+lint, and then it's good to mention that one. Otherwise, it's better to include too much detail than too little.
+
+Clippy's [changelog] is created from these comments. Every release, someone gets all commits from bors with a
+`changelog: XYZ` entry and combines them into the changelog. This is a manual process.
+
+Examples:
+- New lint
+  ```
+  changelog: new lint: [`missing_trait_methods`]
+  ```
+- False positive fix
+  ```
+  changelog: Fix [`unused_peekable`] false positive when peeked in a closure or called as `f(&mut peekable)`
+  ```
+- Purely internal change
+  ```
+  changelog: none
+  ```
+
+Note this it is fine for a PR to include multiple `changelog` entries, e.g.:
+```
+changelog: Something 1
+changelog: Something 2
+changelog: Something 3
+```
+
+[changelog]: CHANGELOG.md
+
+## License
 
 All code in this repository is under the [Apache-2.0] or the [MIT] license.
 

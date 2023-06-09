@@ -1,4 +1,6 @@
-use rustc_index::vec::{Idx, IndexVec};
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+use rustc_index::IndexVec;
 use rustc_middle::mir::{BasicBlock, Body, Location};
 
 /// Maps between a MIR Location, which identifies a particular
@@ -18,9 +20,8 @@ pub struct LocationTable {
 }
 
 rustc_index::newtype_index! {
-    pub struct LocationIndex {
-        DEBUG_FORMAT = "LocationIndex({})"
-    }
+    #[debug_format = "LocationIndex({})"]
+    pub struct LocationIndex {}
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -33,7 +34,7 @@ impl LocationTable {
     pub(crate) fn new(body: &Body<'_>) -> Self {
         let mut num_points = 0;
         let statements_before_block = body
-            .basic_blocks()
+            .basic_blocks
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -49,19 +50,19 @@ impl LocationTable {
     }
 
     pub fn all_points(&self) -> impl Iterator<Item = LocationIndex> {
-        (0..self.num_points).map(LocationIndex::new)
+        (0..self.num_points).map(LocationIndex::from_usize)
     }
 
     pub fn start_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        LocationIndex::new(start_index + statement_index * 2)
+        LocationIndex::from_usize(start_index + statement_index * 2)
     }
 
     pub fn mid_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        LocationIndex::new(start_index + statement_index * 2 + 1)
+        LocationIndex::from_usize(start_index + statement_index * 2 + 1)
     }
 
     pub fn to_location(&self, index: LocationIndex) -> RichLocation {
@@ -86,8 +87,7 @@ impl LocationTable {
         let (block, &first_index) = self
             .statements_before_block
             .iter_enumerated()
-            .filter(|(_, first_index)| **first_index <= point_index)
-            .last()
+            .rfind(|&(_, &first_index)| first_index <= point_index)
             .unwrap();
 
         let statement_index = (point_index - first_index) / 2;

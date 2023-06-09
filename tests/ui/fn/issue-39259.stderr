@@ -1,0 +1,15 @@
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-39259.rs:6:17
+   |
+LL | impl Fn(u32) -> u32 for S {
+   |                 ^^^ associated type not allowed here
+   |
+help: parenthesized trait syntax expands to `Fn<(u32,), Output=u32>`
+  --> $DIR/issue-39259.rs:6:6
+   |
+LL | impl Fn(u32) -> u32 for S {
+   |      ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0229`.

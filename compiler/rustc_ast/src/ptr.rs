@@ -22,7 +22,6 @@
 //!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
 
 use std::fmt::{self, Debug, Display};
-use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::{slice, vec};
 
@@ -127,7 +126,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
 }
 
 impl<T> P<[T]> {
-    pub const fn new() -> P<[T]> {
+    // FIXME(const-hack) make this const again
+    pub fn new() -> P<[T]> {
         P { ptr: Box::default() }
     }
 

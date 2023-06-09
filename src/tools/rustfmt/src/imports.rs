@@ -116,7 +116,7 @@ pub(crate) struct UseTree {
     // Additional fields for top level use items.
     // Should we have another struct for top-level use items rather than reusing this?
     visibility: Option<ast::Visibility>,
-    attrs: Option<Vec<ast::Attribute>>,
+    attrs: Option<ast::AttrVec>,
 }
 
 impl PartialEq for UseTree {
@@ -251,8 +251,8 @@ fn flatten_use_trees(
     use_trees: Vec<UseTree>,
     import_granularity: ImportGranularity,
 ) -> Vec<UseTree> {
-    // Return non-sorted single occurance of the use-trees text string;
-    // order is by first occurance of the use-tree.
+    // Return non-sorted single occurrence of the use-trees text string;
+    // order is by first occurrence of the use-tree.
     use_trees
         .into_iter()
         .flat_map(|tree| tree.flatten(import_granularity))
@@ -417,7 +417,7 @@ impl UseTree {
         list_item: Option<ListItem>,
         visibility: Option<ast::Visibility>,
         opt_lo: Option<BytePos>,
-        attrs: Option<Vec<ast::Attribute>>,
+        attrs: Option<ast::AttrVec>,
     ) -> UseTree {
         let span = if let Some(lo) = opt_lo {
             mk_sp(lo, a.span.hi())
@@ -490,7 +490,7 @@ impl UseTree {
                 );
                 result.path.push(UseSegment { kind, version });
             }
-            UseTreeKind::Simple(ref rename, ..) => {
+            UseTreeKind::Simple(ref rename) => {
                 // If the path has leading double colons and is composed of only 2 segments, then we
                 // bypass the call to path_to_imported_ident which would get only the ident and
                 // lose the path root, e.g., `that` in `::that`.

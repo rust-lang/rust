@@ -1,0 +1,71 @@
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:7:7
+   |
+LL | #[doc(as_ptr)]
+   |       ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+note: the lint level is defined here
+  --> $DIR/doc-attr.rs:2:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(warnings)]`
+
+error: invalid `doc` attribute
+  --> $DIR/doc-attr.rs:12:7
+   |
+LL | #[doc(123)]
+   |       ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+
+error: invalid `doc` attribute
+  --> $DIR/doc-attr.rs:15:7
+   |
+LL | #[doc("hello", "bar")]
+   |       ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+
+error: invalid `doc` attribute
+  --> $DIR/doc-attr.rs:15:16
+   |
+LL | #[doc("hello", "bar")]
+   |                ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+
+error: unknown `doc` attribute `foo::bar`
+  --> $DIR/doc-attr.rs:20:7
+   |
+LL | #[doc(foo::bar, crate::bar::baz = "bye")]
+   |       ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+
+error: unknown `doc` attribute `crate::bar::baz`
+  --> $DIR/doc-attr.rs:20:17
+   |
+LL | #[doc(foo::bar, crate::bar::baz = "bye")]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:3:8
+   |
+LL | #![doc(as_ptr)]
+   |        ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+
+error: aborting due to 7 previous errors
+

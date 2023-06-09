@@ -7,31 +7,15 @@
 
 const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
-window.mainTheme = document.getElementById("mainThemeStyle");
-
-// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
-// If you update this line, then you also need to update the two media queries with the same
-// warning in rustdoc.css
-window.RUSTDOC_MOBILE_BREAKPOINT = 701;
 
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
-    if (settingsElement === null) {
-        return null;
-    }
-    const dataset = settingsElement.dataset;
-    if (dataset === undefined) {
-        return null;
-    }
-    return dataset;
+    return settingsElement && settingsElement.dataset ? settingsElement.dataset : null;
 })();
 
 function getSettingValue(settingName) {
     const current = getCurrentValue(settingName);
-    if (current !== null) {
-        return current;
-    }
-    if (settingsDataset !== null) {
+    if (current === null && settingsDataset !== null) {
         // See the comment for `default_settings.into_iter()` etc. in
         // `Options::from_matches` in `librustdoc/config.rs`.
         const def = settingsDataset[settingName.replace(/-/g,"_")];
@@ -39,32 +23,27 @@ function getSettingValue(settingName) {
             return def;
         }
     }
-    return null;
+    return current;
 }
 
 const localStoredTheme = getSettingValue("theme");
-
-const savedHref = [];
 
 // eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
     return elem && elem.classList && elem.classList.contains(className);
 }
 
-// eslint-disable-next-line no-unused-vars
 function addClass(elem, className) {
-    if (!elem || !elem.classList) {
-        return;
+    if (elem && elem.classList) {
+        elem.classList.add(className);
     }
-    elem.classList.add(className);
 }
 
 // eslint-disable-next-line no-unused-vars
 function removeClass(elem, className) {
-    if (!elem || !elem.classList) {
-        return;
+    if (elem && elem.classList) {
+        elem.classList.remove(className);
     }
-    elem.classList.remove(className);
 }
 
 /**
@@ -74,10 +53,9 @@ function removeClass(elem, className) {
  * @param {boolean}     [reversed] - Whether to iterate in reverse
  */
 function onEach(arr, func, reversed) {
-    if (arr && arr.length > 0 && func) {
+    if (arr && arr.length > 0) {
         if (reversed) {
-            const length = arr.length;
-            for (let i = length - 1; i >= 0; --i) {
+            for (let i = arr.length - 1; i >= 0; --i) {
                 if (func(arr[i])) {
                     return true;
                 }
@@ -103,6 +81,7 @@ function onEach(arr, func, reversed) {
  * @param {function(?)}                   func       - The callback
  * @param {boolean}                       [reversed] - Whether to iterate in reverse
  */
+// eslint-disable-next-line no-unused-vars
 function onEachLazy(lazyArray, func, reversed) {
     return onEach(
         Array.prototype.slice.call(lazyArray),
@@ -126,110 +105,70 @@ function getCurrentValue(name) {
     }
 }
 
-function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
-    const newHref = mainStyleElem.href.replace(
-        /\/rustdoc([^/]*)\.css/, "/" + newTheme + "$1" + ".css");
+// Get a value from the rustdoc-vars div, which is used to convey data from
+// Rust to the JS. If there is no such element, return null.
+const getVar = (function getVar(name) {
+    const el = document.getElementById("rustdoc-vars");
+    return el ? el.attributes["data-" + name].value : null;
+});
 
+function switchTheme(newThemeName, saveTheme) {
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
     if (saveTheme) {
-        updateLocalStorage("theme", newTheme);
+        updateLocalStorage("theme", newThemeName);
     }
 
-    if (styleElem.href === newHref) {
-        return;
+    let newHref;
+
+    if (newThemeName === "light" || newThemeName === "dark" || newThemeName === "ayu") {
+        newHref = getVar("static-root-path") + getVar("theme-" + newThemeName + "-css");
+    } else {
+        newHref = getVar("root-path") + newThemeName + getVar("resource-suffix") + ".css";
     }
 
-    let found = false;
-    if (savedHref.length === 0) {
-        onEachLazy(document.getElementsByTagName("link"), el => {
-            savedHref.push(el.href);
-        });
-    }
-    onEach(savedHref, el => {
-        if (el === newHref) {
-            found = true;
-            return true;
-        }
-    });
-    if (found) {
-        styleElem.href = newHref;
+    if (!window.currentTheme) {
+        document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
+        window.currentTheme = document.getElementById("themeStyle");
+    } else if (newHref !== window.currentTheme.href) {
+        window.currentTheme.href = newHref;
     }
 }
 
-// This function is called from "main.js".
-// eslint-disable-next-line no-unused-vars
-function useSystemTheme(value) {
-    if (value === undefined) {
-        value = true;
-    }
-
-    updateLocalStorage("use-system-theme", value);
-
-    // update the toggle if we're on the settings page
-    const toggle = document.getElementById("use-system-theme");
-    if (toggle && toggle instanceof HTMLInputElement) {
-        toggle.checked = value;
-    }
-}
-
-const updateSystemTheme = (function() {
-    if (!window.matchMedia) {
-        // fallback to the CSS computed value
-        return () => {
-            const cssTheme = getComputedStyle(document.documentElement)
-                .getPropertyValue("content");
-
-            switchTheme(
-                window.currentTheme,
-                window.mainTheme,
-                JSON.parse(cssTheme) || "light",
-                true
-            );
-        };
-    }
-
+const updateTheme = (function() {
     // only listen to (prefers-color-scheme: dark) because light is the default
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
-    function handlePreferenceChange(mql) {
-        const use = theme => {
-            switchTheme(window.currentTheme, window.mainTheme, theme, true);
-        };
+    /**
+     * Update the current theme to match whatever the current combination of
+     * * the preference for using the system theme
+     *   (if this is the case, the value of preferred-light-theme, if the
+     *   system theme is light, otherwise if dark, the value of
+     *   preferred-dark-theme.)
+     * * the preferred theme
+     * … dictates that it should be.
+     */
+    function updateTheme() {
         // maybe the user has disabled the setting in the meantime!
         if (getSettingValue("use-system-theme") !== "false") {
             const lightTheme = getSettingValue("preferred-light-theme") || "light";
             const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
+            updateLocalStorage("use-system-theme", "true");
 
-            if (mql.matches) {
-                use(darkTheme);
-            } else {
-                // prefers a light theme, or has no preference
-                use(lightTheme);
-            }
+            // use light theme if user prefers it, or has no preference
+            switchTheme(mql.matches ? darkTheme : lightTheme, true);
             // note: we save the theme so that it doesn't suddenly change when
             // the user disables "use-system-theme" and reloads the page or
             // navigates to another page
         } else {
-            use(getSettingValue("theme"));
+            switchTheme(getSettingValue("theme"), false);
         }
     }
 
-    mql.addListener(handlePreferenceChange);
+    mql.addEventListener("change", updateTheme);
 
-    return () => {
-        handlePreferenceChange(mql);
-    };
+    return updateTheme;
 })();
-
-function switchToSavedTheme() {
-    switchTheme(
-        window.currentTheme,
-        window.mainTheme,
-        getSettingValue("theme") || "light",
-        false
-    );
-}
 
 if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
@@ -239,12 +178,9 @@ if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
         && darkThemes.indexOf(localStoredTheme) >= 0) {
         updateLocalStorage("preferred-dark-theme", localStoredTheme);
     }
-
-    // call the function to initialize the theme at least once!
-    updateSystemTheme();
-} else {
-    switchToSavedTheme();
 }
+
+updateTheme();
 
 if (getSettingValue("source-sidebar-show") === "true") {
     // At this point in page load, `document.body` is not available yet.
@@ -263,6 +199,6 @@ if (getSettingValue("source-sidebar-show") === "true") {
 // specifically when talking to a remote website with no caching.
 window.addEventListener("pageshow", ev => {
     if (ev.persisted) {
-        setTimeout(switchToSavedTheme, 0);
+        setTimeout(updateTheme, 0);
     }
 });

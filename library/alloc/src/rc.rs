@@ -15,7 +15,7 @@
 //!
 //! [`Rc`] uses non-atomic reference counting. This means that overhead is very
 //! low, but an [`Rc`] cannot be sent between threads, and consequently [`Rc`]
-//! does not implement [`Send`][send]. As a result, the Rust compiler
+//! does not implement [`Send`]. As a result, the Rust compiler
 //! will check *at compile time* that you are not sending [`Rc`]s between
 //! threads. If you need multi-threaded, atomic reference counting, use
 //! [`sync::Arc`][arc].
@@ -232,7 +232,6 @@
 //! [clone]: Clone::clone
 //! [`Cell`]: core::cell::Cell
 //! [`RefCell`]: core::cell::RefCell
-//! [send]: core::marker::Send
 //! [arc]: crate::sync::Arc
 //! [`Deref`]: core::ops::Deref
 //! [downgrade]: Rc::downgrade
@@ -251,13 +250,12 @@ use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
-use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::{self, PhantomData, Unpin, Unsize};
+use core::marker::{PhantomData, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw, forget};
@@ -293,6 +291,15 @@ struct RcBox<T: ?Sized> {
     value: T,
 }
 
+/// Calculate layout for `RcBox<T>` using the inner value's layout
+fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
+    // Calculate layout using the given value layout.
+    // Previously, layout was calculated on the expression
+    // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+    // reference (see #54908).
+    Layout::new::<RcBox<()>>().extend(layout).unwrap().0.pad_to_align()
+}
+
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
 /// Counted'.
 ///
@@ -312,7 +319,7 @@ pub struct Rc<T: ?Sized> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !marker::Send for Rc<T> {}
+impl<T: ?Sized> !Send for Rc<T> {}
 
 // Note that this negative impl isn't strictly necessary for correctness,
 // as `Rc` transitively contains a `Cell`, which is itself `!Sync`.
@@ -320,14 +327,14 @@ impl<T: ?Sized> !marker::Send for Rc<T> {}
 // having an explicit negative impl is nice for documentation purposes
 // and results in nicer error messages.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !marker::Sync for Rc<T> {}
+impl<T: ?Sized> !Sync for Rc<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
 #[stable(feature = "rc_ref_unwind_safe", since = "1.58.0")]
 impl<T: RefUnwindSafe + ?Sized> RefUnwindSafe for Rc<T> {}
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
@@ -671,6 +678,24 @@ impl<T> Rc<T> {
         } else {
             Err(this)
         }
+    }
+
+    /// Returns the inner value, if the `Rc` has exactly one strong reference.
+    ///
+    /// Otherwise, [`None`] is returned and the `Rc` is dropped.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// If `Rc::into_inner` is called on every clone of this `Rc`,
+    /// it is guaranteed that exactly one of the calls returns the inner value.
+    /// This means in particular that the inner value is not dropped.
+    ///
+    /// This is equivalent to `Rc::try_unwrap(this).ok()`. (Note that these are not equivalent for
+    /// [`Arc`](crate::sync::Arc), due to race conditions that do not apply to `Rc`.)
+    #[inline]
+    #[stable(feature = "rc_into_inner", since = "1.70.0")]
+    pub fn into_inner(this: Self) -> Option<T> {
+        Rc::try_unwrap(this).ok()
     }
 }
 
@@ -1033,7 +1058,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
-        unsafe { mem::drop(Rc::from_raw(ptr)) };
+        unsafe { drop(Rc::from_raw(ptr)) };
     }
 
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
@@ -1082,10 +1107,11 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// Any other `Rc` or [`Weak`] pointers to the same allocation must not be dereferenced
-    /// for the duration of the returned borrow.
-    /// This is trivially the case if no such pointers exist,
-    /// for example immediately after `Rc::new`.
+    /// If any other `Rc` or [`Weak`] pointers to the same allocation exist, then
+    /// they must not be dereferenced or have active borrows for the duration
+    /// of the returned borrow, and their inner type must be exactly the same as the
+    /// inner type of this Rc (including lifetimes). This is trivially the case if no
+    /// such pointers exist, for example immediately after `Rc::new`.
     ///
     /// # Examples
     ///
@@ -1100,6 +1126,38 @@ impl<T: ?Sized> Rc<T> {
     /// }
     /// assert_eq!(*x, "foo");
     /// ```
+    /// Other `Rc` pointers to the same allocation must be to the same type.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<str> = Rc::from("Hello, world!");
+    /// let mut y: Rc<[u8]> = x.clone().into();
+    /// unsafe {
+    ///     // this is Undefined Behavior, because x's inner type is str, not [u8]
+    ///     Rc::get_mut_unchecked(&mut y).fill(0xff); // 0xff is invalid in UTF-8
+    /// }
+    /// println!("{}", &*x); // Invalid UTF-8 in a str
+    /// ```
+    /// Other `Rc` pointers to the same allocation must be to the exact same type, including lifetimes.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<&str> = Rc::new("Hello, world!");
+    /// {
+    ///     let s = String::from("Oh, no!");
+    ///     let mut y: Rc<&str> = x.clone().into();
+    ///     unsafe {
+    ///         // this is Undefined Behavior, because x's inner type
+    ///         // is &'long str, not &'short str
+    ///         *Rc::get_mut_unchecked(&mut y) = &s;
+    ///     }
+    /// }
+    /// println!("{}", &*x); // Use-after-free
+    /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
@@ -1110,8 +1168,8 @@ impl<T: ?Sized> Rc<T> {
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    /// Returns `true` if the two `Rc`s point to the same allocation
-    /// (in a vein similar to [`ptr::eq`]).
+    /// Returns `true` if the two `Rc`s point to the same allocation in a vein similar to
+    /// [`ptr::eq`]. See [that function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Examples
     ///
@@ -1142,7 +1200,7 @@ impl<T: Clone> Rc<T> {
     /// be cloned.
     ///
     /// See also [`get_mut`], which will fail rather than cloning the inner value
-    /// or diassociating [`Weak`] pointers.
+    /// or disassociating [`Weak`] pointers.
     ///
     /// [`clone`]: Clone::clone
     /// [`get_mut`]: Rc::get_mut
@@ -1334,11 +1392,7 @@ impl<T: ?Sized> Rc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> *mut RcBox<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = rcbox_layout_for_value_layout(value_layout);
         unsafe {
             Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1357,11 +1411,7 @@ impl<T: ?Sized> Rc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> Result<*mut RcBox<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = rcbox_layout_for_value_layout(value_layout);
 
         // Allocate for the layout.
         let ptr = allocate(layout)?;
@@ -1386,7 +1436,7 @@ impl<T: ?Sized> Rc<T> {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| mem.with_metadata_of(ptr as *mut RcBox<T>),
+                |mem| mem.with_metadata_of(ptr as *const RcBox<T>),
             )
         }
     }
@@ -1428,7 +1478,7 @@ impl<T> Rc<[T]> {
         }
     }
 
-    /// Copy elements from slice into newly allocated Rc<\[T\]>
+    /// Copy elements from slice into newly allocated `Rc<[T]>`
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
     #[cfg(not(no_global_oom_handling))]
@@ -1444,7 +1494,7 @@ impl<T> Rc<[T]> {
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {
+    unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Rc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
@@ -1686,11 +1736,11 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
 
     /// Inequality for two `Rc`s.
     ///
-    /// Two `Rc`s are unequal if their inner values are unequal.
+    /// Two `Rc`s are not equal if their inner values are not equal.
     ///
     /// If `T` also implements `Eq` (implying reflexivity of equality),
     /// two `Rc`s that point to the same allocation are
-    /// never unequal.
+    /// always equal.
     ///
     /// # Examples
     ///
@@ -1968,10 +2018,8 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     fn from(mut v: Vec<T>) -> Rc<[T]> {
         unsafe {
             let rc = Rc::copy_from_slice(&v);
-
             // Allow the Vec to free its memory, but not destroy its contents
             v.set_len(0);
-
             rc
         }
     }
@@ -1991,7 +2039,7 @@ where
     /// ```rust
     /// # use std::rc::Rc;
     /// # use std::borrow::Cow;
-    /// let cow: Cow<str> = Cow::Borrowed("eggplant");
+    /// let cow: Cow<'_, str> = Cow::Borrowed("eggplant");
     /// let shared: Rc<str> = Rc::from(cow);
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
@@ -2038,7 +2086,7 @@ impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_iter", since = "1.37.0")]
-impl<T> iter::FromIterator<T> for Rc<[T]> {
+impl<T> FromIterator<T> for Rc<[T]> {
     /// Takes each element in the `Iterator` and collects it into an `Rc<[T]>`.
     ///
     /// # Performance characteristics
@@ -2077,7 +2125,7 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
     /// let evens: Rc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         ToRcSlice::to_rc_slice(iter.into_iter())
     }
 }
@@ -2113,7 +2161,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
                 Rc::from_iter_exact(self, low)
             }
         } else {
-            // TrustedLen contract guarantees that `upper_bound == `None` implies an iterator
+            // TrustedLen contract guarantees that `upper_bound == None` implies an iterator
             // length exceeding `usize::MAX`.
             // The default implementation would collect into a vec which would panic.
             // Thus we panic here immediately without invoking `Vec` code.
@@ -2147,18 +2195,18 @@ pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
-    // to allocate space on the heap.  That's not a value a real pointer
+    // to allocate space on the heap. That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
     // This is only possible when `T: Sized`; unsized `T` never dangle.
     ptr: NonNull<RcBox<T>>,
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
-impl<T: ?Sized> !marker::Send for Weak<T> {}
+impl<T: ?Sized> !Send for Weak<T> {}
 #[stable(feature = "rc_weak", since = "1.4.0")]
-impl<T: ?Sized> !marker::Sync for Weak<T> {}
+impl<T: ?Sized> !Sync for Weak<T> {}
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
@@ -2419,9 +2467,9 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation (similar to
-    /// [`ptr::eq`]), or if both don't point to any allocation
-    /// (because they were created with `Weak::new()`).
+    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
+    /// both don't point to any allocation (because they were created with `Weak::new()`). See [that
+    /// function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Notes
     ///
@@ -2529,7 +2577,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
-impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
+impl<T: ?Sized> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(Weak)")
     }

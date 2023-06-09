@@ -1,12 +1,11 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::netbsd_base::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32"]);
-    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-    base.stack_probes = StackProbeType::Call;
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
+    base.stack_probes = StackProbeType::X86;
 
     Target {
         llvm_target: "i686-unknown-netbsdelf".into(),

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
 #![warn(clippy::cast_lossless)]
@@ -44,4 +44,10 @@ mod cast_lossless_in_impl {
             x as u64
         }
     }
+}
+
+#[derive(PartialEq, Debug)]
+#[repr(i64)]
+enum Test {
+    A = u32::MAX as i64 + 1,
 }

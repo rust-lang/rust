@@ -1,10 +1,28 @@
 macro_rules! uint_impl {
-    ($SelfT:ty, $ActualT:ident, $SignedT:ident, $NonZeroT:ident,
-        $BITS:expr, $MaxV:expr,
-        $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
-        $reversed:expr, $le_bytes:expr, $be_bytes:expr,
-        $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr,
-        $bound_condition:expr) => {
+    (
+        Self = $SelfT:ty,
+        ActualT = $ActualT:ident,
+        SignedT = $SignedT:ident,
+        NonZeroT = $NonZeroT:ident,
+
+        // There are all for use *only* in doc comments.
+        // As such, they're all passed as literals -- passing them as a string
+        // literal is fine if they need to be multiple code tokens.
+        // In non-comments, use the associated constants rather than these.
+        BITS = $BITS:literal,
+        MAX = $MaxV:literal,
+        rot = $rot:literal,
+        rot_op = $rot_op:literal,
+        rot_result = $rot_result:literal,
+        swap_op = $swap_op:literal,
+        swapped = $swapped:literal,
+        reversed = $reversed:literal,
+        le_bytes = $le_bytes:literal,
+        be_bytes = $be_bytes:literal,
+        to_xe_bytes_doc = $to_xe_bytes_doc:expr,
+        from_xe_bytes_doc = $from_xe_bytes_doc:expr,
+        bound_condition = $bound_condition:literal,
+    ) => {
         /// The smallest value that can be represented by this integer type.
         ///
         /// # Examples
@@ -18,7 +36,7 @@ macro_rules! uint_impl {
         pub const MIN: Self = 0;
 
         /// The largest value that can be represented by this integer type
-        #[doc = concat!("(2<sup>", $BITS, "</sup> &minus; 1", $bound_condition, ")")]
+        #[doc = concat!("(2<sup>", $BITS, "</sup> &minus; 1", $bound_condition, ").")]
         ///
         /// # Examples
         ///
@@ -38,7 +56,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");")]
         /// ```
         #[stable(feature = "int_bits_const", since = "1.53.0")]
-        pub const BITS: u32 = $BITS;
+        pub const BITS: u32 = Self::MAX.count_ones();
 
         /// Converts a string slice in a given base to an integer.
         ///
@@ -109,6 +127,9 @@ macro_rules! uint_impl {
 
         /// Returns the number of leading zeros in the binary representation of `self`.
         ///
+        /// Depending on what you're doing with the value, you might also be interested in the
+        /// [`ilog2`] function which returns a consistent number, even if the type widens.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -118,6 +139,7 @@ macro_rules! uint_impl {
         ///
         /// assert_eq!(n.leading_zeros(), 2);
         /// ```
+        #[doc = concat!("[`ilog2`]: ", stringify!($SelfT), "::ilog2")]
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
@@ -459,6 +481,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_add`.
@@ -473,13 +496,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(2), Some(3));")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(-2), None);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add_signed(3), None);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -528,6 +550,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_sub`.
@@ -574,6 +597,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_mul`.
@@ -685,37 +709,30 @@ macro_rules! uint_impl {
         /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `log2` can produce results more efficiently for base 2, and `log10`
+        /// `ilog2` can produce results more efficiently for base 2, and `ilog10`
         /// can produce results more efficiently for base 10.
         ///
         /// # Panics
         ///
-        /// When the number is zero, or if the base is not at least 2;
-        /// it panics in debug mode and the return value is 0 in release mode.
+        /// This function will panic if `self` is zero, or if `base` is less than 2.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".log(5), 1);")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".ilog(5), 1);")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log(self, base: Self) -> u32 {
-            match self.checked_log(base) {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
+        pub const fn ilog(self, base: Self) -> u32 {
+            assert!(base >= 2, "base of integer logarithm must be at least 2");
+            if let Some(log) = self.checked_ilog(base) {
+                log
+            } else {
+                int_log10::panic_for_nonpositive_argument()
             }
         }
 
@@ -723,32 +740,24 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is zero it panics in debug mode and
-        /// the return value is 0 in release mode.
+        /// This function will panic if `self` is zero.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".log2(), 1);")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".ilog2(), 1);")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log2(self) -> u32 {
-            match self.checked_log2() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
+        pub const fn ilog2(self) -> u32 {
+            if let Some(log) = self.checked_ilog2() {
+                log
+            } else {
+                int_log10::panic_for_nonpositive_argument()
             }
         }
 
@@ -756,32 +765,24 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is zero it panics in debug mode and the
-        /// return value is 0 in release mode.
+        /// This function will panic if `self` is zero.
         ///
         /// # Example
         ///
         /// ```
-        /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".log10(), 1);")]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".ilog10(), 1);")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log10(self) -> u32 {
-            match self.checked_log10() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
+        pub const fn ilog10(self) -> u32 {
+            if let Some(log) = self.checked_ilog10() {
+                log
+            } else {
+                int_log10::panic_for_nonpositive_argument()
             }
         }
 
@@ -791,20 +792,20 @@ macro_rules! uint_impl {
         /// Returns `None` if the number is zero, or if the base is not at least 2.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `checked_log2` can produce results more efficiently for base 2, and
-        /// `checked_log10` can produce results more efficiently for base 10.
+        /// `checked_ilog2` can produce results more efficiently for base 2, and
+        /// `checked_ilog10` can produce results more efficiently for base 10.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_log(5), Some(1));")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(5), Some(1));")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log(self, base: Self) -> Option<u32> {
+        pub const fn checked_ilog(self, base: Self) -> Option<u32> {
             if self <= 0 || base <= 1 {
                 None
             } else {
@@ -813,7 +814,7 @@ macro_rules! uint_impl {
 
                 // Optimization for 128 bit wide integers.
                 if Self::BITS == 128 {
-                    let b = Self::log2(self) / (Self::log2(base) + 1);
+                    let b = Self::ilog2(self) / (Self::ilog2(base) + 1);
                     n += b;
                     r /= base.pow(b as u32);
                 }
@@ -833,16 +834,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_log2(), Some(1));")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_ilog2(), Some(1));")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log2(self) -> Option<u32> {
+        pub const fn checked_ilog2(self) -> Option<u32> {
             if let Some(x) = <$NonZeroT>::new(self) {
-                Some(x.log2())
+                Some(x.ilog2())
             } else {
                 None
             }
@@ -855,16 +856,16 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_log10(), Some(1));")]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_ilog10(), Some(1));")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log10(self) -> Option<u32> {
+        pub const fn checked_ilog10(self) -> Option<u32> {
             if let Some(x) = <$NonZeroT>::new(self) {
-                Some(x.log10())
+                Some(x.ilog10())
             } else {
                 None
             }
@@ -933,10 +934,12 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        pub const unsafe fn unchecked_shl(self, rhs: Self) -> Self {
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shl`.
-            unsafe { intrinsics::unchecked_shl(self, rhs) }
+            // Any legal shift amount is losslessly representable in the self type.
+            unsafe { intrinsics::unchecked_shl(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None`
@@ -979,10 +982,12 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        pub const unsafe fn unchecked_shr(self, rhs: Self) -> Self {
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shr`.
-            unsafe { intrinsics::unchecked_shr(self, rhs) }
+            // Any legal shift amount is losslessly representable in the self type.
+            unsafe { intrinsics::unchecked_shr(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
         }
 
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
@@ -1021,7 +1026,7 @@ macro_rules! uint_impl {
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
 
-            Some(try_opt!(acc.checked_mul(base)))
+            acc.checked_mul(base)
         }
 
         /// Saturating integer addition. Computes `self + rhs`, saturating at
@@ -1052,13 +1057,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_signed(2), 3);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_signed(-2), 0);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).saturating_add_signed(4), ", stringify!($SelfT), "::MAX);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1193,13 +1197,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_add_signed(2), 3);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_add_signed(-2), ", stringify!($SelfT), "::MAX);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).wrapping_add_signed(4), 1);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1360,12 +1363,11 @@ macro_rules! uint_impl {
         ///
         /// Basic usage:
         ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `i8` is used here.
-        ///
         /// ```
-        /// assert_eq!(100i8.wrapping_neg(), -100);
-        /// assert_eq!((-128i8).wrapping_neg(), -128);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".wrapping_neg(), 0);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_neg(), 1);")]
+        #[doc = concat!("assert_eq!(13_", stringify!($SelfT), ".wrapping_neg(), (!13) + 1);")]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_neg(), !(42 - 1));")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
@@ -1400,11 +1402,12 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[rustc_allow_const_fn_unstable(const_inherent_unchecked_arith)]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
             unsafe {
-                intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
+                self.unchecked_shl(rhs & (Self::BITS - 1))
             }
         }
 
@@ -1432,11 +1435,12 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[rustc_allow_const_fn_unstable(const_inherent_unchecked_arith)]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
             unsafe {
-                intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
+                self.unchecked_shr(rhs & (Self::BITS - 1))
             }
         }
 
@@ -1489,7 +1493,6 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));")]
         /// ```
@@ -1503,37 +1506,42 @@ macro_rules! uint_impl {
             (a as Self, b)
         }
 
-        /// Calculates `self + rhs + carry` without the ability to overflow.
+        /// Calculates `self` + `rhs` + `carry` and returns a tuple containing
+        /// the sum and the output carry.
         ///
-        /// Performs "ternary addition" which takes in an extra bit to add, and may return an
-        /// additional bit of overflow. This allows for chaining together multiple additions
-        /// to create "big integers" which represent larger values.
+        /// Performs "ternary addition" of two integer operands and a carry-in
+        /// bit, and returns an output integer and a carry-out bit. This allows
+        /// chaining together multiple additions to create a wider addition, and
+        /// can be useful for bignum addition.
         ///
         #[doc = concat!("This can be thought of as a ", stringify!($BITS), "-bit \"full adder\", in the electronics sense.")]
         ///
+        /// If the input carry is false, this method is equivalent to
+        /// [`overflowing_add`](Self::overflowing_add), and the output carry is
+        /// equal to the overflow flag. Note that although carry and overflow
+        /// flags are similar for unsigned integers, they are different for
+        /// signed integers.
+        ///
         /// # Examples
         ///
-        /// Basic usage
-        ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, false), (7, false));")]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, true), (8, false));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), (0, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(0, true), (0, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, true), (1, true));")]
-        #[doc = concat!("assert_eq!(",
-            stringify!($SelfT), "::MAX.carrying_add(", stringify!($SelfT), "::MAX, true), ",
-            "(", stringify!($SelfT), "::MAX, true));"
-        )]
-        /// ```
         ///
-        /// If `carry` is false, this method is equivalent to [`overflowing_add`](Self::overflowing_add):
+        #[doc = concat!("//    3  MAX    (a = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
+        #[doc = concat!("// +  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
+        /// // ---------
+        #[doc = concat!("//    9    6    (sum = 9 × 2^", stringify!($BITS), " + 6)")]
         ///
-        /// ```
-        /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".carrying_add(2, false), 5_", stringify!($SelfT), ".overflowing_add(2));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), ", stringify!($SelfT), "::MAX.overflowing_add(1));")]
+        #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (3, ", stringify!($SelfT), "::MAX);")]
+        #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (5, 7);")]
+        /// let carry0 = false;
+        ///
+        /// let (sum0, carry1) = a0.carrying_add(b0, carry0);
+        /// assert_eq!(carry1, true);
+        /// let (sum1, carry2) = a1.carrying_add(b1, carry1);
+        /// assert_eq!(carry2, false);
+        ///
+        /// assert_eq!((sum1, sum0), (9, 6));
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
@@ -1559,13 +1567,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_signed(2), (3, false));")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_signed(-2), (", stringify!($SelfT), "::MAX, true));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_add_signed(4), (1, true));")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1585,7 +1592,6 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));")]
         /// ```
@@ -1599,22 +1605,35 @@ macro_rules! uint_impl {
             (a as Self, b)
         }
 
-        /// Calculates `self - rhs - borrow` without the ability to overflow.
+        /// Calculates `self` &minus; `rhs` &minus; `borrow` and returns a tuple
+        /// containing the difference and the output borrow.
         ///
-        /// Performs "ternary subtraction" which takes in an extra bit to subtract, and may return
-        /// an additional bit of overflow. This allows for chaining together multiple subtractions
-        /// to create "big integers" which represent larger values.
+        /// Performs "ternary subtraction" by subtracting both an integer
+        /// operand and a borrow-in bit from `self`, and returns an output
+        /// integer and a borrow-out bit. This allows chaining together multiple
+        /// subtractions to create a wider subtraction, and can be useful for
+        /// bignum subtraction.
         ///
         /// # Examples
         ///
-        /// Basic usage
-        ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, false), (3, false));")]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, true), (2, false));")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, false), (", stringify!($SelfT), "::MAX, true));")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, true), (", stringify!($SelfT), "::MAX - 1, true));")]
+        ///
+        #[doc = concat!("//    9    6    (a = 9 × 2^", stringify!($BITS), " + 6)")]
+        #[doc = concat!("// -  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
+        /// // ---------
+        #[doc = concat!("//    3  MAX    (diff = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
+        ///
+        #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (9, 6);")]
+        #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (5, 7);")]
+        /// let borrow0 = false;
+        ///
+        /// let (diff0, borrow1) = a0.borrowing_sub(b0, borrow0);
+        /// assert_eq!(borrow1, true);
+        /// let (diff1, borrow2) = a1.borrowing_sub(b1, borrow1);
+        /// assert_eq!(borrow2, false);
+        ///
+        #[doc = concat!("assert_eq!((diff1, diff0), (3, ", stringify!($SelfT), "::MAX));")]
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
@@ -1845,7 +1864,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
-            (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
+            (self.wrapping_shl(rhs), rhs >= Self::BITS)
         }
 
         /// Shifts self right by `rhs` bits.
@@ -1870,7 +1889,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
-            (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
+            (self.wrapping_shr(rhs), rhs >= Self::BITS)
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.

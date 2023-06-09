@@ -19,14 +19,16 @@ pub macro panic_2015 {
         $crate::rt::begin_panic("explicit panic")
     }),
     ($msg:expr $(,)?) => ({
-        $crate::rt::begin_panic($msg)
+        $crate::rt::begin_panic($msg);
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
-        $crate::rt::panic_display(&$arg)
+        $crate::rt::panic_display(&$arg);
     }),
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
+        // Semicolon to prevent temporaries inside the formatting machinery from
+        // being considered alive in the caller after the panic_fmt call.
+        $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+));
     }),
 }
 
@@ -113,6 +115,9 @@ where
 /// Rust is not always implemented via unwinding, but can be implemented by
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
+///
+/// Note that if a custom panic hook has been set, it will be invoked before
+/// the panic is caught, before unwinding.
 ///
 /// Also note that unwinding into Rust code with a foreign exception (e.g.
 /// an exception thrown from C++ code) is undefined behavior.
@@ -295,23 +300,21 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         return Some(style);
     }
 
-    // Setting environment variables for Fuchsia components isn't a standard
-    // or easily supported workflow. For now, display backtraces by default.
-    let format = if cfg!(target_os = "fuchsia") {
-        BacktraceStyle::Full
-    } else {
-        crate::env::var_os("RUST_BACKTRACE")
-            .map(|x| {
-                if &x == "0" {
-                    BacktraceStyle::Off
-                } else if &x == "full" {
-                    BacktraceStyle::Full
-                } else {
-                    BacktraceStyle::Short
-                }
-            })
-            .unwrap_or(BacktraceStyle::Off)
-    };
+    let format = crate::env::var_os("RUST_BACKTRACE")
+        .map(|x| {
+            if &x == "0" {
+                BacktraceStyle::Off
+            } else if &x == "full" {
+                BacktraceStyle::Full
+            } else {
+                BacktraceStyle::Short
+            }
+        })
+        .unwrap_or(if crate::sys::FULL_BACKTRACE_DEFAULT {
+            BacktraceStyle::Full
+        } else {
+            BacktraceStyle::Off
+        });
     set_backtrace_style(format);
     Some(format)
 }

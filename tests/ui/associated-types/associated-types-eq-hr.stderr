@@ -1,0 +1,47 @@
+error[E0271]: type mismatch resolving `<UintStruct as TheTrait<&isize>>::A == &isize`
+  --> $DIR/associated-types-eq-hr.rs:87:11
+   |
+LL |     foo::<UintStruct>();
+   |           ^^^^^^^^^^ type mismatch resolving `<UintStruct as TheTrait<&isize>>::A == &isize`
+   |
+note: expected this to be `&isize`
+  --> $DIR/associated-types-eq-hr.rs:26:14
+   |
+LL |     type A = &'a usize;
+   |              ^^^^^^^^^
+   = note: expected reference `&isize`
+              found reference `&usize`
+note: required by a bound in `foo`
+  --> $DIR/associated-types-eq-hr.rs:45:36
+   |
+LL | fn foo<T>()
+   |    --- required by a bound in this function
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x isize>,
+   |                                    ^^^^^^^^^^^^^ required by this bound in `foo`
+
+error[E0271]: type mismatch resolving `<IntStruct as TheTrait<&isize>>::A == &usize`
+  --> $DIR/associated-types-eq-hr.rs:91:11
+   |
+LL |     bar::<IntStruct>();
+   |           ^^^^^^^^^ type mismatch resolving `<IntStruct as TheTrait<&isize>>::A == &usize`
+   |
+note: expected this to be `&usize`
+  --> $DIR/associated-types-eq-hr.rs:14:14
+   |
+LL |     type A = &'a isize;
+   |              ^^^^^^^^^
+   = note: expected reference `&usize`
+              found reference `&isize`
+note: required by a bound in `bar`
+  --> $DIR/associated-types-eq-hr.rs:52:36
+   |
+LL | fn bar<T>()
+   |    --- required by a bound in this function
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x usize>,
+   |                                    ^^^^^^^^^^^^^ required by this bound in `bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

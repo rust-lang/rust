@@ -1,0 +1,30 @@
+error[E0603]: struct import `ParseOptions` is private
+  --> $DIR/issue-55884-2.rs:13:17
+   |
+LL | pub use parser::ParseOptions;
+   |                 ^^^^^^^^^^^^ private struct import
+   |
+note: the struct import `ParseOptions` is defined here...
+  --> $DIR/issue-55884-2.rs:10:9
+   |
+LL |     use ParseOptions;
+   |         ^^^^^^^^^^^^
+note: ...and refers to the struct import `ParseOptions` which is defined here...
+  --> $DIR/issue-55884-2.rs:13:9
+   |
+LL | pub use parser::ParseOptions;
+   |         ^^^^^^^^^^^^^^^^^^^^ consider importing it directly
+note: ...and refers to the struct import `ParseOptions` which is defined here...
+  --> $DIR/issue-55884-2.rs:6:13
+   |
+LL |     pub use options::*;
+   |             ^^^^^^^^^^ consider importing it directly
+note: ...and refers to the struct `ParseOptions` which is defined here
+  --> $DIR/issue-55884-2.rs:2:5
+   |
+LL |     pub struct ParseOptions {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ consider importing it directly
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

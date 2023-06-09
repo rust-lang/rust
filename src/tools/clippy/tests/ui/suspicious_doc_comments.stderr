@@ -1,0 +1,114 @@
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:6:1
+   |
+LL | ///! Fake module documentation.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::suspicious-doc-comments` implied by `-D warnings`
+help: use an inner doc comment to document the parent module or crate
+   |
+LL | //! Fake module documentation.
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:10:5
+   |
+LL |     ///! This module contains useful functions.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL |     //! This module contains useful functions.
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:22:5
+   |
+LL | /     /**! This module contains useful functions.
+LL | |      */
+   | |_______^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL ~     /*! This module contains useful functions.
+LL +      */
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:36:5
+   |
+LL | /     ///! This module
+LL | |     ///! contains
+LL | |     ///! useful functions.
+   | |__________________________^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL ~     //! This module
+LL ~     //! contains
+LL ~     //! useful functions.
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:44:5
+   |
+LL | /     ///! a
+LL | |     ///! b
+   | |__________^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL ~     //! a
+LL ~     //! b
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:52:5
+   |
+LL |     ///! a
+   |     ^^^^^^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL |     //! a
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:58:5
+   |
+LL | /     ///! a
+LL | |
+LL | |     ///! b
+   | |__________^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL ~     //! a
+LL | 
+LL ~     //! b
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:70:5
+   |
+LL |     ///! Very cool macro
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL |     //! Very cool macro
+   |
+
+error: this is an outer doc comment and does not apply to the parent module or crate
+  --> $DIR/suspicious_doc_comments.rs:77:5
+   |
+LL |     ///! Huh.
+   |     ^^^^^^^^^
+   |
+help: use an inner doc comment to document the parent module or crate
+   |
+LL |     //! Huh.
+   |
+
+error: aborting due to 9 previous errors
+

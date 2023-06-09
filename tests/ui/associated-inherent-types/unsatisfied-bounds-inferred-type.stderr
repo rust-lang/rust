@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/unsatisfied-bounds-inferred-type.rs:11:12
+   |
+LL |     let _: S<_>::T = String::new();
+   |            ^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+note: required by a bound in `S<T>::T`
+  --> $DIR/unsatisfied-bounds-inferred-type.rs:6:9
+   |
+LL | impl<T: Copy> S<T> {
+   |         ^^^^ required by this bound in `S<T>::T`
+LL |     type T = T;
+   |          - required by a bound in this associated type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,6 +1,7 @@
-// run-rustfix
+//@run-rustfix
+
 #![warn(clippy::redundant_field_names)]
-#![allow(clippy::no_effect, dead_code, unused_variables)]
+#![allow(clippy::extra_unused_type_parameters, clippy::no_effect, dead_code, unused_variables)]
 
 #[macro_use]
 extern crate derive_new;
@@ -68,4 +69,16 @@ fn issue_3476() {
     }
 
     S { foo: foo::<i32> };
+}
+
+#[clippy::msrv = "1.16"]
+fn msrv_1_16() {
+    let start = 0;
+    let _ = RangeFrom { start: start };
+}
+
+#[clippy::msrv = "1.17"]
+fn msrv_1_17() {
+    let start = 0;
+    let _ = RangeFrom { start };
 }

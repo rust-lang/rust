@@ -110,6 +110,7 @@ pub(crate) struct CallData {
     pub(crate) url: String,
     pub(crate) display_name: String,
     pub(crate) edition: Edition,
+    pub(crate) is_bin: bool,
 }
 
 pub(crate) type FnCallLocations = FxHashMap<PathBuf, CallData>;
@@ -122,6 +123,7 @@ struct FindCalls<'a, 'tcx> {
     cx: Context<'tcx>,
     target_crates: Vec<CrateNum>,
     calls: &'a mut AllCallLocations,
+    bin_crate: bool,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindCalls<'a, 'tcx>
@@ -143,15 +145,14 @@ where
         // then we need to exit before calling typeck (which will panic). See
         // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
         let hir = tcx.hir();
-        let owner = hir.local_def_id_to_hir_id(ex.hir_id.owner);
-        if hir.maybe_body_owned_by(owner).is_none() {
+        if hir.maybe_body_owned_by(ex.hir_id.owner.def_id).is_none() {
             return;
         }
 
         // Get type of function if expression is a function call
         let (ty, call_span, ident_span) = match ex.kind {
             hir::ExprKind::Call(f, _) => {
-                let types = tcx.typeck(ex.hir_id.owner);
+                let types = tcx.typeck(ex.hir_id.owner.def_id);
 
                 if let Some(ty) = types.node_type_opt(f.hir_id) {
                     (ty, ex.span, f.span)
@@ -160,15 +161,15 @@ where
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(path, _, call_span) => {
-                let types = tcx.typeck(ex.hir_id.owner);
+            hir::ExprKind::MethodCall(path, _, _, call_span) => {
+                let types = tcx.typeck(ex.hir_id.owner.def_id);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
                 };
 
                 let ident_span = path.ident.span;
-                (tcx.type_of(def_id), call_span, ident_span)
+                (tcx.type_of(def_id).subst_identity(), call_span, ident_span)
             }
             _ => {
                 return;
@@ -184,9 +185,8 @@ where
 
         // If the enclosing item has a span coming from a proc macro, then we also don't want to include
         // the example.
-        let enclosing_item_span = tcx
-            .hir()
-            .span_with_body(tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(ex.hir_id)));
+        let enclosing_item_span =
+            tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id).into());
         if enclosing_item_span.from_expansion() {
             trace!("Rejecting expr ({call_span:?}) from macro item: {enclosing_item_span:?}");
             return;
@@ -247,7 +247,9 @@ where
                 let mk_call_data = || {
                     let display_name = file_path.display().to_string();
                     let edition = call_span.edition();
-                    CallData { locations: Vec::new(), url, display_name, edition }
+                    let is_bin = self.bin_crate;
+
+                    CallData { locations: Vec::new(), url, display_name, edition, is_bin }
                 };
 
                 let fn_key = tcx.def_path_hash(*def_id);
@@ -276,6 +278,7 @@ pub(crate) fn run(
     cache: formats::cache::Cache,
     tcx: TyCtxt<'_>,
     options: ScrapeExamplesOptions,
+    bin_crate: bool,
 ) -> interface::Result<()> {
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
@@ -283,7 +286,7 @@ pub(crate) fn run(
         let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
 
         // Collect CrateIds corresponding to provided target crates
-        // If two different versions of the crate in the dependency tree, then examples will be collcted from both.
+        // If two different versions of the crate in the dependency tree, then examples will be collected from both.
         let all_crates = tcx
             .crates(())
             .iter()
@@ -302,8 +305,15 @@ pub(crate) fn run(
 
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
-        let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
+        let mut finder =
+            FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates, bin_crate };
         tcx.hir().visit_all_item_likes_in_crate(&mut finder);
+
+        // The visitor might have found a type error, which we need to
+        // promote to a fatal error
+        if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+            return Err(String::from("Compilation failed, aborting rustdoc"));
+        }
 
         // Sort call locations within a given file in document order
         for fn_calls in calls.values_mut() {
@@ -321,7 +331,7 @@ pub(crate) fn run(
     };
 
     if let Err(e) = inner() {
-        tcx.sess.fatal(&e);
+        tcx.sess.fatal(e);
     }
 
     Ok(())
@@ -348,7 +358,7 @@ pub(crate) fn load_call_locations(
     };
 
     inner().map_err(|e: String| {
-        diag.err(&format!("failed to load examples: {}", e));
+        diag.err(format!("failed to load examples: {}", e));
         1
     })
 }

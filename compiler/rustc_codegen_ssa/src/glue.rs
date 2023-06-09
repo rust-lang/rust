@@ -15,7 +15,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     let layout = bx.layout_of(t);
     debug!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}", t, info, layout);
-    if !layout.is_unsized() {
+    if layout.is_sized() {
         let size = bx.const_usize(layout.size.bytes());
         let align = bx.const_usize(layout.align.abi.bytes());
         return (size, align);
@@ -29,6 +29,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let align = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
                 .get_usize(bx, vtable);
 
+            // Size is always <= isize::MAX.
+            let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
+            bx.range_metadata(size, WrappingRange { start: 0, end: size_bound });
             // Alignment is always nonzero.
             bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
 
@@ -43,7 +46,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // NOTE: ideally, we want the effects of both `unchecked_smul` and `unchecked_umul`
                 // (resulting in `mul nsw nuw` in LLVM IR), since we know that the multiplication
                 // cannot signed wrap, and that both operands are non-negative. But at the time of writing,
-                // `BuilderMethods` can't do this, and it doesn't seem to enable any further optimizations.
+                // the `LLVM-C` binding can't do this, and it doesn't seem to enable any further optimizations.
                 bx.unchecked_smul(info.unwrap(), bx.const_usize(unit.size.bytes())),
                 bx.const_usize(unit.align.abi.bytes()),
             )

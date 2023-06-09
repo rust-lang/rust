@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `(): Foo<N>` is not satisfied
+  --> $DIR/exhaustive-value.rs:262:5
+   |
+LL |     <() as Foo<N>>::test()
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Foo<N>` is not implemented for `()`
+   |
+   = help: the following other types implement trait `Foo<N>`:
+             <() as Foo<0>>
+             <() as Foo<100>>
+             <() as Foo<101>>
+             <() as Foo<102>>
+             <() as Foo<103>>
+             <() as Foo<104>>
+             <() as Foo<105>>
+             <() as Foo<106>>
+           and 248 others
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

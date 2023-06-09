@@ -1,11 +1,8 @@
 // FIXME: Ideally these suggestions would be fixed via rustfix. Blocked by rust-lang/rust#53934
-// // run-rustfix
-
+//
 #![warn(clippy::significant_drop_in_scrutinee)]
-#![allow(clippy::single_match)]
-#![allow(clippy::match_single_binding)]
-#![allow(unused_assignments)]
-#![allow(dead_code)]
+#![allow(dead_code, unused_assignments)]
+#![allow(clippy::match_single_binding, clippy::single_match, clippy::uninlined_format_args)]
 
 use std::num::ParseIntError;
 use std::ops::Deref;
@@ -618,6 +615,13 @@ fn should_trigger_lint_without_significant_drop_in_arm() {
         true => do_bar(&mutex),
         false => {},
     };
+}
+
+fn should_not_trigger_on_significant_iterator_drop() {
+    let lines = std::io::stdin().lines();
+    for line in lines {
+        println!("foo: {}", line.unwrap());
+    }
 }
 
 fn main() {}

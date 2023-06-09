@@ -5,10 +5,11 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
 
+use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
 
 const ID_SEPARATOR: &str = ",";
@@ -37,8 +38,7 @@ impl CoverageGraph {
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        let bcbs_len = bcbs.len();
-        let mut seen = IndexVec::from_elem_n(false, bcbs_len);
+        let mut seen = IndexVec::from_elem(false, &bcbs);
         let successors = IndexVec::from_fn_n(
             |bcb| {
                 for b in seen.iter_mut() {
@@ -60,7 +60,7 @@ impl CoverageGraph {
             bcbs.len(),
         );
 
-        let mut predecessors = IndexVec::from_elem_n(Vec::new(), bcbs.len());
+        let mut predecessors = IndexVec::from_elem(Vec::new(), &bcbs);
         for (bcb, bcb_successors) in successors.iter_enumerated() {
             for &successor in bcb_successors {
                 predecessors[successor].push(bcb);
@@ -112,7 +112,7 @@ impl CoverageGraph {
                         if predecessors.len() > 1 {
                             "predecessors.len() > 1".to_owned()
                         } else {
-                            format!("bb {} is not in precessors: {:?}", bb.index(), predecessors)
+                            format!("bb {} is not in predecessors: {:?}", bb.index(), predecessors)
                         }
                     );
                 }
@@ -123,7 +123,7 @@ impl CoverageGraph {
 
             match term.kind {
                 TerminatorKind::Return { .. }
-                | TerminatorKind::Abort
+                | TerminatorKind::Terminate
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::SwitchInt { .. } => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
@@ -137,7 +137,7 @@ impl CoverageGraph {
                     debug!("  because term.kind = {:?}", term.kind);
                     // Note that this condition is based on `TerminatorKind`, even though it
                     // theoretically boils down to `successors().len() != 1`; that is, either zero
-                    // (e.g., `Return`, `Abort`) or multiple successors (e.g., `SwitchInt`), but
+                    // (e.g., `Return`, `Terminate`) or multiple successors (e.g., `SwitchInt`), but
                     // since the BCB CFG ignores things like unwind branches (which exist in the
                     // `Terminator`s `successors()` list) checking the number of successors won't
                     // work.
@@ -156,7 +156,6 @@ impl CoverageGraph {
                 | TerminatorKind::Resume
                 | TerminatorKind::Unreachable
                 | TerminatorKind::Drop { .. }
-                | TerminatorKind::DropAndReplace { .. }
                 | TerminatorKind::Call { .. }
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Assert { .. }
@@ -177,10 +176,10 @@ impl CoverageGraph {
 
     fn add_basic_coverage_block(
         bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
-        bb_to_bcb: &mut IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+        bb_to_bcb: &mut IndexSlice<BasicBlock, Option<BasicCoverageBlock>>,
         basic_blocks: Vec<BasicBlock>,
     ) {
-        let bcb = BasicCoverageBlock::from_usize(bcbs.len());
+        let bcb = bcbs.next_index();
         for &bb in basic_blocks.iter() {
             bb_to_bcb[bb] = Some(bcb);
         }
@@ -209,13 +208,17 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
-    pub fn is_dominated_by(&self, node: BasicCoverageBlock, dom: BasicCoverageBlock) -> bool {
-        self.dominators.as_ref().unwrap().is_dominated_by(node, dom)
+    pub fn dominates(&self, dom: BasicCoverageBlock, node: BasicCoverageBlock) -> bool {
+        self.dominators.as_ref().unwrap().dominates(dom, node)
     }
 
     #[inline(always)]
-    pub fn dominators(&self) -> &Dominators<BasicCoverageBlock> {
-        self.dominators.as_ref().unwrap()
+    pub fn rank_partial_cmp(
+        &self,
+        a: BasicCoverageBlock,
+        b: BasicCoverageBlock,
+    ) -> Option<Ordering> {
+        self.dominators.as_ref().unwrap().rank_partial_cmp(a, b)
     }
 }
 
@@ -282,9 +285,9 @@ impl graph::WithPredecessors for CoverageGraph {
 
 rustc_index::newtype_index! {
     /// A node in the control-flow graph of CoverageGraph.
+    #[debug_format = "bcb{}"]
     pub(super) struct BasicCoverageBlock {
-        DEBUG_FORMAT = "bcb{}",
-        const START_BCB = 0,
+        const START_BCB = 0;
     }
 }
 
@@ -312,7 +315,7 @@ rustc_index::newtype_index! {
 /// to the BCB's primary counter or expression).
 ///
 /// The BCB CFG is critical to simplifying the coverage analysis by ensuring graph path-based
-/// queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
+/// queries (`dominates()`, `predecessors`, `successors`, etc.) have branch (control flow)
 /// significance.
 #[derive(Debug, Clone)]
 pub(super) struct BasicCoverageBlockData {
@@ -538,29 +541,29 @@ impl TraverseCoverageGraphWithLoops {
             "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
             self.context_stack.iter().rev().collect::<Vec<_>>()
         );
-        while let Some(next_bcb) = {
-            // Strip contexts with empty worklists from the top of the stack
-            while self.context_stack.last().map_or(false, |context| context.worklist.is_empty()) {
+
+        while let Some(context) = self.context_stack.last_mut() {
+            if let Some(next_bcb) = context.worklist.pop() {
+                if !self.visited.insert(next_bcb) {
+                    debug!("Already visited: {:?}", next_bcb);
+                    continue;
+                }
+                debug!("Visiting {:?}", next_bcb);
+                if self.backedges[next_bcb].len() > 0 {
+                    debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
+                    self.context_stack.push(TraversalContext {
+                        loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
+                        worklist: Vec::new(),
+                    });
+                }
+                self.extend_worklist(basic_coverage_blocks, next_bcb);
+                return Some(next_bcb);
+            } else {
+                // Strip contexts with empty worklists from the top of the stack
                 self.context_stack.pop();
             }
-            // Pop the next bcb off of the current context_stack. If none, all BCBs were visited.
-            self.context_stack.last_mut().map_or(None, |context| context.worklist.pop())
-        } {
-            if !self.visited.insert(next_bcb) {
-                debug!("Already visited: {:?}", next_bcb);
-                continue;
-            }
-            debug!("Visiting {:?}", next_bcb);
-            if self.backedges[next_bcb].len() > 0 {
-                debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
-                self.context_stack.push(TraversalContext {
-                    loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
-                    worklist: Vec::new(),
-                });
-            }
-            self.extend_worklist(basic_coverage_blocks, next_bcb);
-            return Some(next_bcb);
         }
+
         None
     }
 
@@ -594,7 +597,7 @@ impl TraverseCoverageGraphWithLoops {
                 // branching block would have given an `Expression` (or vice versa).
                 let (some_successor_to_add, some_loop_header) =
                     if let Some((_, loop_header)) = context.loop_backedges {
-                        if basic_coverage_blocks.is_dominated_by(successor, loop_header) {
+                        if basic_coverage_blocks.dominates(loop_header, successor) {
                             (Some(successor), Some(loop_header))
                         } else {
                             (None, None)
@@ -652,29 +655,9 @@ pub(super) fn find_loop_backedges(
     let mut backedges = IndexVec::from_elem_n(Vec::<BasicCoverageBlock>::new(), num_bcbs);
 
     // Identify loops by their backedges.
-    //
-    // The computational complexity is bounded by: n(s) x d where `n` is the number of
-    // `BasicCoverageBlock` nodes (the simplified/reduced representation of the CFG derived from the
-    // MIR); `s` is the average number of successors per node (which is most likely less than 2, and
-    // independent of the size of the function, so it can be treated as a constant);
-    // and `d` is the average number of dominators per node.
-    //
-    // The average number of dominators depends on the size and complexity of the function, and
-    // nodes near the start of the function's control flow graph typically have less dominators
-    // than nodes near the end of the CFG. Without doing a detailed mathematical analysis, I
-    // think the resulting complexity has the characteristics of O(n log n).
-    //
-    // The overall complexity appears to be comparable to many other MIR transform algorithms, and I
-    // don't expect that this function is creating a performance hot spot, but if this becomes an
-    // issue, there may be ways to optimize the `is_dominated_by` algorithm (as indicated by an
-    // existing `FIXME` comment in that code), or possibly ways to optimize it's usage here, perhaps
-    // by keeping track of results for visited `BasicCoverageBlock`s if they can be used to short
-    // circuit downstream `is_dominated_by` checks.
-    //
-    // For now, that kind of optimization seems unnecessarily complicated.
     for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
         for &successor in &basic_coverage_blocks.successors[bcb] {
-            if basic_coverage_blocks.is_dominated_by(bcb, successor) {
+            if basic_coverage_blocks.dominates(successor, bcb) {
                 let loop_header = successor;
                 let backedge_from_bcb = bcb;
                 debug!(
@@ -713,7 +696,7 @@ impl<
 
         ShortCircuitPreorder {
             body,
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             worklist,
             filtered_successors,
         }
@@ -747,7 +730,7 @@ impl<
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.body.basic_blocks().len() - self.visited.count();
+        let size = self.body.basic_blocks.len() - self.visited.count();
         (size, Some(size))
     }
 }

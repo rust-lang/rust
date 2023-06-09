@@ -75,12 +75,13 @@ use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use ucd_parse::Codepoints;
 
+mod cascading_map;
 mod case_mapping;
 mod raw_emitter;
 mod skiplist;
 mod unicode_download;
 
-use raw_emitter::{emit_codepoints, RawEmitter};
+use raw_emitter::{emit_codepoints, emit_whitespace, RawEmitter};
 
 static PROPERTIES: &[&str] = &[
     "Alphabetic",
@@ -220,7 +221,7 @@ fn main() {
     let write_location = std::env::args().nth(1).unwrap_or_else(|| {
         eprintln!("Must provide path to write unicode tables to");
         eprintln!(
-            "e.g. {} library/core/unicode/unicode_data.rs",
+            "e.g. {} library/core/src/unicode/unicode_data.rs",
             std::env::args().next().unwrap_or_default()
         );
         std::process::exit(1);
@@ -241,8 +242,13 @@ fn main() {
     let mut modules = Vec::new();
     for (property, ranges) in ranges_by_property {
         let datapoints = ranges.iter().map(|r| r.end - r.start).sum::<u32>();
+
         let mut emitter = RawEmitter::new();
-        emit_codepoints(&mut emitter, &ranges);
+        if property == &"White_Space" {
+            emit_whitespace(&mut emitter, &ranges);
+        } else {
+            emit_codepoints(&mut emitter, &ranges);
+        }
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
         println!(

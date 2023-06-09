@@ -4,9 +4,9 @@ error: redundant pattern matching, consider using `is_ok()`
 LL |     if let Ok(_) = m.lock() {}
    |     -------^^^^^----------- help: try this: `if m.lock().is_ok()`
    |
-   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
    = note: this will change drop order of the result, as well as all temporaries
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching, consider using `is_err()`
   --> $DIR/redundant_pattern_matching_drop_order.rs:13:12

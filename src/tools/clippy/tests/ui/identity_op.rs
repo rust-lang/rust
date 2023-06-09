@@ -1,13 +1,13 @@
-// run-rustfix
-
+//@run-rustfix
 #![warn(clippy::identity_op)]
+#![allow(unused)]
 #![allow(
     clippy::eq_op,
     clippy::no_effect,
     clippy::unnecessary_operation,
     clippy::op_ref,
     clippy::double_parens,
-    unused
+    clippy::uninlined_format_args
 )]
 
 use std::fmt::Write as _;
@@ -68,7 +68,7 @@ fn main() {
     &x >> 0;
     x >> &0;
 
-    let mut a = A("".into());
+    let mut a = A(String::new());
     let b = a << 0; // no error: non-integer
 
     1 * Meter; // no error: non-integer
@@ -112,6 +112,10 @@ fn main() {
     2 * (0 + { a });
     1 * ({ a } + 4);
     1 * 1;
+
+    // Issue #9904
+    let x = 0i32;
+    let _: i32 = &x + 0;
 }
 
 pub fn decide(a: bool, b: bool) -> u32 {

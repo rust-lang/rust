@@ -1,0 +1,24 @@
+[package]
+name = "parser"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+drop_bomb = "0.1.5"
+rustc_lexer.workspace = true
+
+limit.workspace = true
+
+[dev-dependencies]
+expect-test = "1.4.0"
+
+stdx.workspace = true
+sourcegen.workspace = true

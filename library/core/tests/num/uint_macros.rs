@@ -230,6 +230,54 @@ macro_rules! uint_module {
                 assert_eq!((1 as $T).checked_next_multiple_of(0), None);
                 assert_eq!(MAX.checked_next_multiple_of(2), None);
             }
+
+            #[test]
+            fn test_carrying_add() {
+                assert_eq!($T::MAX.carrying_add(1, false), (0, true));
+                assert_eq!($T::MAX.carrying_add(0, true), (0, true));
+                assert_eq!($T::MAX.carrying_add(1, true), (1, true));
+
+                assert_eq!($T::MIN.carrying_add($T::MAX, false), ($T::MAX, false));
+                assert_eq!($T::MIN.carrying_add(0, true), (1, false));
+                assert_eq!($T::MIN.carrying_add($T::MAX, true), (0, true));
+            }
+
+            #[test]
+            fn test_borrowing_sub() {
+                assert_eq!($T::MIN.borrowing_sub(1, false), ($T::MAX, true));
+                assert_eq!($T::MIN.borrowing_sub(0, true), ($T::MAX, true));
+                assert_eq!($T::MIN.borrowing_sub(1, true), ($T::MAX - 1, true));
+
+                assert_eq!($T::MAX.borrowing_sub($T::MAX, false), (0, false));
+                assert_eq!($T::MAX.borrowing_sub(0, true), ($T::MAX - 1, false));
+                assert_eq!($T::MAX.borrowing_sub($T::MAX, true), ($T::MAX, true));
+            }
+
+            #[test]
+            fn test_midpoint() {
+                assert_eq!(<$T>::midpoint(1, 3), 2);
+                assert_eq!(<$T>::midpoint(3, 1), 2);
+
+                assert_eq!(<$T>::midpoint(0, 0), 0);
+                assert_eq!(<$T>::midpoint(0, 2), 1);
+                assert_eq!(<$T>::midpoint(2, 0), 1);
+                assert_eq!(<$T>::midpoint(2, 2), 2);
+
+                assert_eq!(<$T>::midpoint(1, 4), 2);
+                assert_eq!(<$T>::midpoint(4, 1), 2);
+                assert_eq!(<$T>::midpoint(3, 4), 3);
+                assert_eq!(<$T>::midpoint(4, 3), 3);
+
+                assert_eq!(<$T>::midpoint(<$T>::MIN, <$T>::MAX), (<$T>::MAX - <$T>::MIN) / 2);
+                assert_eq!(<$T>::midpoint(<$T>::MAX, <$T>::MIN), (<$T>::MAX - <$T>::MIN) / 2);
+                assert_eq!(<$T>::midpoint(<$T>::MIN, <$T>::MIN), <$T>::MIN);
+                assert_eq!(<$T>::midpoint(<$T>::MAX, <$T>::MAX), <$T>::MAX);
+
+                assert_eq!(<$T>::midpoint(<$T>::MIN, 6), <$T>::MIN / 2 + 3);
+                assert_eq!(<$T>::midpoint(6, <$T>::MIN), <$T>::MIN / 2 + 3);
+                assert_eq!(<$T>::midpoint(<$T>::MAX, 6), (<$T>::MAX - <$T>::MIN) / 2 + 3);
+                assert_eq!(<$T>::midpoint(6, <$T>::MAX), (<$T>::MAX - <$T>::MIN) / 2 + 3);
+            }
         }
     };
 }

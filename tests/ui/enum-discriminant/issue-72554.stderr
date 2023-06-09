@@ -1,0 +1,17 @@
+error[E0072]: recursive type `ElemDerived` has infinite size
+  --> $DIR/issue-72554.rs:4:1
+   |
+LL | pub enum ElemDerived {
+   | ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     A(ElemDerived)
+   |       ----------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     A(Box<ElemDerived>)
+   |       ++++           +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

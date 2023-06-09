@@ -1,0 +1,55 @@
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-break-thru-item.rs:9:17
+   |
+LL | /             if true {
+LL | |                 Err(1)
+   | |                 ^^^^^^ expected `()`, found `Result<_, {integer}>`
+LL | |
+LL | |             }
+   | |_____________- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<_, {integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-break-thru-item.rs:22:17
+   |
+LL | /             if true {
+LL | |                 Err(1)
+   | |                 ^^^^^^ expected `()`, found `Result<_, {integer}>`
+LL | |
+LL | |             }
+   | |_____________- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<_, {integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-break-thru-item.rs:35:17
+   |
+LL | /             if true {
+LL | |                 Err(1)
+   | |                 ^^^^^^ expected `()`, found `Result<_, {integer}>`
+LL | |
+LL | |             }
+   | |_____________- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<_, {integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-break-thru-item.rs:47:17
+   |
+LL | /             if true {
+LL | |                 Err(1)
+   | |                 ^^^^^^ expected `()`, found `Result<_, {integer}>`
+LL | |
+LL | |             }
+   | |_____________- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<_, {integer}>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

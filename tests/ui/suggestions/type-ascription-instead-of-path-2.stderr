@@ -1,0 +1,14 @@
+error: expected one of `(`, `.`, `::`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/type-ascription-instead-of-path-2.rs:3:44
+   |
+LL |     let _ = vec![Ok(2)].into_iter().collect:<Result<Vec<_>,_>>()?;
+   |                                            ^ expected one of 7 possible tokens
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+help: maybe write a path separator here
+   |
+LL |     let _ = vec![Ok(2)].into_iter().collect::<Result<Vec<_>,_>>()?;
+   |                                            ~~
+
+error: aborting due to previous error
+

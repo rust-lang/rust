@@ -1,0 +1,18 @@
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/do-not-suggest-adding-move-when-closure-is-already-marked-as-move.rs:6:9
+   |
+LL |     let mut vec: Vec<i32> = Vec::new();
+   |         ------- variable defined here
+LL |     let closure = move || {
+   |                         - inferred to be a `FnMut` closure
+LL |         vec.clear();
+   |         --- variable captured here
+LL |         let mut iter = vec.iter();
+LL |         move || { iter.next() }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ returns a closure that contains a reference to a captured variable, which then escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+
+error: aborting due to previous error
+

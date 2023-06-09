@@ -7,19 +7,22 @@
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(iter_intersperse)]
-#![feature(let_else)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
-use rustc_middle::ty::query::Providers;
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
+use rustc_middle::query::Providers;
 
 mod check_attr;
 mod check_const;
@@ -27,6 +30,7 @@ pub mod dead;
 mod debugger_visualizer;
 mod diagnostic_items;
 pub mod entry;
+mod errors;
 pub mod hir_id_validator;
 pub mod hir_stats;
 mod lang_items;
@@ -39,6 +43,8 @@ mod reachable;
 pub mod stability;
 mod upvars;
 mod weak_lang_items;
+
+fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);

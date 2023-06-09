@@ -11,3 +11,8 @@
 #![allow(dead_code)]
 
 pub mod alloc;
+pub mod small_c_string;
+pub mod thread_local;
+
+#[cfg(test)]
+mod tests;

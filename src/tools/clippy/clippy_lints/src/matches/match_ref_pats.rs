@@ -1,13 +1,14 @@
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
 use core::iter::once;
+use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
 use rustc_lint::LateContext;
 
 use super::MATCH_REF_PATS;
 
-pub(crate) fn check<'a, 'b, I>(cx: &LateContext<'_>, ex: &Expr<'_>, pats: I, expr: &Expr<'_>)
+pub(crate) fn check<'a, 'b, I>(cx: &LateContext<'_>, scrutinee: &Expr<'_>, pats: I, expr: &Expr<'_>)
 where
     'b: 'a,
     I: Clone + Iterator<Item = &'a Pat<'b>>,
@@ -17,13 +18,28 @@ where
     }
 
     let (first_sugg, msg, title);
-    let span = ex.span.source_callsite();
-    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = ex.kind {
-        first_sugg = once((span, Sugg::hir_with_macro_callsite(cx, inner, "..").to_string()));
+    let ctxt = expr.span.ctxt();
+    let mut app = Applicability::Unspecified;
+    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = scrutinee.kind {
+        if scrutinee.span.ctxt() != ctxt {
+            return;
+        }
+        first_sugg = once((
+            scrutinee.span,
+            Sugg::hir_with_context(cx, inner, ctxt, "..", &mut app).to_string(),
+        ));
         msg = "try";
         title = "you don't need to add `&` to both the expression and the patterns";
     } else {
-        first_sugg = once((span, Sugg::hir_with_macro_callsite(cx, ex, "..").deref().to_string()));
+        let Some(span) = walk_span_to_context(scrutinee.span, ctxt) else {
+            return;
+        };
+        first_sugg = once((
+            span,
+            Sugg::hir_with_context(cx, scrutinee, ctxt, "..", &mut app)
+                .deref()
+                .to_string(),
+        ));
         msg = "instead of prefixing all patterns with `&`, you can dereference the expression";
         title = "you don't need to add `&` to all patterns";
     }

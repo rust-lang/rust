@@ -1,0 +1,11 @@
+error[E0369]: cannot add `{integer}` to `Box<isize>`
+  --> $DIR/issue-14915.rs:4:22
+   |
+LL |     println!("{}", x + 1);
+   |                    - ^ - {integer}
+   |                    |
+   |                    Box<isize>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

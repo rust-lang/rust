@@ -12,12 +12,15 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_hir = { path = "../rustc_hir" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_index = { path = "../rustc_index" }
 rustc_session = { path = "../rustc_session" }
 rustc_target = { path = "../rustc_target" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_feature = { path = "../rustc_feature" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }

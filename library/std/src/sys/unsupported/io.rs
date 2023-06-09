@@ -30,7 +30,7 @@ impl<'a> IoSliceMut<'a> {
 
     #[inline]
     pub fn advance(&mut self, n: usize) {
-        let slice = mem::replace(&mut self.0, &mut []);
+        let slice = mem::take(&mut self.0);
         let (_, remaining) = slice.split_at_mut(n);
         self.0 = remaining;
     }
@@ -44,4 +44,8 @@ impl<'a> IoSliceMut<'a> {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         self.0
     }
+}
+
+pub fn is_terminal<T>(_: &T) -> bool {
+    false
 }

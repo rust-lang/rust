@@ -1,0 +1,61 @@
+error: generator cannot be sent between threads safely
+  --> $DIR/partial-drop.rs:17:17
+   |
+LL |       assert_send(|| {
+   |  _________________^
+LL | |
+LL | |         let guard = Bar { foo: Foo, x: 42 };
+LL | |         drop(guard.foo);
+LL | |         yield;
+LL | |     });
+   | |_____^ generator is not `Send`
+   |
+   = help: within `[generator@$DIR/partial-drop.rs:17:17: 17:19]`, the trait `Send` is not implemented for `Foo`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/partial-drop.rs:21:9
+   |
+LL |         let guard = Bar { foo: Foo, x: 42 };
+   |             ----- has type `Bar` which is not `Send`
+LL |         drop(guard.foo);
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `guard` maybe used later
+LL |     });
+   |     - `guard` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/partial-drop.rs:33:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: generator cannot be sent between threads safely
+  --> $DIR/partial-drop.rs:24:17
+   |
+LL |       assert_send(|| {
+   |  _________________^
+LL | |
+LL | |         let guard = Bar { foo: Foo, x: 42 };
+LL | |         let Bar { foo, x } = guard;
+LL | |         drop(foo);
+LL | |         yield;
+LL | |     });
+   | |_____^ generator is not `Send`
+   |
+   = help: within `[generator@$DIR/partial-drop.rs:24:17: 24:19]`, the trait `Send` is not implemented for `Foo`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/partial-drop.rs:29:9
+   |
+LL |         let Bar { foo, x } = guard;
+   |                   --- has type `Foo` which is not `Send`
+LL |         drop(foo);
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `foo` maybe used later
+LL |     });
+   |     - `foo` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/partial-drop.rs:33:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 2 previous errors
+

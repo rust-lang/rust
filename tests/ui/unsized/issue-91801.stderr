@@ -1,0 +1,14 @@
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/issue-91801.rs:8:77
+   |
+LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> Validator<'a> {
+   |                                                                             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> Box<Validator<'a>> {
+   |                                                                             ++++             +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0746`.

@@ -35,6 +35,11 @@ impl Command {
         Ok((Process { handle: Handle::new(process_handle) }, ours))
     }
 
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
+        crate::sys_common::process::wait_with_output(proc, pipes)
+    }
+
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul() {
             return io::const_io_error!(
@@ -161,7 +166,6 @@ impl Process {
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
-        use crate::default::Default;
         use crate::sys::process::zircon::*;
 
         let mut proc_info: zx_info_process_t = Default::default();
@@ -194,7 +198,6 @@ impl Process {
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
-        use crate::default::Default;
         use crate::sys::process::zircon::*;
 
         let mut proc_info: zx_info_process_t = Default::default();
@@ -257,7 +260,7 @@ impl ExitStatus {
     // available on Fuchsia.
     //
     // It does not appear that Fuchsia is Unix-like enough to implement ExitStatus (or indeed many
-    // other things from std::os::unix) properly.  This veneer is always going to be a bodge.  So
+    // other things from std::os::unix) properly. This veneer is always going to be a bodge. So
     // while I don't know if these implementations are actually correct, I think they will do for
     // now at least.
     pub fn core_dumped(&self) -> bool {
@@ -272,9 +275,9 @@ impl ExitStatus {
 
     pub fn into_raw(&self) -> c_int {
         // We don't know what someone who calls into_raw() will do with this value, but it should
-        // have the conventional Unix representation.  Despite the fact that this is not
+        // have the conventional Unix representation. Despite the fact that this is not
         // standardised in SuS or POSIX, all Unix systems encode the signal and exit status the
-        // same way.  (Ie the WIFEXITED, WEXITSTATUS etc. macros have identical behaviour on every
+        // same way. (Ie the WIFEXITED, WEXITSTATUS etc. macros have identical behaviour on every
         // Unix.)
         //
         // The caller of `std::os::unix::into_raw` is probably wanting a Unix exit status, and may
@@ -282,14 +285,14 @@ impl ExitStatus {
         // different Unix variant.
         //
         // The other view would be to say that the caller on Fuchsia ought to know that `into_raw`
-        // will give a raw Fuchsia status (whatever that is - I don't know, personally).  That is
+        // will give a raw Fuchsia status (whatever that is - I don't know, personally). That is
         // not possible here because we must return a c_int because that's what Unix (including
         // SuS and POSIX) say a wait status is, but Fuchsia apparently uses a u64, so it won't
         // necessarily fit.
         //
-        // It seems to me that that the right answer would be to provide std::os::fuchsia with its
+        // It seems to me that the right answer would be to provide std::os::fuchsia with its
         // own ExitStatusExt, rather that trying to provide a not very convincing imitation of
-        // Unix.  Ie, std::os::unix::process:ExitStatusExt ought not to exist on Fuchsia.  But
+        // Unix. Ie, std::os::unix::process:ExitStatusExt ought not to exist on Fuchsia. But
         // fixing this up that is beyond the scope of my efforts now.
         let exit_status_as_if_unix: u8 = self.0.try_into().expect("Fuchsia process return code bigger than 8 bits, but std::os::unix::ExitStatusExt::into_raw() was called to try to convert the value into a traditional Unix-style wait status, which cannot represent values greater than 255.");
         let wait_status_as_if_unix = (exit_status_as_if_unix as c_int) << 8;

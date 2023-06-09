@@ -9,18 +9,21 @@ use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 
 fn main() {
-    let crate_version = format!("v{}", crate_version!());
+    let crate_version = concat!("v", crate_version!());
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     let d_arg = arg!(-d --"dest-dir" <DEST_DIR>
 "The output directory for your book\n(Defaults to ./book when omitted)")
-    .required(false);
-    let dir_arg = arg!([dir]
-"A directory for your book\n(Defaults to Current Directory when omitted)");
+    .required(false)
+    .value_parser(clap::value_parser!(PathBuf));
+
+    let dir_arg = arg!([dir] "Root directory for the book\n\
+                              (Defaults to the current directory when omitted)")
+    .value_parser(clap::value_parser!(PathBuf));
 
     let matches = Command::new("rustbook")
         .about("Build a book with mdBook")
         .author("Steve Klabnik <steve@steveklabnik.com>")
-        .version(&*crate_version)
+        .version(crate_version)
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(
@@ -60,8 +63,8 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
     // Set this to allow us to catch bugs in advance.
     book.config.build.create_missing = false;
 
-    if let Some(dest_dir) = args.value_of("dest-dir") {
-        book.config.build.build_dir = PathBuf::from(dest_dir);
+    if let Some(dest_dir) = args.get_one::<PathBuf>("dest-dir") {
+        book.config.build.build_dir = dest_dir.into();
     }
 
     book.build()?;
@@ -76,10 +79,9 @@ fn test(args: &ArgMatches) -> Result3<()> {
 }
 
 fn get_book_dir(args: &ArgMatches) -> PathBuf {
-    if let Some(dir) = args.value_of("dir") {
+    if let Some(p) = args.get_one::<PathBuf>("dir") {
         // Check if path is relative from current dir, or absolute...
-        let p = Path::new(dir);
-        if p.is_relative() { env::current_dir().unwrap().join(dir) } else { p.to_path_buf() }
+        if p.is_relative() { env::current_dir().unwrap().join(p) } else { p.to_path_buf() }
     } else {
         env::current_dir().unwrap()
     }

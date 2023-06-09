@@ -4,9 +4,8 @@ use crate::{
     common::CodegenCx,
     debuginfo::{
         metadata::{
-            closure_saved_names_of_captured_variables,
             enums::tag_base_type,
-            file_metadata, generator_layout_and_saved_local_names, size_and_align_of, type_di_node,
+            file_metadata, size_and_align_of, type_di_node,
             type_map::{self, Stub, StubInfo, UniqueTypeId},
             unknown_file_metadata, DINodeCreationResult, SmallVec, NO_GENERICS,
             UNKNOWN_LINE_NUMBER,
@@ -88,7 +87,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                     variant_name: Cow::from(enum_adt_def.variant(variant_index).name.as_str()),
                     variant_struct_type_di_node: super::build_enum_variant_struct_type_di_node(
                         cx,
-                        enum_type,
+                        enum_type_and_layout,
                         enum_type_di_node,
                         variant_index,
                         enum_adt_def.variant(variant_index),
@@ -157,7 +156,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
         ),
         |cx, generator_type_di_node| {
             let (generator_layout, state_specific_upvar_names) =
-                generator_layout_and_saved_local_names(cx.tcx, generator_def_id);
+                cx.tcx.generator_layout_and_saved_local_names(generator_def_id);
 
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } = generator_type_and_layout.variants else {
                 bug!(
@@ -167,7 +166,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
             };
 
             let common_upvar_names =
-                closure_saved_names_of_captured_variables(cx.tcx, generator_def_id);
+                cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
 
             // Build variant struct types
             let variant_struct_type_di_nodes: SmallVec<_> = variants
@@ -378,7 +377,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
 ///
 /// The DW_AT_discr_value is optional, and is omitted if
 ///   - This is the only variant of a univariant enum (i.e. their is no discriminant)
-///   - This is the "dataful" variant of a niche-layout enum
+///   - This is the "untagged" variant of a niche-layout enum
 ///     (where only the other variants are identified by a single value)
 ///
 /// There is only ever a single member, the type of which is a struct that describes the
@@ -413,7 +412,13 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             enum_type_and_layout.size.bits(),
             enum_type_and_layout.align.abi.bits() as u32,
             Size::ZERO.bits(),
-            discr_value.map(|v| cx.const_u64(v)),
+            discr_value.opt_single_val().map(|value| {
+                // NOTE(eddyb) do *NOT* remove this assert, until
+                // we pass the full 128-bit value to LLVM, otherwise
+                // truncation will be silent and remain undetected.
+                assert_eq!(value as u64 as u128, value);
+                cx.const_u64(value as u64)
+            }),
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
         )
@@ -433,6 +438,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
 ///         DW_TAG_structure_type            (type of variant 1)
 ///         DW_TAG_structure_type            (type of variant 2)
 ///         DW_TAG_structure_type            (type of variant 3)
+/// ```
 struct VariantMemberInfo<'a, 'll> {
     variant_index: VariantIdx,
     variant_name: Cow<'a, str>,

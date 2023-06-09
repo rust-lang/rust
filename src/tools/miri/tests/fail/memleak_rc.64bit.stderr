@@ -1,0 +1,24 @@
+error: memory leaked: ALLOC (Rust heap, size: 32, align: 8), allocated here:
+  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
+   |
+LL |         __rust_alloc(layout.size(), layout.align())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inside `std::alloc::alloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `std::alloc::Global::alloc_impl` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `<std::alloc::Global as std::alloc::Allocator>::allocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::exchange_malloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `std::boxed::Box::<std::rc::RcBox<std::cell::RefCell<std::option::Option<Dummy>>>>::new` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new` at RUSTLIB/alloc/src/rc.rs:LL:CC
+note: inside `main`
+  --> $DIR/memleak_rc.rs:LL:CC
+   |
+LL |     let x = Dummy(Rc::new(RefCell::new(None)));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+note: the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to previous error
+

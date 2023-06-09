@@ -7,16 +7,14 @@
 //! the standard library is available, most of it returns an error immediately
 //! (e.g. trying to create a TCP stream or something like that).
 
-use super::wasm_base;
-use super::{LinkerFlavor, LldFlavor, Target};
+use super::{wasm_base, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
     options.os = "unknown".into();
-    options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
 
     options.add_pre_link_args(
-        LinkerFlavor::Lld(LldFlavor::Wasm),
+        LinkerFlavor::WasmLld(Cc::No),
         &[
             // For now this target just never has an entry symbol no matter the output
             // type, so unconditionally pass this.
@@ -25,7 +23,7 @@ pub fn target() -> Target {
         ],
     );
     options.add_pre_link_args(
-        LinkerFlavor::Gcc,
+        LinkerFlavor::WasmLld(Cc::Yes),
         &[
             // Make sure clang uses LLD as its linker and is configured appropriately
             // otherwise

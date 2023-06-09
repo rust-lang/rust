@@ -46,7 +46,7 @@ impl ScopeData {
         // We check for 'overflow' with usize::MAX / 2, to make sure there's no
         // chance it overflows to 0, which would result in unsoundness.
         if self.num_running_threads.fetch_add(1, Ordering::Relaxed) > usize::MAX / 2 {
-            // This can only reasonably happen by mem::forget()'ing many many ScopedJoinHandles.
+            // This can only reasonably happen by mem::forget()'ing a lot of ScopedJoinHandles.
             self.decrement_num_running_threads(false);
             panic!("too many running threads in thread scope");
         }

@@ -1,0 +1,8 @@
+error: attribute should be applied to a module
+  --> $DIR/invalid-debugger-visualizer-target.rs:1:1
+   |
+LL | #[debugger_visualizer(natvis_file = "./foo.natvis.xml")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,10 +1,11 @@
 use crate::build::ExprCategory;
+use crate::errors::*;
 use rustc_middle::thir::visit::{self, Visitor};
 
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::thir::*;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
@@ -12,7 +13,6 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
-use std::borrow::Cow;
 use std::ops::Bound;
 
 struct UnsafetyVisitor<'a, 'tcx> {
@@ -46,7 +46,9 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             self.warn_unused_unsafe(
                 hir_id,
                 block_span,
-                Some((self.tcx.sess.source_map().guess_head_span(enclosing_span), "block")),
+                Some(UnusedUnsafeEnclosing::Block {
+                    span: self.tcx.sess.source_map().guess_head_span(enclosing_span),
+                }),
             );
             f(self);
         } else {
@@ -60,7 +62,9 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     hir_id,
                     span,
                     if self.unsafe_op_in_unsafe_fn_allowed() {
-                        self.body_unsafety.unsafe_fn_sig_span().map(|span| (span, "fn"))
+                        self.body_unsafety
+                            .unsafe_fn_sig_span()
+                            .map(|span| UnusedUnsafeEnclosing::Function { span })
                     } else {
                         None
                     },
@@ -75,44 +79,19 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         match self.safety_context {
             SafetyContext::BuiltinUnsafeBlock => {}
             SafetyContext::UnsafeBlock { ref mut used, .. } => {
-                if !self.body_unsafety.is_unsafe() || !unsafe_op_in_unsafe_fn_allowed {
-                    // Mark this block as useful
-                    *used = true;
-                }
+                // Mark this block as useful (even inside `unsafe fn`, where it is technically
+                // redundant -- but we want to eventually enable `unsafe_op_in_unsafe_fn` by
+                // default which will require those blocks:
+                // https://github.com/rust-lang/rust/issues/71668#issuecomment-1203075594).
+                *used = true;
             }
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
             SafetyContext::UnsafeFn => {
-                let (description, note) = kind.description_and_note(self.tcx);
                 // unsafe_op_in_unsafe_fn is disallowed
-                self.tcx.struct_span_lint_hir(
-                    UNSAFE_OP_IN_UNSAFE_FN,
-                    self.hir_context,
-                    span,
-                    |lint| {
-                        lint.build(&format!(
-                            "{} is unsafe and requires unsafe block (error E0133)",
-                            description,
-                        ))
-                        .span_label(span, kind.simple_description())
-                        .note(note)
-                        .emit();
-                    },
-                )
+                kind.emit_unsafe_op_in_unsafe_fn_lint(self.tcx, self.hir_context, span);
             }
             SafetyContext::Safe => {
-                let (description, note) = kind.description_and_note(self.tcx);
-                let fn_sugg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
-                struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0133,
-                    "{} is unsafe and requires unsafe{} block",
-                    description,
-                    fn_sugg,
-                )
-                .span_label(span, kind.simple_description())
-                .note(note)
-                .emit();
+                kind.emit_requires_unsafe_err(self.tcx, span, unsafe_op_in_unsafe_fn_allowed);
             }
         }
     }
@@ -121,23 +100,32 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         &self,
         hir_id: hir::HirId,
         block_span: Span,
-        enclosing_unsafe: Option<(Span, &'static str)>,
+        enclosing_unsafe: Option<UnusedUnsafeEnclosing>,
     ) {
         let block_span = self.tcx.sess.source_map().guess_head_span(block_span);
-        self.tcx.struct_span_lint_hir(UNUSED_UNSAFE, hir_id, block_span, |lint| {
-            let msg = "unnecessary `unsafe` block";
-            let mut db = lint.build(msg);
-            db.span_label(block_span, msg);
-            if let Some((span, kind)) = enclosing_unsafe {
-                db.span_label(span, format!("because it's nested under this `unsafe` {}", kind));
-            }
-            db.emit();
-        });
+        self.tcx.emit_spanned_lint(
+            UNUSED_UNSAFE,
+            hir_id,
+            block_span,
+            UnusedUnsafe { span: block_span, enclosing: enclosing_unsafe },
+        );
     }
 
     /// Whether the `unsafe_op_in_unsafe_fn` lint is `allow`ed at the current HIR node.
     fn unsafe_op_in_unsafe_fn_allowed(&self) -> bool {
         self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, self.hir_context).0 == Level::Allow
+    }
+
+    /// Handle closures/generators/inline-consts, which is unsafecked with their parent body.
+    fn visit_inner_body(&mut self, def: LocalDefId) {
+        if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
+            let inner_thir = &inner_thir.borrow();
+            let hir_context = self.tcx.hir().local_def_id_to_hir_id(def);
+            let mut inner_visitor = UnsafetyVisitor { thir: inner_thir, hir_context, ..*self };
+            inner_visitor.visit_expr(&inner_thir[expr]);
+            // Unsafe blocks can be used in the inner body, make sure to take it into account
+            self.safety_context = inner_visitor.safety_context;
+        }
     }
 }
 
@@ -213,7 +201,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, pat: &Pat<'tcx>) {
         if self.in_union_destructure {
-            match *pat.kind {
+            match pat.kind {
                 // binding to a variable allows getting stuff out of variable
                 PatKind::Binding { .. }
                 // match is conditional on having this value
@@ -235,7 +223,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
         };
 
-        match &*pat.kind {
+        match &pat.kind {
             PatKind::Leaf { .. } => {
                 if let ty::Adt(adt_def, ..) = pat.ty.kind() {
                     if adt_def.is_union() {
@@ -267,7 +255,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     };
                     match borrow_kind {
                         BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {
-                            if !ty.is_freeze(self.tcx.at(pat.span), self.param_env) {
+                            if !ty.is_freeze(self.tcx, self.param_env) {
                                 self.requires_unsafe(pat.span, BorrowOfLayoutConstrainedField);
                             }
                         }
@@ -335,6 +323,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Box { .. }
             | ExprKind::If { .. }
             | ExprKind::InlineAsm { .. }
+            | ExprKind::OffsetOf { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Use { .. } => {
                 // We don't need to save the old value and restore it
@@ -363,7 +352,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     // If the called function has target features the calling function hasn't,
                     // the call requires `unsafe`. Don't check this on wasm
                     // targets, though. For more information on wasm see the
-                    // is_like_wasm check in typeck/src/collect.rs
+                    // is_like_wasm check in hir_analysis/src/collect.rs
                     if !self.tcx.sess.target.options.is_like_wasm
                         && !self
                             .tcx
@@ -390,7 +379,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::InlineAsm { .. } => {
                 self.requires_unsafe(expr.span, UseOfInlineAssembly);
             }
-            ExprKind::Adt(box Adt {
+            ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index: _,
                 substs: _,
@@ -401,39 +390,26 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 (Bound::Unbounded, Bound::Unbounded) => {}
                 _ => self.requires_unsafe(expr.span, InitializingTypeWith),
             },
-            ExprKind::Closure {
+            ExprKind::Closure(box ClosureExpr {
                 closure_id,
                 substs: _,
                 upvars: _,
                 movability: _,
                 fake_reads: _,
-            } => {
-                let closure_id = closure_id.expect_local();
-                let closure_def = if let Some((did, const_param_id)) =
-                    ty::WithOptConstParam::try_lookup(closure_id, self.tcx)
-                {
-                    ty::WithOptConstParam { did, const_param_did: Some(const_param_id) }
-                } else {
-                    ty::WithOptConstParam::unknown(closure_id)
-                };
-                let (closure_thir, expr) = self.tcx.thir_body(closure_def).unwrap_or_else(|_| {
-                    (self.tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0))
-                });
-                let closure_thir = &closure_thir.borrow();
-                let hir_context = self.tcx.hir().local_def_id_to_hir_id(closure_id);
-                let mut closure_visitor =
-                    UnsafetyVisitor { thir: closure_thir, hir_context, ..*self };
-                closure_visitor.visit_expr(&closure_thir[expr]);
-                // Unsafe blocks can be used in closures, make sure to take it into account
-                self.safety_context = closure_visitor.safety_context;
+            }) => {
+                self.visit_inner_body(closure_id);
+            }
+            ExprKind::ConstBlock { did, substs: _ } => {
+                let def_id = did.expect_local();
+                self.visit_inner_body(def_id);
             }
             ExprKind::Field { lhs, .. } => {
                 let lhs = &self.thir[lhs];
                 if let ty::Adt(adt_def, _) = lhs.ty.kind() && adt_def.is_union() {
                     if let Some((assigned_ty, assignment_span)) = self.assignment_info {
-                        if assigned_ty.needs_drop(self.tcx, self.tcx.param_env(adt_def.did())) {
+                        if assigned_ty.needs_drop(self.tcx, self.param_env) {
                             // This would be unsafe, but should be outright impossible since we reject such unions.
-                            self.tcx.sess.delay_span_bug(assignment_span, "union fields that need dropping should be impossible");
+                            self.tcx.sess.delay_span_bug(assignment_span, format!("union fields that need dropping should be impossible: {assigned_ty}"));
                         }
                     } else {
                         self.requires_unsafe(expr.span, AccessToUnionField);
@@ -465,9 +441,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if visitor.found {
                     match borrow_kind {
                         BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique
-                            if !self.thir[arg]
-                                .ty
-                                .is_freeze(self.tcx.at(self.thir[arg].span), self.param_env) =>
+                            if !self.thir[arg].ty.is_freeze(self.tcx, self.param_env) =>
                         {
                             self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
                         }
@@ -539,94 +513,201 @@ enum UnsafeOpKind {
 use UnsafeOpKind::*;
 
 impl UnsafeOpKind {
-    pub fn simple_description(&self) -> &'static str {
+    pub fn emit_unsafe_op_in_unsafe_fn_lint(
+        &self,
+        tcx: TyCtxt<'_>,
+        hir_id: hir::HirId,
+        span: Span,
+    ) {
+        // FIXME: ideally we would want to trim the def paths, but this is not
+        // feasible with the current lint emission API (see issue #106126).
         match self {
-            CallToUnsafeFunction(..) => "call to unsafe function",
-            UseOfInlineAssembly => "use of inline assembly",
-            InitializingTypeWith => "initializing type with `rustc_layout_scalar_valid_range` attr",
-            UseOfMutableStatic => "use of mutable static",
-            UseOfExternStatic => "use of extern static",
-            DerefOfRawPointer => "dereference of raw pointer",
-            AccessToUnionField => "access to union field",
-            MutationOfLayoutConstrainedField => "mutation of layout constrained field",
-            BorrowOfLayoutConstrainedField => {
-                "borrow of layout constrained field with interior mutability"
-            }
-            CallToFunctionWith(..) => "call to function with `#[target_feature]`",
+            CallToUnsafeFunction(Some(did)) => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
+                    span,
+                    function: &with_no_trimmed_paths!(tcx.def_path_str(*did)),
+                },
+            ),
+            CallToUnsafeFunction(None) => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless { span },
+            ),
+            UseOfInlineAssembly => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe { span },
+            ),
+            InitializingTypeWith => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe { span },
+            ),
+            UseOfMutableStatic => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe { span },
+            ),
+            UseOfExternStatic => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe { span },
+            ),
+            DerefOfRawPointer => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe { span },
+            ),
+            AccessToUnionField => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe { span },
+            ),
+            MutationOfLayoutConstrainedField => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe { span },
+            ),
+            BorrowOfLayoutConstrainedField => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe { span },
+            ),
+            CallToFunctionWith(did) => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
+                    span,
+                    function: &with_no_trimmed_paths!(tcx.def_path_str(*did)),
+                },
+            ),
         }
     }
 
-    pub fn description_and_note(&self, tcx: TyCtxt<'_>) -> (Cow<'static, str>, &'static str) {
+    pub fn emit_requires_unsafe_err(
+        &self,
+        tcx: TyCtxt<'_>,
+        span: Span,
+        unsafe_op_in_unsafe_fn_allowed: bool,
+    ) {
         match self {
-            CallToUnsafeFunction(did) => (
-                if let Some(did) = did {
-                    Cow::from(format!("call to unsafe function `{}`", tcx.def_path_str(*did)))
-                } else {
-                    Cow::Borrowed(self.simple_description())
-                },
-                "consult the function's documentation for information on how to avoid undefined \
-                 behavior",
-            ),
-            UseOfInlineAssembly => (
-                Cow::Borrowed(self.simple_description()),
-                "inline assembly is entirely unchecked and can cause undefined behavior",
-            ),
-            InitializingTypeWith => (
-                Cow::Borrowed(self.simple_description()),
-                "initializing a layout restricted type's field with a value outside the valid \
-                 range is undefined behavior",
-            ),
-            UseOfMutableStatic => (
-                Cow::Borrowed(self.simple_description()),
-                "mutable statics can be mutated by multiple threads: aliasing violations or data \
-                 races will cause undefined behavior",
-            ),
-            UseOfExternStatic => (
-                Cow::Borrowed(self.simple_description()),
-                "extern statics are not controlled by the Rust type system: invalid data, \
-                 aliasing violations or data races will cause undefined behavior",
-            ),
-            DerefOfRawPointer => (
-                Cow::Borrowed(self.simple_description()),
-                "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
-                 and cause data races: all of these are undefined behavior",
-            ),
-            AccessToUnionField => (
-                Cow::Borrowed(self.simple_description()),
-                "the field may not be properly initialized: using uninitialized data will cause \
-                 undefined behavior",
-            ),
-            MutationOfLayoutConstrainedField => (
-                Cow::Borrowed(self.simple_description()),
-                "mutating layout constrained fields cannot statically be checked for valid values",
-            ),
-            BorrowOfLayoutConstrainedField => (
-                Cow::Borrowed(self.simple_description()),
-                "references to fields of layout constrained fields lose the constraints. Coupled \
-                 with interior mutability, the field can be changed to invalid values",
-            ),
-            CallToFunctionWith(did) => (
-                Cow::from(format!(
-                    "call to function `{}` with `#[target_feature]`",
-                    tcx.def_path_str(*did)
-                )),
-                "can only be called if the required target features are available",
-            ),
+            CallToUnsafeFunction(Some(did)) if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    function: &tcx.def_path_str(*did),
+                });
+            }
+            CallToUnsafeFunction(Some(did)) => {
+                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafe {
+                    span,
+                    function: &tcx.def_path_str(*did),
+                });
+            }
+            CallToUnsafeFunction(None) if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess.emit_err(
+                    CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed { span },
+                );
+            }
+            CallToUnsafeFunction(None) => {
+                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeNameless { span });
+            }
+            UseOfInlineAssembly if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess
+                    .emit_err(UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+            }
+            UseOfInlineAssembly => {
+                tcx.sess.emit_err(UseOfInlineAssemblyRequiresUnsafe { span });
+            }
+            InitializingTypeWith if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess
+                    .emit_err(InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+            }
+            InitializingTypeWith => {
+                tcx.sess.emit_err(InitializingTypeWithRequiresUnsafe { span });
+            }
+            UseOfMutableStatic if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess
+                    .emit_err(UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+            }
+            UseOfMutableStatic => {
+                tcx.sess.emit_err(UseOfMutableStaticRequiresUnsafe { span });
+            }
+            UseOfExternStatic if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess
+                    .emit_err(UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+            }
+            UseOfExternStatic => {
+                tcx.sess.emit_err(UseOfExternStaticRequiresUnsafe { span });
+            }
+            DerefOfRawPointer if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess
+                    .emit_err(DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+            }
+            DerefOfRawPointer => {
+                tcx.sess.emit_err(DerefOfRawPointerRequiresUnsafe { span });
+            }
+            AccessToUnionField if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess
+                    .emit_err(AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+            }
+            AccessToUnionField => {
+                tcx.sess.emit_err(AccessToUnionFieldRequiresUnsafe { span });
+            }
+            MutationOfLayoutConstrainedField if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess.emit_err(
+                    MutationOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                        span,
+                    },
+                );
+            }
+            MutationOfLayoutConstrainedField => {
+                tcx.sess.emit_err(MutationOfLayoutConstrainedFieldRequiresUnsafe { span });
+            }
+            BorrowOfLayoutConstrainedField if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess.emit_err(
+                    BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span },
+                );
+            }
+            BorrowOfLayoutConstrainedField => {
+                tcx.sess.emit_err(BorrowOfLayoutConstrainedFieldRequiresUnsafe { span });
+            }
+            CallToFunctionWith(did) if unsafe_op_in_unsafe_fn_allowed => {
+                tcx.sess.emit_err(CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    function: &tcx.def_path_str(*did),
+                });
+            }
+            CallToFunctionWith(did) => {
+                tcx.sess.emit_err(CallToFunctionWithRequiresUnsafe {
+                    span,
+                    function: &tcx.def_path_str(*did),
+                });
+            }
         }
     }
 }
 
-pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) {
+pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // THIR unsafeck is gated under `-Z thir-unsafeck`
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         return;
     }
 
-    // Closures are handled by their owner, if it has a body
-    if tcx.is_closure(def.did.to_def_id()) {
-        let hir = tcx.hir();
-        let owner = hir.enclosing_body_owner(hir.local_def_id_to_hir_id(def.did));
-        tcx.ensure().thir_check_unsafety(hir.local_def_id(owner));
+    // Closures and inline consts are handled by their owner, if it has a body
+    if tcx.is_typeck_child(def.to_def_id()) {
         return;
     }
 
@@ -639,7 +720,7 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
     let body_unsafety = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(BodyUnsafety::Safe, |fn_sig| {
         if fn_sig.header.unsafety == hir::Unsafety::Unsafe {
             BodyUnsafety::Unsafe(fn_sig.span)
@@ -647,7 +728,7 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
             BodyUnsafety::Safe
         }
     });
-    let body_target_features = &tcx.body_codegen_attrs(def.did.to_def_id()).target_features;
+    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
     let mut visitor = UnsafetyVisitor {
@@ -659,23 +740,8 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         body_target_features,
         assignment_info: None,
         in_union_destructure: false,
-        param_env: tcx.param_env(def.did),
+        param_env: tcx.param_env(def),
         inside_adt: false,
     };
     visitor.visit_expr(&thir[expr]);
-}
-
-pub(crate) fn thir_check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
-    if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-        tcx.thir_check_unsafety_for_const_arg(def)
-    } else {
-        check_unsafety(tcx, ty::WithOptConstParam::unknown(def_id))
-    }
-}
-
-pub(crate) fn thir_check_unsafety_for_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
-) {
-    check_unsafety(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
 }

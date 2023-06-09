@@ -4,6 +4,7 @@ mod from_generator;
 mod once;
 mod once_with;
 mod repeat;
+mod repeat_n;
 mod repeat_with;
 mod successors;
 
@@ -15,6 +16,9 @@ pub use self::empty::{empty, Empty};
 
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::once::{once, Once};
+
+#[unstable(feature = "iter_repeat_n", issue = "104434")]
+pub use self::repeat_n::{repeat_n, RepeatN};
 
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub use self::repeat_with::{repeat_with, RepeatWith};

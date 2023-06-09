@@ -1,0 +1,10 @@
+error: statements are terminated with a semicolon
+  --> $DIR/type-ascription-with-fn-call.rs:3:10
+   |
+LL |     f()  :
+   |          ^ help: use a semicolon instead: `;`
+   |
+   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+
+error: aborting due to previous error
+

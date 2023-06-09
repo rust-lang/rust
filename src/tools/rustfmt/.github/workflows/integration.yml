@@ -27,7 +27,6 @@ jobs:
           tempdir,
           futures-rs,
           rust-clippy,
-          failure,
         ]
         include:
           # Allowed Failures
@@ -62,9 +61,6 @@ jobs:
           # it appears to have been passing for quite some time.
           # Original comment was: temporal build failure due to breaking changes in the nightly compiler
           - integration: rust-semverver
-            allow-failure: true
-          # Can be moved back to include section after https://github.com/rust-lang-nursery/failure/pull/298 is merged
-          - integration: failure
             allow-failure: true
 
     steps:

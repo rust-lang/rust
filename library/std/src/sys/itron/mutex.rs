@@ -11,8 +11,6 @@ pub struct Mutex {
     mtx: SpinIdOnceCell<()>,
 }
 
-pub type MovableMutex = Mutex;
-
 /// Create a mutex object. This function never panics.
 fn new_mtx() -> Result<abi::ID, ItronError> {
     ItronError::err_if_negative(unsafe {
@@ -31,12 +29,6 @@ impl Mutex {
         Mutex { mtx: SpinIdOnceCell::new() }
     }
 
-    pub unsafe fn init(&mut self) {
-        // Initialize `self.mtx` eagerly
-        let id = new_mtx().unwrap_or_else(|e| fail(e, &"acre_mtx"));
-        unsafe { self.mtx.set_unchecked((id, ())) };
-    }
-
     /// Get the inner mutex's ID, which is lazily created.
     fn raw(&self) -> abi::ID {
         match self.mtx.get_or_try_init(|| new_mtx().map(|id| (id, ()))) {
@@ -45,7 +37,7 @@ impl Mutex {
         }
     }
 
-    pub unsafe fn lock(&self) {
+    pub fn lock(&self) {
         let mtx = self.raw();
         expect_success(unsafe { abi::loc_mtx(mtx) }, &"loc_mtx");
     }
@@ -55,7 +47,7 @@ impl Mutex {
         expect_success_aborting(unsafe { abi::unl_mtx(mtx) }, &"unl_mtx");
     }
 
-    pub unsafe fn try_lock(&self) -> bool {
+    pub fn try_lock(&self) -> bool {
         let mtx = self.raw();
         match unsafe { abi::ploc_mtx(mtx) } {
             abi::E_TMOUT => false,
@@ -80,7 +72,7 @@ pub(super) struct MutexGuard<'a>(&'a Mutex);
 impl<'a> MutexGuard<'a> {
     #[inline]
     pub(super) fn lock(x: &'a Mutex) -> Self {
-        unsafe { x.lock() };
+        x.lock();
         Self(x)
     }
 }

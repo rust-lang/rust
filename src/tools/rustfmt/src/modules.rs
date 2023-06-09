@@ -6,6 +6,7 @@ use rustc_ast::ast;
 use rustc_ast::visit::Visitor;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 use thiserror::Error;
 
 use crate::attr::MetaVisitor;
@@ -25,8 +26,8 @@ type FileModMap<'ast> = BTreeMap<FileName, Module<'ast>>;
 #[derive(Debug, Clone)]
 pub(crate) struct Module<'a> {
     ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
-    pub(crate) items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
-    inner_attr: Vec<ast::Attribute>,
+    pub(crate) items: Cow<'a, ThinVec<rustc_ast::ptr::P<ast::Item>>>,
+    inner_attr: ast::AttrVec,
     pub(crate) span: Span,
 }
 
@@ -34,8 +35,8 @@ impl<'a> Module<'a> {
     pub(crate) fn new(
         mod_span: Span,
         ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
-        mod_items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
-        mod_attrs: Cow<'a, Vec<ast::Attribute>>,
+        mod_items: Cow<'a, ThinVec<rustc_ast::ptr::P<ast::Item>>>,
+        mod_attrs: Cow<'a, ast::AttrVec>,
     ) -> Self {
         let inner_attr = mod_attrs
             .iter()
@@ -157,8 +158,8 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                     Module::new(
                         module_item.item.span,
                         Some(Cow::Owned(sub_mod_kind.clone())),
-                        Cow::Owned(vec![]),
-                        Cow::Owned(vec![]),
+                        Cow::Owned(ThinVec::new()),
+                        Cow::Owned(ast::AttrVec::new()),
                     ),
                 )?;
             }
@@ -169,7 +170,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
     /// Visit modules defined inside macro calls.
     fn visit_mod_outside_ast(
         &mut self,
-        items: Vec<rustc_ast::ptr::P<ast::Item>>,
+        items: ThinVec<rustc_ast::ptr::P<ast::Item>>,
     ) -> Result<(), ModuleResolutionError> {
         for item in items {
             if is_cfg_if(&item) {
@@ -184,8 +185,8 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                     Module::new(
                         span,
                         Some(Cow::Owned(sub_mod_kind.clone())),
-                        Cow::Owned(vec![]),
-                        Cow::Owned(vec![]),
+                        Cow::Owned(ThinVec::new()),
+                        Cow::Owned(ast::AttrVec::new()),
                     ),
                 )?;
             }
@@ -210,7 +211,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                     Module::new(
                         span,
                         Some(Cow::Borrowed(sub_mod_kind)),
-                        Cow::Owned(vec![]),
+                        Cow::Owned(ThinVec::new()),
                         Cow::Borrowed(&item.attrs),
                     ),
                 )?;

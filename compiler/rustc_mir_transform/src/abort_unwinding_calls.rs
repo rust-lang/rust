@@ -34,14 +34,9 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             return;
         }
 
-        // This pass only runs on functions which themselves cannot unwind,
-        // forcibly changing the body of the function to structurally provide
-        // this guarantee by aborting on an unwind. If this function can unwind,
-        // then there's nothing to do because it already should work correctly.
-        //
         // Here we test for this function itself whether its ABI allows
         // unwinding or not.
-        let body_ty = tcx.type_of(def_id);
+        let body_ty = tcx.type_of(def_id).skip_binder();
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
             ty::Closure(..) => Abi::RustCall,
@@ -56,7 +51,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         // example.
         let mut calls_to_terminate = Vec::new();
         let mut cleanups_to_remove = Vec::new();
-        for (id, block) in body.basic_blocks().iter_enumerated() {
+        for (id, block) in body.basic_blocks.iter_enumerated() {
             if block.is_cleanup {
                 continue;
             }
@@ -74,7 +69,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     };
                     layout::fn_can_unwind(tcx, fn_def_id, sig.abi())
                 }
-                TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
+                TerminatorKind::Drop { .. } => {
                     tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind
                         && layout::fn_can_unwind(tcx, None, Abi::Rust)
                 }
@@ -107,31 +102,14 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             }
         }
 
-        // For call instructions which need to be terminated, we insert a
-        // singular basic block which simply terminates, and then configure the
-        // `cleanup` attribute for all calls we found to this basic block we
-        // insert which means that any unwinding that happens in the functions
-        // will force an abort of the process.
-        if !calls_to_terminate.is_empty() {
-            let bb = BasicBlockData {
-                statements: Vec::new(),
-                is_cleanup: true,
-                terminator: Some(Terminator {
-                    source_info: SourceInfo::outermost(body.span),
-                    kind: TerminatorKind::Abort,
-                }),
-            };
-            let abort_bb = body.basic_blocks_mut().push(bb);
-
-            for bb in calls_to_terminate {
-                let cleanup = body.basic_blocks_mut()[bb].terminator_mut().unwind_mut().unwrap();
-                *cleanup = Some(abort_bb);
-            }
+        for id in calls_to_terminate {
+            let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
+            *cleanup = UnwindAction::Terminate;
         }
 
         for id in cleanups_to_remove {
             let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
-            *cleanup = None;
+            *cleanup = UnwindAction::Unreachable;
         }
 
         // We may have invalidated some `cleanup` blocks so clean those up now.

@@ -1,4 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
@@ -185,6 +186,36 @@ mod issue_7920 {
             }
 
             idx_u32 += 1;
+        }
+    }
+}
+
+mod issue_10058 {
+    pub fn test() {
+        // should not lint since we are increasing counter potentially more than once in the loop
+        let values = [0, 1, 0, 1, 1, 1, 0, 1, 0, 1];
+        let mut counter = 0;
+        for value in values {
+            counter += 1;
+
+            if value == 0 {
+                continue;
+            }
+
+            counter += 1;
+        }
+    }
+
+    pub fn test2() {
+        // should not lint since we are increasing counter potentially more than once in the loop
+        let values = [0, 1, 0, 1, 1, 1, 0, 1, 0, 1];
+        let mut counter = 0;
+        for value in values {
+            counter += 1;
+
+            if value != 0 {
+                counter += 1;
+            }
         }
     }
 }

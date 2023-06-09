@@ -1,26 +1,6 @@
-//! Unicode string slices.
+//! Utilities for the `str` primitive type.
 //!
 //! *[See also the `str` primitive type](str).*
-//!
-//! The `&str` type is one of the two main string types, the other being `String`.
-//! Unlike its `String` counterpart, its contents are borrowed.
-//!
-//! # Basic Usage
-//!
-//! A basic string declaration of `&str` type:
-//!
-//! ```
-//! let hello_world = "Hello, World!";
-//! ```
-//!
-//! Here we have declared a string literal, also known as a string slice.
-//! String literals have a static lifetime, which means the string `hello_world`
-//! is guaranteed to be valid for the duration of the entire program.
-//! We can explicitly specify `hello_world`'s lifetime as well:
-//!
-//! ```
-//! let hello_world: &'static str = "Hello, world!";
-//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
@@ -71,6 +51,8 @@ pub use core::str::{RSplit, Split};
 pub use core::str::{RSplitN, SplitN};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitTerminator, SplitTerminator};
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use core::str::{Utf8Chunk, Utf8Chunks};
 
 /// Note: `str` in `Concat<str>` is not meaningful here.
 /// This type parameter of the trait only exists to enable another impl.
@@ -274,7 +256,7 @@ impl str {
     /// assert_eq!("than an old", s.replace("is", "an"));
     /// ```
     ///
-    /// When the pattern doesn't match:
+    /// When the pattern doesn't match, it returns this string slice as [`String`]:
     ///
     /// ```
     /// let s = "this is old";
@@ -315,7 +297,7 @@ impl str {
     /// assert_eq!("foo foo new23 foo", s.replacen(char::is_numeric, "new", 1));
     /// ```
     ///
-    /// When the pattern doesn't match:
+    /// When the pattern doesn't match, it returns this string slice as [`String`]:
     ///
     /// ```
     /// let s = "this is old";
@@ -422,12 +404,12 @@ impl str {
             // See https://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
             // for the definition of `Final_Sigma`.
             debug_assert!('Σ'.len_utf8() == 2);
-            let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev())
-                && !case_ignoreable_then_cased(from[i + 2..].chars());
+            let is_word_final = case_ignorable_then_cased(from[..i].chars().rev())
+                && !case_ignorable_then_cased(from[i + 2..].chars());
             to.push_str(if is_word_final { "ς" } else { "σ" });
         }
 
-        fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
+        fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
             use core::unicode::{Case_Ignorable, Cased};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),
@@ -577,10 +559,9 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_uppercase();
-        // make_ascii_uppercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
+        let mut s = self.to_owned();
+        s.make_ascii_uppercase();
+        s
     }
 
     /// Returns a copy of this string where each character is mapped to its
@@ -610,10 +591,9 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_lowercase();
-        // make_ascii_lowercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
+        let mut s = self.to_owned();
+        s.make_ascii_lowercase();
+        s
     }
 }
 

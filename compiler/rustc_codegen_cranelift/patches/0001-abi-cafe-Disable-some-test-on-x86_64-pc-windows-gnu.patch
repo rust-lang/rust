@@ -1,0 +1,29 @@
+From 2b15fee2bb5fd14e34c7e17e44d99cb34f4c555d Mon Sep 17 00:00:00 2001
+From: Afonso Bordado <afonsobordado@az8.co>
+Date: Tue, 27 Sep 2022 07:55:17 +0100
+Subject: [PATCH] Disable some test on x86_64-pc-windows-gnu
+
+---
+ src/report.rs | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/report.rs b/src/report.rs
+index eeec614..f582867 100644
+--- a/src/report.rs
++++ b/src/report.rs
+@@ -48,6 +48,12 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn AbiImpl, callee: &dyn AbiImpl
+     //
+     // THIS AREA RESERVED FOR VENDORS TO APPLY PATCHES
+ 
++    // x86_64-pc-windows-gnu has some broken i128 tests that aren't disabled by default
++    if cfg!(all(target_os = "windows", target_env = "gnu")) && test.test_name == "ui128" {
++        result.run = Link;
++        result.check = Pass(Link);
++    }
++
+     // END OF VENDOR RESERVED AREA
+     //
+     //
+-- 
+2.30.1.windows.1
+

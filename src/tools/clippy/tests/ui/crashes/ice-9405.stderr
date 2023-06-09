@@ -1,0 +1,11 @@
+warning: multiple lines skipped by escaped newline
+  --> $DIR/ice-9405.rs:6:10
+   |
+LL |           "/
+   |  __________^
+LL | |
+LL | |             {}",
+   | |____________^ skipping everything up to and including this point
+
+warning: 1 warning emitted
+

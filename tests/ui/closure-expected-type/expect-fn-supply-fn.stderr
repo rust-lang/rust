@@ -1,0 +1,51 @@
+error: lifetime may not live long enough
+  --> $DIR/expect-fn-supply-fn.rs:16:49
+   |
+LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
+   |                                    -- lifetime `'x` defined here
+...
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
+   |                                                 ^
+   |                                                 |
+   |                                                 has type `fn(&'1 u32)`
+   |                                                 requires that `'1` must outlive `'x`
+
+error: lifetime may not live long enough
+  --> $DIR/expect-fn-supply-fn.rs:16:49
+   |
+LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
+   |                                    -- lifetime `'x` defined here
+...
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
+   |                                                 ^ requires that `'x` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:32:49
+   |
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&u32), y| {});
+   |                                                 ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&u32)`
+              found fn pointer `for<'a> fn(&'a u32)`
+
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:39:50
+   |
+LL |     with_closure_expecting_fn_with_bound_region(|x: fn(&'x u32), y| {});
+   |                                                  ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a> fn(&'a u32)`
+              found fn pointer `fn(&u32)`
+
+error[E0308]: mismatched types
+  --> $DIR/expect-fn-supply-fn.rs:48:50
+   |
+LL |     with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
+   |                                                  ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a> fn(&'a u32)`
+              found fn pointer `fn(&u32)`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

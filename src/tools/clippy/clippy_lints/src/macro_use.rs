@@ -94,7 +94,10 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             let hir_id = item.hir_id();
             let attrs = cx.tcx.hir().attrs(hir_id);
             if let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use));
-            if let Res::Def(DefKind::Mod, id) = path.res;
+            if let Some(id) = path.res.iter().find_map(|res| match res {
+                Res::Def(DefKind::Mod, id) => Some(id),
+                _ => None,
+            });
             if !id.is_local();
             then {
                 for kid in cx.tcx.module_children(id).iter() {
@@ -189,9 +192,9 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         let mut suggestions = vec![];
         for ((root, span, hir_id), path) in used {
             if path.len() == 1 {
-                suggestions.push((span, format!("{}::{}", root, path[0]), hir_id));
+                suggestions.push((span, format!("{root}::{}", path[0]), hir_id));
             } else {
-                suggestions.push((span, format!("{}::{{{}}}", root, path.join(", ")), hir_id));
+                suggestions.push((span, format!("{root}::{{{}}}", path.join(", ")), hir_id));
             }
         }
 
@@ -199,7 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         // such as `std::prelude::v1::foo` or some other macro that expands to an import.
         if self.mac_refs.is_empty() {
             for (span, import, hir_id) in suggestions {
-                let help = format!("use {};", import);
+                let help = format!("use {import};");
                 span_lint_hir_and_then(
                     cx,
                     MACRO_USE_IMPORTS,

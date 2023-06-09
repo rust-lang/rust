@@ -1,17 +1,6 @@
-use crate::cargo_clippy_path;
-use std::process::{self, Command, ExitStatus};
-use std::{fs, io};
-
-fn exit_if_err(status: io::Result<ExitStatus>) {
-    match status.expect("failed to run command").code() {
-        Some(0) => {},
-        Some(n) => process::exit(n),
-        None => {
-            eprintln!("Killed by signal");
-            process::exit(1);
-        },
-    }
-}
+use crate::{cargo_clippy_path, exit_if_err};
+use std::fs;
+use std::process::{self, Command};
 
 pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
     let is_file = match fs::metadata(path) {
@@ -36,20 +25,12 @@ pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
     } else {
         exit_if_err(Command::new("cargo").arg("build").status());
 
-        // Run in a tempdir as changes to clippy do not retrigger linting
-        let target = tempfile::Builder::new()
-            .prefix("clippy")
-            .tempdir()
-            .expect("failed to create tempdir");
-
         let status = Command::new(cargo_clippy_path())
             .arg("clippy")
             .args(args)
             .current_dir(path)
-            .env("CARGO_TARGET_DIR", target.as_ref())
             .status();
 
-        target.close().expect("failed to remove tempdir");
         exit_if_err(status);
     }
 }

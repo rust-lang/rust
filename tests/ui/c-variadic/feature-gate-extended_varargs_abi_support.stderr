@@ -1,0 +1,49 @@
+error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:1:14
+   |
+LL | fn efiapi(f: extern "efiapi" fn(usize, ...)) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
+   = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+
+error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:1:14
+   |
+LL | fn efiapi(f: extern "efiapi" fn(usize, ...)) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:6:12
+   |
+LL | fn sysv(f: extern "sysv64" fn(usize, ...)) {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
+   = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+
+error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:6:12
+   |
+LL | fn sysv(f: extern "sysv64" fn(usize, ...)) {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:11:11
+   |
+LL | fn win(f: extern "win64" fn(usize, ...)) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
+   = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+
+error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:11:11
+   |
+LL | fn win(f: extern "win64" fn(usize, ...)) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0045, E0658.
+For more information about an error, try `rustc --explain E0045`.

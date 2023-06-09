@@ -2,27 +2,77 @@ pub use self::Mode::*;
 
 use std::ffi::OsString;
 use std::fmt;
+use std::iter;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::str::FromStr;
 
-use crate::util::PathBufExt;
-use test::ColorConfig;
+use crate::util::{add_dylib_path, PathBufExt};
+use lazycell::AtomicLazyCell;
+use serde::de::{Deserialize, Deserializer, Error as _};
+use std::collections::{HashMap, HashSet};
+use test::{ColorConfig, OutputFormat};
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Mode {
-    RunPassValgrind,
-    Pretty,
-    DebugInfo,
-    Codegen,
-    Rustdoc,
-    RustdocJson,
-    CodegenUnits,
-    Incremental,
-    RunMake,
-    Ui,
-    JsDocTest,
-    MirOpt,
-    Assembly,
+macro_rules! string_enum {
+    ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
+        $(#[$meta])*
+        $vis enum $name {
+            $($variant,)*
+        }
+
+        impl $name {
+            $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
+            $vis const STR_VARIANTS: &'static [&'static str] = &[$(Self::$variant.to_str(),)*];
+
+            $vis const fn to_str(&self) -> &'static str {
+                match self {
+                    $(Self::$variant => $repr,)*
+                }
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(self.to_str(), f)
+            }
+        }
+
+        impl FromStr for $name {
+            type Err = ();
+
+            fn from_str(s: &str) -> Result<Self, ()> {
+                match s {
+                    $($repr => Ok(Self::$variant),)*
+                    _ => Err(()),
+                }
+            }
+        }
+    }
+}
+
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub enum Mode {
+        RunPassValgrind => "run-pass-valgrind",
+        Pretty => "pretty",
+        DebugInfo => "debuginfo",
+        Codegen => "codegen",
+        Rustdoc => "rustdoc",
+        RustdocJson => "rustdoc-json",
+        CodegenUnits => "codegen-units",
+        Incremental => "incremental",
+        RunMake => "run-make",
+        Ui => "ui",
+        JsDocTest => "js-doc-test",
+        MirOpt => "mir-opt",
+        Assembly => "assembly",
+    }
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Ui
+    }
 }
 
 impl Mode {
@@ -36,76 +86,12 @@ impl Mode {
     }
 }
 
-impl FromStr for Mode {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Mode, ()> {
-        match s {
-            "run-pass-valgrind" => Ok(RunPassValgrind),
-            "pretty" => Ok(Pretty),
-            "debuginfo" => Ok(DebugInfo),
-            "codegen" => Ok(Codegen),
-            "rustdoc" => Ok(Rustdoc),
-            "rustdoc-json" => Ok(RustdocJson),
-            "codegen-units" => Ok(CodegenUnits),
-            "incremental" => Ok(Incremental),
-            "run-make" => Ok(RunMake),
-            "ui" => Ok(Ui),
-            "js-doc-test" => Ok(JsDocTest),
-            "mir-opt" => Ok(MirOpt),
-            "assembly" => Ok(Assembly),
-            _ => Err(()),
-        }
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match *self {
-            RunPassValgrind => "run-pass-valgrind",
-            Pretty => "pretty",
-            DebugInfo => "debuginfo",
-            Codegen => "codegen",
-            Rustdoc => "rustdoc",
-            RustdocJson => "rustdoc-json",
-            CodegenUnits => "codegen-units",
-            Incremental => "incremental",
-            RunMake => "run-make",
-            Ui => "ui",
-            JsDocTest => "js-doc-test",
-            MirOpt => "mir-opt",
-            Assembly => "assembly",
-        };
-        fmt::Display::fmt(s, f)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Debug, Hash)]
-pub enum PassMode {
-    Check,
-    Build,
-    Run,
-}
-
-impl FromStr for PassMode {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
-        match s {
-            "check" => Ok(PassMode::Check),
-            "build" => Ok(PassMode::Build),
-            "run" => Ok(PassMode::Run),
-            _ => Err(()),
-        }
-    }
-}
-
-impl fmt::Display for PassMode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match *self {
-            PassMode::Check => "check",
-            PassMode::Build => "build",
-            PassMode::Run => "run",
-        };
-        fmt::Display::fmt(s, f)
+string_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug, Hash)]
+    pub enum PassMode {
+        Check => "check",
+        Build => "build",
+        Run => "run",
     }
 }
 
@@ -116,66 +102,37 @@ pub enum FailMode {
     Run,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum CompareMode {
-    Polonius,
-    Chalk,
-    SplitDwarf,
-    SplitDwarfSingle,
-}
-
-impl CompareMode {
-    pub(crate) fn to_str(&self) -> &'static str {
-        match *self {
-            CompareMode::Polonius => "polonius",
-            CompareMode::Chalk => "chalk",
-            CompareMode::SplitDwarf => "split-dwarf",
-            CompareMode::SplitDwarfSingle => "split-dwarf-single",
-        }
-    }
-
-    pub fn parse(s: String) -> CompareMode {
-        match s.as_str() {
-            "polonius" => CompareMode::Polonius,
-            "chalk" => CompareMode::Chalk,
-            "split-dwarf" => CompareMode::SplitDwarf,
-            "split-dwarf-single" => CompareMode::SplitDwarfSingle,
-            x => panic!("unknown --compare-mode option: {}", x),
-        }
+string_enum! {
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum CompareMode {
+        Polonius => "polonius",
+        Chalk => "chalk",
+        NextSolver => "next-solver",
+        NextSolverCoherence => "next-solver-coherence",
+        SplitDwarf => "split-dwarf",
+        SplitDwarfSingle => "split-dwarf-single",
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Debugger {
-    Cdb,
-    Gdb,
-    Lldb,
-}
-
-impl Debugger {
-    fn to_str(&self) -> &'static str {
-        match self {
-            Debugger::Cdb => "cdb",
-            Debugger::Gdb => "gdb",
-            Debugger::Lldb => "lldb",
-        }
+string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum Debugger {
+        Cdb => "cdb",
+        Gdb => "gdb",
+        Lldb => "lldb",
     }
 }
 
-impl fmt::Display for Debugger {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.to_str(), f)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum PanicStrategy {
+    #[default]
     Unwind,
     Abort,
 }
 
 /// Configuration for compiletest
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Config {
     /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
@@ -201,6 +158,9 @@ pub struct Config {
     /// The jsondocck executable.
     pub jsondocck_path: Option<String>,
 
+    /// The jsondoclint executable.
+    pub jsondoclint_path: Option<String>,
+
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
 
@@ -224,6 +184,9 @@ pub struct Config {
     /// The directory where programs should be built
     pub build_base: PathBuf,
 
+    /// The directory containing the compiler sysroot
+    pub sysroot_base: PathBuf,
+
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
@@ -231,7 +194,7 @@ pub struct Config {
     pub mode: Mode,
 
     /// The test suite (essentially which directory is running, but without the
-    /// directory prefix such as src/test)
+    /// directory prefix such as tests)
     pub suite: String,
 
     /// The debugger to use in debuginfo mode. Unset otherwise.
@@ -264,18 +227,14 @@ pub struct Config {
     pub runtool: Option<String>,
 
     /// Flags to pass to the compiler when building for the host
-    pub host_rustcflags: Option<String>,
+    pub host_rustcflags: Vec<String>,
 
     /// Flags to pass to the compiler when building for the target
-    pub target_rustcflags: Option<String>,
+    pub target_rustcflags: Vec<String>,
 
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
     pub optimize_tests: bool,
-
-    /// What panic strategy the target is built with.  Unwind supports Abort, but
-    /// not vice versa.
-    pub target_panic: PanicStrategy,
 
     /// Target system to be tested
     pub target: String,
@@ -329,7 +288,7 @@ pub struct Config {
     pub verbose: bool,
 
     /// Print one character per test instead of one line
-    pub quiet: bool,
+    pub format: OutputFormat,
 
     /// Whether to use colors in test.
     pub color: ColorConfig,
@@ -351,6 +310,9 @@ pub struct Config {
     /// The current Rust channel
     pub channel: String,
 
+    /// Whether adding git commit information such as the commit hash has been enabled for building
+    pub git_hash: bool,
+
     /// The default Rust edition
     pub edition: Option<String>,
 
@@ -361,7 +323,8 @@ pub struct Config {
     pub cflags: String,
     pub cxxflags: String,
     pub ar: String,
-    pub linker: Option<String>,
+    pub target_linker: Option<String>,
+    pub host_linker: Option<String>,
     pub llvm_components: String,
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests
@@ -371,6 +334,13 @@ pub struct Config {
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
+
+    /// Only rerun the tests that result has been modified accoring to Git status
+    pub only_modified: bool,
+
+    pub target_cfgs: AtomicLazyCell<TargetCfgs>,
+
+    pub nocapture: bool,
 }
 
 impl Config {
@@ -380,6 +350,272 @@ impl Config {
             !self.target.ends_with("-fuchsia")
         })
     }
+
+    pub fn target_cfgs(&self) -> &TargetCfgs {
+        match self.target_cfgs.borrow() {
+            Some(cfgs) => cfgs,
+            None => {
+                let _ = self.target_cfgs.fill(TargetCfgs::new(self));
+                self.target_cfgs.borrow().unwrap()
+            }
+        }
+    }
+
+    pub fn target_cfg(&self) -> &TargetCfg {
+        &self.target_cfgs().current
+    }
+
+    pub fn matches_arch(&self, arch: &str) -> bool {
+        self.target_cfg().arch == arch ||
+        // Shorthand for convenience. The arch for
+        // asmjs-unknown-emscripten is actually wasm32.
+        (arch == "asmjs" && self.target.starts_with("asmjs")) ||
+        // Matching all the thumb variants as one can be convenient.
+        // (thumbv6m, thumbv7em, thumbv7m, etc.)
+        (arch == "thumb" && self.target.starts_with("thumb"))
+    }
+
+    pub fn matches_os(&self, os: &str) -> bool {
+        self.target_cfg().os == os
+    }
+
+    pub fn matches_env(&self, env: &str) -> bool {
+        self.target_cfg().env == env
+    }
+
+    pub fn matches_abi(&self, abi: &str) -> bool {
+        self.target_cfg().abi == abi
+    }
+
+    pub fn matches_family(&self, family: &str) -> bool {
+        self.target_cfg().families.iter().any(|f| f == family)
+    }
+
+    pub fn is_big_endian(&self) -> bool {
+        self.target_cfg().endian == Endian::Big
+    }
+
+    pub fn get_pointer_width(&self) -> u32 {
+        *&self.target_cfg().pointer_width
+    }
+
+    pub fn can_unwind(&self) -> bool {
+        self.target_cfg().panic == PanicStrategy::Unwind
+    }
+
+    pub fn has_asm_support(&self) -> bool {
+        static ASM_SUPPORTED_ARCHS: &[&str] = &[
+            "x86", "x86_64", "arm", "aarch64", "riscv32",
+            "riscv64",
+            // These targets require an additional asm_experimental_arch feature.
+            // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
+        ];
+        ASM_SUPPORTED_ARCHS.contains(&self.target_cfg().arch.as_str())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TargetCfgs {
+    pub current: TargetCfg,
+    pub all_targets: HashSet<String>,
+    pub all_archs: HashSet<String>,
+    pub all_oses: HashSet<String>,
+    pub all_oses_and_envs: HashSet<String>,
+    pub all_envs: HashSet<String>,
+    pub all_abis: HashSet<String>,
+    pub all_families: HashSet<String>,
+    pub all_pointer_widths: HashSet<String>,
+}
+
+impl TargetCfgs {
+    fn new(config: &Config) -> TargetCfgs {
+        let targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
+            config,
+            &["--print=all-target-specs-json", "-Zunstable-options"],
+        ))
+        .unwrap();
+
+        let mut all_targets = HashSet::new();
+        let mut all_archs = HashSet::new();
+        let mut all_oses = HashSet::new();
+        let mut all_oses_and_envs = HashSet::new();
+        let mut all_envs = HashSet::new();
+        let mut all_abis = HashSet::new();
+        let mut all_families = HashSet::new();
+        let mut all_pointer_widths = HashSet::new();
+
+        for (target, cfg) in targets.into_iter() {
+            all_archs.insert(cfg.arch.clone());
+            all_oses.insert(cfg.os.clone());
+            all_oses_and_envs.insert(cfg.os_and_env());
+            all_envs.insert(cfg.env.clone());
+            all_abis.insert(cfg.abi.clone());
+            for family in &cfg.families {
+                all_families.insert(family.clone());
+            }
+            all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
+
+            all_targets.insert(target.into());
+        }
+
+        Self {
+            current: Self::get_current_target_config(config),
+            all_targets,
+            all_archs,
+            all_oses,
+            all_oses_and_envs,
+            all_envs,
+            all_abis,
+            all_families,
+            all_pointer_widths,
+        }
+    }
+
+    fn get_current_target_config(config: &Config) -> TargetCfg {
+        let mut arch = None;
+        let mut os = None;
+        let mut env = None;
+        let mut abi = None;
+        let mut families = Vec::new();
+        let mut pointer_width = None;
+        let mut endian = None;
+        let mut panic = None;
+
+        for config in
+            rustc_output(config, &["--print=cfg", "--target", &config.target]).trim().lines()
+        {
+            let (name, value) = config
+                .split_once("=\"")
+                .map(|(name, value)| {
+                    (
+                        name,
+                        Some(
+                            value
+                                .strip_suffix("\"")
+                                .expect("key-value pair should be properly quoted"),
+                        ),
+                    )
+                })
+                .unwrap_or_else(|| (config, None));
+
+            match name {
+                "target_arch" => {
+                    arch = Some(value.expect("target_arch should be a key-value pair").to_string());
+                }
+                "target_os" => {
+                    os = Some(value.expect("target_os sould be a key-value pair").to_string());
+                }
+                "target_env" => {
+                    env = Some(value.expect("target_env should be a key-value pair").to_string());
+                }
+                "target_abi" => {
+                    abi = Some(value.expect("target_abi should be a key-value pair").to_string());
+                }
+                "target_family" => {
+                    families
+                        .push(value.expect("target_family should be a key-value pair").to_string());
+                }
+                "target_pointer_width" => {
+                    pointer_width = Some(
+                        value
+                            .expect("target_pointer_width should be a key-value pair")
+                            .parse::<u32>()
+                            .expect("target_pointer_width should be a valid u32"),
+                    );
+                }
+                "target_endian" => {
+                    endian = Some(match value.expect("target_endian should be a key-value pair") {
+                        "big" => Endian::Big,
+                        "little" => Endian::Little,
+                        _ => panic!("target_endian should be either 'big' or 'little'"),
+                    });
+                }
+                "panic" => {
+                    panic = Some(match value.expect("panic should be a key-value pair") {
+                        "abort" => PanicStrategy::Abort,
+                        "unwind" => PanicStrategy::Unwind,
+                        _ => panic!("panic should be either 'abort' or 'unwind'"),
+                    });
+                }
+                _ => (),
+            }
+        }
+
+        TargetCfg {
+            arch: arch.expect("target configuration should specify target_arch"),
+            os: os.expect("target configuration should specify target_os"),
+            env: env.expect("target configuration should specify target_env"),
+            abi: abi.expect("target configuration should specify target_abi"),
+            families,
+            pointer_width: pointer_width
+                .expect("target configuration should specify target_pointer_width"),
+            endian: endian.expect("target configuration should specify target_endian"),
+            panic: panic.expect("target configuration should specify panic"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct TargetCfg {
+    pub(crate) arch: String,
+    #[serde(default = "default_os")]
+    pub(crate) os: String,
+    #[serde(default)]
+    pub(crate) env: String,
+    #[serde(default)]
+    pub(crate) abi: String,
+    #[serde(rename = "target-family", default)]
+    pub(crate) families: Vec<String>,
+    #[serde(rename = "target-pointer-width", deserialize_with = "serde_parse_u32")]
+    pub(crate) pointer_width: u32,
+    #[serde(rename = "target-endian", default)]
+    endian: Endian,
+    #[serde(rename = "panic-strategy", default)]
+    panic: PanicStrategy,
+}
+
+impl TargetCfg {
+    pub(crate) fn os_and_env(&self) -> String {
+        format!("{}-{}", self.os, self.env)
+    }
+}
+
+fn default_os() -> String {
+    "none".into()
+}
+
+#[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Endian {
+    #[default]
+    Little,
+    Big,
+}
+
+fn rustc_output(config: &Config, args: &[&str]) -> String {
+    let mut command = Command::new(&config.rustc_path);
+    add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+    command.args(&config.target_rustcflags).args(args);
+    command.env("RUSTC_BOOTSTRAP", "1");
+
+    let output = match command.output() {
+        Ok(output) => output,
+        Err(e) => panic!("error: failed to run {command:?}: {e}"),
+    };
+    if !output.status.success() {
+        panic!(
+            "error: failed to run {command:?}\n--- stdout\n{}\n--- stderr\n{}",
+            String::from_utf8(output.stdout).unwrap(),
+            String::from_utf8(output.stderr).unwrap(),
+        );
+    }
+    String::from_utf8(output.stdout).unwrap()
+}
+
+fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
+    let string = String::deserialize(deserializer)?;
+    string.parse().map_err(D::Error::custom)
 }
 
 #[derive(Debug, Clone)]
@@ -468,6 +704,6 @@ pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option
 
 /// Absolute path to the directory to use for incremental compilation. Example:
 ///   /path/to/build/host-triple/test/ui/relative/testname.mode/testname.inc
-pub fn incremental_dir(config: &Config, testpaths: &TestPaths) -> PathBuf {
-    output_base_name(config, testpaths, None).with_extension("inc")
+pub fn incremental_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+    output_base_name(config, testpaths, revision).with_extension("inc")
 }

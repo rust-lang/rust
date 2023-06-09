@@ -1,7 +1,7 @@
 // rustfmt-brace_style: SameLineWhere
 // rustfmt-comment_width: 100
 // rustfmt-edition: 2018
-// rustfmt-fn_args_layout: Compressed
+// rustfmt-fn_params_layout: Compressed
 // rustfmt-hard_tabs: false
 // rustfmt-match_block_trailing_comma: true
 // rustfmt-max_width: 100

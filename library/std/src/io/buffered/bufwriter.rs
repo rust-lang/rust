@@ -339,7 +339,7 @@ impl<W: Write> BufWriter<W> {
         let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
 
         // SAFETY: forget(self) prevents double dropping inner
-        let inner = unsafe { ptr::read(&mut self.inner) };
+        let inner = unsafe { ptr::read(&self.inner) };
         mem::forget(self);
 
         (inner, buf)

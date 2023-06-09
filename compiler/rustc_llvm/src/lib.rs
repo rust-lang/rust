@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 
 // NOTE: This crate only exists to allow linking on mingw targets.
@@ -28,7 +30,7 @@ pub unsafe extern "C" fn LLVMRustStringWriteImpl(
     ptr: *const c_char,
     size: size_t,
 ) {
-    let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
+    let slice = slice::from_raw_parts(ptr as *const u8, size);
 
     sr.bytes.borrow_mut().extend_from_slice(slice);
 }
@@ -99,6 +101,14 @@ pub fn initialize_available_targets() {
         LLVMInitializeM68kTargetMC,
         LLVMInitializeM68kAsmPrinter,
         LLVMInitializeM68kAsmParser
+    );
+    init_target!(
+        llvm_component = "loongarch",
+        LLVMInitializeLoongArchTargetInfo,
+        LLVMInitializeLoongArchTarget,
+        LLVMInitializeLoongArchTargetMC,
+        LLVMInitializeLoongArchAsmPrinter,
+        LLVMInitializeLoongArchAsmParser
     );
     init_target!(
         llvm_component = "mips",

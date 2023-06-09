@@ -1,0 +1,14 @@
+error: constant pattern depends on a generic parameter
+  --> $DIR/issue-73976-polymorphic.rs:20:37
+   |
+LL |     matches!(GetTypeId::<T>::VALUE, GetTypeId::<T>::VALUE)
+   |                                     ^^^^^^^^^^^^^^^^^^^^^
+
+error: constant pattern depends on a generic parameter
+  --> $DIR/issue-73976-polymorphic.rs:31:42
+   |
+LL |     matches!(GetTypeNameLen::<T>::VALUE, GetTypeNameLen::<T>::VALUE)
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

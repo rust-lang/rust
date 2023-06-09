@@ -3,14 +3,13 @@ mod explicit_counter_loop;
 mod explicit_into_iter_loop;
 mod explicit_iter_loop;
 mod for_kv_map;
-mod for_loops_over_fallibles;
 mod iter_next_loop;
 mod manual_find;
 mod manual_flatten;
 mod manual_memcpy;
+mod manual_while_let_some;
 mod missing_spin_loop;
 mod mut_range_bound;
-mod needless_collect;
 mod needless_range_loop;
 mod never_loop;
 mod same_item_push;
@@ -63,7 +62,8 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Just iterating the collection itself makes the intent
-    /// more clear and is probably faster.
+    /// more clear and is probably faster because it eliminates
+    /// the bounds check that is done when indexing.
     ///
     /// ### Example
     /// ```rust
@@ -175,49 +175,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `for` loops over `Option` or `Result` values.
-    ///
-    /// ### Why is this bad?
-    /// Readability. This is more clearly expressed as an `if
-    /// let`.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let opt = Some(1);
-    /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// for x in opt {
-    ///     // ..
-    /// }
-    ///
-    /// for x in &res {
-    ///     // ..
-    /// }
-    ///
-    /// for x in res.iter() {
-    ///     // ..
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust
-    /// # let opt = Some(1);
-    /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// if let Some(x) = opt {
-    ///     // ..
-    /// }
-    ///
-    /// if let Ok(x) = res {
-    ///     // ..
-    /// }
-    /// ```
-    #[clippy::version = "1.45.0"]
-    pub FOR_LOOPS_OVER_FALLIBLES,
-    suspicious,
-    "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Detects `loop + match` combinations that are easier
     /// written as a `while let` loop.
     ///
@@ -247,28 +204,6 @@ declare_clippy_lint! {
     pub WHILE_LET_LOOP,
     complexity,
     "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for functions collecting an iterator when collect
-    /// is not needed.
-    ///
-    /// ### Why is this bad?
-    /// `collect` causes the allocation of a new data structure,
-    /// when this allocation may not be needed.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let iterator = vec![1].into_iter();
-    /// let len = iterator.clone().collect::<Vec<_>>().len();
-    /// // should be
-    /// let len = iterator.count();
-    /// ```
-    #[clippy::version = "1.30.0"]
-    pub NEEDLESS_COLLECT,
-    perf,
-    "collecting an iterator when collect is not needed"
 }
 
 declare_clippy_lint! {
@@ -635,10 +570,40 @@ declare_clippy_lint! {
     ///     arr.into_iter().find(|&el| el == 1)
     /// }
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.64.0"]
     pub MANUAL_FIND,
     complexity,
     "manual implementation of `Iterator::find`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for loops that check for emptiness of a `Vec` in the condition and pop an element
+    /// in the body as a separate operation.
+    ///
+    /// ### Why is this bad?
+    /// Such loops can be written in a more idiomatic way by using a while-let loop and directly
+    /// pattern matching on the return value of `Vec::pop()`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let mut numbers = vec![1, 2, 3, 4, 5];
+    /// while !numbers.is_empty() {
+    ///     let number = numbers.pop().unwrap();
+    ///     // use `number`
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let mut numbers = vec![1, 2, 3, 4, 5];
+    /// while let Some(number) = numbers.pop() {
+    ///     // use `number`
+    /// }
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub MANUAL_WHILE_LET_SOME,
+    style,
+    "checking for emptiness of a `Vec` in the loop condition and popping an element in the body"
 }
 
 declare_lint_pass!(Loops => [
@@ -648,9 +613,7 @@ declare_lint_pass!(Loops => [
     EXPLICIT_ITER_LOOP,
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
-    FOR_LOOPS_OVER_FALLIBLES,
     WHILE_LET_LOOP,
-    NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
     EMPTY_LOOP,
     WHILE_LET_ON_ITERATOR,
@@ -662,6 +625,7 @@ declare_lint_pass!(Loops => [
     SINGLE_ELEMENT_LOOP,
     MISSING_SPIN_LOOP,
     MANUAL_FIND,
+    MANUAL_WHILE_LET_SOME
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -708,12 +672,11 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         while_let_on_iterator::check(cx, expr);
 
-        if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
+        if let Some(higher::While { condition, body, span }) = higher::While::hir(expr) {
             while_immutable_condition::check(cx, condition, body);
             missing_spin_loop::check(cx, condition, body);
+            manual_while_let_some::check(cx, condition, body, span);
         }
-
-        needless_collect::check(expr, cx);
     }
 }
 
@@ -739,30 +702,22 @@ fn check_for_loop<'tcx>(
     manual_find::check(cx, pat, arg, body, span, expr);
 }
 
-fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
-    let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
-
-    if let ExprKind::MethodCall(method, [self_arg], _) = arg.kind {
+fn check_for_loop_arg(cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
+    if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
         let method_name = method.ident.as_str();
         // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
         match method_name {
             "iter" | "iter_mut" => {
                 explicit_iter_loop::check(cx, self_arg, arg, method_name);
-                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
             },
             "into_iter" => {
                 explicit_iter_loop::check(cx, self_arg, arg, method_name);
                 explicit_into_iter_loop::check(cx, self_arg, arg);
-                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
             },
             "next" => {
-                next_loop_linted = iter_next_loop::check(cx, arg);
+                iter_next_loop::check(cx, arg);
             },
             _ => {},
         }
-    }
-
-    if !next_loop_linted {
-        for_loops_over_fallibles::check(cx, pat, arg, None);
     }
 }

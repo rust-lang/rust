@@ -45,7 +45,7 @@ impl EarlyLintPass for EmptyStructsWithBrackets {
                         span_after_ident,
                         "remove the brackets",
                         ";",
-                        Applicability::MachineApplicable);
+                        Applicability::Unspecified);
                     },
             );
         }

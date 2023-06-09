@@ -1,4 +1,6 @@
-//! A character type.
+//! Utilities for the `char` primitive type.
+//!
+//! *[See also the `char` primitive type](primitive@char).*
 //!
 //! The `char` type represents a single character. More specifically, since
 //! 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
@@ -36,8 +38,12 @@ pub use self::methods::encode_utf16_raw;
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf8_raw;
 
+use crate::ascii;
+use crate::error::Error;
+use crate::escape;
 use crate::fmt::{self, Write};
 use crate::iter::FusedIterator;
+use crate::num::NonZeroUsize;
 
 pub(crate) use self::methods::EscapeDebugExtArgs;
 
@@ -107,7 +113,7 @@ pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::Into
 
 /// Converts a `u32` to a `char`. Use [`char::from_u32`] instead.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+#[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
 #[must_use]
 #[inline]
 pub const fn from_u32(i: u32) -> Option<char> {
@@ -117,7 +123,7 @@ pub const fn from_u32(i: u32) -> Option<char> {
 /// Converts a `u32` to a `char`, ignoring validity. Use [`char::from_u32_unchecked`].
 /// instead.
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+#[rustc_const_unstable(feature = "const_char_from_u32_unchecked", issue = "89259")]
 #[must_use]
 #[inline]
 pub const unsafe fn from_u32_unchecked(i: u32) -> char {
@@ -127,7 +133,7 @@ pub const unsafe fn from_u32_unchecked(i: u32) -> char {
 
 /// Converts a digit in the given radix to a `char`. Use [`char::from_digit`] instead.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+#[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
 #[must_use]
 #[inline]
 pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
@@ -143,86 +149,44 @@ pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
 /// [`escape_unicode`]: char::escape_unicode
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct EscapeUnicode {
-    c: char,
-    state: EscapeUnicodeState,
+pub struct EscapeUnicode(escape::EscapeIterInner<10>);
 
-    // The index of the next hex digit to be printed (0 if none),
-    // i.e., the number of remaining hex digits to be printed;
-    // increasing from the least significant digit: 0x543210
-    hex_digit_idx: usize,
-}
-
-// The enum values are ordered so that their representation is the
-// same as the remaining length (besides the hexadecimal digits). This
-// likely makes `len()` a single load from memory) and inline-worth.
-#[derive(Clone, Debug)]
-enum EscapeUnicodeState {
-    Done,
-    RightBrace,
-    Value,
-    LeftBrace,
-    Type,
-    Backslash,
+impl EscapeUnicode {
+    fn new(chr: char) -> Self {
+        let mut data = [ascii::Char::Null; 10];
+        let range = escape::escape_unicode_into(&mut data, chr);
+        Self(escape::EscapeIterInner::new(data, range))
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeUnicode {
     type Item = char;
 
+    #[inline]
     fn next(&mut self) -> Option<char> {
-        match self.state {
-            EscapeUnicodeState::Backslash => {
-                self.state = EscapeUnicodeState::Type;
-                Some('\\')
-            }
-            EscapeUnicodeState::Type => {
-                self.state = EscapeUnicodeState::LeftBrace;
-                Some('u')
-            }
-            EscapeUnicodeState::LeftBrace => {
-                self.state = EscapeUnicodeState::Value;
-                Some('{')
-            }
-            EscapeUnicodeState::Value => {
-                let hex_digit = ((self.c as u32) >> (self.hex_digit_idx * 4)) & 0xf;
-                let c = from_digit(hex_digit, 16).unwrap();
-                if self.hex_digit_idx == 0 {
-                    self.state = EscapeUnicodeState::RightBrace;
-                } else {
-                    self.hex_digit_idx -= 1;
-                }
-                Some(c)
-            }
-            EscapeUnicodeState::RightBrace => {
-                self.state = EscapeUnicodeState::Done;
-                Some('}')
-            }
-            EscapeUnicodeState::Done => None,
-        }
+        self.0.next().map(char::from)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.len();
+        let n = self.0.len();
         (n, Some(n))
     }
 
     #[inline]
     fn count(self) -> usize {
-        self.len()
+        self.0.len()
     }
 
-    fn last(self) -> Option<char> {
-        match self.state {
-            EscapeUnicodeState::Done => None,
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        self.0.next_back().map(char::from)
+    }
 
-            EscapeUnicodeState::RightBrace
-            | EscapeUnicodeState::Value
-            | EscapeUnicodeState::LeftBrace
-            | EscapeUnicodeState::Type
-            | EscapeUnicodeState::Backslash => Some('}'),
-        }
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        self.0.advance_by(n)
     }
 }
 
@@ -230,16 +194,7 @@ impl Iterator for EscapeUnicode {
 impl ExactSizeIterator for EscapeUnicode {
     #[inline]
     fn len(&self) -> usize {
-        // The match is a single memory access with no branching
-        self.hex_digit_idx
-            + match self.state {
-                EscapeUnicodeState::Done => 0,
-                EscapeUnicodeState::RightBrace => 1,
-                EscapeUnicodeState::Value => 2,
-                EscapeUnicodeState::LeftBrace => 3,
-                EscapeUnicodeState::Type => 4,
-                EscapeUnicodeState::Backslash => 5,
-            }
+        self.0.len()
     }
 }
 
@@ -249,10 +204,7 @@ impl FusedIterator for EscapeUnicode {}
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for EscapeUnicode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for c in self.clone() {
-            f.write_char(c)?;
-        }
-        Ok(())
+        f.write_str(self.0.as_str())
     }
 }
 
@@ -264,90 +216,60 @@ impl fmt::Display for EscapeUnicode {
 /// [`escape_default`]: char::escape_default
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct EscapeDefault {
-    state: EscapeDefaultState,
-}
+pub struct EscapeDefault(escape::EscapeIterInner<10>);
 
-#[derive(Clone, Debug)]
-enum EscapeDefaultState {
-    Done,
-    Char(char),
-    Backslash(char),
-    Unicode(EscapeUnicode),
+impl EscapeDefault {
+    fn printable(chr: ascii::Char) -> Self {
+        let data = [chr];
+        Self(escape::EscapeIterInner::from_array(data))
+    }
+
+    fn backslash(chr: ascii::Char) -> Self {
+        let data = [ascii::Char::ReverseSolidus, chr];
+        Self(escape::EscapeIterInner::from_array(data))
+    }
+
+    fn from_unicode(esc: EscapeUnicode) -> Self {
+        Self(esc.0)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = char;
 
+    #[inline]
     fn next(&mut self) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            }
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
-                Some(c)
-            }
-            EscapeDefaultState::Done => None,
-            EscapeDefaultState::Unicode(ref mut iter) => iter.next(),
-        }
+        self.0.next().map(char::from)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.len();
+        let n = self.0.len();
         (n, Some(n))
     }
 
     #[inline]
     fn count(self) -> usize {
-        self.len()
+        self.0.len()
     }
 
-    fn nth(&mut self, n: usize) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) if n == 0 => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            }
-            EscapeDefaultState::Backslash(c) if n == 1 => {
-                self.state = EscapeDefaultState::Done;
-                Some(c)
-            }
-            EscapeDefaultState::Backslash(_) => {
-                self.state = EscapeDefaultState::Done;
-                None
-            }
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
-
-                if n == 0 { Some(c) } else { None }
-            }
-            EscapeDefaultState::Done => None,
-            EscapeDefaultState::Unicode(ref mut i) => i.nth(n),
-        }
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        self.0.next_back().map(char::from)
     }
 
-    fn last(self) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Unicode(iter) => iter.last(),
-            EscapeDefaultState::Done => None,
-            EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
-        }
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        self.0.advance_by(n)
     }
 }
 
 #[stable(feature = "exact_size_escape", since = "1.11.0")]
 impl ExactSizeIterator for EscapeDefault {
+    #[inline]
     fn len(&self) -> usize {
-        match self.state {
-            EscapeDefaultState::Done => 0,
-            EscapeDefaultState::Char(_) => 1,
-            EscapeDefaultState::Backslash(_) => 2,
-            EscapeDefaultState::Unicode(ref iter) => iter.len(),
-        }
+        self.0.len()
     }
 }
 
@@ -357,10 +279,7 @@ impl FusedIterator for EscapeDefault {}
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for EscapeDefault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for c in self.clone() {
-            f.write_char(c)?;
-        }
-        Ok(())
+        f.write_str(self.0.as_str())
     }
 }
 
@@ -372,21 +291,74 @@ impl fmt::Display for EscapeDefault {
 /// [`escape_debug`]: char::escape_debug
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 #[derive(Clone, Debug)]
-pub struct EscapeDebug(EscapeDefault);
+pub struct EscapeDebug(EscapeDebugInner);
 
-#[stable(feature = "char_escape_debug", since = "1.20.0")]
-impl Iterator for EscapeDebug {
-    type Item = char;
-    fn next(&mut self) -> Option<char> {
-        self.0.next()
+#[derive(Clone, Debug)]
+// Note: It’s possible to manually encode the EscapeDebugInner inside of
+// EscapeIterInner (e.g. with alive=254..255 indicating that data[0..4] holds
+// a char) which would likely result in a more optimised code.  For now we use
+// the option easier to implement.
+enum EscapeDebugInner {
+    Bytes(escape::EscapeIterInner<10>),
+    Char(char),
+}
+
+impl EscapeDebug {
+    fn printable(chr: char) -> Self {
+        Self(EscapeDebugInner::Char(chr))
     }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+
+    fn backslash(chr: ascii::Char) -> Self {
+        let data = [ascii::Char::ReverseSolidus, chr];
+        let iter = escape::EscapeIterInner::from_array(data);
+        Self(EscapeDebugInner::Bytes(iter))
+    }
+
+    fn from_unicode(esc: EscapeUnicode) -> Self {
+        Self(EscapeDebugInner::Bytes(esc.0))
+    }
+
+    fn clear(&mut self) {
+        let bytes = escape::EscapeIterInner::from_array([]);
+        self.0 = EscapeDebugInner::Bytes(bytes);
     }
 }
 
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
-impl ExactSizeIterator for EscapeDebug {}
+impl Iterator for EscapeDebug {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        match self.0 {
+            EscapeDebugInner::Bytes(ref mut bytes) => bytes.next().map(char::from),
+            EscapeDebugInner::Char(chr) => {
+                self.clear();
+                Some(chr)
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.len();
+        (n, Some(n))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+}
+
+#[stable(feature = "char_escape_debug", since = "1.20.0")]
+impl ExactSizeIterator for EscapeDebug {
+    fn len(&self) -> usize {
+        match &self.0 {
+            EscapeDebugInner::Bytes(bytes) => bytes.len(),
+            EscapeDebugInner::Char(_) => 1,
+        }
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDebug {}
@@ -394,7 +366,10 @@ impl FusedIterator for EscapeDebug {}
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl fmt::Display for EscapeDebug {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        match &self.0 {
+            EscapeDebugInner::Bytes(bytes) => f.write_str(bytes.as_str()),
+            EscapeDebugInner::Char(chr) => f.write_char(*chr),
+        }
     }
 }
 
@@ -582,3 +557,6 @@ impl fmt::Display for TryFromCharError {
         "unicode code point out of range".fmt(fmt)
     }
 }
+
+#[stable(feature = "u8_from_char", since = "1.59.0")]
+impl Error for TryFromCharError {}

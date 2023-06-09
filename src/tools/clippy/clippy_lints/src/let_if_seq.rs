@@ -4,7 +4,7 @@ use clippy_utils::{path_to_local_id, visitors::is_local_used};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::BindingAnnotation;
+use rustc_hir::{BindingAnnotation, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     let span = stmt.span.to(if_.span);
 
                     let has_interior_mutability = !cx.typeck_results().node_type(canonical_id).is_freeze(
-                        cx.tcx.at(span),
+                        cx.tcx,
                         cx.param_env,
                     );
                     if has_interior_mutability { return; }
@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     };
 
                     let mutability = match mode {
-                        BindingAnnotation::RefMut | BindingAnnotation::Mutable => "<mut> ",
+                        BindingAnnotation(_, Mutability::Mut) => "<mut> ",
                         _ => "",
                     };
 
@@ -106,8 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     // use mutably after the `if`
 
                     let sug = format!(
-                        "let {mut}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
-                        mut=mutability,
+                        "let {mutability}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
                         name=ident.name,
                         cond=snippet(cx, cond.span, "_"),
                         then=if then.stmts.len() > 1 { " ..;" } else { "" },

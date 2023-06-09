@@ -11,6 +11,7 @@ pub(crate) const STRIP_PRIV_IMPORTS: Pass = Pass {
     description: "strips all private import statements (`use`, `extern crate`) from a crate",
 };
 
-pub(crate) fn strip_priv_imports(krate: clean::Crate, _: &mut DocContext<'_>) -> clean::Crate {
-    ImportStripper.fold_crate(krate)
+pub(crate) fn strip_priv_imports(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+    let is_json_output = cx.output_format.is_json() && !cx.show_coverage;
+    ImportStripper { tcx: cx.tcx, is_json_output }.fold_crate(krate)
 }

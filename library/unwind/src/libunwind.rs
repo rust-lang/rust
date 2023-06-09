@@ -27,17 +27,23 @@ pub type _Unwind_Trace_Fn =
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
+pub const unwinder_private_data_size: usize = 2;
+
+#[cfg(all(target_arch = "x86_64", target_os = "windows"))]
 pub const unwinder_private_data_size: usize = 6;
 
-#[cfg(all(target_arch = "arm", not(target_os = "ios")))]
+#[cfg(all(target_arch = "arm", not(any(target_os = "ios", target_os = "watchos"))))]
 pub const unwinder_private_data_size: usize = 20;
 
-#[cfg(all(target_arch = "arm", target_os = "ios"))]
+#[cfg(all(target_arch = "arm", any(target_os = "ios", target_os = "watchos")))]
 pub const unwinder_private_data_size: usize = 5;
 
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
+#[cfg(all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")))]
 pub const unwinder_private_data_size: usize = 2;
+
+#[cfg(all(target_arch = "aarch64", target_pointer_width = "64", target_os = "windows"))]
+pub const unwinder_private_data_size: usize = 6;
 
 #[cfg(all(target_arch = "aarch64", target_pointer_width = "32"))]
 pub const unwinder_private_data_size: usize = 5;
@@ -69,6 +75,9 @@ pub const unwinder_private_data_size: usize = 20;
 #[cfg(all(target_arch = "hexagon", target_os = "linux"))]
 pub const unwinder_private_data_size: usize = 35;
 
+#[cfg(target_arch = "loongarch64")]
+pub const unwinder_private_data_size: usize = 2;
+
 #[repr(C)]
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
@@ -82,15 +91,18 @@ pub type _Unwind_Exception_Cleanup_Fn =
     extern "C" fn(unwind_code: _Unwind_Reason_Code, exception: *mut _Unwind_Exception);
 
 // FIXME: The `#[link]` attributes on `extern "C"` block marks those symbols declared in
-// the block are reexported in dylib build of libstd. This is needed when build rustc with
-// feature `llvm-libunwind', as no other cdylib will provided those _Unwind_* symbols.
+// the block are reexported in dylib build of std. This is needed when build rustc with
+// feature `llvm-libunwind`, as no other cdylib will provided those _Unwind_* symbols.
 // However the `link` attribute is duplicated multiple times and does not just export symbol,
 // a better way to manually export symbol would be another attribute like `#[export]`.
 // See the logic in function rustc_codegen_ssa::src::back::exported_symbols, module
 // rustc_codegen_ssa::src::back::symbol_export, rustc_middle::middle::exported_symbols
 // and RFC 2841
 #[cfg_attr(
-    all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+    any(
+        all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+        all(target_os = "windows", target_env = "gnu", target_abi = "llvm")
+    ),
     link(name = "unwind", kind = "static", modifiers = "-bundle")
 )]
 extern "C-unwind" {
@@ -105,7 +117,7 @@ extern "C" {
 }
 
 cfg_if::cfg_if! {
-if #[cfg(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm")))] {
+if #[cfg(any(target_os = "ios", target_os = "watchos", target_os = "netbsd", not(target_arch = "arm")))] {
     // Not ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
@@ -269,7 +281,7 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
 } // cfg_if!
 
 cfg_if::cfg_if! {
-if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
+if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
     // We declare these as opaque types. This is fine since you just need to
     // pass them to _GCC_specific_handler and forget about them.
     pub enum EXCEPTION_RECORD {}

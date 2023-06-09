@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `u8: Identity` is not satisfied
+  --> $DIR/projection-as-union-type-error.rs:13:9
+   |
+LL |     a:  <Foo as Identity>::Identity,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Identity` is not implemented for `u8`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

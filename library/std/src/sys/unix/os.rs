@@ -17,10 +17,11 @@ use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::str;
+use crate::sync::{PoisonError, RwLock};
+use crate::sys::common::small_c_string::{run_path_with_cstr, run_with_cstr};
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys::memchr;
-use crate::sys_common::rwlock::{StaticRwLock, StaticRwLockReadGuard};
 use crate::vec;
 
 #[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
@@ -60,8 +61,9 @@ extern "C" {
         link_name = "__errno"
     )]
     #[cfg_attr(any(target_os = "solaris", target_os = "illumos"), link_name = "___errno")]
+    #[cfg_attr(target_os = "nto", link_name = "__get_errno_ptr")]
     #[cfg_attr(
-        any(target_os = "macos", target_os = "ios", target_os = "freebsd"),
+        any(target_os = "macos", target_os = "ios", target_os = "freebsd", target_os = "watchos"),
         link_name = "__error"
     )]
     #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
@@ -112,7 +114,10 @@ pub fn set_errno(e: i32) {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     extern "C" {
-        #[cfg_attr(any(target_os = "linux", target_env = "newlib"), link_name = "__xpg_strerror_r")]
+        #[cfg_attr(
+            all(any(target_os = "linux", target_env = "newlib"), not(target_env = "ohos")),
+            link_name = "__xpg_strerror_r"
+        )]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t) -> c_int;
     }
 
@@ -125,7 +130,9 @@ pub fn error_string(errno: i32) -> String {
         }
 
         let p = p as *const _;
-        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
+        // We can't always expect a UTF-8 environment. When we don't get that luxury,
+        // it's better to give a low-quality error message than none at all.
+        String::from_utf8_lossy(CStr::from_ptr(p).to_bytes()).into()
     }
 }
 
@@ -168,12 +175,8 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
 
 #[cfg(not(target_os = "espidf"))]
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let p: &OsStr = p.as_ref();
-    let p = CString::new(p.as_bytes())?;
-    if unsafe { libc::chdir(p.as_ptr()) } != 0 {
-        return Err(io::Error::last_os_error());
-    }
-    Ok(())
+    let result = run_path_with_cstr(p, |p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
+    if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
 }
 
 pub struct SplitPaths<'a> {
@@ -361,7 +364,18 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(target_os = "nto")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    let mut e = crate::fs::read("/proc/self/exefile")?;
+    // Current versions of QNX Neutrino provide a null-terminated path.
+    // Ensure the trailing null byte is not returned here.
+    if let Some(0) = e.last() {
+        e.pop();
+    }
+    Ok(PathBuf::from(OsString::from_vec(e)))
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut sz: u32 = 0;
@@ -446,7 +460,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     path.canonicalize()
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon"))]
+#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     super::unsupported::unsupported()
 }
@@ -501,10 +515,10 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     ptr::addr_of_mut!(environ)
 }
 
-static ENV_LOCK: StaticRwLock = StaticRwLock::new();
+static ENV_LOCK: RwLock<()> = RwLock::new(());
 
-pub fn env_read_lock() -> StaticRwLockReadGuard {
-    ENV_LOCK.read()
+pub fn env_read_lock() -> impl Drop {
+    ENV_LOCK.read().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
@@ -546,35 +560,32 @@ pub fn env() -> Env {
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
-    let k = CString::new(k.as_bytes()).ok()?;
-    unsafe {
+    let s = run_with_cstr(k.as_bytes(), |k| {
         let _guard = env_read_lock();
-        let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
-        if s.is_null() {
-            None
-        } else {
-            Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
-        }
+        Ok(unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char)
+    })
+    .ok()?;
+    if s.is_null() {
+        None
+    } else {
+        Some(OsStringExt::from_vec(unsafe { CStr::from_ptr(s) }.to_bytes().to_vec()))
     }
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    let k = CString::new(k.as_bytes())?;
-    let v = CString::new(v.as_bytes())?;
-
-    unsafe {
-        let _guard = ENV_LOCK.write();
-        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
-    }
+    run_with_cstr(k.as_bytes(), |k| {
+        run_with_cstr(v.as_bytes(), |v| {
+            let _guard = ENV_LOCK.write();
+            cvt(unsafe { libc::setenv(k.as_ptr(), v.as_ptr(), 1) }).map(drop)
+        })
+    })
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
-    let nbuf = CString::new(n.as_bytes())?;
-
-    unsafe {
+    run_with_cstr(n.as_bytes(), |nbuf| {
         let _guard = ENV_LOCK.write();
-        cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
-    }
+        cvt(unsafe { libc::unsetenv(nbuf.as_ptr()) }).map(drop)
+    })
 }
 
 #[cfg(not(target_os = "espidf"))]
@@ -598,11 +609,13 @@ pub fn home_dir() -> Option<PathBuf> {
     #[cfg(any(
         target_os = "android",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_os = "vita",
     ))]
     unsafe fn fallback() -> Option<OsString> {
         None
@@ -610,11 +623,13 @@ pub fn home_dir() -> Option<PathBuf> {
     #[cfg(not(any(
         target_os = "android",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_os = "vita",
     )))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {

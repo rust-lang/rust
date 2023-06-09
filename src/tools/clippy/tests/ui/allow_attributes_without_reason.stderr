@@ -4,12 +4,12 @@ error: `allow` attribute without specifying a reason
 LL | #[allow(dead_code)]
    | ^^^^^^^^^^^^^^^^^^^
    |
+   = help: try adding a reason at the end with `, reason = ".."`
 note: the lint level is defined here
   --> $DIR/allow_attributes_without_reason.rs:2:9
    |
 LL | #![deny(clippy::allow_attributes_without_reason)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: try adding a reason at the end with `, reason = ".."`
 
 error: `allow` attribute without specifying a reason
   --> $DIR/allow_attributes_without_reason.rs:6:1

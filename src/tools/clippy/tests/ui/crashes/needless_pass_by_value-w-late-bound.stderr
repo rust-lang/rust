@@ -1,0 +1,15 @@
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value-w-late-bound.rs:7:12
+   |
+LL | fn test(x: Foo<'_>) {}
+   |            ^^^^^^^ help: consider taking a reference instead: `&Foo<'_>`
+   |
+help: consider marking this type as `Copy`
+  --> $DIR/needless_pass_by_value-w-late-bound.rs:5:1
+   |
+LL | struct Foo<'a>(&'a [(); 100]);
+   | ^^^^^^^^^^^^^^
+   = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
+
+error: aborting due to previous error
+

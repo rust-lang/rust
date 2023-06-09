@@ -15,14 +15,10 @@ use crate::panic::Location;
 /// use std::panic;
 ///
 /// panic::set_hook(Box::new(|panic_info| {
-///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-///         println!("panic occurred: {s:?}");
-///     } else {
-///         println!("panic occurred");
-///     }
+///     println!("panic occurred: {panic_info}");
 /// }));
 ///
-/// panic!("Normal panic");
+/// panic!("critical system failure");
 /// ```
 #[lang = "panic_info"]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -138,7 +134,7 @@ impl<'a> PanicInfo<'a> {
     /// whose ABI does not support unwinding.
     ///
     /// It is safe for a panic handler to unwind even when this function returns
-    /// true, however this will simply cause the panic handler to be called
+    /// false, however this will simply cause the panic handler to be called
     /// again.
     #[must_use]
     #[unstable(feature = "panic_can_unwind", issue = "92988")]
@@ -157,7 +153,7 @@ impl fmt::Display for PanicInfo<'_> {
             write!(formatter, "'{}', ", payload)?
         }
         // NOTE: we cannot use downcast_ref::<String>() here
-        // since String is not available in libcore!
+        // since String is not available in core!
         // The payload is a String when `std::panic!` is called with multiple arguments,
         // but in that case the message is also available.
 

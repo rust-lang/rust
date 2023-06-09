@@ -1,4 +1,3 @@
-#![feature(box_syntax)]
 #![feature(lint_reasons)]
 #![allow(
     clippy::borrowed_box,
@@ -34,7 +33,7 @@ fn ok_box_trait(boxed_trait: &Box<dyn Z>) {
 }
 
 fn warn_call() {
-    let x = box A;
+    let x = Box::new(A);
     x.foo();
 }
 
@@ -43,41 +42,41 @@ fn warn_arg(x: Box<A>) {
 }
 
 fn nowarn_closure_arg() {
-    let x = Some(box A);
+    let x = Some(Box::new(A));
     x.map_or((), |x| take_ref(&x));
 }
 
 fn warn_rename_call() {
-    let x = box A;
+    let x = Box::new(A);
 
     let y = x;
     y.foo(); // via autoderef
 }
 
 fn warn_notuse() {
-    let bz = box A;
+    let bz = Box::new(A);
 }
 
 fn warn_pass() {
-    let bz = box A;
+    let bz = Box::new(A);
     take_ref(&bz); // via deref coercion
 }
 
 fn nowarn_return() -> Box<A> {
-    box A // moved out, "escapes"
+    Box::new(A) // moved out, "escapes"
 }
 
 fn nowarn_move() {
-    let bx = box A;
+    let bx = Box::new(A);
     drop(bx) // moved in, "escapes"
 }
 fn nowarn_call() {
-    let bx = box A;
+    let bx = Box::new(A);
     bx.clone(); // method only available to Box, not via autoderef
 }
 
 fn nowarn_pass() {
-    let bx = box A;
+    let bx = Box::new(A);
     take_box(&bx); // fn needs &Box
 }
 
@@ -86,30 +85,20 @@ fn take_ref(x: &A) {}
 
 fn nowarn_ref_take() {
     // false positive, should actually warn
-    let x = box A;
+    let x = Box::new(A);
     let y = &x;
     take_box(y);
 }
 
 fn nowarn_match() {
-    let x = box A; // moved into a match
+    let x = Box::new(A); // moved into a match
     match x {
         y => drop(y),
     }
 }
 
 fn warn_match() {
-    let x = box A;
-    match &x {
-        // not moved
-        y => (),
-    }
-}
-
-fn nowarn_large_array() {
-    // should not warn, is large array
-    // and should not be on stack
-    let x = box [1; 10000];
+    let x = Box::new(A);
     match &x {
         // not moved
         y => (),

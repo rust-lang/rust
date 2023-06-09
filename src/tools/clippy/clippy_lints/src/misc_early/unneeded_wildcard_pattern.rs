@@ -46,7 +46,7 @@ fn span_lint(cx: &EarlyContext<'_>, span: Span, only_one: bool) {
             "these patterns are unneeded as the `..` pattern can match those elements"
         },
         if only_one { "remove it" } else { "remove them" },
-        "".to_string(),
+        String::new(),
         Applicability::MachineApplicable,
     );
 }

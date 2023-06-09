@@ -1,0 +1,30 @@
+error[E0407]: method `from` is not a member of trait `Fn`
+  --> $DIR/issue-87558.rs:6:5
+   |
+LL |     fn from() {}
+   |     ^^^^^^^^^^^^ not a member of trait `Fn`
+
+error[E0183]: manual implementations of `Fn` are experimental
+  --> $DIR/issue-87558.rs:3:6
+   |
+LL | impl Fn(&isize) for Error {
+   |      ^^^^^^^^^^ manual implementations of `Fn` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-87558.rs:3:6
+   |
+LL | impl Fn(&isize) for Error {
+   |      ^^^^^^^^^^ associated type not allowed here
+   |
+help: parenthesized trait syntax expands to `Fn<(&isize,), Output=()>`
+  --> $DIR/issue-87558.rs:3:6
+   |
+LL | impl Fn(&isize) for Error {
+   |      ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0183, E0229, E0407.
+For more information about an error, try `rustc --explain E0183`.

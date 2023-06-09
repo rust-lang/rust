@@ -18,7 +18,7 @@ new file mode 100644
 index 0000000..46fd999
 --- /dev/null
 +++ b/library/core/tests/Cargo.toml
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,12 @@
 +[package]
 +name = "core"
 +version = "0.0.0"
@@ -27,37 +27,18 @@ index 0000000..46fd999
 +[lib]
 +name = "coretests"
 +path = "lib.rs"
-diff --git a/library/core/tests/num/flt2dec/mod.rs b/library/core/tests/num/flt2dec/mod.rs
-index a35897e..f0bf645 100644
---- a/library/core/tests/num/flt2dec/mod.rs
-+++ b/library/core/tests/num/flt2dec/mod.rs
-@@ -13,7 +13,6 @@ mod strategy {
-     mod dragon;
-     mod grisu;
- }
--mod random;
- 
- pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
-     match decode(v).1 {
-diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
-index 6609bc3..241b497 100644
---- a/library/core/tests/slice.rs
-+++ b/library/core/tests/slice.rs
-@@ -1209,6 +1209,7 @@ fn brute_force_rotate_test_1() {
-     }
- }
- 
-+/*
- #[test]
- #[cfg(not(target_arch = "wasm32"))]
- fn sort_unstable() {
-@@ -1394,6 +1395,7 @@ fn partition_at_index() {
-     v.select_nth_unstable(0);
-     assert!(v == [0xDEADBEEF]);
- }
-+*/
- 
- #[test]
- #[should_panic(expected = "index 0 greater than length of slice")]
++
++[dependencies]
++rand = { version = "0.8.5", default-features = false }
++rand_xorshift = { version = "0.3.0", default-features = false }
+diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
+index 42a26ae..5ac1042 100644
+--- a/library/core/tests/lib.rs
++++ b/library/core/tests/lib.rs
+@@ -1,3 +1,4 @@
++#![cfg(test)]
+ #![feature(alloc_layout_extra)]
+ #![feature(array_chunks)]
+ #![feature(array_methods)]
 --
 2.21.0 (Apple Git-122)

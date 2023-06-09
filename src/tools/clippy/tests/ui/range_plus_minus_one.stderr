@@ -1,5 +1,5 @@
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:15:14
+  --> $DIR/range_plus_minus_one.rs:31:14
    |
 LL |     for _ in 0..3 + 1 {}
    |              ^^^^^^^^ help: use: `0..=3`
@@ -7,25 +7,25 @@ LL |     for _ in 0..3 + 1 {}
    = note: `-D clippy::range-plus-one` implied by `-D warnings`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:18:14
+  --> $DIR/range_plus_minus_one.rs:34:14
    |
 LL |     for _ in 0..1 + 5 {}
    |              ^^^^^^^^ help: use: `0..=5`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:21:14
+  --> $DIR/range_plus_minus_one.rs:37:14
    |
 LL |     for _ in 1..1 + 1 {}
    |              ^^^^^^^^ help: use: `1..=1`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:27:14
+  --> $DIR/range_plus_minus_one.rs:43:14
    |
 LL |     for _ in 0..(1 + f()) {}
    |              ^^^^^^^^^^^^ help: use: `0..=f()`
 
 error: an exclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:31:13
+  --> $DIR/range_plus_minus_one.rs:47:13
    |
 LL |     let _ = ..=11 - 1;
    |             ^^^^^^^^^ help: use: `..11`
@@ -33,25 +33,25 @@ LL |     let _ = ..=11 - 1;
    = note: `-D clippy::range-minus-one` implied by `-D warnings`
 
 error: an exclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:32:13
+  --> $DIR/range_plus_minus_one.rs:48:13
    |
 LL |     let _ = ..=(11 - 1);
    |             ^^^^^^^^^^^ help: use: `..11`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:33:13
+  --> $DIR/range_plus_minus_one.rs:49:13
    |
 LL |     let _ = (1..11 + 1);
    |             ^^^^^^^^^^^ help: use: `(1..=11)`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:34:13
+  --> $DIR/range_plus_minus_one.rs:50:13
    |
 LL |     let _ = (f() + 1)..(f() + 1);
    |             ^^^^^^^^^^^^^^^^^^^^ help: use: `((f() + 1)..=f())`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:38:14
+  --> $DIR/range_plus_minus_one.rs:54:14
    |
 LL |     for _ in 1..ONE + ONE {}
    |              ^^^^^^^^^^^^ help: use: `1..=ONE`

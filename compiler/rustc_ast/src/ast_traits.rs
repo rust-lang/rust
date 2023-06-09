@@ -4,7 +4,7 @@
 
 use crate::ptr::P;
 use crate::token::Nonterminal;
-use crate::tokenstream::LazyTokenStream;
+use crate::tokenstream::LazyAttrTokenStream;
 use crate::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
 use crate::{AssocItem, Expr, ForeignItem, Item, NodeId};
 use crate::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
@@ -124,18 +124,18 @@ impl HasSpan for AttrItem {
 
 /// A trait for AST nodes having (or not having) collected tokens.
 pub trait HasTokens {
-    fn tokens(&self) -> Option<&LazyTokenStream>;
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>>;
+    fn tokens(&self) -> Option<&LazyAttrTokenStream>;
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>>;
 }
 
 macro_rules! impl_has_tokens {
     ($($T:ty),+ $(,)?) => {
         $(
             impl HasTokens for $T {
-                fn tokens(&self) -> Option<&LazyTokenStream> {
+                fn tokens(&self) -> Option<&LazyAttrTokenStream> {
                     self.tokens.as_ref()
                 }
-                fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
                     Some(&mut self.tokens)
                 }
             }
@@ -147,10 +147,10 @@ macro_rules! impl_has_tokens_none {
     ($($T:ty),+ $(,)?) => {
         $(
             impl HasTokens for $T {
-                fn tokens(&self) -> Option<&LazyTokenStream> {
+                fn tokens(&self) -> Option<&LazyAttrTokenStream> {
                     None
                 }
-                fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
                     None
                 }
             }
@@ -162,25 +162,25 @@ impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Path,
 impl_has_tokens_none!(Arm, ExprField, FieldDef, GenericParam, Param, PatField, Variant);
 
 impl<T: AstDeref<Target: HasTokens>> HasTokens for T {
-    fn tokens(&self) -> Option<&LazyTokenStream> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         self.ast_deref().tokens()
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         self.ast_deref_mut().tokens_mut()
     }
 }
 
 impl<T: HasTokens> HasTokens for Option<T> {
-    fn tokens(&self) -> Option<&LazyTokenStream> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         self.as_ref().and_then(|inner| inner.tokens())
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         self.as_mut().and_then(|inner| inner.tokens_mut())
     }
 }
 
 impl HasTokens for StmtKind {
-    fn tokens(&self) -> Option<&LazyTokenStream> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match self {
             StmtKind::Local(local) => local.tokens.as_ref(),
             StmtKind::Item(item) => item.tokens(),
@@ -189,7 +189,7 @@ impl HasTokens for StmtKind {
             StmtKind::MacCall(mac) => mac.tokens.as_ref(),
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         match self {
             StmtKind::Local(local) => Some(&mut local.tokens),
             StmtKind::Item(item) => item.tokens_mut(),
@@ -201,35 +201,35 @@ impl HasTokens for StmtKind {
 }
 
 impl HasTokens for Stmt {
-    fn tokens(&self) -> Option<&LazyTokenStream> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         self.kind.tokens()
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         self.kind.tokens_mut()
     }
 }
 
 impl HasTokens for Attribute {
-    fn tokens(&self) -> Option<&LazyTokenStream> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match &self.kind {
-            AttrKind::Normal(_, tokens) => tokens.as_ref(),
+            AttrKind::Normal(normal) => normal.tokens.as_ref(),
             kind @ AttrKind::DocComment(..) => {
-                panic!("Called tokens on doc comment attr {:?}", kind)
+                panic!("Called tokens on doc comment attr {kind:?}")
             }
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         Some(match &mut self.kind {
-            AttrKind::Normal(_, tokens) => tokens,
+            AttrKind::Normal(normal) => &mut normal.tokens,
             kind @ AttrKind::DocComment(..) => {
-                panic!("Called tokens_mut on doc comment attr {:?}", kind)
+                panic!("Called tokens_mut on doc comment attr {kind:?}")
             }
         })
     }
 }
 
 impl HasTokens for Nonterminal {
-    fn tokens(&self) -> Option<&LazyTokenStream> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match self {
             Nonterminal::NtItem(item) => item.tokens(),
             Nonterminal::NtStmt(stmt) => stmt.tokens(),
@@ -243,7 +243,7 @@ impl HasTokens for Nonterminal {
             Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         match self {
             Nonterminal::NtItem(item) => item.tokens_mut(),
             Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
@@ -270,7 +270,7 @@ pub trait HasAttrs {
     /// during token collection.
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool;
     fn attrs(&self) -> &[Attribute];
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>));
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec));
 }
 
 macro_rules! impl_has_attrs {
@@ -279,12 +279,13 @@ macro_rules! impl_has_attrs {
             impl HasAttrs for $T {
                 const SUPPORTS_CUSTOM_INNER_ATTRS: bool = $inner;
 
+                #[inline]
                 fn attrs(&self) -> &[Attribute] {
                     &self.attrs
                 }
 
-                fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-                    VecOrAttrVec::visit(&mut self.attrs, f)
+                fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
+                    f(&mut self.attrs)
                 }
             }
         )+
@@ -299,7 +300,7 @@ macro_rules! impl_has_attrs_none {
                 fn attrs(&self) -> &[Attribute] {
                     &[]
                 }
-                fn visit_attrs(&mut self, _f: impl FnOnce(&mut Vec<Attribute>)) {}
+                fn visit_attrs(&mut self, _f: impl FnOnce(&mut AttrVec)) {}
             }
         )+
     };
@@ -330,7 +331,7 @@ impl<T: AstDeref<Target: HasAttrs>> HasAttrs for T {
     fn attrs(&self) -> &[Attribute] {
         self.ast_deref().attrs()
     }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         self.ast_deref_mut().visit_attrs(f)
     }
 }
@@ -340,7 +341,7 @@ impl<T: HasAttrs> HasAttrs for Option<T> {
     fn attrs(&self) -> &[Attribute] {
         self.as_ref().map(|inner| inner.attrs()).unwrap_or(&[])
     }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         if let Some(inner) = self.as_mut() {
             inner.visit_attrs(f);
         }
@@ -362,13 +363,13 @@ impl HasAttrs for StmtKind {
         }
     }
 
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         match self {
-            StmtKind::Local(local) => visit_attrvec(&mut local.attrs, f),
+            StmtKind::Local(local) => f(&mut local.attrs),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Item(item) => item.visit_attrs(f),
             StmtKind::Empty => {}
-            StmtKind::MacCall(mac) => visit_attrvec(&mut mac.attrs, f),
+            StmtKind::MacCall(mac) => f(&mut mac.attrs),
         }
     }
 }
@@ -378,36 +379,9 @@ impl HasAttrs for Stmt {
     fn attrs(&self) -> &[Attribute] {
         self.kind.attrs()
     }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         self.kind.visit_attrs(f);
     }
-}
-
-/// Helper trait for the impls above. Abstracts over
-/// the two types of attribute fields that AST nodes
-/// may have (`Vec<Attribute>` or `AttrVec`).
-trait VecOrAttrVec {
-    fn visit(&mut self, f: impl FnOnce(&mut Vec<Attribute>));
-}
-
-impl VecOrAttrVec for Vec<Attribute> {
-    fn visit(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        f(self)
-    }
-}
-
-impl VecOrAttrVec for AttrVec {
-    fn visit(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        visit_attrvec(self, f)
-    }
-}
-
-fn visit_attrvec(attrs: &mut AttrVec, f: impl FnOnce(&mut Vec<Attribute>)) {
-    crate::mut_visit::visit_clobber(attrs, |attrs| {
-        let mut vec = attrs.into();
-        f(&mut vec);
-        vec.into()
-    });
 }
 
 /// A newtype around an AST node that implements the traits above if the node implements them.

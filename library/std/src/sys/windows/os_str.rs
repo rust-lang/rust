@@ -27,6 +27,7 @@ impl FromInner<Wtf8Buf> for Buf {
 }
 
 impl AsInner<Wtf8> for Buf {
+    #[inline]
     fn as_inner(&self) -> &Wtf8 {
         &self.inner
     }
@@ -151,6 +152,16 @@ impl Buf {
 
 impl Slice {
     #[inline]
+    pub fn as_os_str_bytes(&self) -> &[u8] {
+        self.inner.as_bytes()
+    }
+
+    #[inline]
+    pub unsafe fn from_os_str_bytes_unchecked(s: &[u8]) -> &Slice {
+        mem::transmute(Wtf8::from_bytes_unchecked(s))
+    }
+
+    #[inline]
     pub fn from_str(s: &str) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
@@ -164,9 +175,7 @@ impl Slice {
     }
 
     pub fn to_owned(&self) -> Buf {
-        let mut buf = Wtf8Buf::with_capacity(self.inner.len());
-        buf.push_wtf8(&self.inner);
-        Buf { inner: buf }
+        Buf { inner: self.inner.to_owned() }
     }
 
     pub fn clone_into(&self, buf: &mut Buf) {

@@ -1,0 +1,14 @@
+error: Undefined Behavior: callee has fewer arguments than expected
+  --> $DIR/libc_pthread_create_too_few_args.rs:LL:CC
+   |
+LL |     panic!()
+   |     ^^^^^^^^ callee has fewer arguments than expected
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `thread_start` at RUSTLIB/core/src/panic.rs:LL:CC
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

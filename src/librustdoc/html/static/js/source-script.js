@@ -10,10 +10,18 @@
 (function() {
 
 const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
-let oldScrollPosition = 0;
+
+const NAME_OFFSET = 0;
+const DIRS_OFFSET = 1;
+const FILES_OFFSET = 2;
+
+// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
+// If you update this line, then you also need to update the media query with the same
+// warning in rustdoc.css
+const RUSTDOC_MOBILE_BREAKPOINT = 700;
 
 function closeSidebarIfMobile() {
-    if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+    if (window.innerWidth < RUSTDOC_MOBILE_BREAKPOINT) {
         updateLocalStorage("source-sidebar-show", "false");
     }
 }
@@ -24,16 +32,16 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 
     dirEntry.className = "dir-entry";
 
-    fullPath += elem["name"] + "/";
+    fullPath += elem[NAME_OFFSET] + "/";
 
-    summary.innerText = elem["name"];
+    summary.innerText = elem[NAME_OFFSET];
     dirEntry.appendChild(summary);
 
     const folders = document.createElement("div");
     folders.className = "folders";
-    if (elem.dirs) {
-        for (const dir of elem.dirs) {
-            if (createDirEntry(dir, folders, fullPath, hasFoundFile)) {
+    if (elem[DIRS_OFFSET]) {
+        for (const dir of elem[DIRS_OFFSET]) {
+            if (createDirEntry(dir, folders, fullPath, false)) {
                 dirEntry.open = true;
                 hasFoundFile = true;
             }
@@ -43,13 +51,13 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 
     const files = document.createElement("div");
     files.className = "files";
-    if (elem.files) {
-        for (const file_text of elem.files) {
+    if (elem[FILES_OFFSET]) {
+        const w = window.location.href.split("#")[0];
+        for (const file_text of elem[FILES_OFFSET]) {
             const file = document.createElement("a");
             file.innerText = file_text;
             file.href = rootPath + "src/" + fullPath + file_text + ".html";
             file.addEventListener("click", closeSidebarIfMobile);
-            const w = window.location.href.split("#")[0];
             if (!hasFoundFile && w === file.href) {
                 file.className = "selected";
                 dirEntry.open = true;
@@ -66,24 +74,10 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
-            // This is to keep the scroll position on mobile.
-            oldScrollPosition = window.scrollY;
-            document.body.style.position = "fixed";
-            document.body.style.top = `-${oldScrollPosition}px`;
-        }
         addClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
-            // This is to keep the scroll position on mobile.
-            document.body.style.position = "";
-            document.body.style.top = "";
-            // The scroll position is lost when resetting the style, hence why we store it in
-            // `oldScroll`.
-            window.scrollTo(0, oldScrollPosition);
-        }
         removeClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
@@ -92,7 +86,7 @@ function toggleSidebar() {
 
 function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
-    sidebarToggle.id = "sidebar-toggle";
+    sidebarToggle.id = "src-sidebar-toggle";
 
     const inner = document.createElement("button");
 
@@ -107,7 +101,7 @@ function createSidebarToggle() {
     return sidebarToggle;
 }
 
-// This function is called from "source-files.js", generated in `html/render/mod.rs`.
+// This function is called from "source-files.js", generated in `html/render/write_shared.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSourceSidebar() {
     const container = document.querySelector("nav.sidebar");
@@ -125,9 +119,8 @@ function createSourceSidebar() {
     title.innerText = "Files";
     sidebar.appendChild(title);
     Object.keys(sourcesIndex).forEach(key => {
-        sourcesIndex[key].name = key;
-        hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "",
-            hasFoundFile);
+        sourcesIndex[key][NAME_OFFSET] = key;
+        hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "", hasFoundFile);
     });
 
     container.appendChild(sidebar);
@@ -165,8 +158,8 @@ function highlightSourceLines(match) {
     if (x) {
         x.scrollIntoView();
     }
-    onEachLazy(document.getElementsByClassName("line-numbers"), e => {
-        onEachLazy(e.getElementsByTagName("span"), i_e => {
+    onEachLazy(document.getElementsByClassName("src-line-numbers"), e => {
+        onEachLazy(e.getElementsByTagName("a"), i_e => {
             removeClass(i_e, "line-highlighted");
         });
     });
@@ -197,8 +190,13 @@ const handleSourceHighlight = (function() {
 
     return ev => {
         let cur_line_id = parseInt(ev.target.id, 10);
-        // It can happen when clicking not on a line number span.
-        if (isNaN(cur_line_id)) {
+        // This event handler is attached to the entire line number column, but it should only
+        // be run if one of the anchors is clicked. It also shouldn't do anything if the anchor
+        // is clicked with a modifier key (to open a new browser tab).
+        if (isNaN(cur_line_id) ||
+            ev.ctrlKey ||
+            ev.altKey ||
+            ev.metaKey) {
             return;
         }
         ev.preventDefault();
@@ -227,7 +225,7 @@ window.addEventListener("hashchange", () => {
     }
 });
 
-onEachLazy(document.getElementsByClassName("line-numbers"), el => {
+onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
     el.addEventListener("click", handleSourceHighlight);
 });
 

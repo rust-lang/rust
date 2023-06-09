@@ -4,16 +4,21 @@
 
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
-#![feature(const_btree_new)]
-#![feature(let_else)]
-#![feature(once_cell)]
+#![feature(const_btree_len)]
+#![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
+#![feature(variant_count)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
+
+#[macro_use]
+extern crate tracing;
 
 #[macro_use]
 extern crate rustc_data_structures;

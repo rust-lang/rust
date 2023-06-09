@@ -38,6 +38,15 @@ future.
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
 plain text.
 
+### `missing_doc_code_examples` lint
+
+This lint will emit a warning if an item doesn't have a code example in its documentation.
+It can be enabled using:
+
+```rust,ignore (nightly)
+#![deny(rustdoc::missing_doc_code_examples)]
+```
+
 ## Extensions to the `#[doc]` attribute
 
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
@@ -177,9 +186,9 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 This is for Rust compiler internal use only.
 
 Since primitive types are defined in the compiler, there's no place to attach documentation
-attributes. The `#[doc(primitive)]` attribute is used by the standard library to provide a way
-to generate documentation for primitive types, and requires `#![feature(rustdoc_internals)]` to
-enable.
+attributes. The `#[rustc_doc_primitive = "..."]` attribute is used by the standard library to
+provide a way to generate documentation for primitive types, and requires `#![feature(rustc_attrs)]`
+to enable.
 
 ### Document keywords
 
@@ -196,6 +205,35 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 #[doc(keyword = "keyword")]
 mod empty_mod {}
 ```
+
+## Effects of other nightly features
+
+These nightly-only features are not primarily related to Rustdoc,
+but have convenient effects on the documentation produced.
+
+### `fundamental` types
+
+Annotating a type with `#[fundamental]` primarily influences coherence rules about generic types,
+i.e., they alter whether other crates can provide implementations for that type.
+The unstable book [links to further information][unstable-fundamental].
+
+[unstable-fundamental]: https://doc.rust-lang.org/unstable-book/language-features/fundamental.html
+
+For documentation, this has an additional side effect:
+If a method is implemented on `F<T>` (or `F<&T>`),
+where `F` is a fundamental type,
+then the method is not only documented at the page about `F`,
+but also on the page about `T`.
+In a sense, it makes the type transparent to Rustdoc.
+This is especially convenient for types that work as annotated pointers,
+such as `Pin<&mut T>`,
+as it ensures that methods only implemented through those annotated pointers
+can still be found with the type they act on.
+
+If the `fundamental` feature's effect on coherence is not intended,
+such a type can be marked as fundamental only for purposes of documentation
+by introducing a custom feature and
+limiting the use of `fundamental` to when documentation is built.
 
 ## Unstable command-line arguments
 
@@ -465,8 +503,18 @@ Note that the third item is the crate root, which in this case is undocumented.
 [JSON format](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/). `--output-format html` has no effect,
 and is also accepted on stable toolchains.
 
+JSON Output for toolchain crates (`std`, `alloc`, `core`, `test`, and `proc_macro`)
+is available via the `rust-docs-json` rustup component.
+
+```shell
+rustup component add --toolchain nightly rust-docs-json
+```
+
+Then the json files will be present in the `share/doc/rust/json/` directory
+of the rustup toolchain directory.
+
 It can also be used with `--show-coverage`. Take a look at its
-[documentation](#--show-coverage-get-statistics-about-code-documentation-coverage) for more
+[documentation](#--show-coverage-calculate-the-percentage-of-items-with-documentation) for more
 information.
 
 ### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests

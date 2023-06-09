@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/nested-tait-inference3.rs:6:13
+   |
+LL | type FooX = impl Debug;
+   |             ^^^^^^^^^^
+   |
+   = note: `FooX` must be used in combination with a concrete type within the same module
+
+error: aborting due to previous error
+

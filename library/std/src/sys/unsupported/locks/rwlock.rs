@@ -5,19 +5,18 @@ pub struct RwLock {
     mode: Cell<isize>,
 }
 
-pub type MovableRwLock = RwLock;
-
 unsafe impl Send for RwLock {}
 unsafe impl Sync for RwLock {} // no threads on this platform
 
 impl RwLock {
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> RwLock {
         RwLock { mode: Cell::new(0) }
     }
 
     #[inline]
-    pub unsafe fn read(&self) {
+    pub fn read(&self) {
         let m = self.mode.get();
         if m >= 0 {
             self.mode.set(m + 1);
@@ -27,7 +26,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn try_read(&self) -> bool {
+    pub fn try_read(&self) -> bool {
         let m = self.mode.get();
         if m >= 0 {
             self.mode.set(m + 1);
@@ -38,14 +37,14 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn write(&self) {
+    pub fn write(&self) {
         if self.mode.replace(-1) != 0 {
             rtabort!("rwlock locked for reading")
         }
     }
 
     #[inline]
-    pub unsafe fn try_write(&self) -> bool {
+    pub fn try_write(&self) -> bool {
         if self.mode.get() == 0 {
             self.mode.set(-1);
             true

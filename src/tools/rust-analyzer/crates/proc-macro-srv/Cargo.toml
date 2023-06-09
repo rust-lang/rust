@@ -1,0 +1,38 @@
+[package]
+name = "proc-macro-srv"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+object = { version = "0.30.2", default-features = false, features = [
+    "std",
+    "read_core",
+    "elf",
+    "macho",
+    "pe",
+] }
+libloading = "0.7.3"
+memmap2 = "0.5.4"
+
+stdx.workspace = true
+tt.workspace = true
+mbe.workspace = true
+paths.workspace = true
+proc-macro-api.workspace = true
+
+[dev-dependencies]
+expect-test = "1.4.0"
+
+# used as proc macro test targets
+proc-macro-test.workspace = true
+
+[features]
+sysroot-abi = []

@@ -1,0 +1,17 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/missing.rs:3:12
+   |
+LL | #![feature(return_type_notation, async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: cannot find associated function `methid` for `Trait`
+  --> $DIR/missing.rs:10:17
+   |
+LL | fn bar<T: Trait<methid(): Send>>() {}
+   |                 ^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+

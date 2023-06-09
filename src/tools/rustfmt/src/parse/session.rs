@@ -3,7 +3,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::{Lrc, Send};
 use rustc_errors::emitter::{Emitter, EmitterWriter};
-use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
+use rustc_errors::translation::Translate;
+use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel, TerminalUrl};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
@@ -28,17 +29,22 @@ pub(crate) struct ParseSess {
 /// Emitter which discards every error.
 struct SilentEmitter;
 
+impl Translate for SilentEmitter {
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        None
+    }
+
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        panic!("silent emitter attempted to translate a diagnostic");
+    }
+}
+
 impl Emitter for SilentEmitter {
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         None
     }
+
     fn emit_diagnostic(&mut self, _db: &Diagnostic) {}
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
-        None
-    }
-    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        panic!("silent emitter attempted to translate a diagnostic");
-    }
 }
 
 fn silent_emitter() -> Box<dyn Emitter + Send> {
@@ -62,10 +68,21 @@ impl SilentOnIgnoredFilesEmitter {
     }
 }
 
+impl Translate for SilentOnIgnoredFilesEmitter {
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        self.emitter.fluent_bundle()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        self.emitter.fallback_fluent_bundle()
+    }
+}
+
 impl Emitter for SilentOnIgnoredFilesEmitter {
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         None
     }
+
     fn emit_diagnostic(&mut self, db: &Diagnostic) {
         if db.level() == DiagnosticLevel::Fatal {
             return self.handle_non_ignoreable_error(db);
@@ -88,14 +105,6 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         }
         self.handle_non_ignoreable_error(db);
     }
-
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
-        self.emitter.fluent_bundle()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        self.emitter.fallback_fluent_bundle()
-    }
 }
 
 fn default_handler(
@@ -114,8 +123,10 @@ fn default_handler(
     let emitter = if hide_parse_errors {
         silent_emitter()
     } else {
-        let fallback_bundle =
-            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+            rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
+            false,
+        );
         Box::new(EmitterWriter::stderr(
             color_cfg,
             Some(source_map.clone()),
@@ -125,6 +136,8 @@ fn default_handler(
             false,
             None,
             false,
+            false,
+            TerminalUrl::No,
         ))
     };
     Handler::with_emitter(
@@ -340,18 +353,23 @@ mod tests {
             num_emitted_errors: Lrc<AtomicU32>,
         }
 
+        impl Translate for TestEmitter {
+            fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+                None
+            }
+
+            fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+                panic!("test emitter attempted to translate a diagnostic");
+            }
+        }
+
         impl Emitter for TestEmitter {
             fn source_map(&self) -> Option<&Lrc<SourceMap>> {
                 None
             }
+
             fn emit_diagnostic(&mut self, _db: &Diagnostic) {
                 self.num_emitted_errors.fetch_add(1, Ordering::Release);
-            }
-            fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
-                None
-            }
-            fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-                panic!("test emitter attempted to translate a diagnostic");
             }
         }
 

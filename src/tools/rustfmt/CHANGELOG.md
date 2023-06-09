@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+## [1.5.2] 2023-01-24
+
+### Fixed
+
+- Resolve issue when comments are found within const generic defaults in unit structs [#5668](https://github.com/rust-lang/rustfmt/issues/5668)
+- Resolve issue when block comments are found within trait generics [#5358](https://github.com/rust-lang/rustfmt/issues/5358)
+- Correctly handle alignment of comments containing unicode characters [#5504](https://github.com/rust-lang/rustfmt/issues/5504)
+- Properly indent a single generic bound that requires being written across multiple lines [#4689](https://github.com/rust-lang/rustfmt/issues/4689) (n.b. this change is version gated and will only appear when the `version` configuration option is set to `Two`)
+
+### Changed
+
+- Renamed `fn_args_layout` configuration option to `fn_params_layout` [#4149](https://github.com/rust-lang/rustfmt/issues/4149). Note that `fn_args_layout` has only been soft deprecated: `fn_args_layout` will continue to work without issue, but rustfmt will display a warning to encourage users to switch to the new name
+
+### Added
+
+- New configuration option (`skip_macro_invocations`)[https://rust-lang.github.io/rustfmt/?version=master&search=#skip_macro_invocations] [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
+
+### Misc
+
+- rustfmt now internally supports the ability to have both stable and unstable variants of a configuration option [#5378](https://github.com/rust-lang/rustfmt/issues/5378). This ability will allow the rustfmt team to make certain configuration options available on stable toolchains more quickly because we no longer have to wait for _every_ variant to be stable-ready before stabilizing _any_ variant. 
+
+### Install/Download Options
+- **rustup (nightly)** - nightly-2023-01-24
+- **GitHub Release Binaries** - [Release v1.5.2](https://github.com/rust-lang/rustfmt/releases/tag/v1.5.2)
+- **Build from source** - [Tag v1.5.2](https://github.com/rust-lang/rustfmt/tree/v1.5.2), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.5.1] 2022-06-24
 
 **N.B** A bug was introduced in v1.5.0/nightly-2022-06-15 which modified formatting. If you happened to run rustfmt over your code with one of those ~10 nightlies it's possible you may have seen formatting changes, and you may see additional changes after this fix since that bug has now been reverted.
@@ -840,7 +866,7 @@ from formatting an attribute #3665
 - Fix formatting of raw string literals #2983
 - Handle chain with try operators with spaces #2986
 - Use correct shape in Visual tuple rewriting #2987
-- Impove formatting of arguments with `visual_style = "Visual"` option #2988
+- Improve formatting of arguments with `visual_style = "Visual"` option #2988
 - Change `print_diff` to output the correct line number 992b179
 - Propagate errors about failing to rewrite a macro 6f318e3
 - Handle formatting of long function signature #3010

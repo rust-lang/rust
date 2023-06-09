@@ -1,5 +1,6 @@
 use super::*;
-use crate::config::{Config, TargetSelection};
+use crate::config::{Config, DryRun, TargetSelection};
+use crate::doc::DocumentationFormat;
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
@@ -10,7 +11,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     let mut config = Config::parse(cmd);
     // don't save toolstates
     config.save_toolstates = None;
-    config.dry_run = true;
+    config.dry_run = DryRun::SelfCheck;
 
     // Ignore most submodules, since we don't need them for a dry run.
     // But make sure to check out the `doc` and `rust-analyzer` submodules, since some steps need them
@@ -66,6 +67,16 @@ macro_rules! std {
     };
 }
 
+macro_rules! doc_std {
+    ($host:ident => $target:ident, stage = $stage:literal) => {
+        doc::Std::new(
+            $stage,
+            TargetSelection::from_user(stringify!($target)),
+            DocumentationFormat::HTML,
+        )
+    };
+}
+
 macro_rules! rustc {
     ($host:ident => $target:ident, stage = $stage:literal) => {
         compile::Rustc::new(
@@ -78,7 +89,7 @@ macro_rules! rustc {
 #[test]
 fn test_valid() {
     // make sure multi suite paths are accepted
-    check_cli(["test", "src/test/ui/attr-start.rs", "src/test/ui/attr-shebang.rs"]);
+    check_cli(["test", "tests/ui/attr-start.rs", "tests/ui/attr-shebang.rs"]);
 }
 
 #[test]
@@ -144,6 +155,25 @@ fn alias_and_path_for_library() {
         first(cache.all::<compile::Std>()),
         &[std!(A => A, stage = 0), std!(A => A, stage = 1)]
     );
+
+    let mut cache = run_build(&["library".into(), "core".into()], configure("doc", &["A"], &["A"]));
+    assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
+}
+
+#[test]
+fn test_beta_rev_parsing() {
+    use crate::extract_beta_rev;
+
+    // single digit revision
+    assert_eq!(extract_beta_rev("1.99.9-beta.7 (xxxxxx)"), Some("7".to_string()));
+    // multiple digits
+    assert_eq!(extract_beta_rev("1.99.9-beta.777 (xxxxxx)"), Some("777".to_string()));
+    // nightly channel (no beta revision)
+    assert_eq!(extract_beta_rev("1.99.9-nightly (xxxxxx)"), None);
+    // stable channel (no beta revision)
+    assert_eq!(extract_beta_rev("1.99.9 (xxxxxxx)"), None);
+    // invalid string
+    assert_eq!(extract_beta_rev("invalid"), None);
 }
 
 mod defaults {
@@ -236,7 +266,7 @@ mod defaults {
     fn doc_default() {
         let mut config = configure("doc", &["A"], &["A"]);
         config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
+        config.cmd = Subcommand::Doc { open: false, json: false };
         let mut cache = run_build(&[], config);
         let a = TargetSelection::from_user("A");
 
@@ -545,19 +575,21 @@ mod dist {
     fn test_with_no_doc_stage0() {
         let mut config = configure(&["A"], &["A"]);
         config.stage = 0;
+        config.paths = vec!["library/std".into()];
         config.cmd = Subcommand::Test {
-            paths: vec!["library/std".into()],
-            skip: vec![],
             test_args: vec![],
             rustc_args: vec![],
-            fail_fast: true,
-            doc_tests: DocTests::No,
+            no_fail_fast: false,
+            no_doc: true,
+            doc: false,
             bless: false,
             force_rerun: false,
             compare_mode: None,
             rustfix_coverage: false,
             pass: None,
             run: None,
+            only_modified: false,
+            skip: vec![],
         };
 
         let build = Build::new(config);
@@ -578,7 +610,6 @@ mod dist {
                 compiler: Compiler { host, stage: 0 },
                 target: host,
                 mode: Mode::Std,
-                test_kind: test::TestKind::Test,
                 crates: vec![INTERNER.intern_str("std")],
             },]
         );
@@ -588,7 +619,7 @@ mod dist {
     fn doc_ci() {
         let mut config = configure(&["A"], &["A"]);
         config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
+        config.cmd = Subcommand::Doc { open: false, json: false };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
@@ -617,18 +648,19 @@ mod dist {
         // Behavior of `x.py test` doing various documentation tests.
         let mut config = configure(&["A"], &["A"]);
         config.cmd = Subcommand::Test {
-            paths: vec![],
-            skip: vec![],
             test_args: vec![],
             rustc_args: vec![],
-            fail_fast: true,
-            doc_tests: DocTests::Yes,
+            no_fail_fast: false,
+            doc: true,
+            no_doc: false,
+            skip: vec![],
             bless: false,
             force_rerun: false,
             compare_mode: None,
             rustfix_coverage: false,
             pass: None,
             run: None,
+            only_modified: false,
         };
         // Make sure rustfmt binary not being found isn't an error.
         config.channel = "beta".to_string();

@@ -11,7 +11,7 @@
 //!   [`Ipv6Addr`] are respectively IPv4 and IPv6 addresses
 //! * [`SocketAddr`] represents socket addresses of either IPv4 or IPv6; [`SocketAddrV4`]
 //!   and [`SocketAddrV6`] are respectively IPv4 and IPv6 socket addresses
-//! * [`ToSocketAddrs`] is a trait that used for generic address resolution when interacting
+//! * [`ToSocketAddrs`] is a trait that is used for generic address resolution when interacting
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
 //!
@@ -24,24 +24,23 @@
 use crate::io::{self, ErrorKind};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
+pub use self::ip_addr::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::parser::AddrParseError;
+pub use self::socket_addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
 pub use self::tcp::IntoIncoming;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::tcp::{Incoming, TcpListener, TcpStream};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::udp::UdpSocket;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::net::AddrParseError;
 
-mod addr;
-mod ip;
-mod parser;
+mod ip_addr;
+mod socket_addr;
 mod tcp;
 #[cfg(test)]
-mod test;
+pub(crate) mod test;
 mod udp;
 
 /// Possible values which can be passed to the [`TcpStream::shutdown`] method.
@@ -67,15 +66,6 @@ pub enum Shutdown {
     /// See [`Shutdown::Read`] and [`Shutdown::Write`] for more information.
     #[stable(feature = "rust1", since = "1.0.0")]
     Both,
-}
-
-#[inline]
-const fn htons(i: u16) -> u16 {
-    i.to_be()
-}
-#[inline]
-const fn ntohs(i: u16) -> u16 {
-    u16::from_be(i)
 }
 
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>

@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `Struct: Eq` is not satisfied
+  --> $DIR/where-clauses-unsatisfied.rs:6:10
+   |
+LL |     drop(equal(&Struct, &Struct))
+   |          ^^^^^ the trait `Eq` is not implemented for `Struct`
+   |
+note: required by a bound in `equal`
+  --> $DIR/where-clauses-unsatisfied.rs:1:45
+   |
+LL | fn equal<T>(a: &T, b: &T) -> bool where T : Eq { a == b }
+   |                                             ^^ required by this bound in `equal`
+help: consider annotating `Struct` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct Struct;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

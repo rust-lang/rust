@@ -1,12 +1,10 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::common::record_time;
-
-use tracing::debug;
 
 use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
@@ -28,7 +26,7 @@ pub(super) fn mangle<'tcx>(
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
             DefPathData::TypeNs(_) | DefPathData::ValueNs(_) => {
-                instance_ty = tcx.type_of(ty_def_id);
+                instance_ty = tcx.type_of(ty_def_id).subst_identity();
                 debug!(?instance_ty);
                 break;
             }
@@ -67,7 +65,11 @@ pub(super) fn mangle<'tcx>(
         )
         .unwrap();
 
-    if let ty::InstanceDef::VtableShim(..) = instance.def {
+    if let ty::InstanceDef::ThreadLocalShim(..) = instance.def {
+        let _ = printer.write_str("{{tls-shim}}");
+    }
+
+    if let ty::InstanceDef::VTableShim(..) = instance.def {
         let _ = printer.write_str("{{vtable-shim}}");
     }
 
@@ -91,7 +93,7 @@ fn get_symbol_hash<'tcx>(
     item_type: Ty<'tcx>,
 
     instantiating_crate: Option<CrateNum>,
-) -> u64 {
+) -> Hash64 {
     let def_id = instance.def_id();
     let substs = instance.substs;
     debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
@@ -106,7 +108,7 @@ fn get_symbol_hash<'tcx>(
             tcx.def_path_hash(def_id).hash_stable(&mut hcx, &mut hasher);
 
             // Include the main item-type. Note that, in this case, the
-            // assertions about `needs_subst` may not hold, but this item-type
+            // assertions about `has_param` may not hold, but this item-type
             // ought to be the same for every reference anyway.
             assert!(!item_type.has_erasable_regions());
             hcx.while_hashing_spans(false, |hcx| {
@@ -129,14 +131,14 @@ fn get_symbol_hash<'tcx>(
                 }
 
                 // We want to avoid accidental collision between different types of instances.
-                // Especially, `VtableShim`s and `ReifyShim`s may overlap with their original
+                // Especially, `VTableShim`s and `ReifyShim`s may overlap with their original
                 // instances without this.
                 discriminant(&instance.def).hash_stable(hcx, &mut hasher);
             });
         });
 
         // 64 bits should be enough to avoid collisions.
-        hasher.finish::<u64>()
+        hasher.finish::<Hash64>()
     })
 }
 
@@ -174,10 +176,10 @@ impl SymbolPath {
         }
     }
 
-    fn finish(mut self, hash: u64) -> String {
+    fn finish(mut self, hash: Hash64) -> String {
         self.finalize_pending_component();
         // E = end name-sequence
-        let _ = write!(self.result, "17h{:016x}E", hash);
+        let _ = write!(self.result, "17h{hash:016x}E");
         self.result
     }
 }
@@ -218,8 +220,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         match *ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, substs)
-            | ty::Opaque(def_id, substs)
-            | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
 
@@ -230,7 +231,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
                 self = self.print_type(ty)?;
                 self.write_str("; ")?;
                 if let Some(size) = size.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
-                    write!(self, "{}", size)?
+                    write!(self, "{size}")?
                 } else if let ty::ConstKind::Param(param) = size.kind() {
                     self = param.print(self)?
                 } else {
@@ -240,13 +241,15 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
                 Ok(self)
             }
 
+            ty::Alias(ty::Inherent, _) => panic!("unexpected inherent projection"),
+
             _ => self.pretty_print_type(ty),
         }
     }
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         let mut first = true;
         for p in predicates {
@@ -289,11 +292,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         // Similar to `pretty_path_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
         match self_ty.kind() {
-            ty::FnDef(..)
-            | ty::Opaque(..)
-            | ty::Projection(_)
-            | ty::Closure(..)
-            | ty::Generator(..)
+            ty::FnDef(..) | ty::Alias(..) | ty::Closure(..) | ty::Generator(..)
                 if trait_ref.is_none() =>
             {
                 self.print_type(self_ty)

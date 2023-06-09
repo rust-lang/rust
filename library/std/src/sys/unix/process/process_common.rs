@@ -24,11 +24,11 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
         // fuchsia doesn't have /dev/null
     } else if #[cfg(target_os = "redox")] {
-        const DEV_NULL: &str = "null:\0";
+        const DEV_NULL: &CStr = c"null:";
     } else if #[cfg(target_os = "vxworks")] {
-        const DEV_NULL: &str = "/null\0";
+        const DEV_NULL: &CStr = c"/null";
     } else {
-        const DEV_NULL: &str = "/dev/null\0";
+        const DEV_NULL: &CStr = c"/dev/null";
     }
 }
 
@@ -39,17 +39,39 @@ cfg_if::cfg_if! {
 // https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
+        #[allow(dead_code)]
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
             set.write_bytes(0u8, 1);
             return 0;
         }
+
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-            use crate::{slice, mem};
+            use crate::{
+                mem::{align_of, size_of},
+                slice,
+            };
+            use libc::{c_ulong, sigset_t};
 
-            let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
+            // The implementations from bionic (android libc) type pun `sigset_t` as an
+            // array of `c_ulong`. This works, but lets add a smoke check to make sure
+            // that doesn't change.
+            const _: () = assert!(
+                align_of::<c_ulong>() == align_of::<sigset_t>()
+                    && (size_of::<sigset_t>() % size_of::<c_ulong>()) == 0
+            );
+
             let bit = (signum - 1) as usize;
-            raw[bit / 8] |= 1 << (bit % 8);
+            if set.is_null() || bit >= (8 * size_of::<sigset_t>()) {
+                crate::sys::unix::os::set_errno(libc::EINVAL);
+                return -1;
+            }
+            let raw = slice::from_raw_parts_mut(
+                set as *mut c_ulong,
+                size_of::<sigset_t>() / size_of::<c_ulong>(),
+            );
+            const LONG_BIT: usize = size_of::<c_ulong>() * 8;
+            raw[bit / LONG_BIT] |= 1 << (bit % LONG_BIT);
             return 0;
         }
     } else {
@@ -72,6 +94,7 @@ pub struct Command {
     argv: Argv,
     env: CommandEnv,
 
+    program_kind: ProgramKind,
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
@@ -121,6 +144,7 @@ pub enum ChildStdio {
     Null,
 }
 
+#[derive(Debug)]
 pub enum Stdio {
     Inherit,
     Null,
@@ -128,15 +152,40 @@ pub enum Stdio {
     Fd(FileDesc),
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ProgramKind {
+    /// A program that would be looked up on the PATH (e.g. `ls`)
+    PathLookup,
+    /// A relative path (e.g. `my-dir/foo`, `../foo`, `./foo`)
+    Relative,
+    /// An absolute path.
+    Absolute,
+}
+
+impl ProgramKind {
+    fn new(program: &OsStr) -> Self {
+        if program.as_os_str_bytes().starts_with(b"/") {
+            Self::Absolute
+        } else if program.as_os_str_bytes().contains(&b'/') {
+            // If the program has more than one component in it, it is a relative path.
+            Self::Relative
+        } else {
+            Self::PathLookup
+        }
+    }
+}
+
 impl Command {
     #[cfg(not(target_os = "linux"))]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
+        let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
+            program_kind,
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -154,11 +203,13 @@ impl Command {
     #[cfg(target_os = "linux")]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
+        let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
+            program_kind,
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -232,6 +283,11 @@ impl Command {
 
     pub fn get_program(&self) -> &OsStr {
         OsStr::from_bytes(self.program.as_bytes())
+    }
+
+    #[allow(dead_code)]
+    pub fn get_program_kind(&self) -> ProgramKind {
+        self.program_kind
     }
 
     pub fn get_args(&self) -> CommandArgs<'_> {
@@ -418,8 +474,7 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let path = unsafe { CStr::from_ptr(DEV_NULL.as_ptr() as *const _) };
-                let fd = File::open_c(&path, &opts)?;
+                let fd = File::open_c(DEV_NULL, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_inner()), None))
             }
 
@@ -455,16 +510,68 @@ impl ChildStdio {
 }
 
 impl fmt::Debug for Command {
+    // show all attributes but `self.closures` which does not implement `Debug`
+    // and `self.argv` which is not useful for debugging
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.program != self.args[0] {
-            write!(f, "[{:?}] ", self.program)?;
-        }
-        write!(f, "{:?}", self.args[0])?;
+        if f.alternate() {
+            let mut debug_command = f.debug_struct("Command");
+            debug_command.field("program", &self.program).field("args", &self.args);
+            if !self.env.is_unchanged() {
+                debug_command.field("env", &self.env);
+            }
 
-        for arg in &self.args[1..] {
-            write!(f, " {:?}", arg)?;
+            if self.cwd.is_some() {
+                debug_command.field("cwd", &self.cwd);
+            }
+            if self.uid.is_some() {
+                debug_command.field("uid", &self.uid);
+            }
+            if self.gid.is_some() {
+                debug_command.field("gid", &self.gid);
+            }
+
+            if self.groups.is_some() {
+                debug_command.field("groups", &self.groups);
+            }
+
+            if self.stdin.is_some() {
+                debug_command.field("stdin", &self.stdin);
+            }
+            if self.stdout.is_some() {
+                debug_command.field("stdout", &self.stdout);
+            }
+            if self.stderr.is_some() {
+                debug_command.field("stderr", &self.stderr);
+            }
+            if self.pgroup.is_some() {
+                debug_command.field("pgroup", &self.pgroup);
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                debug_command.field("create_pidfd", &self.create_pidfd);
+            }
+
+            debug_command.finish()
+        } else {
+            if let Some(ref cwd) = self.cwd {
+                write!(f, "cd {cwd:?} && ")?;
+            }
+            for (key, value_opt) in self.get_envs() {
+                if let Some(value) = value_opt {
+                    write!(f, "{}={value:?} ", key.to_string_lossy())?;
+                }
+            }
+            if self.program != self.args[0] {
+                write!(f, "[{:?}] ", self.program)?;
+            }
+            write!(f, "{:?}", self.args[0])?;
+
+            for arg in &self.args[1..] {
+                write!(f, " {:?}", arg)?;
+            }
+            Ok(())
         }
-        Ok(())
     }
 }
 

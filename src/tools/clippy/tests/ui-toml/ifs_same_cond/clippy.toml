@@ -1,0 +1,1 @@
+ignore-interior-mutability = ["std::cell::Cell"]

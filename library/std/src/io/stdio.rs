@@ -7,12 +7,11 @@ use crate::io::prelude::*;
 
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
-use crate::io::{self, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
-use crate::pin::Pin;
+use crate::fs::File;
+use crate::io::{self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
 use crate::sync::atomic::{AtomicBool, Ordering};
-use crate::sync::{Arc, Mutex, MutexGuard, OnceLock};
+use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantMutex, ReentrantMutexGuard};
 use crate::sys::stdio;
-use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 
 type LocalStream = Arc<Mutex<Vec<u8>>>;
 
@@ -96,6 +95,10 @@ const fn stderr_raw() -> StderrRaw {
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         handle_ebadf(self.0.read(buf), 0)
+    }
+
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        handle_ebadf(self.0.read_buf(buf), ())
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -220,7 +223,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut buffer = String::new();
-///     let mut stdin = io::stdin(); // We get `Stdin` here.
+///     let stdin = io::stdin(); // We get `Stdin` here.
 ///     stdin.read_line(&mut buffer)?;
 ///     Ok(())
 /// }
@@ -419,6 +422,9 @@ impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
     }
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf(buf)
+    }
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.lock().read_vectored(bufs)
     }
@@ -449,6 +455,10 @@ impl StdinLock<'_> {
 impl Read for StdinLock<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -526,7 +536,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Pin<&'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>,
 }
 
 /// A locked reference to the [`Stdout`] handle.
@@ -603,22 +613,27 @@ static STDOUT: OnceLock<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = OnceLo
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
     Stdout {
-        inner: Pin::static_ref(&STDOUT).get_or_init_pin(
-            || unsafe { ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw()))) },
-            |mutex| unsafe { mutex.init() },
-        ),
+        inner: STDOUT
+            .get_or_init(|| ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))),
     }
 }
 
+// Flush the data and disable buffering during shutdown
+// by replacing the line writer by one with zero
+// buffering capacity.
 pub fn cleanup() {
-    if let Some(instance) = STDOUT.get() {
-        // Flush the data and disable buffering during shutdown
-        // by replacing the line writer by one with zero
-        // buffering capacity.
+    let mut initialized = false;
+    let stdout = STDOUT.get_or_init(|| {
+        initialized = true;
+        ReentrantMutex::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
+    });
+
+    if !initialized {
+        // The buffer was previously initialized, overwrite it here.
         // We use try_lock() instead of lock(), because someone
         // might have leaked a StdoutLock, which would
         // otherwise cause a deadlock here.
-        if let Some(lock) = Pin::static_ref(instance).try_lock() {
+        if let Some(lock) = stdout.try_lock() {
             *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
         }
     }
@@ -761,7 +776,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// standard library or via raw Windows API calls, will fail.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Pin<&'static ReentrantMutex<RefCell<StderrRaw>>>,
+    inner: &'static ReentrantMutex<RefCell<StderrRaw>>,
 }
 
 /// A locked reference to the [`Stderr`] handle.
@@ -834,16 +849,12 @@ pub struct StderrLock<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
     // Note that unlike `stdout()` we don't use `at_exit` here to register a
-    // destructor. Stderr is not buffered , so there's no need to run a
+    // destructor. Stderr is not buffered, so there's no need to run a
     // destructor for flushing the buffer
-    static INSTANCE: OnceLock<ReentrantMutex<RefCell<StderrRaw>>> = OnceLock::new();
+    static INSTANCE: ReentrantMutex<RefCell<StderrRaw>> =
+        ReentrantMutex::new(RefCell::new(stderr_raw()));
 
-    Stderr {
-        inner: Pin::static_ref(&INSTANCE).get_or_init_pin(
-            || unsafe { ReentrantMutex::new(RefCell::new(stderr_raw())) },
-            |mutex| unsafe { mutex.init() },
-        ),
-    }
+    Stderr { inner: &INSTANCE }
 }
 
 impl Stderr {
@@ -986,17 +997,31 @@ pub fn set_output_capture(sink: Option<LocalStream>) -> Option<LocalStream> {
 /// otherwise. `label` identifies the stream in a panic message.
 ///
 /// This function is used to print error messages, so it takes extra
-/// care to avoid causing a panic when `local_s` is unusable.
-/// For instance, if the TLS key for the local stream is
-/// already destroyed, or if the local stream is locked by another
-/// thread, it will just fall back to the global stream.
+/// care to avoid causing a panic when `OUTPUT_CAPTURE` is unusable.
+/// For instance, if the TLS key for output capturing is already destroyed, or
+/// if the local stream is in use by another thread, it will just fall back to
+/// the global stream.
 ///
 /// However, if the actual I/O causes an error, this function does panic.
+///
+/// Writing to non-blocking stdout/stderr can cause an error, which will lead
+/// this function to panic.
 fn print_to<T>(args: fmt::Arguments<'_>, global_s: fn() -> T, label: &str)
 where
     T: Write,
 {
-    if OUTPUT_CAPTURE_USED.load(Ordering::Relaxed)
+    if print_to_buffer_if_capture_used(args) {
+        // Successfully wrote to capture buffer.
+        return;
+    }
+
+    if let Err(e) = global_s().write_fmt(args) {
+        panic!("failed printing to {label}: {e}");
+    }
+}
+
+fn print_to_buffer_if_capture_used(args: fmt::Arguments<'_>) -> bool {
+    OUTPUT_CAPTURE_USED.load(Ordering::Relaxed)
         && OUTPUT_CAPTURE.try_with(|s| {
             // Note that we completely remove a local sink to write to in case
             // our printing recursively panics/prints, so the recursive
@@ -1006,15 +1031,58 @@ where
                 s.set(Some(w));
             })
         }) == Ok(Some(()))
-    {
-        // Successfully wrote to capture buffer.
+}
+
+/// Used by impl Termination for Result to print error after `main` or a test
+/// has returned. Should avoid panicking, although we can't help it if one of
+/// the Display impls inside args decides to.
+pub(crate) fn attempt_print_to_stderr(args: fmt::Arguments<'_>) {
+    if print_to_buffer_if_capture_used(args) {
         return;
     }
 
-    if let Err(e) = global_s().write_fmt(args) {
-        panic!("failed printing to {label}: {e}");
-    }
+    // Ignore error if the write fails, for example because stderr is already
+    // closed. There is not much point panicking at this point.
+    let _ = stderr().write_fmt(args);
 }
+
+/// Trait to determine if a descriptor/handle refers to a terminal/tty.
+#[stable(feature = "is_terminal", since = "1.70.0")]
+pub trait IsTerminal: crate::sealed::Sealed {
+    /// Returns `true` if the descriptor/handle refers to a terminal/tty.
+    ///
+    /// On platforms where Rust does not know how to detect a terminal yet, this will return
+    /// `false`. This will also return `false` if an unexpected error occurred, such as from
+    /// passing an invalid file descriptor.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// On Windows, in addition to detecting consoles, this currently uses some heuristics to
+    /// detect older msys/cygwin/mingw pseudo-terminals based on device name: devices with names
+    /// starting with `msys-` or `cygwin-` and ending in `-pty` will be considered terminals.
+    /// Note that this [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    #[stable(feature = "is_terminal", since = "1.70.0")]
+    fn is_terminal(&self) -> bool;
+}
+
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+
+        #[stable(feature = "is_terminal", since = "1.70.0")]
+        impl IsTerminal for $t {
+            #[inline]
+            fn is_terminal(&self) -> bool {
+                crate::sys::io::is_terminal(self)
+            }
+        }
+    )*}
+}
+
+impl_is_terminal!(File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, StderrLock<'_>);
 
 #[unstable(
     feature = "print_internals",

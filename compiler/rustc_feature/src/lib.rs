@@ -11,7 +11,9 @@
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
 
-#![feature(once_cell)]
+#![feature(lazy_cell)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 mod accepted;
 mod active;
@@ -81,14 +83,14 @@ impl UnstableFeatures {
     /// Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
     pub fn from_environment(krate: Option<&str>) -> Self {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
-        let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+        let disable_unstable_features =
+            option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
         // Returns whether `krate` should be counted as unstable
-        let is_unstable_crate = |var: &str| {
-            krate.map_or(false, |name| var.split(',').any(|new_krate| new_krate == name))
-        };
+        let is_unstable_crate =
+            |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
         // `true` if we should enable unstable features for bootstrapping.
-        let bootstrap = std::env::var("RUSTC_BOOTSTRAP")
-            .map_or(false, |var| var == "1" || is_unstable_crate(&var));
+        let bootstrap =
+            std::env::var("RUSTC_BOOTSTRAP").is_ok_and(|var| var == "1" || is_unstable_crate(&var));
         match (disable_unstable_features, bootstrap) {
             (_, true) => UnstableFeatures::Cheat,
             (true, _) => UnstableFeatures::Disallow,
@@ -118,7 +120,7 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
             .find(|t| t.name == feature);
         match found {
             Some(found) => found.issue,
-            None => panic!("feature `{}` is not declared anywhere", feature),
+            None => panic!("feature `{feature}` is not declared anywhere"),
         }
     }
 }
@@ -149,7 +151,7 @@ pub use active::{Features, ACTIVE_FEATURES, INCOMPATIBLE_FEATURES};
 pub use builtin_attrs::AttributeDuplicates;
 pub use builtin_attrs::{
     deprecated_attributes, find_gated_cfg, is_builtin_attr_name, is_builtin_only_local,
-    AttributeGate, AttributeTemplate, AttributeType, BuiltinAttribute, GatedCfg,
-    BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
+    is_valid_for_get_attr, AttributeGate, AttributeTemplate, AttributeType, BuiltinAttribute,
+    GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
 pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};

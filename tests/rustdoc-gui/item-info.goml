@@ -1,0 +1,32 @@
+// This test ensures a few things for item info elements.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
+// Ensuring that the item information don't take 100% of the width if unnecessary.
+// We set a fixed size so there is no chance of "random" resize.
+set-window-size: (1100, 800)
+// We check that ".item-info" is bigger than its content.
+assert-size: (".item-info", {"width": 840})
+assert-size: (".item-info .stab", {"width": 289})
+assert-position: (".item-info .stab", {"x": 245})
+
+// Now we ensure that they're not rendered on the same line.
+go-to: "file://" + |DOC_PATH| + "/lib2/trait.Trait.html"
+// We first ensure that there are two item info on the trait.
+assert-count: ("#main-content > .item-info .stab", 2)
+// They should not have the same `y` position!
+compare-elements-position-false: (
+    "#main-content > .item-info .stab:nth-of-type(1)",
+    "#main-content > .item-info .stab:nth-of-type(2)",
+    ("y"),
+)
+// But they should have the same `x` position.
+compare-elements-position: (
+    "#main-content > .item-info .stab:nth-of-type(1)",
+    "#main-content > .item-info .stab:nth-of-type(2)",
+    ("x"),
+)
+// They are supposed to have the same height too.
+compare-elements-css: (
+    "#main-content > .item-info .stab:nth-of-type(1)",
+    "#main-content > .item-info .stab:nth-of-type(2)",
+    ["height"],
+)

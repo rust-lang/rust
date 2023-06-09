@@ -17,8 +17,9 @@ within this list are:
 - `line` - the source line of the panic will be included in the panic output
 - `column` - the source column of the panic will be included in the panic output
 
-Any combination of these three options are supported. If this option is not specified,
-all three are included by default.
+Any combination of these three options are supported. Alternatively, you can pass
+`none` to this option, which results in no location details being tracked.
+If this option is not specified, all three are included by default.
 
 An example of a panic output when using `-Z location-detail=line`:
 ```text

@@ -1,99 +1,99 @@
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:5:22
    |
 LL |     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::dbg-macro` implied by `-D warnings`
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |     if let Some(n) = n.checked_sub(4) { n } else { n }
    |                      ~~~~~~~~~~~~~~~~
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:9:8
    |
 LL |     if dbg!(n <= 1) {
    |        ^^^^^^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |     if n <= 1 {
    |        ~~~~~~
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:10:9
    |
 LL |         dbg!(1)
    |         ^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |         1
    |
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:12:9
    |
 LL |         dbg!(n * factorial(n - 1))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |         n * factorial(n - 1)
    |
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:17:5
    |
 LL |     dbg!(42);
    |     ^^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |     42;
    |     ~~
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:18:5
    |
 LL |     dbg!(dbg!(dbg!(42)));
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |     dbg!(dbg!(42));
    |     ~~~~~~~~~~~~~~
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:19:14
    |
 LL |     foo(3) + dbg!(factorial(4));
    |              ^^^^^^^^^^^^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |     foo(3) + factorial(4);
    |              ~~~~~~~~~~~~
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:20:5
    |
 LL |     dbg!(1, 2, dbg!(3, 4));
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |     (1, 2, dbg!(3, 4));
    |     ~~~~~~~~~~~~~~~~~~
 
-error: `dbg!` macro is intended as a debugging tool
+error: the `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:21:5
    |
 LL |     dbg!(1, 2, 3, 4, 5);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-help: ensure to avoid having uses of it in version control
+help: remove the invocation before committing it to a version control system
    |
 LL |     (1, 2, 3, 4, 5);
    |     ~~~~~~~~~~~~~~~

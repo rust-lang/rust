@@ -1,0 +1,20 @@
+error: Undefined Behavior: Data race detected between (1) Atomic Load on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+  --> $DIR/atomic_read_na_write_race2.rs:LL:CC
+   |
+LL |             *atomic_ref.get_mut() = 32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) Atomic Load on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> $DIR/atomic_read_na_write_race2.rs:LL:CC
+   |
+LL |             atomic_ref.load(Ordering::SeqCst)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE (of the first span):
+   = note: inside closure at $DIR/atomic_read_na_write_race2.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -1,0 +1,11 @@
+error: to use a constant of type `NoPartialEq` in a pattern, `NoPartialEq` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/reject_non_partial_eq.rs:28:9
+   |
+LL |         NO_PARTIAL_EQ_NONE => println!("NO_PARTIAL_EQ_NONE"),
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
+
+error: aborting due to previous error
+

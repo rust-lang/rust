@@ -7,10 +7,13 @@
 
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::ast;
+use clippy_utils::is_from_proc_macro;
+use if_chain::if_chain;
+use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty::Visibility;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Span;
@@ -18,8 +21,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns if there is missing doc for any documentable item
-    /// (public or private).
+    /// Warns if there is missing doc for any private documentable item
     ///
     /// ### Why is this bad?
     /// Doc is good. *rustc* has a `MISSING_DOCS`
@@ -29,10 +31,13 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub MISSING_DOCS_IN_PRIVATE_ITEMS,
     restriction,
-    "detects missing documentation for public and private members"
+    "detects missing documentation for private members"
 }
 
 pub struct MissingDoc {
+    /// Whether to **only** check for missing documentation in items visible within the current
+    /// crate. For example, `pub(crate)` items.
+    crate_items_only: bool,
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
@@ -41,14 +46,15 @@ pub struct MissingDoc {
 impl Default for MissingDoc {
     #[must_use]
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
 impl MissingDoc {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(crate_items_only: bool) -> Self {
         Self {
+            crate_items_only,
             doc_hidden_stack: vec![false],
         }
     }
@@ -57,9 +63,24 @@ impl MissingDoc {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
+    fn has_include(meta: Option<MetaItem>) -> bool {
+        if_chain! {
+            if let Some(meta) = meta;
+            if let MetaItemKind::List(list) = meta.kind;
+            if let Some(meta) = list.get(0);
+            if let Some(name) = meta.ident();
+            then {
+                name.name == sym::include
+            } else {
+                false
+            }
+        }
+    }
+
     fn check_missing_docs_attrs(
         &self,
         cx: &LateContext<'_>,
+        def_id: LocalDefId,
         attrs: &[ast::Attribute],
         sp: Span,
         article: &'static str,
@@ -80,13 +101,25 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs.iter().any(|a| a.doc_str().is_some());
+        if self.crate_items_only && def_id != CRATE_DEF_ID {
+            let vis = cx.tcx.visibility(def_id);
+            if vis == Visibility::Public || vis != Visibility::Restricted(CRATE_DEF_ID.into()) {
+                return;
+            }
+        } else if def_id != CRATE_DEF_ID && cx.effective_visibilities.is_exported(def_id) {
+            return;
+        }
+
+        let has_doc = attrs
+            .iter()
+            .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()));
+
         if !has_doc {
             span_lint(
                 cx,
                 MISSING_DOCS_IN_PRIVATE_ITEMS,
                 sp,
-                &format!("missing documentation for {} {}", article, desc),
+                &format!("missing documentation for {article} {desc}"),
             );
         }
     }
@@ -106,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
-        self.check_missing_docs_attrs(cx, attrs, cx.tcx.def_span(CRATE_DEF_ID), "the", "crate");
+        self.check_missing_docs_attrs(cx, CRATE_DEF_ID, attrs, cx.tcx.def_span(CRATE_DEF_ID), "the", "crate");
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
@@ -114,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.ident.name == sym::main {
-                    let at_root = cx.tcx.local_parent(it.def_id) == CRATE_DEF_ID;
+                    let at_root = cx.tcx.local_parent(it.owner_id.def_id) == CRATE_DEF_ID;
                     if at_root {
                         return;
                     }
@@ -138,44 +171,53 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Use(..) => return,
         };
 
-        let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(it.owner_id.to_def_id());
 
         let attrs = cx.tcx.hir().attrs(it.hir_id());
-        self.check_missing_docs_attrs(cx, attrs, it.span, article, desc);
+        if !is_from_proc_macro(cx, it) {
+            self.check_missing_docs_attrs(cx, it.owner_id.def_id, attrs, it.span, article, desc);
+        }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
-        let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(trait_item.owner_id.to_def_id());
 
         let attrs = cx.tcx.hir().attrs(trait_item.hir_id());
-        self.check_missing_docs_attrs(cx, attrs, trait_item.span, article, desc);
+        if !is_from_proc_macro(cx, trait_item) {
+            self.check_missing_docs_attrs(cx, trait_item.owner_id.def_id, attrs, trait_item.span, article, desc);
+        }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        match cx.tcx.associated_item(impl_item.def_id).container {
-            ty::TraitContainer(_) => return,
-            ty::ImplContainer(cid) => {
-                if cx.tcx.impl_trait_ref(cid).is_some() {
-                    return;
-                }
-            },
+        if let Some(cid) = cx.tcx.associated_item(impl_item.owner_id).impl_container(cx.tcx) {
+            if cx.tcx.impl_trait_ref(cid).is_some() {
+                return;
+            }
+        } else {
+            return;
         }
 
-        let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(impl_item.owner_id.to_def_id());
         let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
-        self.check_missing_docs_attrs(cx, attrs, impl_item.span, article, desc);
+        if !is_from_proc_macro(cx, impl_item) {
+            self.check_missing_docs_attrs(cx, impl_item.owner_id.def_id, attrs, impl_item.span, article, desc);
+        }
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::FieldDef<'_>) {
         if !sf.is_positional() {
             let attrs = cx.tcx.hir().attrs(sf.hir_id);
-            self.check_missing_docs_attrs(cx, attrs, sf.span, "a", "struct field");
+            if !is_from_proc_macro(cx, sf) {
+                self.check_missing_docs_attrs(cx, sf.def_id, attrs, sf.span, "a", "struct field");
+            }
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
-        let attrs = cx.tcx.hir().attrs(v.id);
-        self.check_missing_docs_attrs(cx, attrs, v.span, "a", "variant");
+        let attrs = cx.tcx.hir().attrs(v.hir_id);
+        if !is_from_proc_macro(cx, v) {
+            self.check_missing_docs_attrs(cx, v.def_id, attrs, v.span, "a", "variant");
+        }
     }
 }

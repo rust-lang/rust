@@ -1,0 +1,12 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/return-cycle.rs:6:17
+   |
+LL |     fn new() -> _ {
+   |                 ^
+   |                 |
+   |                 not allowed in type signatures
+   |                 help: replace with the correct return type: `Token<()>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0121`.

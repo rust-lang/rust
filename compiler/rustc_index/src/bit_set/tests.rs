@@ -41,6 +41,23 @@ fn bitset_iter_works_2() {
 }
 
 #[test]
+fn bitset_clone_from() {
+    let mut a: BitSet<usize> = BitSet::new_empty(10);
+    a.insert(4);
+    a.insert(7);
+    a.insert(9);
+
+    let mut b = BitSet::new_empty(2);
+    b.clone_from(&a);
+    assert_eq!(b.domain_size(), 10);
+    assert_eq!(b.iter().collect::<Vec<_>>(), [4, 7, 9]);
+
+    b.clone_from(&BitSet::new_empty(40));
+    assert_eq!(b.domain_size(), 40);
+    assert_eq!(b.iter().collect::<Vec<_>>(), []);
+}
+
+#[test]
 fn union_two_sets() {
     let mut set1: BitSet<usize> = BitSet::new_empty(65);
     let mut set2: BitSet<usize> = BitSet::new_empty(65);

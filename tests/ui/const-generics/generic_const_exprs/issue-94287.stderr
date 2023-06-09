@@ -1,0 +1,15 @@
+error: failed to evaluate generic const expression
+  --> $DIR/auxiliary/issue-94287-aux.rs:15:8
+   |
+LL |     If<{ FRAC <= 32 }>: True,
+   |        ^^^^^^^^^^^^^^
+   |
+   = note: the crate this constant originates from uses `#![feature(generic_const_exprs)]`
+help: consider enabling this feature
+  --> $DIR/issue-94287.rs:1:1
+   |
+LL + #![feature(generic_const_exprs)]
+   |
+
+error: aborting due to previous error
+

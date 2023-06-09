@@ -1,11 +1,11 @@
-use crate::spec::{LinkerFlavor, SanitizerSet, Target};
+use crate::spec::{Cc, LinkerFlavor, SanitizerSet, Target};
 
 pub fn target() -> Target {
     let mut base = super::illumos_base::opts();
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64", "-std=c99"]);
+    base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64", "-std=c99"]);
     base.cpu = "x86-64".into();
     base.max_atomic_width = Some(64);
-    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI;
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;
 
     Target {
         // LLVM does not currently have a separate illumos target,

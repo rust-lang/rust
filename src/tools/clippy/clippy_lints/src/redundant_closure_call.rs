@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_ast::visit as ast_visit;
@@ -69,10 +69,10 @@ impl EarlyLintPass for RedundantClosureCall {
         if_chain! {
             if let ast::ExprKind::Call(ref paren, _) = expr.kind;
             if let ast::ExprKind::Paren(ref closure) = paren.kind;
-            if let ast::ExprKind::Closure(_, _, _, _, ref decl, ref block, _) = closure.kind;
+            if let ast::ExprKind::Closure(box ast::Closure { ref asyncness, ref fn_decl, ref body, .. }) = closure.kind;
             then {
                 let mut visitor = ReturnVisitor::new();
-                visitor.visit_expr(block);
+                visitor.visit_expr(body);
                 if !visitor.found_return {
                     span_lint_and_then(
                         cx,
@@ -80,11 +80,20 @@ impl EarlyLintPass for RedundantClosureCall {
                         expr.span,
                         "try not to call a closure in the expression where it is declared",
                         |diag| {
-                            if decl.inputs.is_empty() {
+                            if fn_decl.inputs.is_empty() {
                                 let mut app = Applicability::MachineApplicable;
-                                let hint =
-                                    snippet_with_applicability(cx, block.span, "..", &mut app).into_owned();
-                                diag.span_suggestion(expr.span, "try doing something like", hint, app);
+                                let mut hint = Sugg::ast(cx, body, "..", closure.span.ctxt(), &mut app);
+
+                                if asyncness.is_async() {
+                                    // `async x` is a syntax error, so it becomes `async { x }`
+                                    if !matches!(body.kind, ast::ExprKind::Block(_, _)) {
+                                        hint = hint.blockify();
+                                    }
+
+                                    hint = hint.asyncify();
+                                }
+
+                                diag.span_suggestion(expr.span, "try doing something like", hint.to_string(), app);
                             }
                         },
                     );
@@ -96,8 +105,8 @@ impl EarlyLintPass for RedundantClosureCall {
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        fn count_closure_usage<'a, 'tcx>(
-            cx: &'a LateContext<'tcx>,
+        fn count_closure_usage<'tcx>(
+            cx: &LateContext<'tcx>,
             block: &'tcx hir::Block<'_>,
             path: &'tcx hir::Path<'tcx>,
         ) -> usize {

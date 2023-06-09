@@ -1,0 +1,54 @@
+[package]
+name = "ide"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0-pre.1"
+crossbeam-channel = "0.5.5"
+either = "1.7.0"
+itertools = "0.10.5"
+tracing = "0.1.35"
+oorandom = "11.1.3"
+pulldown-cmark-to-cmark = "10.0.4"
+pulldown-cmark = { version = "0.9.1", default-features = false }
+url = "2.3.1"
+dot = "0.1.4"
+smallvec.workspace = true
+triomphe.workspace = true
+nohash-hasher.workspace = true
+
+# local deps
+cfg.workspace = true
+ide-assists.workspace = true
+ide-completion.workspace = true
+ide-db.workspace = true
+ide-diagnostics.workspace = true
+ide-ssr.workspace = true
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+text-edit.workspace = true
+# ide should depend only on the top-level `hir` package. if you need
+# something from some `hir-xxx` subpackage, reexport the API via `hir`.
+hir.workspace = true
+
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "emscripten")))'.dependencies]
+toolchain.workspace = true
+
+[dev-dependencies]
+expect-test = "1.4.0"
+
+# local deps
+test-utils.workspace = true
+
+[features]
+in-rust-tree = ["ide-assists/in-rust-tree", "ide-diagnostics/in-rust-tree"]

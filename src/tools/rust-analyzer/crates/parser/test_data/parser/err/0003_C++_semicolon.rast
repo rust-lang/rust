@@ -1,0 +1,39 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      RECORD_FIELD
+        NAME
+          IDENT "a"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i32"
+      COMMA ","
+      WHITESPACE "\n    "
+      RECORD_FIELD
+        NAME
+          IDENT "b"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "String"
+      COMMA ","
+      WHITESPACE "\n"
+      R_CURLY "}"
+  ERROR
+    SEMICOLON ";"
+error 39: expected item, found `;`
+consider removing this semicolon

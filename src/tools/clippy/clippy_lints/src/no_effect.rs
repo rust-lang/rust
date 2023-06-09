@@ -6,7 +6,8 @@ use clippy_utils::ty::has_drop;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, PatKind, Stmt, StmtKind, UnsafeSource};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::ops::Deref;
 
@@ -126,8 +127,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         | ExprKind::Type(inner, _)
         | ExprKind::Unary(_, inner)
         | ExprKind::Field(inner, _)
-        | ExprKind::AddrOf(_, _, inner)
-        | ExprKind::Box(inner) => has_no_effect(cx, inner),
+        | ExprKind::AddrOf(_, _, inner) => has_no_effect(cx, inner),
         ExprKind::Struct(_, fields, ref base) => {
             !has_drop(cx, cx.typeck_results().expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, field.expr))
@@ -159,8 +159,11 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if_chain! {
         if let StmtKind::Semi(expr) = stmt.kind;
+        let ctxt = stmt.span.ctxt();
+        if expr.span.ctxt() == ctxt;
         if let Some(reduced) = reduce_expression(cx, expr);
-        if !&reduced.iter().any(|e| e.span.from_expansion());
+        if !in_external_macro(cx.sess(), stmt.span);
+        if reduced.iter().all(|e| e.span.ctxt() == ctxt);
         then {
             if let ExprKind::Index(..) = &expr.kind {
                 let snippet = if let (Some(arr), Some(func)) =
@@ -230,8 +233,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         | ExprKind::Type(inner, _)
         | ExprKind::Unary(_, inner)
         | ExprKind::Field(inner, _)
-        | ExprKind::AddrOf(_, _, inner)
-        | ExprKind::Box(inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
+        | ExprKind::AddrOf(_, _, inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         ExprKind::Struct(_, fields, ref base) => {
             if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
                 None

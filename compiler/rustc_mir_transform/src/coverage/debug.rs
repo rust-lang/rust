@@ -118,7 +118,7 @@ use rustc_middle::mir::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -292,10 +292,8 @@ impl DebugCounters {
     }
 
     pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
-        self.some_counters.as_ref().map_or(None, |counters| {
-            counters
-                .get(&operand)
-                .map_or(None, |debug_counter| debug_counter.some_block_label.as_ref())
+        self.some_counters.as_ref().and_then(|counters| {
+            counters.get(&operand).and_then(|debug_counter| debug_counter.some_block_label.as_ref())
         })
     }
 
@@ -323,7 +321,10 @@ impl DebugCounters {
                         String::new()
                     },
                     self.format_operand(lhs),
-                    if op == Op::Add { "+" } else { "-" },
+                    match op {
+                        Op::Add => "+",
+                        Op::Subtract => "-",
+                    },
                     self.format_operand(rhs),
                 );
             }
@@ -638,7 +639,7 @@ pub(super) fn dump_coverage_spanview<'tcx>(
     let def_id = mir_source.def_id();
 
     let span_viewables = span_viewables(tcx, mir_body, basic_coverage_blocks, &coverage_spans);
-    let mut file = create_dump_file(tcx, "html", None, pass_name, &0, mir_source)
+    let mut file = create_dump_file(tcx, "html", false, pass_name, &0i32, mir_body)
         .expect("Unexpected error creating MIR spanview HTML file");
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
@@ -739,7 +740,7 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
                 .join("\n  ")
         ));
     }
-    let mut file = create_dump_file(tcx, "dot", None, pass_name, &0, mir_source)
+    let mut file = create_dump_file(tcx, "dot", false, pass_name, &0i32, mir_body)
         .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
     graphviz_writer
         .write_graphviz(tcx, &mut file)
@@ -795,7 +796,7 @@ fn bcb_to_string_sections<'tcx>(
     }
     let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
         .iter()
-        .map(|&bb| format!("{:?}: {}", bb, term_type(&mir_body[bb].terminator().kind)))
+        .map(|&bb| format!("{:?}: {}", bb, mir_body[bb].terminator().kind.name()))
         .collect::<Vec<_>>();
     if non_term_blocks.len() > 0 {
         sections.push(non_term_blocks.join("\n"));
@@ -803,29 +804,7 @@ fn bcb_to_string_sections<'tcx>(
     sections.push(format!(
         "{:?}: {}",
         bcb_data.basic_blocks.last().unwrap(),
-        term_type(&bcb_data.terminator(mir_body).kind)
+        bcb_data.terminator(mir_body).kind.name(),
     ));
     sections
-}
-
-/// Returns a simple string representation of a `TerminatorKind` variant, independent of any
-/// values it might hold.
-pub(super) fn term_type(kind: &TerminatorKind<'_>) -> &'static str {
-    match kind {
-        TerminatorKind::Goto { .. } => "Goto",
-        TerminatorKind::SwitchInt { .. } => "SwitchInt",
-        TerminatorKind::Resume => "Resume",
-        TerminatorKind::Abort => "Abort",
-        TerminatorKind::Return => "Return",
-        TerminatorKind::Unreachable => "Unreachable",
-        TerminatorKind::Drop { .. } => "Drop",
-        TerminatorKind::DropAndReplace { .. } => "DropAndReplace",
-        TerminatorKind::Call { .. } => "Call",
-        TerminatorKind::Assert { .. } => "Assert",
-        TerminatorKind::Yield { .. } => "Yield",
-        TerminatorKind::GeneratorDrop => "GeneratorDrop",
-        TerminatorKind::FalseEdge { .. } => "FalseEdge",
-        TerminatorKind::FalseUnwind { .. } => "FalseUnwind",
-        TerminatorKind::InlineAsm { .. } => "InlineAsm",
-    }
 }

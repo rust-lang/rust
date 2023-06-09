@@ -1,11 +1,11 @@
-// aux-build:macro_rules.rs
+//@aux-build:proc_macros.rs
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![warn(clippy::large_enum_variant)]
 
-#[macro_use]
-extern crate macro_rules;
+extern crate proc_macros;
+use proc_macros::external;
 
 enum LargeEnum {
     A(i32),
@@ -101,12 +101,12 @@ struct Struct2 {
 #[derive(Copy, Clone)]
 enum CopyableLargeEnum {
     A(bool),
-    B([u128; 4000]),
+    B([u64; 8000]),
 }
 
 enum ManuallyCopyLargeEnum {
     A(bool),
-    B([u128; 4000]),
+    B([u64; 8000]),
 }
 
 impl Clone for ManuallyCopyLargeEnum {
@@ -130,6 +130,35 @@ impl<T: Copy> Clone for SomeGenericPossiblyCopyEnum<T> {
 
 impl<T: Copy> Copy for SomeGenericPossiblyCopyEnum<T> {}
 
+enum LargeEnumWithGenerics<T> {
+    Small,
+    Large((T, [u8; 512])),
+}
+
+struct Foo<T> {
+    foo: T,
+}
+
+enum WithGenerics {
+    Large([Foo<u64>; 64]),
+    Small(u8),
+}
+
+enum PossiblyLargeEnumWithConst<const U: usize> {
+    SmallBuffer([u8; 4]),
+    MightyBuffer([u16; U]),
+}
+
+enum LargeEnumOfConst {
+    Ok,
+    Error(PossiblyLargeEnumWithConst<256>),
+}
+
 fn main() {
-    large_enum_variant!();
+    external!(
+        enum LargeEnumInMacro {
+            A(i32),
+            B([i32; 8000]),
+        }
+    );
 }

@@ -68,7 +68,10 @@ pub use alloc_crate::alloc::*;
 /// The default memory allocator provided by the operating system.
 ///
 /// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
-/// plus related functions.
+/// plus related functions. However, it is not valid to mix use of the backing
+/// system allocator with `System`, as this implementation may include extra
+/// work, such as to serve alignment requests greater than the alignment
+/// provided directly by the backing system allocator.
 ///
 /// This type implements the `GlobalAlloc` trait and Rust programs by default
 /// work as if they had this definition:
@@ -90,7 +93,7 @@ pub use alloc_crate::alloc::*;
 ///
 /// ```rust
 /// use std::alloc::{System, GlobalAlloc, Layout};
-/// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+/// use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 ///
 /// struct Counter;
 ///
@@ -100,14 +103,14 @@ pub use alloc_crate::alloc::*;
 ///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
 ///         let ret = System.alloc(layout);
 ///         if !ret.is_null() {
-///             ALLOCATED.fetch_add(layout.size(), SeqCst);
+///             ALLOCATED.fetch_add(layout.size(), Relaxed);
 ///         }
 ///         ret
 ///     }
 ///
 ///     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
 ///         System.dealloc(ptr, layout);
-///         ALLOCATED.fetch_sub(layout.size(), SeqCst);
+///         ALLOCATED.fetch_sub(layout.size(), Relaxed);
 ///     }
 /// }
 ///
@@ -115,7 +118,7 @@ pub use alloc_crate::alloc::*;
 /// static A: Counter = Counter;
 ///
 /// fn main() {
-///     println!("allocated bytes before main: {}", ALLOCATED.load(SeqCst));
+///     println!("allocated bytes before main: {}", ALLOCATED.load(Relaxed));
 /// }
 /// ```
 ///
@@ -335,7 +338,7 @@ fn default_alloc_error_hook(layout: Layout) {
 
     #[allow(unused_unsafe)]
     if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
-        panic!("memory allocation of {} bytes failed\n", layout.size());
+        panic!("memory allocation of {} bytes failed", layout.size());
     } else {
         rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
     }

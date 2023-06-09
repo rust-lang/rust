@@ -1,14 +1,20 @@
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 use super::FunctionCx;
-use crate::common::{span_invalid_monomorphization_error, IntPredicate};
+use crate::common::IntPredicate;
+use crate::errors;
+use crate::errors::InvalidMonomorphization;
 use crate::glue;
+use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::abi::{
+    call::{FnAbi, PassMode},
+    WrappingRange,
+};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -73,10 +79,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let llval = match name {
-            sym::assume => {
-                bx.assume(args[0].immediate());
-                return;
-            }
             sym::abort => {
                 bx.abort();
                 return;
@@ -102,6 +104,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
             }
+            sym::vtable_size | sym::vtable_align => {
+                let vtable = args[0].immediate();
+                let idx = match name {
+                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
+                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
+                    _ => bug!(),
+                };
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+                match name {
+                    // Size is always <= isize::MAX.
+                    sym::vtable_size => {
+                        let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
+                        bx.range_metadata(value, WrappingRange { start: 0, end: size_bound });
+                    },
+                    // Alignment is always nonzero.
+                    sym::vtable_align => bx.range_metadata(value, WrappingRange { start: 1, end: !0 }),
+                    _ => {}
+                }
+                value
+            }
             sym::pref_align_of
             | sym::needs_drop
             | sym::type_id
@@ -112,13 +134,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
                     .unwrap();
                 OperandRef::from_const(bx, value, ret_ty).immediate_or_packed_pair(bx)
-            }
-            sym::offset => {
-                let ty = substs.type_at(0);
-                let layout = bx.layout_of(ty);
-                let ptr = args[0].immediate();
-                let offset = args[1].immediate();
-                bx.inbounds_gep(bx.backend_type(layout), ptr, &[offset])
             }
             sym::arith_offset => {
                 let ty = substs.type_at(0);
@@ -196,11 +211,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args[1].val.unaligned_volatile_store(bx, dst);
                 return;
             }
-            sym::add_with_overflow
-            | sym::sub_with_overflow
-            | sym::mul_with_overflow
-            | sym::unchecked_div
-            | sym::unchecked_rem
             | sym::unchecked_shl
             | sym::unchecked_shr
             | sym::unchecked_add
@@ -210,47 +220,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ty = arg_tys[0];
                 match int_type_width_signed(ty, bx.tcx()) {
                     Some((_width, signed)) => match name {
-                        sym::add_with_overflow
-                        | sym::sub_with_overflow
-                        | sym::mul_with_overflow => {
-                            let op = match name {
-                                sym::add_with_overflow => OverflowOp::Add,
-                                sym::sub_with_overflow => OverflowOp::Sub,
-                                sym::mul_with_overflow => OverflowOp::Mul,
-                                _ => bug!(),
-                            };
-                            let (val, overflow) =
-                                bx.checked_binop(op, ty, args[0].immediate(), args[1].immediate());
-                            // Convert `i1` to a `bool`, and write it to the out parameter
-                            let val = bx.from_immediate(val);
-                            let overflow = bx.from_immediate(overflow);
-
-                            let dest = result.project_field(bx, 0);
-                            bx.store(val, dest.llval, dest.align);
-                            let dest = result.project_field(bx, 1);
-                            bx.store(overflow, dest.llval, dest.align);
-
-                            return;
-                        }
                         sym::exact_div => {
                             if signed {
                                 bx.exactsdiv(args[0].immediate(), args[1].immediate())
                             } else {
                                 bx.exactudiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_div => {
-                            if signed {
-                                bx.sdiv(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.udiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_rem => {
-                            if signed {
-                                bx.srem(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.urem(args[0].immediate(), args[1].immediate())
                             }
                         }
                         sym::unchecked_shl => bx.shl(args[0].immediate(), args[1].immediate()),
@@ -285,15 +259,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         _ => bug!(),
                     },
                     None => {
-                        span_invalid_monomorphization_error(
-                            bx.tcx().sess,
-                            span,
-                            &format!(
-                                "invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`",
-                                name, ty
-                            ),
-                        );
+                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
                         return;
                     }
                 }
@@ -309,15 +275,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         _ => bug!(),
                     },
                     None => {
-                        span_invalid_monomorphization_error(
-                            bx.tcx().sess,
-                            span,
-                            &format!(
-                                "invalid monomorphization of `{}` intrinsic: \
-                                      expected basic float type, found `{}`",
-                                name, arg_tys[0]
-                            ),
-                        );
+                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicFloatType { span, name, ty: arg_tys[0] });
                         return;
                     }
                 }
@@ -325,29 +283,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::float_to_int_unchecked => {
                 if float_type_width(arg_tys[0]).is_none() {
-                    span_invalid_monomorphization_error(
-                        bx.tcx().sess,
-                        span,
-                        &format!(
-                            "invalid monomorphization of `float_to_int_unchecked` \
-                                  intrinsic: expected basic float type, \
-                                  found `{}`",
-                            arg_tys[0]
-                        ),
-                    );
+                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked { span, ty: arg_tys[0] });
                     return;
                 }
                 let Some((_width, signed)) = int_type_width_signed(ret_ty, bx.tcx()) else {
-                    span_invalid_monomorphization_error(
-                        bx.tcx().sess,
-                        span,
-                        &format!(
-                            "invalid monomorphization of `float_to_int_unchecked` \
-                                    intrinsic:  expected basic integer type, \
-                                    found `{}`",
-                            ret_ty
-                        ),
-                    );
+                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked { span, ty: ret_ty });
                     return;
                 };
                 if signed {
@@ -382,7 +322,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 
                 let Some((instruction, ordering)) = atomic.split_once('_') else {
-                    bx.sess().fatal("Atomic intrinsic missing memory ordering");
+                    bx.sess().emit_fatal(errors::MissingMemoryOrdering);
                 };
 
                 let parse_ordering = |bx: &Bx, s| match s {
@@ -392,25 +332,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     "release" => Release,
                     "acqrel" => AcquireRelease,
                     "seqcst" => SequentiallyConsistent,
-                    _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
+                    _ => bx.sess().emit_fatal(errors::UnknownAtomicOrdering),
                 };
 
                 let invalid_monomorphization = |ty| {
-                    span_invalid_monomorphization_error(
-                        bx.tcx().sess,
-                        span,
-                        &format!(
-                            "invalid monomorphization of `{}` intrinsic: \
-                                  expected basic integer type, found `{}`",
-                            name, ty
-                        ),
-                    );
+                    bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
                 };
 
                 match instruction {
                     "cxchg" | "cxchgweak" => {
                         let Some((success, failure)) = ordering.split_once('_') else {
-                            bx.sess().fatal("Atomic compare-exchange intrinsic missing failure memory ordering");
+                            bx.sess().emit_fatal(errors::AtomicCompareExchange);
                         };
                         let ty = substs.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
@@ -509,7 +441,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             "min" => AtomicRmwBinOp::AtomicMin,
                             "umax" => AtomicRmwBinOp::AtomicUMax,
                             "umin" => AtomicRmwBinOp::AtomicUMin,
-                            _ => bx.sess().fatal("unknown atomic operation"),
+                            _ => bx.sess().emit_fatal(errors::UnknownAtomicOperation),
                         };
 
                         let ty = substs.type_at(0);
@@ -537,14 +469,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+            sym::ptr_guaranteed_cmp => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                if name == sym::ptr_guaranteed_eq {
-                    bx.icmp(IntPredicate::IntEQ, a, b)
-                } else {
-                    bx.icmp(IntPredicate::IntNE, a, b)
-                }
+                bx.icmp(IntPredicate::IntEQ, a, b)
             }
 
             sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
@@ -579,8 +507,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_abi.ret.mode {
-                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(&ty));
+            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
+                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(ty));
                 let ptr = bx.pointercast(result.llval, ptr_llty);
                 bx.store(llval, ptr, result.align);
             } else {

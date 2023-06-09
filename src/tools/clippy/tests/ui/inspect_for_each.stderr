@@ -9,8 +9,8 @@ LL | |         b.push(z);
 LL | |     });
    | |______^
    |
-   = note: `-D clippy::inspect-for-each` implied by `-D warnings`
    = help: move the code from `inspect(..)` to `for_each(..)` and remove the `inspect(..)`
+   = note: `-D clippy::inspect-for-each` implied by `-D warnings`
 
 error: aborting due to previous error
 

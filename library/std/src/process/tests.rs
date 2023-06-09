@@ -1,7 +1,8 @@
 use crate::io::prelude::*;
 
 use super::{Command, Output, Stdio};
-use crate::io::ErrorKind;
+use crate::io::{BorrowedBuf, ErrorKind};
+use crate::mem::MaybeUninit;
 use crate::str;
 
 fn known_command() -> Command {
@@ -117,6 +118,37 @@ fn stdin_works() {
     p.stdout.as_mut().unwrap().read_to_string(&mut out).unwrap();
     assert!(p.wait().unwrap().success());
     assert_eq!(out, "foobar\n");
+}
+
+#[test]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
+fn child_stdout_read_buf() {
+    let mut cmd = if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C").arg("echo abc");
+        cmd
+    } else {
+        let mut cmd = shell_cmd();
+        cmd.arg("-c").arg("echo abc");
+        cmd
+    };
+    cmd.stdin(Stdio::null());
+    cmd.stdout(Stdio::piped());
+    let child = cmd.spawn().unwrap();
+
+    let mut stdout = child.stdout.unwrap();
+    let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+    let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    stdout.read_buf(buf.unfilled()).unwrap();
+
+    // ChildStdout::read_buf should omit buffer initialization.
+    if cfg!(target_os = "windows") {
+        assert_eq!(buf.filled(), b"abc\r\n");
+        assert_eq!(buf.init_len(), 5);
+    } else {
+        assert_eq!(buf.filled(), b"abc\n");
+        assert_eq!(buf.init_len(), 4);
+    };
 }
 
 #[test]
@@ -415,6 +447,100 @@ fn test_command_implements_send_sync() {
 fn env_empty() {
     let p = Command::new("cmd").args(&["/C", "exit 0"]).env_clear().spawn();
     assert!(p.is_ok());
+}
+
+#[test]
+#[cfg(not(windows))]
+#[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
+fn main() {
+    const PIDFD: &'static str =
+        if cfg!(target_os = "linux") { "    create_pidfd: false,\n" } else { "" };
+
+    let mut command = Command::new("some-boring-name");
+
+    assert_eq!(format!("{command:?}"), format!(r#""some-boring-name""#));
+
+    assert_eq!(
+        format!("{command:#?}"),
+        format!(
+            r#"Command {{
+    program: "some-boring-name",
+    args: [
+        "some-boring-name",
+    ],
+{PIDFD}}}"#
+        )
+    );
+
+    command.args(&["1", "2", "3"]);
+
+    assert_eq!(format!("{command:?}"), format!(r#""some-boring-name" "1" "2" "3""#));
+
+    assert_eq!(
+        format!("{command:#?}"),
+        format!(
+            r#"Command {{
+    program: "some-boring-name",
+    args: [
+        "some-boring-name",
+        "1",
+        "2",
+        "3",
+    ],
+{PIDFD}}}"#
+        )
+    );
+
+    crate::os::unix::process::CommandExt::arg0(&mut command, "exciting-name");
+
+    assert_eq!(
+        format!("{command:?}"),
+        format!(r#"["some-boring-name"] "exciting-name" "1" "2" "3""#)
+    );
+
+    assert_eq!(
+        format!("{command:#?}"),
+        format!(
+            r#"Command {{
+    program: "some-boring-name",
+    args: [
+        "exciting-name",
+        "1",
+        "2",
+        "3",
+    ],
+{PIDFD}}}"#
+        )
+    );
+
+    let mut command_with_env_and_cwd = Command::new("boring-name");
+    command_with_env_and_cwd.current_dir("/some/path").env("FOO", "bar");
+    assert_eq!(
+        format!("{command_with_env_and_cwd:?}"),
+        r#"cd "/some/path" && FOO="bar" "boring-name""#
+    );
+    assert_eq!(
+        format!("{command_with_env_and_cwd:#?}"),
+        format!(
+            r#"Command {{
+    program: "boring-name",
+    args: [
+        "boring-name",
+    ],
+    env: CommandEnv {{
+        clear: false,
+        vars: {{
+            "FOO": Some(
+                "bar",
+            ),
+        }},
+    }},
+    cwd: Some(
+        "/some/path",
+    ),
+{PIDFD}}}"#
+        )
+    );
 }
 
 // See issue #91991

@@ -2,6 +2,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
 use crate::os::windows::io::AsRawHandle;
+use crate::os::windows::io::HandleOrNull;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
@@ -22,22 +23,22 @@ pub struct Thread {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let p = Box::into_raw(box p);
+        let p = Box::into_raw(Box::new(p));
 
         // FIXME On UNIX, we guard against stack sizes that are too small but
         // that's because pthreads enforces that stacks are at least
-        // PTHREAD_STACK_MIN bytes big.  Windows has no such lower limit, it's
+        // PTHREAD_STACK_MIN bytes big. Windows has no such lower limit, it's
         // just that below a certain threshold you can't do anything useful.
         // That threshold is application and architecture-specific, however.
         let ret = c::CreateThread(
             ptr::null_mut(),
             stack,
-            thread_start,
+            Some(thread_start),
             p as *mut _,
             c::STACK_SIZE_PARAM_IS_A_RESERVATION,
             ptr::null_mut(),
         );
-
+        let ret = HandleOrNull::from_raw_handle(ret);
         return if let Ok(handle) = ret.try_into() {
             Ok(Thread { handle: Handle::from_inner(handle) })
         } else {

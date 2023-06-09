@@ -327,7 +327,7 @@
 //! - `text` must not contain any `'{'` or `'}'` characters,
 //! - `ws` is any character for which [`char::is_whitespace`] returns `true`, has no semantic
 //!   meaning and is completely optional,
-//! - `integer` is a decimal integer that may contain leading zeroes and
+//! - `integer` is a decimal integer that may contain leading zeroes and must fit into an `usize` and
 //! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as defined by the [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html).
 //!
 //! # Formatting traits
@@ -363,7 +363,7 @@
 //! # use std::fmt;
 //! # struct Foo; // our custom type
 //! # impl fmt::Display for Foo {
-//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//! fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //! # write!(f, "testing, testing")
 //! # } }
 //! ```
@@ -399,7 +399,7 @@
 //! }
 //!
 //! impl fmt::Display for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//!     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //!         // The `f` value implements the `Write` trait, which is what the
 //!         // write! macro is expecting. Note that this formatting ignores the
 //!         // various flags provided to format strings.
@@ -410,7 +410,7 @@
 //! // Different traits allow different forms of output of a type. The meaning
 //! // of this format is to print the magnitude of a vector.
 //! impl fmt::Binary for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//!     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //!         let magnitude = (self.x * self.x + self.y * self.y) as f64;
 //!         let magnitude = magnitude.sqrt();
 //!
@@ -419,7 +419,7 @@
 //!         // documentation for details, and the function `pad` can be used
 //!         // to pad strings.
 //!         let decimals = f.precision().unwrap_or(3);
-//!         let string = format!("{:.*}", decimals, magnitude);
+//!         let string = format!("{magnitude:.decimals$}");
 //!         f.pad_integral(true, "", &string)
 //!     }
 //! }
@@ -517,8 +517,8 @@
 //! let mut some_writer = io::stdout();
 //! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
 //!
-//! fn my_fmt_fn(args: fmt::Arguments) {
-//!     write!(&mut io::stdout(), "{}", args);
+//! fn my_fmt_fn(args: fmt::Arguments<'_>) {
+//!     write!(&mut io::stdout(), "{args}");
 //! }
 //! my_fmt_fn(format_args!(", or a {} too", "function"));
 //! ```
@@ -551,14 +551,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[unstable(feature = "fmt_internals", issue = "none")]
-pub use core::fmt::rt;
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 pub use core::fmt::Alignment;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{write, ArgumentV1, Arguments};
+pub use core::fmt::{write, Arguments};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Binary, Octal};
 #[stable(feature = "rust1", since = "1.0.0")]

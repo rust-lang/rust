@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
             _ => return,
         };
         let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn) else { return };
-        let Some((Constant::Bool(val), _)) = constant(cx, cx.typeck_results(), condition) else { return };
+        let Some(Constant::Bool(val)) = constant(cx, cx.typeck_results(), condition) else { return };
         if val {
             span_lint_and_help(
                 cx,
@@ -60,9 +60,9 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 cx,
                 ASSERTIONS_ON_CONSTANTS,
                 macro_call.span,
-                &format!("`assert!(false{})` should probably be replaced", assert_arg),
+                &format!("`assert!(false{assert_arg})` should probably be replaced"),
                 None,
-                &format!("use `panic!({})` or `unreachable!({0})`", panic_arg),
+                &format!("use `panic!({panic_arg})` or `unreachable!({panic_arg})`"),
             );
         }
     }

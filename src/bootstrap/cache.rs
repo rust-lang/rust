@@ -1,9 +1,8 @@
 use std::any::{Any, TypeId};
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::cmp::{Ord, Ordering, PartialOrd};
+use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::convert::AsRef;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -89,16 +88,16 @@ impl<T: Internable + Hash> Hash for Interned<T> {
 
 impl<T: Internable + Deref> Deref for Interned<T> {
     type Target = T::Target;
-    fn deref(&self) -> &'static Self::Target {
+    fn deref(&self) -> &Self::Target {
         let l = T::intern_cache().lock().unwrap();
-        unsafe { mem::transmute::<&Self::Target, &'static Self::Target>(l.get(*self)) }
+        unsafe { mem::transmute::<&Self::Target, &Self::Target>(l.get(*self)) }
     }
 }
 
 impl<T: Internable + AsRef<U>, U: ?Sized> AsRef<U> for Interned<T> {
-    fn as_ref(&self) -> &'static U {
+    fn as_ref(&self) -> &U {
         let l = T::intern_cache().lock().unwrap();
-        unsafe { mem::transmute::<&U, &'static U>(l.get(*self).as_ref()) }
+        unsafe { mem::transmute::<&U, &U>(l.get(*self).as_ref()) }
     }
 }
 

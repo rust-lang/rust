@@ -1,0 +1,203 @@
+error: vtable entries for `<S as O>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as B>::foo_b),
+           TraitVPtr(<S as B>),
+           Method(<S as C>::foo_c),
+           Method(<S as D>::foo_d),
+           TraitVPtr(<S as D>),
+           Method(<S as E>::foo_e),
+           TraitVPtr(<S as E>),
+           Method(<S as F>::foo_f),
+           TraitVPtr(<S as F>),
+           Method(<S as G>::foo_g),
+           Method(<S as H>::foo_h),
+           TraitVPtr(<S as H>),
+           Method(<S as I>::foo_i),
+           TraitVPtr(<S as I>),
+           Method(<S as J>::foo_j),
+           TraitVPtr(<S as J>),
+           Method(<S as K>::foo_k),
+           TraitVPtr(<S as K>),
+           Method(<S as L>::foo_l),
+           TraitVPtr(<S as L>),
+           Method(<S as M>::foo_m),
+           TraitVPtr(<S as M>),
+           Method(<S as N>::foo_n),
+           TraitVPtr(<S as N>),
+           Method(<S as O>::foo_o),
+       ]
+  --> $DIR/vtable-multi-level.rs:97:1
+   |
+LL | trait O: G + N {
+   | ^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as A>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+       ]
+  --> $DIR/vtable-multi-level.rs:14:1
+   |
+LL | trait A {
+   | ^^^^^^^
+
+error: vtable entries for `<S as B>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as B>::foo_b),
+       ]
+  --> $DIR/vtable-multi-level.rs:20:1
+   |
+LL | trait B {
+   | ^^^^^^^
+
+error: vtable entries for `<S as C>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as B>::foo_b),
+           TraitVPtr(<S as B>),
+           Method(<S as C>::foo_c),
+       ]
+  --> $DIR/vtable-multi-level.rs:26:1
+   |
+LL | trait C: A + B {
+   | ^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as D>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as D>::foo_d),
+       ]
+  --> $DIR/vtable-multi-level.rs:32:1
+   |
+LL | trait D {
+   | ^^^^^^^
+
+error: vtable entries for `<S as E>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as E>::foo_e),
+       ]
+  --> $DIR/vtable-multi-level.rs:38:1
+   |
+LL | trait E {
+   | ^^^^^^^
+
+error: vtable entries for `<S as F>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as D>::foo_d),
+           Method(<S as E>::foo_e),
+           TraitVPtr(<S as E>),
+           Method(<S as F>::foo_f),
+       ]
+  --> $DIR/vtable-multi-level.rs:44:1
+   |
+LL | trait F: D + E {
+   | ^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as H>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as H>::foo_h),
+       ]
+  --> $DIR/vtable-multi-level.rs:55:1
+   |
+LL | trait H {
+   | ^^^^^^^
+
+error: vtable entries for `<S as I>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as I>::foo_i),
+       ]
+  --> $DIR/vtable-multi-level.rs:61:1
+   |
+LL | trait I {
+   | ^^^^^^^
+
+error: vtable entries for `<S as J>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as H>::foo_h),
+           Method(<S as I>::foo_i),
+           TraitVPtr(<S as I>),
+           Method(<S as J>::foo_j),
+       ]
+  --> $DIR/vtable-multi-level.rs:67:1
+   |
+LL | trait J: H + I {
+   | ^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as K>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as K>::foo_k),
+       ]
+  --> $DIR/vtable-multi-level.rs:73:1
+   |
+LL | trait K {
+   | ^^^^^^^
+
+error: vtable entries for `<S as L>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as L>::foo_l),
+       ]
+  --> $DIR/vtable-multi-level.rs:79:1
+   |
+LL | trait L {
+   | ^^^^^^^
+
+error: vtable entries for `<S as M>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as K>::foo_k),
+           Method(<S as L>::foo_l),
+           TraitVPtr(<S as L>),
+           Method(<S as M>::foo_m),
+       ]
+  --> $DIR/vtable-multi-level.rs:85:1
+   |
+LL | trait M: K + L {
+   | ^^^^^^^^^^^^^^
+
+error: vtable entries for `<S as N>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as H>::foo_h),
+           Method(<S as I>::foo_i),
+           TraitVPtr(<S as I>),
+           Method(<S as J>::foo_j),
+           Method(<S as K>::foo_k),
+           TraitVPtr(<S as K>),
+           Method(<S as L>::foo_l),
+           TraitVPtr(<S as L>),
+           Method(<S as M>::foo_m),
+           TraitVPtr(<S as M>),
+           Method(<S as N>::foo_n),
+       ]
+  --> $DIR/vtable-multi-level.rs:91:1
+   |
+LL | trait N: J + M {
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
+

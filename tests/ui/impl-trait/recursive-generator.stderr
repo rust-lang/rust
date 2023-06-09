@@ -1,0 +1,19 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-generator.rs:5:13
+   |
+LL |   fn foo() -> impl Generator<Yield = (), Return = ()> {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive opaque type
+...
+LL | /     || {
+LL | |
+LL | |         let mut gen = Box::pin(foo());
+   | |             ------- generator captures itself here
+LL | |
+...  |
+LL | |         }
+LL | |     }
+   | |_____- returning here with type `[generator@$DIR/recursive-generator.rs:9:5: 9:7]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0720`.

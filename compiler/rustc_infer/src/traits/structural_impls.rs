@@ -1,8 +1,8 @@
 use crate::traits;
 use crate::traits::project::Normalized;
-use rustc_middle::ty;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt};
 
 use std::fmt;
 use std::ops::ControlFlow;
@@ -46,7 +46,9 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
             super::CodeConstEquateError(ref a, ref b) => {
                 write!(f, "CodeConstEquateError({:?}, {:?})", a, b)
             }
-            super::CodeAmbiguity => write!(f, "Ambiguity"),
+            super::CodeAmbiguity { overflow: false } => write!(f, "Ambiguity"),
+            super::CodeAmbiguity { overflow: true } => write!(f, "Overflow"),
+            super::CodeCycle(ref cycle) => write!(f, "Cycle({:?})", cycle),
         }
     }
 }
@@ -60,8 +62,13 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 
-impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx, O: TypeFoldable<TyCtxt<'tcx>>> TypeFoldable<TyCtxt<'tcx>>
+    for traits::Obligation<'tcx, O>
+{
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(traits::Obligation {
             cause: self.cause,
             recursion_depth: self.recursion_depth,
@@ -71,8 +78,10 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
     }
 }
 
-impl<'tcx, O: TypeVisitable<'tcx>> TypeVisitable<'tcx> for traits::Obligation<'tcx, O> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+impl<'tcx, O: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>>
+    for traits::Obligation<'tcx, O>
+{
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.predicate.visit_with(visitor)?;
         self.param_env.visit_with(visitor)
     }

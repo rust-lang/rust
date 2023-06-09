@@ -19,16 +19,17 @@ include!("../dylib_util.rs");
 
 use std::env;
 use std::path::PathBuf;
-use std::process::{Child, Command};
+use std::process::{exit, Child, Command};
 use std::str::FromStr;
 use std::time::Instant;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
+    let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = args.windows(2).find(|w| &*w[0] == "--target").and_then(|w| w[1].to_str());
+    let target = arg("--target");
     let version = args.iter().find(|w| &**w == "-vV");
 
     let verbose = match env::var("RUSTC_VERBOSE") {
@@ -46,7 +47,12 @@ fn main() {
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
-    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let stage = env::var("RUSTC_STAGE").unwrap_or_else(|_| {
+        // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
+        eprintln!("rustc shim: fatal: RUSTC_STAGE was not set");
+        eprintln!("rustc shim: note: use `x.py build -vvv` to see all environment variables set by bootstrap");
+        exit(101);
+    });
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
@@ -59,15 +65,14 @@ fn main() {
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Get the name of the crate we're compiling, if any.
-    let crate_name =
-        args.windows(2).find(|args| args[0] == "--crate-name").and_then(|args| args[1].to_str());
+    let crate_name = arg("--crate-name");
 
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
             if target == "all"
                 || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name)
             {
-                cmd.arg("-Ztime");
+                cmd.arg("-Ztime-passes");
             }
         }
     }
@@ -97,14 +102,17 @@ fn main() {
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.
-        //
-        // `compiler_builtins` are unconditionally compiled with panic=abort to
-        // workaround undefined references to `rust_eh_unwind_resume` generated
-        // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
-        if crate_name == Some("panic_abort")
-            || crate_name == Some("compiler_builtins") && stage != "0"
-        {
+        if crate_name == Some("panic_abort") {
             cmd.arg("-C").arg("panic=abort");
+        }
+
+        // `-Ztls-model=initial-exec` must not be applied to proc-macros, see
+        // issue https://github.com/rust-lang/rust/issues/100530
+        if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
+            && arg("--crate-type") != Some("proc-macro")
+            && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
+        {
+            cmd.arg("-Ztls-model=initial-exec");
         }
     } else {
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special env vars
@@ -130,10 +138,8 @@ fn main() {
         // Cargo doesn't pass RUSTFLAGS to proc_macros:
         // https://github.com/rust-lang/cargo/issues/4423
         // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
-        // We also declare that the flag is expected, which is mainly needed for
-        // later stages so that they don't warn about #[cfg(bootstrap)],
-        // but enabling it for stage 0 too lets any warnings, if they occur,
-        // occur more early on, e.g. about #[cfg(bootstrap = "foo")].
+        // We also declare that the flag is expected, which we need to do to not
+        // get warnings about it being unexpected.
         if stage == "0" {
             cmd.arg("--cfg=bootstrap");
         }
@@ -149,8 +155,43 @@ fn main() {
     // allow the `rustc_private` feature to link to other unstable crates
     // also in the sysroot. We also do this for host crates, since those
     // may be proc macros, in which case we might ship them.
-    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() && (stage != "0" || target.is_some()) {
+    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
+    }
+
+    // allow-features is handled from within this rustc wrapper because of
+    // issues with build scripts. Some packages use build scripts to
+    // dynamically detect if certain nightly features are available.
+    // There are different ways this causes problems:
+    //
+    // * rustix runs `rustc` on a small test program to see if the feature is
+    //   available (and sets a `cfg` if it is). It does not honor
+    //   CARGO_ENCODED_RUSTFLAGS.
+    // * proc-macro2 detects if `rustc -vV` says "nighty" or "dev" and enables
+    //   nightly features. It will scan CARGO_ENCODED_RUSTFLAGS for
+    //   -Zallow-features. Unfortunately CARGO_ENCODED_RUSTFLAGS is not set
+    //   for build-dependencies when --target is used.
+    //
+    // The issues above means we can't just use RUSTFLAGS, and we can't use
+    // `cargo -Zallow-features=…`. Passing it through here ensures that it
+    // always gets set. Unfortunately that also means we need to enable more
+    // features than we really want (like those for proc-macro2), but there
+    // isn't much of a way around it.
+    //
+    // I think it is unfortunate that build scripts are doing this at all,
+    // since changes to nightly features can cause crates to break even if the
+    // user didn't want or care about the use of the nightly features. I think
+    // nightly features should be opt-in only. Unfortunately the dynamic
+    // checks are now too wide spread that we just need to deal with it.
+    //
+    // If you want to try to remove this, I suggest working with the crate
+    // authors to remove the dynamic checking. Another option is to pursue
+    // https://github.com/rust-lang/cargo/issues/11244 and
+    // https://github.com/rust-lang/cargo/issues/4423, which will likely be
+    // very difficult, but could help expose -Zallow-features into build
+    // scripts so they could try to honor them.
+    if let Ok(allow_features) = env::var("RUSTC_ALLOW_FEATURES") {
+        cmd.arg(format!("-Zallow-features={allow_features}"));
     }
 
     if let Ok(flags) = env::var("MAGIC_EXTRA_RUSTFLAGS") {
@@ -245,41 +286,49 @@ fn format_rusage_data(_child: Child) -> Option<String> {
 #[cfg(windows)]
 fn format_rusage_data(child: Child) -> Option<String> {
     use std::os::windows::io::AsRawHandle;
-    use winapi::um::{processthreadsapi, psapi, timezoneapi};
-    let handle = child.as_raw_handle();
-    macro_rules! try_bool {
-        ($e:expr) => {
-            if $e != 1 {
-                return None;
-            }
-        };
-    }
+
+    use windows::{
+        Win32::Foundation::HANDLE,
+        Win32::System::ProcessStatus::{
+            K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX,
+        },
+        Win32::System::Threading::GetProcessTimes,
+        Win32::System::Time::FileTimeToSystemTime,
+    };
+
+    let handle = HANDLE(child.as_raw_handle() as isize);
 
     let mut user_filetime = Default::default();
     let mut user_time = Default::default();
     let mut kernel_filetime = Default::default();
     let mut kernel_time = Default::default();
-    let mut memory_counters = psapi::PROCESS_MEMORY_COUNTERS::default();
+    let mut memory_counters = PROCESS_MEMORY_COUNTERS::default();
 
     unsafe {
-        try_bool!(processthreadsapi::GetProcessTimes(
+        GetProcessTimes(
             handle,
             &mut Default::default(),
             &mut Default::default(),
             &mut kernel_filetime,
             &mut user_filetime,
-        ));
-        try_bool!(timezoneapi::FileTimeToSystemTime(&user_filetime, &mut user_time));
-        try_bool!(timezoneapi::FileTimeToSystemTime(&kernel_filetime, &mut kernel_time));
-
-        // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
-        // with the given handle and none of that process's children.
-        try_bool!(psapi::GetProcessMemoryInfo(
-            handle as _,
-            &mut memory_counters as *mut _ as _,
-            std::mem::size_of::<psapi::PROCESS_MEMORY_COUNTERS_EX>() as u32,
-        ));
+        )
     }
+    .ok()
+    .ok()?;
+    unsafe { FileTimeToSystemTime(&user_filetime, &mut user_time) }.ok().ok()?;
+    unsafe { FileTimeToSystemTime(&kernel_filetime, &mut kernel_time) }.ok().ok()?;
+
+    // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
+    // with the given handle and none of that process's children.
+    unsafe {
+        K32GetProcessMemoryInfo(
+            handle,
+            &mut memory_counters,
+            std::mem::size_of::<PROCESS_MEMORY_COUNTERS_EX>() as u32,
+        )
+    }
+    .ok()
+    .ok()?;
 
     // Guide on interpreting these numbers:
     // https://docs.microsoft.com/en-us/windows/win32/psapi/process-memory-usage-information

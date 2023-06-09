@@ -42,6 +42,35 @@ error: called `map(..).flatten()` on `Result`
 LL |     let _: Result<_, &str> = (Ok(Ok(1))).map(|x| x).flatten();
    |                                          ^^^^^^^^^^^^^^^^^^^^ help: try replacing `map` with `and_then` and remove the `.flatten()`: `and_then(|x| x)`
 
+error: called `map(..).flatten()` on `Iterator`
+  --> $DIR/map_flatten_fixable.rs:39:10
+   |
+LL |           .map(|n| match n {
+   |  __________^
+LL | |             1 => [n
+LL | |                 .saturating_add(1)
+LL | |                 .saturating_add(1)
+...  |
+LL | |         })
+LL | |         .flatten();
+   | |__________________^
+   |
+help: try replacing `map` with `flat_map` and remove the `.flatten()`
+   |
+LL ~         .flat_map(|n| match n {
+LL +             1 => [n
+LL +                 .saturating_add(1)
+LL +                 .saturating_add(1)
+LL +                 .saturating_add(1)
+LL +                 .saturating_add(1)
+LL +                 .saturating_add(1)
+LL +                 .saturating_add(1)
+LL +                 .saturating_add(1)
+LL +                 .saturating_add(1)],
+LL +             n => [n],
+LL ~         });
+   |
+
 error: called `map(..).flatten()` on `Option`
   --> $DIR/map_flatten_fixable.rs:59:10
    |
@@ -49,7 +78,7 @@ LL |           .map(|_| {
    |  __________^
 LL | | // we need some newlines
 LL | | // so that the span is big enough
-LL | | // for a splitted output of the diagnostic
+LL | | // for a split output of the diagnostic
 ...  |
 LL | |         })
 LL | |         .flatten();
@@ -60,11 +89,11 @@ help: try replacing `map` with `and_then` and remove the `.flatten()`
 LL ~         .and_then(|_| {
 LL + // we need some newlines
 LL + // so that the span is big enough
-LL + // for a splitted output of the diagnostic
+LL + // for a split output of the diagnostic
 LL +             Some("")
 LL +  // whitespace beforehand is important as well
 LL ~         });
    |
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

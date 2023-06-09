@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths;
-use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -10,12 +10,17 @@ use rustc_span::symbol::{sym, Symbol};
 
 use super::CLONE_ON_REF_PTR;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol, args: &[hir::Expr<'_>]) {
-    if !(args.len() == 1 && method_name == sym::clone) {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    method_name: Symbol,
+    receiver: &hir::Expr<'_>,
+    args: &[hir::Expr<'_>],
+) {
+    if !(args.is_empty() && method_name == sym::clone) {
         return;
     }
-    let arg = &args[0];
-    let obj_ty = cx.typeck_results().expr_ty(arg).peel_refs();
+    let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
     if let ty::Adt(_, subst) = obj_ty.kind() {
         let caller_type = if is_type_diagnostic_item(cx, obj_ty, sym::Rc) {
@@ -28,7 +33,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Sym
             return;
         };
 
-        let snippet = snippet_with_macro_callsite(cx, arg.span, "..");
+        // Sometimes unnecessary ::<_> after Rc/Arc/Weak
+        let mut app = Applicability::Unspecified;
+        let snippet = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "..", &mut app).0;
 
         span_lint_and_sugg(
             cx,
@@ -36,8 +43,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Sym
             expr.span,
             "using `.clone()` on a ref-counted pointer",
             "try this",
-            format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet),
-            Applicability::Unspecified, // Sometimes unnecessary ::<_> after Rc/Arc/Weak
+            format!("{caller_type}::<{}>::clone(&{snippet})", subst.type_at(0)),
+            app,
         );
     }
 }

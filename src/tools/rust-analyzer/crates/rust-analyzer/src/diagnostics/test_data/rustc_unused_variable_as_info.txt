@@ -1,0 +1,212 @@
+[
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/driver/subcommand/repl.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 290,
+                    character: 8,
+                },
+                end: Position {
+                    line: 290,
+                    character: 11,
+                },
+            },
+            severity: Some(
+                Information,
+            ),
+            code: Some(
+                String(
+                    "unused_variables",
+                ),
+            ),
+            code_description: None,
+            source: Some(
+                "rustc",
+            ),
+            message: "unused variable: `foo`\n#[warn(unused_variables)] on by default",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/driver/subcommand/repl.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 290,
+                                    character: 8,
+                                },
+                                end: Position {
+                                    line: 290,
+                                    character: 11,
+                                },
+                            },
+                        },
+                        message: "consider prefixing with an underscore: `_foo`",
+                    },
+                ],
+            ),
+            tags: Some(
+                [
+                    Unnecessary,
+                ],
+            ),
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/driver/subcommand/repl.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 290,
+                    character: 8,
+                },
+                end: Position {
+                    line: 290,
+                    character: 11,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: Some(
+                String(
+                    "unused_variables",
+                ),
+            ),
+            code_description: None,
+            source: Some(
+                "rustc",
+            ),
+            message: "consider prefixing with an underscore: `_foo`",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/driver/subcommand/repl.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 290,
+                                    character: 8,
+                                },
+                                end: Position {
+                                    line: 290,
+                                    character: 11,
+                                },
+                            },
+                        },
+                        message: "original diagnostic",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: Some(
+            Fix {
+                ranges: [
+                    Range {
+                        start: Position {
+                            line: 290,
+                            character: 8,
+                        },
+                        end: Position {
+                            line: 290,
+                            character: 11,
+                        },
+                    },
+                ],
+                action: CodeAction {
+                    title: "consider prefixing with an underscore: `_foo`",
+                    group: None,
+                    kind: Some(
+                        CodeActionKind(
+                            "quickfix",
+                        ),
+                    ),
+                    command: None,
+                    edit: Some(
+                        SnippetWorkspaceEdit {
+                            changes: Some(
+                                {
+                                    Url {
+                                        scheme: "file",
+                                        cannot_be_a_base: false,
+                                        username: "",
+                                        password: None,
+                                        host: None,
+                                        port: None,
+                                        path: "/test/driver/subcommand/repl.rs",
+                                        query: None,
+                                        fragment: None,
+                                    }: [
+                                        TextEdit {
+                                            range: Range {
+                                                start: Position {
+                                                    line: 290,
+                                                    character: 8,
+                                                },
+                                                end: Position {
+                                                    line: 290,
+                                                    character: 11,
+                                                },
+                                            },
+                                            new_text: "_foo",
+                                        },
+                                    ],
+                                },
+                            ),
+                            document_changes: None,
+                            change_annotations: None,
+                        },
+                    ),
+                    is_preferred: Some(
+                        true,
+                    ),
+                    data: None,
+                },
+            },
+        ),
+    },
+]

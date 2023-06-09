@@ -1,0 +1,20 @@
+thread 'main' panicked at 'first', $DIR/double_panic.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at 'second', $DIR/double_panic.rs:LL:CC
+stack backtrace:
+error: abnormal termination: panic in a function that cannot unwind
+  --> $DIR/double_panic.rs:LL:CC
+   |
+LL | / fn main() {
+LL | |
+LL | |     let _foo = Foo;
+LL | |     panic!("first");
+LL | | }
+   | |_^ panic in a function that cannot unwind
+   |
+   = note: inside `main` at $DIR/double_panic.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

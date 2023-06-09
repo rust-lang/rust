@@ -4,8 +4,8 @@ error: this looks like an `else {..}` but the `else` is missing
 LL |     } {
    |      ^
    |
-   = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
    = note: to remove this lint, add the missing `else` or add a new line before the next block
+   = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
 
 error: this looks like an `else if` but the `else` is missing
   --> $DIR/suspicious_else_formatting.rs:21:6

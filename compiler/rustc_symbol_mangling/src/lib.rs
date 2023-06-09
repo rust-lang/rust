@@ -91,27 +91,35 @@
 #![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
 
+#[macro_use]
+extern crate tracing;
+
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
-use rustc_target::abi::call::FnAbi;
-
-use tracing::debug;
 
 mod legacy;
 mod v0;
 
+pub mod errors;
 pub mod test;
+pub mod typeid;
+
+fluent_messages! { "../messages.ftl" }
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is
@@ -148,11 +156,6 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
     });
 
     ty::SymbolName::new(tcx, &symbol_name)
-}
-
-/// This function computes the typeid for the given function ABI.
-pub fn typeid_for_fnabi<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
-    v0::mangle_typeid_for_fnabi(tcx, fn_abi)
 }
 
 pub fn typeid_for_trait_ref<'tcx>(
@@ -245,8 +248,7 @@ fn compute_symbol_name<'tcx>(
     // project.
     let avoid_cross_crate_conflicts = is_generic(substs) || is_globally_shared_function;
 
-    let instantiating_crate =
-        if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };
+    let instantiating_crate = avoid_cross_crate_conflicts.then(compute_instantiating_crate);
 
     // Pick the crate responsible for the symbol mangling version, which has to:
     // 1. be stable for each instance, whether it's being defined or imported
@@ -270,8 +272,7 @@ fn compute_symbol_name<'tcx>(
 
     debug_assert!(
         rustc_demangle::try_demangle(&symbol).is_ok(),
-        "compute_symbol_name: `{}` cannot be demangled",
-        symbol
+        "compute_symbol_name: `{symbol}` cannot be demangled"
     );
 
     symbol

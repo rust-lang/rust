@@ -1,0 +1,82 @@
+name: Internal Compiler Error (for use by automated tooling)
+description: For now, you'll want to use the other ICE template, as GitHub forms have strict limits on the size of fields so backtraces cannot be pasted directly.
+labels: ["C-bug", "I-ICE", "T-compiler"]
+title: "[ICE]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for finding an Internal Compiler Error! 🧊
+
+        If possible, try to provide a minimal verifiable example.
+
+        You can read "[Rust Bug Minimization Patterns](http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/)" for how to create smaller examples.
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code
+      description: Please provide code or a link to a repository that can reproduce the problem
+      placeholder: code
+      render: Rust
+    validations:
+      required: false
+
+  - type: checkboxes
+    attributes:
+      label: Affected release channels
+      description: If you're using the stable version of the compiler, you should also check if the bug also exists in the beta or nightly versions
+      options:
+        - label: Previous Stable
+          required: false
+        - label: Current Stable
+          required: false
+        - label: Current Beta
+          required: false
+        - label: Current Nightly
+          required: false
+
+  - type: textarea
+    id: version
+    attributes:
+      label: Rust Version
+      description: Please provide the `rustc` version, `rustc --version --verbose`
+      placeholder: |
+        $ rustc --version --verbose
+        rustc 1.XX.Y (SHORTHASH DATE)
+        binary: rustc
+        commit-hash: LONGHASHVALUE
+        commit-date: DATE
+        host: PLATFORMTRIPLE
+        release: 1.XX.Y
+        LLVM version: XX.YY.ZZ
+      render: Shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Current error output
+      description: Please provide the `rustc` output you see
+      placeholder: output
+      render: Shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: backtrace
+    attributes:
+      label: Backtrace
+      description: Include a backtrace in the code block by setting `RUST_BACKTRACE=full` in your environment, e.g. `RUST_BACKTRACE=full cargo build`
+      render: Shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: If you have more details you want to give us to reproduce this issue, please add it here
+    validations:
+      required: false

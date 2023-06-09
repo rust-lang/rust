@@ -1,0 +1,35 @@
+error: atomic loads cannot have `Release` or `AcqRel` ordering
+  --> $DIR/lint-invalid-atomic-ordering-bool.rs:13:20
+   |
+LL |     let _ = x.load(Ordering::Release);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
+
+error: atomic loads cannot have `Release` or `AcqRel` ordering
+  --> $DIR/lint-invalid-atomic-ordering-bool.rs:15:20
+   |
+LL |     let _ = x.load(Ordering::AcqRel);
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` or `AcqRel` ordering
+  --> $DIR/lint-invalid-atomic-ordering-bool.rs:24:20
+   |
+LL |     x.store(false, Ordering::Acquire);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` or `AcqRel` ordering
+  --> $DIR/lint-invalid-atomic-ordering-bool.rs:26:20
+   |
+LL |     x.store(false, Ordering::AcqRel);
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: aborting due to 4 previous errors
+

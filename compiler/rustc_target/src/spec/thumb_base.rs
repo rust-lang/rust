@@ -12,7 +12,7 @@
 //
 // We have opted for these instead of one target per processor (e.g., `cortex-m0`, `cortex-m3`,
 // etc) because the differences between some processors like the cortex-m0 and cortex-m1 are almost
-// non-existent from the POV of codegen so it doesn't make sense to have separate targets for them.
+// nonexistent from the POV of codegen so it doesn't make sense to have separate targets for them.
 // And if differences exist between two processors under the same target, rustc flags can be used to
 // optimize for one processor or the other.
 //
@@ -27,13 +27,12 @@
 // differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
 // build scripts / gcc flags.
 
-use crate::spec::TargetOptions;
-use crate::spec::{FramePointer, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, PanicStrategy, RelocModel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         // In most cases, LLD is good enough
         linker: Some("rust-lld".into()),
         // Because these devices have very little resources having an unwinder is too onerous so we
@@ -54,7 +53,7 @@ pub fn opts() -> TargetOptions {
         frame_pointer: FramePointer::Always,
         // ARM supports multiple ABIs for enums, the linux one matches the default of 32 here
         // but any arm-none or thumb-none target will be defaulted to 8 on GCC and clang
-        c_enum_min_bits: 8,
+        c_enum_min_bits: Some(8),
         ..Default::default()
     }
 }

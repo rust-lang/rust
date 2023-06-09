@@ -1,0 +1,19 @@
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-108072-unmet-trait-alias-bound.rs:10:7
+   |
+LL |     f(())
+   |     - ^^ `()` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+   = note: required for `()` to implement `IteratorAlias`
+note: required by a bound in `f`
+  --> $DIR/issue-108072-unmet-trait-alias-bound.rs:7:14
+   |
+LL | fn f(_: impl IteratorAlias) {}
+   |              ^^^^^^^^^^^^^ required by this bound in `f`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

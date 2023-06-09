@@ -1,5 +1,5 @@
 error: you should consider adding a `Default` implementation for `Foo`
-  --> $DIR/new_without_default.rs:7:5
+  --> $DIR/new_without_default.rs:12:5
    |
 LL | /     pub fn new() -> Foo {
 LL | |         Foo
@@ -17,7 +17,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Bar`
-  --> $DIR/new_without_default.rs:15:5
+  --> $DIR/new_without_default.rs:20:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Bar
@@ -34,7 +34,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
-  --> $DIR/new_without_default.rs:79:5
+  --> $DIR/new_without_default.rs:84:5
    |
 LL | /     pub fn new() -> LtKo<'c> {
 LL | |         unimplemented!()
@@ -51,7 +51,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
-  --> $DIR/new_without_default.rs:172:5
+  --> $DIR/new_without_default.rs:177:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         NewNotEqualToDerive { foo: 1 }
@@ -68,7 +68,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `FooGenerics<T>`
-  --> $DIR/new_without_default.rs:180:5
+  --> $DIR/new_without_default.rs:185:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Self(Default::default())
@@ -85,7 +85,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `BarGenerics<T>`
-  --> $DIR/new_without_default.rs:187:5
+  --> $DIR/new_without_default.rs:192:5
    |
 LL | /     pub fn new() -> Self {
 LL | |         Self(Default::default())
@@ -102,7 +102,7 @@ LL + }
    |
 
 error: you should consider adding a `Default` implementation for `Foo<T>`
-  --> $DIR/new_without_default.rs:198:9
+  --> $DIR/new_without_default.rs:203:9
    |
 LL | /         pub fn new() -> Self {
 LL | |             todo!()

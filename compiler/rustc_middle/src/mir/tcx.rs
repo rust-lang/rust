@@ -4,10 +4,9 @@
  */
 
 use crate::mir::*;
-use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
@@ -33,8 +32,9 @@ impl<'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
-    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
-        let answer = match self.ty.kind() {
+    #[instrument(level = "debug", skip(tcx), ret)]
+    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: FieldIdx) -> Ty<'tcx> {
+        match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
@@ -43,34 +43,33 @@ impl<'tcx> PlaceTy<'tcx> {
                         &adt_def.variant(variant_index)
                     }
                 };
-                let field_def = &variant_def.fields[f.index()];
+                let field_def = &variant_def.fields[f];
                 field_def.ty(tcx, substs)
             }
             ty::Tuple(tys) => tys[f.index()],
             _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
-        };
-        debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);
-        answer
+        }
     }
 
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty)
+        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty, |_, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
     /// projects `place_ty` onto `elem`, returning the appropriate
     /// `Ty` or downcast variant corresponding to that projection.
-    /// The `handle_field` callback must map a `Field` to its `Ty`,
+    /// The `handle_field` callback must map a `FieldIdx` to its `Ty`,
     /// (which should be trivial when `T` = `Ty`).
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
-        mut handle_field: impl FnMut(&Self, Field, T) -> Ty<'tcx>,
+        mut handle_field: impl FnMut(&Self, FieldIdx, T) -> Ty<'tcx>,
+        mut handle_opaque_cast: impl FnMut(&Self, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
@@ -98,8 +97,8 @@ impl<'tcx> PlaceTy<'tcx> {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
                     ty::Array(inner, size) if from_end => {
-                        let size = size.eval_usize(tcx, param_env);
-                        let len = size - (from as u64) - (to as u64);
+                        let size = size.eval_target_usize(tcx, param_env);
+                        let len = size - from - to;
                         tcx.mk_array(*inner, len)
                     }
                     _ => bug!("cannot subslice non-array type: `{:?}`", self),
@@ -109,6 +108,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
             ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
+            ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast(&self, ty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
@@ -116,7 +116,7 @@ impl<'tcx> PlaceTy<'tcx> {
 }
 
 impl<'tcx> Place<'tcx> {
-    pub fn ty_from<D>(
+    pub fn ty_from<D: ?Sized>(
         local: Local,
         projection: &[PlaceElem<'tcx>],
         local_decls: &D,
@@ -132,7 +132,7 @@ impl<'tcx> Place<'tcx> {
             })
     }
 
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
@@ -141,7 +141,7 @@ impl<'tcx> Place<'tcx> {
 }
 
 impl<'tcx> PlaceRef<'tcx> {
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
@@ -155,26 +155,16 @@ pub enum RvalueInitializationState {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
+                tcx.mk_array_with_const_len(operand.ty(local_decls, tcx), count)
             }
-            Rvalue::ThreadLocalRef(did) => {
-                let static_ty = tcx.type_of(did);
-                if tcx.is_mutable_static(did) {
-                    tcx.mk_mut_ptr(static_ty)
-                } else if tcx.is_foreign_item(did) {
-                    tcx.mk_imm_ptr(static_ty)
-                } else {
-                    // FIXME: These things don't *really* have 'static lifetime.
-                    tcx.mk_imm_ref(tcx.lifetimes.re_static, static_ty)
-                }
-            }
+            Rvalue::ThreadLocalRef(did) => tcx.thread_local_ptr_ty(did),
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 tcx.mk_ref(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
@@ -194,17 +184,19 @@ impl<'tcx> Rvalue<'tcx> {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                tcx.intern_tup(&[ty, tcx.types.bool])
+                tcx.mk_tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => tcx.types.usize,
+            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
+                tcx.types.usize
+            }
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
-                AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
-                AggregateKind::Adt(did, _, substs, _, _) => {
-                    tcx.bound_type_of(did).subst(tcx, substs)
+                AggregateKind::Tuple => {
+                    tcx.mk_tup_from_iter(ops.iter().map(|op| op.ty(local_decls, tcx)))
                 }
+                AggregateKind::Adt(did, _, substs, _, _) => tcx.type_of(did).subst(tcx, substs),
                 AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
                     tcx.mk_generator(did, substs, movability)
@@ -227,13 +219,13 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
-            &Operand::Constant(ref c) => c.literal.ty(),
+            Operand::Constant(c) => c.literal.ty(),
         }
     }
 }

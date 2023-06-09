@@ -7,7 +7,7 @@
             if (lang && hljs.getLanguage(lang)) {
                 try {
                     return '<pre class="hljs"><code>' +
-                        hljs.highlight(lang, str, true).value +
+                        hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
                         '</code></pre>';
                 } catch (__) {}
             }
@@ -114,7 +114,7 @@
                 return $scope.levels[lint.level];
             };
 
-            var GROUPS_FILTER_DEFAULT = {
+            const GROUPS_FILTER_DEFAULT = {
                 cargo: true,
                 complexity: true,
                 correctness: true,
@@ -125,8 +125,12 @@
                 restriction: true,
                 style: true,
                 suspicious: true,
+            }
+
+            $scope.groups = {
+                ...GROUPS_FILTER_DEFAULT
             };
-            $scope.groups = GROUPS_FILTER_DEFAULT;
+
             const THEMES_DEFAULT = {
                 light: "Light",
                 rust: "Rust",
@@ -161,6 +165,13 @@
                     if (groups.hasOwnProperty(key)) {
                         groups[key] = value;
                     }
+                }
+            };
+
+            $scope.resetGroupsToDefault = function () {
+                const groups = $scope.groups;
+                for (const [key, value] of Object.entries(GROUPS_FILTER_DEFAULT)) {
+                    groups[key] = value;
                 }
             };
 
@@ -364,6 +375,9 @@ function setTheme(theme, store) {
     }
 
     document.getElementsByTagName("body")[0].className = theme;
+
+    document.getElementById("githubLightHighlight").disabled = enableNight || !enableHighlight;
+    document.getElementById("githubDarkHighlight").disabled = !enableNight && !enableAyu;
 
     document.getElementById("styleHighlight").disabled = !enableHighlight;
     document.getElementById("styleNight").disabled = !enableNight;

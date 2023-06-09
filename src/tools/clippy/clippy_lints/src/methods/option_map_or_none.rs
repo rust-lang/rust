@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_lang_ctor, path_def_id};
+use clippy_utils::{is_res_lang_ctor, path_def_id, path_res};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
-use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
 use super::OPTION_MAP_OR_NONE;
@@ -51,22 +50,12 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = def_arg.kind {
-        is_lang_ctor(cx, qpath, OptionNone)
-    } else {
-        return;
-    };
-
-    if !default_arg_is_none {
+    if !is_res_lang_ctor(cx, path_res(cx, def_arg), OptionNone) {
         // nothing to lint!
         return;
     }
 
-    let f_arg_is_some = if let hir::ExprKind::Path(ref qpath) = map_arg.kind {
-        is_lang_ctor(cx, qpath, OptionSome)
-    } else {
-        false
-    };
+    let f_arg_is_some = is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome);
 
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
@@ -74,7 +63,7 @@ pub(super) fn check<'tcx>(
             if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = map_arg.kind;
             let arg_snippet = snippet(cx, fn_decl_span, "..");
             let body = cx.tcx.hir().body(body);
-            if let Some((func, [arg_char])) = reduce_unit_expression(&body.value);
+            if let Some((func, [arg_char])) = reduce_unit_expression(body.value);
             if let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id));
             if Some(id) == cx.tcx.lang_items().option_some_variant();
             then {
@@ -87,7 +76,7 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     msg,
                     "try using `map` instead",
-                    format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
+                    format!("{self_snippet}.map({arg_snippet} {func_snippet})"),
                     Applicability::MachineApplicable,
                 );
             }
@@ -102,7 +91,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             msg,
             "try using `and_then` instead",
-            format!("{0}.and_then({1})", self_snippet, func_snippet),
+            format!("{self_snippet}.and_then({func_snippet})"),
             Applicability::MachineApplicable,
         );
     } else if f_arg_is_some {
@@ -115,7 +104,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             msg,
             "try using `ok` instead",
-            format!("{0}.ok()", self_snippet),
+            format!("{self_snippet}.ok()"),
             Applicability::MachineApplicable,
         );
     }

@@ -1,4 +1,5 @@
 use crate::marker::PhantomData;
+use crate::os::fd::{AsFd, AsRawFd};
 use crate::slice;
 
 use libc::{c_void, iovec};
@@ -73,4 +74,9 @@ impl<'a> IoSliceMut<'a> {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
+}
+
+pub fn is_terminal(fd: &impl AsFd) -> bool {
+    let fd = fd.as_fd();
+    unsafe { libc::isatty(fd.as_raw_fd()) != 0 }
 }

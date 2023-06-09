@@ -8,10 +8,17 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_lint::LintStore;
 
+mod errors;
 pub mod load;
+
+fluent_messages! { "../messages.ftl" }
 
 /// Structure used to register plugins.
 ///

@@ -3,6 +3,7 @@
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Fortanix SGX.
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(fuzzy_provenance_casts)] // FIXME: this entire module systematically confuses pointers and integers
 
 use crate::io::ErrorKind;
 use crate::sync::atomic::{AtomicBool, Ordering};
@@ -33,6 +34,7 @@ pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
+pub mod thread_parking;
 pub mod time;
 
 mod condvar;
@@ -47,7 +49,7 @@ pub mod locks {
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(argc: isize, argv: *const *const u8) {
+pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     unsafe {
         args::init(argc, argv);
     }

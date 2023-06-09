@@ -1,0 +1,37 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/transmute-size-mismatch.rs:12:13
+   |
+LL |             RET = CastTransmute(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ transmuting from 4-byte type to 2-byte type: `i32` -> `u16`
+   |
+note: inside `mir_transmute::<i32, u16>`
+  --> $DIR/transmute-size-mismatch.rs:12:13
+   |
+LL |             RET = CastTransmute(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+note: inside `FROM_BIGGER`
+  --> $DIR/transmute-size-mismatch.rs:20:35
+   |
+LL | const FROM_BIGGER: u16 = unsafe { mir_transmute(123_i32) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/transmute-size-mismatch.rs:12:13
+   |
+LL |             RET = CastTransmute(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^ transmuting from 2-byte type to 4-byte type: `i16` -> `u32`
+   |
+note: inside `mir_transmute::<i16, u32>`
+  --> $DIR/transmute-size-mismatch.rs:12:13
+   |
+LL |             RET = CastTransmute(x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+note: inside `FROM_SMALLER`
+  --> $DIR/transmute-size-mismatch.rs:22:36
+   |
+LL | const FROM_SMALLER: u32 = unsafe { mir_transmute(123_i16) };
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

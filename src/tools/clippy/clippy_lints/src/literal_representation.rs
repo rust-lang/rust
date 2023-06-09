@@ -5,11 +5,13 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
-use rustc_ast::ast::{Expr, ExprKind, Lit, LitKind};
+use rustc_ast::ast::{Expr, ExprKind, LitKind};
+use rustc_ast::token;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::Span;
 use std::iter;
 
 declare_clippy_lint! {
@@ -208,7 +210,7 @@ impl WarningType {
                 cx,
                 UNUSUAL_BYTE_GROUPINGS,
                 span,
-                "digits of hex or binary literal not grouped by four",
+                "digits of hex, binary or octal literal not in groups of equal size",
                 "consider",
                 suggested_format,
                 Applicability::MachineApplicable,
@@ -236,8 +238,8 @@ impl EarlyLintPass for LiteralDigitGrouping {
             return;
         }
 
-        if let ExprKind::Lit(ref lit) = expr.kind {
-            self.check_lit(cx, lit);
+        if let ExprKind::Lit(lit) = expr.kind {
+            self.check_lit(cx, lit, expr.span);
         }
     }
 }
@@ -252,12 +254,13 @@ impl LiteralDigitGrouping {
         }
     }
 
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         if_chain! {
-            if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(mut num_lit) = NumericLiteral::from_lit(&src, lit);
+            if let Some(src) = snippet_opt(cx, span);
+            if let Ok(lit_kind) = LitKind::from_token_lit(lit);
+            if let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind);
             then {
-                if !Self::check_for_mistyped_suffix(cx, lit.span, &mut num_lit) {
+                if !Self::check_for_mistyped_suffix(cx, span, &mut num_lit) {
                     return;
                 }
 
@@ -293,14 +296,14 @@ impl LiteralDigitGrouping {
                         | WarningType::InconsistentDigitGrouping
                         | WarningType::UnusualByteGroupings
                         | WarningType::LargeDigitGroups => {
-                            !lit.span.from_expansion()
+                            !span.from_expansion()
                         }
                         WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => {
                             true
                         }
                     };
                     if should_warn {
-                        warning_type.display(num_lit.format(), cx, lit.span);
+                        warning_type.display(num_lit.format(), cx, span);
                     }
                 }
             }
@@ -424,8 +427,12 @@ impl LiteralDigitGrouping {
 
         let first = groups.next().expect("At least one group");
 
-        if (radix == Radix::Binary || radix == Radix::Hexadecimal) && groups.any(|i| i != 4 && i != 2) {
-            return Err(WarningType::UnusualByteGroupings);
+        if radix == Radix::Binary || radix == Radix::Octal || radix == Radix::Hexadecimal {
+            if let Some(second_size) = groups.next() {
+                if !groups.all(|i| i == second_size) || first > second_size {
+                    return Err(WarningType::UnusualByteGroupings);
+                }
+            }
         }
 
         if let Some(second) = groups.next() {
@@ -458,8 +465,8 @@ impl EarlyLintPass for DecimalLiteralRepresentation {
             return;
         }
 
-        if let ExprKind::Lit(ref lit) = expr.kind {
-            self.check_lit(cx, lit);
+        if let ExprKind::Lit(lit) = expr.kind {
+            self.check_lit(cx, lit, expr.span);
         }
     }
 }
@@ -469,19 +476,20 @@ impl DecimalLiteralRepresentation {
     pub fn new(threshold: u64) -> Self {
         Self { threshold }
     }
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         // Lint integral literals.
         if_chain! {
-            if let LitKind::Int(val, _) = lit.kind;
-            if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(num_lit) = NumericLiteral::from_lit(&src, lit);
+            if let Ok(lit_kind) = LitKind::from_token_lit(lit);
+            if let LitKind::Int(val, _) = lit_kind;
+            if let Some(src) = snippet_opt(cx, span);
+            if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind);
             if num_lit.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
             then {
-                let hex = format!("{:#X}", val);
+                let hex = format!("{val:#X}");
                 let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
-                let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                    warning_type.display(num_lit.format(), cx, lit.span);
+                let _: Result<(), ()> = Self::do_lint(num_lit.integer).map_err(|warning_type| {
+                    warning_type.display(num_lit.format(), cx, span);
                 });
             }
         }

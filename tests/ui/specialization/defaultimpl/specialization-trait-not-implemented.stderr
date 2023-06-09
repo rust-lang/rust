@@ -1,0 +1,44 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-trait-not-implemented.rs:5:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0599]: the method `foo_one` exists for struct `MyStruct`, but its trait bounds were not satisfied
+  --> $DIR/specialization-trait-not-implemented.rs:22:29
+   |
+LL | struct MyStruct;
+   | ---------------
+   | |
+   | method `foo_one` not found for this struct
+   | doesn't satisfy `MyStruct: Foo`
+...
+LL |     println!("{}", MyStruct.foo_one());
+   |                             ^^^^^^^ method cannot be called on `MyStruct` due to unsatisfied trait bounds
+   |
+note: trait bound `MyStruct: Foo` was not satisfied
+  --> $DIR/specialization-trait-not-implemented.rs:14:1
+   |
+LL | default impl<T> Foo for T {
+   | ^^^^^^^^^^^^^^^^---^^^^^-
+   | |
+   | unsatisfied trait bound introduced here
+note: the trait `Foo` must be implemented
+  --> $DIR/specialization-trait-not-implemented.rs:7:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `foo_one`, perhaps you need to implement it
+  --> $DIR/specialization-trait-not-implemented.rs:7:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0599`.

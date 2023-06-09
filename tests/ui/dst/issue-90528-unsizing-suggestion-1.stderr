@@ -1,0 +1,56 @@
+error[E0277]: the trait bound `[u8; 1]: Read` is not satisfied
+  --> $DIR/issue-90528-unsizing-suggestion-1.rs:13:16
+   |
+LL |     wants_read([0u8]);
+   |     ---------- ^^^^^ the trait `Read` is not implemented for `[u8; 1]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Read` is implemented for `&[u8]`
+note: required by a bound in `wants_read`
+  --> $DIR/issue-90528-unsizing-suggestion-1.rs:10:23
+   |
+LL | fn wants_read(_: impl Read) {}
+   |                       ^^^^ required by this bound in `wants_read`
+help: convert the array to a `&[u8]` slice instead
+   |
+LL |     wants_read(&[0u8][..]);
+   |                +     ++++
+
+error[E0277]: the trait bound `&[u8; 1]: Read` is not satisfied
+  --> $DIR/issue-90528-unsizing-suggestion-1.rs:15:16
+   |
+LL |     wants_read(&[0u8]);
+   |     ---------- ^^^^^^ the trait `Read` is not implemented for `&[u8; 1]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Read` is implemented for `&[u8]`
+note: required by a bound in `wants_read`
+  --> $DIR/issue-90528-unsizing-suggestion-1.rs:10:23
+   |
+LL | fn wants_read(_: impl Read) {}
+   |                       ^^^^ required by this bound in `wants_read`
+help: convert the array to a `&[u8]` slice instead
+   |
+LL |     wants_read(&[0u8][..]);
+   |                      ++++
+
+error[E0277]: the trait bound `&mut [u8; 1]: Read` is not satisfied
+  --> $DIR/issue-90528-unsizing-suggestion-1.rs:18:16
+   |
+LL |     wants_read(&mut [0u8]);
+   |     ---------- ^^^^^^^^^^ the trait `Read` is not implemented for `&mut [u8; 1]`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Read` is implemented for `&[u8]`
+note: required by a bound in `wants_read`
+  --> $DIR/issue-90528-unsizing-suggestion-1.rs:10:23
+   |
+LL | fn wants_read(_: impl Read) {}
+   |                       ^^^^ required by this bound in `wants_read`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

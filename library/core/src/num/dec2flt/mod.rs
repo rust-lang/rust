@@ -75,10 +75,11 @@
     issue = "none"
 )]
 
+use crate::error::Error;
 use crate::fmt;
 use crate::str::FromStr;
 
-use self::common::{BiasedFp, ByteSlice};
+use self::common::BiasedFp;
 use self::float::RawFloat;
 use self::lemire::compute_float;
 use self::parse::{parse_inf_nan, parse_number};
@@ -146,7 +147,13 @@ macro_rules! from_str_float_impl {
             /// representable floating-point number to the number represented
             /// by `src` (following the same rules for rounding as for the
             /// results of primitive operations).
-            #[inline]
+            // We add the `#[inline(never)]` attribute, since its content will
+            // be filled with that of `dec2flt`, which has #[inline(always)].
+            // Since `dec2flt` is generic, a normal inline attribute on this function
+            // with `dec2flt` having no attributes results in heavily repeated
+            // generation of `dec2flt`, despite the fact only a maximum of 2
+            // possible instances can ever exist. Adding #[inline(never)] avoids this.
+            #[inline(never)]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
                 dec2flt(src)
             }
@@ -182,15 +189,10 @@ enum FloatErrorKind {
     Invalid,
 }
 
-impl ParseFloatError {
-    #[unstable(
-        feature = "int_error_internals",
-        reason = "available through Error trait and this method should \
-                  not be exposed publicly",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    pub fn __description(&self) -> &str {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseFloatError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
         match self.kind {
             FloatErrorKind::Empty => "cannot parse float from empty string",
             FloatErrorKind::Invalid => "invalid float literal",
@@ -201,16 +203,19 @@ impl ParseFloatError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseFloatError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.__description().fmt(f)
+        #[allow(deprecated)]
+        self.description().fmt(f)
     }
 }
 
+#[inline]
 pub(super) fn pfe_empty() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Empty }
 }
 
 // Used in unit tests, keep public.
 // This is much better than making FloatErrorKind and ParseFloatError::kind public.
+#[inline]
 pub fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }
 }
@@ -223,6 +228,7 @@ fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
 }
 
 /// Converts a decimal string into a floating point number.
+#[inline(always)] // Will be inlined into a function with `#[inline(never)]`, see above
 pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     let mut s = s.as_bytes();
     let c = if let Some(&c) = s.first() {
@@ -232,17 +238,18 @@ pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     };
     let negative = c == b'-';
     if c == b'-' || c == b'+' {
-        s = s.advance(1);
+        s = &s[1..];
     }
     if s.is_empty() {
         return Err(pfe_invalid());
     }
 
-    let num = match parse_number(s, negative) {
+    let mut num = match parse_number(s) {
         Some(r) => r,
         None if let Some(value) = parse_inf_nan(s, negative) => return Ok(value),
         None => return Err(pfe_invalid()),
     };
+    num.negative = negative;
     if let Some(value) = num.try_fast_path::<F>() {
         return Ok(value);
     }

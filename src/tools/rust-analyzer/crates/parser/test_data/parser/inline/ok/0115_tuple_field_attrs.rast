@@ -1,0 +1,28 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        ATTR
+          POUND "#"
+          L_BRACK "["
+          META
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "attr"
+          R_BRACK "]"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "f32"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

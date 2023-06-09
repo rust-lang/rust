@@ -57,6 +57,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_han
                 if env::var("CG_GCCJIT_DUMP_TO_FILE").as_deref() == Ok("1") {
                     let _ = fs::create_dir("/tmp/gccjit_dumps");
                     let path = &format!("/tmp/gccjit_dumps/{}.c", module.name);
+                    context.set_debug_info(true);
                     context.dump_to_file(path, true);
                 }
                 context.compile_to_file(OutputKind::ObjectFile, obj_out.to_str().expect("path to str"));

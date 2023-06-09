@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![feature(exhaustive_patterns, never_type)]
 #![allow(dead_code, unreachable_code, unused_variables)]
 #![allow(clippy::let_and_return)]
@@ -8,6 +8,9 @@ enum SingleVariantEnum {
 }
 
 struct TupleStruct(i32);
+
+struct NonCopy;
+struct TupleStructWithNonCopy(NonCopy);
 
 enum EmptyEnum {}
 
@@ -73,6 +76,17 @@ fn infallible_destructuring_match_struct() {
     };
 
     let TupleStruct(data) = wrapper;
+}
+
+fn infallible_destructuring_match_struct_with_noncopy() {
+    let wrapper = TupleStructWithNonCopy(NonCopy);
+
+    // This should lint! (keeping `ref` in the suggestion)
+    let data = match wrapper {
+        TupleStructWithNonCopy(ref n) => n,
+    };
+
+    let TupleStructWithNonCopy(ref data) = wrapper;
 }
 
 macro_rules! match_never_enum {

@@ -1,0 +1,19 @@
+error[E0404]: expected trait, found type parameter `Add`
+  --> $DIR/issue-35987.rs:5:21
+   |
+LL | use std::ops::Add;
+   |               --- you might have meant to refer to this trait
+LL |
+LL | impl<T: Clone, Add> Add for Foo<T> {
+   |                ---  ^^^ not a trait
+   |                |
+   |                found this type parameter
+   |
+help: consider importing this trait instead
+   |
+LL + use std::ops::Add;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0404`.

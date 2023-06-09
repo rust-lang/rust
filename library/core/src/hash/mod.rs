@@ -157,7 +157,7 @@ mod sip;
 ///
 /// Implementations of `hash` should ensure that the data they
 /// pass to the `Hasher` are prefix-free. That is,
-/// unequal values should cause two different sequences of values to be written,
+/// values which are not equal should cause two different sequences of values to be written,
 /// and neither of the two sequences should be a prefix of the other.
 ///
 /// For example, the standard implementation of [`Hash` for `&str`][impl] passes an extra
@@ -239,7 +239,7 @@ pub trait Hash {
         Self: Sized,
     {
         for piece in data {
-            piece.hash(state);
+            piece.hash(state)
         }
     }
 }
@@ -674,8 +674,6 @@ pub trait BuildHasher {
     /// # Example
     ///
     /// ```
-    /// #![feature(build_hasher_simple_hash_one)]
-    ///
     /// use std::cmp::{max, min};
     /// use std::hash::{BuildHasher, Hash, Hasher};
     /// struct OrderAmbivalentPair<T: Ord>(T, T);
@@ -697,10 +695,11 @@ pub trait BuildHasher {
     ///     bh.hash_one(&OrderAmbivalentPair(2, 10))
     /// );
     /// ```
-    #[unstable(feature = "build_hasher_simple_hash_one", issue = "86161")]
+    #[stable(feature = "build_hasher_simple_hash_one", since = "1.71.0")]
     fn hash_one<T: Hash>(&self, x: T) -> u64
     where
         Self: Sized,
+        Self::Hasher: Hasher,
     {
         let mut hasher = self.build_hasher();
         x.hash(&mut hasher);
@@ -780,8 +779,7 @@ impl<H> Clone for BuildHasherDefault<H> {
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<H> const Default for BuildHasherDefault<H> {
+impl<H> Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
         BuildHasherDefault(marker::PhantomData)
     }
@@ -814,7 +812,7 @@ mod impls {
 
                 #[inline]
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
-                    let newlen = data.len() * mem::size_of::<$ty>();
+                    let newlen = mem::size_of_val(data);
                     let ptr = data.as_ptr() as *const u8;
                     // SAFETY: `ptr` is valid and aligned, as this macro is only used
                     // for numeric primitives which have no padding. The new slice only
@@ -900,7 +898,7 @@ mod impls {
 
     macro_rules! maybe_tuple_doc {
         ($a:ident @ #[$meta:meta] $item:item) => {
-            #[doc(tuple_variadic)]
+            #[doc(fake_variadic)]
             #[doc = "This trait is implemented for tuples up to twelve items long."]
             #[$meta]
             $item

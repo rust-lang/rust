@@ -4,13 +4,13 @@ error: some fields in `RingBuffer<T>` are not safe to be sent to another thread
 LL | unsafe impl<T> Send for RingBuffer<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
 note: it is not safe to send field `data` to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:12:5
    |
 LL |     data: Vec<UnsafeCell<T>>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    = help: add bounds on type parameter `T` that satisfy `Vec<UnsafeCell<T>>: Send`
+   = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
 
 error: some fields in `MvccRwLock<T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:25:1

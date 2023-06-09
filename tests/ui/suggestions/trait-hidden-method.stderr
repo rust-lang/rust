@@ -1,0 +1,24 @@
+error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
+  --> $DIR/trait-hidden-method.rs:6:33
+   |
+LL |     Box::new(1..=10) as Box<dyn Iterator>
+   |                                 ^^^^^^^^ help: specify the associated type: `Iterator<Item = Type>`
+
+error[E0271]: expected `Box<dyn Iterator>` to be an iterator that yields `u32`, but it yields `<dyn Iterator as Iterator>::Item`
+  --> $DIR/trait-hidden-method.rs:3:32
+   |
+LL | pub fn i_can_has_iterator() -> impl Iterator<Item = u32> {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found `u32`
+...
+LL |     Box::new(1..=10) as Box<dyn Iterator>
+   |     ------------------------------------- return type was inferred to be `Box<dyn Iterator>` here
+   |
+   = note: expected associated type `<dyn Iterator as Iterator>::Item`
+                         found type `u32`
+   = help: consider constraining the associated type `<dyn Iterator as Iterator>::Item` to `u32` or calling a method that returns `<dyn Iterator as Iterator>::Item`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0191, E0271.
+For more information about an error, try `rustc --explain E0191`.

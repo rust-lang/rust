@@ -6,20 +6,23 @@ LL |     _n: PhantomData,
    |
 help: consider importing one of these items
    |
-LL | use core::marker::PhantomData;
+LL + use core::marker::PhantomData;
    |
-LL | use serde::__private::PhantomData;
+LL + use serde::__private::PhantomData;
    |
-LL | use std::marker::PhantomData;
+LL + use std::marker::PhantomData;
    |
 
 error[E0412]: cannot find type `VAL` in this scope
   --> $DIR/ice-6252.rs:10:63
    |
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
-   |          -                                                    ^^^ not found in this scope
-   |          |
-   |          help: you might be missing a type parameter: `, VAL`
+   |                                                               ^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<N, M, VAL> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
+   |          +++++
 
 error[E0046]: not all trait items implemented, missing: `VAL`
   --> $DIR/ice-6252.rs:10:1
@@ -30,15 +33,7 @@ LL |     const VAL: T;
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `VAL` in implementation
 
-error: constant expression depends on a generic parameter
-  --> $DIR/ice-6252.rs:13:9
-   |
-LL |     [1; <Multiply<Five, Five>>::VAL];
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this may fail depending on what value the parameter takes
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0046, E0412.
 For more information about an error, try `rustc --explain E0046`.

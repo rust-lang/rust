@@ -3,22 +3,25 @@ mod transmute_float_to_int;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
 mod transmute_int_to_float;
+mod transmute_int_to_non_zero;
+mod transmute_null_to_fn;
 mod transmute_num_to_bytes;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
 mod transmute_undefined_repr;
 mod transmutes_expressible_as_ptr_casts;
+mod transmuting_null;
 mod unsound_collection_transmute;
 mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
 use clippy_utils::in_constant;
+use clippy_utils::msrvs::Msrv;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
@@ -253,6 +256,31 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for transmutes from integers to `NonZero*` types, and suggests their `new_unchecked`
+    /// method instead.
+    ///
+    /// ### Why is this bad?
+    /// Transmutes work on any types and thus might cause unsoundness when those types change
+    /// elsewhere. `new_unchecked` only works for the appropriate types instead.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use core::num::NonZeroU32;
+    /// let _non_zero: NonZeroU32 = unsafe { std::mem::transmute(123) };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use core::num::NonZeroU32;
+    /// let _non_zero = unsafe { NonZeroU32::new_unchecked(123) };
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub TRANSMUTE_INT_TO_NON_ZERO,
+    complexity,
+    "transmutes from an integer to a non-zero wrapper"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for transmutes from a float to an integer.
     ///
     /// ### Why is this bad?
@@ -386,8 +414,58 @@ declare_clippy_lint! {
     "transmute to or from a type with an undefined representation"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for transmute calls which would receive a null pointer.
+    ///
+    /// ### Why is this bad?
+    /// Transmuting a null pointer is undefined behavior.
+    ///
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
+    /// For example, variables which hold a null pointer and are then fed to a `transmute`
+    /// call, aren't detectable yet.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let null_ref: &u64 = unsafe { std::mem::transmute(0 as *const u64) };
+    /// ```
+    #[clippy::version = "1.35.0"]
+    pub TRANSMUTING_NULL,
+    correctness,
+    "transmutes from a null pointer to a reference, which is undefined behavior"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for null function pointer creation through transmute.
+    ///
+    /// ### Why is this bad?
+    /// Creating a null function pointer is undefined behavior.
+    ///
+    /// More info: https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization
+    ///
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
+    /// For example, variables which hold a null pointer and are then fed to a `transmute`
+    /// call, aren't detectable yet.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let null_fn: fn() = unsafe { std::mem::transmute( std::ptr::null::<()>() ) };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let null_fn: Option<fn()> = None;
+    /// ```
+    #[clippy::version = "1.68.0"]
+    pub TRANSMUTE_NULL_TO_FN,
+    correctness,
+    "transmute results in a null function pointer, which is undefined behavior"
+}
+
 pub struct Transmute {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 impl_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
@@ -399,15 +477,18 @@ impl_lint_pass!(Transmute => [
     TRANSMUTE_BYTES_TO_STR,
     TRANSMUTE_INT_TO_BOOL,
     TRANSMUTE_INT_TO_FLOAT,
+    TRANSMUTE_INT_TO_NON_ZERO,
     TRANSMUTE_FLOAT_TO_INT,
     TRANSMUTE_NUM_TO_BYTES,
     UNSOUND_COLLECTION_TRANSMUTE,
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     TRANSMUTE_UNDEFINED_REPR,
+    TRANSMUTING_NULL,
+    TRANSMUTE_NULL_TO_FN,
 ]);
 impl Transmute {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -425,7 +506,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 // - char conversions (https://github.com/rust-lang/rust/issues/89259)
                 let const_context = in_constant(cx, e.hir_id);
 
-                let from_ty = cx.typeck_results().expr_ty_adjusted(arg);
+                let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
+                    [] => (cx.typeck_results().expr_ty(arg), false),
+                    [.., a] => (a.target, true),
+                };
                 // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
                 let to_ty = cx.typeck_results().expr_ty(e);
 
@@ -436,12 +520,15 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
 
                 let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
                     | crosspointer_transmute::check(cx, e, from_ty, to_ty)
-                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
+                    | transmuting_null::check(cx, e, arg, to_ty)
+                    | transmute_null_to_fn::check(cx, e, arg, to_ty)
+                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
                     | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
                     | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
                     | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
                     | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
                     | (
@@ -450,7 +537,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     );
 
                 if !linted {
-                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, arg);
+                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
                 }
             }
         }

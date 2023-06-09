@@ -122,13 +122,13 @@ pub enum TypeVariableOriginKind {
     MiscVariable,
     NormalizeProjectionType,
     TypeInference,
+    OpaqueTypeInference(DefId),
     TypeParameterDefinition(Symbol, Option<DefId>),
 
     /// One of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined).
     // FIXME(eddyb) distinguish upvar inference variables from the rest.
     ClosureSynthetic,
-    SubstitutionPlaceholder,
     AutoDeref,
     AdjustmentType,
 
@@ -188,6 +188,11 @@ impl<'tcx> TypeVariableStorage<'tcx> {
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
     ) -> TypeVariableTable<'a, 'tcx> {
         TypeVariableTable { storage: self, undo_log }
+    }
+
+    #[inline]
+    pub(crate) fn eq_relations_ref(&self) -> &ut::UnificationTableStorage<TyVidEqKey<'tcx>> {
+        &self.eq_relations
     }
 }
 
@@ -432,7 +437,7 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, ut::NoError> {
         match (value1, value2) {
             // We never equate two type variables, both of which
-            // have known types.  Instead, we recursively equate
+            // have known types. Instead, we recursively equate
             // those types.
             (&TypeVariableValue::Known { .. }, &TypeVariableValue::Known { .. }) => {
                 bug!("equating two type variables, both of which have known types")

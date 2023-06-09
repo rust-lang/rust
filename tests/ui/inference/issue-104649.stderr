@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `A<std::result::Result<std::result::Result<(), E>, Error>>`
+  --> $DIR/issue-104649.rs:24:9
+   |
+LL |     let a = A(Result::Ok(Result::Ok(())));
+   |         ^
+   |
+help: consider giving `a` an explicit type, where the type for type parameter `E` is specified
+   |
+LL |     let a: A<std::result::Result<std::result::Result<(), E>, Error>> = A(Result::Ok(Result::Ok(())));
+   |          +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

@@ -1,0 +1,14 @@
+error: specialization impl does not specialize any associated items
+  --> $DIR/specialize_nothing.rs:11:1
+   |
+LL | impl Special for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl is a specialization of this impl
+  --> $DIR/specialize_nothing.rs:7:1
+   |
+LL | impl<T> Special for T {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

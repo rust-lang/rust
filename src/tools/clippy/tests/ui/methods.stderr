@@ -1,5 +1,5 @@
 error: methods called `new` usually return `Self`
-  --> $DIR/methods.rs:104:5
+  --> $DIR/methods.rs:105:5
    |
 LL | /     fn new() -> i32 {
 LL | |         0
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
 error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
-  --> $DIR/methods.rs:125:13
+  --> $DIR/methods.rs:126:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^

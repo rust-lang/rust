@@ -1,5 +1,6 @@
 use crate::reference::DEREF_ADDROF;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{get_parent_expr, is_lint_allowed};
@@ -22,29 +23,24 @@ declare_clippy_lint! {
     /// ```
     /// let x = &12;
     /// let addr_x = &x as *const _ as usize;
-    /// let addr_y = &&*x as *const _ as usize; // assert ok now, and lint triggerd.
+    /// let addr_y = &&*x as *const _ as usize; // assert ok now, and lint triggered.
     ///                                         // But if we fix it, assert will fail.
     /// assert_ne!(addr_x, addr_y);
     /// ```
     ///
     /// ### Example
     /// ```rust
-    /// fn foo(_x: &str) {}
-    ///
     /// let s = &String::new();
     ///
     /// let a: &String = &* s;
-    /// foo(&*s);
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # fn foo(_x: &str) {}
     /// # let s = &String::new();
     /// let a: &String = s;
-    /// foo(&**s);
     /// ```
-    #[clippy::version = "1.59.0"]
+    #[clippy::version = "1.63.0"]
     pub BORROW_DEREF_REF,
     complexity,
     "deref on an immutable reference returns the same type as itself"
@@ -52,8 +48,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(BorrowDerefRef => [BORROW_DEREF_REF]);
 
-impl LateLintPass<'_> for BorrowDerefRef {
-    fn check_expr(&mut self, cx: &LateContext<'_>, e: &rustc_hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &rustc_hir::Expr<'tcx>) {
         if_chain! {
             if !e.span.from_expansion();
             if let ExprKind::AddrOf(_, Mutability::Not, addrof_target) = e.kind;
@@ -63,6 +59,7 @@ impl LateLintPass<'_> for BorrowDerefRef {
             if !matches!(deref_target.kind, ExprKind::Unary(UnOp::Deref, ..) );
             let ref_ty = cx.typeck_results().expr_ty(deref_target);
             if let ty::Ref(_, inner_ty, Mutability::Not) = ref_ty.kind();
+            if !is_from_proc_macro(cx, e);
             then{
 
                 if let Some(parent_expr) = get_parent_expr(cx, e){

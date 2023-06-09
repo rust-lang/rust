@@ -57,3 +57,70 @@ fn check_expect() {
     #[expect(clippy::nonminimal_bool)]
     let _ = !!a;
 }
+
+fn issue9428() {
+    if matches!(true, true) && true {
+        println!("foo");
+    }
+}
+
+fn issue_10523() {
+    macro_rules! a {
+        ($v:expr) => {
+            $v.is_some()
+        };
+    }
+    let x: Option<u32> = None;
+    if !a!(x) {}
+}
+
+fn issue_10523_1() {
+    macro_rules! a {
+        ($v:expr) => {
+            !$v.is_some()
+        };
+    }
+    let x: Option<u32> = None;
+    if a!(x) {}
+}
+
+fn issue_10523_2() {
+    macro_rules! a {
+        () => {
+            !None::<u32>.is_some()
+        };
+    }
+    if a!() {}
+}
+
+fn issue_10435() {
+    let x = vec![0];
+    let y = vec![1];
+    let z = vec![2];
+
+    // vvv Should not lint
+    #[allow(clippy::nonminimal_bool)]
+    if !x.is_empty() && !(y.is_empty() || z.is_empty()) {
+        println!("{}", line!());
+    }
+
+    // vvv Should not lint (#10435 talks about a bug where it lints)
+    #[allow(clippy::nonminimal_bool)]
+    if !(x == [0]) {
+        println!("{}", line!());
+    }
+}
+
+fn issue10836() {
+    struct Foo(bool);
+    impl std::ops::Not for Foo {
+        type Output = bool;
+
+        fn not(self) -> Self::Output {
+            !self.0
+        }
+    }
+
+    // Should not lint
+    let _: bool = !!Foo(true);
+}

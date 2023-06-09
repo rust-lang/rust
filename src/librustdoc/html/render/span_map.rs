@@ -29,12 +29,12 @@ pub(crate) enum LinkFromSrc {
 
 /// This function will do at most two things:
 ///
-/// 1. Generate a `span` correspondance map which links an item `span` to its definition `span`.
+/// 1. Generate a `span` correspondence map which links an item `span` to its definition `span`.
 /// 2. Collect the source code files.
 ///
-/// It returns the `krate`, the source code files and the `span` correspondance map.
+/// It returns the `krate`, the source code files and the `span` correspondence map.
 ///
-/// Note about the `span` correspondance map: the keys are actually `(lo, hi)` of `span`s. We don't
+/// Note about the `span` correspondence map: the keys are actually `(lo, hi)` of `span`s. We don't
 /// need the `span` context later on, only their position, so instead of keep a whole `Span`, we
 /// only keep the `lo` and `hi`.
 pub(crate) fn collect_spans_and_sources(
@@ -140,7 +140,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &'tcx rustc_hir::Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {
         if self.handle_macro(path.span) {
             return;
         }
@@ -166,38 +166,28 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
         if let ExprKind::MethodCall(segment, ..) = expr.kind {
-            if let Some(hir_id) = segment.hir_id {
-                let hir = self.tcx.hir();
-                let body_id = hir.enclosing_body_owner(hir_id);
-                // FIXME: this is showing error messages for parts of the code that are not
-                // compiled (because of cfg)!
-                //
-                // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-                let typeck_results = self.tcx.typeck_body(
-                    hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
+            let hir = self.tcx.hir();
+            let body_id = hir.enclosing_body_owner(segment.hir_id);
+            // FIXME: this is showing error messages for parts of the code that are not
+            // compiled (because of cfg)!
+            //
+            // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
+            let typeck_results = self
+                .tcx
+                .typeck_body(hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"));
+            if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
+                self.matches.insert(
+                    segment.ident.span,
+                    match hir.span_if_local(def_id) {
+                        Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
+                        None => LinkFromSrc::External(def_id),
+                    },
                 );
-                if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                    self.matches.insert(
-                        segment.ident.span,
-                        match hir.span_if_local(def_id) {
-                            Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
-                            None => LinkFromSrc::External(def_id),
-                        },
-                    );
-                }
             }
         } else if self.handle_macro(expr.span) {
             // We don't want to go deeper into the macro.
             return;
         }
         intravisit::walk_expr(self, expr);
-    }
-
-    fn visit_use(&mut self, path: &'tcx rustc_hir::Path<'tcx>, id: HirId) {
-        if self.handle_macro(path.span) {
-            return;
-        }
-        self.handle_path(path);
-        intravisit::walk_use(self, path, id);
     }
 }

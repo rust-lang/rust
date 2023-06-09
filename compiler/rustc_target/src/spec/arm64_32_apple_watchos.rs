@@ -1,4 +1,4 @@
-use super::apple_sdk_base::{opts, Arch};
+use super::apple_base::{opts, Arch};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -9,9 +9,11 @@ pub fn target() -> Target {
         data_layout: "e-m:o-p:32:32-i64:64-i128:128-n32:64-S128".into(),
         arch: "aarch64".into(),
         options: TargetOptions {
-            features: "+neon,+fp-armv8,+apple-a7".into(),
-            max_atomic_width: Some(64),
+            features: "+v8a,+neon,+fp-armv8,+apple-a7".into(),
+            max_atomic_width: Some(128),
             forces_embed_bitcode: true,
+            dynamic_linking: false,
+            position_independent_executables: true,
             // These arguments are not actually invoked - they just have
             // to look right to pass App Store validation.
             bitcode_llvm_cmdline: "-triple\0\

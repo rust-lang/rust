@@ -1,7 +1,10 @@
 # Targets
 
 `rustc` is a cross-compiler by default. This means that you can use any compiler to build for any
-architecture. The list of *targets* are the possible architectures that you can build for.
+architecture. The list of *targets* are the possible architectures that you can build for. See
+the [Platform Support](../platform-support.md) page for a detailed list of targets, or
+[Built-in Targets](built-in.md) for instructions on how to view what is available for your version
+of `rustc`.
 
 To see all the options that you can set with a target, see the docs
 [here](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/spec/struct.Target.html).

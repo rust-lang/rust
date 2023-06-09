@@ -1,0 +1,15 @@
+error[E0367]: `Drop` impl requires `'a: 'c` but the struct it is implemented for does not
+  --> $DIR/transitive-outlives.rs:20:9
+   |
+LL |     'a: 'c,
+   |         ^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/transitive-outlives.rs:7:1
+   |
+LL | struct DropMe<'a, 'b: 'a, 'c: 'b>(PhantomData<&'a ()>, PhantomData<&'b ()>, PhantomData<&'c ()>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0367`.

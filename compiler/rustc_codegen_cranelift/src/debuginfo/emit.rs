@@ -9,7 +9,7 @@ use gimli::{RunTimeEndian, SectionId};
 use super::object::WriteDebugInfo;
 use super::DebugContext;
 
-impl DebugContext<'_> {
+impl DebugContext {
     pub(crate) fn emit(&mut self, product: &mut ObjectProduct) {
         let unit_range_list_id = self.dwarf.unit.ranges.add(self.unit_range_list.clone());
         let root = self.dwarf.unit.root();
@@ -113,7 +113,7 @@ impl Writer for WriterRelocate {
                     offset: offset as u32,
                     size,
                     name: DebugRelocName::Symbol(symbol),
-                    addend: addend as i64,
+                    addend,
                     kind: object::RelocationKind::Absolute,
                 });
                 self.write_udata(0, size)

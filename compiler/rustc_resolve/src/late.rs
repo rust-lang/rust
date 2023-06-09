@@ -6,9 +6,8 @@
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
 //! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
-use RibKind::*;
-
-use crate::{path_names_to_string, BindingError, Finalize, LexicalScopeBinding};
+use crate::BindingKey;
+use crate::{path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
@@ -16,25 +15,26 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::DiagnosticId;
+use rustc_errors::{Applicability, DiagnosticArgValue, DiagnosticId, IntoDiagnosticArg};
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_hir::{PrimTy, TraitCandidate};
-use rustc_middle::ty::DefIdTree;
+use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
+use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 
-use rustc_span::source_map::{respan, Spanned};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
 use std::collections::{hash_map::Entry, BTreeSet};
-use std::mem::{replace, take};
-use tracing::debug;
+use std::mem::{replace, swap, take};
 
 mod diagnostics;
-pub(crate) mod lifetimes;
 
 type Res = def::Res<NodeId>;
 
@@ -43,14 +43,18 @@ type IdentMap<T> = FxHashMap<Ident, T>;
 /// Map from the name in a pattern to its binding mode.
 type BindingMap = IdentMap<BindingInfo>;
 
+use diagnostics::{
+    ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime, MissingLifetimeKind,
+};
+
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
     span: Span,
-    binding_mode: BindingMode,
+    annotation: BindingAnnotation,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum PatternSource {
+pub(crate) enum PatternSource {
     Match,
     Let,
     For,
@@ -63,14 +67,29 @@ enum IsRepeatExpr {
     Yes,
 }
 
+/// Describes whether an `AnonConst` is a type level const arg or
+/// some other form of anon const (i.e. inline consts or enum discriminants)
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum AnonConstKind {
+    EnumDiscriminant,
+    InlineConst,
+    ConstArg(IsRepeatExpr),
+}
+
 impl PatternSource {
-    pub fn descr(self) -> &'static str {
+    fn descr(self) -> &'static str {
         match self {
             PatternSource::Match => "match binding",
             PatternSource::Let => "let binding",
             PatternSource::For => "for binding",
             PatternSource::FnParam => "function parameter",
         }
+    }
+}
+
+impl IntoDiagnosticArg for PatternSource {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 
@@ -86,16 +105,44 @@ enum PatBoundCtx {
 }
 
 /// Does this the item (from the item rib scope) allow generic parameters?
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum HasGenericParams {
-    Yes,
+    Yes(Span),
     No,
 }
 
-impl HasGenericParams {
+/// May this constant have generics?
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ConstantHasGenerics {
+    Yes,
+    No(NoConstantGenericsReason),
+}
+
+impl ConstantHasGenerics {
     fn force_yes_if(self, b: bool) -> Self {
         if b { Self::Yes } else { self }
     }
+}
+
+/// Reason for why an anon const is not allowed to reference generic parameters
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum NoConstantGenericsReason {
+    /// Const arguments are only allowed to use generic parameters when:
+    /// - `feature(generic_const_exprs)` is enabled
+    /// or
+    /// - the const argument is a sole const generic paramater, i.e. `foo::<{ N }>()`
+    ///
+    /// If neither of the above are true then this is used as the cause.
+    NonTrivialConstArg,
+    /// Enum discriminants are not allowed to reference generic parameters ever, this
+    /// is used when an anon const is in the following position:
+    ///
+    /// ```rust,compile_fail
+    /// enum Foo<const N: isize> {
+    ///     Variant = { N }, // this anon const is not allowed to use generics
+    /// }
+    /// ```
+    IsEnumDiscriminant,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -104,37 +151,48 @@ pub(crate) enum ConstantItemKind {
     Static,
 }
 
+impl ConstantItemKind {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::Const => "const",
+            Self::Static => "static",
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum RecordPartialRes {
+    Yes,
+    No,
+}
+
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum RibKind<'a> {
     /// No restriction needs to be applied.
-    NormalRibKind,
+    Normal,
 
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
     /// binds. Disallow any other upvars (including other ty params that are
     /// upvars).
-    AssocItemRibKind,
+    AssocItem,
 
     /// We passed through a closure. Disallow labels.
-    ClosureOrAsyncRibKind,
-
-    /// We passed through a function definition. Disallow upvars.
-    /// Permit only those const parameters that are specified in the function's generics.
-    FnItemRibKind,
+    ClosureOrAsync,
 
     /// We passed through an item scope. Disallow upvars.
-    ItemRibKind(HasGenericParams),
+    Item(HasGenericParams),
 
     /// We're in a constant item. Can't refer to dynamic stuff.
     ///
     /// The item may reference generic parameters in trivial constant expressions.
     /// All other constants aren't allowed to use generic params at all.
-    ConstantItemRibKind(HasGenericParams, Option<(Ident, ConstantItemKind)>),
+    ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module.
-    ModuleRibKind(Module<'a>),
+    Module(Module<'a>),
 
     /// We passed through a `macro_rules!` statement
     MacroDefinition(DefId),
@@ -142,15 +200,15 @@ pub(crate) enum RibKind<'a> {
     /// All bindings in this rib are generic parameters that can't be used
     /// from the default of a generic parameter because they're not declared
     /// before said generic parameter. Also see the `visit_generics` override.
-    ForwardGenericParamBanRibKind,
+    ForwardGenericParamBan,
 
     /// We are inside of the type of a const parameter. Can't refer to any
     /// parameters.
-    ConstParamTyRibKind,
+    ConstParamTy,
 
     /// We are inside a `sym` inline assembly operand. Can only refer to
     /// globals.
-    InlineAsmSymRibKind,
+    InlineAsmSym,
 }
 
 impl RibKind<'_> {
@@ -158,32 +216,30 @@ impl RibKind<'_> {
     /// variables.
     pub(crate) fn contains_params(&self) -> bool {
         match self {
-            NormalRibKind
-            | ClosureOrAsyncRibKind
-            | FnItemRibKind
-            | ConstantItemRibKind(..)
-            | ModuleRibKind(_)
-            | MacroDefinition(_)
-            | ConstParamTyRibKind
-            | InlineAsmSymRibKind => false,
-            AssocItemRibKind | ItemRibKind(_) | ForwardGenericParamBanRibKind => true,
+            RibKind::Normal
+            | RibKind::ClosureOrAsync
+            | RibKind::ConstantItem(..)
+            | RibKind::Module(_)
+            | RibKind::MacroDefinition(_)
+            | RibKind::ConstParamTy
+            | RibKind::InlineAsmSym => false,
+            RibKind::AssocItem | RibKind::Item(_) | RibKind::ForwardGenericParamBan => true,
         }
     }
 
     /// This rib forbids referring to labels defined in upwards ribs.
     fn is_label_barrier(self) -> bool {
         match self {
-            NormalRibKind | MacroDefinition(..) => false,
+            RibKind::Normal | RibKind::MacroDefinition(..) => false,
 
-            AssocItemRibKind
-            | ClosureOrAsyncRibKind
-            | FnItemRibKind
-            | ItemRibKind(..)
-            | ConstantItemRibKind(..)
-            | ModuleRibKind(..)
-            | ForwardGenericParamBanRibKind
-            | ConstParamTyRibKind
-            | InlineAsmSymRibKind => true,
+            RibKind::AssocItem
+            | RibKind::ClosureOrAsync
+            | RibKind::Item(..)
+            | RibKind::ConstantItem(..)
+            | RibKind::Module(..)
+            | RibKind::ForwardGenericParamBan
+            | RibKind::ConstParamTy
+            | RibKind::InlineAsmSym => true,
         }
     }
 }
@@ -220,22 +276,14 @@ enum LifetimeUseSet {
 
 #[derive(Copy, Clone, Debug)]
 enum LifetimeRibKind {
-    /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
-    Item,
-
+    // -- Ribs introducing named lifetimes
+    //
     /// This rib declares generic parameters.
+    /// Only for this kind the `LifetimeRib::bindings` field can be non-empty.
     Generics { binder: NodeId, span: Span, kind: LifetimeBinderKind },
 
-    /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
-    /// generics. We are disallowing this until we can decide on how we want to handle non-'static
-    /// lifetimes in const generics. See issue #74052 for discussion.
-    ConstGeneric,
-
-    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
-    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
-    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
-    AnonConst,
-
+    // -- Ribs introducing unnamed lifetimes
+    //
     /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
@@ -252,13 +300,34 @@ enum LifetimeRibKind {
     /// ```
     AnonymousCreateParameter { binder: NodeId, report_in_path: bool },
 
+    /// Replace all anonymous lifetimes by provided lifetime.
+    Elided(LifetimeRes),
+
+    // -- Barrier ribs that stop lifetime lookup, or continue it but produce an error later.
+    //
     /// Give a hard error when either `&` or `'_` is written. Used to
     /// rule out things like `where T: Foo<'_>`. Does not imply an
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
-    /// Pass responsibility to `resolve_lifetime` code for all cases.
-    AnonymousPassThrough(NodeId, /* in_fn_return */ bool),
+    /// Signal we cannot find which should be the anonymous lifetime.
+    ElisionFailure,
+
+    /// This rib forbids usage of generic parameters inside of const parameter types.
+    ///
+    /// While this is desirable to support eventually, it is difficult to do and so is
+    /// currently forbidden. See rust-lang/project-const-generics#28 for more info.
+    ConstParamTy,
+
+    /// Usage of generic parameters is forbidden in various positions for anon consts:
+    /// - const arguments when `generic_const_exprs` is not enabled
+    /// - enum discriminant values
+    ///
+    /// This rib emits an error when a lifetime would resolve to a lifetime parameter.
+    ConcreteAnonConst(NoConstantGenericsReason),
+
+    /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
+    Item,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -406,7 +475,8 @@ impl<'a> PathSource<'a> {
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)
-                    | Res::SelfTy { .. }
+                    | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. }
             ),
             PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
             PathSource::Trait(AliasPossibility::Maybe) => {
@@ -440,7 +510,8 @@ impl<'a> PathSource<'a> {
                         | DefKind::TyAlias
                         | DefKind::AssocTy,
                     _,
-                ) | Res::SelfTy { .. }
+                ) | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. }
             ),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
@@ -469,6 +540,30 @@ impl<'a> PathSource<'a> {
     }
 }
 
+/// At this point for most items we can answer whether that item is exported or not,
+/// but some items like impls require type information to determine exported-ness, so we make a
+/// conservative estimate for them (e.g. based on nominal visibility).
+#[derive(Clone, Copy)]
+enum MaybeExported<'a> {
+    Ok(NodeId),
+    Impl(Option<DefId>),
+    ImplItem(Result<DefId, &'a Visibility>),
+}
+
+impl MaybeExported<'_> {
+    fn eval(self, r: &Resolver<'_, '_>) -> bool {
+        let def_id = match self {
+            MaybeExported::Ok(node_id) => Some(r.local_def_id(node_id)),
+            MaybeExported::Impl(Some(trait_def_id)) | MaybeExported::ImplItem(Ok(trait_def_id)) => {
+                trait_def_id.as_local()
+            }
+            MaybeExported::Impl(None) => return true,
+            MaybeExported::ImplItem(Err(vis)) => return vis.kind.is_pub(),
+        };
+        def_id.map_or(true, |def_id| r.effective_visibilities.is_exported(def_id))
+    }
+}
+
 #[derive(Default)]
 struct DiagnosticMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
@@ -494,9 +589,6 @@ struct DiagnosticMetadata<'ast> {
     /// they are used (in a `break` or `continue` statement)
     unused_labels: FxHashMap<NodeId, Span>,
 
-    /// Only used for better errors on `fn(): fn()`.
-    current_type_ascription: Vec<Span>,
-
     /// Only used for better errors on `let x = { foo: bar };`.
     /// In the case of a parse error with `let x = { foo: bar, };`, this isn't needed, it's only
     /// needed for cases where this parses as a correct type ascription.
@@ -507,6 +599,13 @@ struct DiagnosticMetadata<'ast> {
 
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
     in_if_condition: Option<&'ast Expr>,
+
+    /// Used to detect possible new binding written without `let` and to provide structured suggestion.
+    in_assignment: Option<&'ast Expr>,
+    is_assign_rhs: bool,
+
+    /// Used to detect possible `.` -> `..` typo when calling methods.
+    in_range: Option<(&'ast Expr, &'ast Expr)>,
 
     /// If we are currently in a trait object definition. Used to point at the bounds when
     /// encountering a struct or enum.
@@ -522,17 +621,23 @@ struct DiagnosticMetadata<'ast> {
 
     /// When processing impl trait
     currently_processing_impl_trait: Option<(TraitRef, Ty)>,
+
+    /// Accumulate the errors due to missed lifetime elision,
+    /// and report them all at once for each function.
+    current_elision_failures: Vec<MissingLifetime>,
 }
 
-struct LateResolutionVisitor<'a, 'b, 'ast> {
-    r: &'b mut Resolver<'a>,
+struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    r: &'b mut Resolver<'a, 'tcx>,
 
     /// The module that represents the current item scope.
     parent_scope: ParentScope<'a>,
 
     /// The current set of local scopes for types and values.
-    /// FIXME #4948: Reuse ribs to avoid allocation.
     ribs: PerNS<Vec<Rib<'a>>>,
+
+    /// Previous popped `rib`, only used for diagnostic.
+    last_block_rib: Option<Rib<'a>>,
 
     /// The current set of local scopes, for labels.
     label_ribs: Vec<Rib<'a, NodeId>>,
@@ -540,11 +645,18 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     /// The current set of local scopes for lifetimes.
     lifetime_ribs: Vec<LifetimeRib>,
 
+    /// We are looking for lifetimes in an elision context.
+    /// The set contains all the resolutions that we encountered so far.
+    /// They will be used to determine the correct lifetime for the fn return type.
+    /// The `LifetimeElisionCandidate` is used for diagnostics, to suggest introducing named
+    /// lifetimes.
+    lifetime_elision_candidates: Option<Vec<(LifetimeRes, LifetimeElisionCandidate)>>,
+
     /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
 
     /// Fields used to add information to diagnostic errors.
-    diagnostic_metadata: DiagnosticMetadata<'ast>,
+    diagnostic_metadata: Box<DiagnosticMetadata<'ast>>,
 
     /// State used to know whether to ignore resolution errors for function bodies.
     ///
@@ -558,7 +670,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
-impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
+impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn visit_attribute(&mut self, _: &'ast Attribute) {
         // We do not want to resolve expressions that appear in attributes,
         // as they do not correspond to actual code.
@@ -575,13 +687,12 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.resolve_arm(arm);
     }
     fn visit_block(&mut self, block: &'ast Block) {
+        let old_macro_rules = self.parent_scope.macro_rules;
         self.resolve_block(block);
+        self.parent_scope.macro_rules = old_macro_rules;
     }
-    fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
-        // We deal with repeat expressions explicitly in `resolve_expr`.
-        self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-            this.resolve_anon_const(constant, IsRepeatExpr::No);
-        })
+    fn visit_anon_const(&mut self, _constant: &'ast AnonConst) {
+        bug!("encountered anon const without a manual call to `resolve_anon_const`");
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);
@@ -603,30 +714,31 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_ty(&mut self, ty: &'ast Ty) {
         let prev = self.diagnostic_metadata.current_trait_object;
         let prev_ty = self.diagnostic_metadata.current_type_path;
-        match ty.kind {
-            TyKind::Rptr(None, _) => {
+        match &ty.kind {
+            TyKind::Ref(None, _) => {
                 // Elided lifetime in reference: we resolve as if there was some lifetime `'_` with
                 // NodeId `ty.id`.
-                let span = self.r.session.source_map().next_point(ty.span.shrink_to_lo());
+                // This span will be used in case of elision failure.
+                let span = self.r.tcx.sess.source_map().start_point(ty.span);
                 self.resolve_elided_lifetime(ty.id, span);
+                visit::walk_ty(self, ty);
             }
-            TyKind::Path(ref qself, ref path) => {
+            TyKind::Path(qself, path) => {
                 self.diagnostic_metadata.current_type_path = Some(ty);
-                self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
+                self.smart_resolve_path(ty.id, &qself, path, PathSource::Type);
 
                 // Check whether we should interpret this as a bare trait object.
                 if qself.is_none()
                     && let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
-                    && partial_res.unresolved_segments() == 0
-                    && let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = partial_res.base_res()
+                    && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
                 {
-                    // This path is actually a bare trait object.  In case of a bare `Fn`-trait
+                    // This path is actually a bare trait object. In case of a bare `Fn`-trait
                     // object with anonymous lifetimes, we need this rib to correctly place the
                     // synthetic lifetimes.
                     let span = ty.span.shrink_to_lo().to(path.span.shrink_to_lo());
                     self.with_generic_param_rib(
                         &[],
-                        NormalRibKind,
+                        RibKind::Normal,
                         LifetimeRibKind::Generics {
                             binder: ty.id,
                             kind: LifetimeBinderKind::PolyTrait,
@@ -634,8 +746,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         },
                         |this| this.visit_path(&path, ty.id),
                     );
-                    self.diagnostic_metadata.current_type_path = prev_ty;
-                    return;
+                } else {
+                    visit::walk_ty(self, ty)
                 }
             }
             TyKind::ImplicitSelf => {
@@ -649,15 +761,22 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     )
                     .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
+                visit::walk_ty(self, ty)
             }
-            TyKind::TraitObject(ref bounds, ..) => {
+            TyKind::ImplTrait(..) => {
+                let candidates = self.lifetime_elision_candidates.take();
+                visit::walk_ty(self, ty);
+                self.lifetime_elision_candidates = candidates;
+            }
+            TyKind::TraitObject(bounds, ..) => {
                 self.diagnostic_metadata.current_trait_object = Some(&bounds[..]);
+                visit::walk_ty(self, ty)
             }
-            TyKind::BareFn(ref bare_fn) => {
+            TyKind::BareFn(bare_fn) => {
                 let span = ty.span.shrink_to_lo().to(bare_fn.decl_span.shrink_to_lo());
                 self.with_generic_param_rib(
                     &bare_fn.generic_params,
-                    NormalRibKind,
+                    RibKind::Normal,
                     LifetimeRibKind::Generics {
                         binder: ty.id,
                         kind: LifetimeBinderKind::BareFnType,
@@ -670,28 +789,41 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                 binder: ty.id,
                                 report_in_path: false,
                             },
-                            |this| walk_list!(this, visit_param, &bare_fn.decl.inputs),
-                        );
-                        this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(ty.id, true),
-                            |this| this.visit_fn_ret_ty(&bare_fn.decl.output),
+                            |this| {
+                                this.resolve_fn_signature(
+                                    ty.id,
+                                    false,
+                                    // We don't need to deal with patterns in parameters, because
+                                    // they are not possible for foreign or bodiless functions.
+                                    bare_fn
+                                        .decl
+                                        .inputs
+                                        .iter()
+                                        .map(|Param { ty, .. }| (None, &**ty)),
+                                    &bare_fn.decl.output,
+                                )
+                            },
                         );
                     },
-                );
-                self.diagnostic_metadata.current_trait_object = prev;
-                return;
+                )
             }
-            _ => (),
+            TyKind::Array(element_ty, length) => {
+                self.visit_ty(element_ty);
+                self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));
+            }
+            TyKind::Typeof(ct) => {
+                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::No))
+            }
+            _ => visit::walk_ty(self, ty),
         }
-        visit::walk_ty(self, ty);
         self.diagnostic_metadata.current_trait_object = prev;
         self.diagnostic_metadata.current_type_path = prev_ty;
     }
-    fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef, _: &'ast TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef) {
         let span = tref.span.shrink_to_lo().to(tref.trait_ref.path.span.shrink_to_lo());
         self.with_generic_param_rib(
             &tref.bound_generic_params,
-            NormalRibKind,
+            RibKind::Normal,
             LifetimeRibKind::Generics {
                 binder: tref.trait_ref.ref_id,
                 kind: LifetimeBinderKind::PolyTrait,
@@ -701,7 +833,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 this.visit_generic_params(&tref.bound_generic_params, false);
                 this.smart_resolve_path(
                     tref.trait_ref.ref_id,
-                    None,
+                    &None,
                     &tref.trait_ref.path,
                     PathSource::Trait(AliasPossibility::Maybe),
                 );
@@ -710,37 +842,34 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         );
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
+        self.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
         match foreign_item.kind {
             ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
-                self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-                    this.with_generic_param_rib(
-                        &generics.params,
-                        ItemRibKind(HasGenericParams::Yes),
-                        LifetimeRibKind::Generics {
-                            binder: foreign_item.id,
-                            kind: LifetimeBinderKind::Item,
-                            span: generics.span,
-                        },
-                        |this| visit::walk_foreign_item(this, foreign_item),
-                    )
-                });
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::Item(HasGenericParams::Yes(generics.span)),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Item,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_foreign_item(this, foreign_item),
+                );
             }
             ForeignItemKind::Fn(box Fn { ref generics, .. }) => {
-                self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-                    this.with_generic_param_rib(
-                        &generics.params,
-                        ItemRibKind(HasGenericParams::Yes),
-                        LifetimeRibKind::Generics {
-                            binder: foreign_item.id,
-                            kind: LifetimeBinderKind::Function,
-                            span: generics.span,
-                        },
-                        |this| visit::walk_foreign_item(this, foreign_item),
-                    )
-                });
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::Item(HasGenericParams::Yes(generics.span)),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Function,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_foreign_item(this, foreign_item),
+                );
             }
             ForeignItemKind::Static(..) => {
-                self.with_item_rib(|this| {
+                self.with_static_rib(|this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
@@ -750,42 +879,43 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {
-        let rib_kind = match fn_kind {
+        let previous_value = self.diagnostic_metadata.current_function;
+        match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
             // a body, or if there's no body for some other reason.
             FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _)
             | FnKind::Fn(_, _, sig, _, generics, None) => {
                 self.visit_fn_header(&sig.header);
                 self.visit_generics(generics);
-                // We don't need to deal with patterns in parameters, because
-                // they are not possible for foreign or bodiless functions.
                 self.with_lifetime_rib(
                     LifetimeRibKind::AnonymousCreateParameter {
                         binder: fn_id,
                         report_in_path: false,
                     },
-                    |this| walk_list!(this, visit_param, &sig.decl.inputs),
+                    |this| {
+                        this.resolve_fn_signature(
+                            fn_id,
+                            sig.decl.has_self(),
+                            sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                            &sig.decl.output,
+                        );
+                    },
                 );
-                self.with_lifetime_rib(
-                    LifetimeRibKind::AnonymousPassThrough(fn_id, true),
-                    |this| this.visit_fn_ret_ty(&sig.decl.output),
-                );
+                self.record_lifetime_params_for_async(fn_id, sig.header.asyncness.opt_return_id());
                 return;
             }
-            FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
-            FnKind::Fn(FnCtxt::Assoc(_), ..) => NormalRibKind,
-            FnKind::Closure(..) => ClosureOrAsyncRibKind,
+            FnKind::Fn(..) => {
+                self.diagnostic_metadata.current_function = Some((fn_kind, sp));
+            }
+            // Do not update `current_function` for closures: it suggests `self` parameters.
+            FnKind::Closure(..) => {}
         };
-        let previous_value = self.diagnostic_metadata.current_function;
-        if matches!(fn_kind, FnKind::Fn(..)) {
-            self.diagnostic_metadata.current_function = Some((fn_kind, sp));
-        }
         debug!("(resolving function) entering function");
 
         // Create a value rib for the function.
-        self.with_rib(ValueNS, rib_kind, |this| {
+        self.with_rib(ValueNS, RibKind::ClosureOrAsync, |this| {
             // Create a label rib for the function.
-            this.with_label_rib(FnItemRibKind, |this| {
+            this.with_label_rib(RibKind::ClosureOrAsync, |this| {
                 match fn_kind {
                     FnKind::Fn(_, _, sig, _, generics, body) => {
                         this.visit_generics(generics);
@@ -793,74 +923,35 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         let declaration = &sig.decl;
                         let async_node_id = sig.header.asyncness.opt_return_id();
 
-                        // Argument-position elided lifetimes must be transformed into fresh
-                        // generic parameters.  This is especially useful for `async fn`, where
-                        // these fresh generic parameters can be applied to the opaque `impl Trait`
-                        // return type.
                         this.with_lifetime_rib(
                             LifetimeRibKind::AnonymousCreateParameter {
                                 binder: fn_id,
-                                // Only emit a hard error for `async fn`, since this kind of
-                                // elision has always been allowed in regular `fn`s.
                                 report_in_path: async_node_id.is_some(),
                             },
-                            // Add each argument to the rib.
-                            |this| this.resolve_params(&declaration.inputs),
-                        );
-
-                        // Construct the list of in-scope lifetime parameters for async lowering.
-                        // We include all lifetime parameters, either named or "Fresh".
-                        // The order of those parameters does not matter, as long as it is
-                        // deterministic.
-                        if let Some(async_node_id) = async_node_id {
-                            let mut extra_lifetime_params = this
-                                .r
-                                .extra_lifetime_params_map
-                                .get(&fn_id)
-                                .cloned()
-                                .unwrap_or_default();
-                            for rib in this.lifetime_ribs.iter().rev() {
-                                extra_lifetime_params.extend(
-                                    rib.bindings
+                            |this| {
+                                this.resolve_fn_signature(
+                                    fn_id,
+                                    declaration.has_self(),
+                                    declaration
+                                        .inputs
                                         .iter()
-                                        .map(|(&ident, &(node_id, res))| (ident, node_id, res)),
-                                );
-                                match rib.kind {
-                                    LifetimeRibKind::Item => break,
-                                    LifetimeRibKind::AnonymousCreateParameter {
-                                        binder, ..
-                                    } => {
-                                        if let Some(earlier_fresh) =
-                                            this.r.extra_lifetime_params_map.get(&binder)
-                                        {
-                                            extra_lifetime_params.extend(earlier_fresh);
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            this.r
-                                .extra_lifetime_params_map
-                                .insert(async_node_id, extra_lifetime_params);
-                        }
-
-                        this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(
-                                // For async fn, the return type appears inside a custom
-                                // `impl Future` RPIT, so we override the binder's id.
-                                async_node_id.unwrap_or(fn_id),
-                                true,
-                            ),
-                            |this| visit::walk_fn_ret_ty(this, &declaration.output),
+                                        .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
+                                    &declaration.output,
+                                )
+                            },
                         );
+
+                        this.record_lifetime_params_for_async(fn_id, async_node_id);
 
                         if let Some(body) = body {
                             // Ignore errors in function bodies if this is rustdoc
                             // Be sure not to set this until the function signature has been resolved.
                             let previous_state = replace(&mut this.in_func_body, true);
+                            // We only care block in the same function
+                            this.last_block_rib = None;
                             // Resolve the function body, potentially inside the body of an async closure
                             this.with_lifetime_rib(
-                                LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                                LifetimeRibKind::Elided(LifetimeRes::Infer),
                                 |this| this.visit_block(body),
                             );
 
@@ -888,7 +979,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         this.with_lifetime_rib(
                             match binder {
                                 ClosureBinder::NotPresent => {
-                                    LifetimeRibKind::AnonymousPassThrough(fn_id, true)
+                                    LifetimeRibKind::Elided(LifetimeRes::Infer)
                                 }
                                 ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
                             },
@@ -900,7 +991,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         let previous_state = replace(&mut this.in_func_body, true);
                         // Resolve the function body, potentially inside the body of an async closure
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                            LifetimeRibKind::Elided(LifetimeRes::Infer),
                             |this| this.visit_expr(body),
                         );
 
@@ -948,36 +1039,25 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 // namespace first, and if that fails we try again in the value namespace. If
                 // resolution in the value namespace succeeds, we have an generic const argument on
                 // our hands.
-                if let TyKind::Path(ref qself, ref path) = ty.kind {
+                if let TyKind::Path(None, ref path) = ty.kind {
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    if path.segments.len() == 1 && path.segments[0].args.is_none() {
+                    if path.is_potential_trivial_const_arg() {
                         let mut check_ns = |ns| {
                             self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
                                 .is_some()
                         };
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
-                            // This must be equivalent to `visit_anon_const`, but we cannot call it
-                            // directly due to visitor lifetimes so we have to copy-paste some code.
-                            //
-                            // Note that we might not be inside of an repeat expression here,
-                            // but considering that `IsRepeatExpr` is only relevant for
-                            // non-trivial constants this is doesn't matter.
-                            self.with_constant_rib(
-                                IsRepeatExpr::No,
-                                HasGenericParams::Yes,
-                                None,
+                            self.resolve_anon_const_manual(
+                                true,
+                                AnonConstKind::ConstArg(IsRepeatExpr::No),
                                 |this| {
                                     this.smart_resolve_path(
                                         ty.id,
-                                        qself.as_ref(),
+                                        &None,
                                         path,
                                         PathSource::Expr(None),
                                     );
-
-                                    if let Some(ref qself) = *qself {
-                                        this.visit_ty(&qself.ty);
-                                    }
                                     this.visit_path(path, ty.id);
                                 },
                             );
@@ -991,7 +1071,9 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 self.visit_ty(ty);
             }
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt, visit::LifetimeCtxt::GenericArg),
-            GenericArg::Const(ct) => self.visit_anon_const(ct),
+            GenericArg::Const(ct) => {
+                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::No))
+            }
         }
         self.diagnostic_metadata.currently_processing_generics = prev;
     }
@@ -1001,13 +1083,15 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(ref gen_args) = constraint.gen_args {
             // Forbid anonymous lifetimes in GAT parameters until proper semantics are decided.
             self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-                this.visit_generic_args(gen_args.span(), gen_args)
+                this.visit_generic_args(gen_args)
             });
         }
         match constraint.kind {
             AssocConstraintKind::Equality { ref term } => match term {
                 Term::Ty(ty) => self.visit_ty(ty),
-                Term::Const(c) => self.visit_anon_const(c),
+                Term::Const(c) => {
+                    self.resolve_anon_const(c, AnonConstKind::ConstArg(IsRepeatExpr::No))
+                }
             },
             AssocConstraintKind::Bound { ref bounds } => {
                 walk_list!(self, visit_param_bound, bounds, BoundKind::Bound);
@@ -1015,16 +1099,16 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
+    fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) {
         if let Some(ref args) = path_segment.args {
             match &**args {
-                GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, path_span, args),
+                GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, args),
                 GenericArgs::Parenthesized(p_args) => {
                     // Probe the lifetime ribs to know how to behave.
                     for rib in self.lifetime_ribs.iter().rev() {
                         match rib.kind {
-                            // We are inside a `PolyTraitRef`.  The lifetimes are
-                            // to be intoduced in that (maybe implicit) `for<>` binder.
+                            // We are inside a `PolyTraitRef`. The lifetimes are
+                            // to be introduced in that (maybe implicit) `for<>` binder.
                             LifetimeRibKind::Generics {
                                 binder,
                                 kind: LifetimeBinderKind::PolyTrait,
@@ -1035,25 +1119,29 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                         binder,
                                         report_in_path: false,
                                     },
-                                    |this| walk_list!(this, visit_ty, &p_args.inputs),
-                                );
-                                self.with_lifetime_rib(
-                                    LifetimeRibKind::AnonymousPassThrough(binder, true),
-                                    |this| visit::walk_fn_ret_ty(this, &p_args.output),
+                                    |this| {
+                                        this.resolve_fn_signature(
+                                            binder,
+                                            false,
+                                            p_args.inputs.iter().map(|ty| (None, &**ty)),
+                                            &p_args.output,
+                                        )
+                                    },
                                 );
                                 break;
                             }
-                            // We have nowhere to introduce generics.  Code is malformed,
+                            // We have nowhere to introduce generics. Code is malformed,
                             // so use regular lifetime resolution to avoid spurious errors.
                             LifetimeRibKind::Item | LifetimeRibKind::Generics { .. } => {
-                                visit::walk_generic_args(self, path_span, args);
+                                visit::walk_generic_args(self, args);
                                 break;
                             }
-                            LifetimeRibKind::AnonymousPassThrough(..)
-                            | LifetimeRibKind::AnonymousCreateParameter { .. }
+                            LifetimeRibKind::AnonymousCreateParameter { .. }
                             | LifetimeRibKind::AnonymousReportError
-                            | LifetimeRibKind::AnonConst
-                            | LifetimeRibKind::ConstGeneric => {}
+                            | LifetimeRibKind::Elided(_)
+                            | LifetimeRibKind::ElisionFailure
+                            | LifetimeRibKind::ConcreteAnonConst(_)
+                            | LifetimeRibKind::ConstParamTy => {}
                         }
                     }
                 }
@@ -1077,7 +1165,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 let span = predicate_span.shrink_to_lo().to(bounded_ty.span.shrink_to_lo());
                 this.with_generic_param_rib(
                     &bound_generic_params,
-                    NormalRibKind,
+                    RibKind::Normal,
                     LifetimeRibKind::Generics {
                         binder: bounded_ty.id,
                         kind: LifetimeBinderKind::WhereBound,
@@ -1114,7 +1202,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 InlineAsmOperand::Const { anon_const, .. } => {
                     // Although this is `DefKind::AnonConst`, it is allowed to reference outer
                     // generic parameters like an inline const.
-                    self.resolve_inline_const(anon_const);
+                    self.resolve_anon_const(anon_const, AnonConstKind::InlineConst);
                 }
                 InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
             }
@@ -1123,29 +1211,38 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
     fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) {
         // This is similar to the code for AnonConst.
-        self.with_rib(ValueNS, InlineAsmSymRibKind, |this| {
-            this.with_rib(TypeNS, InlineAsmSymRibKind, |this| {
-                this.with_label_rib(InlineAsmSymRibKind, |this| {
-                    this.smart_resolve_path(
-                        sym.id,
-                        sym.qself.as_ref(),
-                        &sym.path,
-                        PathSource::Expr(None),
-                    );
+        self.with_rib(ValueNS, RibKind::InlineAsmSym, |this| {
+            this.with_rib(TypeNS, RibKind::InlineAsmSym, |this| {
+                this.with_label_rib(RibKind::InlineAsmSym, |this| {
+                    this.smart_resolve_path(sym.id, &sym.qself, &sym.path, PathSource::Expr(None));
                     visit::walk_inline_asm_sym(this, sym);
                 });
             })
         });
     }
+
+    fn visit_variant(&mut self, v: &'ast Variant) {
+        self.resolve_doc_links(&v.attrs, MaybeExported::Ok(v.id));
+        visit::walk_variant(self, v)
+    }
+
+    fn visit_variant_discr(&mut self, discr: &'ast AnonConst) {
+        self.resolve_anon_const(discr, AnonConstKind::EnumDiscriminant);
+    }
+
+    fn visit_field_def(&mut self, f: &'ast FieldDef) {
+        self.resolve_doc_links(&f.attrs, MaybeExported::Ok(f.id));
+        visit::walk_field_def(self, f)
+    }
 }
 
-impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
-    fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b, 'ast> {
+impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
         let parent_scope = ParentScope::module(graph_root, resolver);
-        let start_rib_kind = ModuleRibKind(graph_root);
+        let start_rib_kind = RibKind::Module(graph_root);
         LateResolutionVisitor {
             r: resolver,
             parent_scope,
@@ -1154,10 +1251,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 type_ns: vec![Rib::new(start_rib_kind)],
                 macro_ns: vec![Rib::new(start_rib_kind)],
             },
+            last_block_rib: None,
             label_ribs: Vec::new(),
             lifetime_ribs: Vec::new(),
+            lifetime_elision_candidates: None,
             current_trait_ref: None,
-            diagnostic_metadata: DiagnosticMetadata::default(),
+            diagnostic_metadata: Default::default(),
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
@@ -1247,8 +1346,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         if let Some(module) = self.r.get_module(self.r.local_def_id(id).to_def_id()) {
             // Move down in the graph.
             let orig_module = replace(&mut self.parent_scope.module, module);
-            self.with_rib(ValueNS, ModuleRibKind(module), |this| {
-                this.with_rib(TypeNS, ModuleRibKind(module), |this| {
+            self.with_rib(ValueNS, RibKind::Module(module), |this| {
+                this.with_rib(TypeNS, RibKind::Module(module), |this| {
                     let ret = f(this);
                     this.parent_scope.module = orig_module;
                     ret
@@ -1265,8 +1364,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // provide previous type parameters as they're built. We
         // put all the parameters on the ban list and then remove
         // them one by one as they are processed and become available.
-        let mut forward_ty_ban_rib = Rib::new(ForwardGenericParamBanRibKind);
-        let mut forward_const_ban_rib = Rib::new(ForwardGenericParamBanRibKind);
+        let mut forward_ty_ban_rib = Rib::new(RibKind::ForwardGenericParamBan);
+        let mut forward_const_ban_rib = Rib::new(RibKind::ForwardGenericParamBan);
         for param in params.iter() {
             match param.kind {
                 GenericParamKind::Type { .. } => {
@@ -1327,9 +1426,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         // Const parameters can't have param bounds.
                         assert!(param.bounds.is_empty());
 
-                        this.ribs[TypeNS].push(Rib::new(ConstParamTyRibKind));
-                        this.ribs[ValueNS].push(Rib::new(ConstParamTyRibKind));
-                        this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
+                        this.ribs[TypeNS].push(Rib::new(RibKind::ConstParamTy));
+                        this.ribs[ValueNS].push(Rib::new(RibKind::ConstParamTy));
+                        this.with_lifetime_rib(LifetimeRibKind::ConstParamTy, |this| {
                             this.visit_ty(ty)
                         });
                         this.ribs[TypeNS].pop().unwrap();
@@ -1338,9 +1437,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         if let Some(ref expr) = default {
                             this.ribs[TypeNS].push(forward_ty_ban_rib);
                             this.ribs[ValueNS].push(forward_const_ban_rib);
-                            this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
-                                this.resolve_anon_const(expr, IsRepeatExpr::No)
-                            });
+                            this.resolve_anon_const(
+                                expr,
+                                AnonConstKind::ConstArg(IsRepeatExpr::No),
+                            );
                             forward_const_ban_rib = this.ribs[ValueNS].pop().unwrap();
                             forward_ty_ban_rib = this.ribs[TypeNS].pop().unwrap();
                         }
@@ -1355,24 +1455,30 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         })
     }
 
-    #[tracing::instrument(level = "debug", skip(self, work))]
+    #[instrument(level = "debug", skip(self, work))]
     fn with_lifetime_rib<T>(
         &mut self,
         kind: LifetimeRibKind,
         work: impl FnOnce(&mut Self) -> T,
     ) -> T {
         self.lifetime_ribs.push(LifetimeRib::new(kind));
+        let outer_elision_candidates = self.lifetime_elision_candidates.take();
         let ret = work(self);
+        self.lifetime_elision_candidates = outer_elision_candidates;
         self.lifetime_ribs.pop();
         ret
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         let ident = lifetime.ident;
 
         if ident.name == kw::StaticLifetime {
-            self.record_lifetime_res(lifetime.id, LifetimeRes::Static);
+            self.record_lifetime_res(
+                lifetime.id,
+                LifetimeRes::Static,
+                LifetimeElisionCandidate::Named,
+            );
             return;
         }
 
@@ -1380,14 +1486,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             return self.resolve_anonymous_lifetime(lifetime, false);
         }
 
-        let mut indices = (0..self.lifetime_ribs.len()).rev();
-        for i in &mut indices {
-            let rib = &self.lifetime_ribs[i];
+        let mut lifetime_rib_iter = self.lifetime_ribs.iter().rev();
+        while let Some(rib) = lifetime_rib_iter.next() {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
-                self.record_lifetime_res(lifetime.id, res);
+                self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
 
-                if let LifetimeRes::Param { param, .. } = res {
+                if let LifetimeRes::Param { param, binder } = res {
                     match self.lifetime_uses.entry(param) {
                         Entry::Vacant(v) => {
                             debug!("First use of {:?} at {:?}", res, ident.span);
@@ -1399,18 +1504,30 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     // Do not suggest eliding a lifetime where an anonymous
                                     // lifetime would be illegal.
                                     LifetimeRibKind::Item
-                                    | LifetimeRibKind::AnonymousPassThrough(_, true)
-                                    | LifetimeRibKind::AnonymousReportError => {
-                                        Some(LifetimeUseSet::Many)
-                                    }
-                                    // An anonymous lifetime is legal here, go ahead.
-                                    LifetimeRibKind::AnonymousPassThrough(_, false)
-                                    | LifetimeRibKind::AnonymousCreateParameter { .. } => {
-                                        Some(LifetimeUseSet::One { use_span: ident.span, use_ctxt })
-                                    }
+                                    | LifetimeRibKind::AnonymousReportError
+                                    | LifetimeRibKind::ElisionFailure => Some(LifetimeUseSet::Many),
+                                    // An anonymous lifetime is legal here, and bound to the right
+                                    // place, go ahead.
+                                    LifetimeRibKind::AnonymousCreateParameter {
+                                        binder: anon_binder,
+                                        ..
+                                    } => Some(if binder == anon_binder {
+                                        LifetimeUseSet::One { use_span: ident.span, use_ctxt }
+                                    } else {
+                                        LifetimeUseSet::Many
+                                    }),
+                                    // Only report if eliding the lifetime would have the same
+                                    // semantics.
+                                    LifetimeRibKind::Elided(r) => Some(if res == r {
+                                        LifetimeUseSet::One { use_span: ident.span, use_ctxt }
+                                    } else {
+                                        LifetimeUseSet::Many
+                                    }),
                                     LifetimeRibKind::Generics { .. }
-                                    | LifetimeRibKind::ConstGeneric
-                                    | LifetimeRibKind::AnonConst => None,
+                                    | LifetimeRibKind::ConstParamTy => None,
+                                    LifetimeRibKind::ConcreteAnonConst(_) => {
+                                        span_bug!(ident.span, "unexpected rib kind: {:?}", rib.kind)
+                                    }
                                 })
                                 .unwrap_or(LifetimeUseSet::Many);
                             debug!(?use_ctxt, ?use_set);
@@ -1427,23 +1544,34 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             match rib.kind {
                 LifetimeRibKind::Item => break,
-                LifetimeRibKind::ConstGeneric => {
-                    self.emit_non_static_lt_in_const_generic_error(lifetime);
-                    self.r.lifetimes_res_map.insert(lifetime.id, LifetimeRes::Error);
+                LifetimeRibKind::ConstParamTy => {
+                    self.emit_non_static_lt_in_const_param_ty_error(lifetime);
+                    self.record_lifetime_res(
+                        lifetime.id,
+                        LifetimeRes::Error,
+                        LifetimeElisionCandidate::Ignore,
+                    );
                     return;
                 }
-                LifetimeRibKind::AnonConst => {
-                    self.maybe_emit_forbidden_non_static_lifetime_error(lifetime);
-                    self.r.lifetimes_res_map.insert(lifetime.id, LifetimeRes::Error);
+                LifetimeRibKind::ConcreteAnonConst(cause) => {
+                    self.emit_forbidden_non_static_lifetime_error(cause, lifetime);
+                    self.record_lifetime_res(
+                        lifetime.id,
+                        LifetimeRes::Error,
+                        LifetimeElisionCandidate::Ignore,
+                    );
                     return;
                 }
-                _ => {}
+                LifetimeRibKind::AnonymousCreateParameter { .. }
+                | LifetimeRibKind::Elided(_)
+                | LifetimeRibKind::Generics { .. }
+                | LifetimeRibKind::ElisionFailure
+                | LifetimeRibKind::AnonymousReportError => {}
             }
         }
 
         let mut outer_res = None;
-        for i in indices {
-            let rib = &self.lifetime_ribs[i];
+        for rib in lifetime_rib_iter {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some((&outer, _)) = rib.bindings.get_key_value(&normalized_ident) {
                 outer_res = Some(outer);
@@ -1452,19 +1580,30 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         self.emit_undeclared_lifetime_error(lifetime, outer_res);
-        self.record_lifetime_res(lifetime.id, LifetimeRes::Error);
+        self.record_lifetime_res(lifetime.id, LifetimeRes::Error, LifetimeElisionCandidate::Named);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_anonymous_lifetime(&mut self, lifetime: &Lifetime, elided: bool) {
         debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
 
-        for i in (0..self.lifetime_ribs.len()).rev() {
-            let rib = &mut self.lifetime_ribs[i];
+        let missing_lifetime = MissingLifetime {
+            id: lifetime.id,
+            span: lifetime.ident.span,
+            kind: if elided {
+                MissingLifetimeKind::Ampersand
+            } else {
+                MissingLifetimeKind::Underscore
+            },
+            count: 1,
+        };
+        let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
+        for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
+            debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
                     let res = self.create_fresh_lifetime(lifetime.id, lifetime.ident, binder);
-                    self.record_lifetime_res(lifetime.id, res);
+                    self.record_lifetime_res(lifetime.id, res, elision_candidate);
                     return;
                 }
                 LifetimeRibKind::AnonymousReportError => {
@@ -1476,53 +1615,69 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     } else {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
-                    rustc_errors::struct_span_err!(
-                        self.r.session,
+                    let mut diag = rustc_errors::struct_span_err!(
+                        self.r.tcx.sess,
                         lifetime.ident.span,
                         E0637,
                         "{}",
                         msg,
-                    )
-                    .span_label(lifetime.ident.span, note)
-                    .emit();
-
-                    self.record_lifetime_res(lifetime.id, LifetimeRes::Error);
+                    );
+                    diag.span_label(lifetime.ident.span, note);
+                    if elided {
+                        for rib in self.lifetime_ribs[i..].iter().rev() {
+                            if let LifetimeRibKind::Generics {
+                                span,
+                                kind: LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
+                                ..
+                            } = &rib.kind
+                            {
+                                diag.span_help(
+                                    *span,
+                                    "consider introducing a higher-ranked lifetime here with `for<'a>`",
+                                );
+                                break;
+                            }
+                        }
+                    }
+                    diag.emit();
+                    self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
                     return;
                 }
-                LifetimeRibKind::AnonymousPassThrough(node_id, _) => {
-                    self.record_lifetime_res(
-                        lifetime.id,
-                        LifetimeRes::Anonymous { binder: node_id, elided },
-                    );
+                LifetimeRibKind::Elided(res) => {
+                    self.record_lifetime_res(lifetime.id, res, elision_candidate);
+                    return;
+                }
+                LifetimeRibKind::ElisionFailure => {
+                    self.diagnostic_metadata.current_elision_failures.push(missing_lifetime);
+                    self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
                     return;
                 }
                 LifetimeRibKind::Item => break,
-                LifetimeRibKind::Generics { .. }
-                | LifetimeRibKind::ConstGeneric
-                | LifetimeRibKind::AnonConst => {}
+                LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstParamTy => {}
+                LifetimeRibKind::ConcreteAnonConst(_) => {
+                    // There is always an `Elided(LifetimeRes::Infer)` inside an `AnonConst`.
+                    span_bug!(lifetime.ident.span, "unexpected rib kind: {:?}", rib.kind)
+                }
             }
         }
-        // This resolution is wrong, it passes the work to HIR lifetime resolution.
-        // We cannot use `LifetimeRes::Error` because we do not emit a diagnostic.
-        self.record_lifetime_res(
-            lifetime.id,
-            LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided },
-        );
+        self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
+        self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetime(&mut self, anchor_id: NodeId, span: Span) {
         let id = self.r.next_node_id();
+        let lt = Lifetime { id, ident: Ident::new(kw::UnderscoreLifetime, span) };
+
         self.record_lifetime_res(
             anchor_id,
             LifetimeRes::ElidedAnchor { start: id, end: NodeId::from_u32(id.as_u32() + 1) },
+            LifetimeElisionCandidate::Ignore,
         );
-
-        let lt = Lifetime { id, ident: Ident::new(kw::UnderscoreLifetime, span) };
         self.resolve_anonymous_lifetime(&lt, true);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn create_fresh_lifetime(&mut self, id: NodeId, ident: Ident, binder: NodeId) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
@@ -1540,7 +1695,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         res
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetimes_in_path(
         &mut self,
         path_id: NodeId,
@@ -1561,8 +1716,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // Figure out if this is a type/trait segment,
             // which may need lifetime elision performed.
             let type_def_id = match partial_res.base_res() {
-                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => self.r.parent(def_id),
-                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => self.r.parent(def_id),
+                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
+                    self.r.tcx.parent(def_id)
+                }
+                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
+                    self.r.tcx.parent(def_id)
+                }
                 Res::Def(DefKind::Struct, def_id)
                 | Res::Def(DefKind::Union, def_id)
                 | Res::Def(DefKind::Enum, def_id)
@@ -1580,13 +1739,32 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 continue;
             }
 
-            let missing = match source {
-                PathSource::Trait(..) | PathSource::TraitItem(..) | PathSource::Type => true,
+            let node_ids = self.r.next_node_ids(expected_lifetimes);
+            self.record_lifetime_res(
+                segment_id,
+                LifetimeRes::ElidedAnchor { start: node_ids.start, end: node_ids.end },
+                LifetimeElisionCandidate::Ignore,
+            );
+
+            let inferred = match source {
+                PathSource::Trait(..) | PathSource::TraitItem(..) | PathSource::Type => false,
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct
-                | PathSource::TupleStruct(..) => false,
+                | PathSource::TupleStruct(..) => true,
             };
+            if inferred {
+                // Do not create a parameter for patterns and expressions: type checking can infer
+                // the appropriate lifetime for us.
+                for id in node_ids {
+                    self.record_lifetime_res(
+                        id,
+                        LifetimeRes::Infer,
+                        LifetimeElisionCandidate::Named,
+                    );
+                }
+                continue;
+            }
 
             let elided_lifetime_span = if segment.has_generic_args {
                 // If there are brackets, but not generic arguments, then use the opening bracket
@@ -1599,47 +1777,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
             let ident = Ident::new(kw::UnderscoreLifetime, elided_lifetime_span);
 
-            let node_ids = self.r.next_node_ids(expected_lifetimes);
-            self.record_lifetime_res(
-                segment_id,
-                LifetimeRes::ElidedAnchor { start: node_ids.start, end: node_ids.end },
-            );
-
-            if !missing {
-                // Do not create a parameter for patterns and expressions.
-                for rib in self.lifetime_ribs.iter().rev() {
-                    match rib.kind {
-                        LifetimeRibKind::AnonymousPassThrough(binder, _) => {
-                            let res = LifetimeRes::Anonymous { binder, elided: true };
-                            for id in node_ids {
-                                self.record_lifetime_res(id, res);
-                            }
-                            break;
-                        }
-                        // `LifetimeRes::Error`, which would usually be used in the case of
-                        // `ReportError`, is unsuitable here, as we don't emit an error yet.  Instead,
-                        // we simply resolve to an implicit lifetime, which will be checked later, at
-                        // which point a suitable error will be emitted.
-                        LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
-                            // FIXME(cjgillot) This resolution is wrong, but this does not matter
-                            // since these cases are erroneous anyway.  Lifetime resolution should
-                            // emit a "missing lifetime specifier" diagnostic.
-                            let res =
-                                LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
-                            for id in node_ids {
-                                self.record_lifetime_res(id, res);
-                            }
-                            break;
-                        }
-                        LifetimeRibKind::AnonymousCreateParameter { .. }
-                        | LifetimeRibKind::Generics { .. }
-                        | LifetimeRibKind::ConstGeneric
-                        | LifetimeRibKind::AnonConst => {}
-                    }
-                }
-                continue;
-            }
-
+            let missing_lifetime = MissingLifetime {
+                id: node_ids.start,
+                span: elided_lifetime_span,
+                kind: if segment.has_generic_args {
+                    MissingLifetimeKind::Comma
+                } else {
+                    MissingLifetimeKind::Brackets
+                },
+                count: expected_lifetimes,
+            };
             let mut should_lint = true;
             for rib in self.lifetime_ribs.iter().rev() {
                 match rib.kind {
@@ -1650,7 +1797,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     //     impl Foo for std::cell::Ref<u32> // note lack of '_
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. } => {
-                        let sess = self.r.session;
+                        let sess = self.r.tcx.sess;
                         let mut err = rustc_errors::struct_span_err!(
                             sess,
                             path_span,
@@ -1665,48 +1812,74 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             !segment.has_generic_args,
                             elided_lifetime_span,
                         );
-                        err.note("assuming a `'static` lifetime...");
                         err.emit();
                         should_lint = false;
 
                         for id in node_ids {
-                            self.record_lifetime_res(id, LifetimeRes::Error);
+                            self.record_lifetime_res(
+                                id,
+                                LifetimeRes::Error,
+                                LifetimeElisionCandidate::Named,
+                            );
                         }
                         break;
                     }
                     // Do not create a parameter for patterns and expressions.
                     LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
+                        // Group all suggestions into the first record.
+                        let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
                             let res = self.create_fresh_lifetime(id, ident, binder);
-                            self.record_lifetime_res(id, res);
+                            self.record_lifetime_res(
+                                id,
+                                res,
+                                replace(&mut candidate, LifetimeElisionCandidate::Named),
+                            );
                         }
                         break;
                     }
-                    // `PassThrough` is the normal case.
-                    LifetimeRibKind::AnonymousPassThrough(binder, _) => {
-                        let res = LifetimeRes::Anonymous { binder, elided: true };
+                    LifetimeRibKind::Elided(res) => {
+                        let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
-                            self.record_lifetime_res(id, res);
+                            self.record_lifetime_res(
+                                id,
+                                res,
+                                replace(&mut candidate, LifetimeElisionCandidate::Ignore),
+                            );
+                        }
+                        break;
+                    }
+                    LifetimeRibKind::ElisionFailure => {
+                        self.diagnostic_metadata.current_elision_failures.push(missing_lifetime);
+                        for id in node_ids {
+                            self.record_lifetime_res(
+                                id,
+                                LifetimeRes::Error,
+                                LifetimeElisionCandidate::Ignore,
+                            );
                         }
                         break;
                     }
                     // `LifetimeRes::Error`, which would usually be used in the case of
-                    // `ReportError`, is unsuitable here, as we don't emit an error yet.  Instead,
+                    // `ReportError`, is unsuitable here, as we don't emit an error yet. Instead,
                     // we simply resolve to an implicit lifetime, which will be checked later, at
                     // which point a suitable error will be emitted.
                     LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
-                        // FIXME(cjgillot) This resolution is wrong, but this does not matter
-                        // since these cases are erroneous anyway.  Lifetime resolution should
-                        // emit a "missing lifetime specifier" diagnostic.
-                        let res = LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
                         for id in node_ids {
-                            self.record_lifetime_res(id, res);
+                            self.record_lifetime_res(
+                                id,
+                                LifetimeRes::Error,
+                                LifetimeElisionCandidate::Ignore,
+                            );
                         }
+                        self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
                         break;
                     }
-                    LifetimeRibKind::Generics { .. }
-                    | LifetimeRibKind::ConstGeneric
-                    | LifetimeRibKind::AnonConst => {}
+                    LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstParamTy => {}
+                    LifetimeRibKind::ConcreteAnonConst(_) => {
+                        // There is always an `Elided(LifetimeRes::Infer)` inside an `AnonConst`.
+                        span_bug!(elided_lifetime_span, "unexpected rib kind: {:?}", rib.kind)
+                    }
                 }
             }
 
@@ -1727,14 +1900,256 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
-    fn record_lifetime_res(&mut self, id: NodeId, res: LifetimeRes) {
+    #[instrument(level = "debug", skip(self))]
+    fn record_lifetime_res(
+        &mut self,
+        id: NodeId,
+        res: LifetimeRes,
+        candidate: LifetimeElisionCandidate,
+    ) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!(
                 "lifetime {:?} resolved multiple times ({:?} before, {:?} now)",
                 id, prev_res, res
             )
         }
+        match res {
+            LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
+                if let Some(ref mut candidates) = self.lifetime_elision_candidates {
+                    candidates.push((res, candidate));
+                }
+            }
+            LifetimeRes::Infer | LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
+        if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
+            panic!(
+                "lifetime parameter {:?} resolved multiple times ({:?} before, {:?} now)",
+                id, prev_res, res
+            )
+        }
+    }
+
+    /// Perform resolution of a function signature, accounting for lifetime elision.
+    #[instrument(level = "debug", skip(self, inputs))]
+    fn resolve_fn_signature(
+        &mut self,
+        fn_id: NodeId,
+        has_self: bool,
+        inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)> + Clone,
+        output_ty: &'ast FnRetTy,
+    ) {
+        // Add each argument to the rib.
+        let elision_lifetime = self.resolve_fn_params(has_self, inputs);
+        debug!(?elision_lifetime);
+
+        let outer_failures = take(&mut self.diagnostic_metadata.current_elision_failures);
+        let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
+            self.r.lifetime_elision_allowed.insert(fn_id);
+            LifetimeRibKind::Elided(*res)
+        } else {
+            LifetimeRibKind::ElisionFailure
+        };
+        self.with_lifetime_rib(output_rib, |this| visit::walk_fn_ret_ty(this, &output_ty));
+        let elision_failures =
+            replace(&mut self.diagnostic_metadata.current_elision_failures, outer_failures);
+        if !elision_failures.is_empty() {
+            let Err(failure_info) = elision_lifetime else { bug!() };
+            self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
+        }
+    }
+
+    /// Resolve inside function parameters and parameter types.
+    /// Returns the lifetime for elision in fn return type,
+    /// or diagnostic information in case of elision failure.
+    fn resolve_fn_params(
+        &mut self,
+        has_self: bool,
+        inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)>,
+    ) -> Result<LifetimeRes, (Vec<MissingLifetime>, Vec<ElisionFnParameter>)> {
+        enum Elision {
+            /// We have not found any candidate.
+            None,
+            /// We have a candidate bound to `self`.
+            Self_(LifetimeRes),
+            /// We have a candidate bound to a parameter.
+            Param(LifetimeRes),
+            /// We failed elision.
+            Err,
+        }
+
+        // Save elision state to reinstate it later.
+        let outer_candidates = self.lifetime_elision_candidates.take();
+
+        // Result of elision.
+        let mut elision_lifetime = Elision::None;
+        // Information for diagnostics.
+        let mut parameter_info = Vec::new();
+        let mut all_candidates = Vec::new();
+
+        let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+        for (index, (pat, ty)) in inputs.enumerate() {
+            debug!(?pat, ?ty);
+            self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                if let Some(pat) = pat {
+                    this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+                }
+            });
+
+            // Record elision candidates only for this parameter.
+            debug_assert_matches!(self.lifetime_elision_candidates, None);
+            self.lifetime_elision_candidates = Some(Default::default());
+            self.visit_ty(ty);
+            let local_candidates = self.lifetime_elision_candidates.take();
+
+            if let Some(candidates) = local_candidates {
+                let distinct: FxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
+                let lifetime_count = distinct.len();
+                if lifetime_count != 0 {
+                    parameter_info.push(ElisionFnParameter {
+                        index,
+                        ident: if let Some(pat) = pat && let PatKind::Ident(_, ident, _) = pat.kind {
+                            Some(ident)
+                        } else {
+                            None
+                        },
+                        lifetime_count,
+                        span: ty.span,
+                    });
+                    all_candidates.extend(candidates.into_iter().filter_map(|(_, candidate)| {
+                        match candidate {
+                            LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {
+                                None
+                            }
+                            LifetimeElisionCandidate::Missing(missing) => Some(missing),
+                        }
+                    }));
+                }
+                let mut distinct_iter = distinct.into_iter();
+                if let Some(res) = distinct_iter.next() {
+                    match elision_lifetime {
+                        // We are the first parameter to bind lifetimes.
+                        Elision::None => {
+                            if distinct_iter.next().is_none() {
+                                // We have a single lifetime => success.
+                                elision_lifetime = Elision::Param(res)
+                            } else {
+                                // We have multiple lifetimes => error.
+                                elision_lifetime = Elision::Err;
+                            }
+                        }
+                        // We have 2 parameters that bind lifetimes => error.
+                        Elision::Param(_) => elision_lifetime = Elision::Err,
+                        // `self` elision takes precedence over everything else.
+                        Elision::Self_(_) | Elision::Err => {}
+                    }
+                }
+            }
+
+            // Handle `self` specially.
+            if index == 0 && has_self {
+                let self_lifetime = self.find_lifetime_for_self(ty);
+                if let Set1::One(lifetime) = self_lifetime {
+                    // We found `self` elision.
+                    elision_lifetime = Elision::Self_(lifetime);
+                } else {
+                    // We do not have `self` elision: disregard the `Elision::Param` that we may
+                    // have found.
+                    elision_lifetime = Elision::None;
+                }
+            }
+            debug!("(resolving function / closure) recorded parameter");
+        }
+
+        // Reinstate elision state.
+        debug_assert_matches!(self.lifetime_elision_candidates, None);
+        self.lifetime_elision_candidates = outer_candidates;
+
+        if let Elision::Param(res) | Elision::Self_(res) = elision_lifetime {
+            return Ok(res);
+        }
+
+        // We do not have a candidate.
+        Err((all_candidates, parameter_info))
+    }
+
+    /// List all the lifetimes that appear in the provided type.
+    fn find_lifetime_for_self(&self, ty: &'ast Ty) -> Set1<LifetimeRes> {
+        struct SelfVisitor<'r, 'a, 'tcx> {
+            r: &'r Resolver<'a, 'tcx>,
+            impl_self: Option<Res>,
+            lifetime: Set1<LifetimeRes>,
+        }
+
+        impl SelfVisitor<'_, '_, '_> {
+            // Look for `self: &'a Self` - also desugared from `&'a self`,
+            // and if that matches, use it for elision and return early.
+            fn is_self_ty(&self, ty: &Ty) -> bool {
+                match ty.kind {
+                    TyKind::ImplicitSelf => true,
+                    TyKind::Path(None, _) => {
+                        let path_res = self.r.partial_res_map[&ty.id].full_res();
+                        if let Some(Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }) = path_res {
+                            return true;
+                        }
+                        self.impl_self.is_some() && path_res == self.impl_self
+                    }
+                    _ => false,
+                }
+            }
+        }
+
+        impl<'a> Visitor<'a> for SelfVisitor<'_, '_, '_> {
+            fn visit_ty(&mut self, ty: &'a Ty) {
+                trace!("SelfVisitor considering ty={:?}", ty);
+                if let TyKind::Ref(lt, ref mt) = ty.kind && self.is_self_ty(&mt.ty) {
+                    let lt_id = if let Some(lt) = lt {
+                        lt.id
+                    } else {
+                        let res = self.r.lifetimes_res_map[&ty.id];
+                        let LifetimeRes::ElidedAnchor { start, .. } = res else { bug!() };
+                        start
+                    };
+                    let lt_res = self.r.lifetimes_res_map[&lt_id];
+                    trace!("SelfVisitor inserting res={:?}", lt_res);
+                    self.lifetime.insert(lt_res);
+                }
+                visit::walk_ty(self, ty)
+            }
+
+            // A type may have an expression as a const generic argument.
+            // We do not want to recurse into those.
+            fn visit_expr(&mut self, _: &'a Expr) {}
+        }
+
+        let impl_self = self
+            .diagnostic_metadata
+            .current_self_type
+            .as_ref()
+            .and_then(|ty| {
+                if let TyKind::Path(None, _) = ty.kind {
+                    self.r.partial_res_map.get(&ty.id)
+                } else {
+                    None
+                }
+            })
+            .and_then(|res| res.full_res())
+            .filter(|res| {
+                // Permit the types that unambiguously always
+                // result in the same type constructor being used
+                // (it can't differ between `Self` and `self`).
+                matches!(
+                    res,
+                    Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, _,) | Res::PrimTy(_)
+                )
+            });
+        let mut visitor = SelfVisitor { r: self.r, impl_self, lifetime: Set1::Empty };
+        visitor.visit_ty(ty);
+        trace!("SelfVisitor found={:?}", visitor.lifetime);
+        visitor.lifetime
     }
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
@@ -1745,7 +2160,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         for i in (0..self.label_ribs.len()).rev() {
             let rib = &self.label_ribs[i];
 
-            if let MacroDefinition(def) = rib.kind {
+            if let RibKind::MacroDefinition(def) = rib.kind {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
                 if def == self.r.macro_def(label.span.ctxt()) {
@@ -1793,7 +2208,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(
                 &generics.params,
-                ItemRibKind(HasGenericParams::Yes),
+                RibKind::Item(HasGenericParams::Yes(generics.span)),
                 LifetimeRibKind::Generics {
                     binder: item.id,
                     kind: LifetimeBinderKind::Item,
@@ -1802,7 +2217,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 |this| {
                     let item_def_id = this.r.local_def_id(item.id).to_def_id();
                     this.with_self_rib(
-                        Res::SelfTy { trait_: None, alias_to: Some((item_def_id, false)) },
+                        Res::SelfTyAlias {
+                            alias_to: item_def_id,
+                            forbid_generic: false,
+                            is_trait_impl: false,
+                        },
                         |this| {
                             visit::walk_item(this, item);
                         },
@@ -1816,7 +2235,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let segments = &use_tree.prefix.segments;
         if !segments.is_empty() {
             let ident = segments[0].ident;
-            if ident.is_path_segment_keyword() || ident.span.rust_2015() {
+            if ident.is_path_segment_keyword() || ident.span.is_rust_2015() {
                 return;
             }
 
@@ -1828,8 +2247,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let what = if ns == TypeNS { "type parameters" } else { "local variables" };
                 if this.should_report_errs() {
                     this.r
-                        .session
-                        .span_err(ident.span, &format!("imports cannot refer to {}", what));
+                        .tcx
+                        .sess
+                        .span_err(ident.span, format!("imports cannot refer to {}", what));
                 }
             };
 
@@ -1856,6 +2276,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn resolve_item(&mut self, item: &'ast Item) {
+        let mod_inner_docs =
+            matches!(item.kind, ItemKind::Mod(..)) && rustdoc::inner_docs(&item.attrs);
+        if !mod_inner_docs && !matches!(item.kind, ItemKind::Impl(..)) {
+            self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+        }
+
         let name = item.ident.name;
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
@@ -1863,7 +2289,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    RibKind::Item(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -1876,7 +2302,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::Fn(box Fn { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    RibKind::Item(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Function,
@@ -1900,7 +2326,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 ..
             }) => {
                 self.diagnostic_metadata.current_impl_items = Some(impl_items);
-                self.resolve_implementation(generics, of_trait, &self_ty, item.id, impl_items);
+                self.resolve_implementation(
+                    &item.attrs,
+                    generics,
+                    of_trait,
+                    &self_ty,
+                    item.id,
+                    impl_items,
+                );
                 self.diagnostic_metadata.current_impl_items = None;
             }
 
@@ -1908,7 +2341,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    RibKind::Item(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -1916,14 +2349,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     },
                     |this| {
                         let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                        this.with_self_rib(
-                            Res::SelfTy { trait_: Some(local_def_id), alias_to: None },
-                            |this| {
-                                this.visit_generics(generics);
-                                walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits);
-                                this.resolve_trait_items(items);
-                            },
-                        );
+                        this.with_self_rib(Res::SelfTyParam { trait_: local_def_id }, |this| {
+                            this.visit_generics(generics);
+                            walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits);
+                            this.resolve_trait_items(items);
+                        });
                     },
                 );
             }
@@ -1932,7 +2362,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    RibKind::Item(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -1940,41 +2370,54 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     },
                     |this| {
                         let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                        this.with_self_rib(
-                            Res::SelfTy { trait_: Some(local_def_id), alias_to: None },
-                            |this| {
-                                this.visit_generics(generics);
-                                walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
-                            },
-                        );
+                        this.with_self_rib(Res::SelfTyParam { trait_: local_def_id }, |this| {
+                            this.visit_generics(generics);
+                            walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
+                        });
                     },
                 );
             }
 
-            ItemKind::Mod(..) | ItemKind::ForeignMod(_) => {
+            ItemKind::Mod(..) => {
                 self.with_scope(item.id, |this| {
+                    if mod_inner_docs {
+                        this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+                    }
+                    let old_macro_rules = this.parent_scope.macro_rules;
                     visit::walk_item(this, item);
+                    // Maintain macro_rules scopes in the same way as during early resolution
+                    // for diagnostics and doc links.
+                    if item.attrs.iter().all(|attr| {
+                        !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape)
+                    }) {
+                        this.parent_scope.macro_rules = old_macro_rules;
+                    }
                 });
             }
 
-            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
-                self.with_item_rib(|this| {
-                    this.visit_ty(ty);
-                    if let Some(expr) = expr {
-                        let constant_item_kind = match item.kind {
-                            ItemKind::Const(..) => ConstantItemKind::Const,
-                            ItemKind::Static(..) => ConstantItemKind::Static,
-                            _ => unreachable!(),
-                        };
-                        // We already forbid generic params because of the above item rib,
-                        // so it doesn't matter whether this is a trivial constant.
-                        this.with_constant_rib(
-                            IsRepeatExpr::No,
-                            HasGenericParams::Yes,
-                            Some((item.ident, constant_item_kind)),
-                            |this| this.visit_expr(expr),
-                        );
-                    }
+            ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. })
+            | ItemKind::Const(box ast::ConstItem { ref ty, ref expr, .. }) => {
+                self.with_static_rib(|this| {
+                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
+                        this.visit_ty(ty);
+                    });
+                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                        if let Some(expr) = expr {
+                            let constant_item_kind = match item.kind {
+                                ItemKind::Const(..) => ConstantItemKind::Const,
+                                ItemKind::Static(..) => ConstantItemKind::Static,
+                                _ => unreachable!(),
+                            };
+                            // We already forbid generic params because of the above item rib,
+                            // so it doesn't matter whether this is a trivial constant.
+                            this.with_constant_rib(
+                                IsRepeatExpr::No,
+                                ConstantHasGenerics::Yes,
+                                Some((item.ident, constant_item_kind)),
+                                |this| this.visit_expr(expr),
+                            );
+                        }
+                    });
                 });
             }
 
@@ -1982,13 +2425,20 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.future_proof_import(use_tree);
             }
 
-            ItemKind::ExternCrate(..) | ItemKind::MacroDef(..) => {
-                // do nothing, these are just around to be encoded
+            ItemKind::MacroDef(ref macro_def) => {
+                // Maintain macro_rules scopes in the same way as during early resolution
+                // for diagnostics and doc links.
+                if macro_def.macro_rules {
+                    let def_id = self.r.local_def_id(item.id);
+                    self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
+                }
             }
 
-            ItemKind::GlobalAsm(_) => {
+            ItemKind::ForeignMod(_) | ItemKind::GlobalAsm(_) => {
                 visit::walk_item(self, item);
             }
+
+            ItemKind::ExternCrate(..) => {}
 
             ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),
         }
@@ -2015,14 +2465,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut seen_lifetimes = FxHashSet::default();
 
         // We also can't shadow bindings from the parent item
-        if let AssocItemRibKind = kind {
+        if let RibKind::AssocItem = kind {
             let mut add_bindings_for_ns = |ns| {
                 let parent_rib = self.ribs[ns]
                     .iter()
-                    .rfind(|r| matches!(r.kind, ItemRibKind(_)))
+                    .rfind(|r| matches!(r.kind, RibKind::Item(_)))
                     .expect("associated item outside of an item");
-                seen_bindings
-                    .extend(parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)));
+                seen_bindings.extend(parent_rib.bindings.keys().map(|ident| (*ident, ident.span)));
             };
             add_bindings_for_ns(ValueNS);
             add_bindings_for_ns(TypeNS);
@@ -2043,9 +2492,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let GenericParamKind::Lifetime = param.kind
                 && let Some(&original) = seen_lifetimes.get(&ident)
             {
-                diagnostics::signal_lifetime_shadowing(self.r.session, original, param.ident);
+                diagnostics::signal_lifetime_shadowing(self.r.tcx.sess, original, param.ident);
                 // Record lifetime res, so lowering knows there is something fishy.
-                self.record_lifetime_res(param.id, LifetimeRes::Error);
+                self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;
             }
 
@@ -2056,9 +2505,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.report_error(param.ident.span, err);
                     if let GenericParamKind::Lifetime = param.kind {
                         // Record lifetime res, so lowering knows there is something fishy.
-                        self.record_lifetime_res(param.id, LifetimeRes::Error);
-                        continue;
+                        self.record_lifetime_param(param.id, LifetimeRes::Error);
                     }
+                    continue;
                 }
                 Entry::Vacant(entry) => {
                     entry.insert(param.ident.span);
@@ -2067,7 +2516,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             if param.ident.name == kw::UnderscoreLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.session,
+                    self.r.tcx.sess,
                     param.ident.span,
                     E0637,
                     "`'_` cannot be used here"
@@ -2075,13 +2524,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 .span_label(param.ident.span, "`'_` is a reserved lifetime name")
                 .emit();
                 // Record lifetime res, so lowering knows there is something fishy.
-                self.record_lifetime_res(param.id, LifetimeRes::Error);
+                self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;
             }
 
             if param.ident.name == kw::StaticLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.session,
+                    self.r.tcx.sess,
                     param.ident.span,
                     E0262,
                     "invalid lifetime parameter name: `{}`",
@@ -2090,7 +2539,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 .span_label(param.ident.span, "'static is a reserved lifetime name")
                 .emit();
                 // Record lifetime res, so lowering knows there is something fishy.
-                self.record_lifetime_res(param.id, LifetimeRes::Error);
+                self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;
             }
 
@@ -2102,16 +2551,22 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 GenericParamKind::Const { .. } => (&mut function_value_rib, DefKind::ConstParam),
                 GenericParamKind::Lifetime => {
                     let res = LifetimeRes::Param { param: def_id, binder };
-                    self.record_lifetime_res(param.id, res);
+                    self.record_lifetime_param(param.id, res);
                     function_lifetime_rib.bindings.insert(ident, (param.id, res));
                     continue;
                 }
             };
 
             let res = match kind {
-                ItemRibKind(..) | AssocItemRibKind => Res::Def(def_kind, def_id.to_def_id()),
-                NormalRibKind => Res::Err,
-                _ => bug!("Unexpected rib kind {:?}", kind),
+                RibKind::Item(..) | RibKind::AssocItem => Res::Def(def_kind, def_id.to_def_id()),
+                RibKind::Normal => {
+                    if self.r.tcx.sess.features_untracked().non_lifetime_binders {
+                        Res::Def(def_kind, def_id.to_def_id())
+                    } else {
+                        Res::Err
+                    }
+                }
+                _ => span_bug!(param.ident.span, "Unexpected rib kind {:?}", kind),
             };
             self.r.record_partial_res(param.id, PartialRes::new(res));
             rib.bindings.insert(ident, res);
@@ -2125,7 +2580,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         self.ribs[TypeNS].pop();
         self.ribs[ValueNS].pop();
-        self.lifetime_ribs.pop();
+        let function_lifetime_rib = self.lifetime_ribs.pop().unwrap();
+
+        // Do not account for the parameters we just bound for function lifetime elision.
+        if let Some(ref mut candidates) = self.lifetime_elision_candidates {
+            for (_, res) in function_lifetime_rib.bindings.values() {
+                candidates.retain(|(r, _)| r != res);
+            }
+        }
 
         if let LifetimeBinderKind::BareFnType
         | LifetimeBinderKind::WhereBound
@@ -2142,14 +2604,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.label_ribs.pop();
     }
 
-    fn with_item_rib(&mut self, f: impl FnOnce(&mut Self)) {
-        let kind = ItemRibKind(HasGenericParams::No);
-        self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-            this.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
-        })
+    fn with_static_rib(&mut self, f: impl FnOnce(&mut Self)) {
+        let kind = RibKind::Item(HasGenericParams::No);
+        self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
-    // HACK(min_const_generics,const_evaluatable_unchecked): We
+    // HACK(min_const_generics, generic_const_exprs): We
     // want to keep allowing `[0; std::mem::size_of::<*mut T>()]`
     // with a future compat lint for now. We do this by adding an
     // additional special case for repeat expressions.
@@ -2161,22 +2621,30 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn with_constant_rib(
         &mut self,
         is_repeat: IsRepeatExpr,
-        may_use_generics: HasGenericParams,
+        may_use_generics: ConstantHasGenerics,
         item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
-        self.with_rib(ValueNS, ConstantItemRibKind(may_use_generics, item), |this| {
-            this.with_rib(
-                TypeNS,
-                ConstantItemRibKind(
-                    may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
-                    item,
-                ),
-                |this| {
-                    this.with_label_rib(ConstantItemRibKind(may_use_generics, item), f);
-                },
-            )
-        });
+        let f = |this: &mut Self| {
+            this.with_rib(ValueNS, RibKind::ConstantItem(may_use_generics, item), |this| {
+                this.with_rib(
+                    TypeNS,
+                    RibKind::ConstantItem(
+                        may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
+                        item,
+                    ),
+                    |this| {
+                        this.with_label_rib(RibKind::ConstantItem(may_use_generics, item), f);
+                    },
+                )
+            })
+        };
+
+        if let ConstantHasGenerics::No(cause) = may_use_generics {
+            self.with_lifetime_rib(LifetimeRibKind::ConcreteAnonConst(cause), f)
+        } else {
+            f(self)
+        }
     }
 
     fn with_current_self_type<T>(&mut self, self_type: &Ty, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -2205,38 +2673,45 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             |this: &mut Self, generics: &Generics, kind, item: &'ast AssocItem| {
                 this.with_generic_param_rib(
                     &generics.params,
-                    AssocItemRibKind,
+                    RibKind::AssocItem,
                     LifetimeRibKind::Generics { binder: item.id, span: generics.span, kind },
                     |this| visit::walk_assoc_item(this, item, AssocCtxt::Trait),
                 );
             };
 
         for item in trait_items {
+            self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
             match &item.kind {
-                AssocItemKind::Const(_, ty, default) => {
+                AssocItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
                     self.visit_ty(ty);
                     // Only impose the restrictions of `ConstRibKind` for an
                     // actual constant expression in a provided default.
-                    if let Some(expr) = default {
+                    if let Some(expr) = expr {
                         // We allow arbitrary const expressions inside of associated consts,
                         // even if they are potentially not const evaluatable.
                         //
                         // Type parameters can already be used and as associated consts are
                         // not used as part of the type system, this is far less surprising.
-                        self.with_constant_rib(
-                            IsRepeatExpr::No,
-                            HasGenericParams::Yes,
-                            None,
-                            |this| this.visit_expr(expr),
+                        self.with_lifetime_rib(
+                            LifetimeRibKind::Elided(LifetimeRes::Infer),
+                            |this| {
+                                this.with_constant_rib(
+                                    IsRepeatExpr::No,
+                                    ConstantHasGenerics::Yes,
+                                    None,
+                                    |this| this.visit_expr(expr),
+                                )
+                            },
                         );
                     }
                 }
                 AssocItemKind::Fn(box Fn { generics, .. }) => {
                     walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
                 }
-                AssocItemKind::TyAlias(box TyAlias { generics, .. }) => {
-                    walk_assoc_item(self, generics, LifetimeBinderKind::Item, item);
-                }
+                AssocItemKind::Type(box TyAlias { generics, .. }) => self
+                    .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
+                        walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
+                    }),
                 AssocItemKind::MacCall(_) => {
                     panic!("unexpanded macro in resolve!")
                 }
@@ -2260,13 +2735,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.diagnostic_metadata.currently_processing_impl_trait =
                 Some((trait_ref.clone(), self_type.clone()));
             let res = self.smart_resolve_path_fragment(
-                None,
+                &None,
                 &path,
                 PathSource::Trait(AliasPossibility::No),
                 Finalize::new(trait_ref.ref_id, trait_ref.path.span),
+                RecordPartialRes::Yes,
             );
             self.diagnostic_metadata.currently_processing_impl_trait = None;
-            if let Some(def_id) = res.base_res().opt_def_id() {
+            if let Some(def_id) = res.expect_full_res().opt_def_id() {
                 new_id = Some(def_id);
                 new_val = Some((self.r.expect_module(def_id), trait_ref.clone()));
             }
@@ -2278,7 +2754,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn with_self_rib_ns(&mut self, ns: Namespace, self_res: Res, f: impl FnOnce(&mut Self)) {
-        let mut self_type_rib = Rib::new(NormalRibKind);
+        let mut self_type_rib = Rib::new(RibKind::Normal);
 
         // Plain insert (no renaming, since types are not currently hygienic)
         self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
@@ -2293,6 +2769,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn resolve_implementation(
         &mut self,
+        attrs: &[ast::Attribute],
         generics: &'ast Generics,
         opt_trait_reference: &'ast Option<TraitRef>,
         self_type: &'ast Ty,
@@ -2303,15 +2780,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(
             &generics.params,
-            ItemRibKind(HasGenericParams::Yes),
+            RibKind::Item(HasGenericParams::Yes(generics.span)),
             LifetimeRibKind::Generics {
                 span: generics.span,
                 binder: item_id,
-                kind: LifetimeBinderKind::ImplBlock
+                kind: LifetimeBinderKind::ImplBlock,
             },
             |this| {
                 // Dummy self type for better errors if `Self` is used in the trait path.
-                this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
+                this.with_self_rib(Res::SelfTyParam { trait_: LOCAL_CRATE.as_def_id() }, |this| {
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousCreateParameter {
                             binder: item_id,
@@ -2323,17 +2800,24 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 opt_trait_reference.as_ref(),
                                 self_type,
                                 |this, trait_id| {
+                                    this.resolve_doc_links(attrs, MaybeExported::Impl(trait_id));
+
                                     let item_def_id = this.r.local_def_id(item_id);
 
                                     // Register the trait definitions from here.
                                     if let Some(trait_id) = trait_id {
-                                        this.r.trait_impls.entry(trait_id).or_default().push(item_def_id);
+                                        this.r
+                                            .trait_impls
+                                            .entry(trait_id)
+                                            .or_default()
+                                            .push(item_def_id);
                                     }
 
                                     let item_def_id = item_def_id.to_def_id();
-                                    let res = Res::SelfTy {
-                                        trait_: trait_id,
-                                        alias_to: Some((item_def_id, false)),
+                                    let res = Res::SelfTyAlias {
+                                        alias_to: item_def_id,
+                                        forbid_generic: false,
+                                        is_trait_impl: trait_id.is_some()
                                     };
                                     this.with_self_rib(res, |this| {
                                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
@@ -2346,21 +2830,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         this.visit_generics(generics);
 
                                         // Resolve the items within the impl.
-                                        this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(item_id,false),
-                                            |this| {
-                                                this.with_current_self_type(self_type, |this| {
-                                                    this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
-                                                        debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
-                                                        for item in impl_items {
-                                                            this.resolve_impl_item(&**item);
-                                                        }
-                                                    });
-                                                });
-                                            },
-                                        );
+                                        this.with_current_self_type(self_type, |this| {
+                                            this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
+                                                debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
+                                                let mut seen_trait_items = Default::default();
+                                                for item in impl_items {
+                                                    this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id);
+                                                }
+                                            });
+                                        });
                                     });
                                 },
-                            );
+                            )
                         },
                     );
                 });
@@ -2368,10 +2849,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
-    fn resolve_impl_item(&mut self, item: &'ast AssocItem) {
+    fn resolve_impl_item(
+        &mut self,
+        item: &'ast AssocItem,
+        seen_trait_items: &mut FxHashMap<DefId, Span>,
+        trait_id: Option<DefId>,
+    ) {
         use crate::ResolutionError::*;
+        self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         match &item.kind {
-            AssocItemKind::Const(_, ty, default) => {
+            AssocItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Const");
                 // If this is a trait impl, ensure the const
                 // exists in trait
@@ -2381,18 +2868,24 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     &item.kind,
                     ValueNS,
                     item.span,
+                    seen_trait_items,
                     |i, s, c| ConstNotMemberOfTrait(i, s, c),
                 );
 
                 self.visit_ty(ty);
-                if let Some(expr) = default {
+                if let Some(expr) = expr {
                     // We allow arbitrary const expressions inside of associated consts,
                     // even if they are potentially not const evaluatable.
                     //
                     // Type parameters can already be used and as associated consts are
                     // not used as part of the type system, this is far less surprising.
-                    self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
-                        this.visit_expr(expr)
+                    self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                        this.with_constant_rib(
+                            IsRepeatExpr::No,
+                            ConstantHasGenerics::Yes,
+                            None,
+                            |this| this.visit_expr(expr),
+                        )
                     });
                 }
             }
@@ -2401,7 +2894,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    AssocItemRibKind,
+                    RibKind::AssocItem,
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         span: generics.span,
@@ -2416,6 +2909,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             &item.kind,
                             ValueNS,
                             item.span,
+                            seen_trait_items,
                             |i, s, c| MethodNotMemberOfTrait(i, s, c),
                         );
 
@@ -2423,30 +2917,33 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     },
                 );
             }
-            AssocItemKind::TyAlias(box TyAlias { generics, .. }) => {
-                debug!("resolve_implementation AssocItemKind::TyAlias");
+            AssocItemKind::Type(box TyAlias { generics, .. }) => {
+                debug!("resolve_implementation AssocItemKind::Type");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    AssocItemRibKind,
+                    RibKind::AssocItem,
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         span: generics.span,
                         kind: LifetimeBinderKind::Item,
                     },
                     |this| {
-                        // If this is a trait impl, ensure the type
-                        // exists in trait
-                        this.check_trait_item(
-                            item.id,
-                            item.ident,
-                            &item.kind,
-                            TypeNS,
-                            item.span,
-                            |i, s, c| TypeNotMemberOfTrait(i, s, c),
-                        );
+                        this.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
+                            // If this is a trait impl, ensure the type
+                            // exists in trait
+                            this.check_trait_item(
+                                item.id,
+                                item.ident,
+                                &item.kind,
+                                TypeNS,
+                                item.span,
+                                seen_trait_items,
+                                |i, s, c| TypeNotMemberOfTrait(i, s, c),
+                            );
 
-                        visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                            visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                        });
                     },
                 );
             }
@@ -2463,6 +2960,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         kind: &AssocItemKind,
         ns: Namespace,
         span: Span,
+        seen_trait_items: &mut FxHashMap<DefId, Span>,
         err: F,
     ) where
         F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
@@ -2470,7 +2968,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         let Some((module, _)) = &self.current_trait_ref else { return; };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
-        let key = self.r.new_key(ident, ns);
+        let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
         debug!(?binding);
         if binding.is_none() {
@@ -2481,7 +2979,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 TypeNS => ValueNS,
                 _ => ns,
             };
-            let key = self.r.new_key(ident, ns);
+            let key = BindingKey::new(ident, ns);
             binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
             debug!(?binding);
         }
@@ -2495,9 +2993,27 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         };
 
         let res = binding.res();
-        let Res::Def(def_kind, _) = res else { bug!() };
+        let Res::Def(def_kind, id_in_trait) = res else { bug!() };
+
+        match seen_trait_items.entry(id_in_trait) {
+            Entry::Occupied(entry) => {
+                self.report_error(
+                    span,
+                    ResolutionError::TraitImplDuplicate {
+                        name: ident.name,
+                        old_span: *entry.get(),
+                        trait_item_span: binding.span,
+                    },
+                );
+                return;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(span);
+            }
+        };
+
         match (def_kind, kind) {
-            (DefKind::AssocTy, AssocItemKind::TyAlias(..))
+            (DefKind::AssocTy, AssocItemKind::Type(..))
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
             | (DefKind::AssocConst, AssocItemKind::Const(..)) => {
                 self.r.record_partial_res(id, PartialRes::new(res));
@@ -2511,7 +3027,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let (code, kind) = match kind {
             AssocItemKind::Const(..) => (rustc_errors::error_code!(E0323), "const"),
             AssocItemKind::Fn(..) => (rustc_errors::error_code!(E0324), "method"),
-            AssocItemKind::TyAlias(..) => (rustc_errors::error_code!(E0325), "type"),
+            AssocItemKind::Type(..) => (rustc_errors::error_code!(E0325), "type"),
             AssocItemKind::MacCall(..) => span_bug!(span, "unexpanded macro"),
         };
         let trait_path = path_names_to_string(path);
@@ -2529,10 +3045,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
-        for Param { pat, ty, .. } in params {
-            self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+            for Param { pat, .. } in params {
+                this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+            }
+        });
+        for Param { ty, .. } in params {
             self.visit_ty(ty);
-            debug!("(resolving function / closure) recorded parameter");
         }
     }
 
@@ -2564,10 +3083,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         pat.walk(&mut |pat| {
             match pat.kind {
-                PatKind::Ident(binding_mode, ident, ref sub_pat)
+                PatKind::Ident(annotation, ident, ref sub_pat)
                     if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
                 {
-                    binding_map.insert(ident, BindingInfo { span: ident.span, binding_mode });
+                    binding_map.insert(ident, BindingInfo { span: ident.span, annotation });
                 }
                 PatKind::Or(ref ps) => {
                     // Check the consistency of this or-pattern and
@@ -2587,7 +3106,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn is_base_res_local(&self, nid: NodeId) -> bool {
-        matches!(self.r.partial_res_map.get(&nid).map(|res| res.base_res()), Some(Res::Local(..)))
+        matches!(
+            self.r.partial_res_map.get(&nid).map(|res| res.expect_full_res()),
+            Some(Res::Local(..))
+        )
     }
 
     /// Checks that all of the arms in an or-pattern have exactly the
@@ -2624,7 +3146,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         binding_error.target.insert(pat_outer.span);
                     }
                     Some(binding_outer) => {
-                        if binding_outer.binding_mode != binding_inner.binding_mode {
+                        if binding_outer.annotation != binding_inner.annotation {
                             // The binding modes in the outer and inner bindings differ.
                             inconsistent_vars
                                 .entry(name)
@@ -2672,7 +3194,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn resolve_arm(&mut self, arm: &'ast Arm) {
-        self.with_rib(ValueNS, NormalRibKind, |this| {
+        self.with_rib(ValueNS, RibKind::Normal, |this| {
             this.resolve_pattern_top(&arm.pat, PatternSource::Match);
             walk_list!(this, visit_expr, &arm.guard);
             this.visit_expr(&arm.body);
@@ -2742,7 +3264,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 PatKind::TupleStruct(ref qself, ref path, ref sub_patterns) => {
                     self.smart_resolve_path(
                         pat.id,
-                        qself.as_ref(),
+                        qself,
                         path,
                         PathSource::TupleStruct(
                             pat.span,
@@ -2751,10 +3273,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     );
                 }
                 PatKind::Path(ref qself, ref path) => {
-                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
+                    self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
                 }
                 PatKind::Struct(ref qself, ref path, ..) => {
-                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Struct);
+                    self.smart_resolve_path(pat.id, qself, path, PathSource::Struct);
                 }
                 PatKind::Or(ref ps) => {
                     // Add a new set of bindings to the stack. `Or` here records that when a
@@ -2845,14 +3367,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn try_resolve_as_non_binding(
         &mut self,
         pat_src: PatternSource,
-        bm: BindingMode,
+        ann: BindingAnnotation,
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
         // An immutable (no `mut`) by-value (no `ref`) binding pattern without
         // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
         // also be interpreted as a path to e.g. a constant, variant, etc.
-        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
+        let is_syntactic_ambiguity = !has_sub && ann == BindingAnnotation::NONE;
 
         let ls_binding = self.maybe_resolve_ident_in_lexical_scope(ident, ValueNS)?;
         let (res, binding) = match ls_binding {
@@ -2913,7 +3435,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         participle: "defined",
                         article: res.article(),
                         shadowed_binding: res,
-                        shadowed_binding_span: self.r.opt_span(def_id).expect("const parameter defined outside of local crate"),
+                        shadowed_binding_span: self.r.def_span(def_id),
                     }
                 );
                 None
@@ -2925,7 +3447,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             Res::SelfCtor(_) => {
                 // We resolve `Self` in pattern position as an ident sometimes during recovery,
                 // so delay a bug instead of ICEing.
-                self.r.session.delay_span_bug(
+                self.r.tcx.sess.delay_span_bug(
                     ident.span,
                     "unexpected `SelfCtor` in pattern, expected identifier"
                 );
@@ -2947,7 +3469,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn smart_resolve_path(
         &mut self,
         id: NodeId,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &Path,
         source: PathSource<'ast>,
     ) {
@@ -2956,22 +3478,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             &Segment::from_path(path),
             source,
             Finalize::new(id, path.span),
+            RecordPartialRes::Yes,
         );
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn smart_resolve_path_fragment(
         &mut self,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &[Segment],
         source: PathSource<'ast>,
         finalize: Finalize,
+        record_partial_res: RecordPartialRes,
     ) -> PartialRes {
-        tracing::debug!(
-            "smart_resolve_path_fragment(qself={:?}, path={:?}, finalize={:?})",
-            qself,
-            path,
-            finalize,
-        );
         let ns = source.namespace();
 
         let Finalize { node_id, path_span, .. } = finalize;
@@ -2982,17 +3501,40 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
-                let suggestion =
-                    if res.is_none() { this.report_missing_type_error(path) } else { None };
+                let suggestion = if let Some((start, end)) = this.diagnostic_metadata.in_range
+                    && path[0].ident.span.lo() == end.span.lo()
+                {
+                    let mut sugg = ".";
+                    let mut span = start.span.between(end.span);
+                    if span.lo() + BytePos(2) == span.hi() {
+                        // There's no space between the start, the range op and the end, suggest
+                        // removal which will look better.
+                        span = span.with_lo(span.lo() + BytePos(1));
+                        sugg = "";
+                    }
+                    Some((
+                        span,
+                        "you might have meant to write `.` instead of `..`",
+                        sugg.to_string(),
+                        Applicability::MaybeIncorrect,
+                    ))
+                } else if res.is_none() && let PathSource::Type | PathSource::Expr(_) = source {
+                    this.suggest_adding_generic_parameter(path, source)
+                } else {
+                    None
+                };
 
-                this.r.use_injections.push(UseError {
+                let ue = UseError {
                     err,
                     candidates,
                     def_id,
                     instead,
                     suggestion,
                     path: path.into(),
-                });
+                    is_call: source.is_call(),
+                };
+
+                this.r.use_injections.push(ue);
             }
 
             PartialRes::new(Res::Err)
@@ -3004,25 +3546,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         //
         // Similar thing, for types, happens in `report_errors` above.
         let report_errors_for_call = |this: &mut Self, parent_err: Spanned<ResolutionError<'a>>| {
-            if !source.is_call() {
-                return Some(parent_err);
-            }
-
             // Before we start looking for candidates, we have to get our hands
             // on the type user is trying to perform invocation on; basically:
             // we're transforming `HashMap::new` into just `HashMap`.
-            let path = match path.split_last() {
+            let prefix_path = match path.split_last() {
                 Some((_, path)) if !path.is_empty() => path,
                 _ => return Some(parent_err),
             };
 
             let (mut err, candidates) =
-                this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
-
-            if candidates.is_empty() {
-                err.cancel();
-                return Some(parent_err);
-            }
+                this.smart_resolve_report_errors(prefix_path, path_span, PathSource::Type, None);
 
             // There are two different error messages user might receive at
             // this point:
@@ -3033,36 +3566,74 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // latter one - for paths in expression-position.
             //
             // Thus (since we're in expression-position at this point), not to
-            // confuse the user, we want to keep the *message* from E0432 (so
+            // confuse the user, we want to keep the *message* from E0433 (so
             // `parent_err`), but we want *hints* from E0412 (so `err`).
             //
             // And that's what happens below - we're just mixing both messages
             // into a single one.
             let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
+            // overwrite all properties with the parent's error message
             err.message = take(&mut parent_err.message);
             err.code = take(&mut parent_err.code);
+            swap(&mut err.span, &mut parent_err.span);
             err.children = take(&mut parent_err.children);
+            err.sort_span = parent_err.sort_span;
+            err.is_lint = parent_err.is_lint;
+
+            // merge the parent's suggestions with the typo suggestions
+            fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
+                match res1 {
+                    Ok(vec1) => match res2 {
+                        Ok(mut vec2) => vec1.append(&mut vec2),
+                        Err(e) => *res1 = Err(e),
+                    },
+                    Err(_) => (),
+                };
+            }
+            append_result(&mut err.suggestions, parent_err.suggestions.clone());
 
             parent_err.cancel();
 
             let def_id = this.parent_scope.module.nearest_parent_mod();
 
             if this.should_report_errs() {
-                this.r.use_injections.push(UseError {
-                    err,
-                    candidates,
-                    def_id,
-                    instead: false,
-                    suggestion: None,
-                    path: path.into(),
-                });
+                if candidates.is_empty() {
+                    if path.len() == 2 && prefix_path.len() == 1 {
+                        // Delay to check whether methond name is an associated function or not
+                        // ```
+                        // let foo = Foo {};
+                        // foo::bar(); // possibly suggest to foo.bar();
+                        //```
+                        err.stash(
+                            prefix_path[0].ident.span,
+                            rustc_errors::StashKey::CallAssocMethod,
+                        );
+                    } else {
+                        // When there is no suggested imports, we can just emit the error
+                        // and suggestions immediately. Note that we bypass the usually error
+                        // reporting routine (ie via `self.r.report_error`) because we need
+                        // to post-process the `ResolutionError` above.
+                        err.emit();
+                    }
+                } else {
+                    // If there are suggested imports, the error reporting is delayed
+                    this.r.use_injections.push(UseError {
+                        err,
+                        candidates,
+                        def_id,
+                        instead: false,
+                        suggestion: None,
+                        path: prefix_path.into(),
+                        is_call: source.is_call(),
+                    });
+                }
             } else {
                 err.cancel();
             }
 
             // We don't return `Some(parent_err)` here, because the error will
-            // be already printed as part of the `use` injections
+            // be already printed either immediately or as part of the `use` injections
             None
         };
 
@@ -3074,12 +3645,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             source.defer_to_typeck(),
             finalize,
         ) {
-            Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
-                if source.is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err
-                {
+            Ok(Some(partial_res)) if let Some(res) = partial_res.full_res() => {
+                if source.is_expected(res) || res == Res::Err {
                     partial_res
                 } else {
-                    report_errors(self, Some(partial_res.base_res()))
+                    report_errors(self, Some(res))
                 }
             }
 
@@ -3124,7 +3694,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             _ => report_errors(self, None),
         };
 
-        if !matches!(source, PathSource::TraitItem(..)) {
+        if record_partial_res == RecordPartialRes::Yes {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(node_id, partial_res);
             self.resolve_elided_lifetimes_in_path(node_id, partial_res, path, source, path_span);
@@ -3157,13 +3727,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     #[inline]
     /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
     fn should_report_errs(&self) -> bool {
-        !(self.r.session.opts.actually_rustdoc && self.in_func_body)
+        !(self.r.tcx.sess.opts.actually_rustdoc && self.in_func_body)
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
     fn resolve_qpath_anywhere(
         &mut self,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &[Segment],
         primary_ns: Namespace,
         span: Span,
@@ -3207,7 +3777,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// Handles paths that may refer to associated items.
     fn resolve_qpath(
         &mut self,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,
@@ -3220,7 +3790,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // This is a case like `<T>::B`, where there is no
-                // trait to resolve.  In that case, we leave the `B`
+                // trait to resolve. In that case, we leave the `B`
                 // segment to be resolved by type-check.
                 return Ok(Some(PartialRes::with_unresolved_segments(
                     Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id()),
@@ -3228,19 +3798,38 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 )));
             }
 
-            // Make sure `A::B` in `<T as A::B>::C` is a trait item.
+            let num_privacy_errors = self.r.privacy_errors.len();
+            // Make sure that `A` in `<T as A>::B::C` is a trait.
+            let trait_res = self.smart_resolve_path_fragment(
+                &None,
+                &path[..qself.position],
+                PathSource::Trait(AliasPossibility::No),
+                Finalize::new(finalize.node_id, qself.path_span),
+                RecordPartialRes::No,
+            );
+
+            if trait_res.expect_full_res() == Res::Err {
+                return Ok(Some(trait_res));
+            }
+
+            // Truncate additional privacy errors reported above,
+            // because they'll be recomputed below.
+            self.r.privacy_errors.truncate(num_privacy_errors);
+
+            // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             //
             // Currently, `path` names the full item (`A::B::C`, in
-            // our example).  so we extract the prefix of that that is
+            // our example). so we extract the prefix of that that is
             // the trait (the slice upto and including
             // `qself.position`). And then we recursively resolve that,
             // but with `qself` set to `None`.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let partial_res = self.smart_resolve_path_fragment(
-                None,
+                &None,
                 &path[..=qself.position],
                 PathSource::TraitItem(ns),
                 Finalize::with_root_span(finalize.node_id, finalize.path_span, qself.path_span),
+                RecordPartialRes::No,
             );
 
             // The remaining segments (the `C` in our example) will
@@ -3264,7 +3853,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // use std::u8; // bring module u8 in scope
             // fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
             //     u8::max_value() // OK, resolves to associated function <u8>::max_value,
-            //                     // not to non-existent std::u8::max_value
+            //                     // not to nonexistent std::u8::max_value
             // }
             //
             // Such behavior is required for backward compatibility.
@@ -3279,28 +3868,43 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                 PartialRes::new(module.res().unwrap())
             }
-            PathResult::Failed { is_error_from_last_segment: false, span, label, suggestion } => {
-                return Err(respan(span, ResolutionError::FailedToResolve { label, suggestion }));
+            PathResult::Failed {
+                is_error_from_last_segment: false,
+                span,
+                label,
+                suggestion,
+                module,
+            } => {
+                return Err(respan(
+                    span,
+                    ResolutionError::FailedToResolve {
+                        last_segment: None,
+                        label,
+                        suggestion,
+                        module,
+                    },
+                ));
             }
             PathResult::Module(..) | PathResult::Failed { .. } => return Ok(None),
             PathResult::Indeterminate => bug!("indeterminate path result in resolve_qpath"),
         };
 
         if path.len() > 1
-            && result.base_res() != Res::Err
+            && let Some(res) = result.full_res()
+            && res != Res::Err
             && path[0].ident.name != kw::PathRoot
             && path[0].ident.name != kw::DollarCrate
         {
             let unqualified_result = {
                 match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
-                    PathResult::NonModule(path_res) => path_res.base_res(),
+                    PathResult::NonModule(path_res) => path_res.expect_full_res(),
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         module.res().unwrap()
                     }
                     _ => return Ok(Some(result)),
                 }
             };
-            if result.base_res() == unqualified_result {
+            if res == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
                 self.r.lint_buffer.buffer_lint(
                     lint,
@@ -3321,10 +3925,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             if let Ok((_, orig_span)) = self.resolve_label(label.ident) {
-                diagnostics::signal_label_shadowing(self.r.session, orig_span, label.ident)
+                diagnostics::signal_label_shadowing(self.r.tcx.sess, orig_span, label.ident)
             }
 
-            self.with_label_rib(NormalRibKind, |this| {
+            self.with_label_rib(RibKind::Normal, |this| {
                 let ident = label.ident.normalize_to_macro_rules();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
                 f(this);
@@ -3347,11 +3951,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
-            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
-            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Module(anonymous_module)));
+            self.ribs[TypeNS].push(Rib::new(RibKind::Module(anonymous_module)));
             self.parent_scope.module = anonymous_module;
         } else {
-            self.ribs[ValueNS].push(Rib::new(NormalRibKind));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Normal));
         }
 
         let prev = self.diagnostic_metadata.current_block_could_be_bare_struct_literal.take();
@@ -3368,8 +3972,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 && let ItemKind::MacroDef(..) = item.kind {
                 num_macro_definition_ribs += 1;
                 let res = self.r.local_def_id(item.id).to_def_id();
-                self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
-                self.label_ribs.push(Rib::new(MacroDefinition(res)));
+                self.ribs[ValueNS].push(Rib::new(RibKind::MacroDefinition(res)));
+                self.label_ribs.push(Rib::new(RibKind::MacroDefinition(res)));
             }
 
             self.visit_stmt(stmt);
@@ -3382,31 +3986,61 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.ribs[ValueNS].pop();
             self.label_ribs.pop();
         }
-        self.ribs[ValueNS].pop();
+        self.last_block_rib = self.ribs[ValueNS].pop();
         if anonymous_module.is_some() {
             self.ribs[TypeNS].pop();
         }
         debug!("(resolving block) leaving block");
     }
 
-    fn resolve_anon_const(&mut self, constant: &'ast AnonConst, is_repeat: IsRepeatExpr) {
-        debug!("resolve_anon_const {:?} is_repeat: {:?}", constant, is_repeat);
-        self.with_constant_rib(
-            is_repeat,
-            if constant.value.is_potential_trivial_const_param() {
-                HasGenericParams::Yes
-            } else {
-                HasGenericParams::No
-            },
-            None,
-            |this| visit::walk_anon_const(this, constant),
+    fn resolve_anon_const(&mut self, constant: &'ast AnonConst, anon_const_kind: AnonConstKind) {
+        debug!(
+            "resolve_anon_const(constant: {:?}, anon_const_kind: {:?})",
+            constant, anon_const_kind
         );
+
+        self.resolve_anon_const_manual(
+            constant.value.is_potential_trivial_const_arg(),
+            anon_const_kind,
+            |this| this.resolve_expr(&constant.value, None),
+        )
     }
 
-    fn resolve_inline_const(&mut self, constant: &'ast AnonConst) {
-        debug!("resolve_anon_const {constant:?}");
-        self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
-            visit::walk_anon_const(this, constant);
+    /// There are a few places that we need to resolve an anon const but we did not parse an
+    /// anon const so cannot provide an `&'ast AnonConst`. Right now this is just unbraced
+    /// const arguments that were parsed as type arguments, and `legact_const_generics` which
+    /// parse as normal function argument expressions. To avoid duplicating the code for resolving
+    /// an anon const we have this function which lets the caller manually call `resolve_expr` or
+    /// `smart_resolve_path`.
+    fn resolve_anon_const_manual(
+        &mut self,
+        is_trivial_const_arg: bool,
+        anon_const_kind: AnonConstKind,
+        resolve_expr: impl FnOnce(&mut Self),
+    ) {
+        let is_repeat_expr = match anon_const_kind {
+            AnonConstKind::ConstArg(is_repeat_expr) => is_repeat_expr,
+            _ => IsRepeatExpr::No,
+        };
+
+        let may_use_generics = match anon_const_kind {
+            AnonConstKind::EnumDiscriminant => {
+                ConstantHasGenerics::No(NoConstantGenericsReason::IsEnumDiscriminant)
+            }
+            AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
+            AnonConstKind::ConstArg(_) => {
+                if self.r.tcx.features().generic_const_exprs || is_trivial_const_arg {
+                    ConstantHasGenerics::Yes
+                } else {
+                    ConstantHasGenerics::No(NoConstantGenericsReason::NonTrivialConstArg)
+                }
+            }
+        };
+
+        self.with_constant_rib(is_repeat_expr, may_use_generics, None, |this| {
+            this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                resolve_expr(this);
+            });
         });
     }
 
@@ -3419,12 +4053,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // Next, resolve the node.
         match expr.kind {
             ExprKind::Path(ref qself, ref path) => {
-                self.smart_resolve_path(expr.id, qself.as_ref(), path, PathSource::Expr(parent));
+                self.smart_resolve_path(expr.id, qself, path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
             }
 
             ExprKind::Struct(ref se) => {
-                self.smart_resolve_path(expr.id, se.qself.as_ref(), &se.path, PathSource::Struct);
+                self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct);
                 visit::walk_expr(self, expr);
             }
 
@@ -3456,7 +4090,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {
-                self.with_rib(ValueNS, NormalRibKind, |this| {
+                self.with_rib(ValueNS, RibKind::Normal, |this| {
                     let old = this.diagnostic_metadata.in_if_condition.replace(cond);
                     this.visit_expr(cond);
                     this.diagnostic_metadata.in_if_condition = old;
@@ -3467,11 +4101,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 }
             }
 
-            ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
+            ExprKind::Loop(ref block, label, _) => {
+                self.resolve_labeled_block(label, expr.id, &block)
+            }
 
             ExprKind::While(ref cond, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
-                    this.with_rib(ValueNS, NormalRibKind, |this| {
+                    this.with_rib(ValueNS, RibKind::Normal, |this| {
                         let old = this.diagnostic_metadata.in_if_condition.replace(cond);
                         this.visit_expr(cond);
                         this.diagnostic_metadata.in_if_condition = old;
@@ -3482,7 +4118,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ExprKind::ForLoop(ref pat, ref iter_expr, ref block, label) => {
                 self.visit_expr(iter_expr);
-                self.with_rib(ValueNS, NormalRibKind, |this| {
+                self.with_rib(ValueNS, RibKind::Normal, |this| {
                     this.resolve_pattern_top(pat, PatternSource::For);
                     this.resolve_labeled_block(label, expr.id, block);
                 });
@@ -3494,13 +4130,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprKind::MethodCall(ref segment, ref arguments, _) => {
-                let mut arguments = arguments.iter();
-                self.resolve_expr(arguments.next().unwrap(), Some(expr));
-                for argument in arguments {
-                    self.resolve_expr(argument, None);
+            ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, .. }) => {
+                self.resolve_expr(receiver, Some(expr));
+                for arg in args {
+                    self.resolve_expr(arg, None);
                 }
-                self.visit_path_segment(expr.span, segment);
+                self.visit_path_segment(seg);
             }
 
             ExprKind::Call(ref callee, ref arguments) => {
@@ -3510,41 +4145,30 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
-                        self.with_constant_rib(
-                            IsRepeatExpr::No,
-                            if argument.is_potential_trivial_const_param() {
-                                HasGenericParams::Yes
-                            } else {
-                                HasGenericParams::No
-                            },
-                            None,
-                            |this| {
-                                this.resolve_expr(argument, None);
-                            },
+                        self.resolve_anon_const_manual(
+                            argument.is_potential_trivial_const_arg(),
+                            AnonConstKind::ConstArg(IsRepeatExpr::No),
+                            |this| this.resolve_expr(argument, None),
                         );
                     } else {
                         self.resolve_expr(argument, None);
                     }
                 }
             }
-            ExprKind::Type(ref type_expr, ref ty) => {
-                // `ParseSess::type_ascription_path_suggestions` keeps spans of colon tokens in
-                // type ascription. Here we are trying to retrieve the span of the colon token as
-                // well, but only if it's written without spaces `expr:Ty` and therefore confusable
-                // with `expr::Ty`, only in this case it will match the span from
-                // `type_ascription_path_suggestions`.
-                self.diagnostic_metadata
-                    .current_type_ascription
-                    .push(type_expr.span.between(ty.span));
+            ExprKind::Type(ref _type_expr, ref _ty) => {
                 visit::walk_expr(self, expr);
-                self.diagnostic_metadata.current_type_ascription.pop();
             }
-            // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
+            // `async |x| ...` gets desugared to `|x| async {...}`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
-            ExprKind::Closure(_, _, Async::Yes { .. }, _, ref fn_decl, ref body, _span) => {
-                self.with_rib(ValueNS, NormalRibKind, |this| {
-                    this.with_label_rib(ClosureOrAsyncRibKind, |this| {
+            ExprKind::Closure(box ast::Closure {
+                asyncness: Async::Yes { .. },
+                ref fn_decl,
+                ref body,
+                ..
+            }) => {
+                self.with_rib(ValueNS, RibKind::Normal, |this| {
+                    this.with_label_rib(RibKind::ClosureOrAsync, |this| {
                         // Resolve arguments:
                         this.resolve_params(&fn_decl.inputs);
                         // No need to resolve return type --
@@ -3562,10 +4186,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
             // For closures, ClosureOrAsyncRibKind is added in visit_fn
-            ExprKind::Closure(ClosureBinder::For { ref generic_params, span }, ..) => {
+            ExprKind::Closure(box ast::Closure {
+                binder: ClosureBinder::For { ref generic_params, span },
+                ..
+            }) => {
                 self.with_generic_param_rib(
                     &generic_params,
-                    NormalRibKind,
+                    RibKind::Normal,
                     LifetimeRibKind::Generics {
                         binder: expr.id,
                         kind: LifetimeBinderKind::Closure,
@@ -3576,20 +4203,34 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
             ExprKind::Closure(..) => visit::walk_expr(self, expr),
             ExprKind::Async(..) => {
-                self.with_label_rib(ClosureOrAsyncRibKind, |this| visit::walk_expr(this, expr));
+                self.with_label_rib(RibKind::ClosureOrAsync, |this| visit::walk_expr(this, expr));
             }
             ExprKind::Repeat(ref elem, ref ct) => {
                 self.visit_expr(elem);
-                self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-                    this.resolve_anon_const(ct, IsRepeatExpr::Yes)
-                });
+                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::Yes));
             }
             ExprKind::ConstBlock(ref ct) => {
-                self.resolve_inline_const(ct);
+                self.resolve_anon_const(ct, AnonConstKind::InlineConst);
             }
             ExprKind::Index(ref elem, ref idx) => {
                 self.resolve_expr(elem, Some(expr));
                 self.visit_expr(idx);
+            }
+            ExprKind::Assign(ref lhs, ref rhs, _) => {
+                if !self.diagnostic_metadata.is_assign_rhs {
+                    self.diagnostic_metadata.in_assignment = Some(expr);
+                }
+                self.visit_expr(lhs);
+                self.diagnostic_metadata.is_assign_rhs = true;
+                self.diagnostic_metadata.in_assignment = None;
+                self.visit_expr(rhs);
+                self.diagnostic_metadata.is_assign_rhs = false;
+            }
+            ExprKind::Range(Some(ref start), Some(ref end), RangeLimits::HalfOpen) => {
+                self.diagnostic_metadata.in_range = Some((start, end));
+                self.resolve_expr(start, Some(expr));
+                self.resolve_expr(end, Some(expr));
+                self.diagnostic_metadata.in_range = None;
             }
             _ => {
                 visit::walk_expr(self, expr);
@@ -3600,16 +4241,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &'ast Expr) {
         match expr.kind {
             ExprKind::Field(_, ident) => {
-                // FIXME(#6890): Even though you can't treat a method like a
-                // field, we need to add any trait methods we find that match
-                // the field name so that we can do some nice error reporting
+                // #6890: Even though you can't treat a method like a field,
+                // we need to add any trait methods we find that match the
+                // field name so that we can do some nice error reporting
                 // later on in typeck.
                 let traits = self.traits_in_scope(ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
-            ExprKind::MethodCall(ref segment, ..) => {
+            ExprKind::MethodCall(ref call) => {
                 debug!("(recording candidate traits for expr) recording traits for {}", expr.id);
-                let traits = self.traits_in_scope(segment.ident, ValueNS);
+                let traits = self.traits_in_scope(call.seg.ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
             _ => {
@@ -3626,15 +4267,155 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             Some((ident.name, ns)),
         )
     }
+
+    /// Construct the list of in-scope lifetime parameters for async lowering.
+    /// We include all lifetime parameters, either named or "Fresh".
+    /// The order of those parameters does not matter, as long as it is
+    /// deterministic.
+    fn record_lifetime_params_for_async(
+        &mut self,
+        fn_id: NodeId,
+        async_node_id: Option<(NodeId, Span)>,
+    ) {
+        if let Some((async_node_id, span)) = async_node_id {
+            let mut extra_lifetime_params =
+                self.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
+            for rib in self.lifetime_ribs.iter().rev() {
+                extra_lifetime_params.extend(
+                    rib.bindings.iter().map(|(&ident, &(node_id, res))| (ident, node_id, res)),
+                );
+                match rib.kind {
+                    LifetimeRibKind::Item => break,
+                    LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
+                        if let Some(earlier_fresh) = self.r.extra_lifetime_params_map.get(&binder) {
+                            extra_lifetime_params.extend(earlier_fresh);
+                        }
+                    }
+                    LifetimeRibKind::Generics { .. } => {}
+                    _ => {
+                        // We are in a function definition. We should only find `Generics`
+                        // and `AnonymousCreateParameter` inside the innermost `Item`.
+                        span_bug!(span, "unexpected rib kind: {:?}", rib.kind)
+                    }
+                }
+            }
+            self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
+        }
+    }
+
+    fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> Option<Res> {
+        // FIXME: This caching may be incorrect in case of multiple `macro_rules`
+        // items with the same name in the same module.
+        // Also hygiene is not considered.
+        let mut doc_link_resolutions = std::mem::take(&mut self.r.doc_link_resolutions);
+        let res = *doc_link_resolutions
+            .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
+            .or_default()
+            .entry((Symbol::intern(path_str), ns))
+            .or_insert_with_key(|(path, ns)| {
+                let res = self.r.resolve_rustdoc_path(path.as_str(), *ns, self.parent_scope);
+                if let Some(res) = res
+                    && let Some(def_id) = res.opt_def_id()
+                    && !def_id.is_local()
+                    && self.r.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+                    && matches!(self.r.tcx.sess.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata) {
+                    // Encoding foreign def ids in proc macro crate metadata will ICE.
+                    return None;
+                }
+                res
+            });
+        self.r.doc_link_resolutions = doc_link_resolutions;
+        res
+    }
+
+    fn resolve_doc_links(&mut self, attrs: &[Attribute], maybe_exported: MaybeExported<'_>) {
+        match self.r.tcx.sess.opts.resolve_doc_links {
+            ResolveDocLinks::None => return,
+            ResolveDocLinks::ExportedMetadata
+                if !self.r.tcx.sess.crate_types().iter().copied().any(CrateType::has_metadata)
+                    || !maybe_exported.eval(self.r) =>
+            {
+                return;
+            }
+            ResolveDocLinks::Exported
+                if !maybe_exported.eval(self.r)
+                    && !rustdoc::has_primitive_or_keyword_docs(attrs) =>
+            {
+                return;
+            }
+            ResolveDocLinks::ExportedMetadata
+            | ResolveDocLinks::Exported
+            | ResolveDocLinks::All => {}
+        }
+
+        if !attrs.iter().any(|attr| attr.may_have_doc_links()) {
+            return;
+        }
+
+        let mut need_traits_in_scope = false;
+        for path_str in rustdoc::attrs_to_preprocessed_links(attrs) {
+            // Resolve all namespaces due to no disambiguator or for diagnostics.
+            let mut any_resolved = false;
+            let mut need_assoc = false;
+            for ns in [TypeNS, ValueNS, MacroNS] {
+                if let Some(res) = self.resolve_and_cache_rustdoc_path(&path_str, ns) {
+                    // Rustdoc ignores tool attribute resolutions and attempts
+                    // to resolve their prefixes for diagnostics.
+                    any_resolved = !matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Tool));
+                } else if ns != MacroNS {
+                    need_assoc = true;
+                }
+            }
+
+            // Resolve all prefixes for type-relative resolution or for diagnostics.
+            if need_assoc || !any_resolved {
+                let mut path = &path_str[..];
+                while let Some(idx) = path.rfind("::") {
+                    path = &path[..idx];
+                    need_traits_in_scope = true;
+                    for ns in [TypeNS, ValueNS, MacroNS] {
+                        self.resolve_and_cache_rustdoc_path(path, ns);
+                    }
+                }
+            }
+        }
+
+        if need_traits_in_scope {
+            // FIXME: hygiene is not considered.
+            let mut doc_link_traits_in_scope = std::mem::take(&mut self.r.doc_link_traits_in_scope);
+            doc_link_traits_in_scope
+                .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
+                .or_insert_with(|| {
+                    self.r
+                        .traits_in_scope(None, &self.parent_scope, SyntaxContext::root(), None)
+                        .into_iter()
+                        .filter_map(|tr| {
+                            if !tr.def_id.is_local()
+                                && self.r.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+                                && matches!(
+                                    self.r.tcx.sess.opts.resolve_doc_links,
+                                    ResolveDocLinks::ExportedMetadata
+                                )
+                            {
+                                // Encoding foreign def ids in proc macro crate metadata will ICE.
+                                return None;
+                            }
+                            Some(tr.def_id)
+                        })
+                        .collect()
+                });
+            self.r.doc_link_traits_in_scope = doc_link_traits_in_scope;
+        }
+    }
 }
 
-struct LifetimeCountVisitor<'a, 'b> {
-    r: &'b mut Resolver<'a>,
+struct LifetimeCountVisitor<'a, 'b, 'tcx> {
+    r: &'b mut Resolver<'a, 'tcx>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, counting the declared number of
 /// lifetime generic parameters.
-impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
+impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
@@ -3668,10 +4449,11 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         visit::walk_crate(&mut LifetimeCountVisitor { r: self }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
+        late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
             self.lint_buffer.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");

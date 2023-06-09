@@ -1,7 +1,7 @@
 /*
  * TODO(antoyo): implement equality in libgccjit based on https://zpz.github.io/blog/overloading-equality-operator-in-cpp-class-hierarchy/ (for type equality?)
  * TODO(antoyo): support #[inline] attributes.
- * TODO(antoyo): support LTO (gcc's equivalent to Thin LTO is enabled by -fwhopr: https://stackoverflow.com/questions/64954525/does-gcc-have-thin-lto).
+ * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
  *
  * TODO(antoyo): remove the patches.
  */
@@ -18,12 +18,18 @@
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
+extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_attr;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
+extern crate rustc_fluent_macro;
 extern crate rustc_hir;
+extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
@@ -39,6 +45,7 @@ mod abi;
 mod allocator;
 mod archive;
 mod asm;
+mod attributes;
 mod back;
 mod base;
 mod builder;
@@ -49,6 +56,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
+mod errors;
 mod int;
 mod intrinsic;
 mod mono_item;
@@ -58,6 +66,7 @@ mod type_of;
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
+use crate::errors::LTONotSupported;
 use gccjit::{Context, OptimizationLevel, CType};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
@@ -66,17 +75,20 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig, 
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{ErrorGuaranteed, Handler};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::query::Providers;
 use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
 use tempfile::TempDir;
+
+fluent_messages! { "../messages.ftl" }
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 
@@ -94,9 +106,13 @@ pub struct GccCodegenBackend {
 }
 
 impl CodegenBackend for GccCodegenBackend {
+    fn locale_resource(&self) -> &'static str {
+        crate::DEFAULT_LOCALE_RESOURCE
+    }
+
     fn init(&self, sess: &Session) {
         if sess.lto() != Lto::No {
-            sess.warn("LTO is not supported. You may get a linker error.");
+            sess.emit_warning(LTONotSupported {});
         }
 
         let temp_dir = TempDir::new().expect("cannot create temporary directory");
@@ -121,7 +137,7 @@ impl CodegenBackend for GccCodegenBackend {
         Box::new(res)
     }
 
-    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -133,8 +149,9 @@ impl CodegenBackend for GccCodegenBackend {
     fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+        link_binary(
             sess,
+            &crate::archive::ArArchiveBuilderBuilder,
             &codegen_results,
             outputs,
         )
@@ -146,15 +163,15 @@ impl CodegenBackend for GccCodegenBackend {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) -> Self::Module {
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) -> Self::Module {
         let mut mods = GccContext {
             context: Context::default(),
         };
-        unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, has_alloc_error_handler); }
+        unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind); }
         mods
     }
 
-    fn compile_codegen_unit<'tcx>(&self, tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {
+    fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {
         base::compile_codegen_unit(tcx, cgu_name, *self.supports_128bit_integers.lock().expect("lock"))
     }
 
@@ -163,15 +180,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
         Arc::new(|_| {
             Ok(())
         })
-    }
-
-    fn target_cpu<'b>(&self, _sess: &'b Session) -> &'b str {
-        unimplemented!();
-    }
-
-    fn tune_cpu<'b>(&self, _sess: &'b Session) -> Option<&'b str> {
-        None
-        // TODO(antoyo)
     }
 }
 
@@ -202,8 +210,8 @@ unsafe impl Sync for GccContext {}
 impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
+    type TargetMachineError = ();
     type ModuleBuffer = ModuleBuffer;
-    type Context = ();
     type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
@@ -309,19 +317,22 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
         .filter(|_feature| {
             // TODO(antoyo): implement a way to get enabled feature in libgccjit.
             // Probably using the equivalent of __builtin_cpu_supports.
+            // TODO(antoyo): maybe use whatever outputs the following command:
+            // gcc -march=native -Q --help=target
             #[cfg(feature="master")]
             {
-                _feature.contains("sse") || _feature.contains("avx")
+                // NOTE: the CPU in the CI doesn't support sse4a, so disable it to make the stdarch tests pass in the CI.
+                (_feature.contains("sse") || _feature.contains("avx")) && !_feature.contains("avx512") && !_feature.contains("sse4a")
             }
             #[cfg(not(feature="master"))]
             {
                 false
             }
             /*
-               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512gfni,
-               avx512ifma, avx512pf, avx512vaes, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpclmulqdq,
-               avx512vpopcntdq, bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
-               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, xsave, xsavec, xsaveopt, xsaves
+               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512ifma,
+               avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
+               bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
              */
             //false
         })

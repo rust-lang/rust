@@ -1,7 +1,7 @@
 use crate::iter::adapters::{
     zip::try_get_unchecked, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, TrustedLen, UncheckedIterator};
 use crate::ops::Try;
 
 /// An iterator that clones the elements of an underlying iterator.
@@ -139,4 +139,31 @@ where
     I: TrustedLen<Item = &'a T>,
     T: Clone,
 {
+}
+
+impl<'a, I, T: 'a> UncheckedIterator for Cloned<I>
+where
+    I: UncheckedIterator<Item = &'a T>,
+    T: Clone,
+{
+    unsafe fn next_unchecked(&mut self) -> T {
+        // SAFETY: `Cloned` is 1:1 with the inner iterator, so if the caller promised
+        // that there's an element left, the inner iterator has one too.
+        let item = unsafe { self.it.next_unchecked() };
+        item.clone()
+    }
+}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<I: Default> Default for Cloned<I> {
+    /// Creates a `Cloned` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use core::iter::Cloned;
+    /// let iter: Cloned<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
 }

@@ -16,6 +16,7 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
+use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
 use crate::sys::c;
 use crate::sys::c::NonZeroDWORD;
@@ -25,7 +26,6 @@ use crate::sys::handle::Handle;
 use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
 
@@ -252,10 +252,6 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
-        let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
-        si.dwFlags = c::STARTF_USESTDHANDLES;
-
         let child_paths = if let Some(env) = maybe_env.as_ref() {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
         } else {
@@ -270,11 +266,7 @@ impl Command {
         let (program, mut cmd_str) = if is_batch_file {
             (
                 command_prompt()?,
-                args::make_bat_command_line(
-                    &args::to_user_path(program)?,
-                    &self.args,
-                    self.force_quotes_enabled,
-                )?,
+                args::make_bat_command_line(&program, &self.args, self.force_quotes_enabled)?,
             )
         } else {
             let cmd_str = make_command_line(&self.program, &self.args, self.force_quotes_enabled)?;
@@ -301,9 +293,9 @@ impl Command {
         //
         // For more information, msdn also has an article about this race:
         // https://support.microsoft.com/kb/315939
-        static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
+        static CREATE_PROCESS_LOCK: Mutex<()> = Mutex::new(());
 
-        let _guard = unsafe { CREATE_PROCESS_LOCK.lock() };
+        let _guard = CREATE_PROCESS_LOCK.lock();
 
         let mut pipes = StdioPipes { stdin: None, stdout: None, stderr: None };
         let null = Stdio::Null;
@@ -314,9 +306,21 @@ impl Command {
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
         let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE, &mut pipes.stdout)?;
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
-        si.hStdInput = stdin.as_raw_handle();
-        si.hStdOutput = stdout.as_raw_handle();
-        si.hStdError = stderr.as_raw_handle();
+
+        let mut si = zeroed_startupinfo();
+        si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
+
+        // If at least one of stdin, stdout or stderr are set (i.e. are non null)
+        // then set the `hStd` fields in `STARTUPINFO`.
+        // Otherwise skip this and allow the OS to apply its default behaviour.
+        // This provides more consistent behaviour between Win7 and Win8+.
+        let is_set = |stdio: &Handle| !stdio.as_raw_handle().is_null();
+        if is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
+            si.dwFlags |= c::STARTF_USESTDHANDLES;
+            si.hStdInput = stdin.as_raw_handle();
+            si.hStdOutput = stdout.as_raw_handle();
+            si.hStdError = stderr.as_raw_handle();
+        }
 
         unsafe {
             cvt(c::CreateProcessW(
@@ -328,7 +332,7 @@ impl Command {
                 flags,
                 envp,
                 dirp,
-                &mut si,
+                &si,
                 &mut pi,
             ))
         }?;
@@ -342,6 +346,11 @@ impl Command {
                 pipes,
             ))
         }
+    }
+
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
+        crate::sys_common::process::wait_with_output(proc, pipes)
     }
 }
 
@@ -386,7 +395,7 @@ fn resolve_exe<'a>(
     // Test if the file name has the `exe` extension.
     // This does a case-insensitive `ends_with`.
     let has_exe_suffix = if exe_path.len() >= EXE_SUFFIX.len() {
-        exe_path.bytes()[exe_path.len() - EXE_SUFFIX.len()..]
+        exe_path.as_os_str_bytes()[exe_path.len() - EXE_SUFFIX.len()..]
             .eq_ignore_ascii_case(EXE_SUFFIX.as_bytes())
     } else {
         false
@@ -397,7 +406,7 @@ fn resolve_exe<'a>(
         if has_exe_suffix {
             // The application name is a path to a `.exe` file.
             // Let `CreateProcessW` figure out if it exists or not.
-            return path::maybe_verbatim(Path::new(exe_path));
+            return args::to_user_path(Path::new(exe_path));
         }
         let mut path = PathBuf::from(exe_path);
 
@@ -409,14 +418,14 @@ fn resolve_exe<'a>(
             // It's ok to use `set_extension` here because the intent is to
             // remove the extension that was just added.
             path.set_extension("");
-            return path::maybe_verbatim(&path);
+            return args::to_user_path(&path);
         }
     } else {
         ensure_no_nuls(exe_path)?;
         // From the `CreateProcessW` docs:
         // > If the file name does not contain an extension, .exe is appended.
         // Note that this rule only applies when searching paths.
-        let has_extension = exe_path.bytes().contains(&b'.');
+        let has_extension = exe_path.as_os_str_bytes().contains(&b'.');
 
         // Search the directories given by `search_paths`.
         let result = search_paths(parent_paths, child_paths, |mut path| {
@@ -497,7 +506,7 @@ where
 /// Check if a file exists without following symlinks.
 fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
-        let path = path::maybe_verbatim(path).ok()?;
+        let path = args::to_user_path(path).ok()?;
         // Getting attributes using `GetFileAttributesW` does not follow symlinks
         // and it will almost always be successful if the link exists.
         // There are some exceptions for special system files (e.g. the pagefile)
@@ -513,9 +522,6 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 impl Stdio {
     fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
         match *self {
-            // If no stdio handle is available, then inherit means that it
-            // should still be unavailable so propagate the
-            // INVALID_HANDLE_VALUE.
             Stdio::Inherit => match stdio::get_handle(stdio_id) {
                 Ok(io) => unsafe {
                     let io = Handle::from_raw_handle(io);
@@ -523,7 +529,8 @@ impl Stdio {
                     io.into_raw_handle();
                     ret
                 },
-                Err(..) => unsafe { Ok(Handle::from_raw_handle(c::INVALID_HANDLE_VALUE)) },
+                // If no stdio handle is available, then propagate the null value.
+                Err(..) => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
             },
 
             Stdio::MakePipe => {
@@ -713,8 +720,8 @@ impl From<u32> for ExitCode {
     }
 }
 
-fn zeroed_startupinfo() -> c::STARTUPINFO {
-    c::STARTUPINFO {
+fn zeroed_startupinfo() -> c::STARTUPINFOW {
+    c::STARTUPINFOW {
         cb: 0,
         lpReserved: ptr::null_mut(),
         lpDesktop: ptr::null_mut(),
@@ -724,15 +731,15 @@ fn zeroed_startupinfo() -> c::STARTUPINFO {
         dwXSize: 0,
         dwYSize: 0,
         dwXCountChars: 0,
-        dwYCountCharts: 0,
+        dwYCountChars: 0,
         dwFillAttribute: 0,
         dwFlags: 0,
         wShowWindow: 0,
         cbReserved2: 0,
         lpReserved2: ptr::null_mut(),
-        hStdInput: c::INVALID_HANDLE_VALUE,
-        hStdOutput: c::INVALID_HANDLE_VALUE,
-        hStdError: c::INVALID_HANDLE_VALUE,
+        hStdInput: ptr::null_mut(),
+        hStdOutput: ptr::null_mut(),
+        hStdError: ptr::null_mut(),
     }
 }
 

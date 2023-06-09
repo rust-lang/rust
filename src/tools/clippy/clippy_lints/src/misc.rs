@@ -1,21 +1,26 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::{snippet, snippet_opt, snippet_with_context};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    self as hir, def, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind, Stmt,
+    self as hir, def, BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, Stmt,
     StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{ExpnKind, Span};
 
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, iter_input_pats, last_path_segment, SpanlessEq};
+use clippy_utils::{
+    get_parent_expr, in_constant, is_integer_literal, is_lint_allowed, is_no_std_crate, iter_input_pats,
+    last_path_segment, SpanlessEq,
+};
+
+use crate::ref_patterns::REF_PATTERNS;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -121,14 +126,28 @@ declare_clippy_lint! {
     "using `0 as *{const, mut} T`"
 }
 
-declare_lint_pass!(MiscLints => [
+pub struct LintPass {
+    std_or_core: &'static str,
+}
+impl Default for LintPass {
+    fn default() -> Self {
+        Self { std_or_core: "std" }
+    }
+}
+impl_lint_pass!(LintPass => [
     TOPLEVEL_REF_ARG,
     USED_UNDERSCORE_BINDING,
     SHORT_CIRCUIT_STATEMENT,
     ZERO_PTR,
 ]);
 
-impl<'tcx> LateLintPass<'tcx> for MiscLints {
+impl<'tcx> LateLintPass<'tcx> for LintPass {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
+        if is_no_std_crate(cx) {
+            self.std_or_core = "core";
+        }
+    }
+
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -136,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         if let FnKind::Closure = k {
             // Does not apply to closures
@@ -146,7 +165,11 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             return;
         }
         for arg in iter_input_pats(decl, body) {
-            if let PatKind::Binding(BindingAnnotation::Ref | BindingAnnotation::RefMut, ..) = arg.pat.kind {
+            // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
+            if !is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id) {
+                return;
+            }
+            if let PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..) = arg.pat.kind {
                 span_lint(
                     cx,
                     TOPLEVEL_REF_ARG,
@@ -162,24 +185,22 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, stmt.span);
             if let StmtKind::Local(local) = stmt.kind;
-            if let PatKind::Binding(an, .., name, None) = local.pat.kind;
+            if let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind;
             if let Some(init) = local.init;
-            if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut;
+            // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
+            if is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id);
             then {
-                // use the macro callsite when the init span (but not the whole local span)
-                // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
-                let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
-                    Sugg::hir_with_macro_callsite(cx, init, "..")
-                } else {
-                    Sugg::hir(cx, init, "..")
-                };
-                let (mutopt, initref) = if an == BindingAnnotation::RefMut {
+                let ctxt = local.span.ctxt();
+                let mut app = Applicability::MachineApplicable;
+                let sugg_init = Sugg::hir_with_context(cx, init, ctxt, "..", &mut app);
+                let (mutopt, initref) = if mutabl == Mutability::Mut {
                     ("mut ", sugg_init.mut_addr())
                 } else {
                     ("", sugg_init.addr())
                 };
                 let tyopt = if let Some(ty) = local.ty {
-                    format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
+                    let ty_snip = snippet_with_context(cx, ty.span, ctxt, "_", &mut app).0;
+                    format!(": &{mutopt}{ty_snip}")
                 } else {
                     String::new()
                 };
@@ -196,10 +217,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                             format!(
                                 "let {name}{tyopt} = {initref};",
                                 name=snippet(cx, name.span, ".."),
-                                tyopt=tyopt,
-                                initref=initref,
                             ),
-                            Applicability::MachineApplicable,
+                            app,
                         );
                     }
                 );
@@ -223,8 +242,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                             stmt.span,
                             "replace it with",
                             format!(
-                                "if {} {{ {}; }}",
-                                sugg,
+                                "if {sugg} {{ {}; }}",
                                 &snippet(cx, b.span, ".."),
                             ),
                             Applicability::MachineApplicable, // snippet
@@ -236,7 +254,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Cast(e, ty) = expr.kind {
-            check_cast(cx, expr.span, e, ty);
+            self.check_cast(cx, expr.span, e, ty);
             return;
         }
         if in_attributes_expansion(expr) || expr.span.is_desugaring(DesugaringKind::Await) {
@@ -276,9 +294,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 USED_UNDERSCORE_BINDING,
                 expr.span,
                 &format!(
-                    "used binding `{}` which is prefixed with an underscore. A leading \
-                     underscore signals that a binding will not be used",
-                    binding
+                    "used binding `{binding}` which is prefixed with an underscore. A leading \
+                     underscore signals that a binding will not be used"
                 ),
             );
         }
@@ -301,7 +318,7 @@ fn in_attributes_expansion(expr: &Expr<'_>) -> bool {
     use rustc_span::hygiene::MacroKind;
     if expr.span.from_expansion() {
         let data = expr.span.ctxt().outer_expn_data();
-        matches!(data.kind, ExpnKind::Macro(MacroKind::Attr|MacroKind::Derive, _))
+        matches!(data.kind, ExpnKind::Macro(MacroKind::Attr | MacroKind::Derive, _))
     } else {
         false
     }
@@ -316,27 +333,28 @@ fn non_macro_local(cx: &LateContext<'_>, res: def::Res) -> bool {
     }
 }
 
-fn check_cast(cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) {
-    if_chain! {
-        if let TyKind::Ptr(ref mut_ty) = ty.kind;
-        if let ExprKind::Lit(ref lit) = e.kind;
-        if let LitKind::Int(0, _) = lit.node;
-        if !in_constant(cx, e.hir_id);
-        then {
-            let (msg, sugg_fn) = match mut_ty.mutbl {
-                Mutability::Mut => ("`0 as *mut _` detected", "std::ptr::null_mut"),
-                Mutability::Not => ("`0 as *const _` detected", "std::ptr::null"),
-            };
+impl LintPass {
+    fn check_cast(&self, cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) {
+        if_chain! {
+            if let TyKind::Ptr(ref mut_ty) = ty.kind;
+            if is_integer_literal(e, 0);
+            if !in_constant(cx, e.hir_id);
+            then {
+                let (msg, sugg_fn) = match mut_ty.mutbl {
+                    Mutability::Mut => ("`0 as *mut _` detected", "ptr::null_mut"),
+                    Mutability::Not => ("`0 as *const _` detected", "ptr::null"),
+                };
 
-            let (sugg, appl) = if let TyKind::Infer = mut_ty.ty.kind {
-                (format!("{}()", sugg_fn), Applicability::MachineApplicable)
-            } else if let Some(mut_ty_snip) = snippet_opt(cx, mut_ty.ty.span) {
-                (format!("{}::<{}>()", sugg_fn, mut_ty_snip), Applicability::MachineApplicable)
-            } else {
-                // `MaybeIncorrect` as type inference may not work with the suggested code
-                (format!("{}()", sugg_fn), Applicability::MaybeIncorrect)
-            };
-            span_lint_and_sugg(cx, ZERO_PTR, span, msg, "try", sugg, appl);
+                let (sugg, appl) = if let TyKind::Infer = mut_ty.ty.kind {
+                    (format!("{}::{sugg_fn}()", self.std_or_core), Applicability::MachineApplicable)
+                } else if let Some(mut_ty_snip) = snippet_opt(cx, mut_ty.ty.span) {
+                    (format!("{}::{sugg_fn}::<{mut_ty_snip}>()", self.std_or_core), Applicability::MachineApplicable)
+                } else {
+                    // `MaybeIncorrect` as type inference may not work with the suggested code
+                    (format!("{}::{sugg_fn}()", self.std_or_core), Applicability::MaybeIncorrect)
+                };
+                span_lint_and_sugg(cx, ZERO_PTR, span, msg, "try", sugg, appl);
+            }
         }
     }
 }

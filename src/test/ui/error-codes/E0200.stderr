@@ -1,9 +1,0 @@
-error[E0200]: the trait `Bar` requires an `unsafe impl` declaration
-  --> $DIR/E0200.rs:5:1
-   |
-LL | impl Bar for Foo { }
-   | ^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0200`.

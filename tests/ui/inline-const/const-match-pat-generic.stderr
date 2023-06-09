@@ -1,0 +1,14 @@
+error: constant pattern depends on a generic parameter
+  --> $DIR/const-match-pat-generic.rs:8:9
+   |
+LL |         const { V } => {},
+   |         ^^^^^^^^^^^
+
+error: constant pattern depends on a generic parameter
+  --> $DIR/const-match-pat-generic.rs:20:9
+   |
+LL |         const { f(V) } => {},
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -2,6 +2,7 @@
 
 use crate::char::TryFromCharError;
 use crate::convert::TryFrom;
+use crate::error::Error;
 use crate::fmt;
 use crate::mem::transmute;
 use crate::str::FromStr;
@@ -18,7 +19,6 @@ pub(super) const fn from_u32(i: u32) -> Option<char> {
 }
 
 /// Converts a `u32` to a `char`, ignoring validity. See [`char::from_u32_unchecked`].
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
 #[inline]
 #[must_use]
 pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
@@ -27,8 +27,7 @@ pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
 }
 
 #[stable(feature = "char_convert", since = "1.13.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<char> for u32 {
+impl From<char> for u32 {
     /// Converts a [`char`] into a [`u32`].
     ///
     /// # Examples
@@ -47,8 +46,7 @@ impl const From<char> for u32 {
 }
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<char> for u64 {
+impl From<char> for u64 {
     /// Converts a [`char`] into a [`u64`].
     ///
     /// # Examples
@@ -69,8 +67,7 @@ impl const From<char> for u64 {
 }
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<char> for u128 {
+impl From<char> for u128 {
     /// Converts a [`char`] into a [`u128`].
     ///
     /// # Examples
@@ -123,8 +120,7 @@ impl TryFrom<char> for u8 {
 /// for a superset of Windows-1252 that fills the remaining blanks with corresponding
 /// C0 and C1 control codes.
 #[stable(feature = "char_convert", since = "1.13.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
-impl const From<u8> for char {
+impl From<u8> for char {
     /// Converts a [`u8`] into a [`char`].
     ///
     /// # Examples
@@ -151,21 +147,6 @@ pub struct ParseCharError {
     kind: CharErrorKind,
 }
 
-impl ParseCharError {
-    #[unstable(
-        feature = "char_error_internals",
-        reason = "this method should not be available publicly",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    pub fn __description(&self) -> &str {
-        match self.kind {
-            CharErrorKind::EmptyString => "cannot parse char from empty string",
-            CharErrorKind::TooManyChars => "too many characters in string",
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum CharErrorKind {
     EmptyString,
@@ -173,9 +154,21 @@ enum CharErrorKind {
 }
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
+impl Error for ParseCharError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        match self.kind {
+            CharErrorKind::EmptyString => "cannot parse char from empty string",
+            CharErrorKind::TooManyChars => "too many characters in string",
+        }
+    }
+}
+
+#[stable(feature = "char_from_str", since = "1.20.0")]
 impl fmt::Display for ParseCharError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.__description().fmt(f)
+        #[allow(deprecated)]
+        self.description().fmt(f)
     }
 }
 

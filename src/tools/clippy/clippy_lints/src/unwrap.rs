@@ -11,6 +11,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 
@@ -154,13 +155,13 @@ fn collect_unwrap_info<'tcx>(
         return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
     } else {
         if_chain! {
-            if let ExprKind::MethodCall(method_name, args, _) = &expr.kind;
-            if let Some(local_id) = path_to_local(&args[0]);
-            let ty = cx.typeck_results().expr_ty(&args[0]);
+            if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind;
+            if let Some(local_id) = path_to_local(receiver);
+            let ty = cx.typeck_results().expr_ty(receiver);
             let name = method_name.ident.as_str();
             if is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name);
             then {
-                assert!(args.len() == 1);
+                assert!(args.is_empty());
                 let unwrappable = match name {
                     "is_some" | "is_ok" => true,
                     "is_err" | "is_none" => false,
@@ -231,7 +232,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         } else {
             // find `unwrap[_err]()` calls:
             if_chain! {
-                if let ExprKind::MethodCall(method_name, [self_arg, ..], _) = expr.kind;
+                if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind;
                 if let Some(id) = path_to_local(self_arg);
                 if [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name);
                 let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name);
@@ -257,9 +258,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             expr.hir_id,
                             expr.span,
                             &format!(
-                                "called `{}` on `{}` after checking its variant with `{}`",
+                                "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
                                 method_name.ident.name,
-                                unwrappable_variable_name,
                                 unwrappable.check_name.ident.as_str(),
                             ),
                             |diag| {
@@ -268,9 +268,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                                         unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
                                         "try",
                                         format!(
-                                            "if let {} = {}",
-                                            suggested_pattern,
-                                            unwrappable_variable_name,
+                                            "if let {suggested_pattern} = {unwrappable_variable_name}",
                                         ),
                                         // We don't track how the unwrapped value is used inside the
                                         // block or suggest deleting the unwrap, so we can't offer a
@@ -315,7 +313,7 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        fn_id: HirId,
+        fn_id: LocalDefId,
     ) {
         if span.from_expansion() {
             return;
@@ -326,6 +324,6 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
             unwrappables: Vec::new(),
         };
 
-        walk_fn(&mut v, kind, decl, body.id(), span, fn_id);
+        walk_fn(&mut v, kind, decl, body.id(), fn_id);
     }
 }

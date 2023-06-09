@@ -1,3 +1,5 @@
+# REUSE-IgnoreStart
+
 These documentation pages include resources by third parties. This copyright
 file applies only to those resources. The following third party resources are
 included, and carry their own copyright notices and license terms:
@@ -44,3 +46,5 @@ included, and carry their own copyright notices and license terms:
     See SourceSerif4-LICENSE.md.
 
 This copyright file is intended to be distributed with rustdoc output.
+
+# REUSE-IgnoreEnd

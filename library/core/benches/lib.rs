@@ -1,13 +1,15 @@
 // wasm32 does not support benches (no time).
 #![cfg(not(target_arch = "wasm32"))]
 #![feature(flt2dec)]
-#![feature(int_log)]
 #![feature(test)]
 #![feature(trusted_random_access)]
+#![feature(iter_array_chunks)]
+#![feature(iter_next_chunk)]
 
 extern crate test;
 
 mod any;
+mod array;
 mod ascii;
 mod char;
 mod fmt;
@@ -18,6 +20,7 @@ mod ops;
 mod pattern;
 mod slice;
 mod str;
+mod tuple;
 
 /// Returns a `rand::Rng` seeded with a consistent seed.
 ///

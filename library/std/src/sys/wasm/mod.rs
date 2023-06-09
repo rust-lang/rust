@@ -52,10 +52,12 @@ cfg_if::cfg_if! {
         #[path = "../unix/locks"]
         pub mod locks {
             #![allow(unsafe_op_in_unsafe_fn)]
-            mod futex;
+            mod futex_condvar;
+            mod futex_mutex;
             mod futex_rwlock;
-            pub(crate) use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
-            pub(crate) use futex_rwlock::{RwLock, MovableRwLock};
+            pub(crate) use futex_condvar::Condvar;
+            pub(crate) use futex_mutex::Mutex;
+            pub(crate) use futex_rwlock::RwLock;
         }
         #[path = "atomics/futex.rs"]
         pub mod futex;
@@ -64,8 +66,12 @@ cfg_if::cfg_if! {
     } else {
         #[path = "../unsupported/locks/mod.rs"]
         pub mod locks;
+        #[path = "../unsupported/once.rs"]
+        pub mod once;
         #[path = "../unsupported/thread.rs"]
         pub mod thread;
+        #[path = "../unsupported/thread_parking.rs"]
+        pub mod thread_parking;
     }
 }
 

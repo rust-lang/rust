@@ -3,6 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
+use crate::convert::TryInto;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
@@ -94,12 +95,66 @@ depending on the target pointer size.
     };
 }
 
+macro_rules! midpoint_impl {
+    ($SelfT:ty, unsigned) => {
+        /// Calculates the middle point of `self` and `rhs`.
+        ///
+        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+        /// sufficiently-large signed integral type. This implies that the result is
+        /// always rounded towards negative infinity and that no overflow will ever occur.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(num_midpoint)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
+        /// ```
+        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
+            // Use the well known branchless algorthim from Hacker's Delight to compute
+            // `(a + b) / 2` without overflowing: `((a ^ b) >> 1) + (a & b)`.
+            ((self ^ rhs) >> 1) + (self & rhs)
+        }
+    };
+    ($SelfT:ty, $WideT:ty, unsigned) => {
+        /// Calculates the middle point of `self` and `rhs`.
+        ///
+        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+        /// sufficiently-large signed integral type. This implies that the result is
+        /// always rounded towards negative infinity and that no overflow will ever occur.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(num_midpoint)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
+        /// ```
+        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
+            ((self as $WideT + rhs as $WideT) / 2) as $SelfT
+        }
+    };
+}
+
 macro_rules! widening_impl {
     ($SelfT:ty, $WideT:ty, $BITS:literal, unsigned) => {
         /// Calculates the complete product `self * rhs` without the possibility to overflow.
         ///
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
         /// of the result as two separate values, in that order.
+        ///
+        /// If you also need to add a carry to the wide result, then you want
+        /// [`Self::carrying_mul`] instead.
         ///
         /// # Examples
         ///
@@ -136,6 +191,8 @@ macro_rules! widening_impl {
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
+        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -153,6 +210,31 @@ macro_rules! widening_impl {
             stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(0, ", stringify!($SelfT), "::MAX));"
         )]
+        /// ```
+        ///
+        /// This is the core operation needed for scalar multiplication when
+        /// implementing it for wider-than-native types.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// fn scalar_mul_eq(little_endian_digits: &mut Vec<u16>, multiplicand: u16) {
+        ///     let mut carry = 0;
+        ///     for d in little_endian_digits.iter_mut() {
+        ///         (*d, carry) = d.carrying_mul(multiplicand, carry);
+        ///     }
+        ///     if carry != 0 {
+        ///         little_endian_digits.push(carry);
+        ///     }
+        /// }
+        ///
+        /// let mut v = vec![10, 20];
+        /// scalar_mul_eq(&mut v, 3);
+        /// assert_eq!(v, [30, 60]);
+        ///
+        /// assert_eq!(0x87654321_u64 * 0xFEED, 0x86D3D159E38D);
+        /// let mut v = vec![0x4321, 0x8765];
+        /// scalar_mul_eq(&mut v, 0xFEED);
+        /// assert_eq!(v, [0xE38D, 0xD159, 0x86D3]);
         /// ```
         ///
         /// If `carry` is zero, this is similar to [`overflowing_mul`](Self::overflowing_mul),
@@ -194,74 +276,237 @@ macro_rules! widening_impl {
     };
 }
 
+macro_rules! conv_rhs_for_unchecked_shift {
+    ($SelfT:ty, $x:expr) => {{
+        #[inline]
+        fn conv(x: u32) -> $SelfT {
+            // FIXME(const-hack) replace with `.try_into().ok().unwrap_unchecked()`.
+            // SAFETY: Any legal shift amount must be losslessly representable in the self type.
+            unsafe { x.try_into().ok().unwrap_unchecked() }
+        }
+        #[inline]
+        const fn const_conv(x: u32) -> $SelfT {
+            x as _
+        }
+
+        intrinsics::const_eval_select(($x,), const_conv, conv)
+    }};
+}
+
 impl i8 {
-    int_impl! { i8, i8, u8, 8, 7, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
-    "[0x12]", "[0x12]", "", "", "" }
+    int_impl! {
+        Self = i8,
+        ActualT = i8,
+        UnsignedT = u8,
+        BITS = 8,
+        BITS_MINUS_ONE = 7,
+        Min = -128,
+        Max = 127,
+        rot = 2,
+        rot_op = "-0x7e",
+        rot_result = "0xa",
+        swap_op = "0x12",
+        swapped = "0x12",
+        reversed = "0x48",
+        le_bytes = "[0x12]",
+        be_bytes = "[0x12]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i16 {
-    int_impl! { i16, i16, u16, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
-    "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "", "" }
+    int_impl! {
+        Self = i16,
+        ActualT = i16,
+        UnsignedT = u16,
+        BITS = 16,
+        BITS_MINUS_ONE = 15,
+        Min = -32768,
+        Max = 32767,
+        rot = 4,
+        rot_op = "-0x5ffd",
+        rot_result = "0x3a",
+        swap_op = "0x1234",
+        swapped = "0x3412",
+        reversed = "0x2c48",
+        le_bytes = "[0x34, 0x12]",
+        be_bytes = "[0x12, 0x34]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i32 {
-    int_impl! { i32, i32, u32, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
-    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78]", "", "", "" }
+    int_impl! {
+        Self = i32,
+        ActualT = i32,
+        UnsignedT = u32,
+        BITS = 32,
+        BITS_MINUS_ONE = 31,
+        Min = -2147483648,
+        Max = 2147483647,
+        rot = 8,
+        rot_op = "0x10000b3",
+        rot_result = "0xb301",
+        swap_op = "0x12345678",
+        swapped = "0x78563412",
+        reversed = "0x1e6a2c48",
+        le_bytes = "[0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i64 {
-    int_impl! { i64, i64, u64, 64, 63, -9223372036854775808, 9223372036854775807, 12,
-    "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
-    "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "", "" }
+    int_impl! {
+        Self = i64,
+        ActualT = i64,
+        UnsignedT = u64,
+        BITS = 64,
+        BITS_MINUS_ONE = 63,
+        Min = -9223372036854775808,
+        Max = 9223372036854775807,
+        rot = 12,
+        rot_op = "0xaa00000000006e1",
+        rot_result = "0x6e10aa",
+        swap_op = "0x1234567890123456",
+        swapped = "0x5634129078563412",
+        reversed = "0x6a2c48091e6a2c48",
+        le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i128 {
-    int_impl! { i128, i128, u128, 128, 127, -170141183460469231731687303715884105728,
-    170141183460469231731687303715884105727, 16,
-    "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
-    "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
-    "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "", "" }
+    int_impl! {
+        Self = i128,
+        ActualT = i128,
+        UnsignedT = u128,
+        BITS = 128,
+        BITS_MINUS_ONE = 127,
+        Min = -170141183460469231731687303715884105728,
+        Max = 170141183460469231731687303715884105727,
+        rot = 16,
+        rot_op = "0x13f40000000000000000000000004f76",
+        rot_result = "0x4f7613f4",
+        swap_op = "0x12345678901234567890123456789012",
+        swapped = "0x12907856341290785634129078563412",
+        reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
+        le_bytes = "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+            0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+            0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 #[cfg(target_pointer_width = "16")]
 impl isize {
-    int_impl! { isize, i16, usize, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
-    "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 16-bit targets" }
+    int_impl! {
+        Self = isize,
+        ActualT = i16,
+        UnsignedT = usize,
+        BITS = 16,
+        BITS_MINUS_ONE = 15,
+        Min = -32768,
+        Max = 32767,
+        rot = 4,
+        rot_op = "-0x5ffd",
+        rot_result = "0x3a",
+        swap_op = "0x1234",
+        swapped = "0x3412",
+        reversed = "0x2c48",
+        le_bytes = "[0x34, 0x12]",
+        be_bytes = "[0x12, 0x34]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 16-bit targets",
+    }
 }
 
 #[cfg(target_pointer_width = "32")]
 impl isize {
-    int_impl! { isize, i32, usize, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
-    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 32-bit targets" }
+    int_impl! {
+        Self = isize,
+        ActualT = i32,
+        UnsignedT = usize,
+        BITS = 32,
+        BITS_MINUS_ONE = 31,
+        Min = -2147483648,
+        Max = 2147483647,
+        rot = 8,
+        rot_op = "0x10000b3",
+        rot_result = "0xb301",
+        swap_op = "0x12345678",
+        swapped = "0x78563412",
+        reversed = "0x1e6a2c48",
+        le_bytes = "[0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 32-bit targets",
+    }
 }
 
 #[cfg(target_pointer_width = "64")]
 impl isize {
-    int_impl! { isize, i64, usize, 64, 63, -9223372036854775808, 9223372036854775807,
-    12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
-    "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 64-bit targets" }
+    int_impl! {
+        Self = isize,
+        ActualT = i64,
+        UnsignedT = usize,
+        BITS = 64,
+        BITS_MINUS_ONE = 63,
+        Min = -9223372036854775808,
+        Max = 9223372036854775807,
+        rot = 12,
+        rot_op = "0xaa00000000006e1",
+        rot_result = "0x6e10aa",
+        swap_op = "0x1234567890123456",
+        swapped = "0x5634129078563412",
+        reversed = "0x6a2c48091e6a2c48",
+        le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 64-bit targets",
+    }
 }
 
-/// If 6th bit set ascii is upper case.
+/// If 6th bit is set ascii is lower case.
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 impl u8 {
-    uint_impl! { u8, u8, i8, NonZeroU8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
-    "[0x12]", "", "", "" }
+    uint_impl! {
+        Self = u8,
+        ActualT = u8,
+        SignedT = i8,
+        NonZeroT = NonZeroU8,
+        BITS = 8,
+        MAX = 255,
+        rot = 2,
+        rot_op = "0x82",
+        rot_result = "0xa",
+        swap_op = "0x12",
+        swapped = "0x12",
+        reversed = "0x48",
+        le_bytes = "[0x12]",
+        be_bytes = "[0x12]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
     widening_impl! { u8, u16, 8, unsigned }
+    midpoint_impl! { u8, u16, unsigned }
 
     /// Checks if the value is within the ASCII range.
     ///
@@ -279,7 +524,16 @@ impl u8 {
     #[rustc_const_stable(feature = "const_u8_is_ascii", since = "1.43.0")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
-        *self & 128 == 0
+        *self <= 127
+    }
+
+    /// If the value of this byte is within the ASCII range, returns it as an
+    /// [ASCII character](ascii::Char).  Otherwise, returns `None`.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn as_ascii(&self) -> Option<ascii::Char> {
+        ascii::Char::from_u8(*self)
     }
 
     /// Makes a copy of the value in its ASCII upper case equivalent.
@@ -582,6 +836,38 @@ impl u8 {
         matches!(*self, b'0'..=b'9')
     }
 
+    /// Checks if the value is an ASCII octal digit:
+    /// U+0030 '0' ..= U+0037 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_ascii_octdigit)]
+    ///
+    /// let uppercase_a = b'A';
+    /// let a = b'a';
+    /// let zero = b'0';
+    /// let seven = b'7';
+    /// let nine = b'9';
+    /// let percent = b'%';
+    /// let lf = b'\n';
+    ///
+    /// assert!(!uppercase_a.is_ascii_octdigit());
+    /// assert!(!a.is_ascii_octdigit());
+    /// assert!(zero.is_ascii_octdigit());
+    /// assert!(seven.is_ascii_octdigit());
+    /// assert!(!nine.is_ascii_octdigit());
+    /// assert!(!percent.is_ascii_octdigit());
+    /// assert!(!lf.is_ascii_octdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_ascii_octdigit(&self) -> bool {
+        matches!(*self, b'0'..=b'7')
+    }
+
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
     /// - U+0030 '0' ..= U+0039 '9', or
@@ -623,7 +909,7 @@ impl u8 {
     ///
     /// - U+0021 ..= U+002F `! " # $ % & ' ( ) * + , - . /`, or
     /// - U+003A ..= U+0040 `: ; < = > ? @`, or
-    /// - U+005B ..= U+0060 ``[ \ ] ^ _ ` ``, or
+    /// - U+005B ..= U+0060 `` [ \ ] ^ _ ` ``, or
     /// - U+007B ..= U+007E `{ | } ~`
     ///
     /// # Examples
@@ -812,9 +1098,27 @@ impl u8 {
 }
 
 impl u16 {
-    uint_impl! { u16, u16, i16, NonZeroU16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
-    "[0x34, 0x12]", "[0x12, 0x34]", "", "", "" }
+    uint_impl! {
+        Self = u16,
+        ActualT = u16,
+        SignedT = i16,
+        NonZeroT = NonZeroU16,
+        BITS = 16,
+        MAX = 65535,
+        rot = 4,
+        rot_op = "0xa003",
+        rot_result = "0x3a",
+        swap_op = "0x1234",
+        swapped = "0x3412",
+        reversed = "0x2c48",
+        le_bytes = "[0x34, 0x12]",
+        be_bytes = "[0x12, 0x34]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
     widening_impl! { u16, u32, 16, unsigned }
+    midpoint_impl! { u16, u32, unsigned }
 
     /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
     ///
@@ -843,57 +1147,151 @@ impl u16 {
 }
 
 impl u32 {
-    uint_impl! { u32, u32, i32, NonZeroU32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
-    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "", "" }
+    uint_impl! {
+        Self = u32,
+        ActualT = u32,
+        SignedT = i32,
+        NonZeroT = NonZeroU32,
+        BITS = 32,
+        MAX = 4294967295,
+        rot = 8,
+        rot_op = "0x10000b3",
+        rot_result = "0xb301",
+        swap_op = "0x12345678",
+        swapped = "0x78563412",
+        reversed = "0x1e6a2c48",
+        le_bytes = "[0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
     widening_impl! { u32, u64, 32, unsigned }
+    midpoint_impl! { u32, u64, unsigned }
 }
 
 impl u64 {
-    uint_impl! { u64, u64, i64, NonZeroU64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
-    "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
-    "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-    "", "", ""}
+    uint_impl! {
+        Self = u64,
+        ActualT = u64,
+        SignedT = i64,
+        NonZeroT = NonZeroU64,
+        BITS = 64,
+        MAX = 18446744073709551615,
+        rot = 12,
+        rot_op = "0xaa00000000006e1",
+        rot_result = "0x6e10aa",
+        swap_op = "0x1234567890123456",
+        swapped = "0x5634129078563412",
+        reversed = "0x6a2c48091e6a2c48",
+        le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
     widening_impl! { u64, u128, 64, unsigned }
+    midpoint_impl! { u64, u128, unsigned }
 }
 
 impl u128 {
-    uint_impl! { u128, u128, i128, NonZeroU128, 128, 340282366920938463463374607431768211455, 16,
-    "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
-    "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
-    "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
-     "", "", ""}
+    uint_impl! {
+        Self = u128,
+        ActualT = u128,
+        SignedT = i128,
+        NonZeroT = NonZeroU128,
+        BITS = 128,
+        MAX = 340282366920938463463374607431768211455,
+        rot = 16,
+        rot_op = "0x13f40000000000000000000000004f76",
+        rot_result = "0x4f7613f4",
+        swap_op = "0x12345678901234567890123456789012",
+        swapped = "0x12907856341290785634129078563412",
+        reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
+        le_bytes = "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+            0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+            0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
+    midpoint_impl! { u128, unsigned }
 }
 
 #[cfg(target_pointer_width = "16")]
 impl usize {
-    uint_impl! { usize, u16, isize, NonZeroUsize, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
-    "[0x34, 0x12]", "[0x12, 0x34]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 16-bit targets" }
+    uint_impl! {
+        Self = usize,
+        ActualT = u16,
+        SignedT = isize,
+        NonZeroT = NonZeroUsize,
+        BITS = 16,
+        MAX = 65535,
+        rot = 4,
+        rot_op = "0xa003",
+        rot_result = "0x3a",
+        swap_op = "0x1234",
+        swapped = "0x3412",
+        reversed = "0x2c48",
+        le_bytes = "[0x34, 0x12]",
+        be_bytes = "[0x12, 0x34]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 16-bit targets",
+    }
     widening_impl! { usize, u32, 16, unsigned }
+    midpoint_impl! { usize, u32, unsigned }
 }
+
 #[cfg(target_pointer_width = "32")]
 impl usize {
-    uint_impl! { usize, u32, isize, NonZeroUsize, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
-    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 32-bit targets" }
+    uint_impl! {
+        Self = usize,
+        ActualT = u32,
+        SignedT = isize,
+        NonZeroT = NonZeroUsize,
+        BITS = 32,
+        MAX = 4294967295,
+        rot = 8,
+        rot_op = "0x10000b3",
+        rot_result = "0xb301",
+        swap_op = "0x12345678",
+        swapped = "0x78563412",
+        reversed = "0x1e6a2c48",
+        le_bytes = "[0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 32-bit targets",
+    }
     widening_impl! { usize, u64, 32, unsigned }
+    midpoint_impl! { usize, u64, unsigned }
 }
 
 #[cfg(target_pointer_width = "64")]
 impl usize {
-    uint_impl! { usize, u64, isize, NonZeroUsize, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
-    "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
-    "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 64-bit targets" }
+    uint_impl! {
+        Self = usize,
+        ActualT = u64,
+        SignedT = isize,
+        NonZeroT = NonZeroUsize,
+        BITS = 64,
+        MAX = 18446744073709551615,
+        rot = 12,
+        rot_op = "0xaa00000000006e1",
+        rot_result = "0x6e10aa",
+        swap_op = "0x1234567890123456",
+        swapped = "0x5634129078563412",
+        reversed = "0x6a2c48091e6a2c48",
+        le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 64-bit targets",
+    }
     widening_impl! { usize, u128, 64, unsigned }
+    midpoint_impl! { usize, u128, unsigned }
 }
 
 impl usize {
@@ -936,8 +1334,8 @@ impl usize {
 /// assert_eq!(num.classify(), FpCategory::Normal);
 /// assert_eq!(inf.classify(), FpCategory::Infinite);
 /// assert_eq!(zero.classify(), FpCategory::Zero);
-/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// assert_eq!(sub.classify(), FpCategory::Subnormal);
+/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]

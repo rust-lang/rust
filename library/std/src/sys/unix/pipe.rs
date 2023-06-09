@@ -1,4 +1,4 @@
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
@@ -49,6 +49,10 @@ impl AnonPipe {
         self.0.read(buf)
     }
 
+    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(buf)
+    }
+
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
@@ -56,6 +60,10 @@ impl AnonPipe {
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
         self.0.is_read_vectored()
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.0.read_to_end(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -127,6 +135,7 @@ pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> 
 }
 
 impl AsRawFd for AnonPipe {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }

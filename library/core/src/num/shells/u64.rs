@@ -1,6 +1,4 @@
-//! Constants for the 64-bit unsigned integer type.
-//!
-//! *[See also the `u64` primitive type][u64].*
+//! Redundant constants module for the [`u64` primitive type][u64].
 //!
 //! New code should use the associated constants directly on the primitive type.
 

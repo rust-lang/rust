@@ -1,17 +1,17 @@
 # Clippy
 
-[![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test/badge.svg?branch=auto&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test%22+event%3Apush+branch%3Aauto)
+[![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test%20(bors)/badge.svg?branch=auto&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test+(bors)%22+event%3Apush+branch%3Aauto)
 [![License: MIT OR Apache-2.0](https://img.shields.io/crates/l/clippy.svg)](#license)
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 550 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 600 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
 
 | Category              | Description                                                                         | Default level |
-| --------------------- | ----------------------------------------------------------------------------------- | ------------- |
+|-----------------------|-------------------------------------------------------------------------------------|---------------|
 | `clippy::all`         | all lints that are on by default (correctness, suspicious, style, complexity, perf) | **warn/deny** |
 | `clippy::correctness` | code that is outright wrong or useless                                              | **deny**      |
 | `clippy::suspicious`  | code that is most likely wrong or useless                                           | **warn**      |
@@ -19,21 +19,35 @@ You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the
 | `clippy::complexity`  | code that does something simple but in a complex way                                | **warn**      |
 | `clippy::perf`        | code that can be written to run faster                                              | **warn**      |
 | `clippy::pedantic`    | lints which are rather strict or have occasional false positives                    | allow         |
+| `clippy::restriction` | lints which prevent the use of language and library features[^restrict]             | allow         |
 | `clippy::nursery`     | new lints that are still under development                                          | allow         |
 | `clippy::cargo`       | lints for the cargo manifest                                                        | allow         |
 
 More to come, please [file an issue](https://github.com/rust-lang/rust-clippy/issues) if you have ideas!
 
-The [lint list](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are
-for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used
-very selectively, if at all.
+The `restriction` category should, *emphatically*, not be enabled as a whole. The contained
+lints may lint against perfectly reasonable code, may not have an alternative suggestion,
+and may contradict any other lints (including other categories). Lints should be considered
+on a case-by-case basis before enabling.
+
+[^restrict]: Some use cases for `restriction` lints include:
+    - Strict coding styles (e.g. [`clippy::else_if_without_else`]).
+    - Additional restrictions on CI (e.g. [`clippy::todo`]).
+    - Preventing panicking in certain functions (e.g. [`clippy::unwrap_used`]).
+    - Running a lint only on a subset of code (e.g. `#[forbid(clippy::float_arithmetic)]` on a module).
+
+[`clippy::else_if_without_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#else_if_without_else
+[`clippy::todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
+[`clippy::unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+---
 
 Table of contents:
 
-*   [Usage instructions](#usage)
-*   [Configuration](#configuration)
-*   [Contributing](#contributing)
-*   [License](#license)
+* [Usage instructions](#usage)
+* [Configuration](#configuration)
+* [Contributing](#contributing)
+* [License](#license)
 
 ## Usage
 
@@ -64,6 +78,7 @@ Once you have rustup and the latest stable release (at least Rust 1.29) installe
 ```terminal
 rustup component add clippy
 ```
+
 If it says that it can't find the `clippy` component, please run `rustup self update`.
 
 #### Step 3: Run Clippy
@@ -76,7 +91,8 @@ cargo clippy
 
 #### Automatically applying Clippy suggestions
 
-Clippy can automatically apply some lint suggestions, just like the compiler.
+Clippy can automatically apply some lint suggestions, just like the compiler. Note that `--fix` implies
+`--all-targets`, so it can fix as much code as it can.
 
 ```terminal
 cargo clippy --fix
@@ -115,7 +131,7 @@ for example.
 
 You can add Clippy to Travis CI in the same way you use it locally:
 
-```yml
+```yaml
 language: rust
 rust:
   - stable
@@ -139,39 +155,20 @@ line. (You can swap `clippy::all` with the specific lint category you are target
 
 ## Configuration
 
-Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable =
-value` mapping e.g.
-
-```toml
-avoid-breaking-exported-api = false
-blacklisted-names = ["toto", "tata", "titi"]
-cognitive-complexity-threshold = 30
-```
-
-See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which
-lints can be configured and the meaning of the variables.
-
-Note that configuration changes will not apply for code that has already been compiled and cached under `./target/`;
-for example, adding a new string to `doc-valid-idents` may still result in Clippy flagging that string. To be sure that
-any configuration changes are applied, you may want to run `cargo clean` and re-compile your crate from scratch.
-
-To deactivate the “for further information visit *lint-link*” message you can
-define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
-
 ### Allowing/denying lints
 
 You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
-*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`).
+* the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`).
     Note that `rustc` has additional [lint groups](https://doc.rust-lang.org/rustc/lints/groups.html).
 
-*   all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
+* all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
     `#![deny(clippy::pedantic)]`). Note that `clippy::pedantic` contains some very aggressive
     lints prone to false positives.
 
-*   only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc.)
+* only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc.)
 
-*   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
+* `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
 
 Note: `allow` means to suppress the lint for your code. With `warn` the lint
 will only emit a warning, while with `deny` the lint will emit an error, when
@@ -195,15 +192,48 @@ cargo clippy -- -W clippy::lint_name
 
 This also works with lint groups. For example, you
 can run Clippy with warnings for all lints enabled:
+
 ```terminal
 cargo clippy -- -W clippy::pedantic
 ```
 
 If you care only about a single lint, you can allow all others and then explicitly warn on
 the lint(s) you are interested in:
+
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
+
+### Configure the behavior of some lints
+
+Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable =
+value` mapping e.g.
+
+```toml
+avoid-breaking-exported-api = false
+disallowed-names = ["toto", "tata", "titi"]
+```
+
+The [table of configurations](https://doc.rust-lang.org/nightly/clippy/lint_configuration.html)
+contains all config values, their default, and a list of lints they affect.
+Each [configurable lint](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration)
+, also contains information about these values.
+
+For configurations that are a list type with default values such as
+[disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
+you can use the unique value `".."` to extend the default values instead of replacing them.
+
+```toml
+# default of disallowed-names is ["foo", "baz", "quux"]
+disallowed-names = ["bar", ".."] # -> ["bar", "foo", "baz", "quux"]
+```
+
+> **Note**
+>
+> `clippy.toml` or `.clippy.toml` cannot be used to allow/deny lints.
+
+To deactivate the “for further information visit *lint-link*” message you can
+define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
 ### Specifying the minimum supported Rust version
 
@@ -222,9 +252,9 @@ in the `Cargo.toml` can be used.
 rust-version = "1.30"
 ```
 
-The MSRV can also be specified as an inner attribute, like below.
+The MSRV can also be specified as an attribute, like below.
 
-```rust
+```rust,ignore
 #![feature(custom_inner_attributes)]
 #![clippy::msrv = "1.30.0"]
 
@@ -246,10 +276,14 @@ If you want to contribute to Clippy, you can find more information in [CONTRIBUT
 
 ## License
 
-Copyright 2014-2022 The Rust Project Developers
+<!-- REUSE-IgnoreStart -->
+
+Copyright 2014-2023 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)> or the MIT license
 <LICENSE-MIT or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)>, at your
 option. Files in the project may not be
 copied, modified, or distributed except according to those terms.
+
+<!-- REUSE-IgnoreEnd -->

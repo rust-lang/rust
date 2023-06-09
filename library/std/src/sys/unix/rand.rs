@@ -1,25 +1,28 @@
-use crate::mem;
-use crate::slice;
-
 pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut v = (0, 0);
-    unsafe {
-        let view = slice::from_raw_parts_mut(&mut v as *mut _ as *mut u8, mem::size_of_val(&v));
-        imp::fill_bytes(view);
-    }
-    v
+    const KEY_LEN: usize = core::mem::size_of::<u64>();
+
+    let mut v = [0u8; KEY_LEN * 2];
+    imp::fill_bytes(&mut v);
+
+    let key1 = v[0..KEY_LEN].try_into().unwrap();
+    let key2 = v[KEY_LEN..].try_into().unwrap();
+
+    (u64::from_ne_bytes(key1), u64::from_ne_bytes(key2))
 }
 
 #[cfg(all(
     unix,
     not(target_os = "macos"),
     not(target_os = "ios"),
+    not(target_os = "watchos"),
     not(target_os = "openbsd"),
     not(target_os = "freebsd"),
     not(target_os = "netbsd"),
     not(target_os = "fuchsia"),
     not(target_os = "redox"),
-    not(target_os = "vxworks")
+    not(target_os = "vxworks"),
+    not(target_os = "emscripten"),
+    not(target_os = "vita"),
 ))]
 mod imp {
     use crate::fs::File;
@@ -173,7 +176,7 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "openbsd")]
+#[cfg(any(target_os = "openbsd", target_os = "emscripten", target_os = "vita"))]
 mod imp {
     use crate::sys::os::errno;
 
@@ -195,7 +198,7 @@ mod imp {
 // once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
 // only used on iOS where direct access to `/dev/urandom` is blocked by the
 // sandbox.
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "ios", target_os = "watchos"))]
 mod imp {
     use crate::io;
     use crate::ptr;

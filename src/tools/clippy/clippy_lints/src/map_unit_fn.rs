@@ -97,18 +97,14 @@ declare_clippy_lint! {
 declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
 
 fn is_unit_type(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Tuple(slice) => slice.is_empty(),
-        ty::Never => true,
-        _ => false,
-    }
+    ty.is_unit() || ty.is_never()
 }
 
 fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
 
     if let ty::FnDef(id, _) = *ty.kind() {
-        if let Some(fn_type) = cx.tcx.fn_sig(id).no_bound_vars() {
+        if let Some(fn_type) = cx.tcx.fn_sig(id).subst_identity().no_bound_vars() {
             return is_unit_type(fn_type.output());
         }
     }
@@ -123,7 +119,7 @@ fn is_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 /// semicolons, which causes problems when generating a suggestion. Given an
 /// expression that evaluates to '()' or '!', recursively remove useless braces
 /// and semi-colons until is suitable for including in the suggestion template
-fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<Span> {
+fn reduce_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Span> {
     if !is_unit_expression(cx, expr) {
         return None;
     }
@@ -135,12 +131,12 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
         },
         hir::ExprKind::Block(block, _) => {
             match (block.stmts, block.expr.as_ref()) {
-                (&[], Some(inner_expr)) => {
+                ([], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `{ X }` to `X`
                     reduce_unit_expression(cx, inner_expr)
                 },
-                (&[ref inner_stmt], None) => {
+                ([inner_stmt], None) => {
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {
@@ -198,14 +194,16 @@ fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
 
 #[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
-    format!(
-        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type `()`",
-        map_type, function_type
-    )
+    format!("called `map(f)` on an `{map_type}` value where `f` is a {function_type} that returns the unit type `()`")
 }
 
-fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
-    let var_arg = &map_args[0];
+fn lint_map_unit_fn(
+    cx: &LateContext<'_>,
+    stmt: &hir::Stmt<'_>,
+    expr: &hir::Expr<'_>,
+    map_args: (&hir::Expr<'_>, &[hir::Expr<'_>]),
+) {
+    let var_arg = &map_args.0;
 
     let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::Option) {
         ("Option", "Some", OPTION_MAP_UNIT_FN)
@@ -214,7 +212,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
     } else {
         return;
     };
-    let fn_arg = &map_args[1];
+    let fn_arg = &map_args.1[0];
 
     if is_unit_function(cx, fn_arg) {
         let mut applicability = Applicability::MachineApplicable;

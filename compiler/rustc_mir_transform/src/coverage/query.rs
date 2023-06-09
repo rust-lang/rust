@@ -2,7 +2,7 @@ use super::*;
 
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, Body, Coverage, CoverageInfo};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
@@ -84,7 +84,7 @@ impl CoverageVisitor {
     }
 
     fn visit_body(&mut self, body: &Body<'_>) {
-        for bb_data in body.basic_blocks().iter() {
+        for bb_data in body.basic_blocks.iter() {
             for statement in bb_data.statements.iter() {
                 if let StatementKind::Coverage(box ref coverage) = statement.kind {
                     if is_inlined(body, statement) {
@@ -136,9 +136,9 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
     coverage_visitor.info
 }
 
-fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx CodeRegion> {
+fn covered_code_regions(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<&CodeRegion> {
     let body = mir_body(tcx, def_id);
-    body.basic_blocks()
+    body.basic_blocks
         .iter()
         .flat_map(|data| {
             data.statements.iter().filter_map(|statement| match statement.kind {
@@ -163,8 +163,7 @@ fn is_inlined(body: &Body<'_>, statement: &Statement<'_>) -> bool {
 /// This function ensures we obtain the correct MIR for the given item irrespective of
 /// whether that means const mir or runtime mir. For `const fn` this opts for runtime
 /// mir.
-fn mir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx mir::Body<'tcx> {
-    let id = ty::WithOptConstParam::unknown(def_id);
-    let def = ty::InstanceDef::Item(id);
+fn mir_body(tcx: TyCtxt<'_>, def_id: DefId) -> &mir::Body<'_> {
+    let def = ty::InstanceDef::Item(def_id);
     tcx.instance_mir(def)
 }

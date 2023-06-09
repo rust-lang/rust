@@ -37,7 +37,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
         let opts = helper.find_optimizations();
         let mut storage_deads_to_insert = vec![];
         let mut storage_deads_to_remove: Vec<(usize, BasicBlock)> = vec![];
-        let param_env = tcx.param_env(body.source.def_id());
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         for opt in opts {
             trace!("SUCCESS: Applying {:?}", opt);
             // replace terminator with a switchInt that switches on the integer directly
@@ -127,11 +127,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
             let targets = SwitchTargets::new(iter::once((new_value, bb_cond)), bb_otherwise);
 
             let terminator = bb.terminator_mut();
-            terminator.kind = TerminatorKind::SwitchInt {
-                discr: Operand::Move(opt.to_switch_on),
-                switch_ty: opt.branch_value_ty,
-                targets,
-            };
+            terminator.kind =
+                TerminatorKind::SwitchInt { discr: Operand::Move(opt.to_switch_on), targets };
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {
@@ -151,7 +148,7 @@ struct OptimizationFinder<'a, 'tcx> {
 impl<'tcx> OptimizationFinder<'_, 'tcx> {
     fn find_optimizations(&self) -> Vec<OptimizationInfo<'tcx>> {
         self.body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
                 // find switch

@@ -1,0 +1,20 @@
+error: symbol-name(_RNvXINICsCRATE_HASH_11issue_75326s_0pppEINtB<REF>_3FooppENtB<REF>_9Iterator24nextB<REF>_)
+  --> $DIR/issue-75326.rs:41:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<issue_75326[189ebc60e18860d7]::Foo<_, _> as issue_75326[189ebc60e18860d7]::Iterator2>::next)
+  --> $DIR/issue-75326.rs:41:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<issue_75326::Foo<_, _> as issue_75326::Iterator2>::next)
+  --> $DIR/issue-75326.rs:41:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

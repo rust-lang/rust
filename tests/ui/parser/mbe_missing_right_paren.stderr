@@ -1,0 +1,10 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/mbe_missing_right_paren.rs:3:19
+   |
+LL | macro_rules! abc(ؼ
+   |                 - ^
+   |                 |
+   |                 unclosed delimiter
+
+error: aborting due to previous error
+

@@ -1,5 +1,3 @@
-use crate::vec::{Idx, IndexVec};
-use arrayvec::ArrayVec;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -8,7 +6,12 @@ use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds
 use std::rc::Rc;
 use std::slice;
 
+use arrayvec::ArrayVec;
+use smallvec::{smallvec, SmallVec};
+
 use rustc_macros::{Decodable, Encodable};
+
+use crate::{Idx, IndexVec};
 
 use Chunk::*;
 
@@ -111,7 +114,7 @@ macro_rules! bit_relations_inherent_impls {
 #[derive(Eq, PartialEq, Hash, Decodable, Encodable)]
 pub struct BitSet<T> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: SmallVec<[Word; 2]>,
     marker: PhantomData<T>,
 }
 
@@ -127,14 +130,15 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        BitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        BitSet { domain_size, words: smallvec![0; num_words], marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result = BitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
+        let mut result =
+            BitSet { domain_size, words: smallvec![!0; num_words], marker: PhantomData };
         result.clear_excess_bits();
         result
     }
@@ -209,7 +213,7 @@ impl<T: Idx> BitSet<T> {
             self.words[start_word_index] |= !(start_mask - 1);
             // And all trailing bits (i.e. from 0..=end) in the end word,
             // including the end.
-            self.words[end_word_index] |= end_mask | end_mask - 1;
+            self.words[end_word_index] |= end_mask | (end_mask - 1);
         } else {
             self.words[start_word_index] |= end_mask | (end_mask - start_mask);
         }
@@ -1061,12 +1065,8 @@ impl<T> Clone for BitSet<T> {
     }
 
     fn clone_from(&mut self, from: &Self) {
-        if self.domain_size != from.domain_size {
-            self.words.resize(from.domain_size, 0);
-            self.domain_size = from.domain_size;
-        }
-
-        self.words.copy_from_slice(&from.words);
+        self.domain_size = from.domain_size;
+        self.words.clone_from(&from.words);
     }
 }
 
@@ -1095,7 +1095,7 @@ impl<T: Idx> ToString for BitSet<T> {
                 assert!(mask <= 0xFF);
                 let byte = word & mask;
 
-                result.push_str(&format!("{}{:02x}", sep, byte));
+                result.push_str(&format!("{sep}{byte:02x}"));
 
                 if remain <= 8 {
                     break;
@@ -1544,7 +1544,7 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).map_or(false, |word| (word & mask) != 0)
+        self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
     }
 
     #[inline]
@@ -1575,7 +1575,7 @@ impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
-    words: Vec<Word>,
+    words: SmallVec<[Word; 2]>,
     marker: PhantomData<(R, C)>,
 }
 
@@ -1588,7 +1588,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         BitMatrix {
             num_rows,
             num_columns,
-            words: vec![0; num_rows * words_per_row],
+            words: smallvec![0; num_rows * words_per_row],
             marker: PhantomData,
         }
     }
@@ -1818,7 +1818,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.row(row).map_or(false, |r| r.contains(column))
+        self.row(row).is_some_and(|r| r.contains(column))
     }
 
     /// Adds the bits from row `read` to the bits from row `write`, and
@@ -1852,7 +1852,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
@@ -1874,7 +1874,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    /// Subtracts `set from `row`. `set` can be either `BitSet` or
+    /// Subtracts `set` from `row`. `set` can be either `BitSet` or
     /// `HybridBitSet`. Has no effect if `row` does not exist.
     ///
     /// Returns true if the row was changed.

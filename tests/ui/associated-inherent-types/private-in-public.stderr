@@ -1,0 +1,34 @@
+error: private associated type `PubTy::PrivAssocTy` in public interface (error E0446)
+  --> $DIR/private-in-public.rs:7:1
+   |
+LL | pub type PubAlias0 = PubTy::PrivAssocTy;
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+note: the lint level is defined here
+  --> $DIR/private-in-public.rs:5:9
+   |
+LL | #![deny(private_in_public)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: private type `PrivTy` in public interface (error E0446)
+  --> $DIR/private-in-public.rs:10:1
+   |
+LL | pub type PubAlias1 = PrivTy::PubAssocTy;
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error: private type `PrivTy` in public interface (error E0446)
+  --> $DIR/private-in-public.rs:13:1
+   |
+LL | pub type PubAlias2 = PubTy::PubAssocTy<PrivTy>;
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error: aborting due to 3 previous errors
+

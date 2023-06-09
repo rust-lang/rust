@@ -8,7 +8,7 @@ use rustc_span::{BytePos, Span};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Handler, MultiSpan, PResult};
+use rustc_errors::{Handler, MultiSpan, PResult, TerminalUrl};
 
 use std::io;
 use std::io::prelude::*;
@@ -34,18 +34,23 @@ where
 
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(
+        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+        FilePathMapping::empty(),
+    );
     source_file_to_stream(
         &ps,
         ps.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
         None,
     )
-    .0
 }
 
 /// Parses a string, returns a crate.
 pub(crate) fn string_to_crate(source_str: String) -> ast::Crate {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(
+        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+        FilePathMapping::empty(),
+    );
     with_error_checking_parse(source_str, &ps, |p| p.parse_crate_mod())
 }
 
@@ -127,8 +132,10 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
     create_default_session_if_not_set_then(|_| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
-        let fallback_bundle =
-            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+            vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+            false,
+        );
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
@@ -151,8 +158,11 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             false,
             None,
             false,
+            false,
+            TerminalUrl::No,
         );
         let handler = Handler::with_emitter(true, None, Box::new(emitter));
+        #[allow(rustc::untranslatable_diagnostic)]
         handler.span_err(msp, "foo");
 
         assert!(
@@ -271,13 +281,13 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__-
-  | | ___|
+  |   ___^__-
+  |  |___|
   | ||
 4 | ||   X1 Y1
 5 | ||   X2 Y2
   | ||____^__- `Y` is a good letter too
-  |  |____|
+  | |_____|
   |       `X` is a good letter
 
 "#,
@@ -310,12 +320,12 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__-
-  | | ___|
+  |   ___^__-
+  |  |___|
   | ||
 4 | ||   Y1 X1
   | ||____-__^ `X` is a good letter
-  | |_____|
+  |  |____|
   |       `Y` is a good letter too
 
 "#,
@@ -350,13 +360,13 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |_________-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | _________-
 5 | ||   X2 Y2 Z2
   | ||____^ `X` is a good letter
-6 | |    X3 Y3 Z3
-  | |_____- `Y` is a good letter too
+6 |  |   X3 Y3 Z3
+  |  |____- `Y` is a good letter too
 
 "#,
     );
@@ -394,15 +404,15 @@ error: foo
  --> test.rs:3:3
   |
 3 |       X0 Y0 Z0
-  |  _____^__-__-
-  | | ____|__|
-  | || ___|
+  |    ___^__-__-
+  |   |___|__|
+  |  ||___|
   | |||
 4 | |||   X1 Y1 Z1
 5 | |||   X2 Y2 Z2
   | |||____^__-__- `Z` label
-  |  ||____|__|
-  |   |____|  `Y` is a good letter too
+  | ||_____|__|
+  | |______|  `Y` is a good letter too
   |        `X` is a good letter
 
 "#,
@@ -486,24 +496,24 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |____^_-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | ____^_-
   | ||____|
-  | |     `X` is a good letter
-5 | |    X2 Y2 Z2
-  | |____-______- `Y` is a good letter too
-  |  ____|
-  | |
-6 | |    X3 Y3 Z3
-  | |________- `Z`
+  |  |    `X` is a good letter
+5 |  |   X2 Y2 Z2
+  |  |___-______- `Y` is a good letter too
+  |   ___|
+  |  |
+6 |  |   X3 Y3 Z3
+  |  |_______- `Z`
 
 "#,
     );
 }
 
 #[test]
-fn non_overlaping() {
+fn non_overlapping() {
     test_harness(
         r#"
 fn foo() {
@@ -542,7 +552,7 @@ error: foo
 }
 
 #[test]
-fn overlaping_start_and_end() {
+fn overlapping_start_and_end() {
     test_harness(
         r#"
 fn foo() {
@@ -569,14 +579,14 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |____^____-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | ____^____-
   | ||____|
-  | |     `X` is a good letter
-5 | |    X2 Y2 Z2
-6 | |    X3 Y3 Z3
-  | |___________- `Y` is a good letter too
+  |  |    `X` is a good letter
+5 |  |   X2 Y2 Z2
+6 |  |   X3 Y3 Z3
+  |  |__________- `Y` is a good letter too
 
 "#,
     );
@@ -940,18 +950,18 @@ error: foo
   --> test.rs:3:6
    |
 3  |      X0 Y0 Z0
-   |   ______^
-4  |  |   X1 Y1 Z1
-   |  |____^____-
+   |  _______^
+4  | |    X1 Y1 Z1
+   | | ____^____-
    | ||____|
-   | |     `X` is a good letter
-5  | |  1
-6  | |  2
-7  | |  3
-...  |
-15 | |    X2 Y2 Z2
-16 | |    X3 Y3 Z3
-   | |___________- `Y` is a good letter too
+   |  |    `X` is a good letter
+5  |  | 1
+6  |  | 2
+7  |  | 3
+...   |
+15 |  |   X2 Y2 Z2
+16 |  |   X3 Y3 Z3
+   |  |__________- `Y` is a good letter too
 
 "#,
     );
@@ -995,21 +1005,21 @@ error: foo
   --> test.rs:3:6
    |
 3  |      X0 Y0 Z0
-   |   ______^
-4  |  | 1
-5  |  | 2
-6  |  | 3
-7  |  |   X1 Y1 Z1
-   |  |_________-
+   |  _______^
+4  | |  1
+5  | |  2
+6  | |  3
+7  | |    X1 Y1 Z1
+   | | _________-
 8  | || 4
 9  | || 5
 10 | || 6
 11 | ||   X2 Y2 Z2
    | ||__________- `Z` is a good letter too
-...   |
-15 |  | 10
-16 |  |   X3 Y3 Z3
-   |  |_______^ `Y` is a good letter
+...  |
+15 | |  10
+16 | |    X3 Y3 Z3
+   | |________^ `Y` is a good letter
 
 "#,
     );

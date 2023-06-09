@@ -150,7 +150,7 @@ pub fn expand_include<'cx>(
                         if self.p.token != token::Eof {
                             let token = pprust::token_to_string(&self.p.token);
                             let msg = format!("expected item, found `{}`", token);
-                            self.p.struct_span_err(self.p.token.span, &msg).emit();
+                            self.p.struct_span_err(self.p.token.span, msg).emit();
                         }
 
                         break;
@@ -164,7 +164,7 @@ pub fn expand_include<'cx>(
     Box::new(ExpandResult { p, node_id: cx.current_expansion.lint_node_id })
 }
 
-// include_str! : read the given file, insert it as a literal string expr
+/// `include_str!`: read the given file, insert it as a literal string expr
 pub fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -188,12 +188,12 @@ pub fn expand_include_str(
                 base::MacEager::expr(cx.expr_str(sp, interned_src))
             }
             Err(_) => {
-                cx.span_err(sp, &format!("{} wasn't a utf-8 file", file.display()));
+                cx.span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
                 DummyResult::any(sp)
             }
         },
         Err(e) => {
-            cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
+            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)
         }
     }
@@ -216,9 +216,12 @@ pub fn expand_include_bytes(
         }
     };
     match cx.source_map().load_binary_file(&file) {
-        Ok(bytes) => base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(bytes.into()))),
+        Ok(bytes) => {
+            let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(bytes.into()));
+            base::MacEager::expr(expr)
+        }
         Err(e) => {
-            cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
+            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)
         }
     }

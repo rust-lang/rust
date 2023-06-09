@@ -1,13 +1,16 @@
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::mem;
 use std::os::windows::prelude::*;
 use std::path::Path;
 
-use winapi::shared::winerror::ERROR_INVALID_FUNCTION;
-use winapi::um::fileapi::LockFileEx;
-use winapi::um::minwinbase::{LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, OVERLAPPED};
-use winapi::um::winnt::{FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE};
+use windows::{
+    Win32::Foundation::{ERROR_INVALID_FUNCTION, HANDLE},
+    Win32::Storage::FileSystem::{
+        LockFileEx, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, LOCKFILE_EXCLUSIVE_LOCK,
+        LOCKFILE_FAIL_IMMEDIATELY, LOCK_FILE_FLAGS,
+    },
+    Win32::System::IO::OVERLAPPED,
+};
 
 #[derive(Debug)]
 pub struct Lock {
@@ -25,7 +28,7 @@ impl Lock {
         let share_mode = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
 
         let mut open_options = OpenOptions::new();
-        open_options.read(true).share_mode(share_mode);
+        open_options.read(true).share_mode(share_mode.0);
 
         if create {
             open_options.create(true).write(true);
@@ -43,33 +46,42 @@ impl Lock {
             }
         };
 
-        let ret = unsafe {
-            let mut overlapped: OVERLAPPED = mem::zeroed();
-
-            let mut dwFlags = 0;
-            if !wait {
-                dwFlags |= LOCKFILE_FAIL_IMMEDIATELY;
-            }
-
-            if exclusive {
-                dwFlags |= LOCKFILE_EXCLUSIVE_LOCK;
-            }
-
-            debug!("attempting to acquire lock on lock file `{}`", p.display());
-            LockFileEx(file.as_raw_handle(), dwFlags, 0, 0xFFFF_FFFF, 0xFFFF_FFFF, &mut overlapped)
-        };
-        if ret == 0 {
-            let err = io::Error::last_os_error();
-            debug!("failed acquiring file lock: {}", err);
-            Err(err)
-        } else {
-            debug!("successfully acquired lock");
-            Ok(Lock { _file: file })
+        let mut flags = LOCK_FILE_FLAGS::default();
+        if !wait {
+            flags |= LOCKFILE_FAIL_IMMEDIATELY;
         }
+
+        if exclusive {
+            flags |= LOCKFILE_EXCLUSIVE_LOCK;
+        }
+
+        let mut overlapped = OVERLAPPED::default();
+
+        debug!("attempting to acquire lock on lock file `{}`", p.display());
+
+        unsafe {
+            LockFileEx(
+                HANDLE(file.as_raw_handle() as isize),
+                flags,
+                0,
+                u32::MAX,
+                u32::MAX,
+                &mut overlapped,
+            )
+        }
+        .ok()
+        .map_err(|e| {
+            let err = io::Error::from_raw_os_error(e.code().0);
+            debug!("failed acquiring file lock: {}", err);
+            err
+        })?;
+
+        debug!("successfully acquired lock");
+        Ok(Lock { _file: file })
     }
 
     pub fn error_unsupported(err: &io::Error) -> bool {
-        err.raw_os_error() == Some(ERROR_INVALID_FUNCTION as i32)
+        err.raw_os_error() == Some(ERROR_INVALID_FUNCTION.0 as i32)
     }
 }
 

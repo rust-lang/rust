@@ -1,16 +1,21 @@
+#![feature(lazy_cell)]
 #![feature(let_chains)]
-#![feature(let_else)]
-#![feature(once_cell)]
 #![feature(rustc_private)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
+// The `rustc_driver` crate seems to be required in order to use the `rust_lexer` crate.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
 extern crate rustc_lexer;
 
+use std::io;
 use std::path::PathBuf;
+use std::process::{self, ExitStatus};
 
 pub mod bless;
+pub mod dogfood;
 pub mod fmt;
 pub mod lint;
 pub mod new_lint;
@@ -54,4 +59,15 @@ pub fn clippy_project_root() -> PathBuf {
         }
     }
     panic!("error: Can't determine root of project. Please run inside a Clippy working dir.");
+}
+
+pub fn exit_if_err(status: io::Result<ExitStatus>) {
+    match status.expect("failed to run command").code() {
+        Some(0) => {},
+        Some(n) => process::exit(n),
+        None => {
+            eprintln!("Killed by signal");
+            process::exit(1);
+        },
+    }
 }

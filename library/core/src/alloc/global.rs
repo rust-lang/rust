@@ -74,7 +74,7 @@ use crate::ptr;
 ///         {
 ///             return null_mut();
 ///         };
-///         (self.arena.get() as *mut u8).add(allocated)
+///         self.arena.get().cast::<u8>().add(allocated)
 ///     }
 ///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 /// }
@@ -203,16 +203,19 @@ pub unsafe trait GlobalAlloc {
         ptr
     }
 
-    /// Shrink or grow a block of memory to the given `new_size`.
+    /// Shrink or grow a block of memory to the given `new_size` in bytes.
     /// The block is described by the given `ptr` pointer and `layout`.
     ///
     /// If this returns a non-null pointer, then ownership of the memory block
     /// referenced by `ptr` has been transferred to this allocator.
-    /// The memory may or may not have been deallocated, and should be
-    /// considered unusable. The new memory block is allocated with `layout`,
-    /// but with the `size` updated to `new_size`. This new layout should be
-    /// used when deallocating the new memory block with `dealloc`. The range
-    /// `0..min(layout.size(), new_size)` of the new memory block is
+    /// Any access to the old `ptr` is Undefined Behavior, even if the
+    /// allocation remained in-place. The newly returned pointer is the only valid pointer
+    /// for accessing this memory now.
+    ///
+    /// The new memory block is allocated with `layout`,
+    /// but with the `size` updated to `new_size` in bytes.
+    /// This new layout must be used when deallocating the new memory block with `dealloc`.
+    /// The range `0..min(layout.size(), new_size)` of the new memory block is
     /// guaranteed to have the same values as the original block.
     ///
     /// If this method returns null, then ownership of the memory
@@ -232,7 +235,8 @@ pub unsafe trait GlobalAlloc {
     /// * `new_size` must be greater than zero.
     ///
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
-    ///   must not overflow (i.e., the rounded value must be less than `usize::MAX`).
+    ///   must not overflow isize (i.e., the rounded value must be less than or
+    ///   equal to `isize::MAX`).
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g., guarantee a sentinel address or a null pointer

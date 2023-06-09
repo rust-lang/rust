@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/no-implicit-dyn-star.rs:6:48
+   |
+LL |     dyn_star_foreign::require_dyn_star_display(1usize);
+   |     ------------------------------------------ ^^^^^^ expected `dyn Display`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected trait object `(dyn* std::fmt::Display + 'static)`
+                      found type `usize`
+note: function defined here
+  --> $DIR/auxiliary/dyn-star-foreign.rs:6:8
+   |
+LL | pub fn require_dyn_star_display(_: dyn* Display) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

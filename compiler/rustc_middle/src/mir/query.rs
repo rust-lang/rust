@@ -1,21 +1,21 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir::{Body, ConstantKind, Promoted};
+use crate::mir::ConstantKind;
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
-use rustc_data_structures::stable_map::FxHashMap;
-use rustc_data_structures::vec_map::VecMap;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
-use rustc_index::vec::IndexVec;
+use rustc_index::{Idx, IndexVec};
 use rustc_span::Span;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use smallvec::SmallVec;
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
-use super::{Field, SourceInfo};
+use super::SourceInfo;
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationKind {
@@ -115,21 +115,6 @@ pub enum UnusedUnsafe {
     /// `unsafe` block nested under another (used) `unsafe` block
     /// > ``… because it's nested under this `unsafe` block``
     InUnsafeBlock(hir::HirId),
-    /// `unsafe` block nested under `unsafe fn`
-    /// > ``… because it's nested under this `unsafe fn` ``
-    ///
-    /// the second HirId here indicates the first usage of the `unsafe` block,
-    /// which allows retrieval of the LintLevelSource for why that operation would
-    /// have been permitted without the block
-    InUnsafeFn(hir::HirId, hir::HirId),
-}
-
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub enum UsedUnsafeBlockData {
-    SomeDisallowedInUnsafeFn,
-    // the HirId here indicates the first usage of the `unsafe` block
-    // (i.e. the one that's first encountered in the MIR traversal of the unsafety check)
-    AllAllowedInUnsafeFn(hir::HirId),
 }
 
 #[derive(TyEncodable, TyDecodable, HashStable, Debug)]
@@ -138,31 +123,36 @@ pub struct UnsafetyCheckResult {
     pub violations: Vec<UnsafetyViolation>,
 
     /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
-    ///
-    /// The keys are the used `unsafe` blocks, the UnusedUnsafeKind indicates whether
-    /// or not any of the usages happen at a place that doesn't allow `unsafe_op_in_unsafe_fn`.
-    pub used_unsafe_blocks: FxHashMap<hir::HirId, UsedUnsafeBlockData>,
+    pub used_unsafe_blocks: UnordSet<hir::HirId>,
 
     /// This is `Some` iff the item is not a closure.
     pub unused_unsafes: Option<Vec<(hir::HirId, UnusedUnsafe)>>,
 }
 
 rustc_index::newtype_index! {
-    pub struct GeneratorSavedLocal {
-        derive [HashStable]
-        DEBUG_FORMAT = "_{}",
-    }
+    #[derive(HashStable)]
+    #[debug_format = "_{}"]
+    pub struct GeneratorSavedLocal {}
+}
+
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct GeneratorSavedTy<'tcx> {
+    pub ty: Ty<'tcx>,
+    /// Source info corresponding to the local in the original MIR body.
+    pub source_info: SourceInfo,
+    /// Whether the local should be ignored for trait bound computations.
+    pub ignore_for_traits: bool,
 }
 
 /// The layout of generator state.
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
-    pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,
+    pub field_tys: IndexVec<GeneratorSavedLocal, GeneratorSavedTy<'tcx>>,
 
     /// Which of the above fields are in each variant. Note that one field may
     /// be stored in multiple variants.
-    pub variant_fields: IndexVec<VariantIdx, IndexVec<Field, GeneratorSavedLocal>>,
+    pub variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, GeneratorSavedLocal>>,
 
     /// The source that led to each variant being created (usually, a yield or
     /// await).
@@ -171,6 +161,8 @@ pub struct GeneratorLayout<'tcx> {
     /// Which saved locals are storage-live at the same time. Locals that do not
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
 }
 
@@ -235,9 +227,9 @@ pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
-    pub concrete_opaque_types: VecMap<DefId, OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
-    pub used_mut_upvars: SmallVec<[Field; 8]>,
+    pub used_mut_upvars: SmallVec<[FieldIdx; 8]>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
@@ -297,13 +289,6 @@ pub struct ConstQualifs {
 /// instance of the closure is created, the corresponding free regions
 /// can be extracted from its type and constrained to have the given
 /// outlives relationship.
-///
-/// In some cases, we have to record outlives requirements between types and
-/// regions as well. In that case, if those types include any regions, those
-/// regions are recorded using their external names (`ReStatic`,
-/// `ReEarlyBound`, `ReFree`). We use these because in a query response we
-/// cannot use `ReVar` (which is what we use internally within the rest of the
-/// NLL code).
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct ClosureRegionRequirements<'tcx> {
     /// The number of external regions defined on the closure. In our
@@ -345,7 +330,7 @@ rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 ///
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable, Lift, TypeVisitable, TypeFoldable)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
@@ -368,7 +353,7 @@ pub enum ConstraintCategory<'tcx> {
     /// like `Foo { field: my_val }`)
     Usage,
     OpaqueType,
-    ClosureUpvar(Field),
+    ClosureUpvar(FieldIdx),
 
     /// A constraint from a user-written predicate
     /// with the provided span, written on the item
@@ -387,10 +372,10 @@ pub enum ConstraintCategory<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
 pub enum ReturnConstraint {
     Normal,
-    ClosureUpvar(Field),
+    ClosureUpvar(FieldIdx),
 }
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing
@@ -400,26 +385,60 @@ pub enum ClosureOutlivesSubject<'tcx> {
     /// Subject is a type, typically a type parameter, but could also
     /// be a projection. Indicates a requirement like `T: 'a` being
     /// passed to the caller, where the type here is `T`.
-    ///
-    /// The type here is guaranteed not to contain any free regions at
-    /// present.
-    Ty(Ty<'tcx>),
+    Ty(ClosureOutlivesSubjectTy<'tcx>),
 
     /// Subject is a free region from the closure. Indicates a requirement
     /// like `'a: 'b` being passed to the caller; the region here is `'a`.
     Region(ty::RegionVid),
 }
 
-/// The constituent parts of a type level constant of kind ADT or array.
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredConst<'tcx> {
-    pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [ty::Const<'tcx>],
+/// Represents a `ty::Ty` for use in [`ClosureOutlivesSubject`].
+///
+/// This abstraction is necessary because the type may include `ReVar` regions,
+/// which is what we use internally within NLL code, and they can't be used in
+/// a query response.
+///
+/// DO NOT implement `TypeVisitable` or `TypeFoldable` traits, because this
+/// type is not recognized as a binder for late-bound region.
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct ClosureOutlivesSubjectTy<'tcx> {
+    inner: Ty<'tcx>,
+}
+
+impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
+    /// All regions of `ty` must be of kind `ReVar` and must represent
+    /// universal regions *external* to the closure.
+    pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
+        let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
+            ty::ReVar(vid) => {
+                let br =
+                    ty::BoundRegion { var: ty::BoundVar::new(vid.index()), kind: ty::BrAnon(None) };
+                ty::Region::new_late_bound(tcx, depth, br)
+            }
+            _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),
+        });
+
+        Self { inner }
+    }
+
+    pub fn instantiate(
+        self,
+        tcx: TyCtxt<'tcx>,
+        mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
+    ) -> Ty<'tcx> {
+        tcx.fold_regions(self.inner, |r, depth| match r.kind() {
+            ty::ReLateBound(debruijn, br) => {
+                debug_assert_eq!(debruijn, depth);
+                map(ty::RegionVid::new(br.var.index()))
+            }
+            _ => bug!("unexpected region {r:?}"),
+        })
+    }
 }
 
 /// The constituent parts of a mir constant of kind ADT or array.
 #[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredMirConstant<'tcx> {
+pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ConstantKind<'tcx>],
 }
@@ -434,43 +453,4 @@ pub struct CoverageInfo {
 
     /// The total number of coverage region counter expressions added to the MIR `Body`.
     pub num_expressions: u32,
-}
-
-/// Shims which make dealing with `WithOptConstParam` easier.
-///
-/// For more information on why this is needed, consider looking
-/// at the docs for `WithOptConstParam` itself.
-impl<'tcx> TyCtxt<'tcx> {
-    #[inline]
-    pub fn mir_const_qualif_opt_const_arg(
-        self,
-        def: ty::WithOptConstParam<LocalDefId>,
-    ) -> ConstQualifs {
-        if let Some(param_did) = def.const_param_did {
-            self.mir_const_qualif_const_arg((def.did, param_did))
-        } else {
-            self.mir_const_qualif(def.did)
-        }
-    }
-
-    #[inline]
-    pub fn promoted_mir_opt_const_arg(
-        self,
-        def: ty::WithOptConstParam<DefId>,
-    ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
-        if let Some((did, param_did)) = def.as_const_arg() {
-            self.promoted_mir_of_const_arg((did, param_did))
-        } else {
-            self.promoted_mir(def.did)
-        }
-    }
-
-    #[inline]
-    pub fn mir_for_ctfe_opt_const_arg(self, def: ty::WithOptConstParam<DefId>) -> &'tcx Body<'tcx> {
-        if let Some((did, param_did)) = def.as_const_arg() {
-            self.mir_for_ctfe_of_const_arg((did, param_did))
-        } else {
-            self.mir_for_ctfe(def.did)
-        }
-    }
 }

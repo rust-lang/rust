@@ -26,7 +26,7 @@
 //! ## `PartialOrd`
 //!
 //! Given that they represent partially ordered sets, you may be surprised that [`JoinSemiLattice`]
-//! and [`MeetSemiLattice`] do not have [`PartialOrd`][std::cmp::PartialOrd] as a supertrait. This
+//! and [`MeetSemiLattice`] do not have [`PartialOrd`] as a supertrait. This
 //! is because most standard library types use lexicographic ordering instead of set inclusion for
 //! their `PartialOrd` impl. Since we do not actually need to compare lattice elements to run a
 //! dataflow analysis, there's no need for a newtype wrapper with a custom `PartialOrd` impl. The
@@ -40,7 +40,7 @@
 
 use crate::framework::BitSetExt;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use std::iter;
 
 /// A [partially ordered set][poset] that has a [least upper bound][lub] for any pair of elements
@@ -73,6 +73,16 @@ pub trait MeetSemiLattice: Eq {
     fn meet(&mut self, other: &Self) -> bool;
 }
 
+/// A set that has a "bottom" element, which is less than or equal to any other element.
+pub trait HasBottom {
+    const BOTTOM: Self;
+}
+
+/// A set that has a "top" element, which is greater than or equal to any other element.
+pub trait HasTop {
+    const TOP: Self;
+}
+
 /// A `bool` is a "two-point" lattice with `true` as the top element and `false` as the bottom:
 ///
 /// ```text
@@ -100,6 +110,14 @@ impl MeetSemiLattice for bool {
 
         false
     }
+}
+
+impl HasBottom for bool {
+    const BOTTOM: Self = false;
+}
+
+impl HasTop for bool {
+    const TOP: Self = true;
 }
 
 /// A tuple (or list) of lattices is itself a lattice whose least upper bound is the concatenation
@@ -249,4 +267,12 @@ impl<T: Clone + Eq> MeetSemiLattice for FlatSet<T> {
         *self = result;
         true
     }
+}
+
+impl<T> HasBottom for FlatSet<T> {
+    const BOTTOM: Self = Self::Bottom;
+}
+
+impl<T> HasTop for FlatSet<T> {
+    const TOP: Self = Self::Top;
 }

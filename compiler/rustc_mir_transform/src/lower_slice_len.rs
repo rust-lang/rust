@@ -3,7 +3,7 @@
 
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -11,7 +11,7 @@ pub struct LowerSliceLenCalls;
 
 impl<'tcx> MirPass<'tcx> for LowerSliceLenCalls {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.mir_opt_level() > 0
+        sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -42,7 +42,7 @@ struct SliceLenPatchInformation<'tcx> {
 fn lower_slice_len_call<'tcx>(
     tcx: TyCtxt<'tcx>,
     block: &mut BasicBlockData<'tcx>,
-    local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
+    local_decls: &IndexSlice<Local, LocalDecl<'tcx>>,
     slice_len_fn_item_def_id: DefId,
 ) {
     let mut patch_found: Option<SliceLenPatchInformation<'_>> = None;
@@ -54,7 +54,6 @@ fn lower_slice_len_call<'tcx>(
             args,
             destination,
             target: Some(bb),
-            cleanup: None,
             from_hir_call: true,
             ..
         } => {
@@ -68,8 +67,11 @@ fn lower_slice_len_call<'tcx>(
                 ty::FnDef(fn_def_id, _) if fn_def_id == &slice_len_fn_item_def_id => {
                     // perform modifications
                     // from something like `_5 = core::slice::<impl [u8]>::len(move _6) -> bb1`
-                    // into `_5 = Len(*_6)
+                    // into:
+                    // ```
+                    // _5 = Len(*_6)
                     // goto bb1
+                    // ```
 
                     // make new RValue for Len
                     let deref_arg = tcx.mk_place_deref(arg);

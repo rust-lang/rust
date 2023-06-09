@@ -22,7 +22,7 @@
 
 #![allow(missing_debug_implementations)]
 
-mod common;
+pub mod common;
 
 cfg_if::cfg_if! {
     if #[cfg(unix)] {
@@ -52,27 +52,11 @@ cfg_if::cfg_if! {
     }
 }
 
-// Import essential modules from platforms used in `std::os` when documenting.
-//
-// Note that on some platforms those modules don't compile
-// (missing things in `libc` which is empty), so they are not included in `std::os` and can be
-// omitted here as well.
-
-#[cfg(doc)]
-#[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
-)))]
 cfg_if::cfg_if! {
-    if #[cfg(not(windows))] {
-        // On non-Windows platforms (aka linux/osx/etc) pull in a "minimal"
-        // amount of windows goop which ends up compiling
-
-        #[macro_use]
-        #[path = "windows/compat.rs"]
-        pub mod compat;
-
-        #[path = "windows/c.rs"]
-        pub mod c;
+    // Fuchsia components default to full backtrace.
+    if #[cfg(target_os = "fuchsia")] {
+        pub const FULL_BACKTRACE_DEFAULT: bool = true;
+    } else {
+        pub const FULL_BACKTRACE_DEFAULT: bool = false;
     }
 }

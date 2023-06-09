@@ -33,11 +33,11 @@ of a library.
 Plugins can extend [Rust's lint
 infrastructure](../../reference/attributes/diagnostics.md#lint-check-attributes) with
 additional checks for code style, safety, etc. Now let's write a plugin
-[`lint-plugin-test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/lint-plugin-test.rs)
+[`lint-plugin-test.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui-fulldeps/auxiliary/lint-plugin-test.rs)
 that warns about any item named `lintme`.
 
 ```rust,ignore (requires-stage-2)
-#![feature(box_syntax, rustc_private)]
+#![feature(rustc_private)]
 
 extern crate rustc_ast;
 
@@ -68,7 +68,7 @@ impl EarlyLintPass for Pass {
 #[no_mangle]
 fn __rustc_plugin_registrar(reg: &mut Registry) {
     reg.lint_store.register_lints(&[&TEST_LINT]);
-    reg.lint_store.register_early_pass(|| box Pass);
+    reg.lint_store.register_early_pass(|| Box::new(Pass));
 }
 ```
 

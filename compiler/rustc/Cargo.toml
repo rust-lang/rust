@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rustc_driver = { path = "../rustc_driver" }
+rustc_driver_impl = { path = "../rustc_driver_impl" }
 
 # Make sure rustc_codegen_ssa ends up in the sysroot, because this
 # crate is intended to be used by codegen backends, which may not be in-tree.
@@ -20,6 +21,6 @@ features = ['unprefixed_malloc_on_supported_platforms']
 
 [features]
 jemalloc = ['jemalloc-sys']
-llvm = ['rustc_driver/llvm']
-max_level_info = ['rustc_driver/max_level_info']
-rustc_use_parallel_compiler = ['rustc_driver/rustc_use_parallel_compiler']
+llvm = ['rustc_driver_impl/llvm']
+max_level_info = ['rustc_driver_impl/max_level_info']
+rustc_use_parallel_compiler = ['rustc_driver_impl/rustc_use_parallel_compiler']

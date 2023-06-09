@@ -1,0 +1,35 @@
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/object-safety-generics.rs:20:5
+   |
+LL |     t
+   |     ^ `Bar` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-safety-generics.rs:10:8
+   |
+LL | trait Bar {
+   |       --- this trait cannot be made into an object...
+LL |     fn bar<T>(&self, t: T);
+   |        ^^^ ...because method `bar` has generic type parameters
+   = help: consider moving `bar` to another trait
+   = note: required for the cast from `&T` to `&dyn Bar`
+
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/object-safety-generics.rs:26:5
+   |
+LL |     t as &dyn Bar
+   |     ^ `Bar` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-safety-generics.rs:10:8
+   |
+LL | trait Bar {
+   |       --- this trait cannot be made into an object...
+LL |     fn bar<T>(&self, t: T);
+   |        ^^^ ...because method `bar` has generic type parameters
+   = help: consider moving `bar` to another trait
+   = note: required for the cast from `&T` to `&dyn Bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

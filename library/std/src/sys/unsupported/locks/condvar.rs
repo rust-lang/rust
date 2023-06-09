@@ -3,19 +3,18 @@ use crate::time::Duration;
 
 pub struct Condvar {}
 
-pub type MovableCondvar = Condvar;
-
 impl Condvar {
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Condvar {
         Condvar {}
     }
 
     #[inline]
-    pub unsafe fn notify_one(&self) {}
+    pub fn notify_one(&self) {}
 
     #[inline]
-    pub unsafe fn notify_all(&self) {}
+    pub fn notify_all(&self) {}
 
     pub unsafe fn wait(&self, _mutex: &Mutex) {
         panic!("condvar wait not supported")

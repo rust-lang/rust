@@ -5,7 +5,7 @@ use itertools::Itertools;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write as _};
 use std::ops::Range;
@@ -45,9 +45,8 @@ fn generate_lint_files(
     renamed_lints: &[RenamedLint],
 ) {
     let internal_lints = Lint::internal_lints(lints);
-    let usable_lints = Lint::usable_lints(lints);
-    let mut sorted_usable_lints = usable_lints.clone();
-    sorted_usable_lints.sort_by_key(|lint| lint.name.clone());
+    let mut usable_lints = Lint::usable_lints(lints);
+    usable_lints.sort_by_key(|lint| lint.name.clone());
 
     replace_region_in_file(
         update_mode,
@@ -86,7 +85,7 @@ fn generate_lint_files(
                 )
                 .sorted()
             {
-                writeln!(res, "[`{}`]: {}#{}", lint, DOCS_LINK, lint).unwrap();
+                writeln!(res, "[`{lint}`]: {DOCS_LINK}#{lint}").unwrap();
             }
         },
     );
@@ -99,39 +98,21 @@ fn generate_lint_files(
         "// end lints modules, do not remove this comment, it’s used in `update_lints`",
         |res| {
             for lint_mod in usable_lints.iter().map(|l| &l.module).unique().sorted() {
-                writeln!(res, "mod {};", lint_mod).unwrap();
+                writeln!(res, "mod {lint_mod};").unwrap();
             }
         },
     );
 
     process_file(
-        "clippy_lints/src/lib.register_lints.rs",
+        "clippy_lints/src/declared_lints.rs",
         update_mode,
-        &gen_register_lint_list(internal_lints.iter(), usable_lints.iter()),
+        &gen_declared_lints(internal_lints.iter(), usable_lints.iter()),
     );
     process_file(
         "clippy_lints/src/lib.deprecated.rs",
         update_mode,
         &gen_deprecated(deprecated_lints),
     );
-
-    let all_group_lints = usable_lints.iter().filter(|l| {
-        matches!(
-            &*l.group,
-            "correctness" | "suspicious" | "style" | "complexity" | "perf"
-        )
-    });
-    let content = gen_lint_group_list("all", all_group_lints);
-    process_file("clippy_lints/src/lib.register_all.rs", update_mode, &content);
-
-    for (lint_group, lints) in Lint::by_lint_group(usable_lints.into_iter().chain(internal_lints)) {
-        let content = gen_lint_group_list(&lint_group, lints.iter());
-        process_file(
-            &format!("clippy_lints/src/lib.register_{}.rs", lint_group),
-            update_mode,
-            &content,
-        );
-    }
 
     let content = gen_deprecated_lints_test(deprecated_lints);
     process_file("tests/ui/deprecated.rs", update_mode, &content);
@@ -147,16 +128,16 @@ pub fn print_lints() {
     let grouped_by_lint_group = Lint::by_lint_group(usable_lints.into_iter());
 
     for (lint_group, mut lints) in grouped_by_lint_group {
-        println!("\n## {}", lint_group);
+        println!("\n## {lint_group}");
 
         lints.sort_by_key(|l| l.name.clone());
 
         for lint in lints {
-            println!("* [{}]({}#{}) ({})", lint.name, DOCS_LINK, lint.name, lint.desc);
+            println!("* [{}]({DOCS_LINK}#{}) ({})", lint.name, lint.name, lint.desc);
         }
     }
 
-    println!("there are {} lints", usable_lint_count);
+    println!("there are {usable_lint_count} lints");
 }
 
 /// Runs the `rename_lint` command.
@@ -177,10 +158,10 @@ pub fn print_lints() {
 #[allow(clippy::too_many_lines)]
 pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
     if let Some((prefix, _)) = old_name.split_once("::") {
-        panic!("`{}` should not contain the `{}` prefix", old_name, prefix);
+        panic!("`{old_name}` should not contain the `{prefix}` prefix");
     }
     if let Some((prefix, _)) = new_name.split_once("::") {
-        panic!("`{}` should not contain the `{}` prefix", new_name, prefix);
+        panic!("`{new_name}` should not contain the `{prefix}` prefix");
     }
 
     let (mut lints, deprecated_lints, mut renamed_lints) = gather_all();
@@ -193,14 +174,14 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
             found_new_name = true;
         }
     }
-    let old_lint_index = old_lint_index.unwrap_or_else(|| panic!("could not find lint `{}`", old_name));
+    let old_lint_index = old_lint_index.unwrap_or_else(|| panic!("could not find lint `{old_name}`"));
 
     let lint = RenamedLint {
-        old_name: format!("clippy::{}", old_name),
+        old_name: format!("clippy::{old_name}"),
         new_name: if uplift {
             new_name.into()
         } else {
-            format!("clippy::{}", new_name)
+            format!("clippy::{new_name}")
         },
     };
 
@@ -208,13 +189,11 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
     // case.
     assert!(
         !renamed_lints.iter().any(|l| lint.old_name == l.old_name),
-        "`{}` has already been renamed",
-        old_name
+        "`{old_name}` has already been renamed"
     );
     assert!(
         !deprecated_lints.iter().any(|l| lint.old_name == l.name),
-        "`{}` has already been deprecated",
-        old_name
+        "`{old_name}` has already been deprecated"
     );
 
     // Update all lint level attributes. (`clippy::lint_name`)
@@ -251,14 +230,12 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
     if uplift {
         write_file(Path::new("tests/ui/rename.rs"), &gen_renamed_lints_test(&renamed_lints));
         println!(
-            "`{}` has be uplifted. All the code inside `clippy_lints` related to it needs to be removed manually.",
-            old_name
+            "`{old_name}` has be uplifted. All the code inside `clippy_lints` related to it needs to be removed manually."
         );
     } else if found_new_name {
         write_file(Path::new("tests/ui/rename.rs"), &gen_renamed_lints_test(&renamed_lints));
         println!(
-            "`{}` is already defined. The old linting code inside `clippy_lints` needs to be updated/removed manually.",
-            new_name
+            "`{new_name}` is already defined. The old linting code inside `clippy_lints` needs to be updated/removed manually."
         );
     } else {
         // Rename the lint struct and source files sharing a name with the lint.
@@ -269,16 +246,16 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
 
         // Rename test files. only rename `.stderr` and `.fixed` files if the new test name doesn't exist.
         if try_rename_file(
-            Path::new(&format!("tests/ui/{}.rs", old_name)),
-            Path::new(&format!("tests/ui/{}.rs", new_name)),
+            Path::new(&format!("tests/ui/{old_name}.rs")),
+            Path::new(&format!("tests/ui/{new_name}.rs")),
         ) {
             try_rename_file(
-                Path::new(&format!("tests/ui/{}.stderr", old_name)),
-                Path::new(&format!("tests/ui/{}.stderr", new_name)),
+                Path::new(&format!("tests/ui/{old_name}.stderr")),
+                Path::new(&format!("tests/ui/{new_name}.stderr")),
             );
             try_rename_file(
-                Path::new(&format!("tests/ui/{}.fixed", old_name)),
-                Path::new(&format!("tests/ui/{}.fixed", new_name)),
+                Path::new(&format!("tests/ui/{old_name}.fixed")),
+                Path::new(&format!("tests/ui/{new_name}.fixed")),
             );
         }
 
@@ -286,8 +263,8 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
         let replacements;
         let replacements = if lint.module == old_name
             && try_rename_file(
-                Path::new(&format!("clippy_lints/src/{}.rs", old_name)),
-                Path::new(&format!("clippy_lints/src/{}.rs", new_name)),
+                Path::new(&format!("clippy_lints/src/{old_name}.rs")),
+                Path::new(&format!("clippy_lints/src/{new_name}.rs")),
             ) {
             // Edit the module name in the lint list. Note there could be multiple lints.
             for lint in lints.iter_mut().filter(|l| l.module == old_name) {
@@ -298,14 +275,14 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
         } else if !lint.module.contains("::")
             // Catch cases like `methods/lint_name.rs` where the lint is stored in `methods/mod.rs`
             && try_rename_file(
-                Path::new(&format!("clippy_lints/src/{}/{}.rs", lint.module, old_name)),
-                Path::new(&format!("clippy_lints/src/{}/{}.rs", lint.module, new_name)),
+                Path::new(&format!("clippy_lints/src/{}/{old_name}.rs", lint.module)),
+                Path::new(&format!("clippy_lints/src/{}/{new_name}.rs", lint.module)),
             )
         {
             // Edit the module name in the lint list. Note there could be multiple lints, or none.
-            let renamed_mod = format!("{}::{}", lint.module, old_name);
+            let renamed_mod = format!("{}::{old_name}", lint.module);
             for lint in lints.iter_mut().filter(|l| l.module == renamed_mod) {
-                lint.module = format!("{}::{}", lint.module, new_name);
+                lint.module = format!("{}::{new_name}", lint.module);
             }
             replacements = [(&*old_name_upper, &*new_name_upper), (old_name, new_name)];
             replacements.as_slice()
@@ -321,7 +298,7 @@ pub fn rename(old_name: &str, new_name: &str, uplift: bool) {
         }
 
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
-        println!("{} has been successfully renamed", old_name);
+        println!("{old_name} has been successfully renamed");
     }
 
     println!("note: `cargo uitest` still needs to be run to update the test results");
@@ -350,7 +327,7 @@ pub fn deprecate(name: &str, reason: Option<&String>) {
         });
 
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
-        println!("info: `{}` has successfully been deprecated", name);
+        println!("info: `{name}` has successfully been deprecated");
 
         if reason == DEFAULT_DEPRECATION_REASON {
             println!("note: the deprecation reason must be updated in `clippy_lints/src/deprecated_lints.rs`");
@@ -363,7 +340,7 @@ pub fn deprecate(name: &str, reason: Option<&String>) {
     let name_upper = name.to_uppercase();
 
     let (mut lints, deprecated_lints, renamed_lints) = gather_all();
-    let Some(lint) = lints.iter().find(|l| l.name == name_lower) else { eprintln!("error: failed to find lint `{}`", name); return; };
+    let Some(lint) = lints.iter().find(|l| l.name == name_lower) else { eprintln!("error: failed to find lint `{name}`"); return; };
 
     let mod_path = {
         let mut mod_path = PathBuf::from(format!("clippy_lints/src/{}", lint.module));
@@ -392,7 +369,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
     }
 
     fn remove_test_assets(name: &str) {
-        let test_file_stem = format!("tests/ui/{}", name);
+        let test_file_stem = format!("tests/ui/{name}");
         let path = Path::new(&test_file_stem);
 
         // Some lints have their own directories, delete them
@@ -418,7 +395,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
             .expect("failed to find `impl_lint_pass` terminator");
 
         impl_lint_pass_end += impl_lint_pass_start;
-        if let Some(lint_name_pos) = content[impl_lint_pass_start..impl_lint_pass_end].find(&lint_name_upper) {
+        if let Some(lint_name_pos) = content[impl_lint_pass_start..impl_lint_pass_end].find(lint_name_upper) {
             let mut lint_name_end = impl_lint_pass_start + (lint_name_pos + lint_name_upper.len());
             for c in content[lint_name_end..impl_lint_pass_end].chars() {
                 // Remove trailing whitespace
@@ -451,11 +428,10 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                 }
 
                 let mut content =
-                    fs::read_to_string(&path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
+                    fs::read_to_string(path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
 
                 eprintln!(
-                    "warn: you will have to manually remove any code related to `{}` from `{}`",
-                    name,
+                    "warn: you will have to manually remove any code related to `{name}` from `{}`",
                     path.display()
                 );
 
@@ -470,7 +446,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                 content.replace_range(lint.declaration_range.clone(), "");
 
                 // Remove the module declaration (mod xyz;)
-                let mod_decl = format!("\nmod {};", name);
+                let mod_decl = format!("\nmod {name};");
                 content = content.replacen(&mod_decl, "", 1);
 
                 remove_impl_lint_pass(&lint.name.to_uppercase(), &mut content);
@@ -507,17 +483,13 @@ fn declare_deprecated(name: &str, path: &Path, reason: &str) -> io::Result<()> {
             /// Nothing. This lint has been deprecated.
             ///
             /// ### Deprecation reason
-            /// {}
-            #[clippy::version = \"{}\"]
-            pub {},
-            \"{}\"
+            /// {deprecation_reason}
+            #[clippy::version = \"{version}\"]
+            pub {name},
+            \"{reason}\"
         }}
 
-        ",
-        deprecation_reason,
-        version,
-        name,
-        reason,
+        "
     )
 }
 
@@ -553,7 +525,7 @@ fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Option<S
         pos = m.end();
     }
     result.push_str(&contents[pos..]);
-    edited.then(|| result)
+    edited.then_some(result)
 }
 
 fn round_to_fifty(count: usize) -> usize {
@@ -563,13 +535,13 @@ fn round_to_fifty(count: usize) -> usize {
 fn process_file(path: impl AsRef<Path>, update_mode: UpdateMode, content: &str) {
     if update_mode == UpdateMode::Check {
         let old_content =
-            fs::read_to_string(&path).unwrap_or_else(|e| panic!("Cannot read from {}: {}", path.as_ref().display(), e));
+            fs::read_to_string(&path).unwrap_or_else(|e| panic!("Cannot read from {}: {e}", path.as_ref().display()));
         if content != old_content {
             exit_with_failure();
         }
     } else {
         fs::write(&path, content.as_bytes())
-            .unwrap_or_else(|e| panic!("Cannot write to {}: {}", path.as_ref().display(), e));
+            .unwrap_or_else(|e| panic!("Cannot write to {}: {e}", path.as_ref().display()));
     }
 }
 
@@ -655,33 +627,13 @@ impl RenamedLint {
     }
 }
 
-/// Generates the code for registering a group
-fn gen_lint_group_list<'a>(group_name: &str, lints: impl Iterator<Item = &'a Lint>) -> String {
-    let mut details: Vec<_> = lints.map(|l| (&l.module, l.name.to_uppercase())).collect();
-    details.sort_unstable();
-
-    let mut output = GENERATED_FILE_COMMENT.to_string();
-
-    let _ = writeln!(
-        output,
-        "store.register_group(true, \"clippy::{0}\", Some(\"clippy_{0}\"), vec![",
-        group_name
-    );
-    for (module, name) in details {
-        let _ = writeln!(output, "    LintId::of({}::{}),", module, name);
-    }
-    output.push_str("])\n");
-
-    output
-}
-
 /// Generates the `register_removed` code
 #[must_use]
 fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
     let mut output = GENERATED_FILE_COMMENT.to_string();
     output.push_str("{\n");
     for lint in lints {
-        let _ = write!(
+        let _: fmt::Result = write!(
             output,
             concat!(
                 "    store.register_removed(\n",
@@ -699,7 +651,7 @@ fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
 
 /// Generates the code for registering lints
 #[must_use]
-fn gen_register_lint_list<'a>(
+fn gen_declared_lints<'a>(
     internal_lints: impl Iterator<Item = &'a Lint>,
     usable_lints: impl Iterator<Item = &'a Lint>,
 ) -> String {
@@ -710,15 +662,15 @@ fn gen_register_lint_list<'a>(
     details.sort_unstable();
 
     let mut output = GENERATED_FILE_COMMENT.to_string();
-    output.push_str("store.register_lints(&[\n");
+    output.push_str("pub(crate) static LINTS: &[&crate::LintInfo] = &[\n");
 
     for (is_public, module_name, lint_name) in details {
         if !is_public {
             output.push_str("    #[cfg(feature = \"internal\")]\n");
         }
-        let _ = writeln!(output, "    {}::{},", module_name, lint_name);
+        let _: fmt::Result = writeln!(output, "    crate::{module_name}::{lint_name}_INFO,");
     }
-    output.push_str("])\n");
+    output.push_str("];\n");
 
     output
 }
@@ -735,7 +687,7 @@ fn gen_deprecated_lints_test(lints: &[DeprecatedLint]) -> String {
 fn gen_renamed_lints_test(lints: &[RenamedLint]) -> String {
     let mut seen_lints = HashSet::new();
     let mut res: String = GENERATED_FILE_COMMENT.into();
-    res.push_str("// run-rustfix\n\n");
+    res.push_str("//@run-rustfix\n\n");
     for lint in lints {
         if seen_lints.insert(&lint.new_name) {
             writeln!(res, "#![allow({})]", lint.new_name).unwrap();
@@ -774,7 +726,7 @@ fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>) {
     for (rel_path, file) in clippy_lints_src_files() {
         let path = file.path();
         let contents =
-            fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {}", path.display(), e));
+            fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {e}", path.display()));
         let module = rel_path
             .components()
             .map(|c| c.as_os_str().to_str().unwrap())
@@ -809,13 +761,11 @@ fn clippy_lints_src_files() -> impl Iterator<Item = (PathBuf, DirEntry)> {
 macro_rules! match_tokens {
     ($iter:ident, $($token:ident $({$($fields:tt)*})? $(($capture:ident))?)*) => {
          {
-            $($(let $capture =)? if let Some(LintDeclSearchResult {
+            $(#[allow(clippy::redundant_pattern)] let Some(LintDeclSearchResult {
                     token_kind: TokenKind::$token $({$($fields)*})?,
-                    content: _x,
+                    content: $($capture @)? _,
                     ..
-            }) = $iter.next() {
-                _x
-            } else {
+            }) = $iter.next() else {
                 continue;
             };)*
             #[allow(clippy::unused_unit)]
@@ -824,17 +774,19 @@ macro_rules! match_tokens {
     }
 }
 
-struct LintDeclSearchResult<'a> {
-    token_kind: TokenKind,
-    content: &'a str,
-    range: Range<usize>,
+pub(crate) use match_tokens;
+
+pub(crate) struct LintDeclSearchResult<'a> {
+    pub token_kind: TokenKind,
+    pub content: &'a str,
+    pub range: Range<usize>,
 }
 
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.
 fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -850,7 +802,6 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
          }| token_kind == &TokenKind::Ident && *content == "declare_clippy_lint",
     ) {
         let start = range.start;
-
         let mut iter = iter
             .by_ref()
             .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
@@ -897,7 +848,7 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
 fn parse_deprecated_contents(contents: &str, lints: &mut Vec<DeprecatedLint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -944,7 +895,7 @@ fn parse_renamed_contents(contents: &str, lints: &mut Vec<RenamedLint>) {
     for line in contents.lines() {
         let mut offset = 0usize;
         let mut iter = tokenize(line).map(|t| {
-            let range = offset..offset + t.len;
+            let range = offset..offset + t.len as usize;
             offset = range.end;
 
             LintDeclSearchResult {
@@ -973,9 +924,13 @@ fn remove_line_splices(s: &str) -> String {
         .trim_matches('#')
         .strip_prefix('"')
         .and_then(|s| s.strip_suffix('"'))
-        .unwrap_or_else(|| panic!("expected quoted string, found `{}`", s));
+        .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
     let mut res = String::with_capacity(s.len());
-    unescape::unescape_literal(s, unescape::Mode::Str, &mut |range, _| res.push_str(&s[range]));
+    unescape::unescape_literal(s, unescape::Mode::Str, &mut |range, ch| {
+        if ch.is_ok() {
+            res.push_str(&s[range]);
+        }
+    });
     res
 }
 
@@ -995,10 +950,10 @@ fn replace_region_in_file(
     end: &str,
     write_replacement: impl FnMut(&mut String),
 ) {
-    let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {}", path.display(), e));
+    let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {e}", path.display()));
     let new_contents = match replace_region_in_text(&contents, start, end, write_replacement) {
         Ok(x) => x,
-        Err(delim) => panic!("Couldn't find `{}` in file `{}`", delim, path.display()),
+        Err(delim) => panic!("Couldn't find `{delim}` in file `{}`", path.display()),
     };
 
     match update_mode {
@@ -1006,7 +961,7 @@ fn replace_region_in_file(
         UpdateMode::Check => (),
         UpdateMode::Change => {
             if let Err(e) = fs::write(path, new_contents.as_bytes()) {
-                panic!("Cannot write to `{}`: {}", path.display(), e);
+                panic!("Cannot write to `{}`: {e}", path.display());
             }
         },
     }
@@ -1054,7 +1009,7 @@ fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
 
 #[allow(clippy::needless_pass_by_value)]
 fn panic_file(error: io::Error, name: &Path, action: &str) -> ! {
-    panic!("failed to {} file `{}`: {}", action, name.display(), error)
+    panic!("failed to {action} file `{}`: {error}", name.display())
 }
 
 fn rewrite_file(path: &Path, f: impl FnOnce(&str) -> Option<String>) {
@@ -1248,28 +1203,5 @@ mod tests {
             + "\n";
 
         assert_eq!(expected, gen_deprecated(&lints));
-    }
-
-    #[test]
-    fn test_gen_lint_group_list() {
-        let lints = vec![
-            Lint::new("abc", "group1", "\"abc\"", "module_name", Range::default()),
-            Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
-            Lint::new("internal", "internal_style", "\"abc\"", "module_name", Range::default()),
-        ];
-        let expected = GENERATED_FILE_COMMENT.to_string()
-            + &[
-                "store.register_group(true, \"clippy::group1\", Some(\"clippy_group1\"), vec![",
-                "    LintId::of(module_name::ABC),",
-                "    LintId::of(module_name::INTERNAL),",
-                "    LintId::of(module_name::SHOULD_ASSERT_EQ),",
-                "])",
-            ]
-            .join("\n")
-            + "\n";
-
-        let result = gen_lint_group_list("group1", lints.iter());
-
-        assert_eq!(expected, result);
     }
 }

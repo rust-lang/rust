@@ -1,13 +1,17 @@
-// run-rustfix
+//@run-rustfix
+//@aux-build:proc_macros.rs
 #![feature(let_chains)]
+#![allow(unused)]
 #![allow(
-    unused,
     clippy::assign_op_pattern,
     clippy::blocks_in_if_conditions,
     clippy::let_and_return,
     clippy::let_unit_value,
-    clippy::nonminimal_bool
+    clippy::nonminimal_bool,
+    clippy::uninlined_format_args
 )]
+
+extern crate proc_macros;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
@@ -137,6 +141,7 @@ const fn in_const() -> &'static str {
     a
 }
 
+#[proc_macros::inline_macros]
 fn does_not_lint() {
     let z;
     if false {
@@ -194,35 +199,27 @@ fn does_not_lint() {
     }
     y = 3;
 
-    macro_rules! assign {
-        ($i:ident) => {
-            $i = 1;
-        };
-    }
     let x;
-    assign!(x);
+    inline!($x = 1;);
 
     let x;
     if true {
-        assign!(x);
+        inline!($x = 1;);
     } else {
         x = 2;
     }
 
-    macro_rules! in_macro {
-        () => {
-            let x;
-            x = 1;
+    inline!({
+        let x;
+        x = 1;
 
-            let x;
-            if true {
-                x = 1;
-            } else {
-                x = 2;
-            }
-        };
-    }
-    in_macro!();
+        let x;
+        if true {
+            x = 1;
+        } else {
+            x = 2;
+        }
+    });
 
     // ignore if-lets - https://github.com/rust-lang/rust-clippy/issues/8613
     let x;

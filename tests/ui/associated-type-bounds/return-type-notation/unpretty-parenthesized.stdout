@@ -1,0 +1,15 @@
+#![feature(prelude_import)]
+#[prelude_import]
+use std::prelude::rust_2021::*;
+#[macro_use]
+extern crate std;
+// edition: 2021
+// compile-flags: -Zunpretty=expanded
+
+trait Trait {
+    async fn method() {}
+}
+
+fn foo<T: Trait<method(i32) : Send>>() {}
+
+fn main() {}

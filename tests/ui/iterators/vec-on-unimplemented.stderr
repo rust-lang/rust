@@ -1,0 +1,18 @@
+error[E0599]: `Vec<bool>` is not an iterator
+  --> $DIR/vec-on-unimplemented.rs:2:23
+   |
+LL |     vec![true, false].map(|v| !v).collect::<Vec<_>>();
+   |                       ^^^ `Vec<bool>` is not an iterator; try calling `.into_iter()` or `.iter()`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: doesn't satisfy `Vec<bool>: Iterator`
+   |
+   = note: the following trait bounds were not satisfied:
+           `Vec<bool>: Iterator`
+           which is required by `&mut Vec<bool>: Iterator`
+           `[bool]: Iterator`
+           which is required by `&mut [bool]: Iterator`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,12 @@
+error[E0658]: the `#[do_not_recommend]` attribute is an experimental feature
+  --> $DIR/unstable-feature.rs:4:1
+   |
+LL | #[do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51992 <https://github.com/rust-lang/rust/issues/51992> for more information
+   = help: add `#![feature(do_not_recommend)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

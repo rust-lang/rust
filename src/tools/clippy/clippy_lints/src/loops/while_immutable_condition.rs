@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         } else {
             return;
         };
-    let mutable_static_in_cond = var_visitor.def_ids.iter().any(|(_, v)| *v);
+    let mutable_static_in_cond = var_visitor.def_ids.items().any(|(_, v)| *v);
 
     let mut has_break_or_return_visitor = HasBreakOrReturnVisitor {
         has_break_or_return: false,

@@ -1,4 +1,4 @@
-// Type Names for Debug Info.
+//! Type Names for Debug Info.
 
 // Notes on targeting MSVC:
 // In general, MSVC's debugger attempts to parse all arguments as C++ expressions,
@@ -12,25 +12,24 @@
 // * `"` is treated as the start of a string.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, ExistentialProjection, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
-use rustc_target::abi::{Integer, TagEncoding, Variants};
+use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
+use rustc_target::abi::Integer;
 use smallvec::SmallVec;
 
-use std::borrow::Cow;
 use std::fmt::Write;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
 
-// Compute the name of the type as it should be stored in debuginfo. Does not do
-// any caching, i.e., calling the function twice with the same type will also do
-// the work twice. The `qualified` parameter only affects the first level of the
-// type name, further levels (i.e., type parameters) are always fully qualified.
+/// Compute the name of the type as it should be stored in debuginfo. Does not do
+/// any caching, i.e., calling the function twice with the same type will also do
+/// the work twice. The `qualified` parameter only affects the first level of the
+/// type name, further levels (i.e., type parameters) are always fully qualified.
 pub fn compute_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
@@ -60,7 +59,13 @@ fn push_debuginfo_type_name<'tcx>(
     match *t.kind() {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
-        ty::Str => output.push_str("str"),
+        ty::Str => {
+            if cpp_like_debuginfo {
+                output.push_str("str$")
+            } else {
+                output.push_str("str")
+            }
+        }
         ty::Never => {
             if cpp_like_debuginfo {
                 output.push_str("never$");
@@ -88,7 +93,7 @@ fn push_debuginfo_type_name<'tcx>(
                     Err(e) => {
                         // Computing the layout can still fail here, e.g. if the target architecture
                         // cannot represent the type. See https://github.com/rust-lang/rust/issues/94961.
-                        tcx.sess.fatal(&format!("{}", e));
+                        tcx.sess.emit_fatal(e.into_diagnostic());
                     }
                 }
             } else {
@@ -98,7 +103,6 @@ fn push_debuginfo_type_name<'tcx>(
 
             if let Some(ty_and_layout) = layout_for_cpp_like_fallback {
                 msvc_enum_fallback(
-                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
@@ -154,25 +158,19 @@ fn push_debuginfo_type_name<'tcx>(
             }
         }
         ty::Ref(_, inner_type, mutbl) => {
-            // Slices and `&str` are treated like C++ pointers when computing debug
-            // info for MSVC debugger. However, wrapping these types' names in a synthetic type
-            // causes the .natvis engine for WinDbg to fail to display their data, so we opt these
-            // types out to aid debugging in MSVC.
-            let is_slice_or_str = matches!(*inner_type.kind(), ty::Slice(_) | ty::Str);
-
-            if !cpp_like_debuginfo {
-                output.push('&');
-                output.push_str(mutbl.prefix_str());
-            } else if !is_slice_or_str {
+            if cpp_like_debuginfo {
                 match mutbl {
                     Mutability::Not => output.push_str("ref$<"),
                     Mutability::Mut => output.push_str("ref_mut$<"),
                 }
+            } else {
+                output.push('&');
+                output.push_str(mutbl.prefix_str());
             }
 
             push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
 
-            if cpp_like_debuginfo && !is_slice_or_str {
+            if cpp_like_debuginfo {
                 push_close_angle_bracket(cpp_like_debuginfo, output);
             }
         }
@@ -182,22 +180,30 @@ fn push_debuginfo_type_name<'tcx>(
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
                 match len.kind() {
                     ty::ConstKind::Param(param) => write!(output, ",{}>", param.name).unwrap(),
-                    _ => write!(output, ",{}>", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
-                        .unwrap(),
+                    _ => write!(
+                        output,
+                        ",{}>",
+                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                    )
+                    .unwrap(),
                 }
             } else {
                 output.push('[');
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
                 match len.kind() {
                     ty::ConstKind::Param(param) => write!(output, "; {}]", param.name).unwrap(),
-                    _ => write!(output, "; {}]", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
-                        .unwrap(),
+                    _ => write!(
+                        output,
+                        "; {}]",
+                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                    )
+                    .unwrap(),
                 }
             }
         }
         ty::Slice(inner_type) => {
             if cpp_like_debuginfo {
-                output.push_str("slice$<");
+                output.push_str("slice2$<");
             } else {
                 output.push('[');
             }
@@ -237,7 +243,7 @@ fn push_debuginfo_type_name<'tcx>(
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
                     .map(|bound| {
-                        let ExistentialProjection { item_def_id, term, .. } =
+                        let ExistentialProjection { def_id: item_def_id, term, .. } =
                             tcx.erase_late_bound_regions(bound);
                         // FIXME(associated_const_equality): allow for consts here
                         (item_def_id, term.ty().unwrap())
@@ -391,11 +397,10 @@ fn push_debuginfo_type_name<'tcx>(
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
-            // an artificial `enum$<>` type, as defined in msvc_enum_fallback().
+            // an artificial `enum2$<>` type, as defined in msvc_enum_fallback().
             if cpp_like_debuginfo && t.is_generator() {
                 let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
                 msvc_enum_fallback(
-                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_closure_or_generator_name(tcx, def_id, substs, true, output, visited);
@@ -414,9 +419,9 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Error(_)
         | ty::Infer(_)
         | ty::Placeholder(..)
-        | ty::Projection(..)
+        | ty::Alias(..)
         | ty::Bound(..)
-        | ty::Opaque(..)
+        | ty::GeneratorWitnessMIR(..)
         | ty::GeneratorWitness(..) => {
             bug!(
                 "debuginfo: Trying to create type name for \
@@ -428,58 +433,17 @@ fn push_debuginfo_type_name<'tcx>(
 
     /// MSVC names enums differently than other platforms so that the debugging visualization
     // format (natvis) is able to understand enums and render the active variant correctly in the
-    // debugger. For more information, look in `src/etc/natvis/intrinsic.natvis` and
-    // `EnumMemberDescriptionFactor::create_member_descriptions`.
+    // debugger. For more information, look in
+    // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
-        tcx: TyCtxt<'tcx>,
         ty_and_layout: TyAndLayout<'tcx>,
         push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
         debug_assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
-        let ty = ty_and_layout.ty;
-
-        output.push_str("enum$<");
+        output.push_str("enum2$<");
         push_inner(output, visited);
-
-        let variant_name = |variant_index| match ty.kind() {
-            ty::Adt(adt_def, _) => {
-                debug_assert!(adt_def.is_enum());
-                Cow::from(adt_def.variant(variant_index).name.as_str())
-            }
-            ty::Generator(..) => GeneratorSubsts::variant_name(variant_index),
-            _ => unreachable!(),
-        };
-
-        if let Variants::Multiple {
-            tag_encoding: TagEncoding::Niche { dataful_variant, .. },
-            tag,
-            variants,
-            ..
-        } = &ty_and_layout.variants
-        {
-            let dataful_variant_layout = &variants[*dataful_variant];
-
-            // calculate the range of values for the dataful variant
-            let dataful_discriminant_range =
-                dataful_variant_layout.largest_niche().unwrap().valid_range;
-
-            let min = dataful_discriminant_range.start;
-            let min = tag.size(&tcx).truncate(min);
-
-            let max = dataful_discriminant_range.end;
-            let max = tag.size(&tcx).truncate(max);
-
-            let dataful_variant_name = variant_name(*dataful_variant);
-            write!(output, ", {}, {}, {}", min, max, dataful_variant_name).unwrap();
-        } else if let Variants::Single { index: variant_idx } = &ty_and_layout.variants {
-            // Uninhabited enums can't be constructed and should never need to be visualized so
-            // skip this step for them.
-            if !ty_and_layout.abi.is_uninhabited() {
-                write!(output, ", {}", variant_name(*variant_idx)).unwrap();
-            }
-        }
         push_close_angle_bracket(true, output);
     }
 
@@ -554,7 +518,7 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
         visited.clear();
         push_generic_params_internal(tcx, trait_ref.substs, &mut vtable_name, &mut visited);
     } else {
-        vtable_name.push_str("_");
+        vtable_name.push('_');
     }
 
     push_close_angle_bracket(cpp_like_debuginfo, &mut vtable_name);
@@ -710,10 +674,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                     hcx.while_hashing_spans(false, |hcx| {
                         ct.to_valtree().hash_stable(hcx, &mut hasher)
                     });
-                    // Note: Don't use `StableHashResult` impl of `u64` here directly, since that
-                    // would lead to endianness problems.
-                    let hash: u128 = hasher.finish();
-                    (hash.to_le() as u64).to_le()
+                    hasher.finish::<Hash64>()
                 });
 
                 if cpp_like_debuginfo(tcx) {

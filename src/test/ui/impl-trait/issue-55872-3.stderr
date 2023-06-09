@@ -1,9 +1,0 @@
-error[E0277]: the trait bound `impl Future<Output = ()>: Copy` is not satisfied
-  --> $DIR/issue-55872-3.rs:14:20
-   |
-LL |     fn foo<T>() -> Self::E {
-   |                    ^^^^^^^ the trait `Copy` is not implemented for `impl Future<Output = ()>`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0277`.

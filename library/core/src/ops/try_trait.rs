@@ -232,7 +232,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
             in {ItemContext} that returns `Result`",
         label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
-        enclosing_scope = "this function returns a `Result`"
+        parent_label = "this function returns a `Result`"
     ),
     on(
         all(
@@ -245,7 +245,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Result`s \
             in {ItemContext} that returns `Result`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `Result`"
+        parent_label = "this function returns a `Result`"
     ),
     on(
         all(
@@ -256,7 +256,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Option`s, not `Result`s, \
             in {ItemContext} that returns `Option`",
         label = "use `.ok()?` if you want to discard the `{R}` error information",
-        enclosing_scope = "this function returns an `Option`"
+        parent_label = "this function returns an `Option`"
     ),
     on(
         all(
@@ -268,7 +268,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Option`s \
             in {ItemContext} that returns `Option`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns an `Option`"
+        parent_label = "this function returns an `Option`"
     ),
     on(
         all(
@@ -279,7 +279,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
             can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `ControlFlow`",
+        parent_label = "this function returns a `ControlFlow`",
         note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
     ),
     on(
@@ -291,7 +291,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `ControlFlow`s \
             in {ItemContext} that returns `ControlFlow`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `ControlFlow`",
+        parent_label = "this function returns a `ControlFlow`",
     ),
     on(
         all(from_desugaring = "QuestionMark"),
@@ -299,7 +299,7 @@ pub trait Try: FromResidual {
                     that returns `Result` or `Option` \
                     (or another type that implements `{FromResidual}`)",
         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
-        enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
+        parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
 #[rustc_diagnostic_item = "FromResidual"]
@@ -376,7 +376,15 @@ pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::
 pub(crate) struct NeverShortCircuit<T>(pub T);
 
 impl<T> NeverShortCircuit<T> {
-    /// Wrap a binary `FnMut` to return its result wrapped in a `NeverShortCircuit`.
+    /// Wraps a unary function to produce one that wraps the output into a `NeverShortCircuit`.
+    ///
+    /// This is useful for implementing infallible functions in terms of the `try_` ones,
+    /// without accidentally capturing extra generic parameters in a closure.
+    #[inline]
+    pub fn wrap_mut_1<A>(mut f: impl FnMut(A) -> T) -> impl FnMut(A) -> NeverShortCircuit<T> {
+        move |a| NeverShortCircuit(f(a))
+    }
+
     #[inline]
     pub fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
         move |a, b| NeverShortCircuit(f(a, b))

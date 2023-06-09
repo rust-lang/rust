@@ -75,6 +75,10 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         unsupported()
     }
+
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        unsupported()
+    }
 }
 
 impl From<AnonPipe> for Stdio {
@@ -199,6 +203,9 @@ impl<'a> Iterator for CommandArgs<'a> {
     type Item = &'a OsStr;
     fn next(&mut self) -> Option<&'a OsStr> {
         None
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
     }
 }
 

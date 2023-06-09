@@ -1,0 +1,62 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:99:5
+   |
+LL | /     send(async {
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
+LL | |     });
+   | |______^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:99:5
+   |
+LL | /     send(async {
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
+LL | |     });
+   | |______^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:99:5
+   |
+LL | /     send(async {
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
+LL | |     });
+   | |______^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:99:5
+   |
+LL | /     send(async {
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
+LL | |     });
+   | |______^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+
+error: aborting due to 4 previous errors
+

@@ -90,7 +90,6 @@ module.exports = {
         "no-return-assign": "error",
         "no-script-url": "error",
         "no-sequences": "error",
-        "no-throw-literal": "error",
         "no-div-regex": "error",
     }
 };

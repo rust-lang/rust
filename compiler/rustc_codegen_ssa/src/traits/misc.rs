@@ -15,12 +15,8 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn eh_personality(&self) -> Self::Value;
     fn sess(&self) -> &Session;
     fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx>;
-    fn used_statics(&self) -> &RefCell<Vec<Self::Value>>;
-    fn compiler_used_statics(&self) -> &RefCell<Vec<Self::Value>>;
     fn set_frame_pointer_type(&self, llfn: Self::Function);
     fn apply_target_cpu_attr(&self, llfn: Self::Function);
-    fn create_used_variable(&self);
-    fn create_compiler_used_variable(&self);
     /// Declares the extern "C" main function for the entry point. Returns None if the symbol already exists.
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function>;
 }

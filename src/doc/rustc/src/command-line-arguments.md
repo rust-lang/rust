@@ -58,8 +58,8 @@ Example: `-l static:+whole-archive=mylib`.
 
 The kind of library and the modifiers can also be specified in a [`#[link]`
 attribute][link-attribute]. If the kind is not specified in the `link`
-attribute or on the command-line, it will link a dynamic library if available,
-otherwise it will use a static library. If the kind is specified on the
+attribute or on the command-line, it will link a dynamic library by default,
+except when building a static executable. If the kind is specified on the
 command-line, it will override the kind specified in a `link` attribute.
 
 The name used in a `link` attribute may be overridden using the form `-l
@@ -89,9 +89,9 @@ but it is not guaranteed. If you need whole archive semantics use `+whole-archiv
 This modifier is only compatible with the `static` linking kind.
 Using any other kind will result in a compiler error.
 
-When building a rlib or staticlib `+bundle` means that all object files from the native static
-library will be added to the rlib or staticlib archive, and then used from it during linking of
-the final binary.
+When building a rlib or staticlib `+bundle` means that the native static library
+will be packed into the rlib or staticlib archive, and then retrieved from there
+during linking of the final binary.
 
 When building a rlib `-bundle` means that the native static library is registered as a dependency
 of that rlib "by name", and object files from it are included only during linking of the final
@@ -103,6 +103,33 @@ the final binary.
 This modifier has no effect when building other targets like executables or dynamic libraries.
 
 The default for this modifier is `+bundle`.
+
+### Linking modifiers: `verbatim`
+
+This modifier is compatible with all linking kinds.
+
+`+verbatim` means that rustc itself won't add any target-specified library prefixes or suffixes
+(like `lib` or `.a`) to the library name, and will try its best to ask for the same thing from the
+linker.
+
+For `ld`-like linkers supporting GNU extensions rustc will use the `-l:filename` syntax (note the
+colon) when passing the library, so the linker won't add any prefixes or suffixes to it.
+See [`-l namespec`](https://sourceware.org/binutils/docs/ld/Options.html) in ld documentation for
+more details. \
+For linkers not supporting any verbatim modifiers (e.g. `link.exe` or `ld64`) the library name will
+be passed as is. So the most reliable cross-platform use scenarios for this option are when no
+linker is involved, for example bundling native libraries into rlibs.
+
+`-verbatim` means that rustc will either add a target-specific prefix and suffix to the library
+name before passing it to linker, or won't prevent linker from implicitly adding it. \
+In case of `raw-dylib` kind in particular `.dll` will be added to the library name on Windows.
+
+The default for this modifier is `-verbatim`.
+
+NOTE: Even with `+verbatim` and `-l:filename` syntax `ld`-like linkers do not typically support
+passing absolute paths to libraries. Usually such paths need to be passed as input files without
+using any options like `-l`, e.g. `ld /my/absolute/path`. \
+`-Clink-arg=/my/absolute/path` can be used for doing this from stable `rustc`.
 
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit
@@ -221,8 +248,14 @@ The valid types of print values are:
   exact format of this debugging output is not a stable guarantee, other than
   that it will include the linker executable and the text of each command-line
   argument passed to the linker.
+- `deployment-target` - The currently selected [deployment target] (or minimum OS version)
+  for the selected Apple platform target. This value can be used or passed along to other
+  components alongside a Rust build that need this information, such as C compilers.
+  This returns rustc's minimum supported deployment target if no `*_DEPLOYMENT_TARGET` variable
+  is present in the environment, or otherwise returns the variable's parsed value.
 
 [conditional compilation]: ../reference/conditional-compilation.html
+[deployment target]: https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/cross_development/Configuring/configuring.html
 
 <a id="option-g-debug"></a>
 ## `-g`: include debug information
@@ -270,6 +303,11 @@ This flag will set which lints should be set to the [warn level](lints/levels.md
 
 _Note:_ The order of these lint level arguments is taken into account, see [lint level via compiler flag](lints/levels.md#via-compiler-flag) for more information.
 
+<a id="option-force-warn"></a>
+## `--force-warn`: force a lint to warn
+
+This flag sets the given lint to the [forced warn level](lints/levels.md#force-warn) and the level cannot be overridden, even ignoring the [lint caps](lints/levels.md#capping-lints).
+
 <a id="option-a-allow"></a>
 ## `-A`: set lint allowed
 
@@ -295,9 +333,9 @@ _Note:_ The order of these lint level arguments is taken into account, see [lint
 ## `-Z`: set unstable options
 
 This flag will allow you to set unstable options of rustc. In order to set multiple options,
-the -Z flag can be used multiple times. For example: `rustc -Z verbose -Z time`.
+the -Z flag can be used multiple times. For example: `rustc -Z verbose -Z time-passes`.
 Specifying options with -Z is only available on nightly. To view all available options
-run: `rustc -Z help`.
+run: `rustc -Z help`, or see [The Unstable Book](../unstable-book/index.html).
 
 <a id="option-cap-lints"></a>
 ## `--cap-lints`: set the most restrictive lint level
@@ -381,6 +419,12 @@ are:
 - `always` — Always use colors.
 - `never` — Never colorize output.
 
+<a id="option-diagnostic-width"></a>
+## `--diagnostic-width`: specify the terminal width for diagnostics
+
+This flag takes a number that specifies the width of the terminal in characters.
+Formatting of diagnostics will take the width into consideration to make them better fit on the screen.
+
 <a id="option-remap-path-prefix"></a>
 ## `--remap-path-prefix`: remap source names in output
 
@@ -395,6 +439,9 @@ current directory out of pathnames emitted into the object files. The
 replacement is purely textual, with no consideration of the current system's
 pathname syntax. For example `--remap-path-prefix foo=bar` will match
 `foo/lib.rs` but not `./foo/lib.rs`.
+
+When multiple remappings are given and several of them match, the **last**
+matching one is applied.
 
 <a id="option-json"></a>
 ## `--json`: configure json messages printed by the compiler

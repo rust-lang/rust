@@ -27,9 +27,6 @@ use rustc_middle::ty::Instance;
 use std::cell::RefCell;
 use std::ffi::CString;
 
-use std::iter;
-use tracing::debug;
-
 pub mod mapgen;
 
 const UNUSED_FUNCTION_COUNTER_ID: CounterValueReference = CounterValueReference::START;
@@ -38,7 +35,7 @@ const VAR_ALIGN_BYTES: usize = 8;
 
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'ll, 'tcx> {
-    // Coverage data for each instrumented function identified by DefId.
+    /// Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
 }
@@ -202,7 +199,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
         tcx.symbol_name(instance).name,
         cx.fn_abi_of_fn_ptr(
             ty::Binder::dummy(tcx.mk_fn_sig(
-                iter::once(tcx.mk_unit()),
+                [tcx.mk_unit()],
                 tcx.mk_unit(),
                 false,
                 hir::Unsafety::Unsafe,
@@ -210,6 +207,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
             )),
             ty::List::empty(),
         ),
+        None,
     );
 
     llvm::set_linkage(llfn, llvm::Linkage::PrivateLinkage);

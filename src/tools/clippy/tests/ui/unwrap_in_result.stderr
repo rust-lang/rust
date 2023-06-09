@@ -10,13 +10,13 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::unwrap-in-result` implied by `-D warnings`
    = help: unwrap and expect should not be used in a function that returns result or option
 note: potential non-recoverable error(s)
   --> $DIR/unwrap_in_result.rs:24:17
    |
 LL |         let i = i_str.parse::<i32>().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::unwrap-in-result` implied by `-D warnings`
 
 error: used unwrap or expect in a function that returns result or option
   --> $DIR/unwrap_in_result.rs:32:5

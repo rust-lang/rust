@@ -1,0 +1,39 @@
+[package]
+name = "hir-expand"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0-pre.1"
+tracing = "0.1.35"
+either = "1.7.0"
+rustc-hash = "1.1.0"
+la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+itertools = "0.10.5"
+hashbrown = { version = "0.12.1", features = [
+    "inline-more",
+], default-features = false }
+smallvec.workspace = true
+triomphe.workspace = true
+
+# local deps
+stdx.workspace = true
+intern.workspace = true
+base-db.workspace = true
+cfg.workspace = true
+syntax.workspace = true
+profile.workspace = true
+tt.workspace = true
+mbe.workspace = true
+limit.workspace = true
+
+[dev-dependencies]
+expect-test = "1.4.0"

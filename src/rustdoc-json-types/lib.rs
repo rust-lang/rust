@@ -3,13 +3,12 @@
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
-
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 15;
+pub const FORMAT_VERSION: u32 = 26;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -24,11 +23,11 @@ pub struct Crate {
     pub includes_private: bool,
     /// A collection of all items in the local crate as well as some external traits and their
     /// items that are referenced locally.
-    pub index: HashMap<Id, Item>,
+    pub index: FxHashMap<Id, Item>,
     /// Maps IDs to fully qualified paths and other info helpful for generating links.
-    pub paths: HashMap<Id, ItemSummary>,
+    pub paths: FxHashMap<Id, ItemSummary>,
     /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
-    pub external_crates: HashMap<u32, ExternalCrate>,
+    pub external_crates: FxHashMap<u32, ExternalCrate>,
     /// A single version number to be used in the future when making backwards incompatible changes
     /// to the JSON output.
     pub format_version: u32,
@@ -51,6 +50,11 @@ pub struct ItemSummary {
     pub crate_id: u32,
     /// The list of path components for the fully qualified path of this item (e.g.
     /// `["std", "io", "lazy", "Lazy"]` for `std::io::lazy::Lazy`).
+    ///
+    /// Note that items can appear in multiple paths, and the one chosen is implementation
+    /// defined. Currently, this is the full path to where the item was defined. Eg
+    /// [`String`] is currently `["alloc", "string", "String"]` and [`HashMap`][`std::collections::HashMap`]
+    /// is `["std", "collections", "hash", "map", "HashMap"]`, but this is subject to change.
     pub path: Vec<String>,
     /// Whether this item is a struct, trait, macro, etc.
     pub kind: ItemKind,
@@ -75,11 +79,10 @@ pub struct Item {
     /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
     pub docs: Option<String>,
     /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
-    pub links: HashMap<String, Id>,
+    pub links: FxHashMap<String, Id>,
     /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
     pub attrs: Vec<String>,
     pub deprecation: Option<Deprecation>,
-    #[serde(flatten)]
     pub inner: ItemEnum,
 }
 
@@ -113,6 +116,35 @@ pub enum Visibility {
         parent: Id,
         path: String,
     },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct DynTrait {
+    /// All the traits implemented. One of them is the vtable, and the rest must be auto traits.
+    pub traits: Vec<PolyTrait>,
+    /// The lifetime of the whole dyn object
+    /// ```text
+    /// dyn Debug + 'static
+    ///             ^^^^^^^
+    ///             |
+    ///             this part
+    /// ```
+    pub lifetime: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// A trait and potential HRTBs
+pub struct PolyTrait {
+    #[serde(rename = "trait")]
+    pub trait_: Path,
+    /// Used for Higher-Rank Trait Bounds (HRTBs)
+    /// ```text
+    /// dyn for<'a> Fn() -> &'a i32"
+    ///     ^^^^^^^
+    ///       |
+    ///       this part
+    /// ```
+    pub generic_params: Vec<GenericParamDef>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -176,7 +208,6 @@ pub enum ItemKind {
     Constant,
     Trait,
     TraitAlias,
-    Method,
     Impl,
     Static,
     ForeignType,
@@ -190,7 +221,7 @@ pub enum ItemKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "kind", content = "inner", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ItemEnum {
     Module(Module),
     ExternCrate {
@@ -209,7 +240,6 @@ pub enum ItemEnum {
 
     Trait(Trait),
     TraitAlias(TraitAlias),
-    Method(Method),
     Impl(Impl),
 
     Typedef(Typedef),
@@ -225,7 +255,7 @@ pub enum ItemEnum {
     Macro(String),
     ProcMacro(ProcMacro),
 
-    PrimitiveType(String),
+    Primitive(Primitive),
 
     AssocConst {
         #[serde(rename = "type")]
@@ -245,6 +275,9 @@ pub enum ItemEnum {
 pub struct Module {
     pub is_crate: bool,
     pub items: Vec<Id>,
+    /// If `true`, this module is not part of the public API, but it contains
+    /// items that are re-exported as public API.
+    pub is_stripped: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -257,11 +290,37 @@ pub struct Union {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Struct {
-    pub struct_type: StructType,
+    pub kind: StructKind,
     pub generics: Generics,
-    pub fields_stripped: bool,
-    pub fields: Vec<Id>,
     pub impls: Vec<Id>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StructKind {
+    /// A struct with no fields and no parentheses.
+    ///
+    /// ```rust
+    /// pub struct Unit;
+    /// ```
+    Unit,
+    /// A struct with unnamed fields.
+    ///
+    /// ```rust
+    /// pub struct TupleStruct(i32);
+    /// pub struct EmptyTupleStruct();
+    /// ```
+    ///
+    /// All [`Id`]'s will point to [`ItemEnum::StructField`]. Private and
+    /// `#[doc(hidden)]` fields will be given as `None`
+    Tuple(Vec<Option<Id>>),
+    /// A struct with nammed fields.
+    ///
+    /// ```rust
+    /// pub struct PlainStruct { x: i32 }
+    /// pub struct EmptyPlainStruct {}
+    /// ```
+    Plain { fields: Vec<Id>, fields_stripped: bool },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -273,20 +332,63 @@ pub struct Enum {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-#[serde(tag = "variant_kind", content = "variant_inner")]
-pub enum Variant {
-    Plain,
-    Tuple(Vec<Type>),
-    Struct(Vec<Id>),
+pub struct Variant {
+    /// Whether the variant is plain, a tuple-like, or struct-like. Contains the fields.
+    pub kind: VariantKind,
+    /// The discriminant, if explicitly specified.
+    pub discriminant: Option<Discriminant>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum StructType {
+pub enum VariantKind {
+    /// A variant with no parentheses
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     PlainVariant,
+    ///     PlainWithDiscriminant = 1,
+    /// }
+    /// ```
     Plain,
-    Tuple,
-    Unit,
+    /// A variant with unnamed fields.
+    ///
+    /// Unlike most of json, `#[doc(hidden)]` fields will be given as `None`
+    /// instead of being omitted, because order matters.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     TupleVariant(i32),
+    ///     EmptyTupleVariant(),
+    /// }
+    /// ```
+    Tuple(Vec<Option<Id>>),
+    /// A variant with named fields.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     StructVariant { x: i32 },
+    ///     EmptyStructVariant {},
+    /// }
+    /// ```
+    Struct { fields: Vec<Id>, fields_stripped: bool },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Discriminant {
+    /// The expression that produced the discriminant.
+    ///
+    /// Unlike `value`, this preserves the original formatting (eg suffixes,
+    /// hexadecimal, and underscores), making it unsuitable to be machine
+    /// interpreted.
+    ///
+    /// In some cases, when the value is to complex, this may be `"{ _ }"`.
+    /// When this occurs is unstable, and may change without notice.
+    pub expr: String,
+    /// The numerical value of the discriminant. Stored as a string due to
+    /// JSON's poor support for large integers, and the fact that it would need
+    /// to store from [`i128::MIN`] to [`u128::MAX`].
+    pub value: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -316,15 +418,9 @@ pub enum Abi {
     Other(String),
 }
 
+/// Represents a function (including methods and other associated functions)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Function {
-    pub decl: FnDecl,
-    pub generics: Generics,
-    pub header: Header,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
     pub header: Header,
@@ -392,7 +488,7 @@ pub enum WherePredicate {
         type_: Type,
         bounds: Vec<GenericBound>,
         /// Used for Higher-Rank Trait Bounds (HRTBs)
-        /// ```plain
+        /// ```text
         /// where for<'a> &'a T: Iterator,"
         ///       ^^^^^^^
         ///       |
@@ -415,9 +511,9 @@ pub enum WherePredicate {
 pub enum GenericBound {
     TraitBound {
         #[serde(rename = "trait")]
-        trait_: Type,
+        trait_: Path,
         /// Used for Higher-Rank Trait Bounds (HRTBs)
-        /// ```plain
+        /// ```text
         /// where F: for<'a, 'b> Fn(&'a u8, &'b u8)
         ///          ^^^^^^^^^^^
         ///          |
@@ -446,18 +542,13 @@ pub enum Term {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-#[serde(tag = "kind", content = "inner")]
 pub enum Type {
-    /// Structs, enums, and traits
-    ResolvedPath {
-        name: String,
-        id: Id,
-        args: Option<Box<GenericArgs>>,
-        param_names: Vec<GenericBound>,
-    },
+    /// Structs, enums, and unions
+    ResolvedPath(Path),
+    DynTrait(DynTrait),
     /// Parameterized types
     Generic(String),
-    /// Fixed-size numeric types (plus int/usize/float), char, arrays, slices, and tuples
+    /// Built in numeric (i*, u*, f*) types, bool, and char
     Primitive(String),
     /// `extern "ABI" fn`
     FunctionPointer(Box<FunctionPointer>),
@@ -488,21 +579,37 @@ pub enum Type {
         #[serde(rename = "type")]
         type_: Box<Type>,
     },
-    /// `<Type as Trait>::Name` or associated types like `T::Item` where `T: Iterator`
+    /// Associated types like `<Type as Trait>::Name` and `T::Item` where
+    /// `T: Iterator` or inherent associated types like `Struct::Name`.
     QualifiedPath {
         name: String,
         args: Box<GenericArgs>,
         self_type: Box<Type>,
+        /// `None` iff this is an *inherent* associated type.
         #[serde(rename = "trait")]
-        trait_: Box<Type>,
+        trait_: Option<Path>,
     },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Path {
+    pub name: String,
+    pub id: Id,
+    /// Generic arguments to the type
+    /// ```test
+    /// std::borrow::Cow<'static, str>
+    ///                 ^^^^^^^^^^^^^^
+    ///                 |
+    ///                 this part
+    /// ```
+    pub args: Option<Box<GenericArgs>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FunctionPointer {
     pub decl: FnDecl,
     /// Used for Higher-Rank Trait Bounds (HRTBs)
-    /// ```plain
+    /// ```text
     /// for<'c> fn(val: &'c i32) -> i32
     /// ^^^^^^^
     ///       |
@@ -514,6 +621,10 @@ pub struct FunctionPointer {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FnDecl {
+    /// List of argument names and their type.
+    ///
+    /// Note that not all names will be valid identifiers, as some of
+    /// them may be patterns.
     pub inputs: Vec<(String, Type)>,
     pub output: Option<Type>,
     pub c_variadic: bool,
@@ -541,7 +652,7 @@ pub struct Impl {
     pub generics: Generics,
     pub provided_trait_methods: Vec<String>,
     #[serde(rename = "trait")]
-    pub trait_: Option<Type>,
+    pub trait_: Option<Path>,
     #[serde(rename = "for")]
     pub for_: Type,
     pub items: Vec<Id>,
@@ -558,8 +669,11 @@ pub struct Import {
     /// May be different from the last segment of `source` when renaming imports:
     /// `use source as name;`
     pub name: String,
-    /// The ID of the item being imported.
-    pub id: Option<Id>, // FIXME is this actually ever None?
+    /// The ID of the item being imported. Will be `None` in case of re-exports of primitives:
+    /// ```rust
+    /// pub use i32 as my_i32;
+    /// ```
+    pub id: Option<Id>,
     /// Whether this import uses a glob: `use source::*;`
     pub glob: bool,
 }
@@ -600,6 +714,12 @@ pub struct Static {
     pub type_: Type,
     pub mutable: bool,
     pub expr: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Primitive {
+    pub name: String,
+    pub impls: Vec<Id>,
 }
 
 #[cfg(test)]

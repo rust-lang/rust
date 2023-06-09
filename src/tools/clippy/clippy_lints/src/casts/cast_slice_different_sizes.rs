@@ -1,16 +1,16 @@
-use clippy_utils::{diagnostics::span_lint_and_then, meets_msrv, msrvs, source};
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::{diagnostics::span_lint_and_then, source};
 use if_chain::if_chain;
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, layout::LayoutOf, Ty, TypeAndMut};
-use rustc_semver::RustcVersion;
 
 use super::CAST_SLICE_DIFFERENT_SIZES;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Option<RustcVersion>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv) {
     // suggestion is invalid if `ptr::slice_from_raw_parts` does not exist
-    if !meets_msrv(msrv, msrvs::PTR_SLICE_RAW_PARTS) {
+    if !msrv.meets(msrvs::PTR_SLICE_RAW_PARTS) {
         return;
     }
 
@@ -35,8 +35,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Optio
                     CAST_SLICE_DIFFERENT_SIZES,
                     expr.span,
                     &format!(
-                        "casting between raw pointers to `[{}]` (element size {}) and `[{}]` (element size {}) does not adjust the count",
-                        start_ty.ty, from_size, end_ty.ty, to_size,
+                        "casting between raw pointers to `[{}]` (element size {from_size}) and `[{}]` (element size {to_size}) does not adjust the count",
+                        start_ty.ty, end_ty.ty,
                     ),
                     |diag| {
                         let ptr_snippet = source::snippet(cx, left_cast.span, "..");
@@ -54,7 +54,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Optio
 
                         diag.span_suggestion(
                             expr.span,
-                            &format!("replace with `ptr::slice_from_raw_parts{mutbl_fn_str}`"),
+                            format!("replace with `ptr::slice_from_raw_parts{mutbl_fn_str}`"),
                             sugg,
                             rustc_errors::Applicability::HasPlaceholders,
                         );
@@ -68,7 +68,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Optio
 fn is_child_of_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let map = cx.tcx.hir();
     if_chain! {
-        if let Some(parent_id) = map.find_parent_node(expr.hir_id);
+        if let Some(parent_id) = map.opt_parent_id(expr.hir_id);
         if let Some(parent) = map.find(parent_id);
         then {
             let expr = match parent {

@@ -9,17 +9,17 @@ mod tests;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io;
-use crate::marker::PhantomData;
 use crate::num::NonZeroU16;
 use crate::os::windows::prelude::*;
-use crate::path::PathBuf;
-use crate::ptr::NonNull;
-use crate::sys::c;
+use crate::path::{Path, PathBuf};
+use crate::sys::path::get_long_path;
 use crate::sys::process::ensure_no_nuls;
 use crate::sys::windows::os::current_exe;
+use crate::sys::{c, to_u16s};
+use crate::sys_common::wstr::WStrUnits;
 use crate::vec;
 
-use core::iter;
+use crate::iter;
 
 /// This is the const equivalent to `NonZeroU16::new(n).unwrap()`
 ///
@@ -199,55 +199,6 @@ impl ExactSizeIterator for Args {
     }
 }
 
-/// A safe iterator over a LPWSTR
-/// (aka a pointer to a series of UTF-16 code units terminated by a NULL).
-struct WStrUnits<'a> {
-    // The pointer must never be null...
-    lpwstr: NonNull<u16>,
-    // ...and the memory it points to must be valid for this lifetime.
-    lifetime: PhantomData<&'a [u16]>,
-}
-impl WStrUnits<'_> {
-    /// Create the iterator. Returns `None` if `lpwstr` is null.
-    ///
-    /// SAFETY: `lpwstr` must point to a null-terminated wide string that lives
-    /// at least as long as the lifetime of this struct.
-    unsafe fn new(lpwstr: *const u16) -> Option<Self> {
-        Some(Self { lpwstr: NonNull::new(lpwstr as _)?, lifetime: PhantomData })
-    }
-    fn peek(&self) -> Option<NonZeroU16> {
-        // SAFETY: It's always safe to read the current item because we don't
-        // ever move out of the array's bounds.
-        unsafe { NonZeroU16::new(*self.lpwstr.as_ptr()) }
-    }
-    /// Advance the iterator while `predicate` returns true.
-    /// Returns the number of items it advanced by.
-    fn advance_while<P: FnMut(NonZeroU16) -> bool>(&mut self, mut predicate: P) -> usize {
-        let mut counter = 0;
-        while let Some(w) = self.peek() {
-            if !predicate(w) {
-                break;
-            }
-            counter += 1;
-            self.next();
-        }
-        counter
-    }
-}
-impl Iterator for WStrUnits<'_> {
-    // This can never return zero as that marks the end of the string.
-    type Item = NonZeroU16;
-    fn next(&mut self) -> Option<NonZeroU16> {
-        // SAFETY: If NULL is reached we immediately return.
-        // Therefore it's safe to advance the pointer after that.
-        unsafe {
-            let next = self.peek()?;
-            self.lpwstr = NonNull::new_unchecked(self.lpwstr.as_ptr().add(1));
-            Some(next)
-        }
-    }
-}
-
 #[derive(Debug)]
 pub(crate) enum Arg {
     /// Add quotes (if needed)
@@ -275,7 +226,7 @@ pub(crate) fn append_arg(cmd: &mut Vec<u16>, arg: &Arg, force_quotes: bool) -> i
     // that it actually gets passed through on the command line or otherwise
     // it will be dropped entirely when parsed on the other end.
     ensure_no_nuls(arg)?;
-    let arg_bytes = arg.bytes();
+    let arg_bytes = arg.as_os_str_bytes();
     let (quote, escape) = match quote {
         Quote::Always => (true, true),
         Quote::Auto => {
@@ -320,7 +271,7 @@ pub(crate) fn make_bat_command_line(
     // It is necessary to surround the command in an extra pair of quotes,
     // hence the trailing quote here. It will be closed after all arguments
     // have been added.
-    let mut cmd: Vec<u16> = "cmd.exe /c \"".encode_utf16().collect();
+    let mut cmd: Vec<u16> = "cmd.exe /d /c \"".encode_utf16().collect();
 
     // Push the script name surrounded by its quote pair.
     cmd.push(b'"' as u16);
@@ -340,6 +291,17 @@ pub(crate) fn make_bat_command_line(
     // reconstructed by the batch script by default.
     for arg in args {
         cmd.push(' ' as u16);
+        // Make sure to always quote special command prompt characters, including:
+        // * Characters `cmd /?` says require quotes.
+        // * `%` for environment variables, as in `%TMP%`.
+        // * `|<>` pipe/redirect characters.
+        const SPECIAL: &[u8] = b"\t &()[]{}^=;!'+,`~%|<>";
+        let force_quotes = match arg {
+            Arg::Regular(arg) if !force_quotes => {
+                arg.as_os_str_bytes().iter().any(|c| SPECIAL.contains(c))
+            }
+            _ => force_quotes,
+        };
         append_arg(&mut cmd, arg, force_quotes)?;
     }
 
@@ -352,7 +314,10 @@ pub(crate) fn make_bat_command_line(
 /// Takes a path and tries to return a non-verbatim path.
 ///
 /// This is necessary because cmd.exe does not support verbatim paths.
-pub(crate) fn to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
+pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
+    from_wide_to_user_path(to_u16s(path)?)
+}
+pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
     use crate::ptr;
     use crate::sys::windows::fill_utf16_buf;
 
@@ -378,7 +343,13 @@ pub(crate) fn to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
             fill_utf16_buf(
                 |buffer, size| c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut()),
                 |full_path: &[u16]| {
-                    if full_path == &path[4..path.len() - 1] { full_path.into() } else { path }
+                    if full_path == &path[4..path.len() - 1] {
+                        let mut path: Vec<u16> = full_path.into();
+                        path.push(0);
+                        path
+                    } else {
+                        path
+                    }
                 },
             )
         },
@@ -391,7 +362,9 @@ pub(crate) fn to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
                 |buffer, size| c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut()),
                 |full_path: &[u16]| {
                     if full_path == &path[6..path.len() - 1] {
-                        full_path.into()
+                        let mut path: Vec<u16> = full_path.into();
+                        path.push(0);
+                        path
                     } else {
                         // Restore the 'C' in "UNC".
                         path[6] = b'C' as u16;
@@ -401,6 +374,6 @@ pub(crate) fn to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
             )
         },
         // For everything else, leave the path unchanged.
-        _ => Ok(path),
+        _ => get_long_path(path, false),
     }
 }

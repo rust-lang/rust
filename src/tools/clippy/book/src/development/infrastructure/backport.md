@@ -28,6 +28,7 @@ repository. You can do this with:
 ```bash
 # Assuming the current directory corresponds to the Rust repository
 $ git checkout beta
+# Make sure to change `your-github-name` to your github name in the following command
 $ git subtree pull -p src/tools/clippy https://github.com/<your-github-name>/rust-clippy backport
 $ ./x.py test src/tools/clippy
 ```

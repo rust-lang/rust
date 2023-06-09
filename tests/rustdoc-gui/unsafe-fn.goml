@@ -1,0 +1,28 @@
+// Check position and color of the `<sup>` for unsafe elements.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// If the text isn't displayed, the browser doesn't compute color style correctly...
+show-text: true
+
+compare-elements-property: (
+    "//a[@title='fn test_docs::safe_fn']/..",
+    "//a[@title='fn test_docs::unsafe_fn']/..",
+    ["clientHeight"]
+)
+
+define-function: (
+    "sup-check",
+    // `theme` is the theme being tested.
+    // `color` is the expected color of the `<sup>` element.
+    (theme, color),
+    block {
+        // Set the theme.
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        // We reload the page so the local storage settings are being used.
+        reload:
+        assert-css: (".item-name sup", {"color": |color|})
+    },
+)
+
+call-function: ("sup-check", ("dark", "rgb(221, 221, 221)"))
+call-function: ("sup-check", ("ayu", "rgb(197, 197, 197)"))
+call-function: ("sup-check", ("light", "rgb(0, 0, 0)"))

@@ -101,5 +101,43 @@ LL | |             break 'label;
 LL | |         }
    | |_________^
 
-error: aborting due to 9 previous errors
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:223:13
+   |
+LL |       let _ = loop {
+   |  _____________^
+LL | |         let Some(x) = x else {
+LL | |             return;
+LL | |         };
+LL | |
+LL | |         break x;
+LL | |     };
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:244:5
+   |
+LL | /     'a: loop {
+LL | |         'b: {
+LL | |             break 'b 'c: {
+LL | |                 break 'a;
+LL | |             };
+LL | |         }
+LL | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:278:13
+   |
+LL | /             for _ in 0..20 {
+LL | |                 break 'block;
+LL | |             }
+   | |_____________^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL |             if let Some(_) = (0..20).next() {
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 12 previous errors
 

@@ -1,5 +1,5 @@
-// compile-flags: --emit=link
-// no-prefer-dynamic
+//@compile-flags: --emit=link
+//@no-prefer-dynamic
 // ^ compiletest by default builds all aux files as dylibs, but we don't want that for proc-macro
 // crates. If we don't set this, compiletest will override the `crate_type` attribute below and
 // compile this as dylib. Removing this then causes the test to fail because a `dylib` crate can't

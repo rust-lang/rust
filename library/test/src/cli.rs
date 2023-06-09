@@ -3,9 +3,9 @@
 use std::env;
 use std::path::PathBuf;
 
-use super::helpers::isatty;
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
 use super::time::TestTimeOptions;
+use std::io::{self, IsTerminal};
 
 #[derive(Debug)]
 pub struct TestOpts {
@@ -26,13 +26,17 @@ pub struct TestOpts {
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub time_options: Option<TestTimeOptions>,
+    /// Stop at first failing test.
+    /// May run a few more tests due to threading, but will
+    /// abort as soon as possible.
+    pub fail_fast: bool,
     pub options: Options,
 }
 
 impl TestOpts {
     pub fn use_color(&self) -> bool {
         match self.color {
-            ColorConfig::AutoColor => !self.nocapture && isatty::stdout_isatty(),
+            ColorConfig::AutoColor => !self.nocapture && io::stdout().is_terminal(),
             ColorConfig::AlwaysColor => true,
             ColorConfig::NeverColor => false,
         }
@@ -296,6 +300,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         skip,
         time_options,
         options,
+        fail_fast: false,
     };
 
     Ok(test_opts)
@@ -304,7 +309,8 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
 // FIXME: Copied from librustc_ast until linkage errors are resolved. Issue #47566
 fn is_nightly() -> bool {
     // Whether this is a feature-staged build, i.e., on the beta or stable channel
-    let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+    let disable_unstable_features =
+        option_env!("CFG_DISABLE_UNSTABLE_FEATURES").map(|s| s != "0").unwrap_or(false);
     // Whether we should enable unstable features for bootstrapping
     let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
 
@@ -349,8 +355,7 @@ fn get_shuffle_seed(matches: &getopts::Matches, allow_unstable: bool) -> OptPart
             Err(e) => {
                 return Err(format!(
                     "argument for --shuffle-seed must be a number \
-                     (error: {})",
-                    e
+                     (error: {e})"
                 ));
             }
         },
@@ -378,8 +383,7 @@ fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {
             Err(e) => {
                 return Err(format!(
                     "argument for --test-threads must be a number > 0 \
-                     (error: {})",
-                    e
+                     (error: {e})"
                 ));
             }
         },
@@ -400,21 +404,20 @@ fn get_format(
         Some("terse") => OutputFormat::Terse,
         Some("json") => {
             if !allow_unstable {
-                return Err("The \"json\" format is only accepted on the nightly compiler".into());
+                return Err("The \"json\" format is only accepted on the nightly compiler with -Z unstable-options".into());
             }
             OutputFormat::Json
         }
         Some("junit") => {
             if !allow_unstable {
-                return Err("The \"junit\" format is only accepted on the nightly compiler".into());
+                return Err("The \"junit\" format is only accepted on the nightly compiler with -Z unstable-options".into());
             }
             OutputFormat::Junit
         }
         Some(v) => {
             return Err(format!(
                 "argument for --format must be pretty, terse, json or junit (was \
-                 {})",
-                v
+                 {v})"
             ));
         }
     };
@@ -431,8 +434,7 @@ fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
         Some(v) => {
             return Err(format!(
                 "argument for --color must be auto, always, or never (was \
-                 {})",
-                v
+                 {v})"
             ));
         }
     };

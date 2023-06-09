@@ -4,8 +4,8 @@ error: single-character lifetime names are likely uninformative
 LL | struct DiagnosticCtx<'a, 'b>
    |                      ^^
    |
-   = note: `-D clippy::single-char-lifetime-names` implied by `-D warnings`
    = help: use a more informative name
+   = note: `-D clippy::single-char-lifetime-names` implied by `-D warnings`
 
 error: single-character lifetime names are likely uninformative
   --> $DIR/single_char_lifetime_names.rs:5:26

@@ -77,13 +77,14 @@ use super::Utf8Error;
 /// let sparkle_heart = [240, 159, 146, 150];
 ///
 /// // We know these bytes are valid, so just use `unwrap()`.
-/// let sparkle_heart = str::from_utf8(&sparkle_heart).unwrap();
+/// let sparkle_heart: &str = str::from_utf8(&sparkle_heart).unwrap();
 ///
 /// assert_eq!("💖", sparkle_heart);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
 #[rustc_allow_const_fn_unstable(str_internals)]
+#[rustc_diagnostic_item = "str_from_utf8"]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     // FIXME: This should use `?` again, once it's `const`
     match run_utf8_validation(v) {
@@ -127,6 +128,7 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// errors that can be returned.
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
+#[rustc_diagnostic_item = "str_from_utf8_mut"]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     // This should use `?` again, once it's `const`
     match run_utf8_validation(v) {
@@ -167,6 +169,7 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
+#[rustc_diagnostic_item = "str_from_utf8_unchecked"]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
     // Also relies on `&str` and `&[u8]` having the same layout.
@@ -194,6 +197,7 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[must_use]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8_unchecked_mut", issue = "91005")]
+#[rustc_diagnostic_item = "str_from_utf8_unchecked_mut"]
 pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     // SAFETY: the caller must guarantee that the bytes `v`
     // are valid UTF-8, thus the cast to `*mut str` is safe.

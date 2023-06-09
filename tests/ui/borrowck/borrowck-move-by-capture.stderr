@@ -1,0 +1,17 @@
+error[E0507]: cannot move out of `bar`, a captured variable in an `FnMut` closure
+  --> $DIR/borrowck-move-by-capture.rs:9:29
+   |
+LL |     let bar: Box<_> = Box::new(3);
+   |         --- captured outer variable
+LL |     let _g = to_fn_mut(|| {
+   |                        -- captured by this `FnMut` closure
+LL |         let _h = to_fn_once(move || -> isize { *bar });
+   |                             ^^^^^^^^^^^^^^^^   ----
+   |                             |                  |
+   |                             |                  variable moved due to use in closure
+   |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
+   |                             `bar` is moved here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

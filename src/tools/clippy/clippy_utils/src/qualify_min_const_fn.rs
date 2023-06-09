@@ -3,11 +3,12 @@
 // of terminologies might not be relevant in the context of Clippy. Note that its behavior might
 // differ from the time of `rustc` even if the name stays the same.
 
+use crate::msrvs::Msrv;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
@@ -18,25 +19,30 @@ use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<RustcVersion>) -> McfResult {
+pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) -> McfResult {
     let def_id = body.source.def_id();
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
             match predicate.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(_)
-                | ty::PredicateKind::TypeOutlives(_)
+                ty::PredicateKind::Clause(
+                    ty::Clause::RegionOutlives(_)
+                    | ty::Clause::TypeOutlives(_)
+                    | ty::Clause::Projection(_)
+                    | ty::Clause::Trait(..)
+                    | ty::Clause::ConstArgHasType(..),
+                )
                 | ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::Projection(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
-                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
+                ty::PredicateKind::AliasRelate(..) => panic!("alias relate predicate on function: {predicate:#?}"),
+                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
+                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Ambiguous => panic!("ambiguous predicate on function: {predicate:#?}"),
             }
         }
         match predicates.parent {
@@ -51,11 +57,11 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
-        tcx.fn_sig(def_id).output().skip_binder(),
+        tcx.fn_sig(def_id).subst_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 
-    for bb in body.basic_blocks() {
+    for bb in body.basic_blocks.iter() {
         check_terminator(tcx, body, bb.terminator(), msrv)?;
         for stmt in &bb.statements {
             check_statement(tcx, body, def_id, stmt)?;
@@ -78,11 +84,11 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
-            ty::Opaque(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
+            ty::Alias(ty::Opaque, ..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
-            ty::Dynamic(preds, _) => {
+            ty::Dynamic(preds, _, _) => {
                 for pred in preds.iter() {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
@@ -129,7 +135,12 @@ fn check_rvalue<'tcx>(
         | Rvalue::Use(operand)
         | Rvalue::Cast(
             CastKind::PointerFromExposedAddress
-            | CastKind::Misc
+            | CastKind::IntToInt
+            | CastKind::FloatToInt
+            | CastKind::IntToFloat
+            | CastKind::FloatToFloat
+            | CastKind::FnPtrToPtr
+            | CastKind::PtrToPtr
             | CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
             operand,
             _,
@@ -161,6 +172,14 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
+        Rvalue::Cast(CastKind::DynStar, _, _) => {
+            // FIXME(dyn-star)
+            unimplemented!()
+        },
+        Rvalue::Cast(CastKind::Transmute, _, _) => Err((
+            span,
+            "transmute can attempt to turn pointers into integers, so is unstable in const fn".into(),
+        )),
         // binops are fine on integers
         Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
             check_operand(tcx, lhs, span, body)?;
@@ -175,7 +194,9 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) | Rvalue::ShallowInitBox(_, _) => Ok(()),
+        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_), _) | Rvalue::ShallowInitBox(_, _) => {
+            Ok(())
+        },
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() {
@@ -212,7 +233,11 @@ fn check_statement<'tcx>(
             check_place(tcx, **place, span, body)
         },
 
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
+
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            rustc_middle::mir::CopyNonOverlapping { dst, src, count },
+        )) => {
             check_operand(tcx, dst, span, body)?;
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
@@ -222,7 +247,9 @@ fn check_statement<'tcx>(
         | StatementKind::StorageDead(_)
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
+        | StatementKind::PlaceMention(..)
         | StatementKind::Coverage(..)
+        | StatementKind::ConstEvalCounter
         | StatementKind::Nop => Ok(()),
     }
 }
@@ -252,6 +279,7 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
                 }
             },
             ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Deref
@@ -262,11 +290,11 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
     Ok(())
 }
 
-fn check_terminator<'a, 'tcx>(
+fn check_terminator<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &Body<'tcx>,
     terminator: &Terminator<'tcx>,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
@@ -275,21 +303,13 @@ fn check_terminator<'a, 'tcx>(
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
         | TerminatorKind::Resume
+        | TerminatorKind::Terminate
         | TerminatorKind::Unreachable => Ok(()),
 
         TerminatorKind::Drop { place, .. } => check_place(tcx, *place, span, body),
-        TerminatorKind::DropAndReplace { place, value, .. } => {
-            check_place(tcx, *place, span, body)?;
-            check_operand(tcx, value, span, body)
-        },
 
-        TerminatorKind::SwitchInt {
-            discr,
-            switch_ty: _,
-            targets: _,
-        } => check_operand(tcx, discr, span, body),
+        TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
 
-        TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         },
@@ -300,7 +320,7 @@ fn check_terminator<'a, 'tcx>(
             from_hir_call: _,
             destination: _,
             target: _,
-            cleanup: _,
+            unwind: _,
             fn_span: _,
         } => {
             let fn_ty = func.ty(body, tcx);
@@ -310,8 +330,7 @@ fn check_terminator<'a, 'tcx>(
                         span,
                         format!(
                             "can only call other `const fn` within a `const fn`, \
-                             but `{:?}` is not stable as `const fn`",
-                            func,
+                             but `{func:?}` is not stable as `const fn`",
                         )
                         .into(),
                     ));
@@ -344,28 +363,38 @@ fn check_terminator<'a, 'tcx>(
             expected: _,
             msg: _,
             target: _,
-            cleanup: _,
+            unwind: _,
         } => check_operand(tcx, cond, span, body),
 
         TerminatorKind::InlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
     }
 }
 
-fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bool {
+fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
     tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).map_or(true, |const_stab| {
             if let rustc_attr::StabilityLevel::Stable { since, .. } = const_stab.level {
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
-                crate::meets_msrv(
-                    msrv,
-                    RustcVersion::parse(since.as_str())
-                        .expect("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted"),
-                )
+
+                // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver`
+                // doesn't accept                  the `-dev` version number so we have to strip it
+                // off.
+                let short_version = since
+                    .as_str()
+                    .split('-')
+                    .next()
+                    .expect("rustc_attr::StabilityLevel::Stable::since` is empty");
+
+                let since = rustc_span::Symbol::intern(short_version);
+
+                msrv.meets(RustcVersion::parse(since.as_str()).unwrap_or_else(|err| {
+                    panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")
+                }))
             } else {
                 // Unstable const fn with the feature enabled.
-                msrv.is_none()
+                msrv.current().is_none()
             }
         })
 }

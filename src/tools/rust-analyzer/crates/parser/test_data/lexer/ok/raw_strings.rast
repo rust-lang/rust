@@ -1,0 +1,2 @@
+STRING "r###\"this is a r##\"raw\"## string\"###"
+WHITESPACE "\n"

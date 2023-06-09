@@ -64,9 +64,13 @@ where
 }
 
 macro_rules! declare_rustdoc_lint {
-    ($(#[$attr:meta])* $name: ident, $level: ident, $descr: literal $(,)?) => {
+    (
+        $(#[$attr:meta])* $name: ident, $level: ident, $descr: literal $(,)?
+        $(@feature_gate = $gate:expr;)?
+    ) => {
         declare_tool_lint! {
             $(#[$attr])* pub rustdoc::$name, $level, $descr
+            $(, @feature_gate = $gate;)?
         }
     }
 }
@@ -123,7 +127,8 @@ declare_rustdoc_lint! {
     /// [rustdoc book]: ../../../rustdoc/lints.html#missing_doc_code_examples
     MISSING_DOC_CODE_EXAMPLES,
     Allow,
-    "detects publicly-exported items without code samples in their documentation"
+    "detects publicly-exported items without code samples in their documentation",
+    @feature_gate = rustc_span::symbol::sym::rustdoc_missing_doc_code_examples;
 }
 
 declare_rustdoc_lint! {
@@ -143,7 +148,7 @@ declare_rustdoc_lint! {
     ///
     /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_html_tags
     INVALID_HTML_TAGS,
-    Allow,
+    Warn,
     "detects invalid HTML tags in doc comments"
 }
 
@@ -169,6 +174,17 @@ declare_rustdoc_lint! {
    "codeblock could not be parsed as valid Rust or is empty"
 }
 
+declare_rustdoc_lint! {
+   /// The `unescaped_backticks` lint detects unescaped backticks (\`), which usually
+   /// mean broken inline code. This is a `rustdoc` only lint, see the documentation
+   /// in the [rustdoc book].
+   ///
+   /// [rustdoc book]: ../../../rustdoc/lints.html#unescaped_backticks
+   UNESCAPED_BACKTICKS,
+   Allow,
+   "detects unescaped backticks in doc comments"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -180,6 +196,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         INVALID_HTML_TAGS,
         BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
+        UNESCAPED_BACKTICKS,
     ]
 });
 
@@ -189,7 +206,11 @@ pub(crate) fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
         true,
         "rustdoc::all",
         Some("rustdoc"),
-        RUSTDOC_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
+        RUSTDOC_LINTS
+            .iter()
+            .filter(|lint| lint.feature_gate.is_none()) // only include stable lints
+            .map(|&lint| LintId::of(lint))
+            .collect(),
     );
     for lint in &*RUSTDOC_LINTS {
         let name = lint.name_lower();

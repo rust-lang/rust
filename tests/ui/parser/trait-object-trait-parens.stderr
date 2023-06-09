@@ -1,0 +1,94 @@
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/trait-object-trait-parens.rs:8:24
+   |
+LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                        ^^^^^^^^
+
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/trait-object-trait-parens.rs:13:16
+   |
+LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
+   |                ^^^^^^
+
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/trait-object-trait-parens.rs:18:44
+   |
+LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
+   |                                            ^^^^^^^^
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/trait-object-trait-parens.rs:8:16
+   |
+LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` on by default
+help: use `dyn`
+   |
+LL |     let _: Box<dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                +++
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/trait-object-trait-parens.rs:8:35
+   |
+LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
+   |                -----              ^^^^^^^^^^^^^^^^^^^ additional non-auto trait
+   |                |
+   |                first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Obj + for<'a> Trait<'a> {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/trait-object-trait-parens.rs:13:16
+   |
+LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let _: Box<dyn ?Sized + (for<'a> Trait<'a>) + (Obj)>;
+   |                +++
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/trait-object-trait-parens.rs:13:47
+   |
+LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
+   |                         -------------------   ^^^^^ additional non-auto trait
+   |                         |
+   |                         first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/trait-object-trait-parens.rs:18:16
+   |
+LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let _: Box<dyn for<'a> Trait<'a> + (Obj) + (?Sized)>;
+   |                +++
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/trait-object-trait-parens.rs:18:36
+   |
+LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
+   |                -----------------   ^^^^^ additional non-auto trait
+   |                |
+   |                first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: for<'a> Trait<'a> + Obj {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error: aborting due to 6 previous errors; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0225`.

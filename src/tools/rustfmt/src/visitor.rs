@@ -8,7 +8,7 @@ use rustc_span::{symbol, BytePos, Pos, Span};
 use crate::attr::*;
 use crate::comment::{contains_comment, rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::Version;
-use crate::config::{BraceStyle, Config};
+use crate::config::{BraceStyle, Config, MacroSelector};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate,
@@ -660,7 +660,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(ai.span, rewrite);
                 }
             }
-            (ast::AssocItemKind::TyAlias(ref ty_alias), _) => {
+            (ast::AssocItemKind::Type(ref ty_alias), _) => {
                 self.visit_ty_alias_kind(ty_alias, visitor_kind, ai.span);
             }
             (ast::AssocItemKind::MacCall(ref mac), _) => {
@@ -770,6 +770,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         snippet_provider: &'a SnippetProvider,
         report: FormatReport,
     ) -> FmtVisitor<'a> {
+        let mut skip_context = SkipContext::default();
+        let mut macro_names = Vec::new();
+        for macro_selector in config.skip_macro_invocations().0 {
+            match macro_selector {
+                MacroSelector::Name(name) => macro_names.push(name.to_string()),
+                MacroSelector::All => skip_context.macros.skip_all(),
+            }
+        }
+        skip_context.macros.extend(macro_names);
         FmtVisitor {
             parent_context: None,
             parse_sess: parse_session,
@@ -784,7 +793,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             is_macro_def: false,
             macro_rewrite_failure: false,
             report,
-            skip_context: Default::default(),
+            skip_context,
         }
     }
 
@@ -811,8 +820,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
             } else {
                 match &attr.kind {
-                    ast::AttrKind::Normal(ref attribute_item, _)
-                        if self.is_unknown_rustfmt_attr(&attribute_item.path.segments) =>
+                    ast::AttrKind::Normal(ref normal)
+                        if self.is_unknown_rustfmt_attr(&normal.item.path.segments) =>
                     {
                         let file_name = self.parse_sess.span_to_filename(attr.span);
                         self.report.append(

@@ -1,18 +1,13 @@
 use itertools::Itertools;
-use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{
-    self,
-    subst::{GenericArgKind, Subst, SubstsRef},
-    EarlyBinder, PredicateKind, Ty, TyCtxt,
-};
+use rustc_middle::ty::{self, EarlyBinder, PredicateKind, SubstsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
 
-use crate::MirLint;
+use crate::{errors, MirLint};
 
 pub struct FunctionItemReferences;
 
@@ -38,7 +33,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
             args,
             destination: _,
             target: _,
-            cleanup: _,
+            unwind: _,
             from_hir_call: _,
             fn_span: _,
         } = &terminator.kind
@@ -49,14 +44,12 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
                 // Handle calls to `transmute`
                 if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
                     let arg_ty = args[0].ty(self.body, self.tcx);
-                    for generic_inner_ty in arg_ty.walk() {
-                        if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
-                            if let Some((fn_id, fn_substs)) =
-                                FunctionItemRefChecker::is_fn_ref(inner_ty)
-                            {
-                                let span = self.nth_arg_span(&args, 0);
-                                self.emit_lint(fn_id, fn_substs, source_info, span);
-                            }
+                    for inner_ty in arg_ty.walk().filter_map(|arg| arg.as_type()) {
+                        if let Some((fn_id, fn_substs)) =
+                            FunctionItemRefChecker::is_fn_ref(inner_ty)
+                        {
+                            let span = self.nth_arg_span(&args, 0);
+                            self.emit_lint(fn_id, fn_substs, source_info, span);
                         }
                     }
                 } else {
@@ -83,27 +76,25 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         for bound in bounds {
             if let Some(bound_ty) = self.is_pointer_trait(&bound.kind().skip_binder()) {
                 // Get the argument types as they appear in the function signature.
-                let arg_defs = self.tcx.fn_sig(def_id).skip_binder().inputs();
+                let arg_defs = self.tcx.fn_sig(def_id).subst_identity().skip_binder().inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
                     // For all types reachable from the argument type in the fn sig
-                    for generic_inner_ty in arg_def.walk() {
-                        if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
-                            // If the inner type matches the type bound by `Pointer`
-                            if inner_ty == bound_ty {
-                                // Do a substitution using the parameters from the callsite
-                                let subst_ty = EarlyBinder(inner_ty).subst(self.tcx, substs_ref);
-                                if let Some((fn_id, fn_substs)) =
-                                    FunctionItemRefChecker::is_fn_ref(subst_ty)
-                                {
-                                    let mut span = self.nth_arg_span(args, arg_num);
-                                    if span.from_expansion() {
-                                        // The operand's ctxt wouldn't display the lint since it's inside a macro so
-                                        // we have to use the callsite's ctxt.
-                                        let callsite_ctxt = span.source_callsite().ctxt();
-                                        span = span.with_ctxt(callsite_ctxt);
-                                    }
-                                    self.emit_lint(fn_id, fn_substs, source_info, span);
+                    for inner_ty in arg_def.walk().filter_map(|arg| arg.as_type()) {
+                        // If the inner type matches the type bound by `Pointer`
+                        if inner_ty == bound_ty {
+                            // Do a substitution using the parameters from the callsite
+                            let subst_ty = EarlyBinder::bind(inner_ty).subst(self.tcx, substs_ref);
+                            if let Some((fn_id, fn_substs)) =
+                                FunctionItemRefChecker::is_fn_ref(subst_ty)
+                            {
+                                let mut span = self.nth_arg_span(args, arg_num);
+                                if span.from_expansion() {
+                                    // The operand's ctxt wouldn't display the lint since it's inside a macro so
+                                    // we have to use the callsite's ctxt.
+                                    let callsite_ctxt = span.source_callsite().ctxt();
+                                    span = span.with_ctxt(callsite_ctxt);
                                 }
+                                self.emit_lint(fn_id, fn_substs, source_info, span);
                             }
                         }
                     }
@@ -114,12 +105,10 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
 
     /// If the given predicate is the trait `fmt::Pointer`, returns the bound parameter type.
     fn is_pointer_trait(&self, bound: &PredicateKind<'tcx>) -> Option<Ty<'tcx>> {
-        if let ty::PredicateKind::Trait(predicate) = bound {
-            if self.tcx.is_diagnostic_item(sym::Pointer, predicate.def_id()) {
-                Some(predicate.trait_ref.self_ty())
-            } else {
-                None
-            }
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) = bound {
+            self.tcx
+                .is_diagnostic_item(sym::Pointer, predicate.def_id())
+                .then(|| predicate.trait_ref.self_ty())
         } else {
             None
         }
@@ -165,7 +154,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             .as_ref()
             .assert_crate_local()
             .lint_root;
-        let fn_sig = self.tcx.fn_sig(fn_id);
+        // FIXME: use existing printing routines to print the function signature
+        let fn_sig = self.tcx.fn_sig(fn_id).subst(self.tcx, fn_substs);
         let unsafety = fn_sig.unsafety().prefix_str();
         let abi = match fn_sig.abi() {
             Abi::Rust => String::from(""),
@@ -183,23 +173,21 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
-        self.tcx.struct_span_lint_hir(FUNCTION_ITEM_REFERENCES, lint_root, span, |lint| {
-            lint.build("taking a reference to a function item does not give a function pointer")
-                .span_suggestion(
-                    span,
-                    &format!("cast `{}` to obtain a function pointer", ident),
-                    format!(
-                        "{} as {}{}fn({}{}){}",
-                        if params.is_empty() { ident } else { format!("{}::<{}>", ident, params) },
-                        unsafety,
-                        abi,
-                        vec!["_"; num_args].join(", "),
-                        variadic,
-                        ret,
-                    ),
-                    Applicability::Unspecified,
-                )
-                .emit();
-        });
+        let sugg = format!(
+            "{} as {}{}fn({}{}){}",
+            if params.is_empty() { ident.clone() } else { format!("{}::<{}>", ident, params) },
+            unsafety,
+            abi,
+            vec!["_"; num_args].join(", "),
+            variadic,
+            ret,
+        );
+
+        self.tcx.emit_spanned_lint(
+            FUNCTION_ITEM_REFERENCES,
+            lint_root,
+            span,
+            errors::FnItemRef { span, sugg, ident },
+        );
     }
 }

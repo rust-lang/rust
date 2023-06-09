@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/method-chain.rs:15:33
+   |
+LL |     Foo.bar().bar().bar().bar().baz();
+   |                                 ^^^ cannot infer the value of the const parameter `N` declared on the method `baz`
+   |
+help: consider specifying the generic argument
+   |
+LL |     Foo.bar().bar().bar().bar().baz::<N>();
+   |                                    +++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

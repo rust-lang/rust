@@ -38,12 +38,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
     }
 
-    /*pub fn declare_func(&self, name: &str, return_type: Type<'gcc>, params: &[Type<'gcc>], variadic: bool) -> RValue<'gcc> {
-        self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, params, variadic);
-        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-        unsafe { std::mem::transmute(func) }
-    }*/
+    pub fn declare_func(&self, name: &str, return_type: Type<'gcc>, params: &[Type<'gcc>], variadic: bool) -> Function<'gcc> {
+        self.linkage.set(FunctionType::Extern);
+        declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, params, variadic)
+    }
 
     pub fn declare_global(&self, name: &str, ty: Type<'gcc>, global_kind: GlobalKind, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
         let global = self.context.new_global(None, global_kind, ty, name);
@@ -65,13 +63,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
     }
 
-    pub fn declare_cfn(&self, name: &str, _fn_type: Type<'gcc>) -> RValue<'gcc> {
+    pub fn declare_entry_fn(&self, name: &str, _fn_type: Type<'gcc>, callconv: () /*llvm::CCallConv*/) -> RValue<'gcc> {
         // TODO(antoyo): use the fn_type parameter.
         let const_string = self.context.new_type::<u8>().make_pointer().make_pointer();
         let return_type = self.type_i32();
         let variadic = false;
         self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, &[self.type_i32(), const_string], variadic);
+        let func = declare_raw_fn(self, name, callconv, return_type, &[self.type_i32(), const_string], variadic);
         // NOTE: it is needed to set the current_func here as well, because get_fn() is not called
         // for the main function.
         *self.current_func.borrow_mut() = Some(func);
@@ -79,12 +77,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         unsafe { std::mem::transmute(func) }
     }
 
-    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> RValue<'gcc> {
+    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
         let (return_type, params, variadic, on_stack_param_indices) = fn_abi.gcc_type(self);
         let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &params, variadic);
         self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
-        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-        unsafe { std::mem::transmute(func) }
+        func
     }
 
     pub fn define_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {

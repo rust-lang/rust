@@ -1,9 +1,10 @@
 use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
+use rustc_fs_util::try_canonicalize;
 use std::path::{Path, PathBuf};
 
 impl Session {
-    pub fn timer<'a>(&'a self, what: &'static str) -> VerboseTimingGuard<'a> {
+    pub fn timer(&self, what: &'static str) -> VerboseTimingGuard<'_> {
         self.prof.verbose_generic_activity(what)
     }
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
@@ -34,6 +35,13 @@ pub enum NativeLibKind {
         /// Whether the framework will be linked only if it satisfies some undefined symbols
         as_needed: Option<bool>,
     },
+    /// Argument which is passed to linker, relative order with libraries and other arguments
+    /// is preserved
+    LinkArg,
+
+    /// Module imported from WebAssembly
+    WasmImportModule,
+
     /// The library kind wasn't specified, `Dylib` is currently used as a default.
     Unspecified,
 }
@@ -47,8 +55,22 @@ impl NativeLibKind {
             NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
                 as_needed.is_some()
             }
-            NativeLibKind::RawDylib | NativeLibKind::Unspecified => false,
+            NativeLibKind::RawDylib
+            | NativeLibKind::Unspecified
+            | NativeLibKind::LinkArg
+            | NativeLibKind::WasmImportModule => false,
         }
+    }
+
+    pub fn is_statically_included(&self) -> bool {
+        matches!(self, NativeLibKind::Static { .. })
+    }
+
+    pub fn is_dllimport(&self) -> bool {
+        matches!(
+            self,
+            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
+        )
     }
 }
 
@@ -77,7 +99,7 @@ pub struct CanonicalizedPath {
 
 impl CanonicalizedPath {
     pub fn new(path: &Path) -> Self {
-        Self { original: path.to_owned(), canonicalized: std::fs::canonicalize(path).ok() }
+        Self { original: path.to_owned(), canonicalized: try_canonicalize(path).ok() }
     }
 
     pub fn canonicalized(&self) -> &PathBuf {

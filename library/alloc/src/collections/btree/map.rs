@@ -3,10 +3,10 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
-use core::ops::{Index, RangeBounds};
+use core::ops::{Bound, Index, RangeBounds};
 use core::ptr;
 
 use crate::alloc::{Allocator, Global};
@@ -15,7 +15,7 @@ use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
-use super::search::SearchResult::*;
+use super::search::{SearchBound, SearchResult::*};
 use super::set_val::SetValZST;
 
 mod entry;
@@ -46,8 +46,8 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// is done is *very* inefficient for modern computer architectures. In particular, every element
 /// is stored in its own individually heap-allocated node. This means that every single insertion
 /// triggers a heap-allocation, and every single comparison should be a cache-miss. Since these
-/// are both notably expensive things to do in practice, we are forced to at very least reconsider
-/// the BST strategy.
+/// are both notably expensive things to do in practice, we are forced to, at the very least,
+/// reconsider the BST strategy.
 ///
 /// A B-Tree instead makes each node contain B-1 to 2B-1 elements in a contiguous array. By doing
 /// this, we reduce the number of allocations by a factor of B, and improve cache efficiency in
@@ -178,6 +178,8 @@ pub struct BTreeMap<
     length: usize,
     /// `ManuallyDrop` to control drop order (needs to be dropped after all the nodes).
     pub(super) alloc: ManuallyDrop<A>,
+    // For dropck; the `Box` avoids making the `Unpin` impl more strict than before
+    _marker: PhantomData<crate::boxed::Box<(K, V)>>,
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
@@ -185,6 +187,19 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V, A: Allocator + Clone> Drop for BTr
     fn drop(&mut self) {
         drop(unsafe { ptr::read(self) }.into_iter())
     }
+}
+
+// FIXME: This implementation is "wrong", but changing it would be a breaking change.
+// (The bounds of the automatic `UnwindSafe` implementation have been like this since Rust 1.50.)
+// Maybe we can fix it nonetheless with a crater run, or if the `UnwindSafe`
+// traits are deprecated, or disarmed (no longer causing hard errors) in the future.
+#[stable(feature = "btree_unwindsafe", since = "1.64.0")]
+impl<K, V, A: Allocator + Clone> core::panic::UnwindSafe for BTreeMap<K, V, A>
+where
+    A: core::panic::UnwindSafe,
+    K: core::panic::RefUnwindSafe,
+    V: core::panic::RefUnwindSafe,
+{
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -204,6 +219,7 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
                         root: Some(Root::new(alloc.clone())),
                         length: 0,
                         alloc: ManuallyDrop::new(alloc),
+                        _marker: PhantomData,
                     };
 
                     {
@@ -346,6 +362,20 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<'a, K: 'a, V: 'a> Default for Iter<'a, K, V> {
+    /// Creates an empty `btree_map::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Iter<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Iter { range: Default::default(), length: 0 }
+    }
+}
+
 /// A mutable iterator over the entries of a `BTreeMap`.
 ///
 /// This `struct` is created by the [`iter_mut`] method on [`BTreeMap`]. See its
@@ -370,13 +400,26 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
+    /// Creates an empty `btree_map::IterMut`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IterMut<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IterMut { range: Default::default(), length: 0, _marker: PhantomData {} }
+    }
+}
+
 /// An owning iterator over the entries of a `BTreeMap`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`BTreeMap`]
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct IntoIter<
@@ -402,6 +445,23 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
 impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for IntoIter<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<K, V, A> Default for IntoIter<K, V, A>
+where
+    A: Allocator + Default + Clone,
+{
+    /// Creates an empty `btree_map::IntoIter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IntoIter<u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IntoIter { range: Default::default(), length: 0, alloc: Default::default() }
     }
 }
 
@@ -564,10 +624,10 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
-        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global) }
+        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global), _marker: PhantomData }
     }
 }
 
@@ -589,10 +649,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         // avoid moving the allocator
-        mem::drop(BTreeMap {
+        drop(BTreeMap {
             root: mem::replace(&mut self.root, None),
             length: mem::replace(&mut self.length, 0),
             alloc: self.alloc.clone(),
+            _marker: PhantomData,
         });
     }
 
@@ -615,7 +676,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
     pub fn new_in(alloc: A) -> BTreeMap<K, V, A> {
-        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc) }
+        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
 }
 
@@ -686,7 +747,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -695,7 +755,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -710,7 +770,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -724,7 +783,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "first");
     /// assert_eq!(*map.get(&2).unwrap(), "b");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -748,7 +807,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in ascending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -759,7 +817,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_first(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -775,7 +833,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -783,7 +840,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -798,7 +855,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -812,7 +868,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "a");
     /// assert_eq!(*map.get(&2).unwrap(), "last");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -836,7 +892,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in descending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -847,7 +902,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_last(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -1082,6 +1137,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
+    /// If a key from `other` is already present in `self`, the respective
+    /// value from `self` will be overwritten with the respective value from `other`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1090,10 +1148,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// let mut a = BTreeMap::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
-    /// a.insert(3, "c");
+    /// a.insert(3, "c"); // Note: Key (3) also present in b.
     ///
     /// let mut b = BTreeMap::new();
-    /// b.insert(3, "d");
+    /// b.insert(3, "d"); // Note: Key (3) also present in a.
     /// b.insert(4, "e");
     /// b.insert(5, "f");
     ///
@@ -1104,7 +1162,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// assert_eq!(a[&1], "a");
     /// assert_eq!(a[&2], "b");
-    /// assert_eq!(a[&3], "d");
+    /// assert_eq!(a[&3], "d"); // Note: "c" has been overwritten.
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
@@ -1320,7 +1378,12 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
         self.length = new_left_len;
 
-        BTreeMap { root: Some(right_root), length: right_len, alloc: self.alloc.clone() }
+        BTreeMap {
+            root: Some(right_root),
+            length: right_len,
+            alloc: self.alloc.clone(),
+            _marker: PhantomData,
+        }
     }
 
     /// Creates an iterator that visits all elements (key-value pairs) in
@@ -1445,7 +1508,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         let mut root = Root::new(alloc.clone());
         let mut length = 0;
         root.bulk_push(DedupSortedIter::new(iter.into_iter()), &mut length, alloc.clone());
-        BTreeMap { root: Some(root), length, alloc: ManuallyDrop::new(alloc) }
+        BTreeMap { root: Some(root), length, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
 }
 
@@ -1480,11 +1543,17 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {
+    fn min(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {
+    fn max(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next_back()
     }
 }
@@ -1549,11 +1618,17 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn min(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn max(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next_back()
     }
 }
@@ -1716,11 +1791,17 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<&'a K> {
+    fn min(mut self) -> Option<&'a K>
+    where
+        &'a K: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<&'a K> {
+    fn max(mut self) -> Option<&'a K>
+    where
+        &'a K: Ord,
+    {
         self.next_back()
     }
 }
@@ -1746,6 +1827,20 @@ impl<K, V> FusedIterator for Keys<'_, K, V> {}
 impl<K, V> Clone for Keys<'_, K, V> {
     fn clone(&self) -> Self {
         Keys { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<K, V> Default for Keys<'_, K, V> {
+    /// Creates an empty `btree_map::Keys`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Keys<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Keys { inner: Default::default() }
     }
 }
 
@@ -1787,6 +1882,20 @@ impl<K, V> FusedIterator for Values<'_, K, V> {}
 impl<K, V> Clone for Values<'_, K, V> {
     fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<K, V> Default for Values<'_, K, V> {
+    /// Creates an empty `btree_map::Values`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Values<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Values { inner: Default::default() }
     }
 }
 
@@ -1917,12 +2026,32 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {
+    fn min(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {
+    fn max(mut self) -> Option<(&'a K, &'a V)>
+    where
+        (&'a K, &'a V): Ord,
+    {
         self.next_back()
+    }
+}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<K, V> Default for Range<'_, K, V> {
+    /// Creates an empty `btree_map::Range`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Range<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        Range { inner: Default::default() }
     }
 }
 
@@ -1976,11 +2105,17 @@ impl<K, V, A: Allocator + Clone> Iterator for IntoKeys<K, V, A> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<K> {
+    fn min(mut self) -> Option<K>
+    where
+        K: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<K> {
+    fn max(mut self) -> Option<K>
+    where
+        K: Ord,
+    {
         self.next_back()
     }
 }
@@ -2001,6 +2136,23 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoKeys<K, V, A> {
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<K, V, A> Default for IntoKeys<K, V, A>
+where
+    A: Allocator + Default + Clone,
+{
+    /// Creates an empty `btree_map::IntoKeys`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IntoKeys<u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IntoKeys { inner: Default::default() }
+    }
+}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> Iterator for IntoValues<K, V, A> {
@@ -2036,6 +2188,23 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
 
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<K, V, A> Default for IntoValues<K, V, A>
+where
+    A: Allocator + Default + Clone,
+{
+    /// Creates an empty `btree_map::IntoValues`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IntoValues<u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IntoValues { inner: Default::default() }
+    }
+}
+
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
@@ -2065,11 +2234,17 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn min(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+    fn max(mut self) -> Option<(&'a K, &'a mut V)>
+    where
+        (&'a K, &'a mut V): Ord,
+    {
         self.next_back()
     }
 }
@@ -2370,7 +2545,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn len(&self) -> usize {
         self.length
     }
@@ -2391,9 +2570,739 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Returns a [`Cursor`] pointing at the first element that is above the
+    /// given bound.
+    ///
+    /// If no such element exists then a cursor pointing at the "ghost"
+    /// non-element is returned.
+    ///
+    /// Passing [`Bound::Unbounded`] will return a cursor pointing at the first
+    /// element of the map.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(4, "c");
+    /// let cursor = a.lower_bound(Bound::Excluded(&2));
+    /// assert_eq!(cursor.key(), Some(&3));
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn lower_bound<Q>(&self, bound: Bound<&Q>) -> Cursor<'_, K, V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        let root_node = match self.root.as_ref() {
+            None => return Cursor { current: None, root: None },
+            Some(root) => root.reborrow(),
+        };
+        let edge = root_node.lower_bound(SearchBound::from_range(bound));
+        Cursor { current: edge.next_kv().ok(), root: self.root.as_ref() }
+    }
+
+    /// Returns a [`CursorMut`] pointing at the first element that is above the
+    /// given bound.
+    ///
+    /// If no such element exists then a cursor pointing at the "ghost"
+    /// non-element is returned.
+    ///
+    /// Passing [`Bound::Unbounded`] will return a cursor pointing at the first
+    /// element of the map.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(4, "c");
+    /// let cursor = a.lower_bound_mut(Bound::Excluded(&2));
+    /// assert_eq!(cursor.key(), Some(&3));
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn lower_bound_mut<Q>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, K, V, A>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        let (root, dormant_root) = DormantMutRef::new(&mut self.root);
+        let root_node = match root.as_mut() {
+            None => {
+                return CursorMut {
+                    current: None,
+                    root: dormant_root,
+                    length: &mut self.length,
+                    alloc: &mut *self.alloc,
+                };
+            }
+            Some(root) => root.borrow_mut(),
+        };
+        let edge = root_node.lower_bound(SearchBound::from_range(bound));
+        CursorMut {
+            current: edge.next_kv().ok(),
+            root: dormant_root,
+            length: &mut self.length,
+            alloc: &mut *self.alloc,
+        }
+    }
+
+    /// Returns a [`Cursor`] pointing at the last element that is below the
+    /// given bound.
+    ///
+    /// If no such element exists then a cursor pointing at the "ghost"
+    /// non-element is returned.
+    ///
+    /// Passing [`Bound::Unbounded`] will return a cursor pointing at the last
+    /// element of the map.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(4, "c");
+    /// let cursor = a.upper_bound(Bound::Excluded(&3));
+    /// assert_eq!(cursor.key(), Some(&2));
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn upper_bound<Q>(&self, bound: Bound<&Q>) -> Cursor<'_, K, V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        let root_node = match self.root.as_ref() {
+            None => return Cursor { current: None, root: None },
+            Some(root) => root.reborrow(),
+        };
+        let edge = root_node.upper_bound(SearchBound::from_range(bound));
+        Cursor { current: edge.next_back_kv().ok(), root: self.root.as_ref() }
+    }
+
+    /// Returns a [`CursorMut`] pointing at the last element that is below the
+    /// given bound.
+    ///
+    /// If no such element exists then a cursor pointing at the "ghost"
+    /// non-element is returned.
+    ///
+    /// Passing [`Bound::Unbounded`] will return a cursor pointing at the last
+    /// element of the map.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(4, "c");
+    /// let cursor = a.upper_bound_mut(Bound::Excluded(&3));
+    /// assert_eq!(cursor.key(), Some(&2));
+    /// ```
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn upper_bound_mut<Q>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, K, V, A>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        let (root, dormant_root) = DormantMutRef::new(&mut self.root);
+        let root_node = match root.as_mut() {
+            None => {
+                return CursorMut {
+                    current: None,
+                    root: dormant_root,
+                    length: &mut self.length,
+                    alloc: &mut *self.alloc,
+                };
+            }
+            Some(root) => root.borrow_mut(),
+        };
+        let edge = root_node.upper_bound(SearchBound::from_range(bound));
+        CursorMut {
+            current: edge.next_back_kv().ok(),
+            root: dormant_root,
+            length: &mut self.length,
+            alloc: &mut *self.alloc,
+        }
+    }
+}
+
+/// A cursor over a `BTreeMap`.
+///
+/// A `Cursor` is like an iterator, except that it can freely seek back-and-forth.
+///
+/// Cursors always point to an element in the tree, and index in a logically circular way.
+/// To accommodate this, there is a "ghost" non-element that yields `None` between the last and
+/// first elements of the tree.
+///
+/// A `Cursor` is created with the [`BTreeMap::lower_bound`] and [`BTreeMap::upper_bound`] methods.
+#[unstable(feature = "btree_cursors", issue = "107540")]
+pub struct Cursor<'a, K: 'a, V: 'a> {
+    current: Option<Handle<NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>, marker::KV>>,
+    root: Option<&'a node::Root<K, V>>,
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl<K, V> Clone for Cursor<'_, K, V> {
+    fn clone(&self) -> Self {
+        let Cursor { current, root } = *self;
+        Cursor { current, root }
+    }
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl<K: Debug, V: Debug> Debug for Cursor<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Cursor").field(&self.key_value()).finish()
+    }
+}
+
+/// A cursor over a `BTreeMap` with editing operations.
+///
+/// A `Cursor` is like an iterator, except that it can freely seek back-and-forth, and can
+/// safely mutate the tree during iteration. This is because the lifetime of its yielded
+/// references is tied to its own lifetime, instead of just the underlying tree. This means
+/// cursors cannot yield multiple elements at once.
+///
+/// Cursors always point to an element in the tree, and index in a logically circular way.
+/// To accommodate this, there is a "ghost" non-element that yields `None` between the last and
+/// first elements of the tree.
+///
+/// A `Cursor` is created with the [`BTreeMap::lower_bound_mut`] and [`BTreeMap::upper_bound_mut`]
+/// methods.
+#[unstable(feature = "btree_cursors", issue = "107540")]
+pub struct CursorMut<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A = Global,
+> {
+    current: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>>,
+    root: DormantMutRef<'a, Option<node::Root<K, V>>>,
+    length: &'a mut usize,
+    alloc: &'a mut A,
+}
+
+#[unstable(feature = "btree_cursors", issue = "107540")]
+impl<K: Debug, V: Debug, A> Debug for CursorMut<'_, K, V, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("CursorMut").field(&self.key_value()).finish()
+    }
+}
+
+impl<'a, K, V> Cursor<'a, K, V> {
+    /// Moves the cursor to the next element of the `BTreeMap`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the first element of the `BTreeMap`. If it is pointing to the last
+    /// element of the `BTreeMap` then this will move it to the "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn move_next(&mut self) {
+        match self.current.take() {
+            None => {
+                self.current = self.root.and_then(|root| {
+                    root.reborrow().first_leaf_edge().forget_node_type().right_kv().ok()
+                });
+            }
+            Some(current) => {
+                self.current = current.next_leaf_edge().next_kv().ok();
+            }
+        }
+    }
+
+    /// Moves the cursor to the previous element of the `BTreeMap`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the last element of the `BTreeMap`. If it is pointing to the first
+    /// element of the `BTreeMap` then this will move it to the "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn move_prev(&mut self) {
+        match self.current.take() {
+            None => {
+                self.current = self.root.and_then(|root| {
+                    root.reborrow().last_leaf_edge().forget_node_type().left_kv().ok()
+                });
+            }
+            Some(current) => {
+                self.current = current.next_back_leaf_edge().next_back_kv().ok();
+            }
+        }
+    }
+
+    /// Returns a reference to the key of the element that the cursor is
+    /// currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn key(&self) -> Option<&'a K> {
+        self.current.as_ref().map(|current| current.into_kv().0)
+    }
+
+    /// Returns a reference to the value of the element that the cursor is
+    /// currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn value(&self) -> Option<&'a V> {
+        self.current.as_ref().map(|current| current.into_kv().1)
+    }
+
+    /// Returns a reference to the key and value of the element that the cursor
+    /// is currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn key_value(&self) -> Option<(&'a K, &'a V)> {
+        self.current.as_ref().map(|current| current.into_kv())
+    }
+
+    /// Returns a reference to the next element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the first element of the `BTreeMap`. If it is pointing to the last
+    /// element of the `BTreeMap` then this returns `None`.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_next(&self) -> Option<(&'a K, &'a V)> {
+        let mut next = self.clone();
+        next.move_next();
+        next.current.as_ref().map(|current| current.into_kv())
+    }
+
+    /// Returns a reference to the previous element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the last element of the `BTreeMap`. If it is pointing to the first
+    /// element of the `BTreeMap` then this returns `None`.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_prev(&self) -> Option<(&'a K, &'a V)> {
+        let mut prev = self.clone();
+        prev.move_prev();
+        prev.current.as_ref().map(|current| current.into_kv())
+    }
+}
+
+impl<'a, K, V, A> CursorMut<'a, K, V, A> {
+    /// Moves the cursor to the next element of the `BTreeMap`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the first element of the `BTreeMap`. If it is pointing to the last
+    /// element of the `BTreeMap` then this will move it to the "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn move_next(&mut self) {
+        match self.current.take() {
+            None => {
+                // SAFETY: The previous borrow of root has ended.
+                self.current = unsafe { self.root.reborrow() }.as_mut().and_then(|root| {
+                    root.borrow_mut().first_leaf_edge().forget_node_type().right_kv().ok()
+                });
+            }
+            Some(current) => {
+                self.current = current.next_leaf_edge().next_kv().ok();
+            }
+        }
+    }
+
+    /// Moves the cursor to the previous element of the `BTreeMap`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the last element of the `BTreeMap`. If it is pointing to the first
+    /// element of the `BTreeMap` then this will move it to the "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn move_prev(&mut self) {
+        match self.current.take() {
+            None => {
+                // SAFETY: The previous borrow of root has ended.
+                self.current = unsafe { self.root.reborrow() }.as_mut().and_then(|root| {
+                    root.borrow_mut().last_leaf_edge().forget_node_type().left_kv().ok()
+                });
+            }
+            Some(current) => {
+                self.current = current.next_back_leaf_edge().next_back_kv().ok();
+            }
+        }
+    }
+
+    /// Returns a reference to the key of the element that the cursor is
+    /// currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn key(&self) -> Option<&K> {
+        self.current.as_ref().map(|current| current.reborrow().into_kv().0)
+    }
+
+    /// Returns a reference to the value of the element that the cursor is
+    /// currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn value(&self) -> Option<&V> {
+        self.current.as_ref().map(|current| current.reborrow().into_kv().1)
+    }
+
+    /// Returns a reference to the key and value of the element that the cursor
+    /// is currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn key_value(&self) -> Option<(&K, &V)> {
+        self.current.as_ref().map(|current| current.reborrow().into_kv())
+    }
+
+    /// Returns a mutable reference to the value of the element that the cursor
+    /// is currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn value_mut(&mut self) -> Option<&mut V> {
+        self.current.as_mut().map(|current| current.kv_mut().1)
+    }
+
+    /// Returns a reference to the key and mutable reference to the value of the
+    /// element that the cursor is currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn key_value_mut(&mut self) -> Option<(&K, &mut V)> {
+        self.current.as_mut().map(|current| {
+            let (k, v) = current.kv_mut();
+            (&*k, v)
+        })
+    }
+
+    /// Returns a mutable reference to the key of the element that the cursor is
+    /// currently pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    ///
+    /// # Safety
+    ///
+    /// This can be used to modify the key, but you must ensure that the
+    /// `BTreeMap` invariants are maintained. Specifically:
+    ///
+    /// * The key must remain unique within the tree.
+    /// * The key must remain in sorted order with regards to other elements in
+    ///   the tree.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn key_mut_unchecked(&mut self) -> Option<&mut K> {
+        self.current.as_mut().map(|current| current.kv_mut().0)
+    }
+
+    /// Returns a reference to the key and value of the next element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the first element of the `BTreeMap`. If it is pointing to the last
+    /// element of the `BTreeMap` then this returns `None`.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_next(&mut self) -> Option<(&K, &mut V)> {
+        let (k, v) = match self.current {
+            None => {
+                // SAFETY: The previous borrow of root has ended.
+                unsafe { self.root.reborrow() }
+                    .as_mut()?
+                    .borrow_mut()
+                    .first_leaf_edge()
+                    .next_kv()
+                    .ok()?
+                    .into_kv_valmut()
+            }
+            // SAFETY: We're not using this to mutate the tree.
+            Some(ref mut current) => {
+                unsafe { current.reborrow_mut() }.next_leaf_edge().next_kv().ok()?.into_kv_valmut()
+            }
+        };
+        Some((k, v))
+    }
+
+    /// Returns a reference to the key and value of the previous element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the last element of the `BTreeMap`. If it is pointing to the first
+    /// element of the `BTreeMap` then this returns `None`.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn peek_prev(&mut self) -> Option<(&K, &mut V)> {
+        let (k, v) = match self.current.as_mut() {
+            None => {
+                // SAFETY: The previous borrow of root has ended.
+                unsafe { self.root.reborrow() }
+                    .as_mut()?
+                    .borrow_mut()
+                    .last_leaf_edge()
+                    .next_back_kv()
+                    .ok()?
+                    .into_kv_valmut()
+            }
+            Some(current) => {
+                // SAFETY: We're not using this to mutate the tree.
+                unsafe { current.reborrow_mut() }
+                    .next_back_leaf_edge()
+                    .next_back_kv()
+                    .ok()?
+                    .into_kv_valmut()
+            }
+        };
+        Some((k, v))
+    }
+
+    /// Returns a read-only cursor pointing to the current element.
+    ///
+    /// The lifetime of the returned `Cursor` is bound to that of the
+    /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
+    /// `CursorMut` is frozen for the lifetime of the `Cursor`.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn as_cursor(&self) -> Cursor<'_, K, V> {
+        Cursor {
+            // SAFETY: The tree is immutable while the cursor exists.
+            root: unsafe { self.root.reborrow_shared().as_ref() },
+            current: self.current.as_ref().map(|current| current.reborrow()),
+        }
+    }
+}
+
+// Now the tree editing operations
+impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
+    /// Inserts a new element into the `BTreeMap` after the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new element is
+    /// inserted at the front of the `BTreeMap`.
+    ///
+    /// # Safety
+    ///
+    /// You must ensure that the `BTreeMap` invariants are maintained.
+    /// Specifically:
+    ///
+    /// * The key of the newly inserted element must be unique in the tree.
+    /// * All keys in the tree must remain in sorted order.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn insert_after_unchecked(&mut self, key: K, value: V) {
+        let edge = match self.current.take() {
+            None => {
+                // SAFETY: We have no other reference to the tree.
+                match unsafe { self.root.reborrow() } {
+                    root @ None => {
+                        // Tree is empty, allocate a new root.
+                        let mut node = NodeRef::new_leaf(self.alloc.clone());
+                        node.borrow_mut().push(key, value);
+                        *root = Some(node.forget_type());
+                        *self.length += 1;
+                        return;
+                    }
+                    Some(root) => root.borrow_mut().first_leaf_edge(),
+                }
+            }
+            Some(current) => current.next_leaf_edge(),
+        };
+
+        let handle = edge.insert_recursing(key, value, self.alloc.clone(), |ins| {
+            drop(ins.left);
+            // SAFETY: The handle to the newly inserted value is always on a
+            // leaf node, so adding a new root node doesn't invalidate it.
+            let root = unsafe { self.root.reborrow().as_mut().unwrap() };
+            root.push_internal_level(self.alloc.clone()).push(ins.kv.0, ins.kv.1, ins.right)
+        });
+        self.current = handle.left_edge().next_back_kv().ok();
+        *self.length += 1;
+    }
+
+    /// Inserts a new element into the `BTreeMap` before the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new element is
+    /// inserted at the end of the `BTreeMap`.
+    ///
+    /// # Safety
+    ///
+    /// You must ensure that the `BTreeMap` invariants are maintained.
+    /// Specifically:
+    ///
+    /// * The key of the newly inserted element must be unique in the tree.
+    /// * All keys in the tree must remain in sorted order.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub unsafe fn insert_before_unchecked(&mut self, key: K, value: V) {
+        let edge = match self.current.take() {
+            None => {
+                // SAFETY: We have no other reference to the tree.
+                match unsafe { self.root.reborrow() } {
+                    root @ None => {
+                        // Tree is empty, allocate a new root.
+                        let mut node = NodeRef::new_leaf(self.alloc.clone());
+                        node.borrow_mut().push(key, value);
+                        *root = Some(node.forget_type());
+                        *self.length += 1;
+                        return;
+                    }
+                    Some(root) => root.borrow_mut().last_leaf_edge(),
+                }
+            }
+            Some(current) => current.next_back_leaf_edge(),
+        };
+
+        let handle = edge.insert_recursing(key, value, self.alloc.clone(), |ins| {
+            drop(ins.left);
+            // SAFETY: The handle to the newly inserted value is always on a
+            // leaf node, so adding a new root node doesn't invalidate it.
+            let root = unsafe { self.root.reborrow().as_mut().unwrap() };
+            root.push_internal_level(self.alloc.clone()).push(ins.kv.0, ins.kv.1, ins.right)
+        });
+        self.current = handle.right_edge().next_kv().ok();
+        *self.length += 1;
+    }
+
+    /// Inserts a new element into the `BTreeMap` after the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new element is
+    /// inserted at the front of the `BTreeMap`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if:
+    /// - the given key compares less than or equal to the current element (if
+    ///   any).
+    /// - the given key compares greater than or equal to the next element (if
+    ///   any).
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn insert_after(&mut self, key: K, value: V) {
+        if let Some(current) = self.key() {
+            if &key <= current {
+                panic!("key must be ordered above the current element");
+            }
+        }
+        if let Some((next, _)) = self.peek_next() {
+            if &key >= next {
+                panic!("key must be ordered below the next element");
+            }
+        }
+        unsafe {
+            self.insert_after_unchecked(key, value);
+        }
+    }
+
+    /// Inserts a new element into the `BTreeMap` before the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new element is
+    /// inserted at the end of the `BTreeMap`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if:
+    /// - the given key compares greater than or equal to the current element
+    ///   (if any).
+    /// - the given key compares less than or equal to the previous element (if
+    ///   any).
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn insert_before(&mut self, key: K, value: V) {
+        if let Some(current) = self.key() {
+            if &key >= current {
+                panic!("key must be ordered below the current element");
+            }
+        }
+        if let Some((prev, _)) = self.peek_prev() {
+            if &key <= prev {
+                panic!("key must be ordered above the previous element");
+            }
+        }
+        unsafe {
+            self.insert_before_unchecked(key, value);
+        }
+    }
+
+    /// Removes the current element from the `BTreeMap`.
+    ///
+    /// The element that was removed is returned, and the cursor is
+    /// moved to point to the next element in the `BTreeMap`.
+    ///
+    /// If the cursor is currently pointing to the "ghost" non-element then no element
+    /// is removed and `None` is returned. The cursor is not moved in this case.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn remove_current(&mut self) -> Option<(K, V)> {
+        let current = self.current.take()?;
+        let mut emptied_internal_root = false;
+        let (kv, pos) =
+            current.remove_kv_tracking(|| emptied_internal_root = true, self.alloc.clone());
+        self.current = pos.next_kv().ok();
+        *self.length -= 1;
+        if emptied_internal_root {
+            // SAFETY: This is safe since current does not point within the now
+            // empty root node.
+            let root = unsafe { self.root.reborrow().as_mut().unwrap() };
+            root.pop_internal_level(self.alloc.clone());
+        }
+        Some(kv)
+    }
+
+    /// Removes the current element from the `BTreeMap`.
+    ///
+    /// The element that was removed is returned, and the cursor is
+    /// moved to point to the previous element in the `BTreeMap`.
+    ///
+    /// If the cursor is currently pointing to the "ghost" non-element then no element
+    /// is removed and `None` is returned. The cursor is not moved in this case.
+    #[unstable(feature = "btree_cursors", issue = "107540")]
+    pub fn remove_current_and_move_back(&mut self) -> Option<(K, V)> {
+        let current = self.current.take()?;
+        let mut emptied_internal_root = false;
+        let (kv, pos) =
+            current.remove_kv_tracking(|| emptied_internal_root = true, self.alloc.clone());
+        self.current = pos.next_back_kv().ok();
+        *self.length -= 1;
+        if emptied_internal_root {
+            // SAFETY: This is safe since current does not point within the now
+            // empty root node.
+            let root = unsafe { self.root.reborrow().as_mut().unwrap() };
+            root.pop_internal_level(self.alloc.clone());
+        }
+        Some(kv)
     }
 }
 

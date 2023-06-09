@@ -39,7 +39,7 @@ fn test_hash_integers() {
     test_isize.hash(&mut h);
 
     // This depends on the hashing algorithm. See note at top of file.
-    let expected = (1784307454142909076, 11471672289340283879);
+    let expected = (13997337031081104755, 6178945012502239489);
 
     assert_eq!(h.finalize(), expected);
 }
@@ -53,7 +53,7 @@ fn test_hash_usize() {
     test_usize.hash(&mut h);
 
     // This depends on the hashing algorithm. See note at top of file.
-    let expected = (5798740672699530587, 11186240177685111648);
+    let expected = (12037165114281468837, 3094087741167521712);
 
     assert_eq!(h.finalize(), expected);
 }
@@ -67,12 +67,12 @@ fn test_hash_isize() {
     test_isize.hash(&mut h);
 
     // This depends on the hashing algorithm. See note at top of file.
-    let expected = (2789913510339652884, 674280939192711005);
+    let expected = (3979067582695659080, 2322428596355037273);
 
     assert_eq!(h.finalize(), expected);
 }
 
-fn hash<T: HashStable<()>>(t: &T) -> u128 {
+fn hash<T: HashStable<()>>(t: &T) -> Hash128 {
     let mut h = StableHasher::new();
     let ctx = &mut ();
     t.hash_stable(ctx, &mut h);
@@ -150,7 +150,7 @@ fn test_isize_compression() {
         let hash_b = hash(&(b as isize, a as isize));
         assert_ne!(
             hash_a, hash_b,
-            "The hash stayed the same when permuting values `{a}` and `{b}!",
+            "The hash stayed the same when permuting values `{a}` and `{b}`!",
         );
     }
 

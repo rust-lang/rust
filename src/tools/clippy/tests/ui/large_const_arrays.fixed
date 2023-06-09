@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::large_const_arrays)]
 #![allow(dead_code)]

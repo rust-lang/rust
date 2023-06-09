@@ -1,4 +1,9 @@
-#![allow(dead_code, clippy::missing_safety_doc, clippy::extra_unused_lifetimes)]
+#![allow(
+    dead_code,
+    clippy::missing_safety_doc,
+    clippy::extra_unused_lifetimes,
+    clippy::extra_unused_type_parameters
+)]
 #![warn(clippy::new_without_default)]
 
 pub struct Foo;
@@ -212,3 +217,17 @@ impl DocHidden {
 }
 
 fn main() {}
+
+pub struct IgnoreConstGenericNew(usize);
+impl IgnoreConstGenericNew {
+    pub fn new<const N: usize>() -> Self {
+        Self(N)
+    }
+}
+
+pub struct IgnoreLifetimeNew;
+impl IgnoreLifetimeNew {
+    pub fn new<'a>() -> Self {
+        Self
+    }
+}

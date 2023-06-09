@@ -1,6 +1,6 @@
 //! Comparison traits for `[T]`.
 
-use crate::cmp::{self, Ordering};
+use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::ffi;
 use crate::mem;
 
@@ -77,7 +77,7 @@ where
 // Use memcmp for bytewise equality when the types allow
 impl<A, B> SlicePartialEq<B> for [A]
 where
-    A: BytewiseEquality<B>,
+    A: BytewiseEq<B>,
 {
     fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
@@ -202,29 +202,6 @@ impl SliceOrd for u8 {
         order.cmp(&0)
     }
 }
-
-// Hack to allow specializing on `Eq` even though `Eq` has a method.
-#[rustc_unsafe_specialization_marker]
-trait MarkerEq<T>: PartialEq<T> {}
-
-impl<T: Eq> MarkerEq<T> for T {}
-
-#[doc(hidden)]
-/// Trait implemented for types that can be compared for equality using
-/// their bytewise representation
-#[rustc_specialization_trait]
-trait BytewiseEquality<T>: MarkerEq<T> + Copy {}
-
-macro_rules! impl_marker_for {
-    ($traitname:ident, $($ty:ty)*) => {
-        $(
-            impl $traitname<$ty> for $ty { }
-        )*
-    }
-}
-
-impl_marker_for!(BytewiseEquality,
-                 u8 i8 u16 i16 u32 i32 u64 i64 u128 i128 usize isize char bool);
 
 pub(super) trait SliceContains: Sized {
     fn slice_contains(&self, x: &[Self]) -> bool;

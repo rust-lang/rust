@@ -1,5 +1,8 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
 use rustc_span::Span;
@@ -14,17 +17,14 @@ pub(crate) mod graph;
 /// constraints of the form `R1: R2`. Each constraint is identified by
 /// a unique `OutlivesConstraintIndex` and you can index into the set
 /// (`constraint_set[i]`) to access the constraint details.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct OutlivesConstraintSet<'tcx> {
     outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>>,
 }
 
 impl<'tcx> OutlivesConstraintSet<'tcx> {
     pub(crate) fn push(&mut self, constraint: OutlivesConstraint<'tcx>) {
-        debug!(
-            "OutlivesConstraintSet::push({:?}: {:?} @ {:?}",
-            constraint.sup, constraint.sub, constraint.locations
-        );
+        debug!("OutlivesConstraintSet::push({:?})", constraint);
         if constraint.sup == constraint.sub {
             // 'a: 'a is pretty uninteresting
             return;
@@ -60,7 +60,9 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         Sccs::new(region_graph)
     }
 
-    pub(crate) fn outlives(&self) -> &IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>> {
+    pub(crate) fn outlives(
+        &self,
+    ) -> &IndexSlice<OutlivesConstraintIndex, OutlivesConstraint<'tcx>> {
         &self.outlives
     }
 }
@@ -73,7 +75,7 @@ impl<'tcx> Index<OutlivesConstraintIndex> for OutlivesConstraintSet<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct OutlivesConstraint<'tcx> {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
@@ -99,26 +101,27 @@ pub struct OutlivesConstraint<'tcx> {
 
     /// Variance diagnostic information
     pub variance_info: VarianceDiagInfo<'tcx>,
+
+    /// If this constraint is promoted from closure requirements.
+    pub from_closure: bool,
 }
 
 impl<'tcx> fmt::Debug for OutlivesConstraint<'tcx> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "({:?}: {:?}) due to {:?} ({:?})",
-            self.sup, self.sub, self.locations, self.variance_info
+            "({:?}: {:?}) due to {:?} ({:?}) ({:?})",
+            self.sup, self.sub, self.locations, self.variance_info, self.category,
         )
     }
 }
 
 rustc_index::newtype_index! {
-    pub struct OutlivesConstraintIndex {
-        DEBUG_FORMAT = "OutlivesConstraintIndex({})"
-    }
+    #[debug_format = "OutlivesConstraintIndex({})"]
+    pub struct OutlivesConstraintIndex {}
 }
 
 rustc_index::newtype_index! {
-    pub struct ConstraintSccIndex {
-        DEBUG_FORMAT = "ConstraintSccIndex({})"
-    }
+    #[debug_format = "ConstraintSccIndex({})"]
+    pub struct ConstraintSccIndex {}
 }

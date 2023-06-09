@@ -1,0 +1,18 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-capture-clause-bad.rs:8:20
+   |
+LL |     let x = "Hello world!".to_string();
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     thread::spawn(move|| {
+   |                   ------ value moved into closure here
+LL |         println!("{}", x);
+   |                        - variable moved due to use in closure
+LL |     });
+LL |     println!("{}", x);
+   |                    ^ value borrowed here after move
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

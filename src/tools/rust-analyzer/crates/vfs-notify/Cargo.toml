@@ -1,0 +1,22 @@
+[package]
+name = "vfs-notify"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+tracing = "0.1.35"
+walkdir = "2.3.2"
+crossbeam-channel = "0.5.5"
+notify = "5.0"
+
+stdx.workspace = true
+vfs.workspace = true
+paths.workspace = true

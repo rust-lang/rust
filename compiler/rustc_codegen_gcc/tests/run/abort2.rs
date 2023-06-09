@@ -33,6 +33,7 @@ mod intrinsics {
     use super::Sized;
 
     extern "rust-intrinsic" {
+        #[rustc_safe_intrinsic]
         pub fn abort() -> !;
     }
 }

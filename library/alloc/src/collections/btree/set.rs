@@ -1,13 +1,10 @@
-// This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
-// to TreeMap
-
 use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::cmp::{max, min};
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, FusedIterator, Peekable};
+use core::iter::{FusedIterator, Peekable};
 use core::mem::ManuallyDrop;
 use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
@@ -17,8 +14,6 @@ use super::set_val::SetValZST;
 use super::Recover;
 
 use crate::alloc::{Allocator, Global};
-
-// FIXME(conventions): implement bounded iterators
 
 /// An ordered set based on a B-Tree.
 ///
@@ -35,7 +30,6 @@ use crate::alloc::{Allocator, Global};
 /// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
 /// logarithmic and amortized constant time per item returned.
 ///
-/// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 ///
@@ -152,7 +146,6 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: BTreeSet#method.into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<
@@ -343,7 +336,7 @@ impl<T> BTreeSet<T> {
     /// let mut set: BTreeSet<i32> = BTreeSet::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
@@ -786,7 +779,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -797,7 +789,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.first(), Some(&1));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
@@ -813,7 +805,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -824,7 +815,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.last(), Some(&2));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
@@ -838,7 +829,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -849,7 +839,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_first(&mut self) -> Option<T>
     where
         T: Ord,
@@ -863,7 +853,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -874,7 +863,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_last(&mut self) -> Option<T>
     where
         T: Ord,
@@ -1174,7 +1163,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn len(&self) -> usize {
         self.map.len()
     }
@@ -1193,7 +1186,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -1504,11 +1501,17 @@ impl<'a, T> Iterator for Iter<'a, T> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<&'a T> {
+    fn min(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<&'a T> {
+    fn max(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next_back()
     }
 }
@@ -1540,6 +1543,21 @@ impl<T, A: Allocator + Clone> Iterator for IntoIter<T, A> {
         self.iter.size_hint()
     }
 }
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<T> Default for Iter<'_, T> {
+    /// Creates an empty `btree_set::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_set;
+    /// let iter: btree_set::Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Iter { iter: Default::default() }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator + Clone> DoubleEndedIterator for IntoIter<T, A> {
     fn next_back(&mut self) -> Option<T> {
@@ -1555,6 +1573,23 @@ impl<T, A: Allocator + Clone> ExactSizeIterator for IntoIter<T, A> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator + Clone> FusedIterator for IntoIter<T, A> {}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<T, A> Default for IntoIter<T, A>
+where
+    A: Allocator + Default + Clone,
+{
+    /// Creates an empty `btree_set::IntoIter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_set;
+    /// let iter: btree_set::IntoIter<u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IntoIter { iter: Default::default() }
+    }
+}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<T> Clone for Range<'_, T> {
@@ -1575,11 +1610,17 @@ impl<'a, T> Iterator for Range<'a, T> {
         self.next_back()
     }
 
-    fn min(mut self) -> Option<&'a T> {
+    fn min(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next()
     }
 
-    fn max(mut self) -> Option<&'a T> {
+    fn max(mut self) -> Option<&'a T>
+    where
+        &'a T: Ord,
+    {
         self.next_back()
     }
 }
@@ -1593,6 +1634,20 @@ impl<'a, T> DoubleEndedIterator for Range<'a, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Range<'_, T> {}
+
+#[stable(feature = "default_iters", since = "1.70.0")]
+impl<T> Default for Range<'_, T> {
+    /// Creates an empty `btree_set::Range`.
+    ///
+    /// ```
+    /// # use std::collections::btree_set;
+    /// let iter: btree_set::Range<'_, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        Range { iter: Default::default() }
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator + Clone> Clone for Difference<'_, T, A> {

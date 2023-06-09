@@ -24,6 +24,8 @@ env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_UNSTABLE_SPARSE_REGISTRY: true
 
 jobs:
   base:
@@ -37,7 +39,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain

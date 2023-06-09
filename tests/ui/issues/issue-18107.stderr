@@ -1,0 +1,22 @@
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/issue-18107.rs:4:5
+   |
+LL |     dyn AbstractRenderer
+   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+   |
+LL |     impl AbstractRenderer
+   |     ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~     Box<dyn AbstractRenderer>
+LL |
+LL | {
+LL |     match 0 {
+LL ~         _ => Box::new(unimplemented!())
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0746`.

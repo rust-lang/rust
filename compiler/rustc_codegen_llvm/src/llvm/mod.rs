@@ -95,6 +95,14 @@ pub fn CreateUWTableAttr(llcx: &Context, async_: bool) -> &Attribute {
     unsafe { LLVMRustCreateUWTableAttr(llcx, async_) }
 }
 
+pub fn CreateAllocSizeAttr(llcx: &Context, size_arg: u32) -> &Attribute {
+    unsafe { LLVMRustCreateAllocSizeAttr(llcx, size_arg) }
+}
+
+pub fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &Attribute {
+    unsafe { LLVMRustCreateAllocKindAttr(llcx, kind_arg.bits()) }
+}
+
 #[derive(Copy, Clone)]
 pub enum AttributePlace {
     ReturnValue,
@@ -129,6 +137,7 @@ impl FromStr for ArchiveKind {
             "bsd" => Ok(ArchiveKind::K_BSD),
             "darwin" => Ok(ArchiveKind::K_DARWIN),
             "coff" => Ok(ArchiveKind::K_COFF),
+            "aix_big" => Ok(ArchiveKind::K_AIXBIG),
             _ => Err(()),
         }
     }
@@ -158,12 +167,6 @@ pub fn SetUniqueComdat(llmod: &Module, val: &Value) {
     }
 }
 
-pub fn UnsetComdat(val: &Value) {
-    unsafe {
-        LLVMRustUnsetComdat(val);
-    }
-}
-
 pub fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
     unsafe {
         LLVMSetUnnamedAddress(global, unnamed);
@@ -180,6 +183,13 @@ impl AttributeKind {
     /// Create an LLVM Attribute with no associated value.
     pub fn create_attr(self, llcx: &Context) -> &Attribute {
         unsafe { LLVMRustCreateAttrNoValue(llcx, self) }
+    }
+}
+
+impl MemoryEffects {
+    /// Create an LLVM Attribute with these memory effects.
+    pub fn create_attr(self, llcx: &Context) -> &Attribute {
+        unsafe { LLVMRustCreateMemoryEffectsAttr(llcx, self) }
     }
 }
 

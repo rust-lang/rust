@@ -2,7 +2,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, subst::SubstsRef, InstanceDef, TyCtxt};
 use rustc_session::Limit;
 
@@ -13,7 +13,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
     tcx: TyCtxt<'tcx>,
     (root, target): (ty::Instance<'tcx>, LocalDefId),
 ) -> bool {
-    trace!(%root, target = %tcx.def_path_str(target.to_def_id()));
+    trace!(%root, target = %tcx.def_path_str(target));
     let param_env = tcx.param_env_reveal_all_normalized(target);
     assert_ne!(
         root.def_id().expect_local(),
@@ -44,7 +44,11 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
     ) -> bool {
         trace!(%caller);
         for &(callee, substs) in tcx.mir_inliner_callees(caller.def) {
-            let Ok(substs) = caller.try_subst_mir_and_normalize_erasing_regions(tcx, param_env, substs) else {
+            let Ok(substs) = caller.try_subst_mir_and_normalize_erasing_regions(
+                tcx,
+                param_env,
+                ty::EarlyBinder::bind(substs),
+            ) else {
                 trace!(?caller, ?param_env, ?substs, "cannot normalize, skipping");
                 continue;
             };
@@ -79,16 +83,20 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 // These have MIR and if that MIR is inlined, substituted and then inlining is run
                 // again, a function item can end up getting inlined. Thus we'll be able to cause
                 // a cycle that way
-                InstanceDef::VtableShim(_)
+                InstanceDef::VTableShim(_)
                 | InstanceDef::ReifyShim(_)
                 | InstanceDef::FnPtrShim(..)
                 | InstanceDef::ClosureOnceShim { .. }
+                | InstanceDef::ThreadLocalShim { .. }
                 | InstanceDef::CloneShim(..) => {}
+
+                // This shim does not call any other functions, thus there can be no recursion.
+                InstanceDef::FnPtrAddrShim(..) => continue,
                 InstanceDef::DropGlue(..) => {
                     // FIXME: A not fully substituted drop shim can cause ICEs if one attempts to
                     // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
                     // needs some more analysis.
-                    if callee.needs_subst() {
+                    if callee.has_param() {
                         continue;
                     }
                 }
@@ -144,8 +152,7 @@ pub(crate) fn mir_inliner_callees<'tcx>(
     let guard;
     let body = match (instance, instance.def_id().as_local()) {
         (InstanceDef::Item(_), Some(def_id)) => {
-            let def = ty::WithOptConstParam::unknown(def_id);
-            steal = tcx.mir_promoted(def).0;
+            steal = tcx.mir_promoted(def_id).0;
             guard = steal.borrow();
             &*guard
         }
@@ -153,7 +160,7 @@ pub(crate) fn mir_inliner_callees<'tcx>(
         _ => tcx.instance_mir(instance),
     };
     let mut calls = FxIndexSet::default();
-    for bb_data in body.basic_blocks() {
+    for bb_data in body.basic_blocks.iter() {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func, .. } = &terminator.kind {
             let ty = func.ty(&body.local_decls, tcx);

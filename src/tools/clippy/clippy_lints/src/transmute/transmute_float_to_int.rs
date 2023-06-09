@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_FLOAT_TO_INT,
                 e.span,
-                &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
+                &format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 |diag| {
                     let mut sugg = sugg::Sugg::hir(cx, arg, "..");
 
@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
                         if let ExprKind::Lit(lit) = &arg.kind;
                         if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node;
                         then {
-                            let op = format!("{}{}", sugg, float_ty.name_str()).into();
+                            let op = format!("{sugg}{}", float_ty.name_str()).into();
                             match sugg {
                                 sugg::Sugg::MaybeParen(_) => sugg = sugg::Sugg::MaybeParen(op),
                                 _ => sugg = sugg::Sugg::NonParen(op)

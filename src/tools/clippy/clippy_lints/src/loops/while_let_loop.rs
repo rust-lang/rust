@@ -11,7 +11,14 @@ use rustc_lint::LateContext;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'tcx Block<'_>) {
     let (init, has_trailing_exprs) = match (loop_block.stmts, loop_block.expr) {
         ([stmt, stmts @ ..], expr) => {
-            if let StmtKind::Local(&Local { init: Some(e), els: None, .. }) | StmtKind::Semi(e) | StmtKind::Expr(e) = stmt.kind {
+            if let StmtKind::Local(&Local {
+                init: Some(e),
+                els: None,
+                ..
+            })
+            | StmtKind::Semi(e)
+            | StmtKind::Expr(e) = stmt.kind
+            {
                 (e, !stmts.is_empty() || expr.is_some())
             } else {
                 return;

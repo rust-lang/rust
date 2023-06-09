@@ -1,0 +1,29 @@
+[package]
+name = "base-db"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+salsa = "0.17.0-pre.2"
+rustc-hash = "1.1.0"
+
+triomphe.workspace = true
+
+la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+
+# local deps
+cfg.workspace = true
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+test-utils.workspace = true
+tt.workspace = true
+vfs.workspace = true

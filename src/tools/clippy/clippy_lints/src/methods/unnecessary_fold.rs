@@ -31,7 +31,7 @@ pub(super) fn check(
             // Extract the body of the closure passed to fold
             if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind;
             let closure_body = cx.tcx.hir().body(body);
-            let closure_expr = peel_blocks(&closure_body.value);
+            let closure_expr = peel_blocks(closure_body.value);
 
             // Check if the closure body is of the form `acc <op> some_expr(x)`
             if let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind;
@@ -49,15 +49,12 @@ pub(super) fn check(
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if replacement_has_args {
                     format!(
-                        "{replacement}(|{s}| {r})",
-                        replacement = replacement_method_name,
-                        s = second_arg_ident,
+                        "{replacement_method_name}(|{second_arg_ident}| {r})",
                         r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
                     )
                 } else {
                     format!(
-                        "{replacement}()",
-                        replacement = replacement_method_name,
+                        "{replacement_method_name}()",
                     )
                 };
 
@@ -81,7 +78,7 @@ pub(super) fn check(
     }
 
     // Check if the first argument to .fold is a suitable literal
-    if let hir::ExprKind::Lit(ref lit) = init.kind {
+    if let hir::ExprKind::Lit(lit) = init.kind {
         match lit.node {
             ast::LitKind::Bool(false) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, "any", true),
             ast::LitKind::Bool(true) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, "all", true),

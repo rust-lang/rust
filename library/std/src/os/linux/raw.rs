@@ -26,7 +26,6 @@ pub use self::arch::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 
 #[cfg(any(
     target_arch = "x86",
-    target_arch = "le32",
     target_arch = "m68k",
     target_arch = "powerpc",
     target_arch = "sparc",
@@ -232,6 +231,7 @@ mod arch {
 }
 
 #[cfg(any(
+    target_arch = "loongarch64",
     target_arch = "mips64",
     target_arch = "s390x",
     target_arch = "sparc64",

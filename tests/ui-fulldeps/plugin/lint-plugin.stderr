@@ -1,0 +1,18 @@
+warning: item is named 'lintme'
+  --> $DIR/lint-plugin.rs:8:1
+   |
+LL | fn lintme() { }
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(test_lint)]` on by default
+
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
+  --> $DIR/lint-plugin.rs:5:1
+   |
+LL | #![plugin(lint_plugin_test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: 2 warnings emitted
+

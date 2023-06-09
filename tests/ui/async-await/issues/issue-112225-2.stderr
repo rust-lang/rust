@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-112225-2.rs:13:9
+   |
+LL |     let x = Default::default();
+   |         ^
+...
+LL |         async { x.0; },
+   |                 - type must be known at this point
+   |
+help: consider giving `x` an explicit type
+   |
+LL |     let x: /* Type */ = Default::default();
+   |          ++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

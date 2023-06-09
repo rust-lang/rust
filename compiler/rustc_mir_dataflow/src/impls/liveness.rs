@@ -21,13 +21,8 @@ use crate::{Analysis, AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKi
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
+#[derive(Clone, Copy)]
 pub struct MaybeLiveLocals;
-
-impl MaybeLiveLocals {
-    fn transfer_function<'a, T>(&self, trans: &'a mut T) -> TransferFunction<'a, T> {
-        TransferFunction(trans)
-    }
-}
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
     type Domain = ChunkedBitSet<Local>;
@@ -49,25 +44,25 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     type Idx = Local;
 
     fn statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        self.transfer_function(trans).visit_statement(statement, location);
+        TransferFunction(trans).visit_statement(statement, location);
     }
 
     fn terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        self.transfer_function(trans).visit_terminator(terminator, location);
+        TransferFunction(trans).visit_terminator(terminator, location);
     }
 
     fn call_return_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -80,14 +75,16 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     }
 
     fn yield_resume_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _resume_block: mir::BasicBlock,
         resume_place: mir::Place<'tcx>,
     ) {
-        if let Some(local) = resume_place.as_local() {
-            trans.kill(local);
-        }
+        YieldResumeEffect(trans).visit_place(
+            &resume_place,
+            PlaceContext::MutatingUse(MutatingUseContext::Yield),
+            Location::START,
+        )
     }
 }
 
@@ -98,28 +95,51 @@ where
     T: GenKill<Local>,
 {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
-        let local = place.local;
-
-        // We purposefully do not call `super_place` here to avoid calling `visit_local` for this
-        // place with one of the `Projection` variants of `PlaceContext`.
-        self.visit_projection(place.as_ref(), context, location);
+        if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
+            // The resume place is evaluated and assigned to only after generator resumes, so its
+            // effect is handled separately in `yield_resume_effect`.
+            return;
+        }
 
         match DefUse::for_place(*place, context) {
-            Some(DefUse::Def) => self.0.kill(local),
-            Some(DefUse::Use) => self.0.gen(local),
+            Some(DefUse::Def) => {
+                if let PlaceContext::MutatingUse(
+                    MutatingUseContext::Call | MutatingUseContext::AsmOutput,
+                ) = context
+                {
+                    // For the associated terminators, this is only a `Def` when the terminator returns
+                    // "successfully." As such, we handle this case separately in `call_return_effect`
+                    // above. However, if the place looks like `*_5`, this is still unconditionally a use of
+                    // `_5`.
+                } else {
+                    self.0.kill(place.local);
+                }
+            }
+            Some(DefUse::Use) => self.0.gen(place.local),
             None => {}
         }
+
+        self.visit_projection(place.as_ref(), context, location);
     }
 
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
-        // Because we do not call `super_place` above, `visit_local` is only called for locals that
-        // do not appear as part of  a `Place` in the MIR. This handles cases like the implicit use
-        // of the return place in a `Return` terminator or the index in an `Index` projection.
-        match DefUse::for_place(local.into(), context) {
-            Some(DefUse::Def) => self.0.kill(local),
-            Some(DefUse::Use) => self.0.gen(local),
-            None => {}
-        }
+        DefUse::apply(self.0, local.into(), context);
+    }
+}
+
+struct YieldResumeEffect<'a, T>(&'a mut T);
+
+impl<'tcx, T> Visitor<'tcx> for YieldResumeEffect<'_, T>
+where
+    T: GenKill<Local>,
+{
+    fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
+        DefUse::apply(self.0, *place, context);
+        self.visit_projection(place.as_ref(), context, location);
+    }
+
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
+        DefUse::apply(self.0, local.into(), context);
     }
 }
 
@@ -130,11 +150,25 @@ enum DefUse {
 }
 
 impl DefUse {
-    fn for_place<'tcx>(place: Place<'tcx>, context: PlaceContext) -> Option<DefUse> {
+    fn apply(trans: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
+        match DefUse::for_place(place, context) {
+            Some(DefUse::Def) => trans.kill(place.local),
+            Some(DefUse::Use) => trans.gen(place.local),
+            None => {}
+        }
+    }
+
+    fn for_place(place: Place<'_>, context: PlaceContext) -> Option<DefUse> {
         match context {
             PlaceContext::NonUse(_) => None,
 
-            PlaceContext::MutatingUse(MutatingUseContext::Store | MutatingUseContext::Deinit) => {
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Call
+                | MutatingUseContext::Yield
+                | MutatingUseContext::AsmOutput
+                | MutatingUseContext::Store
+                | MutatingUseContext::Deinit,
+            ) => {
                 if place.is_indirect() {
                     // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a
                     // use.
@@ -152,16 +186,6 @@ impl DefUse {
                 place.is_indirect().then_some(DefUse::Use)
             }
 
-            // For the associated terminators, this is only a `Def` when the terminator returns
-            // "successfully." As such, we handle this case separately in `call_return_effect`
-            // above. However, if the place looks like `*_5`, this is still unconditionally a use of
-            // `_5`.
-            PlaceContext::MutatingUse(
-                MutatingUseContext::Call
-                | MutatingUseContext::Yield
-                | MutatingUseContext::AsmOutput,
-            ) => place.is_indirect().then_some(DefUse::Use),
-
             // All other contexts are uses...
             PlaceContext::MutatingUse(
                 MutatingUseContext::AddressOf
@@ -174,9 +198,9 @@ impl DefUse {
                 | NonMutatingUseContext::Copy
                 | NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::Move
+                | NonMutatingUseContext::PlaceMention
                 | NonMutatingUseContext::ShallowBorrow
-                | NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::UniqueBorrow,
+                | NonMutatingUseContext::SharedBorrow,
             ) => Some(DefUse::Use),
 
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
@@ -192,6 +216,7 @@ impl DefUse {
 /// This is basically written for dead store elimination and nothing else.
 ///
 /// All of the caveats of `MaybeLiveLocals` apply.
+#[derive(Clone, Copy)]
 pub struct MaybeTransitiveLiveLocals<'a> {
     always_live: &'a BitSet<Local>,
 }
@@ -222,34 +247,16 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 }
 
-struct TransferWrapper<'a>(&'a mut ChunkedBitSet<Local>);
-
-impl<'a> GenKill<Local> for TransferWrapper<'a> {
-    fn gen(&mut self, l: Local) {
-        self.0.insert(l);
-    }
-
-    fn kill(&mut self, l: Local) {
-        self.0.remove(l);
-    }
-}
-
 impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
         // Compute the place that we are storing to, if any
         let destination = match &statement.kind {
-            StatementKind::Assign(assign) => {
-                if assign.1.is_safe_to_remove() {
-                    Some(assign.0)
-                } else {
-                    None
-                }
-            }
+            StatementKind::Assign(assign) => assign.1.is_safe_to_remove().then_some(assign.0),
             StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
                 Some(**place)
             }
@@ -258,8 +265,10 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => None,
         };
         if let Some(destination) = destination {
@@ -271,20 +280,20 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
                 return;
             }
         }
-        TransferFunction(&mut TransferWrapper(trans)).visit_statement(statement, location);
+        TransferFunction(trans).visit_statement(statement, location);
     }
 
     fn apply_terminator_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        TransferFunction(&mut TransferWrapper(trans)).visit_terminator(terminator, location);
+        TransferFunction(trans).visit_terminator(terminator, location);
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -297,13 +306,15 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 
     fn apply_yield_resume_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         _resume_block: mir::BasicBlock,
         resume_place: mir::Place<'tcx>,
     ) {
-        if let Some(local) = resume_place.as_local() {
-            trans.remove(local);
-        }
+        YieldResumeEffect(trans).visit_place(
+            &resume_place,
+            PlaceContext::MutatingUse(MutatingUseContext::Yield),
+            Location::START,
+        )
     }
 }

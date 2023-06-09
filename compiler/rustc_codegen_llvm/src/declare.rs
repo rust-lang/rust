@@ -18,9 +18,13 @@ use crate::llvm;
 use crate::llvm::AttributePlace::Function;
 use crate::type_::Type;
 use crate::value::Value;
-use rustc_middle::ty::Ty;
+use rustc_codegen_ssa::traits::TypeMembershipMethods;
+use rustc_middle::ty::{Instance, Ty};
+use rustc_symbol_mangling::typeid::{
+    kcfi_typeid_for_fnabi, kcfi_typeid_for_instance, typeid_for_fnabi, typeid_for_instance,
+    TypeIdOptions,
+};
 use smallvec::SmallVec;
-use tracing::debug;
 
 /// Declare a function.
 ///
@@ -31,6 +35,7 @@ fn declare_raw_fn<'ll>(
     name: &str,
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
+    visibility: llvm::Visibility,
     ty: &'ll Type,
 ) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
@@ -40,6 +45,7 @@ fn declare_raw_fn<'ll>(
 
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
+    llvm::set_visibility(llfn, visibility);
 
     let mut attrs = SmallVec::<[_; 4]>::new();
 
@@ -77,14 +83,48 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         unnamed: llvm::UnnamedAddr,
         fn_type: &'ll Type,
     ) -> &'ll Value {
-        declare_raw_fn(self, name, llvm::CCallConv, unnamed, fn_type)
+        // Declare C ABI functions with the visibility used by C by default.
+        let visibility = if self.tcx.sess.target.default_hidden_visibility {
+            llvm::Visibility::Hidden
+        } else {
+            llvm::Visibility::Default
+        };
+
+        declare_raw_fn(self, name, llvm::CCallConv, unnamed, visibility, fn_type)
+    }
+
+    /// Declare an entry Function
+    ///
+    /// The ABI of this function can change depending on the target (although for now the same as
+    /// `declare_cfn`)
+    ///
+    /// If there’s a value with the same name already declared, the function will
+    /// update the declaration and return existing Value instead.
+    pub fn declare_entry_fn(
+        &self,
+        name: &str,
+        callconv: llvm::CallConv,
+        unnamed: llvm::UnnamedAddr,
+        fn_type: &'ll Type,
+    ) -> &'ll Value {
+        let visibility = if self.tcx.sess.target.default_hidden_visibility {
+            llvm::Visibility::Hidden
+        } else {
+            llvm::Visibility::Default
+        };
+        declare_raw_fn(self, name, callconv, unnamed, visibility, fn_type)
     }
 
     /// Declare a Rust function.
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Value {
+    pub fn declare_fn(
+        &self,
+        name: &str,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        instance: Option<Instance<'tcx>>,
+    ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
         // Function addresses in Rust are never significant, allowing functions to
@@ -94,9 +134,62 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             name,
             fn_abi.llvm_cconv(),
             llvm::UnnamedAddr::Global,
+            llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );
         fn_abi.apply_attrs_llfn(self, llfn);
+
+        if self.tcx.sess.is_sanitizer_cfi_enabled() {
+            if let Some(instance) = instance {
+                let typeid = typeid_for_instance(self.tcx, &instance, TypeIdOptions::empty());
+                self.set_type_metadata(llfn, typeid);
+                let typeid =
+                    typeid_for_instance(self.tcx, &instance, TypeIdOptions::GENERALIZE_POINTERS);
+                self.add_type_metadata(llfn, typeid);
+                let typeid =
+                    typeid_for_instance(self.tcx, &instance, TypeIdOptions::NORMALIZE_INTEGERS);
+                self.add_type_metadata(llfn, typeid);
+                let typeid = typeid_for_instance(
+                    self.tcx,
+                    &instance,
+                    TypeIdOptions::GENERALIZE_POINTERS | TypeIdOptions::NORMALIZE_INTEGERS,
+                );
+                self.add_type_metadata(llfn, typeid);
+            } else {
+                let typeid = typeid_for_fnabi(self.tcx, fn_abi, TypeIdOptions::empty());
+                self.set_type_metadata(llfn, typeid);
+                let typeid = typeid_for_fnabi(self.tcx, fn_abi, TypeIdOptions::GENERALIZE_POINTERS);
+                self.add_type_metadata(llfn, typeid);
+                let typeid = typeid_for_fnabi(self.tcx, fn_abi, TypeIdOptions::NORMALIZE_INTEGERS);
+                self.add_type_metadata(llfn, typeid);
+                let typeid = typeid_for_fnabi(
+                    self.tcx,
+                    fn_abi,
+                    TypeIdOptions::GENERALIZE_POINTERS | TypeIdOptions::NORMALIZE_INTEGERS,
+                );
+                self.add_type_metadata(llfn, typeid);
+            }
+        }
+
+        if self.tcx.sess.is_sanitizer_kcfi_enabled() {
+            // LLVM KCFI does not support multiple !kcfi_type attachments
+            let mut options = TypeIdOptions::empty();
+            if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+            }
+            if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
+                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+            }
+
+            if let Some(instance) = instance {
+                let kcfi_typeid = kcfi_typeid_for_instance(self.tcx, &instance, options);
+                self.set_kcfi_type_metadata(llfn, kcfi_typeid);
+            } else {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);
+                self.set_kcfi_type_metadata(llfn, kcfi_typeid);
+            }
+        }
+
         llfn
     }
 

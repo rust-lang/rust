@@ -13,9 +13,9 @@ mod itron {
     pub(super) mod spin;
     pub(super) mod task;
     pub mod thread;
+    pub mod thread_parking;
     pub(super) mod time;
     use super::unsupported;
-    pub mod wait_flag;
 }
 
 pub mod alloc;
@@ -43,8 +43,8 @@ pub use self::itron::thread;
 pub mod memchr;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub use self::itron::thread_parking;
 pub mod time;
-pub use self::itron::wait_flag;
 
 mod rwlock;
 
@@ -56,7 +56,7 @@ pub mod locks {
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
+pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {}
@@ -76,20 +76,9 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     error::decode_error_kind(code)
 }
 
-#[inline(always)]
+#[inline]
 pub fn abort_internal() -> ! {
-    loop {
-        abi::breakpoint_abort();
-    }
-}
-
-// This function is needed by the panic runtime. The symbol is named in
-// pre-link args for the target specification, so keep that in sync.
-#[cfg(not(test))]
-#[no_mangle]
-// NB. used by both libunwind and libpanic_abort
-pub extern "C" fn __rust_abort() {
-    abort_internal();
+    unsafe { libc::abort() }
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {

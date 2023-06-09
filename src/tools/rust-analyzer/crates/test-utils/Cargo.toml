@@ -1,0 +1,21 @@
+[package]
+name = "test-utils"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# Avoid adding deps here, this crate is widely used in tests it should compile fast!
+dissimilar = "1.0.4"
+text-size.workspace = true
+rustc-hash = "1.1.0"
+
+stdx.workspace = true
+profile.workspace = true

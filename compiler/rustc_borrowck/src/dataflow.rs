@@ -1,4 +1,6 @@
-use rustc_data_structures::fx::FxHashMap;
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Body, Location, Place};
 use rustc_middle::ty::RegionVid;
@@ -9,9 +11,7 @@ use rustc_mir_dataflow::{self, fmt::DebugWithContext, CallReturnPlaces, GenKill}
 use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
 
-use crate::{
-    places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
-};
+use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 
 /// A tuple with named fields that can hold either the results or the transient state of the
 /// dataflow analyses used by the borrow checker.
@@ -59,7 +59,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_before_statement_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 stmt: &mir::Statement<'tcx>,
                 loc: Location,
@@ -69,7 +69,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_statement_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 stmt: &mir::Statement<'tcx>,
                 loc: Location,
@@ -79,7 +79,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_before_terminator_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 term: &mir::Terminator<'tcx>,
                 loc: Location,
@@ -89,7 +89,7 @@ macro_rules! impl_visitable {
             }
 
             fn reconstruct_terminator_effect(
-                &self,
+                &mut self,
                 state: &mut Self::FlowState,
                 term: &mir::Terminator<'tcx>,
                 loc: Location,
@@ -106,9 +106,8 @@ impl_visitable! {
 }
 
 rustc_index::newtype_index! {
-    pub struct BorrowIndex {
-        DEBUG_FORMAT = "bw{}"
-    }
+    #[debug_format = "bw{}"]
+    pub struct BorrowIndex {}
 }
 
 /// `Borrows` stores the data used in the analyses that track the flow
@@ -123,7 +122,7 @@ pub struct Borrows<'a, 'tcx> {
     body: &'a Body<'tcx>,
 
     borrow_set: &'a BorrowSet<'tcx>,
-    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 struct StackEntry {
@@ -137,17 +136,17 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
     visit_stack: Vec<StackEntry>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
-    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
     fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,
-            borrows_out_of_scope_at_location: FxHashMap::default(),
+            borrows_out_of_scope_at_location: FxIndexMap::default(),
         }
     }
 }
@@ -157,10 +156,10 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         &mut self,
         borrow_index: BorrowIndex,
         borrow_region: RegionVid,
-        location: Location,
+        first_location: Location,
     ) {
         // We visit one BB at a time. The complication is that we may start in the
-        // middle of the first BB visited (the one containing `location`), in which
+        // middle of the first BB visited (the one containing `first_location`), in which
         // case we may have to later on process the first part of that BB if there
         // is a path back to its start.
 
@@ -169,61 +168,58 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         // `visited` once they are added to `stack`, before they are actually
         // processed, because this avoids the need to look them up again on
         // completion.
-        self.visited.insert(location.block);
+        self.visited.insert(first_location.block);
 
-        let mut first_lo = location.statement_index;
-        let first_hi = self.body[location.block].statements.len();
+        let first_block = first_location.block;
+        let mut first_lo = first_location.statement_index;
+        let first_hi = self.body[first_block].statements.len();
 
-        self.visit_stack.push(StackEntry { bb: location.block, lo: first_lo, hi: first_hi });
+        self.visit_stack.push(StackEntry { bb: first_block, lo: first_lo, hi: first_hi });
 
-        while let Some(StackEntry { bb, lo, hi }) = self.visit_stack.pop() {
-            // If we process the first part of the first basic block (i.e. we encounter that block
-            // for the second time), we no longer have to visit its successors again.
-            let mut finished_early = bb == location.block && hi != first_hi;
-            for i in lo..=hi {
-                let location = Location { block: bb, statement_index: i };
+        'preorder: while let Some(StackEntry { bb, lo, hi }) = self.visit_stack.pop() {
+            if let Some(kill_stmt) =
+                self.regioncx.first_non_contained_inclusive(borrow_region, bb, lo, hi)
+            {
+                let kill_location = Location { block: bb, statement_index: kill_stmt };
                 // If region does not contain a point at the location, then add to list and skip
                 // successor locations.
-                if !self.regioncx.region_contains(borrow_region, location) {
-                    debug!("borrow {:?} gets killed at {:?}", borrow_index, location);
-                    self.borrows_out_of_scope_at_location
-                        .entry(location)
-                        .or_default()
-                        .push(borrow_index);
-                    finished_early = true;
-                    break;
-                }
+                debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
+                self.borrows_out_of_scope_at_location
+                    .entry(kill_location)
+                    .or_default()
+                    .push(borrow_index);
+                continue 'preorder;
             }
 
-            if !finished_early {
-                // Add successor BBs to the work list, if necessary.
-                let bb_data = &self.body[bb];
-                debug_assert!(hi == bb_data.statements.len());
-                for succ_bb in bb_data.terminator().successors() {
-                    if !self.visited.insert(succ_bb) {
-                        if succ_bb == location.block && first_lo > 0 {
-                            // `succ_bb` has been seen before. If it wasn't
-                            // fully processed, add its first part to `stack`
-                            // for processing.
-                            self.visit_stack.push(StackEntry {
-                                bb: succ_bb,
-                                lo: 0,
-                                hi: first_lo - 1,
-                            });
+            // If we process the first part of the first basic block (i.e. we encounter that block
+            // for the second time), we no longer have to visit its successors again.
+            if bb == first_block && hi != first_hi {
+                continue;
+            }
 
-                            // And update this entry with 0, to represent the
-                            // whole BB being processed.
-                            first_lo = 0;
-                        }
-                    } else {
-                        // succ_bb hasn't been seen before. Add it to
-                        // `stack` for processing.
-                        self.visit_stack.push(StackEntry {
-                            bb: succ_bb,
-                            lo: 0,
-                            hi: self.body[succ_bb].statements.len(),
-                        });
+            // Add successor BBs to the work list, if necessary.
+            let bb_data = &self.body[bb];
+            debug_assert!(hi == bb_data.statements.len());
+            for succ_bb in bb_data.terminator().successors() {
+                if !self.visited.insert(succ_bb) {
+                    if succ_bb == first_block && first_lo > 0 {
+                        // `succ_bb` has been seen before. If it wasn't
+                        // fully processed, add its first part to `stack`
+                        // for processing.
+                        self.visit_stack.push(StackEntry { bb: succ_bb, lo: 0, hi: first_lo - 1 });
+
+                        // And update this entry with 0, to represent the
+                        // whole BB being processed.
+                        first_lo = 0;
                     }
+                } else {
+                    // succ_bb hasn't been seen before. Add it to
+                    // `stack` for processing.
+                    self.visit_stack.push(StackEntry {
+                        bb: succ_bb,
+                        lo: 0,
+                        hi: self.body[succ_bb].statements.len(),
+                    });
                 }
             }
         }
@@ -232,27 +228,32 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
     }
 }
 
+pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
+    body: &Body<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
+) -> FxIndexMap<Location, Vec<BorrowIndex>> {
+    let mut prec = OutOfScopePrecomputer::new(body, regioncx);
+    for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
+        let borrow_region = borrow_data.region;
+        let location = borrow_data.reserve_location;
+
+        prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
+    }
+
+    prec.borrows_out_of_scope_at_location
+}
+
 impl<'a, 'tcx> Borrows<'a, 'tcx> {
-    pub(crate) fn new(
+    pub fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         nonlexical_regioncx: &'a RegionInferenceContext<'tcx>,
         borrow_set: &'a BorrowSet<'tcx>,
     ) -> Self {
-        let mut prec = OutOfScopePrecomputer::new(body, nonlexical_regioncx);
-        for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
-            let borrow_region = borrow_data.region.to_region_vid();
-            let location = borrow_data.reserve_location;
-
-            prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
-        }
-
-        Borrows {
-            tcx,
-            body,
-            borrow_set,
-            borrows_out_of_scope_at_location: prec.borrows_out_of_scope_at_location,
-        }
+        let borrows_out_of_scope_at_location =
+            calculate_borrows_out_of_scope_at_location(body, nonlexical_regioncx, borrow_set);
+        Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
     }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
@@ -305,7 +306,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         }
 
         // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
-        // pair of array indices are unequal, so that when `places_conflict` returns true, we
+        // pair of array indices are not equal, so that when `places_conflict` returns true, we
         // will be assured that two places being compared definitely denotes the same sets of
         // locations.
         let definitely_conflicting_borrows = other_borrows_of_local.filter(|&i| {
@@ -329,7 +330,7 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = nothing is reserved or activated yet;
-        BitSet::new_empty(self.borrow_set.len() * 2)
+        BitSet::new_empty(self.borrow_set.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
@@ -342,7 +343,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
     fn before_statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -351,14 +352,14 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        match stmt.kind {
-            mir::StatementKind::Assign(box (lhs, ref rhs)) => {
-                if let mir::Rvalue::Ref(_, _, place) = *rhs {
+        match &stmt.kind {
+            mir::StatementKind::Assign(box (lhs, rhs)) => {
+                if let mir::Rvalue::Ref(_, _, place) = rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,
@@ -375,13 +376,13 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
 
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                self.kill_borrows_on_place(trans, lhs);
+                self.kill_borrows_on_place(trans, *lhs);
             }
 
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(trans, Place::from(local));
+                self.kill_borrows_on_place(trans, Place::from(*local));
             }
 
             mir::StatementKind::FakeRead(..)
@@ -389,15 +390,17 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::Deinit(..)
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::Retag { .. }
+            | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::Coverage(..)
-            | mir::StatementKind::CopyNonOverlapping(..)
+            | mir::StatementKind::Intrinsic(..)
+            | mir::StatementKind::ConstEvalCounter
             | mir::StatementKind::Nop => {}
         }
     }
 
     fn before_terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -406,7 +409,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -423,7 +426,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn call_return_effect(
-        &self,
+        &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
