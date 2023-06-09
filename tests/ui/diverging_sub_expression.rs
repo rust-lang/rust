@@ -49,6 +49,8 @@ fn foobar() {
             // ... or multiple statements
             21 => true || { _ = 1; return; },
             22 => false || { _ = 1; return; },
+            23 => true || { return; true },
+            24 => true || { return; true },
             _ => true || break,
         };
     }

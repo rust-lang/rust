@@ -138,19 +138,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             // fix #10776
-            ExprKind::Block(block, ..) => {
-                if let Some(e) = block.expr && block.stmts.is_empty() {
-                    self.visit_expr(e);
-
-                    return;
-                }
-
-                if let [stmt, rest @ ..] = block.stmts && rest.is_empty() {
-                    match stmt.kind {
-                        StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
-                        _ => {},
-                    }
-                }
+            ExprKind::Block(block, ..) => match (block.stmts, block.expr) {
+                ([], Some(e)) => self.visit_expr(e),
+                ([stmt], None) => match stmt.kind {
+                    StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
+                    _ => {},
+                },
+                _ => {},
             },
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
             ExprKind::Call(func, _) => {

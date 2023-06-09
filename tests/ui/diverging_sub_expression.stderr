@@ -63,7 +63,7 @@ LL |             18 => false || { return },
    |                              ^^^^^^
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:52:26
+  --> $DIR/diverging_sub_expression.rs:54:26
    |
 LL |             _ => true || break,
    |                          ^^^^^
