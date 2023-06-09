@@ -115,13 +115,14 @@ pub(crate) fn handle_analyzer_status(
 
 pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> Result<String> {
     let _p = profile::span("handle_memory_usage");
-    let mut mem = state.analysis_host.per_query_memory_usage();
-    mem.push(("Remaining".into(), profile::memory_usage().allocated));
+    let mem = state.analysis_host.per_query_memory_usage();
 
     let mut out = String::new();
-    for (name, bytes) in mem {
-        format_to!(out, "{:>8} {}\n", bytes, name);
+    for (name, bytes, entries) in mem {
+        format_to!(out, "{:>8} {:>6} {}\n", bytes, entries, name);
     }
+    format_to!(out, "{:>8}        Remaining\n", profile::memory_usage().allocated);
+
     Ok(out)
 }
 

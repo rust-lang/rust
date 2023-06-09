@@ -1028,13 +1028,13 @@ fn attr_macro_as_call_id(
     def: MacroDefId,
 ) -> MacroCallId {
     let arg = match macro_attr.input.as_deref() {
-        Some(AttrInput::TokenTree(tt, map)) => (
+        Some(AttrInput::TokenTree(tt)) => (
             {
-                let mut tt = tt.clone();
+                let mut tt = tt.0.clone();
                 tt.delimiter = tt::Delimiter::UNSPECIFIED;
                 tt
             },
-            map.clone(),
+            tt.1.clone(),
         ),
         _ => (tt::Subtree::empty(), Default::default()),
     };
