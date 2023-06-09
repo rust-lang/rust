@@ -260,7 +260,7 @@ fn item_template_render_assoc_items<'a: 'b, 'b, 'cx: 'a>(
     display_fn(move |f| {
         let (item, mut cx) = templ.item_and_mut_cx();
         let def_id = item.item_id.expect_def_id();
-        let v = render_assoc_items(*cx, item, def_id, AssocItemRender::All);
+        let v = render_assoc_items(*cx, item, def_id, AssocItemRender::All, None);
         write!(f, "{v}")
     })
 }
@@ -893,7 +893,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     }
 
     // If there are methods directly on this trait object, render them here.
-    write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All));
+    write!(
+        w,
+        "{}",
+        render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All, None)
+    );
 
     let cloned_shared = Rc::clone(&cx.shared);
     let cache = &cloned_shared.cache;
@@ -1125,8 +1129,12 @@ fn item_trait_alias(
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
-        .unwrap();
+    write!(
+        w,
+        "{}",
+        render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All, None)
+    )
+    .unwrap();
 }
 
 fn item_opaque_ty(
@@ -1154,8 +1162,12 @@ fn item_opaque_ty(
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
-        .unwrap();
+    write!(
+        w,
+        "{}",
+        render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All, None)
+    )
+    .unwrap();
 }
 
 fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Typedef) {
@@ -1179,11 +1191,11 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
     let def_id = it.item_id.expect_def_id();
-    // Render any items associated directly to this alias, as otherwise they
-    // won't be visible anywhere in the docs. It would be nice to also show
-    // associated items from the aliased type (see discussion in #32077), but
-    // we need #14072 to make sense of the generics.
-    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
+    write!(
+        w,
+        "{}",
+        render_assoc_items(cx, it, def_id, AssocItemRender::All, t.type_.def_id(&cx.cache()))
+    );
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
@@ -1423,7 +1435,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
         write!(w, "</div>");
     }
     let def_id = it.item_id.expect_def_id();
-    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
+    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All, None));
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
@@ -1466,7 +1478,7 @@ fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Ite
     let def_id = it.item_id.expect_def_id();
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
-        write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All)).unwrap();
+        write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All, None)).unwrap();
     } else {
         // We handle the "reference" primitive type on its own because we only want to list
         // implementations on generic types.
@@ -1571,7 +1583,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
         }
     }
     let def_id = it.item_id.expect_def_id();
-    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
+    write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All, None));
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
@@ -1606,8 +1618,12 @@ fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::
     });
 
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
-    write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
-        .unwrap();
+    write!(
+        w,
+        "{}",
+        render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All, None)
+    )
+    .unwrap();
 }
 
 fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
