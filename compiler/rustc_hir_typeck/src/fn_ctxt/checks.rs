@@ -937,7 +937,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
                         ) {
                             // Include previous comma
-                            span = prev.shrink_to_hi().to(span);
+                            // NOTE(#112437): we *manually* calculate the previous comma span here
+                            // because `Span::to` returns incomplete span when `prev` or `span`
+                            // involves macro contexts.
+                            span = Span::new(prev.hi(), span.hi(), span.ctxt(), span.parent());
                         }
 
                         // Is last argument for deletion in a row starting from the 0-th argument?
