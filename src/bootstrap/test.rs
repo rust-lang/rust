@@ -4,6 +4,7 @@
 //! our CI.
 
 use std::env;
+use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
 use std::iter;
@@ -1093,6 +1094,14 @@ impl Step for Tidy {
         }
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
+        }
+        if let Some(s) = builder.config.cmd.extra_checks() {
+            cmd.arg(format!("--extra-checks={s}"));
+        }
+        let mut args = std::env::args_os();
+        if let Some(_) = args.find(|arg| arg == OsStr::new("--")) {
+            cmd.arg("--");
+            cmd.args(args);
         }
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {

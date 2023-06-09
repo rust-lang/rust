@@ -1,0 +1,15 @@
+[tool.black]
+# Ignore all submodules
+extend-exclude = """(\
+    src/doc/nomicon|\
+    src/tools/cargo/|\
+    src/doc/reference/|\
+    src/doc/book/|\
+    src/doc/rust-by-example/|\
+    library/stdarch/|\
+    src/doc/rustc-dev-guide/|\
+    src/doc/edition-guide/|\
+    src/llvm-project/|\
+    src/doc/embedded-book/|\
+    library/backtrace/
+    )"""

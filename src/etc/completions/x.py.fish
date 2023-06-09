@@ -227,6 +227,7 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -s h -l help -d 'Print hel
 complete -c x.py -n "__fish_seen_subcommand_from test" -l skip -d 'skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rustc-args -d 'extra options to pass the compiler when running tests' -r
+complete -c x.py -n "__fish_seen_subcommand_from test" -l extra-checks -d 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell)' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_seen_subcommand_from test" -l run -d 'whether to execute run-* tests' -r
