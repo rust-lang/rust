@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![allow(nonstandard_style, unused)]
-#![warn(clippy::single_letter_idents)]
+#![warn(clippy::single_char_idents)]
 
 extern crate proc_macros;
 use proc_macros::external;

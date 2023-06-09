@@ -19,9 +19,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// for i in collection {
-    ///     let x = i.x;
+    /// for m in movies {
+    ///	    let title = m.t;
     /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// for movie in movies {
+    ///     let title = movie.title;
+    /// }
+    /// ```
     /// ```
     #[clippy::version = "1.72.0"]
     pub SINGLE_CHAR_IDENTS,
