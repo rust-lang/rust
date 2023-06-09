@@ -699,6 +699,25 @@ pub struct ForgetCopyDiag<'a> {
     pub label: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_undropped_manually_drops)]
+pub struct UndroppedManuallyDropsDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+    #[subdiagnostic]
+    pub suggestion: UndroppedManuallyDropsSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+pub struct UndroppedManuallyDropsSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop::into_inner(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
 // invalid_from_utf8.rs
 #[derive(LintDiagnostic)]
 pub enum InvalidFromUtf8Diag {

@@ -492,6 +492,10 @@ lint_tykind = usage of `ty::TyKind`
 lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
 
+lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
+    .label = argument has type `{$arg_ty}`
+    .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
+
 lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
      .label = this function will not propagate the caller location
 

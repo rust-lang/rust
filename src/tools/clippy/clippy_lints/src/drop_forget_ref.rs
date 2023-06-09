@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
+use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::get_parent_node;
 use clippy_utils::is_must_use_func_call;
 use clippy_utils::ty::{is_copy, is_must_use_ty, is_type_lang_item};
@@ -47,35 +47,6 @@ declare_clippy_lint! {
     "call to `std::mem::forget` with a value which does not implement `Drop`"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Prevents the safe `std::mem::drop` function from being called on `std::mem::ManuallyDrop`.
-    ///
-    /// ### Why is this bad?
-    /// The safe `drop` function does not drop the inner value of a `ManuallyDrop`.
-    ///
-    /// ### Known problems
-    /// Does not catch cases if the user binds `std::mem::drop`
-    /// to a different name and calls it that way.
-    ///
-    /// ### Example
-    /// ```rust
-    /// struct S;
-    /// drop(std::mem::ManuallyDrop::new(S));
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// struct S;
-    /// unsafe {
-    ///     std::mem::ManuallyDrop::drop(&mut std::mem::ManuallyDrop::new(S));
-    /// }
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub UNDROPPED_MANUALLY_DROPS,
-    correctness,
-    "use of safe `std::mem::drop` function to drop a std::mem::ManuallyDrop, which will not drop the inner value"
-}
-
 const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that does not implement `Drop`. \
                                  Dropping such a type only extends its contained lifetimes";
 const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value that does not implement `Drop`. \
@@ -84,7 +55,6 @@ const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value t
 declare_lint_pass!(DropForgetRef => [
     DROP_NON_DROP,
     FORGET_NON_DROP,
-    UNDROPPED_MANUALLY_DROPS
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
@@ -103,17 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 sym::mem_forget if arg_ty.is_ref() => return,
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => return,
                 sym::mem_forget if is_copy => return,
-                sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => {
-                    span_lint_and_help(
-                        cx,
-                        UNDROPPED_MANUALLY_DROPS,
-                        expr.span,
-                        "the inner value of this ManuallyDrop will not be dropped",
-                        None,
-                        "to drop a `ManuallyDrop<T>`, use std::mem::ManuallyDrop::drop",
-                    );
-                    return;
-                }
+                sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => return,
                 sym::mem_drop
                     if !(arg_ty.needs_drop(cx.tcx, cx.param_env)
                         || is_must_use_func_call(cx, arg)
