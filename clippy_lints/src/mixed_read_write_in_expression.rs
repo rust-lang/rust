@@ -139,13 +139,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
         match e.kind {
             // fix #10776
             ExprKind::Block(block, ..) => {
-                if let Some(e) = block.expr {
+                if let Some(e) = block.expr && block.stmts.is_empty() {
                     self.visit_expr(e);
 
                     return;
                 }
 
-                if let [stmt] = block.stmts && block.stmts.len() == 1 {
+                if let [stmt, rest @ ..] = block.stmts && rest.is_empty() {
                     match stmt.kind {
                         StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
                         _ => {},

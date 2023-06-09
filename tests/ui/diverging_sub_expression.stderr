@@ -63,22 +63,10 @@ LL |             18 => false || { return },
    |                              ^^^^^^
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:47:36
-   |
-LL |             19 => true || { _ = 1; return },
-   |                                    ^^^^^^
-
-error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:48:37
-   |
-LL |             20 => false || { _ = 1; return },
-   |                                     ^^^^^^
-
-error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:52:26
    |
 LL |             _ => true || break,
    |                          ^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 
