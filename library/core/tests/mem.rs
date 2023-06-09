@@ -122,6 +122,11 @@ fn test_transmute_copy_shrink() {
 }
 
 #[test]
+fn test_transmute_copy_slice() {
+    assert_eq!(1, unsafe { transmute_copy(&[1][..]) });
+}
+
+#[test]
 fn test_transmute_copy_unaligned() {
     #[repr(C)]
     #[derive(Default)]
