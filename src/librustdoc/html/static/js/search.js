@@ -1209,12 +1209,61 @@ function initSearch(rawSearchIndex) {
                 return false;
             }
             /**
+             * @type Map<integer, QueryElement[]>
+             */
+            const queryElemSet = new Map();
+            const addQueryElemToQueryElemSet = function addQueryElemToQueryElemSet(queryElem) {
+                let currentQueryElemList;
+                if (queryElemSet.has(queryElem.id)) {
+                    currentQueryElemList = queryElemSet.get(queryElem.id);
+                } else {
+                    currentQueryElemList = [];
+                    queryElemSet.set(queryElem.id, currentQueryElemList);
+                }
+                currentQueryElemList.push(queryElem);
+            };
+            for (const queryElem of queryElems) {
+                addQueryElemToQueryElemSet(queryElem);
+            }
+            /**
              * @type Map<integer, FunctionType[]>
              */
             const fnTypeSet = new Map();
             const addFnTypeToFnTypeSet = function addFnTypeToFnTypeSet(fnType) {
-                if (fnType.id === -1) {
-                    // Pure generic, needs to check into it.
+                // Pure generic, or an item that's not matched by any query elems.
+                // Try [unboxing] it.
+                //
+                // [unboxing]:
+                // http://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
+                const queryContainsArrayOrSliceElem = queryElemSet.has(typeNameIdOfArrayOrSlice);
+                if (fnType.id === -1 || !(
+                    queryElemSet.has(fnType.id) ||
+                    (fnType.id === typeNameIdOfSlice && queryContainsArrayOrSliceElem) ||
+                    (fnType.id === typeNameIdOfArray && queryContainsArrayOrSliceElem)
+                )) {
+                    for (const innerFnType of fnType.generics) {
+                        addFnTypeToFnTypeSet(innerFnType);
+                    }
+                    return;
+                }
+                let currentQueryElemList = queryElemSet.get(fnType.id) || [];
+                let matchIdx = currentQueryElemList.findIndex(queryElem => {
+                    return typePassesFilter(queryElem.typeFilter, fnType.ty) &&
+                        checkGenerics(fnType, queryElem);
+                });
+                if (matchIdx === -1 &&
+                    (fnType.id === typeNameIdOfSlice || fnType.id === typeNameIdOfArray) &&
+                    queryContainsArrayOrSliceElem
+                ) {
+                    currentQueryElemList = queryElemSet.get(typeNameIdOfArrayOrSlice) || [];
+                    matchIdx = currentQueryElemList.findIndex(queryElem => {
+                        return typePassesFilter(queryElem.typeFilter, fnType.ty) &&
+                            checkGenerics(fnType, queryElem);
+                    });
+                }
+                // None of the query elems match the function type.
+                // Try [unboxing] it.
+                if (matchIdx === -1) {
                     for (const innerFnType of fnType.generics) {
                         addFnTypeToFnTypeSet(innerFnType);
                     }
@@ -1232,85 +1281,66 @@ function initSearch(rawSearchIndex) {
             for (const fnType of fnTypes) {
                 addFnTypeToFnTypeSet(fnType);
             }
-            // We need to find the type that matches the most to remove it in order
-            // to move forward.
-            const handleQueryElem = queryElem => {
-                if (!fnTypeSet.has(queryElem.id)) {
-                    return false;
+            const doHandleQueryElemList = (currentFnTypeList, queryElemList) => {
+                if (queryElemList.length === 0) {
+                    return true;
                 }
-                const currentFnTypeList = fnTypeSet.get(queryElem.id);
-                const matchIdx = currentFnTypeList.findIndex(fnType => {
+                // Multiple items in one list might match multiple items in another.
+                // Since an item with fewer generics can match an item with more, we
+                // need to check all combinations for a potential match.
+                const queryElem = queryElemList.pop();
+                const l = currentFnTypeList.length;
+                for (let i = 0; i < l; i += 1) {
+                    const fnType = currentFnTypeList[i];
                     if (!typePassesFilter(queryElem.typeFilter, fnType.ty)) {
-                        return false;
+                        continue;
                     }
-                    return queryElem.generics.length === 0 || checkGenerics(fnType, queryElem);
-                });
-                if (matchIdx === -1) {
-                    return false;
-                }
-                currentFnTypeList.splice(matchIdx, 1);
-                if (currentFnTypeList.length === 0) {
-                    fnTypeSet.delete(queryElem.id);
-                }
-                return true;
-            };
-            // To do the right thing with type filters, we first process generics
-            // that have them, removing matching ones from the "bag," then do the
-            // ones with no type filter, which can match any entry regardless of its
-            // own type.
-            const needsUnboxed = [];
-            for (const queryElem of queryElems) {
-                if (queryElem.typeFilter === TY_PRIMITIVE &&
-                    queryElem.id === typeNameIdOfArrayOrSlice) {
-                    const queryElemArray = {
-                        id: typeNameIdOfArray,
-                        typeFilter: TY_PRIMITIVE,
-                        generics: queryElem.generics,
-                    };
-                    const queryElemSlice = {
-                        id: typeNameIdOfSlice,
-                        typeFilter: TY_PRIMITIVE,
-                        generics: queryElem.generics,
-                    };
-                    if (!handleQueryElem(queryElemArray) && !handleQueryElem(queryElemSlice)) {
-                        needsUnboxed.push(queryElem);
-                    }
-                } else if (queryElem.typeFilter !== -1 && !handleQueryElem(queryElem)) {
-                    needsUnboxed.push(queryElem);
-                }
-            }
-            for (const queryElem of queryElems) {
-                if (queryElem.typeFilter === -1 && !handleQueryElem(queryElem)) {
-                    needsUnboxed.push(queryElem);
-                }
-            }
-            // If the current item does not match, try [unboxing] the generic.
-            // [unboxing]:
-            //   https://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
-            unboxing: while (needsUnboxed.length !== 0) {
-                for (const [i, queryElem] of needsUnboxed.entries()) {
-                    if (handleQueryElem(queryElem)) {
-                        needsUnboxed.splice(i, 1);
-                        continue unboxing;
-                    }
-                }
-                for (const [id, fnTypeList] of fnTypeSet) {
-                    for (const [i, fnType] of fnTypeList.entries()) {
-                        if (fnType.generics.length !== 0) {
-                            fnTypeList.splice(i, 1);
-                            for (const innerFnType of fnType.generics) {
-                                addFnTypeToFnTypeSet(innerFnType);
-                            }
-                            if (fnTypeList.length === 0) {
-                                fnTypeSet.delete(id);
-                            }
-                            continue unboxing;
+                    if (queryElem.generics.length === 0 || checkGenerics(fnType, queryElem)) {
+                        currentFnTypeList.splice(i, 1);
+                        const result = doHandleQueryElemList(currentFnTypeList, queryElemList);
+                        if (result) {
+                            return true;
                         }
+                        currentFnTypeList.splice(i, 0, fnType);
                     }
                 }
                 return false;
+            };
+            const handleQueryElemList = (id, queryElemList) => {
+                if (!fnTypeSet.has(id)) {
+                    if (id === typeNameIdOfArrayOrSlice) {
+                        return handleQueryElemList(typeNameIdOfSlice, queryElemList) ||
+                            handleQueryElemList(typeNameIdOfArray, queryElemList);
+                    }
+                    return false;
+                }
+                const currentFnTypeList = fnTypeSet.get(id);
+                if (currentFnTypeList.length < queryElemList.length) {
+                    // It's not possible for all the query elems to find a match.
+                    return false;
+                }
+                const result = doHandleQueryElemList(currentFnTypeList, queryElemList);
+                if (result) {
+                    // Found a solution.
+                    // Any items that weren't used for it can be unboxed, and might form
+                    // part of the solution for another item.
+                    for (const innerFnType of currentFnTypeList) {
+                        addFnTypeToFnTypeSet(innerFnType);
+                    }
+                    fnTypeSet.delete(id);
+                }
+                return result;
+            };
+            let queryElemSetSize = -1;
+            while (queryElemSetSize !== queryElemSet.size) {
+                queryElemSetSize = queryElemSet.size;
+                for (const [id, queryElemList] of queryElemSet) {
+                    if (handleQueryElemList(id, queryElemList)) {
+                        queryElemSet.delete(id);
+                    }
+                }
             }
-            return true;
+            return queryElemSetSize === 0;
         }
 
         /**

@@ -1,11 +1,8 @@
 // ignore-order
 
-const QUERY = [
-    'bufread -> result<u8>',
-];
-
 const EXPECTED = [
     {
+        'query': 'bufread -> result<u8>',
         'others': [
             { 'path': 'std::io::Split', 'name': 'next' },
             { 'path': 'std::boxed::Box', 'name': 'fill_buf' },
