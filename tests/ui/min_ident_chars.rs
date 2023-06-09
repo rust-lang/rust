@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![allow(nonstandard_style, unused)]
-#![warn(clippy::single_char_idents)]
+#![warn(clippy::min_ident_chars)]
 
 extern crate proc_macros;
 use proc_macros::external;
@@ -38,11 +38,11 @@ fn main() {
     let w = 1;
     // Ok, not this one
     // let i = 1;
-    let j = 1;
-    let n = 1;
-    let x = 1;
-    let y = 1;
-    let z = 1;
+    let jz = 1;
+    let nz = 1;
+    let zx = 1;
+    let yz = 1;
+    let zz = 1;
 
     for j in 0..1000 {}
 

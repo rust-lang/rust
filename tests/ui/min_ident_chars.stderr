@@ -1,0 +1,70 @@
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:9:8
+   |
+LL | struct A {
+   |        ^
+   |
+   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:10:5
+   |
+LL |     a: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:12:5
+   |
+LL |     A: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:13:5
+   |
+LL |     I: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:16:8
+   |
+LL | struct B(u32);
+   |        ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:20:6
+   |
+LL | enum C {
+   |      ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:21:5
+   |
+LL |     D,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:22:5
+   |
+LL |     E,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:23:5
+   |
+LL |     F,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:31:5
+   |
+LL |     w: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:58:4
+   |
+LL | fn b() {}
+   |    ^
+
+error: aborting due to 11 previous errors
+
