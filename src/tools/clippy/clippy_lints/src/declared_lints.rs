@@ -476,7 +476,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::operators::ARITHMETIC_SIDE_EFFECTS_INFO,
     crate::operators::ASSIGN_OP_PATTERN_INFO,
     crate::operators::BAD_BIT_MASK_INFO,
-    crate::operators::CMP_NAN_INFO,
     crate::operators::CMP_OWNED_INFO,
     crate::operators::DOUBLE_COMPARISONS_INFO,
     crate::operators::DURATION_SUBSEC_INFO,

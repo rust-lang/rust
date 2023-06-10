@@ -2,10 +2,10 @@ use crate::{
     fluent_generated as fluent,
     lints::{
         AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
-        InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
-        OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
-        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange,
-        VariantSizeDifferencesDiag,
+        InvalidAtomicOrderingDiag, InvalidNanComparisons, InvalidNanComparisonsSuggestion,
+        OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSub,
+        OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
+        RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange, VariantSizeDifferencesDiag,
     },
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -113,13 +113,35 @@ declare_lint! {
     "detects enums with widely varying variant sizes"
 }
 
+declare_lint! {
+    /// The `invalid_nan_comparisons` lint checks comparison with `f32::NAN` or `f64::NAN`
+    /// as one of the operand.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let a = 2.3f32;
+    /// if a == f32::NAN {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// NaN does not compare meaningfully to anything – not
+    /// even itself – so those comparisons are always false.
+    INVALID_NAN_COMPARISONS,
+    Warn,
+    "detects invalid floating point NaN comparisons"
+}
+
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: Option<hir::HirId>,
 }
 
-impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS]);
+impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS, INVALID_NAN_COMPARISONS]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
@@ -486,6 +508,68 @@ fn lint_literal<'tcx>(
     }
 }
 
+fn lint_nan<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    binop: hir::BinOp,
+    l: &'tcx hir::Expr<'tcx>,
+    r: &'tcx hir::Expr<'tcx>,
+) {
+    fn is_nan(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+        let expr = expr.peel_blocks().peel_borrows();
+        match expr.kind {
+            ExprKind::Path(qpath) => {
+                let Some(def_id) = cx.typeck_results().qpath_res(&qpath, expr.hir_id).opt_def_id() else { return false; };
+
+                matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::f32_nan | sym::f64_nan))
+            }
+            _ => false,
+        }
+    }
+
+    fn eq_ne(
+        e: &hir::Expr<'_>,
+        l: &hir::Expr<'_>,
+        r: &hir::Expr<'_>,
+        f: impl FnOnce(Span, Span) -> InvalidNanComparisonsSuggestion,
+    ) -> InvalidNanComparisons {
+        let suggestion =
+            if let Some(l_span) = l.span.find_ancestor_inside(e.span) &&
+                let Some(r_span) = r.span.find_ancestor_inside(e.span) {
+                f(l_span, r_span)
+            } else {
+                InvalidNanComparisonsSuggestion::Spanless
+            };
+
+        InvalidNanComparisons::EqNe { suggestion }
+    }
+
+    let lint = match binop.node {
+        hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, l) => {
+            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+                nan_plus_binop: l_span.until(r_span),
+                float: r_span.shrink_to_hi(),
+                neg: (binop.node == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
+            })
+        }
+        hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, r) => {
+            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
+                nan_plus_binop: l_span.shrink_to_hi().to(r_span),
+                float: l_span.shrink_to_hi(),
+                neg: (binop.node == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
+            })
+        }
+        hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge
+            if is_nan(cx, l) || is_nan(cx, r) =>
+        {
+            InvalidNanComparisons::LtLeGtGe
+        }
+        _ => return,
+    };
+
+    cx.emit_spanned_lint(INVALID_NAN_COMPARISONS, e.span, lint);
+}
+
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
@@ -496,8 +580,12 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
-                if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
-                    cx.emit_spanned_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
+                if is_comparison(binop) {
+                    if !check_limits(cx, binop, &l, &r) {
+                        cx.emit_spanned_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
+                    } else {
+                        lint_nan(cx, e, binop, l, r);
+                    }
                 }
             }
             hir::ExprKind::Lit(ref lit) => lint_literal(cx, self, e, lit),
