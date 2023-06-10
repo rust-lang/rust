@@ -822,10 +822,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
+    let allow_private_module_inception = conf.allow_private_module_inception;
     store.register_late_pass(move |_| {
         Box::new(enum_variants::EnumVariantNames::new(
             enum_variant_name_threshold,
             avoid_breaking_exported_api,
+            allow_private_module_inception,
         ))
     });
     store.register_early_pass(|| Box::new(tabs_in_doc_comments::TabsInDocComments));
