@@ -4,9 +4,15 @@ fn two_arg_same(_a: i32, _b: i32) {}
 fn two_arg_diff(_a: i32, _b: &str) {}
 
 macro_rules! foo {
-    ($x:expr) => {
+    ($x:expr, ~) => {
         empty($x, 1); //~ ERROR function takes
-    }
+    };
+    ($x:expr, $y:expr) => {
+        empty($x, $y); //~ ERROR function takes
+    };
+    (~, $y:expr) => {
+        empty(1, $y); //~ ERROR function takes
+    };
 }
 
 fn main() {
@@ -39,5 +45,11 @@ fn main() {
     1,
     ""
   );
-  foo!(1);
+
+  // Check with macro expansions
+  foo!(1, ~);
+  foo!(~, 1);
+  foo!(1, 1);
+  one_arg(1, panic!()); //~ ERROR function takes
+  one_arg(panic!(), 1); //~ ERROR function takes
 }
