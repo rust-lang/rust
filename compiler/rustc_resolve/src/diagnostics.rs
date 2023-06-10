@@ -1352,6 +1352,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         macro_kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
+        krate: &Crate,
     ) {
         let is_expected = &|res: Res| res.macro_kind() == Some(macro_kind);
         let suggestion = self.early_lookup_typo_candidate(
@@ -1364,13 +1365,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
+        let (span, found_use) = match parent_scope.module.nearest_parent_mod().as_local() {
+            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id]),
+            None => (None, FoundUse::No),
+        };
         show_candidates(
             self.tcx,
             err,
-            None,
+            span,
             &import_suggestions,
             Instead::No,
-            FoundUse::Yes,
+            found_use,
             DiagnosticMode::Normal,
             vec![],
             "",
