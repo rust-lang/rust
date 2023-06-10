@@ -51,9 +51,6 @@ pub type CONDITION_VARIABLE = RTL_CONDITION_VARIABLE;
 pub type SRWLOCK = RTL_SRWLOCK;
 pub type INIT_ONCE = RTL_RUN_ONCE;
 
-#[cfg(target_vendor = "uwp")]
-pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = 0xC0000002_u32 as _;
-
 pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE { Ptr: ptr::null_mut() };
 pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { Ptr: ptr::null_mut() };
 pub const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { Ptr: ptr::null_mut() };
@@ -431,7 +428,7 @@ compat_fn_with_fallback! {
         STATUS_NOT_IMPLEMENTED
     }
     #[cfg(target_vendor = "uwp")]
-    pub fn RtlNtStatusToDosError(Status: NTSTATUS) -> ULONG {
-        Status as ULONG
+    pub fn RtlNtStatusToDosError(Status: NTSTATUS) -> u32 {
+        Status as u32
     }
 }
