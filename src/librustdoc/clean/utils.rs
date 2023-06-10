@@ -73,8 +73,9 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
 pub(crate) fn substs_to_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    substs: ty::Binder<'tcx, &[ty::subst::GenericArg<'tcx>]>,
+    substs: ty::Binder<'tcx, &'tcx [ty::subst::GenericArg<'tcx>]>,
     mut skip_first: bool,
+    container: Option<DefId>,
 ) -> Vec<GenericArg> {
     let mut ret_val =
         Vec::with_capacity(substs.skip_binder().len().saturating_sub(if skip_first {
@@ -82,19 +83,29 @@ pub(crate) fn substs_to_args<'tcx>(
         } else {
             0
         }));
-    ret_val.extend(substs.iter().filter_map(|kind| match kind.skip_binder().unpack() {
-        GenericArgKind::Lifetime(lt) => {
-            Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
-        }
-        GenericArgKind::Type(_) if skip_first => {
-            skip_first = false;
-            None
-        }
-        GenericArgKind::Type(ty) => {
-            Some(GenericArg::Type(clean_middle_ty(kind.rebind(ty), cx, None)))
-        }
-        GenericArgKind::Const(ct) => {
-            Some(GenericArg::Const(Box::new(clean_middle_const(kind.rebind(ct), cx))))
+
+    ret_val.extend(substs.iter().enumerate().filter_map(|(index, kind)| {
+        match kind.skip_binder().unpack() {
+            GenericArgKind::Lifetime(lt) => {
+                Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
+            }
+            GenericArgKind::Type(_) if skip_first => {
+                skip_first = false;
+                None
+            }
+            GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(
+                kind.rebind(ty),
+                cx,
+                None,
+                container.map(|container| crate::clean::ContainerTy::Regular {
+                    ty: container,
+                    substs,
+                    arg: index,
+                }),
+            ))),
+            GenericArgKind::Const(ct) => {
+                Some(GenericArg::Const(Box::new(clean_middle_const(kind.rebind(ct), cx))))
+            }
         }
     }));
     ret_val
@@ -107,7 +118,7 @@ fn external_generic_args<'tcx>(
     bindings: ThinVec<TypeBinding>,
     substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = substs_to_args(cx, substs.map_bound(|substs| &substs[..]), has_self);
+    let args = substs_to_args(cx, substs.map_bound(|substs| &substs[..]), has_self, Some(did));
 
     if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
         let ty = substs
@@ -118,7 +129,7 @@ fn external_generic_args<'tcx>(
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match ty.skip_binder().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None)).collect::<Vec<_>>().into(),
+                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None, None)).collect::<Vec<_>>().into(),
                 _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
         let output = bindings.into_iter().next().and_then(|binding| match binding.kind {

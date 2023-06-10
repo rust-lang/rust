@@ -107,7 +107,12 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             ty::Binder::dummy(trait_ref.subst_identity()),
                             ThinVec::new(),
                         )),
-                        for_: clean_middle_ty(ty::Binder::dummy(ty.subst_identity()), cx, None),
+                        for_: clean_middle_ty(
+                            ty::Binder::dummy(ty.subst_identity()),
+                            cx,
+                            None,
+                            None,
+                        ),
                         items: cx
                             .tcx
                             .associated_items(impl_def_id)
@@ -118,6 +123,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         kind: ImplKind::Blanket(Box::new(clean_middle_ty(
                             ty::Binder::dummy(trait_ref.subst_identity().self_ty()),
                             cx,
+                            None,
                             None,
                         ))),
                     }))),
