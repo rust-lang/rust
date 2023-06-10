@@ -158,7 +158,7 @@ pub(crate) fn emit_unescape_error(
 
                 diag.help(
                     "for more information, visit \
-                     <https://doc.rust-lang.org/stable/reference/expressions/literal-expr.html>",
+                     <https://doc.rust-lang.org/reference/tokens.html#literals>",
                 );
             }
             diag.emit();
