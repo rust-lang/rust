@@ -756,16 +756,19 @@ impl<'a> Parser<'a> {
                         // we expect to suggest `(foo::Bar { ... })` instead of `foo::(Bar { ... })`
                         let sm = self.sess.source_map();
                         let before = maybe_struct_name.span.shrink_to_lo();
-                        let extend_before = sm.span_extend_prev_while(before, |t| {
+                        if let Ok(extend_before) = sm.span_extend_prev_while(before, |t| {
                             t.is_alphanumeric() || t == ':' || t == '_'
-                        });
-                        Err(self.sess.create_err(StructLiteralNeedingParens {
-                            span: maybe_struct_name.span.to(expr.span),
-                            sugg: StructLiteralNeedingParensSugg {
-                                before: extend_before.unwrap().shrink_to_lo(),
-                                after: expr.span.shrink_to_hi(),
-                            },
-                        }))
+                        }) {
+                            Err(self.sess.create_err(StructLiteralNeedingParens {
+                                span: maybe_struct_name.span.to(expr.span),
+                                sugg: StructLiteralNeedingParensSugg {
+                                    before: extend_before.shrink_to_lo(),
+                                    after: expr.span.shrink_to_hi(),
+                                },
+                            }))
+                        } else {
+                            return None;
+                        }
                     } else {
                         self.sess.emit_err(StructLiteralBodyWithoutPath {
                             span: expr.span,
