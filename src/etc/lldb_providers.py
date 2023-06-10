@@ -1,6 +1,6 @@
 import sys
 
-from lldb import SBValue, SBData, SBError, eBasicTypeLong, eBasicTypeUnsignedLong, \
+from lldb import SBData, SBError, eBasicTypeLong, eBasicTypeUnsignedLong, \
     eBasicTypeUnsignedChar
 
 # from lldb.formatters import Logger

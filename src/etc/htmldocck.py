@@ -144,7 +144,7 @@ VOID_ELEMENTS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'ke
 
 # Python 2 -> 3 compatibility
 try:
-    unichr
+    unichr # noqa: B018 FIXME: py2
 except NameError:
     unichr = chr
 
@@ -348,7 +348,9 @@ class CachedFiles(object):
             try:
                 tree = ET.fromstringlist(f.readlines(), CustomHTMLParser())
             except Exception as e:
-                raise RuntimeError('Cannot parse an HTML file {!r}: {}'.format(path, e))
+                raise RuntimeError( # noqa: B904 FIXME: py2
+                    'Cannot parse an HTML file {!r}: {}'.format(path, e)
+                )
             self.trees[path] = tree
             return self.trees[path]
 
@@ -422,7 +424,7 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
         if bless:
             expected_str = None
         else:
-            raise FailedCheck('No saved snapshot value')
+            raise FailedCheck('No saved snapshot value') # noqa: B904 FIXME: py2
 
     if not normalize_to_text:
         actual_str = ET.tostring(actual_tree).decode('utf-8')

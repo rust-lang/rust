@@ -568,8 +568,8 @@ class TestEnvironment:
                         env_vars += f'\n            "{var_name}={var_value}",'
 
                 # Default to no backtrace for test suite
-                if os.getenv("RUST_BACKTRACE") == None:
-                    env_vars += f'\n            "RUST_BACKTRACE=0",'
+                if os.getenv("RUST_BACKTRACE") is None:
+                    env_vars += '\n            "RUST_BACKTRACE=0",'
 
                 cml.write(
                     self.CML_TEMPLATE.format(env_vars=env_vars, exe_name=exe_name)
