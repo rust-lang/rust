@@ -30,11 +30,6 @@ LL |         self.map(Insertable::values).unwrap_or_default()
               found function signature `for<'a> fn(&'a _) -> _`
 note: required by a bound in `Option::<T>::map`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-help: consider adjusting the signature so it does not borrow its argument
-   |
-LL -     fn values(&self) -> Self::Values;
-LL +     fn values(self) -> Self::Values;
-   |
 
 error: aborting due to 2 previous errors
 

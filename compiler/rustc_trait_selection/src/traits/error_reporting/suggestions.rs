@@ -3959,6 +3959,10 @@ fn hint_missing_borrow<'tcx>(
     found_node: Node<'_>,
     err: &mut Diagnostic,
 ) {
+    if matches!(found_node, Node::TraitItem(..)) {
+        return;
+    }
+
     let found_args = match found.kind() {
         ty::FnPtr(f) => infcx.instantiate_binder_with_placeholders(*f).inputs().iter(),
         kind => {
