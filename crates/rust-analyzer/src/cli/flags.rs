@@ -92,6 +92,8 @@ xflags::xflags! {
             optional --disable-build-scripts
             /// Don't use expand proc macros.
             optional --disable-proc-macros
+            /// Run a custom proc-macro-srv binary.
+            optional --proc-macro-srv path: PathBuf
         }
 
         cmd ssr {
@@ -189,6 +191,7 @@ pub struct Diagnostics {
 
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
 }
 
 #[derive(Debug)]
