@@ -644,22 +644,3 @@ The maximum byte size a `Future` can have, before it triggers the `clippy::large
 
 
 ## `unnecessary-box-size`
-The byte size a `T` in `Box<T>` can have, below which it triggers the `clippy::unnecessary_box` lint
-
-**Default Value:** `128` (`u64`)
-
----
-**Affected lints:**
-* [`unnecessary_box_returns`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_box_returns)
-
-
-## `allow-private-module-inception`
-Whether to allow module inception if it's not public.
-
-**Default Value:** `false` (`bool`)
-
----
-**Affected lints:**
-* [`module_inception`](https://rust-lang.github.io/rust-clippy/master/index.html#module_inception)
-
-

@@ -14,4 +14,6 @@ fn main() {
     let wha = 1;
     let vvv = 1;
     let uuu = 1;
+    let (mut a, mut b) = (1, 2);
+    for i in 0..1000 {}
 }

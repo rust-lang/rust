@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{
     def::{DefKind, Res},
     intravisit::{walk_item, Visitor},
-    GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node,
+    GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -55,6 +55,29 @@ impl LateLintPass<'_> for MinIdentChars {
 
         walk_item(&mut IdentVisitor { conf: self, cx }, item);
     }
+
+    // This is necessary as bindings are not visited in `visit_id`. :/
+    #[expect(clippy::cast_possible_truncation)]
+    fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
+        if let PatKind::Binding(_, _, ident, ..) = pat.kind
+            && let str = ident.as_str()
+            && !in_external_macro(cx.sess(), ident.span)
+            && str.len() <= self.min_ident_chars_threshold as usize
+            && !str.is_empty()
+            && self.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
+        {
+            let help = if self.min_ident_chars_threshold == 1 {
+                Cow::Borrowed("this ident consists of a single char")
+            } else {
+                Cow::Owned(format!(
+                    "this ident is too short ({} <= {})",
+                    str.len(),
+                    self.min_ident_chars_threshold,
+                ))
+            };
+            span_lint(cx, MIN_IDENT_CHARS, ident.span, &help);
+        }
+    }
 }
 
 struct IdentVisitor<'cx, 'tcx> {
@@ -62,8 +85,8 @@ struct IdentVisitor<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
 }
 
-#[expect(clippy::cast_possible_truncation)]
 impl Visitor<'_> for IdentVisitor<'_, '_> {
+    #[expect(clippy::cast_possible_truncation)]
     fn visit_id(&mut self, hir_id: HirId) {
         let Self { conf, cx } = *self;
         // Reimplementation of `find`, as it uses indexing, which can (and will in async functions) panic.
@@ -122,9 +145,9 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
                 Cow::Borrowed("this ident consists of a single char")
             } else {
                 Cow::Owned(format!(
-                    "this ident is too short ({} <= {}) ",
+                    "this ident is too short ({} <= {})",
                     str.len(),
-                    conf.min_ident_chars_threshold
+                    conf.min_ident_chars_threshold,
                 ))
             };
             span_lint(cx, MIN_IDENT_CHARS, ident.span, &help);
