@@ -7,6 +7,7 @@
 #![allow(clippy::no_effect)]
 #![allow(clippy::unnecessary_operation)]
 #![allow(clippy::never_loop)]
+#![allow(clippy::needless_if)]
 #![warn(clippy::excessive_nesting)]
 #![allow(clippy::collapsible_if)]
 
