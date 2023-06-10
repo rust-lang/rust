@@ -6,10 +6,10 @@ pub mod upstream_a {
         pub struct Bar {}
     }
 
-    pub use self::inner::*;
-
     struct Foo;
     //~^ WARN private item shadows public glob re-export
+
+    pub use self::inner::*;
 }
 
 pub mod upstream_b {
