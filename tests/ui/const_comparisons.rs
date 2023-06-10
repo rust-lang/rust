@@ -1,6 +1,6 @@
 #![allow(unused)]
-#![warn(clippy::impossible_double_const_comparisons)]
-#![warn(clippy::ineffective_double_const_comparisons)]
+#![warn(clippy::impossible_comparisons)]
+#![warn(clippy::redundant_comparisons)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::short_circuit_statement)]
 #![allow(clippy::manual_range_contains)]

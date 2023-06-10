@@ -14,8 +14,8 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::source::snippet;
 use clippy_utils::SpanlessEq;
 
-use super::IMPOSSIBLE_DOUBLE_CONST_COMPARISONS;
-use super::INEFFECTIVE_DOUBLE_CONST_COMPARISONS;
+use super::IMPOSSIBLE_COMPARISONS;
+use super::REDUNDANT_COMPARISONS;
 
 // Extract a comparison between a const and non-const
 // Flip yoda conditionals, turnings expressions like `42 < x` into `x > 42`
@@ -91,7 +91,7 @@ pub(super) fn check<'tcx>(
                 if left_side_is_useless(left_cmp_op, ordering) {
                     span_lint_and_note(
                         cx,
-                        INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
+                        REDUNDANT_COMPARISONS,
                         span,
                         "left-hand side of `&&` operator has no effect",
                         Some(left_cond.span.until(right_cond.span)),
@@ -100,7 +100,7 @@ pub(super) fn check<'tcx>(
                 } else {
                     span_lint_and_note(
                         cx,
-                        INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
+                        REDUNDANT_COMPARISONS,
                         span,
                         "right-hand side of `&&` operator has no effect",
                         Some(and_op.span.to(right_cond.span)),
@@ -121,7 +121,7 @@ pub(super) fn check<'tcx>(
                 };
                 span_lint_and_note(
                     cx,
-                    IMPOSSIBLE_DOUBLE_CONST_COMPARISONS,
+                    IMPOSSIBLE_COMPARISONS,
                     span,
                     "boolean expression will never evaluate to 'true'",
                     None,

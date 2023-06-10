@@ -2,8 +2,8 @@ mod absurd_extreme_comparisons;
 mod assign_op_pattern;
 mod bit_mask;
 mod cmp_owned;
+mod const_comparisons;
 mod double_comparison;
-mod double_const_comparison;
 mod duration_subsec;
 mod eq_op;
 mod erasing_op;
@@ -313,7 +313,7 @@ declare_clippy_lint! {
     /// if status_code <= 400 && status_code > 500 {}
     /// ```
     #[clippy::version = "1.71.0"]
-    pub IMPOSSIBLE_DOUBLE_CONST_COMPARISONS,
+    pub IMPOSSIBLE_COMPARISONS,
     correctness,
     "double comparisons that will never evaluate to `true`"
 }
@@ -333,7 +333,7 @@ declare_clippy_lint! {
     /// if status_code <= 400 && status_code < 500 {}
     /// ```
     #[clippy::version = "1.71.0"]
-    pub INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
+    pub REDUNDANT_COMPARISONS,
     correctness,
     "double comparisons where one of them can be removed"
 }
@@ -782,8 +782,8 @@ impl_lint_pass!(Operators => [
     INEFFECTIVE_BIT_MASK,
     VERBOSE_BIT_MASK,
     DOUBLE_COMPARISONS,
-    IMPOSSIBLE_DOUBLE_CONST_COMPARISONS,
-    INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
+    IMPOSSIBLE_COMPARISONS,
+    REDUNDANT_COMPARISONS,
     DURATION_SUBSEC,
     EQ_OP,
     OP_REF,
@@ -828,7 +828,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 bit_mask::check(cx, e, op.node, lhs, rhs);
                 verbose_bit_mask::check(cx, e, op.node, lhs, rhs, self.verbose_bit_mask_threshold);
                 double_comparison::check(cx, op.node, lhs, rhs, e.span);
-                double_const_comparison::check(cx, op, lhs, rhs, e.span);
+                const_comparisons::check(cx, op, lhs, rhs, e.span);
                 duration_subsec::check(cx, e, op.node, lhs, rhs);
                 float_equality_without_abs::check(cx, e, op.node, lhs, rhs);
                 integer_division::check(cx, e, op.node, lhs, rhs);
