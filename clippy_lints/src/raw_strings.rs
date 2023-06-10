@@ -71,6 +71,20 @@ impl EarlyLintPass for RawStrings {
                 return;
             }
 
+            if !lit.symbol.as_str().contains(['\\', '"']) {
+                span_lint_and_sugg(
+                    cx,
+                    NEEDLESS_RAW_STRING,
+                    expr.span,
+                    "unnecessary raw string literal",
+                    "try",
+                    format!("{}\"{}\"", prefix.replace('r', ""), lit.symbol),
+                    Applicability::MachineApplicable,
+                );
+
+                return;
+            }
+
             #[expect(clippy::cast_possible_truncation)]
             let req = lit.symbol.as_str().as_bytes()
                 .split(|&b| b == b'"')
@@ -89,18 +103,6 @@ impl EarlyLintPass for RawStrings {
                     "unnecessary hashes around raw string literal",
                     "try",
                     format!(r#"{prefix}{hashes}"{}"{hashes}"#, lit.symbol),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            if !lit.symbol.as_str().contains(['\\', '"']) {
-                span_lint_and_sugg(
-                    cx,
-                    NEEDLESS_RAW_STRING,
-                    expr.span,
-                    "unnecessary raw string literal",
-                    "try",
-                    format!("{}\"{}\"", prefix.replace('r', ""), lit.symbol),
                     Applicability::MachineApplicable,
                 );
             }
