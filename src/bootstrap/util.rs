@@ -134,17 +134,17 @@ pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
 
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
-pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
+pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<()> {
     if config.dry_run() {
         return Ok(());
     }
-    let _ = fs::remove_dir(dest);
-    return symlink_dir_inner(src, dest);
+    let _ = fs::remove_dir(link);
+    return symlink_dir_inner(original, link);
 
     #[cfg(not(windows))]
-    fn symlink_dir_inner(src: &Path, dest: &Path) -> io::Result<()> {
+    fn symlink_dir_inner(original: &Path, link: &Path) -> io::Result<()> {
         use std::os::unix::fs;
-        fs::symlink(src, dest)
+        fs::symlink(original, link)
     }
 
     #[cfg(windows)]

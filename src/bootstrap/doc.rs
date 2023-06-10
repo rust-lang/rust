@@ -8,7 +8,6 @@
 //! `rustdoc`.
 
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::builder::crate_description;
@@ -694,11 +693,12 @@ impl Step for Rustc {
         // rustc. rustdoc needs to be able to see everything, for example when
         // merging the search index, or generating local (relative) links.
         let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
-        t!(symlink_dir_force(&builder.config, &out, &out_dir));
+        t!(fs::create_dir_all(out_dir.parent().unwrap()));
+        symlink_dir_force(&builder.config, &out, &out_dir);
         // Cargo puts proc macros in `target/doc` even if you pass `--target`
         // explicitly (https://github.com/rust-lang/cargo/issues/7677).
         let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
-        t!(symlink_dir_force(&builder.config, &out, &proc_macro_out_dir));
+        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
@@ -821,7 +821,7 @@ macro_rules! tool_doc {
                 ];
                 for out_dir in out_dirs {
                     t!(fs::create_dir_all(&out_dir));
-                    t!(symlink_dir_force(&builder.config, &out, &out_dir));
+                    symlink_dir_force(&builder.config, &out, &out_dir);
                 }
 
                 // Build cargo command.
@@ -964,21 +964,24 @@ impl Step for UnstableBookGen {
     }
 }
 
-fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> {
+fn symlink_dir_force(config: &Config, original: &Path, link: &Path) {
     if config.dry_run() {
-        return Ok(());
+        return;
     }
-    if let Ok(m) = fs::symlink_metadata(dst) {
+    if let Ok(m) = fs::symlink_metadata(link) {
         if m.file_type().is_dir() {
-            fs::remove_dir_all(dst)?;
+            t!(fs::remove_dir_all(link));
         } else {
             // handle directory junctions on windows by falling back to
             // `remove_dir`.
-            fs::remove_file(dst).or_else(|_| fs::remove_dir(dst))?;
+            t!(fs::remove_file(link).or_else(|_| fs::remove_dir(link)));
         }
     }
 
-    symlink_dir(config, src, dst)
+    t!(
+        symlink_dir(config, original, link),
+        format!("failed to create link from {} -> {}", link.display(), original.display())
+    );
 }
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
