@@ -410,7 +410,7 @@ pub(crate) fn signature_help(
     let documentation = call_info.doc.filter(|_| config.docs).map(|doc| {
         lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
             kind: lsp_types::MarkupKind::Markdown,
-            value: doc,
+            value: crate::markdown::format_docs(&doc),
         })
     });
 
@@ -1410,7 +1410,8 @@ pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
 
 #[cfg(test)]
 mod tests {
-    use ide::Analysis;
+    use ide::{Analysis, FilePosition};
+    use test_utils::extract_offset;
     use triomphe::Arc;
 
     use super::*;
@@ -1449,6 +1450,34 @@ fn main() {
             assert_eq!(folding_range.end_line, *end_line);
             assert_eq!(folding_range.end_character, None);
         }
+    }
+
+    #[test]
+    fn calling_function_with_ignored_code_in_signature() {
+        let text = r#"
+fn foo() {
+    bar($0);
+}
+/// ```
+/// # use crate::bar;
+/// bar(5);
+/// ```
+fn bar(_: usize) {}
+"#;
+
+        let (offset, text) = extract_offset(text);
+        let (analysis, file_id) = Analysis::from_single_file(text);
+        let help = signature_help(
+            analysis.signature_help(FilePosition { file_id, offset }).unwrap().unwrap(),
+            CallInfoConfig { params_only: false, docs: true },
+            false,
+        );
+        let docs = match &help.signatures[help.active_signature.unwrap() as usize].documentation {
+            Some(lsp_types::Documentation::MarkupContent(content)) => &content.value,
+            _ => panic!("documentation contains markup"),
+        };
+        assert!(docs.contains("bar(5)"));
+        assert!(!docs.contains("use crate::bar"));
     }
 
     // `Url` is not able to parse windows paths on unix machines.
