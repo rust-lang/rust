@@ -834,6 +834,33 @@ impl Test for () {
     }
 
     #[test]
+    fn fn_with_lifetimes() {
+        check_edit(
+            "fn foo",
+            r#"
+trait Test<'a, 'b, T> {
+    fn foo(&self, a: &'a T, b: &'b T) -> &'a T;
+}
+
+impl<'x, 'y, A> Test<'x, 'y, A> for () {
+    t$0
+}
+"#,
+            r#"
+trait Test<'a, 'b, T> {
+    fn foo(&self, a: &'a T, b: &'b T) -> &'a T;
+}
+
+impl<'x, 'y, A> Test<'x, 'y, A> for () {
+    fn foo(&self, a: &'x A, b: &'y A) -> &'x A {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    #[test]
     fn complete_without_name() {
         let test = |completion: &str, hint: &str, completed: &str, next_sibling: &str| {
             check_edit(

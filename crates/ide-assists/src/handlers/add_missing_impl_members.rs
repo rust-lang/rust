@@ -360,6 +360,59 @@ impl<U> Foo<U> for S {
     }
 
     #[test]
+    fn test_lifetime_substitution() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Trait<'a, 'b, A, B, C> {
+    fn foo(&self, one: &'a A, anoter: &'b B) -> &'a C;
+}
+
+impl<'x, 'y, T, V, U> Trait<'x, 'y, T, V, U> for () {$0}"#,
+            r#"
+pub trait Trait<'a, 'b, A, B, C> {
+    fn foo(&self, one: &'a A, anoter: &'b B) -> &'a C;
+}
+
+impl<'x, 'y, T, V, U> Trait<'x, 'y, T, V, U> for () {
+    fn foo(&self, one: &'x T, anoter: &'y V) -> &'x U {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_lifetime_substitution_with_body() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+pub trait Trait<'a, 'b, A, B, C: Default> {
+    fn foo(&self, _one: &'a A, _anoter: &'b B) -> (C, &'a i32) {
+        let value: &'a i32 = &0;
+        (C::default(), value)
+    }
+}
+
+impl<'x, 'y, T, V, U: Default> Trait<'x, 'y, T, V, U> for () {$0}"#,
+            r#"
+pub trait Trait<'a, 'b, A, B, C: Default> {
+    fn foo(&self, _one: &'a A, _anoter: &'b B) -> (C, &'a i32) {
+        let value: &'a i32 = &0;
+        (C::default(), value)
+    }
+}
+
+impl<'x, 'y, T, V, U: Default> Trait<'x, 'y, T, V, U> for () {
+    $0fn foo(&self, _one: &'x T, _anoter: &'y V) -> (U, &'x i32) {
+        let value: &'x i32 = &0;
+        (<U>::default(), value)
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_cursor_after_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
