@@ -525,7 +525,9 @@ define_Conf! {
     (allow_private_module_inception: bool = false),
     /// Lint: MIN_IDENT_CHARS.
     ///
-    /// Allowed names below the minimum allowed characters.
+    /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
+    /// the list to indicate, that the configured values should be appended to the default
+    /// configuration of Clippy. By default, any configuration will replace the default value.
     (allowed_idents_below_min_chars: rustc_data_structures::fx::FxHashSet<String> =
         super::DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect()),
     /// Lint: MIN_IDENT_CHARS.
@@ -599,6 +601,12 @@ pub fn read(sess: &Session, path: &Path) -> TryConf {
         Ok(mut conf) => {
             extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
             extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
+            // TODO: THIS SHOULD BE TESTED, this comment will be gone soon
+            if conf.conf.allowed_idents_below_min_chars.contains(&"..".to_owned()) {
+                conf.conf
+                    .allowed_idents_below_min_chars
+                    .extend(DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string));
+            }
 
             conf
         },

@@ -8,6 +8,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::Span;
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -56,26 +57,18 @@ impl LateLintPass<'_> for MinIdentChars {
         walk_item(&mut IdentVisitor { conf: self, cx }, item);
     }
 
-    // This is necessary as bindings are not visited in `visit_id`. :/
+    // This is necessary as `Node::Pat`s are not visited in `visit_id`. :/
     #[expect(clippy::cast_possible_truncation)]
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
         if let PatKind::Binding(_, _, ident, ..) = pat.kind
             && let str = ident.as_str()
             && !in_external_macro(cx.sess(), ident.span)
             && str.len() <= self.min_ident_chars_threshold as usize
+            && !str.starts_with('_')
             && !str.is_empty()
             && self.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
         {
-            let help = if self.min_ident_chars_threshold == 1 {
-                Cow::Borrowed("this ident consists of a single char")
-            } else {
-                Cow::Owned(format!(
-                    "this ident is too short ({} <= {})",
-                    str.len(),
-                    self.min_ident_chars_threshold,
-                ))
-            };
-            span_lint(cx, MIN_IDENT_CHARS, ident.span, &help);
+            emit_min_ident_chars(self, cx, str, ident.span);
         }
     }
 }
@@ -112,6 +105,7 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
         let str = ident.as_str();
         if !in_external_macro(cx.sess(), ident.span)
             && str.len() <= conf.min_ident_chars_threshold as usize
+            && !str.starts_with('_')
             && !str.is_empty()
             && conf.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
         {
@@ -141,16 +135,20 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
                 return;
             }
 
-            let help = if conf.min_ident_chars_threshold == 1 {
-                Cow::Borrowed("this ident consists of a single char")
-            } else {
-                Cow::Owned(format!(
-                    "this ident is too short ({} <= {})",
-                    str.len(),
-                    conf.min_ident_chars_threshold,
-                ))
-            };
-            span_lint(cx, MIN_IDENT_CHARS, ident.span, &help);
+            emit_min_ident_chars(conf, cx, str, ident.span);
         }
     }
+}
+
+fn emit_min_ident_chars(conf: &MinIdentChars, cx: &impl LintContext, ident: &str, span: Span) {
+    let help = if conf.min_ident_chars_threshold == 1 {
+        Cow::Borrowed("this ident consists of a single char")
+    } else {
+        Cow::Owned(format!(
+            "this ident is too short ({} <= {})",
+            ident.len(),
+            conf.min_ident_chars_threshold,
+        ))
+    };
+    span_lint(cx, MIN_IDENT_CHARS, span, &help);
 }

@@ -67,6 +67,7 @@ fn main() {
     let o = O { o };
 
     for j in 0..1000 {}
+    for _ in 0..10 {}
 
     // Do not lint code from external macros
     external! { for j in 0..1000 {} }
@@ -78,4 +79,6 @@ fn main() {
 }
 
 fn b() {}
-fn owo() {}
+fn wrong_pythagoras(a: f32, b: f32) -> f32 {
+    a * a + a * b
+}

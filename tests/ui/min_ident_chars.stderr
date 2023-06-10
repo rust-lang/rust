@@ -157,10 +157,22 @@ LL |     let o = O { o };
    |         ^
 
 error: this ident consists of a single char
-  --> $DIR/min_ident_chars.rs:80:4
+  --> $DIR/min_ident_chars.rs:81:4
    |
 LL | fn b() {}
    |    ^
 
-error: aborting due to 27 previous errors
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:82:21
+   |
+LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
+   |                     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:82:29
+   |
+LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
+   |                             ^
+
+error: aborting due to 29 previous errors
 
