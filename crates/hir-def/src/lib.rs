@@ -487,22 +487,81 @@ impl_intern_key!(AnonymousConstId);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum TypeOwnerId {
+    FunctionId(FunctionId),
+    StaticId(StaticId),
+    ConstId(ConstId),
+    InTypeConstId(InTypeConstId),
+    AdtId(AdtId),
+    TraitId(TraitId),
+    TraitAliasId(TraitAliasId),
+    TypeAliasId(TypeAliasId),
+    ImplId(ImplId),
+    EnumVariantId(EnumVariantId),
+    // FIXME(const-generic-body): ModuleId should not be a type owner. This needs to be fixed to make `TypeOwnerId` actually
+    // useful for assigning ids to in type consts.
     ModuleId(ModuleId),
-    DefWithBodyId(DefWithBodyId),
-    GenericDefId(GenericDefId),
 }
 
 impl TypeOwnerId {
     fn as_generic_def_id(self) -> Option<GenericDefId> {
-        match self {
-            TypeOwnerId::ModuleId(_) => None,
-            TypeOwnerId::DefWithBodyId(x) => x.as_generic_def_id(),
-            TypeOwnerId::GenericDefId(x) => Some(x),
+        Some(match self {
+            TypeOwnerId::FunctionId(x) => GenericDefId::FunctionId(x),
+            TypeOwnerId::ConstId(x) => GenericDefId::ConstId(x),
+            TypeOwnerId::AdtId(x) => GenericDefId::AdtId(x),
+            TypeOwnerId::TraitId(x) => GenericDefId::TraitId(x),
+            TypeOwnerId::TraitAliasId(x) => GenericDefId::TraitAliasId(x),
+            TypeOwnerId::TypeAliasId(x) => GenericDefId::TypeAliasId(x),
+            TypeOwnerId::ImplId(x) => GenericDefId::ImplId(x),
+            TypeOwnerId::EnumVariantId(x) => GenericDefId::EnumVariantId(x),
+            TypeOwnerId::InTypeConstId(_) | TypeOwnerId::ModuleId(_) | TypeOwnerId::StaticId(_) => {
+                return None
+            }
+        })
+    }
+}
+
+impl_from!(
+    FunctionId,
+    StaticId,
+    ConstId,
+    InTypeConstId,
+    AdtId,
+    TraitId,
+    TraitAliasId,
+    TypeAliasId,
+    ImplId,
+    EnumVariantId,
+    ModuleId
+    for TypeOwnerId
+);
+
+// Every `DefWithBodyId` is a type owner, since bodies can contain type (e.g. `{ let x: Type = _; }`)
+impl From<DefWithBodyId> for TypeOwnerId {
+    fn from(value: DefWithBodyId) -> Self {
+        match value {
+            DefWithBodyId::FunctionId(x) => x.into(),
+            DefWithBodyId::StaticId(x) => x.into(),
+            DefWithBodyId::ConstId(x) => x.into(),
+            DefWithBodyId::InTypeConstId(x) => x.into(),
+            DefWithBodyId::VariantId(x) => x.into(),
         }
     }
 }
 
-impl_from!(ModuleId, DefWithBodyId(FunctionId, ConstId, StaticId), GenericDefId(AdtId, TypeAliasId, ImplId) for TypeOwnerId);
+impl From<GenericDefId> for TypeOwnerId {
+    fn from(value: GenericDefId) -> Self {
+        match value {
+            GenericDefId::FunctionId(x) => x.into(),
+            GenericDefId::AdtId(x) => x.into(),
+            GenericDefId::TraitId(x) => x.into(),
+            GenericDefId::TraitAliasId(x) => x.into(),
+            GenericDefId::TypeAliasId(x) => x.into(),
+            GenericDefId::ImplId(x) => x.into(),
+            GenericDefId::EnumVariantId(x) => x.into(),
+            GenericDefId::ConstId(x) => x.into(),
+        }
+    }
+}
 
 /// A thing that we want to store in interned ids, but we don't know its type in `hir-def`
 pub trait OpaqueInternableThing:
@@ -815,9 +874,17 @@ impl HasModule for MacroId {
 impl HasModule for TypeOwnerId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
+            TypeOwnerId::FunctionId(x) => x.lookup(db).module(db),
+            TypeOwnerId::StaticId(x) => x.lookup(db).module(db),
+            TypeOwnerId::ConstId(x) => x.lookup(db).module(db),
+            TypeOwnerId::InTypeConstId(x) => x.lookup(db).1.module(db),
+            TypeOwnerId::AdtId(x) => x.module(db),
+            TypeOwnerId::TraitId(x) => x.lookup(db).container,
+            TypeOwnerId::TraitAliasId(x) => x.lookup(db).container,
+            TypeOwnerId::TypeAliasId(x) => x.lookup(db).module(db),
+            TypeOwnerId::ImplId(x) => x.lookup(db).container,
+            TypeOwnerId::EnumVariantId(x) => x.parent.lookup(db).container,
             TypeOwnerId::ModuleId(x) => *x,
-            TypeOwnerId::DefWithBodyId(x) => x.module(db),
-            TypeOwnerId::GenericDefId(x) => x.module(db),
         }
     }
 }

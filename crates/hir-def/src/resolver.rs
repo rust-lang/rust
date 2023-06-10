@@ -1012,9 +1012,17 @@ impl HasResolver for ExternBlockId {
 impl HasResolver for TypeOwnerId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {
-            TypeOwnerId::ModuleId(it) => it.resolver(db),
-            TypeOwnerId::DefWithBodyId(it) => it.resolver(db),
-            TypeOwnerId::GenericDefId(it) => it.resolver(db),
+            TypeOwnerId::FunctionId(x) => x.resolver(db),
+            TypeOwnerId::StaticId(x) => x.resolver(db),
+            TypeOwnerId::ConstId(x) => x.resolver(db),
+            TypeOwnerId::InTypeConstId(x) => x.lookup(db).1.resolver(db),
+            TypeOwnerId::AdtId(x) => x.resolver(db),
+            TypeOwnerId::TraitId(x) => x.resolver(db),
+            TypeOwnerId::TraitAliasId(x) => x.resolver(db),
+            TypeOwnerId::TypeAliasId(x) => x.resolver(db),
+            TypeOwnerId::ImplId(x) => x.resolver(db),
+            TypeOwnerId::EnumVariantId(x) => x.resolver(db),
+            TypeOwnerId::ModuleId(x) => x.resolver(db),
         }
     }
 }

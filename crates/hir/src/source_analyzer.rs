@@ -38,8 +38,8 @@ use hir_ty::{
         UnsafeExpr,
     },
     lang_items::lang_items_for_bin_op,
-    method_resolution::{self},
-    Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind, TyLoweringContext,
+    method_resolution, Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
+    TyLoweringContext,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
