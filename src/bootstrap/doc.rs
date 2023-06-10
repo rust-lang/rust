@@ -667,7 +667,7 @@ impl Step for Rustc {
     /// Compiler documentation is distributed separately, so we make sure
     /// we do not merge it with the other documentation from std, test and
     /// proc_macros. This is largely just a wrapper around `cargo doc`.
-    fn run(self, builder: &Builder<'_>) {
+    fn run(mut self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
 
@@ -725,6 +725,11 @@ impl Step for Rustc {
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
         let mut to_open = None;
+
+        if self.crates.is_empty() {
+            self.crates = INTERNER.intern_list(vec!["rustc_driver".to_owned()]);
+        };
+
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.

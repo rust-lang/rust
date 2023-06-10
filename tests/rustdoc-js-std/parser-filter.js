@@ -1,17 +1,6 @@
-const QUERY = [
-    'fn:foo',
-    'enum : foo',
-    'macro<f>:foo',
-    'macro!',
-    'macro:mac!',
-    'a::mac!',
-    '-> fn:foo',
-    '-> fn:foo<fn:bar>',
-    '-> fn:foo<fn:bar, enum : baz::fuzz>',
-];
-
 const PARSED = [
     {
+        query: 'fn:foo',
         elems: [{
             name: "foo",
             fullPath: ["foo"],
@@ -27,6 +16,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'enum : foo',
         elems: [{
             name: "foo",
             fullPath: ["foo"],
@@ -42,6 +32,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'macro<f>:foo',
         elems: [],
         foundElems: 0,
         original: "macro<f>:foo",
@@ -50,6 +41,7 @@ const PARSED = [
         error: "Unexpected `<` in type filter",
     },
     {
+        query: 'macro!',
         elems: [{
             name: "macro",
             fullPath: ["macro"],
@@ -65,6 +57,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'macro:mac!',
         elems: [{
             name: "mac",
             fullPath: ["mac"],
@@ -80,6 +73,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'a::mac!',
         elems: [{
             name: "a::mac",
             fullPath: ["a", "mac"],
@@ -95,6 +89,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '-> fn:foo',
         elems: [],
         foundElems: 1,
         original: "-> fn:foo",
@@ -110,6 +105,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '-> fn:foo<fn:bar>',
         elems: [],
         foundElems: 1,
         original: "-> fn:foo<fn:bar>",
@@ -134,6 +130,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '-> fn:foo<fn:bar, enum : baz::fuzz>',
         elems: [],
         foundElems: 1,
         original: "-> fn:foo<fn:bar, enum : baz::fuzz>",

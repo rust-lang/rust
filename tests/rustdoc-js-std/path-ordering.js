@@ -1,7 +1,6 @@
-const QUERY = 'hashset::insert';
-
 const EXPECTED = {
-    'others': [
+    query: 'hashset::insert',
+    others: [
         // ensure hashset::insert comes first
         { 'path': 'std::collections::hash_set::HashSet', 'name': 'insert' },
         { 'path': 'std::collections::hash_set::HashSet', 'name': 'get_or_insert' },
