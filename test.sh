@@ -356,11 +356,12 @@ function test_rustc() {
     # We need to overwrite the sysroot in the tests, now.
     # TODO(antoyo): find a faster way to do this.
     # FIXME: this makes the stderr different since it changes the line numbers.
-    for file in $(find tests/ui -type f -name '*.rs'); do
-        sed -ie "1i // compile-flags: --sysroot "$(pwd)"/../build_sysroot/sysroot\n" $file
-    done
+    #for file in $(find tests/ui -type f -name '*.rs'); do
+        #sed -ie "1i // compile-flags: --sysroot "$(pwd)"/../build_sysroot/sysroot\n" $file
+    #done
 
-    RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext""
+    # TODO: copy the sysroot at the correct location to not have to use the --sysroot flag.
+    RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
 
     if [ $# -eq 0 ]; then
         # No argument supplied to the function. Doing nothing.
