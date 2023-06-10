@@ -114,7 +114,7 @@ struct DivergenceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
-            ExprKind::Closure { .. } => {},
+            ExprKind::Closure(..) | ExprKind::If(..) | ExprKind::Loop(..) => {},
             ExprKind::Match(e, arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
@@ -128,6 +128,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
             _ => walk_expr(self, e),
         }
     }
+
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
         span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
     }
@@ -136,6 +137,15 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
+            // fix #10776
+            ExprKind::Block(block, ..) => match (block.stmts, block.expr) {
+                ([], Some(e)) => self.visit_expr(e),
+                ([stmt], None) => match stmt.kind {
+                    StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
+                    _ => {},
+                },
+                _ => {},
+            },
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
             ExprKind::Call(func, _) => {
                 let typ = self.cx.typeck_results().expr_ty(func);
