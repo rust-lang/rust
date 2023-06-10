@@ -1,6 +1,6 @@
 //@run-rustfix
 #![warn(clippy::partialeq_to_none)]
-#![allow(clippy::eq_op)]
+#![allow(clippy::eq_op, clippy::needless_if)]
 
 struct Foobar;
 

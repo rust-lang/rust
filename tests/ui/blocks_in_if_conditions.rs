@@ -1,6 +1,6 @@
 //@run-rustfix
 #![warn(clippy::blocks_in_if_conditions)]
-#![allow(unused, clippy::let_and_return)]
+#![allow(unused, clippy::let_and_return, clippy::needless_if)]
 #![warn(clippy::nonminimal_bool)]
 
 macro_rules! blocky {

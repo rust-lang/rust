@@ -4,7 +4,8 @@
     clippy::unused_unit,
     clippy::let_unit_value,
     clippy::match_single_binding,
-    clippy::never_loop
+    clippy::never_loop,
+    clippy::needless_if
 )]
 #![warn(clippy::manual_let_else)]
 

@@ -1,5 +1,10 @@
 //@run-rustfix
-#![allow(unused, clippy::redundant_clone, clippy::derive_partial_eq_without_eq)] // See #5700
+#![allow(
+    unused,
+    clippy::needless_if,
+    clippy::redundant_clone,
+    clippy::derive_partial_eq_without_eq
+)] // See #5700
 
 // Define the types in each module to avoid trait impls leaking between modules.
 macro_rules! impl_types {

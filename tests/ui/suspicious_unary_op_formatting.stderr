@@ -1,5 +1,5 @@
 error: by not having a space between `>` and `-` it looks like `>-` is a single operator
-  --> $DIR/suspicious_unary_op_formatting.rs:8:9
+  --> $DIR/suspicious_unary_op_formatting.rs:9:9
    |
 LL |     if a >- 30 {}
    |         ^^^^
@@ -8,7 +8,7 @@ LL |     if a >- 30 {}
    = note: `-D clippy::suspicious-unary-op-formatting` implied by `-D warnings`
 
 error: by not having a space between `>=` and `-` it looks like `>=-` is a single operator
-  --> $DIR/suspicious_unary_op_formatting.rs:9:9
+  --> $DIR/suspicious_unary_op_formatting.rs:10:9
    |
 LL |     if a >=- 30 {}
    |         ^^^^^
@@ -16,7 +16,7 @@ LL |     if a >=- 30 {}
    = help: put a space between `>=` and `-` and remove the space after `-`
 
 error: by not having a space between `&&` and `!` it looks like `&&!` is a single operator
-  --> $DIR/suspicious_unary_op_formatting.rs:14:9
+  --> $DIR/suspicious_unary_op_formatting.rs:15:9
    |
 LL |     if b &&! c {}
    |         ^^^^^
@@ -24,7 +24,7 @@ LL |     if b &&! c {}
    = help: put a space between `&&` and `!` and remove the space after `!`
 
 error: by not having a space between `>` and `-` it looks like `>-` is a single operator
-  --> $DIR/suspicious_unary_op_formatting.rs:16:9
+  --> $DIR/suspicious_unary_op_formatting.rs:17:9
    |
 LL |     if a >-   30 {}
    |         ^^^^^^
