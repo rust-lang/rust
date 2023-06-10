@@ -142,9 +142,9 @@ pub fn add_ref_in_pattern() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck,optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck,optimized_mir,promoted_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck,optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck,optimized_mir,promoted_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_ref_in_pattern() {
     let (ref _a, _b) = (1u8, 'y');

@@ -11,6 +11,7 @@ impl Drop for SomeUniqueName {
     }
 }
 
+#[inline(never)]
 pub fn possibly_unwinding() {
 }
 

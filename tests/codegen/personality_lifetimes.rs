@@ -13,6 +13,7 @@ impl Drop for S {
     }
 }
 
+#[inline(never)]
 fn might_unwind() {
 }
 

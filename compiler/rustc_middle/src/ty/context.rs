@@ -558,6 +558,8 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
+
+    pub inlined_internal_defs: Lock<FxHashSet<LocalDefId>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -706,6 +708,7 @@ impl<'tcx> TyCtxt<'tcx> {
             new_solver_evaluation_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
+            inlined_internal_defs: Default::default(),
         }
     }
 

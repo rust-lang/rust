@@ -3,6 +3,7 @@
 #![deny(dead_code)]
 #![feature(start)]
 
+#[inline(never)]
 fn generic_fn<T>(a: T) -> (T, i32) {
     //~ MONO_ITEM fn generic_fn::nested_fn
     fn nested_fn(a: i32) -> i32 {

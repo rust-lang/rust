@@ -1554,6 +1554,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.tables.unused_generic_params.set(def_id.local_def_index, unused);
         }
 
+        // Encode promoted_mir for all functions that we inlined
+        let prev_len = tcx.inlined_internal_defs.lock().len();
+        for def_id in tcx.inlined_internal_defs.lock().clone() {
+            record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+        }
+        assert_eq!(tcx.inlined_internal_defs.lock().len(), prev_len);
+
         // Encode all the deduced parameter attributes for everything that has MIR, even for items
         // that can't be inlined. But don't if we aren't optimizing in non-incremental mode, to
         // save the query traffic.

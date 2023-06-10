@@ -146,6 +146,12 @@ impl<'tcx> Inliner<'tcx> {
                     debug!("inlined {}", callsite.callee);
                     self.changed = true;
 
+                    if !matches!(callsite.callee.def, InstanceDef::CloneShim(..)) {
+                        if let Some(def_id) = callsite.callee.def_id().as_local() {
+                            self.tcx.inlined_internal_defs.lock().insert(def_id);
+                        }
+                    }
+
                     self.history.push(callsite.callee.def_id());
                     self.process_blocks(caller_body, new_blocks);
                     self.history.pop();
@@ -184,6 +190,7 @@ impl<'tcx> Inliner<'tcx> {
 
         self.check_mir_is_available(caller_body, &callsite.callee)?;
         let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
+        self.check_mir_is_exportable(&callsite.callee, callee_attrs, callee_body)?;
         self.check_mir_body(callsite, callee_body, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
@@ -353,6 +360,44 @@ impl<'tcx> Inliner<'tcx> {
         None
     }
 
+    fn check_mir_is_exportable(
+        &self,
+        callee: &Instance<'tcx>,
+        callee_attrs: &CodegenFnAttrs,
+        callee_body: &Body<'tcx>,
+    ) -> Result<(), &'static str> {
+        // If the callee is not local, then it must be exportable because we passed the check for
+        // if MIR is available.
+        if !callee.def_id().is_local() {
+            return Ok(());
+        }
+        if self.tcx.is_constructor(callee.def_id()) {
+            return Ok(());
+        }
+        if callee_attrs.requests_inline() {
+            return Ok(());
+        }
+        let is_generic = callee.substs.non_erasable_generics().next().is_some();
+        if is_generic {
+            return Ok(());
+        }
+
+        // So now we are trying to inline a function from another crate which is not inline and is
+        // not a generic. This might work. But if this pulls in a symbol from the other crater, we
+        // will fail to link.
+        // So this is our heuritic for handling this:
+        // If this function has any calls in it, that might reference an internal symbol.
+        // If this function contains a pointer constant, that might be a reference to an internal
+        // static.
+        // So if either of those conditions are met, we cannot inline this.
+        if !contains_pointer_constant(callee_body) {
+            debug!("Has no pointer constants, must be exportable");
+            return Ok(());
+        }
+
+        Err("not exported")
+    }
+
     /// Returns an error if inlining is not possible based on codegen attributes alone. A success
     /// indicates that inlining decision should be based on other criteria.
     fn check_codegen_attributes(
@@ -362,16 +407,6 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         if let InlineAttr::Never = callee_attrs.inline {
             return Err("never inline hint");
-        }
-
-        // Only inline local functions if they would be eligible for cross-crate
-        // inlining. This is to ensure that the final crate doesn't have MIR that
-        // reference unexported symbols
-        if callsite.callee.def_id().is_local() {
-            let is_generic = callsite.callee.substs.non_erasable_generics().next().is_some();
-            if !is_generic && !callee_attrs.requests_inline() {
-                return Err("not exported");
-            }
         }
 
         if callsite.fn_sig.c_variadic() {
@@ -1146,5 +1181,43 @@ fn try_instance_mir<'tcx>(
             _ => Ok(tcx.instance_mir(instance)),
         },
         _ => Ok(tcx.instance_mir(instance)),
+    }
+}
+
+fn contains_pointer_constant(body: &Body<'_>) -> bool {
+    let mut finder = ConstFinder { found: false };
+    finder.visit_body(body);
+    finder.found
+}
+
+struct ConstFinder {
+    found: bool,
+}
+
+impl Visitor<'_> for ConstFinder {
+    fn visit_constant(&mut self, constant: &Constant<'_>, location: Location) {
+        debug!("Visiting constant: {:?}", constant.literal);
+        if let ConstantKind::Unevaluated(..) = constant.literal {
+            self.found = true;
+            return;
+        }
+
+        if let ConstantKind::Val(val, ty) = constant.literal {
+            ty::tls::with(|tcx| {
+                let val = tcx.lift(val).unwrap();
+                if let ConstValue::Scalar(Scalar::Ptr(ptr, _size)) = val {
+                    if let Some(GlobalAlloc::Static(_)) =
+                        tcx.try_get_global_alloc(ptr.into_parts().0)
+                    {
+                        self.found = true;
+                    }
+                }
+            });
+
+            if ty.is_fn() {
+                self.found = true;
+            }
+        }
+        self.super_constant(constant, location);
     }
 }

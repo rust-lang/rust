@@ -1,0 +1,18 @@
+- // MIR for `outer` before Inline
++ // MIR for `outer` after Inline
+  
+  fn outer() -> u8 {
+      let mut _0: u8;
+- 
+-     bb0: {
+-         _0 = helper() -> bb1;
++     scope 1 (inlined helper) {
+      }
+  
+-     bb1: {
++     bb0: {
++         _0 = const 123_u8;
+          return;
+      }
+  }
+  

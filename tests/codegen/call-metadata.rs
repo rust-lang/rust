@@ -12,6 +12,7 @@ pub fn test() {
 }
 
 #[no_mangle]
+#[inline(never)]
 fn some_true() -> Option<bool> {
     Some(true)
 }

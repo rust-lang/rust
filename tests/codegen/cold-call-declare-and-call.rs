@@ -9,6 +9,7 @@
 // CHECK: call coldcc void @this_should_never_happen(i16
 
 #[no_mangle]
+#[inline(never)]
 pub extern "rust-cold" fn this_should_never_happen(x: u16) {}
 
 pub fn do_things(x: u16) {

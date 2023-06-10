@@ -15,7 +15,8 @@ pub extern fn exported() {
 
 // CHECK-LABEL: ; tune_cpu_on_functions::not_exported
 // CHECK-NEXT: ; Function Attrs:
-// CHECK-NEXT: define {{.*}}() {{.*}} #0
+// CHECK-NEXT: define {{.*}}() {{.*}} #1
+#[inline(never)]
 fn not_exported() {}
 
 // CHECK: attributes #0 = {{.*}} "tune-cpu"="{{.*}}"
