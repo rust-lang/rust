@@ -7,7 +7,6 @@ edition = "2021"
 
 
 [dependencies]
-memoffset = { version = "0.8.0", features = ["unstable_const"] }
 field-offset = "0.3.5"
 measureme = "10.0.0"
 rustc_ast = { path = "../rustc_ast" }
@@ -24,6 +23,9 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
 tracing = "0.1"
+
+# Not used directly, but included to enable the unstable_offset_of feature
+memoffset = { version = "0.9.0", features = ["unstable_offset_of"] }
 
 [features]
 rustc_use_parallel_compiler = ["rustc-rayon-core", "rustc_query_system/rustc_use_parallel_compiler"]
