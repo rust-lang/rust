@@ -2544,17 +2544,15 @@ impl Path {
     ///
     /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
     /// assert_eq!(Path::new("/etc").join("/bin/sh"), PathBuf::from("/bin/sh"));
+    ///
+    /// // Many paths can also be joined in a platform-compatible way
+    /// assert_eq!(Path::new("foo").join(("bar", "baz")), PathBuf::from("foo/bar/baz"));
+    /// assert_eq!(Path::new("foo").join(("bar", "baz", "qux")), PathBuf::from("foo/bar/baz/qux"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
-        self._join(path.as_ref())
-    }
-
-    fn _join(&self, path: &Path) -> PathBuf {
-        let mut buf = self.to_path_buf();
-        buf.push(path);
-        buf
+    pub fn join<P: JoinPath>(&self, path: P) -> PathBuf {
+        path.join_to(self)
     }
 
     /// Creates an owned [`PathBuf`] like `self` but with the given file name.
@@ -3182,6 +3180,53 @@ impl<'a> IntoIterator for &'a Path {
     #[inline]
     fn into_iter(self) -> Iter<'a> {
         self.iter()
+    }
+}
+
+/// Types that can be used with `.join`. Should probably be sealed
+#[unstable(feature = "path_join_many", issue = "none")]
+pub trait JoinPath {
+    /// Append `self` to `other`
+    fn join_to(self, other: &Path) -> PathBuf;
+}
+
+#[unstable(feature = "path_join_many", issue = "none")]
+impl<P: AsRef<Path>> JoinPath for P {
+    fn join_to(self, path: &Path) -> PathBuf {
+        let mut buf = path.to_path_buf();
+        buf.push(self);
+        buf
+    }
+}
+
+// macro this, obviously
+#[unstable(feature = "path_join_many", issue = "none")]
+impl<P1, P2> JoinPath for (P1, P2)
+where
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
+{
+    fn join_to(self, path: &Path) -> PathBuf {
+        let mut buf = path.to_path_buf();
+        buf.push(self.0);
+        buf.push(self.1);
+        buf
+    }
+}
+
+#[unstable(feature = "path_join_many", issue = "none")]
+impl<P1, P2, P3> JoinPath for (P1, P2, P3)
+where
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
+    P3: AsRef<Path>,
+{
+    fn join_to(self, path: &Path) -> PathBuf {
+        let mut buf = path.to_path_buf();
+        buf.push(self.0);
+        buf.push(self.1);
+        buf.push(self.2);
+        buf
     }
 }
 
