@@ -32,6 +32,10 @@ pub fn bounds_to_string(bounds: &[ast::GenericBound]) -> String {
     State::new().bounds_to_string(bounds)
 }
 
+pub fn where_bound_predicate_to_string(where_bound_predicate: &ast::WhereBoundPredicate) -> String {
+    State::new().where_bound_predicate_to_string(where_bound_predicate)
+}
+
 pub fn pat_to_string(pat: &ast::Pat) -> String {
     State::new().pat_to_string(pat)
 }
