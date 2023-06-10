@@ -8,7 +8,7 @@ use std::fs::{self, File};
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
@@ -150,29 +150,6 @@ pub struct TaskPath {
     pub kind: Option<Kind>,
 }
 
-impl TaskPath {
-    pub fn parse(path: impl Into<PathBuf>) -> TaskPath {
-        let mut kind = None;
-        let mut path = path.into();
-
-        let mut components = path.components();
-        if let Some(Component::Normal(os_str)) = components.next() {
-            if let Some(str) = os_str.to_str() {
-                if let Some((found_kind, found_prefix)) = str.split_once("::") {
-                    if found_kind.is_empty() {
-                        panic!("empty kind in task path {}", path.display());
-                    }
-                    kind = Kind::parse(found_kind);
-                    assert!(kind.is_some());
-                    path = Path::new(found_prefix).join(components.as_path());
-                }
-            }
-        }
-
-        TaskPath { path, kind }
-    }
-}
-
 impl Debug for TaskPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(kind) = &self.kind {
@@ -216,7 +193,7 @@ impl PathSet {
         PathSet::Set(set)
     }
 
-    fn has(&self, needle: &Path, module: Option<Kind>) -> bool {
+    fn has(&self, needle: &Path, module: Kind) -> bool {
         match self {
             PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
             PathSet::Suite(suite) => Self::check(suite, needle, module),
@@ -224,9 +201,9 @@ impl PathSet {
     }
 
     // internal use only
-    fn check(p: &TaskPath, needle: &Path, module: Option<Kind>) -> bool {
-        if let (Some(p_kind), Some(kind)) = (&p.kind, module) {
-            p.path.ends_with(needle) && *p_kind == kind
+    fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
+        if let Some(p_kind) = &p.kind {
+            p.path.ends_with(needle) && *p_kind == module
         } else {
             p.path.ends_with(needle)
         }
@@ -238,11 +215,7 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(
-        &self,
-        needles: &mut Vec<&Path>,
-        module: Option<Kind>,
-    ) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut Vec<&Path>, module: Kind) -> PathSet {
         let mut check = |p| {
             for (i, n) in needles.iter().enumerate() {
                 let matched = Self::check(p, n, module);
@@ -307,7 +280,7 @@ impl StepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.exclude.iter().any(|e| pathset.has(&e.path, e.kind)) {
+        if builder.config.exclude.iter().any(|e| pathset.has(&e, builder.kind)) {
             println!("Skipping {:?} because it is excluded", pathset);
             return true;
         }
@@ -562,7 +535,7 @@ impl<'a> ShouldRun<'a> {
     ) -> Vec<PathSet> {
         let mut sets = vec![];
         for pathset in &self.paths {
-            let subset = pathset.intersection_removing_matches(paths, Some(kind));
+            let subset = pathset.intersection_removing_matches(paths, kind);
             if subset != PathSet::empty() {
                 sets.push(subset);
             }
@@ -2138,7 +2111,7 @@ impl<'a> Builder<'a> {
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
         for path in &self.paths {
-            if should_run.paths.iter().any(|s| s.has(path, Some(desc.kind)))
+            if should_run.paths.iter().any(|s| s.has(path, desc.kind))
                 && !desc.is_excluded(
                     self,
                     &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),

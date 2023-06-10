@@ -17,7 +17,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
-use crate::builder::TaskPath;
 use crate::cache::{Interned, INTERNER};
 use crate::cc_detect::{ndk_compiler, Language};
 use crate::channel::{self, GitInfo};
@@ -80,7 +79,7 @@ pub struct Config {
     pub sanitizers: bool,
     pub profiler: bool,
     pub omit_git_hash: bool,
-    pub exclude: Vec<TaskPath>,
+    pub exclude: Vec<PathBuf>,
     pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
@@ -957,7 +956,7 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
-        config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
+        config.exclude = flags.exclude;
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
