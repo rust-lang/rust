@@ -51,14 +51,19 @@ pub(super) fn check<'tcx>(
         // Ensure that the binary operator is &&
         if and_op.node == BinOpKind::And;
 
-        let typeck_results = cx.typeck_results();
-        let mut const_context = consts::ConstEvalLateContext::new(cx, typeck_results);
+        // Check that both operands to '&&' are themselves a binary operation
+        // The `comparison_to_const` step also checks this, so this step is just an optimization
+        if let ExprKind::Binary(_, _, _) = left_cond.kind;
+        if let ExprKind::Binary(_, _, _) = right_cond.kind;
+
+        let typeck = cx.typeck_results();
+        let mut const_context = consts::ConstEvalLateContext::new(cx, typeck);
 
         // Check that both operands to '&&' compare a non-literal to a literal
         if let Some((left_cmp_op, left_expr, left_const_expr, left_const, left_type)) =
-            comparison_to_const(&mut const_context, typeck_results, left_cond);
+            comparison_to_const(&mut const_context, typeck, left_cond);
         if let Some((right_cmp_op, right_expr, right_const_expr, right_const, right_type)) =
-            comparison_to_const(&mut const_context, typeck_results, right_cond);
+            comparison_to_const(&mut const_context, typeck, right_cond);
 
         if left_type == right_type;
 
