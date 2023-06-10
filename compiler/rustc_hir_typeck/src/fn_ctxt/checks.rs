@@ -929,7 +929,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     };
                     labels.push((provided_span, format!("unexpected argument{provided_ty_name}")));
                     let mut span = provided_span;
-                    if span.can_be_used_for_suggestions() {
+                    if span.can_be_used_for_suggestions()
+                        && error_span.can_be_used_for_suggestions()
+                    {
                         if arg_idx.index() > 0
                         && let Some((_, prev)) = provided_arg_tys
                             .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
