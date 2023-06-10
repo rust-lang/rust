@@ -1,20 +1,8 @@
 // exact-check
 
-const QUERY = [
-    'R<P>',
-    'R<struct:P>',
-    'R<enum:P>',
-    '"P"',
-    'P',
-    'ExtraCreditStructMulti<ExtraCreditInnerMulti, ExtraCreditInnerMulti>',
-    'TraitCat',
-    'TraitDog',
-    'Result<String>',
-];
-
 const EXPECTED = [
     {
-        // R<P>
+        'query': 'R<P>',
         'returned': [
             { 'path': 'generics', 'name': 'alef' },
         ],
@@ -23,7 +11,7 @@ const EXPECTED = [
         ],
     },
     {
-        // R<struct:P>
+        'query': 'R<struct:P>',
         'returned': [
             { 'path': 'generics', 'name': 'alef' },
         ],
@@ -32,12 +20,12 @@ const EXPECTED = [
         ],
     },
     {
-        // R<enum:P>
+        'query': 'R<enum:P>',
         'returned': [],
         'in_args': [],
     },
     {
-        // "P"
+        'query': '"P"',
         'others': [
             { 'path': 'generics', 'name': 'P' },
         ],
@@ -49,7 +37,7 @@ const EXPECTED = [
         ],
     },
     {
-        // P
+        'query': 'P',
         'returned': [
             { 'path': 'generics', 'name': 'alef' },
         ],
@@ -58,26 +46,26 @@ const EXPECTED = [
         ],
     },
     {
-        // "ExtraCreditStructMulti"<ExtraCreditInnerMulti, ExtraCreditInnerMulti>
+        'query': '"ExtraCreditStructMulti"<ExtraCreditInnerMulti, ExtraCreditInnerMulti>',
         'in_args': [
             { 'path': 'generics', 'name': 'extracreditlabhomework' },
         ],
         'returned': [],
     },
     {
-        // TraitCat
+        'query': 'TraitCat',
         'in_args': [
             { 'path': 'generics', 'name': 'gamma' },
         ],
     },
     {
-        // TraitDog
+        'query': 'TraitDog',
         'in_args': [
             { 'path': 'generics', 'name': 'gamma' },
         ],
     },
     {
-        // Result<String>
+        'query': 'Result<String>',
         'others': [],
         'returned': [
             { 'path': 'generics', 'name': 'super_soup' },

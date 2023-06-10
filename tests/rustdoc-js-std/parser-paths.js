@@ -1,7 +1,6 @@
-const QUERY = ['A::B', 'A::B,C',  'A::B<f>,C', 'mod::a'];
-
 const PARSED = [
     {
+        query: 'A::B',
         elems: [{
             name: "a::b",
             fullPath: ["a", "b"],
@@ -17,6 +16,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'A::B,C',
         elems: [
             {
                 name: "a::b",
@@ -42,6 +42,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'A::B<f>,C',
         elems: [
             {
                 name: "a::b",
@@ -75,6 +76,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'mod::a',
         elems: [{
             name: "mod::a",
             fullPath: ["mod", "a"],
