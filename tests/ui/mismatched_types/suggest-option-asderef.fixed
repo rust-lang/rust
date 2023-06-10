@@ -17,7 +17,7 @@ fn generic<T>(_: T) -> Option<()> {
 }
 
 fn generic_ref<T>(_: T) -> Option<()> {
-    //~^ HELP do not borrow the argument
+    //~^ HELP consider adjusting the signature so it does not borrow its argument
     Some(())
 }
 

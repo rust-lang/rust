@@ -4029,7 +4029,7 @@ fn hint_missing_borrow<'tcx>(
 
     if !to_borrow.is_empty() {
         err.multipart_suggestion_verbose(
-            "consider borrowing the argument",
+            "consider adjusting the signature so it borrows its argument",
             to_borrow,
             Applicability::MaybeIncorrect,
         );
@@ -4037,7 +4037,7 @@ fn hint_missing_borrow<'tcx>(
 
     if !remove_borrow.is_empty() {
         err.multipart_suggestion_verbose(
-            "do not borrow the argument",
+            "consider adjusting the signature so it does not borrow its argument",
             remove_borrow,
             Applicability::MaybeIncorrect,
         );

@@ -73,7 +73,7 @@ LL |     let _ = produces_string().and_then(generic_ref);
               found function signature `for<'a> fn(&'a _) -> _`
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-help: do not borrow the argument
+help: consider adjusting the signature so it does not borrow its argument
    |
 LL - fn generic_ref<T>(_: &T) -> Option<()> {
 LL + fn generic_ref<T>(_: T) -> Option<()> {

@@ -10,7 +10,7 @@ LL |     let _ = (-10..=10).find(|x: i32| x.signum() == 0);
               found closure signature `fn(i32) -> _`
 note: required by a bound in `find`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-help: consider borrowing the argument
+help: consider adjusting the signature so it borrows its argument
    |
 LL |     let _ = (-10..=10).find(|x: &i32| x.signum() == 0);
    |                                 +
@@ -27,7 +27,7 @@ LL |     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
               found closure signature `for<'a, 'b, 'c> fn(&'a &'b &'c i32) -> _`
 note: required by a bound in `find`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-help: do not borrow the argument
+help: consider adjusting the signature so it does not borrow its argument
    |
 LL -     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
 LL +     let _ = (-10..=10).find(|x: &i32| x.signum() == 0);
