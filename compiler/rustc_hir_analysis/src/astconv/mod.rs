@@ -26,10 +26,9 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
-use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
@@ -43,7 +42,10 @@ use rustc_trait_selection::traits::error_reporting::{
     report_object_safety_error, suggestions::NextTypeParamName,
 };
 use rustc_trait_selection::traits::wf::object_region_bounds;
-use rustc_trait_selection::traits::{self, astconv_object_safety_violations, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, astconv_object_safety_violations, NormalizeExt, ObligationCtxt,
+};
+use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
@@ -2442,6 +2444,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return Ok(None);
         }
 
+        if !tcx.features().inherent_associated_types {
+            tcx.sess
+                .delay_span_bug(span, "found inherent assoc type without the feature being gated");
+        }
+
         //
         // Select applicable inherent associated type candidates modulo regions.
         //
@@ -2465,23 +2472,53 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut fulfillment_errors = Vec::new();
         let mut applicable_candidates: Vec<_> = infcx.probe(|_| {
-            let universe = infcx.create_next_universe();
-
             // Regions are not considered during selection.
-            // FIXME(non_lifetime_binders): Here we are "truncating" or "flattening" the universes
-            // of type and const binders. Is that correct in the selection phase? See also #109505.
-            let self_ty = tcx.replace_escaping_bound_vars_uncached(
-                self_ty,
-                FnMutDelegate {
-                    regions: &mut |_| tcx.lifetimes.re_erased,
-                    types: &mut |bv| {
-                        tcx.mk_placeholder(ty::PlaceholderType { universe, bound: bv })
-                    },
-                    consts: &mut |bv, ty| {
-                        tcx.mk_const(ty::PlaceholderConst { universe, bound: bv }, ty)
-                    },
-                },
-            );
+            let self_ty = self_ty
+                .fold_with(&mut BoundVarEraser { tcx, universe: infcx.create_next_universe() });
+
+            struct BoundVarEraser<'tcx> {
+                tcx: TyCtxt<'tcx>,
+                universe: ty::UniverseIndex,
+            }
+
+            // FIXME(non_lifetime_binders): Don't assign the same universe to each placeholder.
+            impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarEraser<'tcx> {
+                fn interner(&self) -> TyCtxt<'tcx> {
+                    self.tcx
+                }
+
+                fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+                    if r.is_late_bound() { self.tcx.lifetimes.re_erased } else { r }
+                }
+
+                fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+                    match *ty.kind() {
+                        ty::Bound(_, bv) => self.tcx.mk_placeholder(ty::PlaceholderType {
+                            universe: self.universe,
+                            bound: bv,
+                        }),
+                        _ => ty.super_fold_with(self),
+                    }
+                }
+
+                fn fold_const(
+                    &mut self,
+                    ct: ty::Const<'tcx>,
+                ) -> <TyCtxt<'tcx> as rustc_type_ir::Interner>::Const {
+                    assert!(!ct.ty().has_escaping_bound_vars());
+
+                    match ct.kind() {
+                        ty::ConstKind::Bound(_, bv) => self.tcx.mk_const(
+                            ty::PlaceholderConst { universe: self.universe, bound: bv },
+                            ct.ty(),
+                        ),
+                        _ => ct.super_fold_with(self),
+                    }
+                }
+            }
+
+            let InferOk { value: self_ty, obligations } =
+                infcx.at(&cause, param_env).normalize(self_ty);
 
             candidates
                 .iter()
@@ -2489,6 +2526,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .filter(|&(impl_, _)| {
                     infcx.probe(|_| {
                         let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+                        ocx.register_obligations(obligations.clone());
 
                         let impl_substs = infcx.fresh_substs_for_item(span, impl_);
                         let impl_ty = tcx.type_of(impl_).subst(tcx, impl_substs);
