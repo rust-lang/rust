@@ -223,17 +223,17 @@ fn main() {
             "cargo" => f = run_ui_cargo as fn(),
             "toml" => f = run_ui_toml as fn(),
             "internal" => f = run_internal_tests as fn(),
-			"rustfix-coverage-known-exceptions-accuracy" => f =     rustfix_coverage_known_exceptions_accuracy as fn(),
-			"ui-cargo-toml-metadata" => f = ui_cargo_toml_metadata() as fn(),
+            "rustfix-coverage-known-exceptions-accuracy" => f = rustfix_coverage_known_exceptions_accuracy as fn(),
+            "ui-cargo-toml-metadata" => f = ui_cargo_toml_metadata as fn(),
 
             _ => panic!("unknown speedtest: {speedtest} || accepted speedtests are: [ui, cargo, toml, internal]"),
-        }
+        };
 
         let iterations;
         if let Ok(iterations_str) = std::env::var("SPEEDTEST_ITERATIONS") {
             iterations = iterations_str
                 .parse::<u64>()
-                .unwrap_or_else(|_| panic!("Couldn't parse `{}`, please use a valid u64", iterations_str));
+                .unwrap_or_else(|_| panic!("Couldn't parse `{iterations_str}`, please use a valid u64"));
         } else {
             iterations = 1000;
         }
@@ -250,8 +250,8 @@ fn main() {
         run_ui_toml();
         run_ui_cargo();
         run_internal_tests();
-		rustfix_coverage_known_exceptions_accuracy();
-		ui_cargo_toml_metadata();
+        rustfix_coverage_known_exceptions_accuracy();
+        ui_cargo_toml_metadata();
     }
 }
 
