@@ -2,7 +2,10 @@
 //! HIR back into source code, and just displaying them for debugging/testing
 //! purposes.
 
-use std::fmt::{self, Debug};
+use std::{
+    fmt::{self, Debug},
+    mem::size_of,
+};
 
 use base_db::CrateId;
 use chalk_ir::{BoundVar, TyKind};
@@ -552,6 +555,16 @@ fn render_const_scalar(
                 f.write_str("&")?;
                 render_const_scalar(f, bytes, memory_map, t)
             }
+            TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.0 {
+                hir_def::AdtId::StructId(s) => {
+                    let data = f.db.struct_data(s);
+                    write!(f, "&{}", data.name.display(f.db.upcast()))?;
+                    Ok(())
+                }
+                _ => {
+                    return f.write_str("<unsized-enum-or-union>");
+                }
+            },
             _ => {
                 let addr = usize::from_le_bytes(b.try_into().unwrap());
                 let Ok(layout) = f.db.layout_of_ty(t.clone(), krate) else {
