@@ -4525,6 +4525,26 @@ const FOO$0: Tree = {
             ```
         "#]],
     );
+    // FIXME: Show the data of unsized structs
+    check(
+        r#"
+//- minicore: slice, index, coerce_unsized, transmute
+#[repr(transparent)]
+struct S<T: ?Sized>(T);
+const FOO$0: &S<[u8]> = core::mem::transmute::<&[u8], _>(&[1, 2, 3]);
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &S<[u8]> = &S
+            ```
+        "#]],
+    );
 }
 
 #[test]
