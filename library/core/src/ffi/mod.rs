@@ -52,11 +52,6 @@ macro_rules! type_alias {
 }
 
 type_alias! { "c_char.md", c_char = c_char_definition::c_char, NonZero_c_char = c_char_definition::NonZero_c_char;
-// Make this type alias appear cfg-dependent so that Clippy does not suggest
-// replacing `0 as c_char` with `0_i8`/`0_u8`. This #[cfg(all())] can be removed
-// after the false positive in https://github.com/rust-lang/rust-clippy/issues/8093
-// is fixed.
-#[cfg(all())]
 #[doc(cfg(all()))] }
 
 type_alias! { "c_schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
