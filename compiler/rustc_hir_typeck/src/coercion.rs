@@ -36,9 +36,7 @@
 //! ```
 
 use crate::FnCtxt;
-use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -58,7 +56,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
-use rustc_span::{self, BytePos, DesugaringKind, Span};
+use rustc_span::{self, DesugaringKind};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -1702,9 +1700,6 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
-        let mut pointing_at_return_type = false;
-        let mut fn_output = None;
-
         let parent_id = fcx.tcx.hir().parent_id(id);
         let parent = fcx.tcx.hir().get(parent_id);
         if let Some(expr) = expression
@@ -1717,7 +1712,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
         let fn_decl = if let (Some(expr), Some(blk_id)) = (expression, blk_id) {
-            pointing_at_return_type =
+            let pointing_at_return_type =
                 fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
             if let (Some(cond_expr), true, false) = (
                 fcx.tcx.hir().get_if_cause(expr.hir_id),
@@ -1749,7 +1744,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
         if let Some((fn_id, fn_decl, can_suggest)) = fn_decl {
             if blk_id.is_none() {
-                pointing_at_return_type |= fcx.suggest_missing_return_type(
+                fcx.suggest_missing_return_type(
                     &mut err,
                     &fn_decl,
                     expected,
@@ -1757,9 +1752,6 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     can_suggest,
                     fn_id,
                 );
-            }
-            if !pointing_at_return_type {
-                fn_output = Some(&fn_decl.output); // `impl Trait` return type
             }
         }
 
@@ -1795,104 +1787,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             );
         }
 
-        if let (Some(sp), Some(fn_output)) = (ret_coercion_span, fn_output) {
-            self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
-        }
-
         err
-    }
-
-    fn add_impl_trait_explanation<'a>(
-        &self,
-        err: &mut Diagnostic,
-        cause: &ObligationCause<'tcx>,
-        fcx: &FnCtxt<'a, 'tcx>,
-        expected: Ty<'tcx>,
-        sp: Span,
-        fn_output: &hir::FnRetTy<'_>,
-    ) {
-        let return_sp = fn_output.span();
-        err.span_label(return_sp, "expected because this return type...");
-        err.span_label(
-            sp,
-            format!("...is found to be `{}` here", fcx.resolve_vars_with_obligations(expected)),
-        );
-        let impl_trait_msg = "for information on `impl Trait`, see \
-                <https://doc.rust-lang.org/book/ch10-02-traits.html\
-                #returning-types-that-implement-traits>";
-        let trait_obj_msg = "for information on trait objects, see \
-                <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
-                #using-trait-objects-that-allow-for-values-of-different-types>";
-        err.note("to return `impl Trait`, all returned values must be of the same type");
-        err.note(impl_trait_msg);
-        let snippet = fcx
-            .tcx
-            .sess
-            .source_map()
-            .span_to_snippet(return_sp)
-            .unwrap_or_else(|_| "dyn Trait".to_string());
-        let mut snippet_iter = snippet.split_whitespace();
-        let has_impl = snippet_iter.next().is_some_and(|s| s == "impl");
-        // Only suggest `Box<dyn Trait>` if `Trait` in `impl Trait` is object safe.
-        let mut is_object_safe = false;
-        if let hir::FnRetTy::Return(ty) = fn_output
-            // Get the return type.
-            && let hir::TyKind::OpaqueDef(..) = ty.kind
-        {
-            let ty = fcx.astconv().ast_ty_to_ty( ty);
-            // Get the `impl Trait`'s `DefId`.
-            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind()
-                // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
-                // get the `Trait`'s `DefId`.
-                && let hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }) =
-                    fcx.tcx.hir().expect_item(def_id.expect_local()).kind
-            {
-                // Are of this `impl Trait`'s traits object safe?
-                is_object_safe = bounds.iter().all(|bound| {
-                    bound
-                        .trait_ref()
-                        .and_then(|t| t.trait_def_id())
-                        .is_some_and(|def_id| {
-                            fcx.tcx.check_is_object_safe(def_id)
-                        })
-                })
-            }
-        };
-        if has_impl {
-            if is_object_safe {
-                err.multipart_suggestion(
-                    "you could change the return type to be a boxed trait object",
-                    vec![
-                        (return_sp.with_hi(return_sp.lo() + BytePos(4)), "Box<dyn".to_string()),
-                        (return_sp.shrink_to_hi(), ">".to_string()),
-                    ],
-                    Applicability::MachineApplicable,
-                );
-                let sugg = [sp, cause.span]
-                    .into_iter()
-                    .flat_map(|sp| {
-                        [
-                            (sp.shrink_to_lo(), "Box::new(".to_string()),
-                            (sp.shrink_to_hi(), ")".to_string()),
-                        ]
-                        .into_iter()
-                    })
-                    .collect::<Vec<_>>();
-                err.multipart_suggestion(
-                    "if you change the return type to expect trait objects, box the returned \
-                     expressions",
-                    sugg,
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.help(format!(
-                    "if the trait `{}` were object safe, you could return a boxed trait object",
-                    &snippet[5..]
-                ));
-            }
-            err.note(trait_obj_msg);
-        }
-        err.help("you could instead create a new `enum` with a variant for each returned type");
     }
 
     /// Checks whether the return type is unsized via an obligation, which makes
