@@ -15,10 +15,10 @@ LL |     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply
    |                 ~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/explicit-drop-bounds.rs:32:13
+  --> $DIR/explicit-drop-bounds.rs:32:18
    |
 LL |     fn drop(&mut self) {}
-   |             ^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |                  ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required by a bound in `DropMe`
   --> $DIR/explicit-drop-bounds.rs:7:18
