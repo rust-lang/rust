@@ -1,3 +1,6 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
+
 fn demo_box_advanced_unique(mut our: Box<i32>) -> i32 {
     unknown_code_1(&*our);
 
@@ -24,7 +27,9 @@ fn unknown_code_1(x: &i32) {
 
 fn unknown_code_2() {
     unsafe {
-        *LEAK = 7; //~ ERROR: /write access .* tag does not exist in the borrow stack/
+        *LEAK = 7;
+        //~[stack]^ ERROR: /write access .* tag does not exist in the borrow stack/
+        //~[tree]| ERROR: /write access through .* is forbidden/
     }
 }
 
