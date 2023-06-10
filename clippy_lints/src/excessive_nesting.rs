@@ -24,8 +24,8 @@ declare_clippy_lint! {
     /// # clippy.toml
     /// excessive-nesting-threshold = 3
     /// ```
-    /// lib.rs:
     /// ```rust,ignore
+    /// // lib.rs
     /// pub mod a {
     ///     pub struct X;
     ///     impl X {
@@ -36,9 +36,10 @@ declare_clippy_lint! {
     ///         }
     ///     }
     /// }
+    /// ```
     /// Use instead:
-    /// a.rs:
     /// ```rust,ignore
+    /// // a.rs
     /// fn private_run(x: &X) {
     ///     if true {
     ///         // etc...
@@ -52,8 +53,8 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    /// lib.rs:
     /// ```rust,ignore
+    /// // lib.rs
     /// pub mod a;
     /// ```
     #[clippy::version = "1.70.0"]
