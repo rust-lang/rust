@@ -319,19 +319,6 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     }
 }
 
-// TODO: Waiting on `ty_search_pat`.
-// fn where_pred_search_pat(where_pred: &WherePredicate<'_>) -> (Pat, Pat) {
-//     match where_pred {
-//         WherePredicate::BoundPredicate(bound) => {
-//             todo!();
-//         },
-//         WherePredicate::RegionPredicate(region) => {
-//
-//         },
-//         WherePredicate::EqPredicate(..) => unimplemented!(),
-//     }
-// }
-
 fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
     match ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
