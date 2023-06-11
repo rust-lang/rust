@@ -510,6 +510,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 } = self.type_var_origin(expected)? else { return None; };
 
+                let Some(rpit_local_def_id) = rpit_def_id.as_local() else { return None; };
+                if !matches!(
+                    self.tcx.hir().expect_item(rpit_local_def_id).expect_opaque_ty().origin,
+                    hir::OpaqueTyOrigin::FnReturn(..)
+                ) {
+                    return None;
+                }
+
                 let sig = self.body_fn_sig()?;
 
                 let substs = sig.output().walk().find_map(|arg| {
