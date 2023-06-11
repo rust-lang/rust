@@ -15,8 +15,8 @@ use rustc_middle::traits::solve::{
 };
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor,
+    self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
@@ -191,16 +191,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 .with_opaque_type_inference(canonical_input.value.anchor)
                 .build_with_canonical(DUMMY_SP, &canonical_input);
 
-            for &(a, b) in &input.predefined_opaques_in_body.opaque_types {
-                let InferOk { value: (), obligations } = infcx
-                    .register_hidden_type_in_new_solver(a, input.goal.param_env, b)
-                    .expect("expected opaque type instantiation to succeed");
-                // We're only registering opaques already defined by the caller,
-                // so we're not responsible for proving that they satisfy their
-                // item bounds, unless we use them in a normalizes-to goal,
-                // which is handled in `EvalCtxt::unify_existing_opaque_tys`.
-                let _ = obligations;
-            }
             let mut ecx = EvalCtxt {
                 infcx,
                 var_values,
@@ -210,6 +200,15 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 nested_goals: NestedGoals::new(),
                 tainted: Ok(()),
             };
+
+            for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
+                ecx.insert_hidden_type(key, input.goal.param_env, ty)
+                    .expect("failed to prepopulate opaque types");
+            }
+
+            if !ecx.nested_goals.is_empty() {
+                panic!("prepopulating opaque types shouldn't add goals: {:?}", ecx.nested_goals);
+            }
 
             let result = ecx.compute_goal(input.goal);
 
@@ -729,16 +728,40 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.infcx.opaque_type_origin(def_id).is_some()
     }
 
-    pub(super) fn register_opaque_ty(
+    pub(super) fn insert_hidden_type(
         &mut self,
-        a: ty::OpaqueTypeKey<'tcx>,
-        b: Ty<'tcx>,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        hidden_ty: Ty<'tcx>,
     ) -> Result<(), NoSolution> {
-        let InferOk { value: (), obligations } =
-            self.infcx.register_hidden_type_in_new_solver(a, param_env, b)?;
-        self.add_goals(obligations.into_iter().map(|obligation| obligation.into()));
+        let mut obligations = Vec::new();
+        self.infcx.insert_hidden_type(
+            opaque_type_key,
+            &ObligationCause::dummy(),
+            param_env,
+            hidden_ty,
+            true,
+            &mut obligations,
+        )?;
+        self.add_goals(obligations.into_iter().map(|o| o.into()));
         Ok(())
+    }
+
+    pub(super) fn add_item_bounds_for_hidden_type(
+        &mut self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        hidden_ty: Ty<'tcx>,
+    ) {
+        let mut obligations = Vec::new();
+        self.infcx.add_item_bounds_for_hidden_type(
+            opaque_type_key,
+            ObligationCause::dummy(),
+            param_env,
+            hidden_ty,
+            &mut obligations,
+        );
+        self.add_goals(obligations.into_iter().map(|o| o.into()));
     }
 
     // Do something for each opaque/hidden pair defined with `def_id` in the
@@ -762,15 +785,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     ecx.eq(param_env, a, b)?;
                 }
                 ecx.eq(param_env, candidate_ty, ty)?;
-                let mut obl = vec![];
-                ecx.infcx.add_item_bounds_for_hidden_type(
-                    candidate_key,
-                    ObligationCause::dummy(),
-                    param_env,
-                    candidate_ty,
-                    &mut obl,
-                );
-                ecx.add_goals(obl.into_iter().map(Into::into));
+                ecx.add_item_bounds_for_hidden_type(candidate_key, param_env, candidate_ty);
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }));
         }
