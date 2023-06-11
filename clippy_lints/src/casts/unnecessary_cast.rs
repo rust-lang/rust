@@ -6,13 +6,14 @@ use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, Lit, QPath, TyKind, UnOp};
+use rustc_hir::{Expr, ExprKind, Lit, Node, Path, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
 
 use super::UNNECESSARY_CAST;
 
+#[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'tcx>,
@@ -58,7 +59,31 @@ pub(super) fn check<'tcx>(
         }
     }
 
-    // skip non-primitive type cast
+    // skip cast of local to type alias
+    if let ExprKind::Cast(inner, ..) = expr.kind
+        && let ExprKind::Path(qpath) = inner.kind
+        && let QPath::Resolved(None, Path { res, .. }) = qpath
+        && let Res::Local(hir_id) = res
+        && let parent = cx.tcx.hir().get_parent(*hir_id)
+        && let Node::Local(local) = parent
+    {
+        if let Some(ty) = local.ty
+            && let TyKind::Path(qpath) = ty.kind
+            && is_ty_alias(&qpath)
+        {
+            return false;
+        }
+
+        if let Some(expr) = local.init
+            && let ExprKind::Cast(.., cast_to) = expr.kind
+            && let TyKind::Path(qpath) = cast_to.kind
+            && is_ty_alias(&qpath)
+        {
+            return false;
+        }
+    }
+
+    // skip cast to non-primitive type
     if_chain! {
         if let ExprKind::Cast(_, cast_to) = expr.kind;
         if let TyKind::Path(QPath::Resolved(_, path)) = &cast_to.kind;
