@@ -48,7 +48,10 @@ fn main() {
     if let true = true {}
     if let true = true && true {}
     if true && let true = true {}
-    if { if let true = true && true { true } else { false } } && true {}
+    if {
+        if let true = true && true { true } else { false }
+    } && true
+    {}
     external! { if (true) {} }
     with_span! {
         span
