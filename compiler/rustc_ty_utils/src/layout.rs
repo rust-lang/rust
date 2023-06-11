@@ -258,6 +258,7 @@ fn layout_of_uncached<'tcx>(
                 largest_niche,
                 align: element.align,
                 size,
+                has_repr_align: false,
             })
         }
         ty::Slice(element) => {
@@ -269,6 +270,7 @@ fn layout_of_uncached<'tcx>(
                 largest_niche: None,
                 align: element.align,
                 size: Size::ZERO,
+                has_repr_align: false,
             })
         }
         ty::Str => tcx.mk_layout(LayoutS {
@@ -278,6 +280,7 @@ fn layout_of_uncached<'tcx>(
             largest_niche: None,
             align: dl.i8_align,
             size: Size::ZERO,
+            has_repr_align: false,
         }),
 
         // Odd unit types.
@@ -431,6 +434,7 @@ fn layout_of_uncached<'tcx>(
                 largest_niche: e_ly.largest_niche,
                 size,
                 align,
+                has_repr_align: false,
             })
         }
 
@@ -879,6 +883,7 @@ fn generator_layout<'tcx>(
         largest_niche: prefix.largest_niche,
         size,
         align,
+        has_repr_align: false,
     });
     debug!("generator layout ({:?}): {:#?}", ty, layout);
     Ok(layout)

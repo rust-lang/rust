@@ -63,8 +63,8 @@ where
 
         if t.is_like_msvc
             && arg.layout.is_adt()
-            && let Some(requested_align) = arg.layout.repr_options().align
-            && requested_align > align_4
+            && arg.layout.has_repr_align
+            && arg.layout.align.abi > align_4
         {
             // MSVC has special rules for overaligned arguments: https://reviews.llvm.org/D72114.
             // Summarized here:
@@ -72,11 +72,6 @@ where
             // - For backwards compatibility, arguments with natural alignment > 4 are still passed
             //   on stack (via `byval`). For example, this includes `double`, `int64_t`,
             //   and structs containing them, provided they lack an explicit alignment attribute.
-            assert!(arg.layout.align.abi >= requested_align,
-                "abi alignment {:?} less than requested alignment {:?}",
-                arg.layout.align.abi,
-                requested_align
-            );
             arg.make_indirect();
         } else if arg.layout.is_aggregate() {
             // We need to compute the alignment of the `byval` argument. The rules can be found in

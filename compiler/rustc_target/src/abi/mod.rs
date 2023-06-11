@@ -55,7 +55,6 @@ pub trait TyAbiInterface<'a, C>: Sized {
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
-    fn repr_options(this: TyAndLayout<'a, Self>) -> ReprOptions;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
@@ -124,13 +123,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_unit(self)
-    }
-
-    pub fn repr_options<C>(self) -> ReprOptions
-    where
-        Ty: TyAbiInterface<'a, C>,
-    {
-        Ty::repr_options(self)
     }
 
     pub fn offset_of_subfield<C>(self, cx: &C, indices: impl Iterator<Item = usize>) -> Size
