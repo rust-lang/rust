@@ -105,9 +105,12 @@ fn complete_fields(
     mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
     mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
 ) {
+    let mut seen_names = FxHashSet::default();
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            named_field(acc, field, ty);
+            if seen_names.insert(field.name(ctx.db)) {
+                named_field(acc, field, ty);
+            }
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
             // Tuple fields are always public (tuple struct fields are handled above).
@@ -672,6 +675,52 @@ impl T {
     }
 
     #[test]
+    fn test_field_no_same_name() {
+        check(
+            r#"
+//- minicore: deref
+struct A { field: u8 }
+struct B { field: u16, another: u32 }
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                fd another                u32
+                fd field                  u8
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_field_no_same_index() {
+        check(
+            r#"
+//- minicore: deref
+struct A(u8);
+struct B(u16, u32);
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                fd 0                      u8
+                fd 1                      u32
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_completion_works_in_consts() {
         check(
             r#"
@@ -1000,7 +1049,6 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd 0                      u16
                 fd 0                      u8
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
