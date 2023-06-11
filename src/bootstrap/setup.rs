@@ -176,6 +176,14 @@ pub fn setup(config: &Config, profile: Profile) {
         );
     }
 
+    if profile == Profile::Tools {
+        eprintln!();
+        eprintln!(
+            "note: the `tools` profile sets up the `stage2` toolchain (use \
+            `rustup toolchain link 'name' host/build/stage2` to use rustc)"
+        )
+    }
+
     let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
     setup_config_toml(path, profile, config);
 }

@@ -9,6 +9,8 @@ debug-logging = true
 incremental = true
 # Download rustc from CI instead of building it from source.
 # This cuts compile times by almost 60x, but means you can't modify the compiler.
+# Using these defaults will download the stage2 compiler (see `download-rustc`
+# setting) and the stage2 toolchain should therefore be used for these defaults.
 download-rustc = "if-unchanged"
 
 [build]
