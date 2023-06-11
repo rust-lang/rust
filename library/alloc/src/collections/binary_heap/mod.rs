@@ -1492,6 +1492,14 @@ pub struct IntoIter<
     iter: vec::IntoIter<T, A>,
 }
 
+impl<T, A: Allocator> IntoIter<T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        self.iter.allocator()
+    }
+}
+
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1581,6 +1589,14 @@ pub struct IntoIterSorted<
     inner: BinaryHeap<T, A>,
 }
 
+impl<T, A: Allocator> IntoIterSorted<T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        self.inner.allocator()
+    }
+}
+
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 impl<T: Ord, A: Allocator> Iterator for IntoIterSorted<T, A> {
     type Item = T;
@@ -1620,6 +1636,14 @@ pub struct Drain<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     iter: vec::Drain<'a, T, A>,
+}
+
+impl<T, A: Allocator> Drain<'_, T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        self.iter.allocator()
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -1669,6 +1693,14 @@ pub struct DrainSorted<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     inner: &'a mut BinaryHeap<T, A>,
+}
+
+impl<'a, T: Ord, A: Allocator> DrainSorted<'a, T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        self.inner.allocator()
+    }
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
