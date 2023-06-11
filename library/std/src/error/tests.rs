@@ -199,7 +199,7 @@ where
         self.source.as_deref()
     }
 
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
+    fn provide_context<'a>(&'a self, req: &mut Demand<'a>) {
         self.backtrace.as_ref().map(|bt| req.provide_ref::<Backtrace>(bt));
     }
 }

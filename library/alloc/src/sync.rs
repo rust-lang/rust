@@ -2966,7 +2966,7 @@ impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
         core::error::Error::source(&**self)
     }
 
-    fn provide<'a>(&'a self, req: &mut core::any::Demand<'a>) {
-        core::error::Error::provide(&**self, req);
+    fn provide_context<'a>(&'a self, req: &mut core::any::Demand<'a>) {
+        core::error::Error::provide_context(&**self, req);
     }
 }

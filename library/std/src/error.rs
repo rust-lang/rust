@@ -404,7 +404,7 @@ impl<E> Report<E> {
     /// }
     ///
     /// impl Error for SuperErrorSideKick {
-    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///     fn provide_context<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand.provide_ref::<Backtrace>(&self.backtrace);
     ///     }
     /// }
