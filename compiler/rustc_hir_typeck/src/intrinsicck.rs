@@ -82,8 +82,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Try to display a sensible error with as much information as possible.
         let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
-            Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
+            Ok(SizeSkeleton::Known(size)) => {
+                if let Some(v) = u128::from(size.bytes()).checked_mul(8) {
+                    format!("{} bits", v)
+                } else {
+                    format!("{} bytes", size.bytes())
+                }
+            }
             Ok(SizeSkeleton::Generic(size)) => {
                 if let Some(size) = size.try_eval_target_usize(tcx, self.param_env) {
                     format!("{size} bytes")
