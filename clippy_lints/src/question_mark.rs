@@ -1,3 +1,4 @@
+use crate::manual_let_else::pat_and_expr_can_be_question_mark;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -10,7 +11,9 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
-use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, Node, PatKind, PathSegment, QPath};
+use rustc_hir::{
+    BindingAnnotation, Block, ByRef, Expr, ExprKind, Local, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::declare_tool_lint;
@@ -76,6 +79,29 @@ enum IfBlockType<'hir> {
         &'hir Expr<'hir>,
         Option<&'hir Expr<'hir>>,
     ),
+}
+
+fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
+    if let StmtKind::Local(Local { pat, init: Some(init_expr), els: Some(els), .. }) = stmt.kind &&
+        let Block { stmts: &[], expr: Some(els), .. } = els &&
+        let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, els)
+    {
+        let mut applicability = Applicability::MaybeIncorrect;
+        let init_expr_str = snippet_with_applicability(cx, init_expr.span, "..", &mut applicability);
+        let receiver_str = snippet_with_applicability(cx, inner_pat.span, "..", &mut applicability);
+        let sugg = format!(
+            "let {receiver_str} = {init_expr_str}?;",
+        );
+        span_lint_and_sugg(
+            cx,
+            QUESTION_MARK,
+            stmt.span,
+            "this `let...else` may be rewritten with the `?` operator",
+            "replace it with",
+            sugg,
+            applicability,
+        );
+    }
 }
 
 fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_>) -> bool {
@@ -259,6 +285,11 @@ fn is_try_block(cx: &LateContext<'_>, bl: &rustc_hir::Block<'_>) -> bool {
 }
 
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
+        if !in_constant(cx, stmt.hir_id) {
+            check_let_some_else_return_none(cx, stmt);
+        }
+    }
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !in_constant(cx, expr.hir_id) {
             self.check_is_none_or_err_and_early_return(cx, expr);
