@@ -48,6 +48,7 @@ pub struct UnnamedItemIsPrivate {
 }
 
 #[derive(Diagnostic)]
+#[help]
 #[diag(privacy_in_public_interface, code = E0446)]
 pub struct InPublicInterface<'a> {
     #[primary_span]
