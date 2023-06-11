@@ -76,22 +76,22 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
 
         // We only care about method calls corresponding to the `Clone`, `Deref` and `Borrow`
         // traits and ignore any other method call.
-        let did = match cx.typeck_results().type_dependent_def(expr.hir_id) {
-            // Verify we are dealing with a method/associated function.
-            Some((DefKind::AssocFn, did)) => match cx.tcx.trait_of_item(did) {
-                // Check that we're dealing with a trait method for one of the traits we care about.
-                Some(trait_id)
-                    if matches!(
-                        cx.tcx.get_diagnostic_name(trait_id),
-                        Some(sym::Borrow | sym::Clone | sym::Deref)
-                    ) =>
-                {
-                    did
-                }
-                _ => return,
-            },
-            _ => return,
+
+        let Some((DefKind::AssocFn, did)) =
+            cx.typeck_results().type_dependent_def(expr.hir_id)
+        else {
+            return;
         };
+
+        let Some(trait_id) = cx.tcx.trait_of_item(did) else { return };
+
+        if !matches!(
+            cx.tcx.get_diagnostic_name(trait_id),
+            Some(sym::Borrow | sym::Clone | sym::Deref)
+        ) {
+            return;
+        };
+
         let substs = cx
             .tcx
             .normalize_erasing_regions(cx.param_env, cx.typeck_results().node_substs(expr.hir_id));
@@ -129,6 +129,9 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 NoopMethodCallDiag { method: call.ident.name, receiver_ty, label: span },
             );
         } else {
+            if op == "borrow" {
+                return;
+            }
             cx.emit_spanned_lint(
                 SUSPICIOUS_DOUBLE_REF_OP,
                 span,
