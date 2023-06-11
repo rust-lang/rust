@@ -755,7 +755,7 @@ where
                     largest_niche: None,
                     align: tcx.data_layout.i8_align,
                     size: Size::ZERO,
-                    has_repr_align: false,
+                    repr_align: None,
                 })
             }
 

@@ -71,17 +71,16 @@ pub struct ForceAlign8 {
     c: i64
 }
 
-// On i686-windows, this is passed by reference because alignment is requested,
-// even though the requested alignment is less than the natural alignment.
+// On i686-windows, this is passed on stack, because requested alignment is <=4.
 #[repr(C)]
-#[repr(align(1))]
+#[repr(align(4))]
 pub struct LowerFA8 {
     a: i64,
     b: i64,
     c: i64
 }
 
-// On i686-windows, this is passed on stack again, because the wrapper struct does not have
+// On i686-windows, this is passed on stack, because the wrapper struct does not have
 // requested/forced alignment.
 #[repr(C)]
 pub struct WrappedFA8 {
@@ -287,9 +286,7 @@ extern "C" {
 
     // i686-linux: declare void @lower_fa8({{.*}}byval(%LowerFA8) align 4{{.*}})
 
-    // i686-windows: declare void @lower_fa8(
-    // i686-windows-NOT: byval
-    // i686-windows-SAME: align 8{{.*}})
+    // i686-windows: declare void @lower_fa8({{.*}}byval(%LowerFA8) align 4{{.*}})
     fn lower_fa8(x: LowerFA8);
 
     // m68k: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 8{{.*}})

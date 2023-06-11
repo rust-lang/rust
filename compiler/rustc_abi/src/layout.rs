@@ -40,7 +40,7 @@ pub trait LayoutCalculator {
             largest_niche,
             align,
             size,
-            has_repr_align: false,
+            repr_align: None,
         }
     }
 
@@ -123,7 +123,7 @@ pub trait LayoutCalculator {
             largest_niche: None,
             align: dl.i8_align,
             size: Size::ZERO,
-            has_repr_align: false,
+            repr_align: None,
         }
     }
 
@@ -424,7 +424,7 @@ pub trait LayoutCalculator {
                 largest_niche,
                 size,
                 align,
-                has_repr_align: repr.align.is_some(),
+                repr_align: repr.align,
             };
 
             Some(TmpLayout { layout, variants: variant_layouts })
@@ -694,7 +694,7 @@ pub trait LayoutCalculator {
             abi,
             align,
             size,
-            has_repr_align: repr.align.is_some(),
+            repr_align: repr.align,
         };
 
         let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
@@ -813,7 +813,7 @@ pub trait LayoutCalculator {
             largest_niche: None,
             align,
             size: size.align_to(align.abi),
-            has_repr_align: repr.align.is_some(),
+            repr_align: repr.align,
         })
     }
 }
@@ -1111,9 +1111,9 @@ fn univariant(
         abi = Abi::Uninhabited;
     }
 
-    let has_repr_align = repr.align.is_some()
-        || repr.transparent()
-            && layout_of_single_non_zst_field.map_or(false, |l| l.has_repr_align());
+    let repr_align = repr.align.or_else(|| {
+        if repr.transparent() { layout_of_single_non_zst_field?.repr_align() } else { None }
+    });
 
     Some(LayoutS {
         variants: Variants::Single { index: FIRST_VARIANT },
@@ -1122,7 +1122,7 @@ fn univariant(
         largest_niche,
         align,
         size,
-        has_repr_align,
+        repr_align,
     })
 }
 

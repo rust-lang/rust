@@ -53,7 +53,9 @@ error: layout_of(Aligned1) = Layout {
                        variants: Single {
                            index: 0,
                        },
-                       has_repr_align: true,
+                       repr_align: Some(
+                           Align(8 bytes),
+                       ),
                    },
                    Layout {
                        size: Size(8 bytes),
@@ -72,11 +74,15 @@ error: layout_of(Aligned1) = Layout {
                        variants: Single {
                            index: 1,
                        },
-                       has_repr_align: true,
+                       repr_align: Some(
+                           Align(8 bytes),
+                       ),
                    },
                ],
            },
-           has_repr_align: true,
+           repr_align: Some(
+               Align(8 bytes),
+           ),
        }
   --> $DIR/issue-96185-overaligned-enum.rs:8:1
    |
@@ -144,7 +150,9 @@ error: layout_of(Aligned2) = Layout {
                        variants: Single {
                            index: 0,
                        },
-                       has_repr_align: true,
+                       repr_align: Some(
+                           Align(1 bytes),
+                       ),
                    },
                    Layout {
                        size: Size(1 bytes),
@@ -163,11 +171,15 @@ error: layout_of(Aligned2) = Layout {
                        variants: Single {
                            index: 1,
                        },
-                       has_repr_align: true,
+                       repr_align: Some(
+                           Align(1 bytes),
+                       ),
                    },
                ],
            },
-           has_repr_align: true,
+           repr_align: Some(
+               Align(1 bytes),
+           ),
        }
   --> $DIR/issue-96185-overaligned-enum.rs:16:1
    |

@@ -1532,10 +1532,10 @@ pub struct LayoutS {
     pub align: AbiAndPrefAlign,
     pub size: Size,
 
-    /// True if the alignment was explicitly requested with `repr(align)`.
+    /// The alignment explicitly requested with `repr(align)`.
     /// Only used on i686-windows, where the argument passing ABI is different when alignment is
-    /// requested, even if the requested alignment is equal to or less than the natural alignment.
-    pub has_repr_align: bool,
+    /// requested, even if the requested alignment is equal to the natural alignment.
+    pub repr_align: Option<Align>,
 }
 
 impl LayoutS {
@@ -1550,7 +1550,7 @@ impl LayoutS {
             largest_niche,
             size,
             align,
-            has_repr_align: false,
+            repr_align: None,
         }
     }
 }
@@ -1560,7 +1560,7 @@ impl fmt::Debug for LayoutS {
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
-        let LayoutS { size, align, abi, fields, largest_niche, variants, has_repr_align } = self;
+        let LayoutS { size, align, abi, fields, largest_niche, variants, repr_align } = self;
         f.debug_struct("Layout")
             .field("size", size)
             .field("align", align)
@@ -1568,7 +1568,7 @@ impl fmt::Debug for LayoutS {
             .field("fields", fields)
             .field("largest_niche", largest_niche)
             .field("variants", variants)
-            .field("has_repr_align", has_repr_align)
+            .field("repr_align", repr_align)
             .finish()
     }
 }
@@ -1609,8 +1609,8 @@ impl<'a> Layout<'a> {
         self.0.0.size
     }
 
-    pub fn has_repr_align(self) -> bool {
-        self.0.0.has_repr_align
+    pub fn repr_align(self) -> Option<Align> {
+        self.0.0.repr_align
     }
 
     /// Whether the layout is from a type that implements [`std::marker::PointerLike`].
