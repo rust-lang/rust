@@ -215,7 +215,7 @@ pub(crate) fn const_eval_query(
         GeneralConstId::ConstId(c) => {
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
         }
-        GeneralConstId::AnonymousConstId(c) => {
+        GeneralConstId::ConstBlockId(c) => {
             let (def, root) = db.lookup_intern_anonymous_const(c);
             let body = db.body(def);
             let infer = db.infer(def);

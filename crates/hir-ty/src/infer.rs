@@ -108,6 +108,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
             });
         }
         DefWithBodyId::InTypeConstId(c) => {
+            // FIXME(const-generic-body): We should not get the return type in this way.
             ctx.return_ty =
                 c.lookup(db.upcast()).2.box_any().downcast::<InTypeConstIdMetadata>().unwrap().0;
         }

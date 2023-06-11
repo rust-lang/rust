@@ -22,8 +22,8 @@ use crate::{
     lang_item::{LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
-    AnonymousConstId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId,
-    EnumLoc, ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc,
+    AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc,
+    ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc,
     InTypeConstId, LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId,
     MacroRulesLoc, OpaqueInternableThing, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
     StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc,
@@ -63,7 +63,7 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
     #[salsa::interned]
-    fn intern_anonymous_const(&self, id: (DefWithBodyId, ExprId)) -> AnonymousConstId;
+    fn intern_anonymous_const(&self, id: (DefWithBodyId, ExprId)) -> ConstBlockId;
     #[salsa::interned]
     fn intern_in_type_const(
         &self,

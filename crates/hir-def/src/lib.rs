@@ -482,8 +482,8 @@ impl_from!(
 /// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
 /// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct AnonymousConstId(InternId);
-impl_intern_key!(AnonymousConstId);
+pub struct ConstBlockId(InternId);
+impl_intern_key!(ConstBlockId);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum TypeOwnerId {
@@ -563,7 +563,10 @@ impl From<GenericDefId> for TypeOwnerId {
     }
 }
 
-/// A thing that we want to store in interned ids, but we don't know its type in `hir-def`
+/// A thing that we want to store in interned ids, but we don't know its type in `hir-def`. This is
+/// currently only used in `InTypeConstId` for storing the type (which has type `Ty` defined in
+/// the `hir-ty` crate) of the constant in its id, which is a temporary hack so we may want
+/// to remove this after removing that.
 pub trait OpaqueInternableThing:
     std::any::Any + std::fmt::Debug + Sync + Send + UnwindSafe + RefUnwindSafe
 {
@@ -594,6 +597,28 @@ impl Clone for Box<dyn OpaqueInternableThing> {
     }
 }
 
+// FIXME(const-generic-body): Use an stable id for in type consts.
+//
+// The current id uses `AstId<ast::ConstArg>` which will be changed by every change in the code. Ideally
+// we should use an id which is relative to the type owner, so that every change will only invalidate the
+// id if it happens inside of the type owner.
+//
+// The solution probably is to have some query on `TypeOwnerId` to traverse its constant children and store
+// their `AstId` in a list (vector or arena), and use the index of that list in the id here. That query probably
+// needs name resolution, and might go far and handles the whole path lowering or type lowering for a `TypeOwnerId`.
+//
+// Whatever path the solution takes, it should answer 3 questions at the same time:
+// * Is the id stable enough?
+// * How to find a constant id using an ast node / position in the source code? This is needed when we want to
+//   provide ide functionalities inside an in type const (which we currently don't support) e.g. go to definition
+//   for a local defined there. A complex id might have some trouble in this reverse mapping.
+// * How to find the return type of a constant using its id? We have this data when we are doing type lowering
+//   and the name of the struct that contains this constant is resolved, so a query that only traverses the
+//   type owner by its syntax tree might have a hard time here.
+
+/// A constant in a type as a substitution for const generics (like `Foo<{ 2 + 2 }>`) or as an array
+/// length (like `[u8; 2 + 2]`). These constants are body owner and are a variant of `DefWithBodyId`. These
+/// are not called `AnonymousConstId` to prevent confusion with [`ConstBlockId`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct InTypeConstId(InternId);
 type InTypeConstLoc = (AstId<ast::ConstArg>, TypeOwnerId, Box<dyn OpaqueInternableThing>);
@@ -613,17 +638,17 @@ impl InTypeConstId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GeneralConstId {
     ConstId(ConstId),
-    AnonymousConstId(AnonymousConstId),
+    ConstBlockId(ConstBlockId),
     InTypeConstId(InTypeConstId),
 }
 
-impl_from!(ConstId, AnonymousConstId, InTypeConstId for GeneralConstId);
+impl_from!(ConstId, ConstBlockId, InTypeConstId for GeneralConstId);
 
 impl GeneralConstId {
     pub fn generic_def(self, db: &dyn db::DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(x) => Some(x.into()),
-            GeneralConstId::AnonymousConstId(x) => {
+            GeneralConstId::ConstBlockId(x) => {
                 let (parent, _) = db.lookup_intern_anonymous_const(x);
                 parent.as_generic_def_id()
             }
@@ -643,7 +668,7 @@ impl GeneralConstId {
                 .and_then(|x| x.as_str())
                 .unwrap_or("_")
                 .to_owned(),
-            GeneralConstId::AnonymousConstId(id) => format!("{{anonymous const {id:?}}}"),
+            GeneralConstId::ConstBlockId(id) => format!("{{anonymous const {id:?}}}"),
             GeneralConstId::InTypeConstId(id) => format!("{{in type const {id:?}}}"),
         }
     }
