@@ -135,9 +135,9 @@ fn check_rvalue<'tcx>(
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-            check_place(tcx, *place, span, body, false)
+            check_place(tcx, *place, span, body)
         },
-        Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, false),
+        Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
         | Rvalue::Cast(
@@ -230,14 +230,14 @@ fn check_statement<'tcx>(
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(box (place, rval)) => {
-            check_place(tcx, *place, span, body, false)?;
+            check_place(tcx, *place, span, body)?;
             check_rvalue(tcx, body, def_id, rval, span)
         },
 
-        StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body, false),
+        StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body),
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
-            check_place(tcx, **place, span, body, false)
+            check_place(tcx, **place, span, body)
         },
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
@@ -263,8 +263,19 @@ fn check_statement<'tcx>(
 
 fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
     match operand {
-        Operand::Move(place) => check_place(tcx, *place, span, body, true),
-        Operand::Copy(place) => check_place(tcx, *place, span, body, false),
+        Operand::Move(place) => {
+            if !place.projection.as_ref().is_empty()
+                && !is_ty_const_destruct(tcx, place.ty(&body.local_decls, tcx).ty, body)
+            {
+                return Err((
+                    span,
+                    "cannot drop locals with a non constant destructor in const fn".into(),
+                ));
+            }
+
+            check_place(tcx, *place, span, body)
+        },
+        Operand::Copy(place) => check_place(tcx, *place, span, body),
         Operand::Constant(c) => match c.check_static_ptr(tcx) {
             Some(_) => Err((span, "cannot access `static` items in const fn".into())),
             None => Ok(()),
@@ -272,19 +283,8 @@ fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, b
     }
 }
 
-fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>, in_move: bool) -> McfResult {
+fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
     let mut cursor = place.projection.as_ref();
-
-    if let [proj_base] = cursor
-        && let ProjectionElem::Field(_, ty) = proj_base
-        && !is_ty_const_destruct(tcx, *ty, body)
-        && in_move
-    {
-        return Err((
-            span,
-            "cannot drop locals with a non constant destructor in const fn".into(),
-        ));
-    }
 
     while let [ref proj_base @ .., elem] = *cursor {
         cursor = proj_base;
