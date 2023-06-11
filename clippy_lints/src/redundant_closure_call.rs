@@ -74,7 +74,7 @@ fn is_async_closure(body: &hir::Body<'_>) -> bool {
 }
 
 /// Tries to find the innermost closure:
-/// ```rust
+/// ```rust,ignore
 /// (|| || || || 42)()()()()
 ///  ^^^^^^^^^^^^^^          given this nested closure expression
 ///           ^^^^^          we want to return this closure
@@ -110,10 +110,10 @@ fn find_innermost_closure<'tcx>(
 }
 
 /// "Walks up" the chain of calls to find the outermost call expression, and returns the depth:
-/// ```rust
+/// ```rust,ignore
 /// (|| || || 3)()()()
-///                ^^      this is the call expression we were given
-///                    ^^  this is what we want to return (and the depth is 3)
+///             ^^      this is the call expression we were given
+///                 ^^  this is what we want to return (and the depth is 3)
 /// ```
 fn get_parent_call_exprs<'tcx>(
     cx: &LateContext<'tcx>,
