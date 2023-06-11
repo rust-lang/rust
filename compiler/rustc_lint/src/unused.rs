@@ -1,7 +1,8 @@
 use crate::lints::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
     UnusedAllocationMutDiag, UnusedClosure, UnusedDef, UnusedDefSuggestion, UnusedDelim,
-    UnusedDelimSuggestion, UnusedGenerator, UnusedImportBracesDiag, UnusedOp, UnusedResult,
+    UnusedDelimSuggestion, UnusedGenerator, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
+    UnusedResult,
 };
 use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
@@ -93,7 +94,15 @@ declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        let hir::StmtKind::Semi(expr) = s.kind else { return; };
+        let hir::StmtKind::Semi(mut expr) = s.kind else { return; };
+
+        let mut expr_is_from_block = false;
+        while let hir::ExprKind::Block(blk, ..) = expr.kind
+            && let hir::Block { expr: Some(e), .. } = blk
+        {
+            expr = e;
+            expr_is_from_block = true;
+        }
 
         if let hir::ExprKind::Ret(..) = expr.kind {
             return;
@@ -113,6 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 expr.span,
                 "output of future returned by ",
                 "",
+                expr_is_from_block,
             )
         {
             // We have a bare `foo().await;` on an opaque type from an async function that was
@@ -125,13 +135,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let must_use_result = is_ty_must_use(cx, ty, &expr, expr.span);
         let type_lint_emitted_or_suppressed = match must_use_result {
             Some(path) => {
-                emit_must_use_untranslated(cx, &path, "", "", 1, false);
+                emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
                 true
             }
             None => false,
         };
 
-        let fn_warned = check_fn_must_use(cx, expr);
+        let fn_warned = check_fn_must_use(cx, expr, expr_is_from_block);
 
         if !fn_warned && type_lint_emitted_or_suppressed {
             // We don't warn about unused unit or uninhabited types.
@@ -176,7 +186,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 UnusedOp {
                     op: must_use_op,
                     label: expr.span,
-                    suggestion: expr.span.shrink_to_lo(),
+                    suggestion: if expr_is_from_block {
+                        UnusedOpSuggestion::BlockTailExpr {
+                            before_span: expr.span.shrink_to_lo(),
+                            after_span: expr.span.shrink_to_hi(),
+                        }
+                    } else {
+                        UnusedOpSuggestion::NormalExpr { span: expr.span.shrink_to_lo() }
+                    },
                 },
             );
             op_warned = true;
@@ -186,7 +203,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             cx.emit_spanned_lint(UNUSED_RESULTS, s.span, UnusedResult { ty });
         }
 
-        fn check_fn_must_use(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+        fn check_fn_must_use(
+            cx: &LateContext<'_>,
+            expr: &hir::Expr<'_>,
+            expr_is_from_block: bool,
+        ) -> bool {
             let maybe_def_id = match expr.kind {
                 hir::ExprKind::Call(ref callee, _) => {
                     match callee.kind {
@@ -207,7 +228,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 _ => None,
             };
             if let Some(def_id) = maybe_def_id {
-                check_must_use_def(cx, def_id, expr.span, "return value of ", "")
+                check_must_use_def(
+                    cx,
+                    def_id,
+                    expr.span,
+                    "return value of ",
+                    "",
+                    expr_is_from_block,
+                )
             } else {
                 false
             }
@@ -350,6 +378,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             span: Span,
             descr_pre_path: &str,
             descr_post_path: &str,
+            expr_is_from_block: bool,
         ) -> bool {
             is_def_must_use(cx, def_id, span)
                 .map(|must_use_path| {
@@ -360,6 +389,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         descr_post_path,
                         1,
                         false,
+                        expr_is_from_block,
                     )
                 })
                 .is_some()
@@ -373,6 +403,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_post: &str,
             plural_len: usize,
             is_inner: bool,
+            expr_is_from_block: bool,
         ) {
             let plural_suffix = pluralize!(plural_len);
 
@@ -380,21 +411,51 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 MustUsePath::Suppressed => {}
                 MustUsePath::Boxed(path) => {
                     let descr_pre = &format!("{}boxed ", descr_pre);
-                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len, true);
+                    emit_must_use_untranslated(
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
+                    );
                 }
                 MustUsePath::Opaque(path) => {
                     let descr_pre = &format!("{}implementer{} of ", descr_pre, plural_suffix);
-                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len, true);
+                    emit_must_use_untranslated(
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
+                    );
                 }
                 MustUsePath::TraitObject(path) => {
                     let descr_post = &format!(" trait object{}{}", plural_suffix, descr_post);
-                    emit_must_use_untranslated(cx, path, descr_pre, descr_post, plural_len, true);
+                    emit_must_use_untranslated(
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
+                    );
                 }
                 MustUsePath::TupleElement(elems) => {
                     for (index, path) in elems {
                         let descr_post = &format!(" in tuple element {}", index);
                         emit_must_use_untranslated(
-                            cx, path, descr_pre, descr_post, plural_len, true,
+                            cx,
+                            path,
+                            descr_pre,
+                            descr_post,
+                            plural_len,
+                            true,
+                            expr_is_from_block,
                         );
                     }
                 }
@@ -407,6 +468,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         descr_post,
                         plural_len.saturating_add(usize::try_from(*len).unwrap_or(usize::MAX)),
                         true,
+                        expr_is_from_block,
                     );
                 }
                 MustUsePath::Closure(span) => {
@@ -433,8 +495,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             cx,
                             def_id: *def_id,
                             note: *reason,
-                            suggestion: (!is_inner)
-                                .then_some(UnusedDefSuggestion { span: span.shrink_to_lo() }),
+                            suggestion: (!is_inner).then_some(if expr_is_from_block {
+                                UnusedDefSuggestion::BlockTailExpr {
+                                    before_span: span.shrink_to_lo(),
+                                    after_span: span.shrink_to_hi(),
+                                }
+                            } else {
+                                UnusedDefSuggestion::NormalExpr { span: span.shrink_to_lo() }
+                            }),
                         },
                     );
                 }
