@@ -4,7 +4,7 @@ error: trivial numeric cast: `i32` as `i32`
 LL |     let lugubrious = 12i32 as i32;
    |                      ^^^^^^^^^^^^
    |
-   = help: cast can be replaced by coercion; this might require type ascription or a temporary variable
+   = help: cast can be replaced by coercion; this might require a temporary variable
 note: the lint level is defined here
   --> $DIR/trivial-casts-featuring-type-ascription.rs:1:24
    |
@@ -17,7 +17,7 @@ error: trivial cast: `&u32` as `*const u32`
 LL |     let _ = haunted as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: cast can be replaced by coercion; this might require type ascription or a temporary variable
+   = help: cast can be replaced by coercion; this might require a temporary variable
 note: the lint level is defined here
   --> $DIR/trivial-casts-featuring-type-ascription.rs:1:9
    |

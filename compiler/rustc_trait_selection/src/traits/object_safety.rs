@@ -115,15 +115,11 @@ fn object_safety_violations_for_trait(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> Vec<ObjectSafetyViolation> {
-    // Check methods for violations.
+    // Check assoc items for violations.
     let mut violations: Vec<_> = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
-        .filter(|item| item.kind == ty::AssocKind::Fn)
-        .filter_map(|&item| {
-            object_safety_violation_for_method(tcx, trait_def_id, item)
-                .map(|(code, span)| ObjectSafetyViolation::Method(item.name, code, span))
-        })
+        .filter_map(|&item| object_safety_violation_for_assoc_item(tcx, trait_def_id, item))
         .collect();
 
     // Check the trait itself.
@@ -143,30 +139,6 @@ fn object_safety_violations_for_trait(
     let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(ObjectSafetyViolation::SupertraitNonLifetimeBinder(spans));
-    }
-
-    violations.extend(
-        tcx.associated_items(trait_def_id)
-            .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Const)
-            .map(|item| {
-                let ident = item.ident(tcx);
-                ObjectSafetyViolation::AssocConst(ident.name, ident.span)
-            }),
-    );
-
-    if !tcx.features().generic_associated_types_extended {
-        violations.extend(
-            tcx.associated_items(trait_def_id)
-                .in_definition_order()
-                .filter(|item| item.kind == ty::AssocKind::Type)
-                .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
-                .filter(|item| tcx.opt_rpitit_info(item.def_id).is_none())
-                .map(|item| {
-                    let ident = item.ident(tcx);
-                    ObjectSafetyViolation::GAT(ident.name, ident.span)
-                }),
-        );
     }
 
     debug!(
@@ -401,34 +373,54 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     })
 }
 
-/// Returns `Some(_)` if this method makes the containing trait not object safe.
-fn object_safety_violation_for_method(
+/// Returns `Some(_)` if this item makes the containing trait not object safe.
+#[instrument(level = "debug", skip(tcx), ret)]
+fn object_safety_violation_for_assoc_item(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-    method: ty::AssocItem,
-) -> Option<(MethodViolationCode, Span)> {
-    debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
-    // Any method that has a `Self : Sized` requisite is otherwise
+    item: ty::AssocItem,
+) -> Option<ObjectSafetyViolation> {
+    // Any item that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
-    if generics_require_sized_self(tcx, method.def_id) {
+    if generics_require_sized_self(tcx, item.def_id) {
         return None;
     }
 
-    let violation = virtual_call_violation_for_method(tcx, trait_def_id, method);
-    // Get an accurate span depending on the violation.
-    violation.map(|v| {
-        let node = tcx.hir().get_if_local(method.def_id);
-        let span = match (&v, node) {
-            (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
-            (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
-            (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
-            (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
-                node.fn_decl().map_or(method.ident(tcx).span, |decl| decl.output.span())
+    match item.kind {
+        // Associated consts are never object safe, as they can't have `where` bounds yet at all,
+        // and associated const bounds in trait objects aren't a thing yet either.
+        ty::AssocKind::Const => {
+            Some(ObjectSafetyViolation::AssocConst(item.name, item.ident(tcx).span))
+        }
+        ty::AssocKind::Fn => virtual_call_violation_for_method(tcx, trait_def_id, item).map(|v| {
+            let node = tcx.hir().get_if_local(item.def_id);
+            // Get an accurate span depending on the violation.
+            let span = match (&v, node) {
+                (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
+                (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
+                (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
+                (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
+                    node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
+                }
+                _ => item.ident(tcx).span,
+            };
+
+            ObjectSafetyViolation::Method(item.name, v, span)
+        }),
+        // Associated types can only be object safe if they have `Self: Sized` bounds.
+        ty::AssocKind::Type => {
+            if !tcx.features().generic_associated_types_extended
+                && !tcx.generics_of(item.def_id).params.is_empty()
+                && item.opt_rpitit_info.is_none()
+            {
+                Some(ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span))
+            } else {
+                // We will permit associated types if they are explicitly mentioned in the trait object.
+                // We can't check this here, as here we only check if it is guaranteed to not be possible.
+                None
             }
-            _ => method.ident(tcx).span,
-        };
-        (v, span)
-    })
+        }
+    }
 }
 
 /// Returns `Some(_)` if this method cannot be called on a trait

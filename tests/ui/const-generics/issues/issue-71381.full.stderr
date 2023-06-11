@@ -14,19 +14,6 @@ LL |         const FN: unsafe extern "C" fn(Args),
    |
    = note: type parameters may not be used in the type of const parameters
 
-error[E0741]: using function pointers as const generic parameters is forbidden
-  --> $DIR/issue-71381.rs:14:61
-   |
-LL |     pub fn call_me<Args: Sized, const IDX: usize, const FN: unsafe extern "C" fn(Args)>(&self) {
-   |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-error[E0741]: using function pointers as const generic parameters is forbidden
-  --> $DIR/issue-71381.rs:23:19
-   |
-LL |         const FN: unsafe extern "C" fn(Args),
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0741, E0770.
-For more information about an error, try `rustc --explain E0741`.
+For more information about this error, try `rustc --explain E0770`.

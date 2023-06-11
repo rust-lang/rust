@@ -86,8 +86,8 @@ impl<'tcx> Inherited<'tcx> {
 
         Inherited {
             typeck_results,
+            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(&infcx)),
             infcx,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),

@@ -204,7 +204,7 @@ fn resolve_associated_item<'tcx>(
             } else {
                 // All other methods are default methods of the `Future` trait.
                 // (this assumes that `ImplSource::Future` is only used for methods on `Future`)
-                debug_assert!(tcx.impl_defaultness(trait_item_id).has_value());
+                debug_assert!(tcx.defaultness(trait_item_id).has_value());
                 Some(Instance::new(trait_item_id, rcvr_substs))
             }
         }

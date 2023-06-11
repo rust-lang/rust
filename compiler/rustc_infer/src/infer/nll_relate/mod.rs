@@ -491,12 +491,12 @@ where
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
-            ) if a_def_id == b_def_id || infcx.tcx.trait_solver_next() => {
+            ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
                 infcx.super_combine_tys(self, a, b).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
                     // shouldn't ever fail. Instead, it unconditionally emits an
                     // alias-relate goal.
-                    assert!(!self.tcx().trait_solver_next());
+                    assert!(!self.infcx.next_trait_solver());
                     self.tcx().sess.delay_span_bug(
                         self.delegate.span(),
                         "failure to relate an opaque to itself should result in an error later on",
@@ -506,7 +506,7 @@ where
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if def_id.is_local() && !self.tcx().trait_solver_next() =>
+                if def_id.is_local() && !self.infcx.next_trait_solver() =>
             {
                 self.relate_opaques(a, b)
             }

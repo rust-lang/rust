@@ -1039,8 +1039,19 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     ) -> Result<Self::OutputTy, Self> {
         Ok(noop_flat_map(node, collector))
     }
-    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, span: Span) {
+    fn expand_cfg_false(
+        &mut self,
+        collector: &mut InvocationCollector<'_, '_>,
+        _pos: usize,
+        span: Span,
+    ) {
         collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+    }
+
+    /// All of the names (items) declared by this node.
+    /// This is an approximation and should only be used for diagnostics.
+    fn declared_names(&self) -> Vec<Ident> {
+        vec![]
     }
 }
 
@@ -1147,6 +1158,27 @@ impl InvocationCollectorNode for P<ast::Item> {
         collector.cx.current_expansion.dir_ownership = orig_dir_ownership;
         collector.cx.current_expansion.module = orig_module;
         res
+    }
+    fn declared_names(&self) -> Vec<Ident> {
+        if let ItemKind::Use(ut) = &self.kind {
+            fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
+                match &ut.kind {
+                    ast::UseTreeKind::Glob => {}
+                    ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
+                    ast::UseTreeKind::Nested(nested) => {
+                        for (ut, _) in nested {
+                            collect_use_tree_leaves(&ut, idents);
+                        }
+                    }
+                }
+            }
+
+            let mut idents = Vec::new();
+            collect_use_tree_leaves(&ut, &mut idents);
+            return idents;
+        }
+
+        vec![self.ident]
     }
 }
 
@@ -1382,8 +1414,15 @@ impl InvocationCollectorNode for ast::Crate {
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_crate(self, visitor)
     }
-    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, _span: Span) {
-        self.attrs.clear();
+    fn expand_cfg_false(
+        &mut self,
+        collector: &mut InvocationCollector<'_, '_>,
+        pos: usize,
+        _span: Span,
+    ) {
+        // Attributes above `cfg(FALSE)` are left in place, because we may want to configure
+        // some global crate properties even on fully unconfigured crates.
+        self.attrs.truncate(pos);
         // Standard prelude imports are left in the crate for backward compatibility.
         self.items.truncate(collector.cx.num_standard_library_imports);
     }
@@ -1685,8 +1724,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         node: &mut impl HasAttrs,
         attr: ast::Attribute,
         pos: usize,
-    ) -> bool {
-        let res = self.cfg().cfg_true(&attr);
+    ) -> (bool, Option<ast::MetaItem>) {
+        let (res, meta_item) = self.cfg().cfg_true(&attr);
         if res {
             // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
             // and some tools like rustdoc and clippy rely on that. Find a way to remove them
@@ -1694,7 +1733,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             self.cx.expanded_inert_attrs.mark(&attr);
             node.visit_attrs(|attrs| attrs.insert(pos, attr));
         }
-        res
+
+        (res, meta_item)
     }
 
     fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: &ast::Attribute, pos: usize) {
@@ -1715,8 +1755,19 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             return match self.take_first_attr(&mut node) {
                 Some((attr, pos, derives)) => match attr.name_or_empty() {
                     sym::cfg => {
-                        if self.expand_cfg_true(&mut node, attr, pos) {
+                        let (res, meta_item) = self.expand_cfg_true(&mut node, attr, pos);
+                        if res {
                             continue;
+                        }
+
+                        if let Some(meta_item) = meta_item {
+                            for name in node.declared_names() {
+                                self.cx.resolver.append_stripped_cfg_item(
+                                    self.cx.current_expansion.lint_node_id,
+                                    name,
+                                    meta_item.clone(),
+                                )
+                            }
                         }
                         Default::default()
                     }
@@ -1761,11 +1812,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 Some((attr, pos, derives)) => match attr.name_or_empty() {
                     sym::cfg => {
                         let span = attr.span;
-                        if self.expand_cfg_true(node, attr, pos) {
+                        if self.expand_cfg_true(node, attr, pos).0 {
                             continue;
                         }
 
-                        node.expand_cfg_false(self, span);
+                        node.expand_cfg_false(self, pos, span);
                         continue;
                     }
                     sym::cfg_attr => {

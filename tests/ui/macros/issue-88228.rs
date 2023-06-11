@@ -1,14 +1,14 @@
 // compile-flags: -Z deduplicate-diagnostics=yes
 // edition:2018
 
-mod hey {
+mod hey { //~ HELP consider importing this derive macro
+    //~^ HELP consider importing this macro
     pub use Copy as Bla;
     pub use std::println as bla;
 }
 
 #[derive(Bla)]
 //~^ ERROR cannot find derive macro `Bla`
-//~| HELP consider importing this derive macro
 struct A;
 
 #[derive(println)]
@@ -19,5 +19,4 @@ struct B;
 fn main() {
     bla!();
     //~^ ERROR cannot find macro `bla`
-    //~| HELP consider importing this macro
 }

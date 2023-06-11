@@ -1,0 +1,18 @@
+SOURCE_FILE
+  STRUCT
+    VISIBILITY
+      PUB_KW "pub"
+      L_PAREN "("
+      PATH
+        PATH_SEGMENT
+          ERROR
+            R_PAREN ")"
+    WHITESPACE " "
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 4: expected identifier
+error 5: expected R_PAREN

@@ -609,15 +609,30 @@ fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, substs)
-        | ty::Closure(def_id, substs)
-        | ty::Generator(def_id, substs, ..) => {
+        ty::FnDef(def_id, substs) | ty::Closure(def_id, substs) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             s.push_str(&encode_substs(tcx, substs, dict, options));
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
+        ty::Generator(def_id, substs, ..) => {
+            // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
+            // as vendor extended type.
+            let mut s = String::new();
+            let name = encode_ty_name(tcx, *def_id);
+            let _ = write!(s, "u{}{}", name.len(), &name);
+            // Encode parent substs only
+            s.push_str(&encode_substs(
+                tcx,
+                tcx.mk_substs(substs.as_generator().parent_substs()),
+                dict,
+                options,
+            ));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -682,12 +697,12 @@ fn encode_ty<'tcx>(
         }
 
         // Unexpected types
-        ty::Bound(..)
+        ty::Alias(..)
+        | ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
-        | ty::Alias(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
@@ -740,7 +755,12 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Float(..) | ty::Char | ty::Str | ty::Never | ty::Foreign(..) => {}
+        ty::Float(..)
+        | ty::Char
+        | ty::Str
+        | ty::Never
+        | ty::Foreign(..)
+        | ty::GeneratorWitness(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -926,12 +946,18 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             );
         }
 
+        ty::Alias(..) => {
+            ty = transform_ty(
+                tcx,
+                tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
+                options,
+            );
+        }
+
         ty::Bound(..)
         | ty::Error(..)
-        | ty::GeneratorWitness(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
-        | ty::Alias(..)
         | ty::Param(..)
         | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());

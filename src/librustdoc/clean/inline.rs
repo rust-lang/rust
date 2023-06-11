@@ -278,8 +278,12 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> {
     let predicates = cx.tcx.explicit_predicates_of(did);
-    let type_ =
-        clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()), cx, Some(did));
+    let type_ = clean_middle_ty(
+        ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()),
+        cx,
+        Some(did),
+        None,
+    );
 
     Box::new(clean::Typedef {
         type_,
@@ -386,9 +390,12 @@ pub(crate) fn build_impl(
 
     let for_ = match &impl_item {
         Some(impl_) => clean_ty(impl_.self_ty, cx),
-        None => {
-            clean_middle_ty(ty::Binder::dummy(tcx.type_of(did).subst_identity()), cx, Some(did))
-        }
+        None => clean_middle_ty(
+            ty::Binder::dummy(tcx.type_of(did).subst_identity()),
+            cx,
+            Some(did),
+            None,
+        ),
     };
 
     // Only inline impl if the implementing type is
@@ -630,6 +637,7 @@ fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
             ty::Binder::dummy(cx.tcx.type_of(def_id).subst_identity()),
             cx,
             Some(def_id),
+            None,
         ),
         kind: clean::ConstantKind::Extern { def_id },
     }
@@ -641,6 +649,7 @@ fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::St
             ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()),
             cx,
             Some(did),
+            None,
         ),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: None,

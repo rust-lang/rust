@@ -52,7 +52,9 @@ pub fn preorder_expr(start: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>)
             }
         };
         if let Some(let_stmt) = node.parent().and_then(ast::LetStmt::cast) {
-            if Some(node.clone()) != let_stmt.initializer().map(|it| it.syntax().clone()) {
+            if let_stmt.initializer().map(|it| it.syntax() != &node).unwrap_or(true)
+                && let_stmt.let_else().map(|it| it.syntax() != &node).unwrap_or(true)
+            {
                 // skipping potential const pat expressions in  let statements
                 preorder.skip_subtree();
                 continue;

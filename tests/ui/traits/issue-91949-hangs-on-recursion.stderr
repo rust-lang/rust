@@ -1,5 +1,5 @@
 warning: function cannot return without recursing
-  --> $DIR/issue-91949-hangs-on-recursion.rs:23:1
+  --> $DIR/issue-91949-hangs-on-recursion.rs:24:1
    |
 LL | / fn recurse<T>(elements: T) -> Vec<char>
 LL | | where
@@ -16,7 +16,7 @@ error[E0275]: overflow evaluating the requirement `<std::iter::Empty<()> as Iter
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "512"]` attribute to your crate (`issue_91949_hangs_on_recursion`)
 note: required for `IteratorOfWrapped<(), std::iter::Empty<()>>` to implement `Iterator`
-  --> $DIR/issue-91949-hangs-on-recursion.rs:16:32
+  --> $DIR/issue-91949-hangs-on-recursion.rs:17:32
    |
 LL | impl<T, I: Iterator<Item = T>> Iterator for IteratorOfWrapped<T, I> {
    |                     --------   ^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^

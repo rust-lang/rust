@@ -1,11 +1,12 @@
 use expect_test::expect;
 
-use super::{check, check_infer, check_infer_with_mismatches, check_types};
+use super::{check, check_infer, check_infer_with_mismatches, check_no_mismatches, check_types};
 
 #[test]
 fn infer_pattern() {
     check_infer(
         r#"
+        //- minicore: iterator
         fn test(x: &i32) {
             let y = x;
             let &z = x;
@@ -46,6 +47,15 @@ fn infer_pattern() {
             82..94 '(1, "hello")': (i32, &str)
             83..84 '1': i32
             86..93 '"hello"': &str
+            101..151 'for (e...     }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            101..151 'for (e...     }': {unknown}
+            101..151 'for (e...     }': !
+            101..151 'for (e...     }': {unknown}
+            101..151 'for (e...     }': &mut {unknown}
+            101..151 'for (e...     }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            101..151 'for (e...     }': Option<({unknown}, {unknown})>
+            101..151 'for (e...     }': ()
+            101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
             105..111 '(e, f)': ({unknown}, {unknown})
             106..107 'e': {unknown}
@@ -70,8 +80,8 @@ fn infer_pattern() {
             228..233 '&true': &bool
             229..233 'true': bool
             234..236 '{}': ()
-            246..252 'lambda': |u64, u64, i32| -> i32
-            255..287 '|a: u6...b; c }': |u64, u64, i32| -> i32
+            246..252 'lambda': impl Fn(u64, u64, i32) -> i32
+            255..287 '|a: u6...b; c }': impl Fn(u64, u64, i32) -> i32
             256..257 'a': u64
             264..265 'b': u64
             267..268 'c': i32
@@ -237,6 +247,21 @@ fn infer_pattern_match_ergonomics_ref() {
             47..48 'w': i32
             52..53 'v': &(i32, &i32)
         "#]],
+    );
+}
+
+#[test]
+fn ref_pat_with_inference_variable() {
+    check_no_mismatches(
+        r#"
+enum E { A }
+fn test() {
+    let f = |e| match e {
+        &E::A => {}
+    };
+    f(&E::A);
+}
+"#,
     );
 }
 
@@ -476,7 +501,7 @@ fn infer_adt_pattern() {
             183..184 'x': usize
             190..191 'x': usize
             201..205 'E::B': E
-            209..212 'foo': {unknown}
+            209..212 'foo': bool
             216..217 '1': usize
             227..231 'E::B': E
             235..237 '10': usize
@@ -677,25 +702,25 @@ fn test() {
             51..58 'loop {}': !
             56..58 '{}': ()
             72..171 '{     ... x); }': ()
-            78..81 'foo': fn foo<&(i32, &str), i32, |&(i32, &str)| -> i32>(&(i32, &str), |&(i32, &str)| -> i32) -> i32
+            78..81 'foo': fn foo<&(i32, &str), i32, impl Fn(&(i32, &str)) -> i32>(&(i32, &str), impl Fn(&(i32, &str)) -> i32) -> i32
             78..105 'foo(&(...y)| x)': i32
             82..91 '&(1, "a")': &(i32, &str)
             83..91 '(1, "a")': (i32, &str)
             84..85 '1': i32
             87..90 '"a"': &str
-            93..104 '|&(x, y)| x': |&(i32, &str)| -> i32
+            93..104 '|&(x, y)| x': impl Fn(&(i32, &str)) -> i32
             94..101 '&(x, y)': &(i32, &str)
             95..101 '(x, y)': (i32, &str)
             96..97 'x': i32
             99..100 'y': &str
             103..104 'x': i32
-            142..145 'foo': fn foo<&(i32, &str), &i32, |&(i32, &str)| -> &i32>(&(i32, &str), |&(i32, &str)| -> &i32) -> &i32
+            142..145 'foo': fn foo<&(i32, &str), &i32, impl Fn(&(i32, &str)) -> &i32>(&(i32, &str), impl Fn(&(i32, &str)) -> &i32) -> &i32
             142..168 'foo(&(...y)| x)': &i32
             146..155 '&(1, "a")': &(i32, &str)
             147..155 '(1, "a")': (i32, &str)
             148..149 '1': i32
             151..154 '"a"': &str
-            157..167 '|(x, y)| x': |&(i32, &str)| -> &i32
+            157..167 '|(x, y)| x': impl Fn(&(i32, &str)) -> &i32
             158..164 '(x, y)': (i32, &str)
             159..160 'x': &i32
             162..163 'y': &&str
@@ -1084,7 +1109,7 @@ fn var_args() {
 #[lang = "va_list"]
 pub struct VaListImpl<'f>;
 fn my_fn(foo: ...) {}
-       //^^^ VaListImpl
+       //^^^ VaListImpl<'_>
 "#,
     );
 }

@@ -49,5 +49,7 @@ fn main() {
     check::<D<u8>>();
     check::<D<[&[bool]; 8]>>();
 
-    // FIXME: test tuples
+    check::<()>();
+    check::<(i32,)>();
+    check::<(D<u8>, D<i32>)>();
 }

@@ -10,7 +10,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
-use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
+use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 
 use crate::{AssocItem, Field, Local, MacroKind, Type};
 
@@ -38,19 +38,25 @@ diagnostics![
     IncorrectCase,
     InvalidDeriveTarget,
     IncoherentImpl,
+    MacroDefError,
     MacroError,
+    MacroExpansionParseError,
     MalformedDerive,
     MismatchedArgCount,
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
+    MovedOutOfRef,
     NeedMut,
     NoSuchField,
     PrivateAssocItem,
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
+    TypedHole,
     TypeMismatch,
+    UndeclaredLabel,
     UnimplementedBuiltinMacro,
+    UnreachableLabel,
     UnresolvedExternCrate,
     UnresolvedField,
     UnresolvedImport,
@@ -60,6 +66,19 @@ diagnostics![
     UnresolvedProcMacro,
     UnusedMut,
 ];
+
+#[derive(Debug)]
+pub struct BreakOutsideOfLoop {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub is_break: bool,
+    pub bad_value_break: bool,
+}
+
+#[derive(Debug)]
+pub struct TypedHole {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expected: Type,
+}
 
 #[derive(Debug)]
 pub struct UnresolvedModule {
@@ -83,6 +102,17 @@ pub struct UnresolvedMacroCall {
     pub precise_location: Option<TextRange>,
     pub path: ModPath,
     pub is_bang: bool,
+}
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UnreachableLabel {
+    pub node: InFile<AstPtr<ast::Lifetime>>,
+    pub name: Name,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UndeclaredLabel {
+    pub node: InFile<AstPtr<ast::Lifetime>>,
+    pub name: Name,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -109,6 +139,20 @@ pub struct MacroError {
     pub node: InFile<SyntaxNodePtr>,
     pub precise_location: Option<TextRange>,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct MacroExpansionParseError {
+    pub node: InFile<SyntaxNodePtr>,
+    pub precise_location: Option<TextRange>,
+    pub errors: Box<[SyntaxError]>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct MacroDefError {
+    pub node: InFile<AstPtr<ast::Macro>>,
+    pub message: String,
+    pub name: Option<TextRange>,
 }
 
 #[derive(Debug)]
@@ -167,13 +211,6 @@ pub struct PrivateField {
 }
 
 #[derive(Debug)]
-pub struct BreakOutsideOfLoop {
-    pub expr: InFile<AstPtr<ast::Expr>>,
-    pub is_break: bool,
-    pub bad_value_break: bool,
-}
-
-#[derive(Debug)]
 pub struct MissingUnsafe {
     pub expr: InFile<AstPtr<ast::Expr>>,
 }
@@ -222,4 +259,10 @@ pub struct NeedMut {
 #[derive(Debug)]
 pub struct UnusedMut {
     pub local: Local,
+}
+
+#[derive(Debug)]
+pub struct MovedOutOfRef {
+    pub ty: Type,
+    pub span: InFile<SyntaxNodePtr>,
 }

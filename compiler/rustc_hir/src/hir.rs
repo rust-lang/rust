@@ -1675,6 +1675,14 @@ pub struct AnonConst {
     pub body: BodyId,
 }
 
+/// An inline constant expression `const { something }`.
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub struct ConstBlock {
+    pub hir_id: HirId,
+    pub def_id: LocalDefId,
+    pub body: BodyId,
+}
+
 /// An expression.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Expr<'hir> {
@@ -1922,7 +1930,7 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ExprKind<'hir> {
     /// Allow anonymous constants from an inline `const` block
-    ConstBlock(AnonConst),
+    ConstBlock(ConstBlock),
     /// An array (e.g., `[a, b, c, d]`).
     Array(&'hir [Expr<'hir>]),
     /// A function call.
@@ -3641,6 +3649,7 @@ pub enum Node<'hir> {
     Variant(&'hir Variant<'hir>),
     Field(&'hir FieldDef<'hir>),
     AnonConst(&'hir AnonConst),
+    ConstBlock(&'hir ConstBlock),
     Expr(&'hir Expr<'hir>),
     ExprField(&'hir ExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
@@ -3695,6 +3704,7 @@ impl<'hir> Node<'hir> {
             Node::TypeBinding(b) => Some(b.ident),
             Node::Param(..)
             | Node::AnonConst(..)
+            | Node::ConstBlock(..)
             | Node::Expr(..)
             | Node::Stmt(..)
             | Node::Block(..)
@@ -3758,7 +3768,7 @@ impl<'hir> Node<'hir> {
             })
             | Node::Expr(Expr {
                 kind:
-                    ExprKind::ConstBlock(AnonConst { body, .. })
+                    ExprKind::ConstBlock(ConstBlock { body, .. })
                     | ExprKind::Closure(Closure { body, .. })
                     | ExprKind::Repeat(_, ArrayLen::Body(AnonConst { body, .. })),
                 ..
@@ -3875,6 +3885,13 @@ impl<'hir> Node<'hir> {
     #[track_caller]
     pub fn expect_anon_const(self) -> &'hir AnonConst {
         let Node::AnonConst(this) = self else { self.expect_failed("an anonymous constant") };
+        this
+    }
+
+    /// Expect a [`Node::ConstBlock`] or panic.
+    #[track_caller]
+    pub fn expect_inline_const(self) -> &'hir ConstBlock {
+        let Node::ConstBlock(this) = self else { self.expect_failed("an inline constant") };
         this
     }
 

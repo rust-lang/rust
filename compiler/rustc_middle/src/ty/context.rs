@@ -478,6 +478,17 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 /// [rustc dev guide] for more details.
 ///
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/ty.html
+///
+/// An implementation detail: `TyCtxt` is a wrapper type for [GlobalCtxt],
+/// which is the struct that actually holds all the data. `TyCtxt` derefs to
+/// `GlobalCtxt`, and in practice `TyCtxt` is passed around everywhere, and all
+/// operations are done via `TyCtxt`. A `TyCtxt` is obtained for a `GlobalCtxt`
+/// by calling `enter` with a closure `f`. That function creates both the
+/// `TyCtxt`, and an `ImplicitCtxt` around it that is put into TLS. Within `f`:
+/// - The `ImplicitCtxt` is available implicitly via TLS.
+/// - The `TyCtxt` is available explicitly via the `tcx` parameter, and also
+///   implicitly within the `ImplicitCtxt`. Explicit access is preferred when
+///   possible.
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
 #[rustc_pass_by_value]
@@ -493,6 +504,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
     }
 }
 
+/// See [TyCtxt] for details about this type.
 pub struct GlobalCtxt<'tcx> {
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
     pub hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
@@ -1001,15 +1013,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
         self.query_system.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
-    }
-
-    /// If `true`, we should use lazy normalization for constants, otherwise
-    /// we still evaluate them eagerly.
-    #[inline]
-    pub fn lazy_normalization(self) -> bool {
-        let features = self.features();
-        // Note: We only use lazy normalization for generic const expressions.
-        features.generic_const_exprs
     }
 
     #[inline]
@@ -1872,18 +1875,28 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_closure(self, closure_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Closure(closure_id, closure_substs))
+    pub fn mk_closure(self, def_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            closure_substs.len(),
+            self.generics_of(self.typeck_root_def_id(def_id)).count() + 3,
+            "closure constructed with incorrect substitutions"
+        );
+        self.mk_ty_from_kind(Closure(def_id, closure_substs))
     }
 
     #[inline]
     pub fn mk_generator(
         self,
-        id: DefId,
+        def_id: DefId,
         generator_substs: SubstsRef<'tcx>,
         movability: hir::Movability,
     ) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Generator(id, generator_substs, movability))
+        debug_assert_eq!(
+            generator_substs.len(),
+            self.generics_of(self.typeck_root_def_id(def_id)).count() + 5,
+            "generator constructed with incorrect number of substitutions"
+        );
+        self.mk_ty_from_kind(Generator(def_id, generator_substs, movability))
     }
 
     #[inline]
@@ -2320,8 +2333,16 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
     }
 
-    pub fn trait_solver_next(self) -> bool {
+    pub fn next_trait_solver_globally(self) -> bool {
         self.sess.opts.unstable_opts.trait_solver == rustc_session::config::TraitSolver::Next
+    }
+
+    pub fn next_trait_solver_in_coherence(self) -> bool {
+        matches!(
+            self.sess.opts.unstable_opts.trait_solver,
+            rustc_session::config::TraitSolver::Next
+                | rustc_session::config::TraitSolver::NextCoherence
+        )
     }
 
     pub fn lower_impl_trait_in_trait_to_assoc_ty(self) -> bool {

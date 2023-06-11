@@ -145,13 +145,16 @@ impl<'tcx> Inliner<'tcx> {
                 Ok(new_blocks) => {
                     debug!("inlined {}", callsite.callee);
                     self.changed = true;
-                    inlined_count += 1;
-                    if inlined_count == inline_limit {
-                        return;
-                    }
+
                     self.history.push(callsite.callee.def_id());
                     self.process_blocks(caller_body, new_blocks);
                     self.history.pop();
+
+                    inlined_count += 1;
+                    if inlined_count == inline_limit {
+                        debug!("inline count reached");
+                        return;
+                    }
                 }
             }
         }

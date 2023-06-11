@@ -123,7 +123,8 @@ impl Parker {
                 target_os = "watchos",
                 target_os = "l4re",
                 target_os = "android",
-                target_os = "redox"
+                target_os = "redox",
+                target_os = "vita",
             ))] {
                 addr_of_mut!((*parker).cvar).write(UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER));
             } else if #[cfg(any(target_os = "espidf", target_os = "horizon"))] {

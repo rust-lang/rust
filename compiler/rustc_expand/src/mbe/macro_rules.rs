@@ -628,6 +628,40 @@ fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree)
     // after parsing/expansion. we can report every error in every macro this way.
 }
 
+fn is_empty_token_tree(sess: &ParseSess, seq: &mbe::SequenceRepetition) -> bool {
+    if seq.separator.is_some() {
+        false
+    } else {
+        let mut is_empty = true;
+        let mut iter = seq.tts.iter().peekable();
+        while let Some(tt) = iter.next() {
+            match tt {
+                mbe::TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => {}
+                mbe::TokenTree::Token(t @ Token { kind: DocComment(..), .. }) => {
+                    let mut now = t;
+                    while let Some(&mbe::TokenTree::Token(
+                        next @ Token { kind: DocComment(..), .. },
+                    )) = iter.peek()
+                    {
+                        now = next;
+                        iter.next();
+                    }
+                    let span = t.span.to(now.span);
+                    sess.span_diagnostic.span_note_without_error(
+                        span,
+                        "doc comments are ignored in matcher position",
+                    );
+                }
+                mbe::TokenTree::Sequence(_, sub_seq)
+                    if (sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
+                        || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne) => {}
+                _ => is_empty = false,
+            }
+        }
+        is_empty
+    }
+}
+
 /// Checks that the lhs contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
 fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
@@ -644,16 +678,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
                 }
             }
             TokenTree::Sequence(span, seq) => {
-                if seq.separator.is_none()
-                    && seq.tts.iter().all(|seq_tt| match seq_tt {
-                        TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => true,
-                        TokenTree::Sequence(_, sub_seq) => {
-                            sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
-                                || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne
-                        }
-                        _ => false,
-                    })
-                {
+                if is_empty_token_tree(sess, seq) {
                     let sp = span.entire();
                     sess.span_diagnostic.span_err(sp, "repetition matches empty token tree");
                     return false;

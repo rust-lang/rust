@@ -34,6 +34,10 @@ impl ManifestPath {
     pub fn parent(&self) -> &AbsPath {
         self.file.parent().unwrap()
     }
+
+    pub fn canonicalize(&self) -> ! {
+        (&**self).canonicalize()
+    }
 }
 
 impl ops::Deref for ManifestPath {

@@ -287,6 +287,27 @@ fn rustc_generator_to_generator(
     }
 }
 
+fn rustc_inline_asm_operand_to_inline_asm_operand(
+    operand: &rustc_middle::mir::InlineAsmOperand<'_>,
+) -> stable_mir::mir::InlineAsmOperand {
+    use rustc_middle::mir::InlineAsmOperand;
+
+    let (in_value, out_place) = match operand {
+        InlineAsmOperand::In { value, .. } => (Some(rustc_op_to_op(value)), None),
+        InlineAsmOperand::Out { place, .. } => {
+            (None, place.map(|place| rustc_place_to_place(&place)))
+        }
+        InlineAsmOperand::InOut { in_value, out_place, .. } => {
+            (Some(rustc_op_to_op(in_value)), out_place.map(|place| rustc_place_to_place(&place)))
+        }
+        InlineAsmOperand::Const { .. }
+        | InlineAsmOperand::SymFn { .. }
+        | InlineAsmOperand::SymStatic { .. } => (None, None),
+    };
+
+    stable_mir::mir::InlineAsmOperand { in_value, out_place, raw_rpr: format!("{:?}", operand) }
+}
+
 fn rustc_terminator_to_terminator(
     terminator: &rustc_middle::mir::Terminator<'_>,
 ) -> stable_mir::mir::Terminator {
@@ -330,10 +351,19 @@ fn rustc_terminator_to_terminator(
             target: target.as_usize(),
             unwind: rustc_unwind_to_unwind(unwind),
         },
-        Yield { .. } => todo!(),
-        GeneratorDrop => Terminator::GeneratorDrop,
-        FalseEdge { .. } => todo!(),
-        FalseUnwind { .. } => todo!(),
-        InlineAsm { .. } => todo!(),
+        InlineAsm { template, operands, options, line_spans, destination, unwind } => {
+            Terminator::InlineAsm {
+                template: format!("{:?}", template),
+                operands: operands
+                    .iter()
+                    .map(|operand| rustc_inline_asm_operand_to_inline_asm_operand(operand))
+                    .collect(),
+                options: format!("{:?}", options),
+                line_spans: format!("{:?}", line_spans),
+                destination: destination.map(|d| d.as_usize()),
+                unwind: rustc_unwind_to_unwind(unwind),
+            }
+        }
+        Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),
     }
 }

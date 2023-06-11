@@ -288,6 +288,7 @@ impl ast::ArrayExpr {
 pub enum LiteralKind {
     String(ast::String),
     ByteString(ast::ByteString),
+    CString(ast::CString),
     IntNumber(ast::IntNumber),
     FloatNumber(ast::FloatNumber),
     Char(ast::Char),
@@ -318,6 +319,9 @@ impl ast::Literal {
         }
         if let Some(t) = ast::ByteString::cast(token.clone()) {
             return LiteralKind::ByteString(t);
+        }
+        if let Some(t) = ast::CString::cast(token.clone()) {
+            return LiteralKind::CString(t);
         }
         if let Some(t) = ast::Char::cast(token.clone()) {
             return LiteralKind::Char(t);
@@ -366,8 +370,7 @@ impl ast::BlockExpr {
         match parent.kind() {
             FOR_EXPR | IF_EXPR => parent
                 .children()
-                .filter(|it| ast::Expr::can_cast(it.kind()))
-                .next()
+                .find(|it| ast::Expr::can_cast(it.kind()))
                 .map_or(true, |it| it == *self.syntax()),
             LET_ELSE | FN | WHILE_EXPR | LOOP_EXPR | CONST_BLOCK_PAT => false,
             _ => true,

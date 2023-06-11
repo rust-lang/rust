@@ -12,7 +12,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
     let add_completion = |item: &str| {
         let mut completion = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), item);
         completion.insert_text(format!(r#""{item}""#));
-        acc.add(completion.build());
+        acc.add(completion.build(ctx.db));
     };
 
     let previous = iter::successors(ctx.original_token.prev_token(), |t| {
@@ -33,11 +33,11 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
             let mut item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
             item.insert_text(insert_text);
 
-            acc.add(item.build());
+            acc.add(item.build(ctx.db));
         }),
         None => ctx.krate.potential_cfg(ctx.db).get_cfg_keys().cloned().unique().for_each(|s| {
             let item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
-            acc.add(item.build());
+            acc.add(item.build(ctx.db));
         }),
     };
 }

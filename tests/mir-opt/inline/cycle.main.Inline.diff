@@ -11,6 +11,14 @@
 +         let mut _3: &fn() {g};           // in scope 1 at $DIR/cycle.rs:6:5: 6:6
 +         let _4: ();                      // in scope 1 at $DIR/cycle.rs:6:5: 6:8
 +         scope 2 (inlined <fn() {g} as Fn<()>>::call - shim(fn() {g})) { // at $DIR/cycle.rs:6:5: 6:8
++             scope 3 (inlined g) {        // at $SRC_DIR/core/src/ops/function.rs:LL:COL
++                 scope 4 (inlined f::<fn() {main}>) { // at $DIR/cycle.rs:12:5: 12:12
++                     debug g => main;     // in scope 4 at $DIR/cycle.rs:5:6: 5:7
++                     let _6: ();          // in scope 4 at $DIR/cycle.rs:6:5: 6:8
++                     scope 5 (inlined <fn() {main} as Fn<()>>::call - shim(fn() {main})) { // at $DIR/cycle.rs:6:5: 6:8
++                     }
++                 }
++             }
 +         }
 +     }
   
@@ -30,7 +38,11 @@
 +         _3 = &_2;                        // scope 1 at $DIR/cycle.rs:6:5: 6:6
 +         StorageLive(_5);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
 +         _5 = const ();                   // scope 1 at $DIR/cycle.rs:6:5: 6:8
-+         _4 = move (*_3)() -> [return: bb4, unwind: bb2]; // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
++         StorageLive(_6);                 // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
++         _6 = main() -> [return: bb4, unwind: bb2]; // scope 5 at $SRC_DIR/core/src/ops/function.rs:LL:COL
++                                          // mir::Constant
++                                          // + span: no-location
++                                          // + literal: Const { ty: fn() {main}, val: Value(<ZST>) }
       }
   
       bb1: {
@@ -50,6 +62,7 @@
 +     }
 + 
 +     bb4: {
++         StorageDead(_6);                 // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
 +         StorageDead(_5);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
 +         StorageDead(_3);                 // scope 1 at $DIR/cycle.rs:6:7: 6:8
 +         drop(_2) -> bb1;                 // scope 1 at $DIR/cycle.rs:7:1: 7:2

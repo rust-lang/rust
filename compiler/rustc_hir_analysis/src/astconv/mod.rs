@@ -26,10 +26,8 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
@@ -1215,6 +1213,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         let projection_ty = if return_type_notation {
+            let mut emitted_bad_param_err = false;
             // If we have an method return type bound, then we need to substitute
             // the method's early bound params with suitable late-bound params.
             let mut num_bound_vars = candidate.bound_vars().len();
@@ -1230,16 +1229,35 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             },
                         )
                         .into(),
-                        GenericParamDefKind::Type { .. } => tcx
-                            .mk_bound(
+                        GenericParamDefKind::Type { .. } => {
+                            if !emitted_bad_param_err {
+                                tcx.sess.emit_err(
+                                    crate::errors::ReturnTypeNotationIllegalParam::Type {
+                                        span: path_span,
+                                        param_span: tcx.def_span(param.def_id),
+                                    },
+                                );
+                                emitted_bad_param_err = true;
+                            }
+                            tcx.mk_bound(
                                 ty::INNERMOST,
                                 ty::BoundTy {
                                     var: ty::BoundVar::from_usize(num_bound_vars),
                                     kind: ty::BoundTyKind::Param(param.def_id, param.name),
                                 },
                             )
-                            .into(),
+                            .into()
+                        }
                         GenericParamDefKind::Const { .. } => {
+                            if !emitted_bad_param_err {
+                                tcx.sess.emit_err(
+                                    crate::errors::ReturnTypeNotationIllegalParam::Const {
+                                        span: path_span,
+                                        param_span: tcx.def_span(param.def_id),
+                                    },
+                                );
+                                emitted_bad_param_err = true;
+                            }
                             let ty = tcx
                                 .type_of(param.def_id)
                                 .no_bound_vars()
@@ -1601,7 +1619,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                .filter(|item| tcx.opt_rpitit_info(item.def_id).is_none())
+                                .filter(|item| item.opt_rpitit_info.is_none())
                                 .map(|item| item.def_id),
                         );
                     }
@@ -1643,6 +1661,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        // `dyn Trait<Assoc = Foo>` desugars to (not Rust syntax) `dyn Trait where <Self as Trait>::Assoc = Foo`.
+        // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
+        // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
+        // corresponding `Projection` clause
         for (projection_bound, _) in &projection_bounds {
             for def_ids in associated_types.values_mut() {
                 def_ids.remove(&projection_bound.projection_def_id());
@@ -2468,7 +2490,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     infcx.probe(|_| {
                         let ocx = ObligationCtxt::new_in_snapshot(&infcx);
 
-                        let impl_substs = infcx.fresh_item_substs(impl_);
+                        let impl_substs = infcx.fresh_substs_for_item(span, impl_);
                         let impl_ty = tcx.type_of(impl_).subst(tcx, impl_substs);
                         let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
@@ -3753,38 +3775,5 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
             }
         }
-    }
-}
-
-pub trait InferCtxtExt<'tcx> {
-    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx>;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
-    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } => self
-                .next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::SubstitutionPlaceholder,
-                    span: self.tcx.def_span(def_id),
-                })
-                .into(),
-            GenericParamDefKind::Const { .. } => {
-                let span = self.tcx.def_span(def_id);
-                let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::SubstitutionPlaceholder,
-                    span,
-                };
-                self.next_const_var(
-                    self.tcx
-                        .type_of(param.def_id)
-                        .no_bound_vars()
-                        .expect("const parameter types cannot be generic"),
-                    origin,
-                )
-                .into()
-            }
-        })
     }
 }

@@ -45,7 +45,6 @@ o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ f
 o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
 o("rpath", "rust.rpath", "build rpaths into rustc itself")
 o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests")
-o("option-checking", None, "complain about unrecognized options in this configure script")
 o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
 o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")
 o("vendor", "build.vendor", "enable usage of vendored Rust crates")
@@ -170,6 +169,9 @@ v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
 v("host", None, "List of GNUs ./configure syntax LLVM host triples")
 v("target", None, "List of GNUs ./configure syntax LLVM target triples")
 
+# Options specific to this configure script
+o("option-checking", None, "complain about unrecognized options in this configure script")
+o("verbose-configure", None, "don't truncate options when printing them in this configure script")
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
 
@@ -210,6 +212,8 @@ if '--help' in sys.argv or '-h' in sys.argv:
     print('Also note that all options which take `--enable` can similarly')
     print('be passed with `--disable-foo` to forcibly disable the option')
     sys.exit(0)
+
+VERBOSE = False
 
 # Parse all command line arguments into one of these three lists, handling
 # boolean and value-based options separately
@@ -271,6 +275,9 @@ def parse_args(args):
         if len(need_value_args) > 0:
             err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
 
+    global VERBOSE
+    VERBOSE = 'verbose-configure' in known_args
+
     config = {}
 
     set('build.configure-args', sys.argv[1:], config)
@@ -290,7 +297,7 @@ def set(key, value, config):
         value = [v for v in value if v]
 
     s = "{:20} := {}".format(key, value)
-    if len(s) < 70:
+    if len(s) < 70 or VERBOSE:
         p(s)
     else:
         p(s[:70] + " ...")
@@ -371,7 +378,7 @@ def apply_args(known_args, option_checking, config):
             set('rust.lld', True, config)
             set('rust.llvm-tools', True, config)
             set('build.extended', True, config)
-        elif option.name == 'option-checking':
+        elif option.name in ['option-checking', 'verbose-configure']:
             # this was handled above
             pass
         elif option.name == 'dist-compression-formats':

@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+atty = "0.2.13"
 getopts = "0.2"
 rustc_macros = { path = "../rustc_macros" }
 tracing = "0.1"

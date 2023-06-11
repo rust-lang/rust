@@ -396,6 +396,17 @@ pub struct FailedWriteError {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_failed_copy_to_stdout)]
+pub struct FailedCopyToStdout {
+    pub filename: PathBuf,
+    pub err: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_binary_output_to_tty)]
+pub struct BinaryOutputToTty;
+
+#[derive(Diagnostic)]
 #[diag(metadata_missing_native_library)]
 pub struct MissingNativeLibrary<'a> {
     libname: &'a str,

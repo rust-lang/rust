@@ -1,8 +1,7 @@
 // exact-check
 
-const QUERY = 'b::ccccccc';
-
 const EXPECTED = {
+    'query': 'b::ccccccc',
     'others': [
         // `ccccccc` is an exact match for all three of these.
         // However `b` is a closer match for `bb` than for any

@@ -34,7 +34,9 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
-use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
+use rustc_session::config::{
+    ErrorOutputType, Input, OutFileName, OutputType, PrintRequest, TrimmedDefPaths,
+};
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
@@ -58,11 +60,18 @@ use std::str;
 use std::sync::OnceLock;
 use std::time::Instant;
 
+#[allow(unused_macros)]
+macro do_not_use_print($($t:tt)*) {
+    std::compile_error!(
+        "Don't use `print` or `println` here, use `safe_print` or `safe_println` instead"
+    )
+}
+
 // This import blocks the use of panicking `print` and `println` in all the code
 // below. Please use `safe_print` and `safe_println` to avoid ICE when
 // encountering an I/O error during print.
 #[allow(unused_imports)]
-use std::{compile_error as print, compile_error as println};
+use {do_not_use_print as print, do_not_use_print as println};
 
 pub mod args;
 pub mod pretty;
@@ -447,9 +456,12 @@ fn run_compiler(
 }
 
 // Extract output directory and file from matches.
-fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>) {
+fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileName>) {
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
-    let ofile = matches.opt_str("o").map(|o| PathBuf::from(&o));
+    let ofile = matches.opt_str("o").map(|o| match o.as_str() {
+        "-" => OutFileName::Stdout,
+        path => OutFileName::Real(PathBuf::from(path)),
+    });
     (odir, ofile)
 }
 
@@ -695,7 +707,7 @@ fn print_crate_info(
                 for &style in &crate_types {
                     let fname =
                         rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
-                    safe_println!("{}", fname.file_name().unwrap().to_string_lossy());
+                    safe_println!("{}", fname.as_path().file_name().unwrap().to_string_lossy());
                 }
             }
             Cfg => {

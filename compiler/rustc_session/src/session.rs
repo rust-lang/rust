@@ -2,7 +2,9 @@ use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::Input;
-use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
+use crate::config::{
+    self, CrateType, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
+};
 use crate::errors;
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
@@ -133,7 +135,7 @@ pub struct Limits {
 pub struct CompilerIO {
     pub input: Input,
     pub output_dir: Option<PathBuf>,
-    pub output_file: Option<PathBuf>,
+    pub output_file: Option<OutFileName>,
     pub temps_dir: Option<PathBuf>,
 }
 

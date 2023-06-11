@@ -98,7 +98,7 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             };
             builder.delete(range_to_delete);
 
-            let const_ref = format!("Self::{name}");
+            let const_ref = format!("Self::{}", name.display(ctx.db()));
             for range in usages.all().file_ranges().map(|it| it.range) {
                 builder.replace(range, const_ref.clone());
             }

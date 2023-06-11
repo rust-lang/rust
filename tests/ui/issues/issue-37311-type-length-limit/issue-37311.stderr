@@ -1,11 +1,11 @@
 error: reached the recursion limit while instantiating `<(&(&(..., ...), ...), ...) as Foo>::recurse`
-  --> $DIR/issue-37311.rs:17:9
+  --> $DIR/issue-37311.rs:18:9
    |
 LL |         (self, self).recurse();
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `<T as Foo>::recurse` defined here
-  --> $DIR/issue-37311.rs:16:5
+  --> $DIR/issue-37311.rs:17:5
    |
 LL |     fn recurse(&self) {
    |     ^^^^^^^^^^^^^^^^^

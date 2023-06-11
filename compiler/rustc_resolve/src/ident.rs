@@ -1365,20 +1365,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
         ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> PathResult<'a> {
-        debug!(
-            "resolve_path(path={:?}, opt_ns={:?}, finalize={:?}) path_len: {}",
-            path,
-            opt_ns,
-            finalize,
-            path.len()
-        );
-
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
 
-        for (i, &Segment { ident, id, .. }) in path.iter().enumerate() {
-            debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
+        for (segment_idx, &Segment { ident, id, .. }) in path.iter().enumerate() {
+            debug!("resolve_path ident {} {:?} {:?}", segment_idx, ident, id);
             let record_segment_res = |this: &mut Self, res| {
                 if finalize.is_some() {
                     if let Some(id) = id {
@@ -1390,7 +1382,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             };
 
-            let is_last = i + 1 == path.len();
+            let is_last = segment_idx + 1 == path.len();
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
             let name = ident.name;
 
@@ -1399,7 +1391,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if ns == TypeNS {
                 if allow_super && name == kw::Super {
                     let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
-                    let self_module = match i {
+                    let self_module = match segment_idx {
                         0 => Some(self.resolve_self(&mut ctxt, parent_scope.module)),
                         _ => match module {
                             Some(ModuleOrUniformRoot::Module(module)) => Some(module),
@@ -1414,11 +1406,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             continue;
                         }
                     }
-                    return PathResult::failed(ident.span, false, finalize.is_some(), || {
-                        ("there are too many leading `super` keywords".to_string(), None)
-                    });
+                    return PathResult::failed(
+                        ident.span,
+                        false,
+                        finalize.is_some(),
+                        module,
+                        || ("there are too many leading `super` keywords".to_string(), None),
+                    );
                 }
-                if i == 0 {
+                if segment_idx == 0 {
                     if name == kw::SelfLower {
                         let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
                         module = Some(ModuleOrUniformRoot::Module(
@@ -1447,14 +1443,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             // Report special messages for path segment keywords in wrong positions.
-            if ident.is_path_segment_keyword() && i != 0 {
-                return PathResult::failed(ident.span, false, finalize.is_some(), || {
+            if ident.is_path_segment_keyword() && segment_idx != 0 {
+                return PathResult::failed(ident.span, false, finalize.is_some(), module, || {
                     let name_str = if name == kw::PathRoot {
                         "crate root".to_string()
                     } else {
                         format!("`{}`", name)
                     };
-                    let label = if i == 1 && path[0].ident.name == kw::PathRoot {
+                    let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
                         format!("global paths cannot start with {}", name_str)
                     } else {
                         format!("{} in paths can only be used in start position", name_str)
@@ -1519,7 +1515,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             };
             match binding {
                 Ok(binding) => {
-                    if i == 1 {
+                    if segment_idx == 1 {
                         second_binding = Some(binding);
                     }
                     let res = binding.res();
@@ -1543,17 +1539,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         record_segment_res(self, res);
                         return PathResult::NonModule(PartialRes::with_unresolved_segments(
                             res,
-                            path.len() - i - 1,
+                            path.len() - segment_idx - 1,
                         ));
                     } else {
-                        return PathResult::failed(ident.span, is_last, finalize.is_some(), || {
-                            let label = format!(
-                                "`{ident}` is {} {}, not a module",
-                                res.article(),
-                                res.descr()
-                            );
-                            (label, None)
-                        });
+                        return PathResult::failed(
+                            ident.span,
+                            is_last,
+                            finalize.is_some(),
+                            module,
+                            || {
+                                let label = format!(
+                                    "`{ident}` is {} {}, not a module",
+                                    res.article(),
+                                    res.descr()
+                                );
+                                (label, None)
+                            },
+                        );
                     }
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,
@@ -1562,23 +1564,29 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         if opt_ns.is_some() && !module.is_normal() {
                             return PathResult::NonModule(PartialRes::with_unresolved_segments(
                                 module.res().unwrap(),
-                                path.len() - i,
+                                path.len() - segment_idx,
                             ));
                         }
                     }
 
-                    return PathResult::failed(ident.span, is_last, finalize.is_some(), || {
-                        self.report_path_resolution_error(
-                            path,
-                            opt_ns,
-                            parent_scope,
-                            ribs,
-                            ignore_binding,
-                            module,
-                            i,
-                            ident,
-                        )
-                    });
+                    return PathResult::failed(
+                        ident.span,
+                        is_last,
+                        finalize.is_some(),
+                        module,
+                        || {
+                            self.report_path_resolution_error(
+                                path,
+                                opt_ns,
+                                parent_scope,
+                                ribs,
+                                ignore_binding,
+                                module,
+                                segment_idx,
+                                ident,
+                            )
+                        },
+                    );
                 }
             }
         }

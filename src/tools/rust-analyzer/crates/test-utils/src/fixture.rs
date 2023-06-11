@@ -86,7 +86,14 @@ pub struct MiniCore {
     valid_flags: Vec<String>,
 }
 
-impl Fixture {
+pub struct FixtureWithProjectMeta {
+    pub fixture: Vec<Fixture>,
+    pub mini_core: Option<MiniCore>,
+    pub proc_macro_names: Vec<String>,
+    pub toolchain: Option<String>,
+}
+
+impl FixtureWithProjectMeta {
     /// Parses text which looks like this:
     ///
     ///  ```not_rust
@@ -96,37 +103,41 @@ impl Fixture {
     ///  //- other meta
     ///  ```
     ///
-    /// Fixture can also start with a proc_macros and minicore declaration(in that order):
+    /// Fixture can also start with a proc_macros and minicore declaration (in that order):
     ///
     /// ```
+    /// //- toolchain: nightly
     /// //- proc_macros: identity
     /// //- minicore: sized
     /// ```
     ///
-    /// That will include predefined proc macros and a subset of `libcore` into the fixture, see
-    /// `minicore.rs` for what's available.
-    pub fn parse(ra_fixture: &str) -> (Option<MiniCore>, Vec<String>, Vec<Fixture>) {
+    /// That will set toolchain to nightly and include predefined proc macros and a subset of
+    /// `libcore` into the fixture, see `minicore.rs` for what's available. Note that toolchain
+    /// defaults to stable.
+    pub fn parse(ra_fixture: &str) -> Self {
         let fixture = trim_indent(ra_fixture);
         let mut fixture = fixture.as_str();
+        let mut toolchain = None;
         let mut mini_core = None;
         let mut res: Vec<Fixture> = Vec::new();
-        let mut test_proc_macros = vec![];
+        let mut proc_macro_names = vec![];
 
-        if fixture.starts_with("//- proc_macros:") {
-            let first_line = fixture.split_inclusive('\n').next().unwrap();
-            test_proc_macros = first_line
-                .strip_prefix("//- proc_macros:")
-                .unwrap()
-                .split(',')
-                .map(|it| it.trim().to_string())
-                .collect();
-            fixture = &fixture[first_line.len()..];
+        if let Some(meta) = fixture.strip_prefix("//- toolchain:") {
+            let (meta, remain) = meta.split_once('\n').unwrap();
+            toolchain = Some(meta.trim().to_string());
+            fixture = remain;
         }
 
-        if fixture.starts_with("//- minicore:") {
-            let first_line = fixture.split_inclusive('\n').next().unwrap();
-            mini_core = Some(MiniCore::parse(first_line));
-            fixture = &fixture[first_line.len()..];
+        if let Some(meta) = fixture.strip_prefix("//- proc_macros:") {
+            let (meta, remain) = meta.split_once('\n').unwrap();
+            proc_macro_names = meta.split(',').map(|it| it.trim().to_string()).collect();
+            fixture = remain;
+        }
+
+        if let Some(meta) = fixture.strip_prefix("//- minicore:") {
+            let (meta, remain) = meta.split_once('\n').unwrap();
+            mini_core = Some(MiniCore::parse(meta));
+            fixture = remain;
         }
 
         let default = if fixture.contains("//-") { None } else { Some("//- /main.rs") };
@@ -142,7 +153,7 @@ impl Fixture {
             }
 
             if line.starts_with("//-") {
-                let meta = Fixture::parse_meta_line(line);
+                let meta = Self::parse_meta_line(line);
                 res.push(meta);
             } else {
                 if line.starts_with("// ")
@@ -160,7 +171,7 @@ impl Fixture {
             }
         }
 
-        (mini_core, test_proc_macros, res)
+        Self { fixture: res, mini_core, proc_macro_names, toolchain }
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
@@ -243,8 +254,17 @@ impl Fixture {
 }
 
 impl MiniCore {
+    const RAW_SOURCE: &str = include_str!("./minicore.rs");
+
     fn has_flag(&self, flag: &str) -> bool {
         self.activated_flags.iter().any(|it| it == flag)
+    }
+
+    pub fn from_flags<'a>(flags: impl IntoIterator<Item = &'a str>) -> Self {
+        MiniCore {
+            activated_flags: flags.into_iter().map(|x| x.to_owned()).collect(),
+            valid_flags: Vec::new(),
+        }
     }
 
     #[track_caller]
@@ -257,8 +277,7 @@ impl MiniCore {
     fn parse(line: &str) -> MiniCore {
         let mut res = MiniCore { activated_flags: Vec::new(), valid_flags: Vec::new() };
 
-        let line = line.strip_prefix("//- minicore:").unwrap().trim();
-        for entry in line.split(", ") {
+        for entry in line.trim().split(", ") {
             if res.has_flag(entry) {
                 panic!("duplicate minicore flag: {entry:?}");
             }
@@ -268,13 +287,21 @@ impl MiniCore {
         res
     }
 
+    pub fn available_flags() -> impl Iterator<Item = &'static str> {
+        let lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
+        lines
+            .map_while(|x| x.strip_prefix("//!"))
+            .skip_while(|line| !line.contains("Available flags:"))
+            .skip(1)
+            .map(|x| x.split_once(':').unwrap().0.trim())
+    }
+
     /// Strips parts of minicore.rs which are flagged by inactive flags.
     ///
     /// This is probably over-engineered to support flags dependencies.
     pub fn source_code(mut self) -> String {
         let mut buf = String::new();
-        let raw_mini_core = include_str!("./minicore.rs");
-        let mut lines = raw_mini_core.split_inclusive('\n');
+        let mut lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
 
         let mut implications = Vec::new();
 
@@ -372,7 +399,7 @@ impl MiniCore {
 #[test]
 #[should_panic]
 fn parse_fixture_checks_further_indented_metadata() {
-    Fixture::parse(
+    FixtureWithProjectMeta::parse(
         r"
         //- /lib.rs
           mod bar;
@@ -386,15 +413,18 @@ fn parse_fixture_checks_further_indented_metadata() {
 
 #[test]
 fn parse_fixture_gets_full_meta() {
-    let (mini_core, proc_macros, parsed) = Fixture::parse(
-        r#"
+    let FixtureWithProjectMeta { fixture: parsed, mini_core, proc_macro_names, toolchain } =
+        FixtureWithProjectMeta::parse(
+            r#"
+//- toolchain: nightly
 //- proc_macros: identity
 //- minicore: coerce_unsized
 //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
 mod m;
 "#,
-    );
-    assert_eq!(proc_macros, vec!["identity".to_string()]);
+        );
+    assert_eq!(toolchain, Some("nightly".to_string()));
+    assert_eq!(proc_macro_names, vec!["identity".to_string()]);
     assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_string()]);
     assert_eq!(1, parsed.len());
 

@@ -986,6 +986,7 @@ mod parse {
             Some("classic") => *slot = TraitSolver::Classic,
             Some("chalk") => *slot = TraitSolver::Chalk,
             Some("next") => *slot = TraitSolver::Next,
+            Some("next-coherence") => *slot = TraitSolver::NextCoherence,
             // default trait solver is subject to change..
             Some("default") => *slot = TraitSolver::Classic,
             _ => return false,

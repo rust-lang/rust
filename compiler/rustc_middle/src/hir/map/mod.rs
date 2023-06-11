@@ -44,6 +44,7 @@ pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
         }
 
         Node::AnonConst(constant) => Some((constant.def_id, constant.body)),
+        Node::ConstBlock(constant) => Some((constant.def_id, constant.body)),
 
         _ => None,
     }
@@ -240,15 +241,8 @@ impl<'hir> Map<'hir> {
                     None => bug!("constructor node without a constructor"),
                 }
             }
-            Node::AnonConst(_) => {
-                let inline = match self.find_parent(hir_id) {
-                    Some(Node::Expr(&Expr {
-                        kind: ExprKind::ConstBlock(ref anon_const), ..
-                    })) if anon_const.hir_id == hir_id => true,
-                    _ => false,
-                };
-                if inline { DefKind::InlineConst } else { DefKind::AnonConst }
-            }
+            Node::AnonConst(_) => DefKind::AnonConst,
+            Node::ConstBlock(_) => DefKind::InlineConst,
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
                 ExprKind::Closure(Closure { movability: None, .. }) => DefKind::Closure,
@@ -1060,6 +1054,7 @@ impl<'hir> Map<'hir> {
             Node::Variant(variant) => variant.span,
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => self.body(constant.body).value.span,
+            Node::ConstBlock(constant) => self.body(constant.body).value.span,
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
@@ -1289,6 +1284,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
             format!("{id} (field `{}` in {})", field.ident, path_str(field.def_id))
         }
         Some(Node::AnonConst(_)) => node_str("const"),
+        Some(Node::ConstBlock(_)) => node_str("const"),
         Some(Node::Expr(_)) => node_str("expr"),
         Some(Node::ExprField(_)) => node_str("expr field"),
         Some(Node::Stmt(_)) => node_str("stmt"),
@@ -1432,6 +1428,11 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     fn visit_anon_const(&mut self, c: &'hir AnonConst) {
         self.body_owners.push(c.def_id);
         intravisit::walk_anon_const(self, c)
+    }
+
+    fn visit_inline_const(&mut self, c: &'hir ConstBlock) {
+        self.body_owners.push(c.def_id);
+        intravisit::walk_inline_const(self, c)
     }
 
     fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {

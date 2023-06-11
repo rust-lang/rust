@@ -1273,13 +1273,18 @@ pub enum BinOp {
     Mul,
     /// The `/` operator (division)
     ///
-    /// Division by zero is UB, because the compiler should have inserted checks
-    /// prior to this.
+    /// For integer types, division by zero is UB, as is `MIN / -1` for signed.
+    /// The compiler should have inserted checks prior to this.
+    ///
+    /// Floating-point division by zero is safe, and does not need guards.
     Div,
     /// The `%` operator (modulus)
     ///
-    /// Using zero as the modulus (second operand) is UB, because the compiler
-    /// should have inserted checks prior to this.
+    /// For integer types, using zero as the modulus (second operand) is UB,
+    /// as is `MIN % -1` for signed.
+    /// The compiler should have inserted checks prior to this.
+    ///
+    /// Floating-point remainder by zero is safe, and does not need guards.
     Rem,
     /// The `^` operator (bitwise xor)
     BitXor,

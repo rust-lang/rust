@@ -31,6 +31,7 @@
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
     - [loongarch\*-unknown-linux-\*](platform-support/loongarch-linux.md)
+    - [loongarch\*-unknown-none\*](platform-support/loongarch-none.md)
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)
     - [mips64-openwrt-linux-musl](platform-support/mips64-openwrt-linux-musl.md)
     - [mipsel-sony-psx](platform-support/mipsel-sony-psx.md)

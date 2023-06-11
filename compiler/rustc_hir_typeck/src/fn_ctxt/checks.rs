@@ -362,7 +362,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                let is_closure = matches!(arg.kind, ExprKind::Closure { .. });
+                // For this check, we do *not* want to treat async generator closures (async blocks)
+                // as proper closures. Doing so would regress type inference when feeding
+                // the return value of an argument-position async block to an argument-position
+                // closure wrapped in a block.
+                // See <https://github.com/rust-lang/rust/issues/112225>.
+                let is_closure = if let ExprKind::Closure(closure) = arg.kind {
+                    !tcx.generator_is_async(closure.def_id.to_def_id())
+                } else {
+                    false
+                };
                 if is_closure != check_closures {
                     continue;
                 }
@@ -1395,7 +1404,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // type of the place it is referencing, and not some
             // supertype thereof.
             let init_ty = self.check_expr_with_needs(init, Needs::maybe_mut_place(m));
-            self.demand_eqtype(init.span, local_ty, init_ty);
+            if let Some(mut diag) = self.demand_eqtype_diag(init.span, local_ty, init_ty) {
+                self.emit_type_mismatch_suggestions(
+                    &mut diag,
+                    init.peel_drop_temps(),
+                    init_ty,
+                    local_ty,
+                    None,
+                    None,
+                );
+                diag.emit();
+            }
             init_ty
         } else {
             self.check_expr_coercible_to_type(init, local_ty, None)
@@ -1631,7 +1650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 hir::Stmt {
                                                     kind:
                                                         hir::StmtKind::Expr(hir::Expr {
-                                                            kind: hir::ExprKind::Assign(..),
+                                                            kind: hir::ExprKind::Assign(lhs, ..),
                                                             ..
                                                         }),
                                                     ..
@@ -1641,7 +1660,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     } = blk
                                     {
                                         self.comes_from_while_condition(blk.hir_id, |_| {
-                                            err.downgrade_to_delayed_bug();
+                                            // We cannot suppress the error if the LHS of assignment
+                                            // is a syntactic place expression because E0070 would
+                                            // not be emitted by `check_lhs_assignable`.
+                                            let res = self.typeck_results.borrow().expr_ty_opt(lhs);
+
+                                            if !lhs.is_syntactic_place_expr()
+                                                || res.references_error()
+                                            {
+                                                err.downgrade_to_delayed_bug();
+                                            }
                                         })
                                     }
                                 }

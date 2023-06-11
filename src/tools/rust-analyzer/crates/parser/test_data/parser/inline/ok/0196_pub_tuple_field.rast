@@ -28,3 +28,42 @@ SOURCE_FILE
       R_PAREN ")"
     SEMICOLON ";"
   WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "MyStruct"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        VISIBILITY
+          PUB_KW "pub"
+        WHITESPACE " "
+        PAREN_TYPE
+          L_PAREN "("
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "u32"
+          R_PAREN ")"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "MyStruct"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        VISIBILITY
+          PUB_KW "pub"
+        WHITESPACE " "
+        TUPLE_TYPE
+          L_PAREN "("
+          R_PAREN ")"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

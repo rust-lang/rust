@@ -11,6 +11,12 @@ pub fn wrapping(a: i32, b: i32) {
     let _z = core::intrinsics::wrapping_mul(a, b);
 }
 
+// EMIT_MIR lower_intrinsics.unchecked.LowerIntrinsics.diff
+pub unsafe fn unchecked(a: i32, b: i32) {
+    let _x = core::intrinsics::unchecked_div(a, b);
+    let _y = core::intrinsics::unchecked_rem(a, b);
+}
+
 // EMIT_MIR lower_intrinsics.size_of.LowerIntrinsics.diff
 pub fn size_of<T>() -> usize {
     core::intrinsics::size_of::<T>()

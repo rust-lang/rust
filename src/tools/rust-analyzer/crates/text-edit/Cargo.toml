@@ -13,4 +13,4 @@ doctest = false
 
 [dependencies]
 itertools = "0.10.5"
-text-size = "1.1.0"
+text-size.workspace = true

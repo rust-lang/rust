@@ -700,7 +700,7 @@ impl Step for CompiletestTest {
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let compiler = builder.compiler(1, host);
+        let compiler = builder.compiler(builder.top_stage, host);
 
         // We need `ToolStd` for the locally-built sysroot because
         // compiletest uses unstable features of the `test` crate.
@@ -1424,7 +1424,15 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
-        cmd.arg("--sysroot-base").arg(builder.sysroot(compiler));
+
+        // When top stage is 0, that means that we're testing an externally provided compiler.
+        // In that case we need to use its specific sysroot for tests to pass.
+        let sysroot = if builder.top_stage == 0 {
+            builder.initial_sysroot.clone()
+        } else {
+            builder.sysroot(compiler).to_path_buf()
+        };
+        cmd.arg("--sysroot-base").arg(sysroot);
         cmd.arg("--stage-id").arg(stage_id);
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
@@ -1529,7 +1537,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         for exclude in &builder.config.exclude {
             cmd.arg("--skip");
-            cmd.arg(&exclude.path);
+            cmd.arg(&exclude);
         }
 
         // Get paths from cmd args
@@ -2204,7 +2212,8 @@ impl Step for Crate {
         let target = self.target;
         let mode = self.mode;
 
-        builder.ensure(compile::Std::new(compiler, target));
+        // See [field@compile::Std::force_recompile].
+        builder.ensure(compile::Std::force_recompile(compiler, target));
         builder.ensure(RemoteCopyLibs { compiler, target });
 
         // If we're not doing a full bootstrap but we're testing a stage2
@@ -2218,6 +2227,16 @@ impl Step for Crate {
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+                // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
+                // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
+                // Override it.
+                if builder.download_rustc() {
+                    let sysroot = builder
+                        .out
+                        .join(compiler.host.triple)
+                        .join(format!("stage{}-test-sysroot", compiler.stage));
+                    cargo.env("RUSTC_SYSROOT", sysroot);
+                }
             }
             Mode::Rustc => {
                 compile::rustc_cargo(builder, &mut cargo, target, compiler.stage);
@@ -2269,6 +2288,11 @@ impl Step for CrateRustdoc {
             // isn't really necessary.
             builder.compiler_for(builder.top_stage, target, target)
         };
+        // NOTE: normally `ensure(Rustc)` automatically runs `ensure(Std)` for us. However, when
+        // using `download-rustc`, the rustc_private artifacts may be in a *different sysroot* from
+        // the target rustdoc (`ci-rustc-sysroot` vs `stage2`). In that case, we need to ensure this
+        // explicitly to make sure it ends up in the stage2 sysroot.
+        builder.ensure(compile::Std::new(compiler, target));
         builder.ensure(compile::Rustc::new(compiler, target));
 
         let mut cargo = tool::prepare_tool_cargo(
@@ -2320,7 +2344,13 @@ impl Step for CrateRustdoc {
         dylib_path.insert(0, PathBuf::from(&*libdir));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-        let _guard = builder.msg(builder.kind, compiler.stage, "rustdoc", compiler.host, target);
+        let _guard = builder.msg_sysroot_tool(
+            builder.kind,
+            compiler.stage,
+            "rustdoc",
+            compiler.host,
+            target,
+        );
         run_cargo_test(
             cargo,
             &[],

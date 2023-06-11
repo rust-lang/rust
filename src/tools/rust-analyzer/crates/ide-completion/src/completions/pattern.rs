@@ -64,7 +64,7 @@ pub(crate) fn complete_pattern(
 
     // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
-    ctx.process_all_names(&mut |name, res| {
+    ctx.process_all_names(&mut |name, res, _| {
         let add_simple_path = match res {
             hir::ScopeDef::ModuleDef(def) => match def {
                 hir::ModuleDef::Adt(hir::Adt::Struct(strukt)) => {
@@ -127,7 +127,7 @@ pub(crate) fn complete_pattern_path(
                         };
 
                         if add_resolution {
-                            acc.add_path_resolution(ctx, path_ctx, name, def);
+                            acc.add_path_resolution(ctx, path_ctx, name, def, vec![]);
                         }
                     }
                 }
@@ -164,7 +164,7 @@ pub(crate) fn complete_pattern_path(
         Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         Qualified::No => {
             // this will only be hit if there are brackets or braces, otherwise this will be parsed as an ident pattern
-            ctx.process_all_names(&mut |name, res| {
+            ctx.process_all_names(&mut |name, res, doc_aliases| {
                 // FIXME: we should check what kind of pattern we are in and filter accordingly
                 let add_completion = match res {
                     ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
@@ -175,7 +175,7 @@ pub(crate) fn complete_pattern_path(
                     _ => false,
                 };
                 if add_completion {
-                    acc.add_path_resolution(ctx, path_ctx, name, res);
+                    acc.add_path_resolution(ctx, path_ctx, name, res, doc_aliases);
                 }
             });
 

@@ -178,7 +178,7 @@ fn rename_mod(
 
     let mut source_change = SourceChange::default();
 
-    if module.is_crate_root(sema.db) {
+    if module.is_crate_root() {
         return Ok(source_change);
     }
 
@@ -202,12 +202,13 @@ fn rename_mod(
         //  - Module has submodules defined in separate files
         let dir_paths = match (is_mod_rs, has_detached_child, module.name(sema.db)) {
             // Go up one level since the anchor is inside the dir we're trying to rename
-            (true, _, Some(mod_name)) => {
-                Some((format!("../{}", mod_name.unescaped()), format!("../{new_name}")))
-            }
+            (true, _, Some(mod_name)) => Some((
+                format!("../{}", mod_name.unescaped().display(sema.db)),
+                format!("../{new_name}"),
+            )),
             // The anchor is on the same level as target dir
             (false, true, Some(mod_name)) => {
-                Some((mod_name.unescaped().to_string(), new_name.to_string()))
+                Some((mod_name.unescaped().display(sema.db).to_string(), new_name.to_owned()))
             }
             _ => None,
         };
@@ -232,7 +233,7 @@ fn rename_mod(
                 {
                     source_change.insert_source_edit(
                         file_id,
-                        TextEdit::replace(file_range.range, new_name.to_string()),
+                        TextEdit::replace(file_range.range, new_name.to_owned()),
                     )
                 };
             }
@@ -442,7 +443,7 @@ fn source_edit_from_name_ref(
                         let s = field_name.syntax().text_range().start();
                         let e = pat.syntax().text_range().start();
                         edit.delete(TextRange::new(s, e));
-                        edit.replace(name.syntax().text_range(), new_name.to_string());
+                        edit.replace(name.syntax().text_range(), new_name.to_owned());
                         return true;
                     }
                 }
@@ -462,7 +463,19 @@ fn source_edit_from_def(
     if let Definition::Local(local) = def {
         let mut file_id = None;
         for source in local.sources(sema.db) {
-            let source = source.source;
+            let source = match source.source.clone().original_ast_node(sema.db) {
+                Some(source) => source,
+                None => match source.source.syntax().original_file_range_opt(sema.db) {
+                    Some(FileRange { file_id: file_id2, range }) => {
+                        file_id = Some(file_id2);
+                        edit.replace(range, new_name.to_owned());
+                        continue;
+                    }
+                    None => {
+                        bail!("Can't rename local that is defined in a macro declaration")
+                    }
+                },
+            };
             file_id = source.file_id.file_id();
             if let Either::Left(pat) = source.value {
                 let name_range = pat.name().unwrap().syntax().text_range();
@@ -485,7 +498,7 @@ fn source_edit_from_def(
                             // Foo { field: ref mut local @ local 2} -> Foo { field: ref mut new_name @ local2 }
                             // Foo { field: ref mut local } -> Foo { field: ref mut new_name }
                             //                      ^^^^^ replace this with `new_name`
-                            edit.replace(name_range, new_name.to_string());
+                            edit.replace(name_range, new_name.to_owned());
                         }
                     } else {
                         // Foo { ref mut field } -> Foo { field: ref mut new_name }
@@ -495,10 +508,10 @@ fn source_edit_from_def(
                             pat.syntax().text_range().start(),
                             format!("{}: ", pat_field.field_name().unwrap()),
                         );
-                        edit.replace(name_range, new_name.to_string());
+                        edit.replace(name_range, new_name.to_owned());
                     }
                 } else {
-                    edit.replace(name_range, new_name.to_string());
+                    edit.replace(name_range, new_name.to_owned());
                 }
             }
         }

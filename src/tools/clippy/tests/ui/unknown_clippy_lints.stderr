@@ -6,11 +6,11 @@ LL | #![allow(clippy::All)]
    |
    = note: `-D unknown-lints` implied by `-D warnings`
 
-error: unknown lint: `clippy::CMP_NAN`
+error: unknown lint: `clippy::CMP_OWNED`
   --> $DIR/unknown_clippy_lints.rs:6:9
    |
-LL | #![warn(clippy::CMP_NAN)]
-   |         ^^^^^^^^^^^^^^^ help: did you mean: `clippy::cmp_nan`
+LL | #![warn(clippy::CMP_OWNED)]
+   |         ^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::cmp_owned`
 
 error: unknown lint: `clippy::if_not_els`
   --> $DIR/unknown_clippy_lints.rs:9:8

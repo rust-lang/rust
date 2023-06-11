@@ -2,7 +2,18 @@
 #![feature(generic_const_exprs, adt_const_params)]
 #![allow(incomplete_features)]
 
-use std::{convert::TryFrom, num::NonZeroUsize};
+use std::{convert::TryFrom};
+
+use std::marker::ConstParamTy;
+
+#[derive(PartialEq, Eq, ConstParamTy)]
+struct NonZeroUsize(usize);
+
+impl NonZeroUsize {
+    const fn get(self) -> usize {
+        self.0
+    }
+}
 
 struct A<const N: NonZeroUsize>([u8; N.get()])
 where

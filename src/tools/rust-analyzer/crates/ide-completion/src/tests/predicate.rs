@@ -1,7 +1,7 @@
 //! Completion tests for predicates and bounds.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_empty, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}\n{ra_fixture}"));
@@ -124,6 +124,46 @@ impl Record {
             tt Trait
             un Union
             bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+}
+
+#[test]
+fn pred_no_unstable_item_on_stable() {
+    check_empty(
+        r#"
+//- /main.rs crate:main deps:std
+use std::*;
+struct Foo<T> where T: $0 {}
+//- /std.rs crate:std
+#[unstable]
+pub trait Trait {}
+"#,
+        expect![[r#"
+            md std
+            kw crate::
+            kw self::
+        "#]],
+    );
+}
+
+#[test]
+fn pred_unstable_item_on_nightly() {
+    check_empty(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+use std::*;
+struct Foo<T> where T: $0 {}
+//- /std.rs crate:std
+#[unstable]
+pub trait Trait {}
+"#,
+        expect![[r#"
+            md std
+            tt Trait
             kw crate::
             kw self::
         "#]],

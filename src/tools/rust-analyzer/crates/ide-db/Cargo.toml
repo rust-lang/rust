@@ -23,6 +23,8 @@ itertools = "0.10.5"
 arrayvec = "0.7.2"
 indexmap = "1.9.1"
 memchr = "2.5.0"
+triomphe.workspace = true
+nohash-hasher.workspace = true
 
 # local deps
 base-db.workspace = true
@@ -35,6 +37,8 @@ text-edit.workspace = true
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
 hir.workspace = true
+
+line-index.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"

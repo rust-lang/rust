@@ -59,7 +59,7 @@
 //! [`borrow`](`RefCell::borrow`), and a mutable borrow (`&mut T`) can be obtained with
 //! [`borrow_mut`](`RefCell::borrow_mut`). When these functions are called, they first verify that
 //! Rust's borrow rules will be satisfied: any number of immutable borrows are allowed or a
-//! single immutable borrow is allowed, but never both. If a borrow is attempted that would violate
+//! single mutable borrow is allowed, but never both. If a borrow is attempted that would violate
 //! these rules, the thread will panic.
 //!
 //! The corresponding [`Sync`] version of `RefCell<T>` is [`RwLock<T>`].

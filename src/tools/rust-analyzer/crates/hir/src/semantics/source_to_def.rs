@@ -14,7 +14,7 @@
 //! expression, an item definition.
 //!
 //! Knowing only the syntax gives us relatively little info. For example,
-//! looking at the syntax of the function we can realise that it is a part of an
+//! looking at the syntax of the function we can realize that it is a part of an
 //! `impl` block, but we won't be able to tell what trait function the current
 //! function overrides, and whether it does that correctly. For that, we need to
 //! go from [`ast::Fn`] to [`crate::Function`], and that's exactly what this
@@ -88,9 +88,11 @@
 use base_db::FileId;
 use hir_def::{
     child_by_source::ChildBySource,
-    dyn_map::DynMap,
-    expr::{BindingId, LabelId},
-    keys::{self, Key},
+    dyn_map::{
+        keys::{self, Key},
+        DynMap,
+    },
+    hir::{BindingId, LabelId},
     AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
     GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId, StructId,
     TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,

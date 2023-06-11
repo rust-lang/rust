@@ -3,7 +3,6 @@
 //! fields, etc.
 
 use std::fmt;
-use std::sync::Arc;
 
 use either::Either;
 use hir_def::lang_item::LangItem;
@@ -12,6 +11,7 @@ use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use triomphe::Arc;
 use typed_arena::Arena;
 
 use crate::{
@@ -27,7 +27,7 @@ use crate::{
 
 pub(crate) use hir_def::{
     body::Body,
-    expr::{Expr, ExprId, MatchArm, Pat, PatId},
+    hir::{Expr, ExprId, MatchArm, Pat, PatId},
     LocalFieldId, VariantId,
 };
 
@@ -207,7 +207,7 @@ impl ExprValidator {
 
         let report = compute_match_usefulness(&cx, &m_arms, scrut_ty);
 
-        // FIXME Report unreacheble arms
+        // FIXME Report unreachable arms
         // https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200
 
         let witnesses = report.non_exhaustiveness_witnesses;

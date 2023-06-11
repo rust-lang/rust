@@ -21,6 +21,7 @@ use crate::{Analysis, AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKi
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
+#[derive(Clone, Copy)]
 pub struct MaybeLiveLocals;
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
@@ -43,7 +44,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     type Idx = Local;
 
     fn statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -52,7 +53,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     }
 
     fn terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -61,7 +62,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     }
 
     fn call_return_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -74,7 +75,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     }
 
     fn yield_resume_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _resume_block: mir::BasicBlock,
         resume_place: mir::Place<'tcx>,
@@ -215,6 +216,7 @@ impl DefUse {
 /// This is basically written for dead store elimination and nothing else.
 ///
 /// All of the caveats of `MaybeLiveLocals` apply.
+#[derive(Clone, Copy)]
 pub struct MaybeTransitiveLiveLocals<'a> {
     always_live: &'a BitSet<Local>,
 }
@@ -247,7 +249,7 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
 
 impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -282,7 +284,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 
     fn apply_terminator_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -291,7 +293,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -304,7 +306,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 
     fn apply_yield_resume_effect(
-        &self,
+        &mut self,
         trans: &mut Self::Domain,
         _resume_block: mir::BasicBlock,
         resume_place: mir::Place<'tcx>,

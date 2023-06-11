@@ -12,6 +12,8 @@ use super::*;
 //     let _ = r"d";
 //     let _ = b"e";
 //     let _ = br"f";
+//     let _ = c"g";
+//     let _ = cr"h";
 // }
 pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     T![true],
@@ -22,6 +24,7 @@ pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     CHAR,
     STRING,
     BYTE_STRING,
+    C_STRING,
 ]);
 
 pub(crate) fn literal(p: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -181,6 +184,16 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
     let mut saw_comma = false;
     let mut saw_expr = false;
+
+    // test_err tuple_expr_leading_comma
+    // fn foo() {
+    //     (,);
+    // }
+    if p.eat(T![,]) {
+        p.error("expected expression");
+        saw_comma = true;
+    }
+
     while !p.at(EOF) && !p.at(T![')']) {
         saw_expr = true;
 

@@ -20,7 +20,7 @@ use crate::{tt, tt_iter::TtIter, ParseError};
 /// Stuff to the right is a [`MetaTemplate`] template which is used to produce
 /// output.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
+pub(crate) struct MetaTemplate(pub(crate) Box<[Op]>);
 
 impl MetaTemplate {
     pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<MetaTemplate, ParseError> {
@@ -44,7 +44,7 @@ impl MetaTemplate {
             res.push(op);
         }
 
-        Ok(MetaTemplate(res))
+        Ok(MetaTemplate(res.into_boxed_slice()))
     }
 }
 
@@ -52,7 +52,8 @@ impl MetaTemplate {
 pub(crate) enum Op {
     Var { name: SmolStr, kind: Option<MetaVarKind>, id: tt::TokenId },
     Ignore { name: SmolStr, id: tt::TokenId },
-    Index { depth: u32 },
+    Index { depth: usize },
+    Count { name: SmolStr, depth: Option<usize> },
     Repeat { tokens: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
     Subtree { tokens: MetaTemplate, delimiter: tt::Delimiter },
     Literal(tt::Literal),
@@ -295,9 +296,13 @@ fn parse_metavar_expr(src: &mut TtIter<'_>) -> Result<Op, ()> {
             let ident = args.expect_ident()?;
             Op::Ignore { name: ident.text.clone(), id: ident.span }
         }
-        "index" => {
-            let depth = if args.len() == 0 { 0 } else { args.expect_u32_literal()? };
-            Op::Index { depth }
+        "index" => Op::Index { depth: parse_depth(&mut args)? },
+        "count" => {
+            let ident = args.expect_ident()?;
+            // `${count(t)}` and `${count(t,)}` have different meanings. Not sure if this is a bug
+            // but that's how it's implemented in rustc as of this writing. See rust-lang/rust#111904.
+            let depth = if try_eat_comma(&mut args) { Some(parse_depth(&mut args)?) } else { None };
+            Op::Count { name: ident.text.clone(), depth }
         }
         _ => return Err(()),
     };
@@ -307,4 +312,23 @@ fn parse_metavar_expr(src: &mut TtIter<'_>) -> Result<Op, ()> {
     }
 
     Ok(op)
+}
+
+fn parse_depth(src: &mut TtIter<'_>) -> Result<usize, ()> {
+    if src.len() == 0 {
+        Ok(0)
+    } else if let tt::Leaf::Literal(lit) = src.expect_literal()? {
+        // Suffixes are not allowed.
+        lit.text.parse().map_err(|_| ())
+    } else {
+        Err(())
+    }
+}
+
+fn try_eat_comma(src: &mut TtIter<'_>) -> bool {
+    if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))) = src.peek_n(0) {
+        let _ = src.next();
+        return true;
+    }
+    false
 }

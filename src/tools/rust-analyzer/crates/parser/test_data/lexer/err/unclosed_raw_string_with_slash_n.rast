@@ -1,1 +1,1 @@
-STRING "r##\"\\n" error: Missing trailing `"` with `#` symbols to terminate the raw string literal
+STRING "r##\"\\n" error: Invalid raw string literal

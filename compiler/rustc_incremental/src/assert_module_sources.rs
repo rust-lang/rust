@@ -24,7 +24,7 @@
 
 use crate::errors;
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
@@ -52,7 +52,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: FxHashSet<Symbol>,
+    available_cgus: UnordSet<Symbol>,
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
@@ -118,9 +118,8 @@ impl<'tcx> AssertModuleSource<'tcx> {
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
         if !self.available_cgus.contains(&cgu_name) {
-            let mut cgu_names: Vec<&str> =
-                self.available_cgus.iter().map(|cgu| cgu.as_str()).collect();
-            cgu_names.sort();
+            let cgu_names: Vec<&str> =
+                self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
             self.tcx.sess.emit_err(errors::NoModuleNamed {
                 span: attr.span,
                 user_path,

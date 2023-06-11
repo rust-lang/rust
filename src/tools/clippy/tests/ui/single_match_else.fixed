@@ -1,0 +1,173 @@
+//@run-rustfix
+//@aux-build: proc_macros.rs
+#![warn(clippy::single_match_else)]
+#![allow(unused, clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
+extern crate proc_macros;
+use proc_macros::with_span;
+
+enum ExprNode {
+    ExprAddrOf,
+    Butterflies,
+    Unicorns,
+}
+
+static NODE: ExprNode = ExprNode::Unicorns;
+
+fn unwrap_addr() -> Option<&'static ExprNode> {
+    let _ = if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
+        let x = 5;
+        None
+    };
+
+    // Don't lint
+    with_span!(span match ExprNode::Butterflies {
+        ExprNode::ExprAddrOf => Some(&NODE),
+        _ => {
+            let x = 5;
+            None
+        },
+    })
+}
+
+macro_rules! unwrap_addr {
+    ($expression:expr) => {
+        match $expression {
+            ExprNode::ExprAddrOf => Some(&NODE),
+            _ => {
+                let x = 5;
+                None
+            },
+        }
+    };
+}
+
+#[rustfmt::skip]
+fn main() {
+    unwrap_addr!(ExprNode::Unicorns);
+
+    //
+    // don't lint single exprs/statements
+    //
+
+    // don't lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => return,
+    }
+
+    // don't lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => {
+            return
+        },
+    }
+
+    // don't lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => {
+            return;
+        },
+    }
+
+    //
+    // lint multiple exprs/statements "else" blocks
+    //
+
+    // lint here
+    if let Some(a) = Some(1) { println!("${:?}", a) } else {
+        println!("else block");
+        return
+    }
+
+    // lint here
+    if let Some(a) = Some(1) { println!("${:?}", a) } else {
+        println!("else block");
+        return;
+    }
+
+    // lint here
+    use std::convert::Infallible;
+    if let Ok(a) = Result::<i32, Infallible>::Ok(1) { println!("${:?}", a) } else {
+        println!("else block");
+        return;
+    }
+
+    use std::borrow::Cow;
+    if let Cow::Owned(a) = Cow::from("moo") { println!("${:?}", a) } else {
+        println!("else block");
+        return;
+    }
+}
+
+fn issue_10808(bar: Option<i32>) {
+    if let Some(v) = bar { unsafe {
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } } else {
+        println!("None1");
+        println!("None2");
+    }
+
+    if let Some(v) = bar {
+        println!("Some");
+        println!("{v}");
+    } else { unsafe {
+        let v = 0;
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } }
+
+    if let Some(v) = bar { unsafe {
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } } else { unsafe {
+        let v = 0;
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } }
+
+    if let Some(v) = bar {
+        unsafe {
+            let r = &v as *const i32;
+            println!("{}", *r);
+        }
+    } else {
+        println!("None");
+        println!("None");
+    }
+
+    match bar {
+        Some(v) => {
+            println!("Some");
+            println!("{v}");
+        },
+        #[rustfmt::skip]
+        None => {
+            unsafe {
+                let v = 0;
+                let r = &v as *const i32;
+                println!("{}", *r);
+            }
+        },
+    }
+
+    match bar {
+        #[rustfmt::skip]
+        Some(v) => {
+            unsafe {
+                let r = &v as *const i32;
+                println!("{}", *r);
+            }
+        },
+        #[rustfmt::skip]
+        None => {
+            unsafe {
+                let v = 0;
+                let r = &v as *const i32;
+                println!("{}", *r);
+            }
+        },
+    }
+}

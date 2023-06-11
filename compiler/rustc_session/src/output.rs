@@ -1,5 +1,5 @@
 //! Related to out filenames of compilation (e.g. save analysis, binaries).
-use crate::config::{CrateType, Input, OutputFilenames, OutputType};
+use crate::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use crate::errors::{
     CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,
     InvalidCharacterInCrateName,
@@ -8,14 +8,14 @@ use crate::Session;
 use rustc_ast::{self as ast, attr};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn out_filename(
     sess: &Session,
     crate_type: CrateType,
     outputs: &OutputFilenames,
     crate_name: Symbol,
-) -> PathBuf {
+) -> OutFileName {
     let default_filename = filename_for_input(sess, crate_type, crate_name, outputs);
     let out_filename = outputs
         .outputs
@@ -24,7 +24,9 @@ pub fn out_filename(
         .or_else(|| outputs.single_output_file.clone())
         .unwrap_or(default_filename);
 
-    check_file_is_writeable(&out_filename, sess);
+    if let OutFileName::Real(ref path) = out_filename {
+        check_file_is_writeable(path, sess);
+    }
 
     out_filename
 }
@@ -112,7 +114,7 @@ pub fn filename_for_metadata(
     sess: &Session,
     crate_name: Symbol,
     outputs: &OutputFilenames,
-) -> PathBuf {
+) -> OutFileName {
     // If the command-line specified the path, use that directly.
     if let Some(Some(out_filename)) = sess.opts.output_types.get(&OutputType::Metadata) {
         return out_filename.clone();
@@ -120,12 +122,13 @@ pub fn filename_for_metadata(
 
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
-    let out_filename = outputs
-        .single_output_file
-        .clone()
-        .unwrap_or_else(|| outputs.out_directory.join(&format!("lib{libname}.rmeta")));
+    let out_filename = outputs.single_output_file.clone().unwrap_or_else(|| {
+        OutFileName::Real(outputs.out_directory.join(&format!("lib{libname}.rmeta")))
+    });
 
-    check_file_is_writeable(&out_filename, sess);
+    if let OutFileName::Real(ref path) = out_filename {
+        check_file_is_writeable(path, sess);
+    }
 
     out_filename
 }
@@ -135,23 +138,33 @@ pub fn filename_for_input(
     crate_type: CrateType,
     crate_name: Symbol,
     outputs: &OutputFilenames,
-) -> PathBuf {
+) -> OutFileName {
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     match crate_type {
-        CrateType::Rlib => outputs.out_directory.join(&format!("lib{libname}.rlib")),
+        CrateType::Rlib => {
+            OutFileName::Real(outputs.out_directory.join(&format!("lib{libname}.rlib")))
+        }
         CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib => {
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
-            outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
+            OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
         CrateType::Staticlib => {
             let (prefix, suffix) = (&sess.target.staticlib_prefix, &sess.target.staticlib_suffix);
-            outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
+            OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
         }
         CrateType::Executable => {
             let suffix = &sess.target.exe_suffix;
             let out_filename = outputs.path(OutputType::Exe);
-            if suffix.is_empty() { out_filename } else { out_filename.with_extension(&suffix[1..]) }
+            if let OutFileName::Real(ref path) = out_filename {
+                if suffix.is_empty() {
+                    out_filename
+                } else {
+                    OutFileName::Real(path.with_extension(&suffix[1..]))
+                }
+            } else {
+                out_filename
+            }
         }
     }
 }

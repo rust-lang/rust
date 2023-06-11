@@ -145,6 +145,10 @@ impl QuoteOffsets {
 }
 
 pub trait IsString: AstToken {
+    const RAW_PREFIX: &'static str;
+    fn is_raw(&self) -> bool {
+        self.text().starts_with(Self::RAW_PREFIX)
+    }
     fn quote_offsets(&self) -> Option<QuoteOffsets> {
         let text = self.text();
         let offsets = QuoteOffsets::new(text)?;
@@ -183,20 +187,18 @@ pub trait IsString: AstToken {
             cb(text_range + offset, unescaped_char);
         });
     }
-}
-
-impl IsString for ast::String {}
-
-impl ast::String {
-    pub fn is_raw(&self) -> bool {
-        self.text().starts_with('r')
-    }
-    pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
+    fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
         let contents_range = self.text_range_between_quotes()?;
         assert!(TextRange::up_to(contents_range.len()).contains_range(range));
         Some(range + contents_range.start())
     }
+}
 
+impl IsString for ast::String {
+    const RAW_PREFIX: &'static str = "r";
+}
+
+impl ast::String {
     pub fn value(&self) -> Option<Cow<'_, str>> {
         if self.is_raw() {
             let text = self.text();
@@ -235,13 +237,11 @@ impl ast::String {
     }
 }
 
-impl IsString for ast::ByteString {}
+impl IsString for ast::ByteString {
+    const RAW_PREFIX: &'static str = "br";
+}
 
 impl ast::ByteString {
-    pub fn is_raw(&self) -> bool {
-        self.text().starts_with("br")
-    }
-
     pub fn value(&self) -> Option<Cow<'_, [u8]>> {
         if self.is_raw() {
             let text = self.text();
@@ -275,6 +275,49 @@ impl ast::ByteString {
         match (has_error, buf.capacity() == 0) {
             (true, _) => None,
             (false, true) => Some(Cow::Borrowed(text.as_bytes())),
+            (false, false) => Some(Cow::Owned(buf)),
+        }
+    }
+}
+
+impl IsString for ast::CString {
+    const RAW_PREFIX: &'static str = "cr";
+}
+
+impl ast::CString {
+    pub fn value(&self) -> Option<Cow<'_, str>> {
+        if self.is_raw() {
+            let text = self.text();
+            let text =
+                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+            return Some(Cow::Borrowed(text));
+        }
+
+        let text = self.text();
+        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+
+        let mut buf = String::new();
+        let mut prev_end = 0;
+        let mut has_error = false;
+        unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
+            unescaped_char,
+            buf.capacity() == 0,
+        ) {
+            (Ok(c), false) => buf.push(c),
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+                prev_end = char_range.end
+            }
+            (Ok(c), true) => {
+                buf.reserve_exact(text.len());
+                buf.push_str(&text[..prev_end]);
+                buf.push(c);
+            }
+            (Err(_), _) => has_error = true,
+        });
+
+        match (has_error, buf.capacity() == 0) {
+            (true, _) => None,
+            (false, true) => Some(Cow::Borrowed(text)),
             (false, false) => Some(Cow::Owned(buf)),
         }
     }

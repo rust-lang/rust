@@ -46,7 +46,6 @@ pub fn f(_: &(ToString + 'static)) {}
 impl Bar {
     // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.F"]' \
     //      "const F: fn(_: &(dyn ToString + 'static))"
-    // FIXME(fmease): Hide default lifetime, render "const F: fn(_: &dyn ToString)"
     pub const F: fn(_: &(ToString + 'static)) = f;
 }
 

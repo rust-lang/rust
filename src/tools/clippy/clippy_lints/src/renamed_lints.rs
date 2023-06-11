@@ -33,6 +33,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::zero_width_space", "clippy::invisible_characters"),
     ("clippy::cast_ref_to_mut", "cast_ref_to_mut"),
     ("clippy::clone_double_ref", "suspicious_double_ref_op"),
+    ("clippy::cmp_nan", "invalid_nan_comparisons"),
     ("clippy::drop_bounds", "drop_bounds"),
     ("clippy::drop_copy", "dropping_copy_types"),
     ("clippy::drop_ref", "dropping_references"),
@@ -50,6 +51,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::panic_params", "non_fmt_panics"),
     ("clippy::positional_named_format_parameters", "named_arguments_used_positionally"),
     ("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr"),
+    ("clippy::undropped_manually_drops", "undropped_manually_drops"),
     ("clippy::unknown_clippy_lints", "unknown_lints"),
     ("clippy::unused_label", "unused_labels"),
 ];

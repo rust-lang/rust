@@ -6,7 +6,8 @@ use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment};
-use rustc_ast::{self as ast, attr, Inline, ItemKind, ModKind, NodeId};
+use rustc_ast::expand::StrippedCfgItem;
+use rustc_ast::{self as ast, attr, Crate, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
@@ -465,6 +466,10 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         self.proc_macros.push(id)
     }
 
+    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, name: Ident, cfg: ast::MetaItem) {
+        self.stripped_cfg_items.push(StrippedCfgItem { parent_module: parent_node, name, cfg });
+    }
+
     fn registered_tools(&self) -> &RegisteredTools {
         &self.registered_tools
     }
@@ -669,7 +674,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         res.map(|res| (self.get_macro(res).map(|macro_data| macro_data.ext), res))
     }
 
-    pub(crate) fn finalize_macro_resolutions(&mut self) {
+    pub(crate) fn finalize_macro_resolutions(&mut self, krate: &Crate) {
         let check_consistency = |this: &mut Self,
                                  path: &[Segment],
                                  span,
@@ -721,7 +726,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label) = if let PathResult::Failed { span, label, .. } = path_res {
+                    let (span, label, module) = if let PathResult::Failed { span, label, module, .. } = path_res {
                         // try to suggest if it's not a macro, maybe a function
                         if let PathResult::NonModule(partial_res) = self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
                             && partial_res.unresolved_segments() == 0 {
@@ -733,7 +738,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     Applicability::MaybeIncorrect
                                 ));
                         }
-                        (span, label)
+                        (span, label, module)
                     } else {
                         (
                             path_span,
@@ -742,11 +747,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 kind.article(),
                                 kind.descr()
                             ),
+                            None,
                         )
                     };
                     self.report_error(
                         span,
-                        ResolutionError::FailedToResolve { label, suggestion },
+                        ResolutionError::FailedToResolve { last_segment: path.last().map(|segment| segment.ident.name), label, suggestion, module },
                     );
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
@@ -789,7 +795,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let expected = kind.descr_expected();
                     let msg = format!("cannot find {} `{}` in this scope", expected, ident);
                     let mut err = self.tcx.sess.struct_span_err(ident.span, msg);
-                    self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
+                    self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident, krate);
                     err.emit();
                 }
             }

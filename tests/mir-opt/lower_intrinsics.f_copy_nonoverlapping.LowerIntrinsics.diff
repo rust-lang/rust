@@ -49,7 +49,7 @@
           StorageDead(_9);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:90: +4:91
 -         _3 = copy_nonoverlapping::<i32>(move _4, move _8, const 0_usize) -> [return: bb1, unwind unreachable]; // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:99:9: 99:28
+-                                          // + span: $DIR/lower_intrinsics.rs:105:9: 105:28
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const i32, *mut i32, usize) {copy_nonoverlapping::<i32>}, val: Value(<ZST>) }
 +         copy_nonoverlapping(dst = move _8, src = move _4, count = const 0_usize); // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95
 +         goto -> bb1;                     // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95

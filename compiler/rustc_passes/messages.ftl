@@ -211,6 +211,8 @@ passes_doc_keyword_not_mod =
 passes_doc_keyword_only_impl =
     `#[doc(keyword = "...")]` should be used on impl blocks
 
+passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
+
 passes_doc_test_takes_list =
     `#[doc(test(...)]` takes a list of attributes
 

@@ -348,9 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
-            ExprKind::ConstBlock(ref anon_const) => {
-                self.check_expr_const_block(anon_const, expected, expr)
-            }
+            ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected, expr),
             ExprKind::Repeat(element, ref count) => {
                 self.check_expr_repeat(element, count, expected, expr)
             }
@@ -1368,20 +1366,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_const_block(
         &self,
-        anon_const: &'tcx hir::AnonConst,
+        block: &'tcx hir::ConstBlock,
         expected: Expectation<'tcx>,
         _expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let body = self.tcx.hir().body(anon_const.body);
+        let body = self.tcx.hir().body(block.body);
 
         // Create a new function context.
-        let def_id = anon_const.def_id;
+        let def_id = block.def_id;
         let fcx = FnCtxt::new(self, self.param_env.with_const(), def_id);
         crate::GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         let ty = fcx.check_expr_with_expectation(&body.value, expected);
         fcx.require_type_is_sized(ty, body.value.span, traits::ConstSized);
-        fcx.write_ty(anon_const.hir_id, ty);
+        fcx.write_ty(block.hir_id, ty);
         ty
     }
 
@@ -2083,13 +2081,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
             _ => {
                 // prevent all specified fields from being suggested
-                let skip_fields = skip_fields.iter().map(|x| x.ident.name);
-                if let Some(field_name) = self.suggest_field_name(
-                    variant,
-                    field.ident.name,
-                    skip_fields.collect(),
-                    expr_span,
-                ) {
+                let skip_fields: Vec<_> = skip_fields.iter().map(|x| x.ident.name).collect();
+                if let Some(field_name) =
+                    self.suggest_field_name(variant, field.ident.name, &skip_fields, expr_span)
+                {
                     err.span_suggestion(
                         field.ident.span,
                         "a field with a similar name exists",
@@ -2110,9 +2105,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     format!("`{ty}` does not have this field"),
                                 );
                             }
-                            let available_field_names =
+                            let mut available_field_names =
                                 self.available_field_names(variant, expr_span);
-                            if !available_field_names.is_empty() {
+                            available_field_names
+                                .retain(|name| skip_fields.iter().all(|skip| name != skip));
+                            if available_field_names.is_empty() {
+                                err.note("all struct fields are already assigned");
+                            } else {
                                 err.note(format!(
                                     "available fields are: {}",
                                     self.name_series_display(available_field_names)
@@ -2132,7 +2131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         variant: &'tcx ty::VariantDef,
         field: Symbol,
-        skip: Vec<Symbol>,
+        skip: &[Symbol],
         // The span where stability will be checked
         span: Span,
     ) -> Option<Symbol> {
@@ -2584,7 +2583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         access_span: Span,
     ) {
         if let Some(suggested_field_name) =
-            self.suggest_field_name(def.non_enum_variant(), field.name, vec![], access_span)
+            self.suggest_field_name(def.non_enum_variant(), field.name, &[], access_span)
         {
             err.span_suggestion(
                 field.span,
@@ -3117,16 +3116,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 ty::Tuple(tys) => {
-                    let fstr = field.as_str();
+                    if let Ok(index) = field.as_str().parse::<usize>()
+                        && field.name == sym::integer(index)
+                    {
+                        for ty in tys.iter().take(index + 1) {
+                            self.require_type_is_sized(ty, expr.span, traits::MiscObligation);
+                        }
+                        if let Some(&field_ty) = tys.get(index) {
+                            field_indices.push(index.into());
+                            current_container = field_ty;
 
-                    if let Ok(index) = fstr.parse::<usize>() {
-                        if fstr == index.to_string() {
-                            if let Some(&field_ty) = tys.get(index) {
-                                field_indices.push(index.into());
-                                current_container = field_ty;
-
-                                continue;
-                            }
+                            continue;
                         }
                     }
                 }

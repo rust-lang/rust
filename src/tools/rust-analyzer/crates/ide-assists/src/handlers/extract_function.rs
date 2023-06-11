@@ -70,6 +70,11 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     }
 
     let node = ctx.covering_element();
+    if matches!(node.kind(), T!['{'] | T!['}'] | T!['('] | T![')'] | T!['['] | T![']']) {
+        cov_mark::hit!(extract_function_in_braces_is_not_applicable);
+        return None;
+    }
+
     if node.kind() == COMMENT {
         cov_mark::hit!(extract_function_in_comment_is_not_applicable);
         return None;
@@ -178,7 +183,9 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
 fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef {
     let mut names_in_scope = vec![];
-    semantics_scope.process_all_names(&mut |name, _| names_in_scope.push(name.to_string()));
+    semantics_scope.process_all_names(&mut |name, _| {
+        names_in_scope.push(name.display(semantics_scope.db.upcast()).to_string())
+    });
 
     let default_name = "fun_name";
 
@@ -369,7 +376,7 @@ struct OutlivedLocal {
 
 /// Container of local variable usages
 ///
-/// Semanticall same as `UsageSearchResult`, but provides more convenient interface
+/// Semantically same as `UsageSearchResult`, but provides more convenient interface
 struct LocalUsages(ide_db::search::UsageSearchResult);
 
 impl LocalUsages {
@@ -438,7 +445,7 @@ impl Param {
     }
 
     fn to_param(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Param {
-        let var = self.var.name(ctx.db()).to_string();
+        let var = self.var.name(ctx.db()).display(ctx.db()).to_string();
         let var_name = make::name(&var);
         let pat = match self.kind() {
             ParamKind::MutValue => make::ident_pat(false, true, var_name),
@@ -468,7 +475,8 @@ impl TryKind {
         let name = adt.name(ctx.db());
         // FIXME: use lang items to determine if it is std type or user defined
         //        E.g. if user happens to define type named `Option`, we would have false positive
-        match name.to_string().as_str() {
+        let name = &name.display(ctx.db()).to_string();
+        match name.as_str() {
             "Option" => Some(TryKind::Option),
             "Result" => Some(TryKind::Result { ty }),
             _ => None,
@@ -702,7 +710,7 @@ impl FunctionBody {
     ) -> (FxIndexSet<Local>, Option<ast::SelfParam>) {
         let mut self_param = None;
         let mut res = FxIndexSet::default();
-        let mut cb = |name_ref: Option<_>| {
+        let mut add_name_if_local = |name_ref: Option<_>| {
             let local_ref =
                 match name_ref.and_then(|name_ref| NameRefClass::classify(sema, &name_ref)) {
                     Some(
@@ -726,21 +734,24 @@ impl FunctionBody {
         };
         self.walk_expr(&mut |expr| match expr {
             ast::Expr::PathExpr(path_expr) => {
-                cb(path_expr.path().and_then(|it| it.as_single_name_ref()))
+                add_name_if_local(path_expr.path().and_then(|it| it.as_single_name_ref()))
             }
             ast::Expr::ClosureExpr(closure_expr) => {
                 if let Some(body) = closure_expr.body() {
-                    body.syntax().descendants().map(ast::NameRef::cast).for_each(|it| cb(it));
+                    body.syntax()
+                        .descendants()
+                        .map(ast::NameRef::cast)
+                        .for_each(&mut add_name_if_local);
                 }
             }
             ast::Expr::MacroExpr(expr) => {
                 if let Some(tt) = expr.macro_call().and_then(|call| call.token_tree()) {
                     tt.syntax()
-                        .children_with_tokens()
-                        .flat_map(SyntaxElement::into_token)
-                        .filter(|it| it.kind() == SyntaxKind::IDENT)
+                        .descendants_with_tokens()
+                        .filter_map(SyntaxElement::into_token)
+                        .filter(|it| matches!(it.kind(), SyntaxKind::IDENT | T![self]))
                         .flat_map(|t| sema.descend_into_macros(t))
-                        .for_each(|t| cb(t.parent().and_then(ast::NameRef::cast)));
+                        .for_each(|t| add_name_if_local(t.parent().and_then(ast::NameRef::cast)));
                 }
             }
             _ => (),
@@ -1286,8 +1297,8 @@ fn find_non_trait_impl(trait_impl: &SyntaxNode) -> Option<ast::Impl> {
     let as_impl = ast::Impl::cast(trait_impl.clone())?;
     let impl_type = Some(impl_type_name(&as_impl)?);
 
-    let sibblings = trait_impl.parent()?.children();
-    sibblings
+    let siblings = trait_impl.parent()?.children();
+    siblings
         .filter_map(ast::Impl::cast)
         .find(|s| impl_type_name(s) == impl_type && !is_trait_impl(s))
 }
@@ -1333,14 +1344,15 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> St
         [var] => {
             let modifier = mut_modifier(var);
             let name = var.local.name(ctx.db());
-            format_to!(buf, "let {modifier}{name} = ")
+            format_to!(buf, "let {modifier}{} = ", name.display(ctx.db()))
         }
         vars => {
             buf.push_str("let (");
             let bindings = vars.iter().format_with(", ", |local, f| {
                 let modifier = mut_modifier(local);
                 let name = local.local.name(ctx.db());
-                f(&format_args!("{modifier}{name}"))
+                f(&format_args!("{modifier}{}", name.display(ctx.db())))?;
+                Ok(())
             });
             format_to!(buf, "{bindings}");
             buf.push_str(") = ");
@@ -1479,7 +1491,7 @@ impl FlowHandler {
 }
 
 fn path_expr_from_local(ctx: &AssistContext<'_>, var: Local) -> ast::Expr {
-    let name = var.name(ctx.db()).to_string();
+    let name = var.name(ctx.db()).display(ctx.db()).to_string();
     make::expr_path(make::ext::ident_path(&name))
 }
 
@@ -1879,7 +1891,7 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
 }
 
 fn format_type(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> String {
-    ty.display_source_code(ctx.db(), module.into()).ok().unwrap_or_else(|| "_".to_string())
+    ty.display_source_code(ctx.db(), module.into(), true).ok().unwrap_or_else(|| "_".to_string())
 }
 
 fn make_ty(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
@@ -4340,6 +4352,82 @@ fn $0fun_name(n: i32) -> i32 {
     }
 
     #[test]
+    fn param_usage_in_macro_with_nested_tt() {
+        check_assist(
+            extract_function,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    let t = 1;
+    $0let k = n * m!((n) + { t });$0
+    let m = k + 1;
+}
+"#,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    let t = 1;
+    let k = fun_name(n, t);
+    let m = k + 1;
+}
+
+fn $0fun_name(n: i32, t: i32) -> i32 {
+    let k = n * m!((n) + { t });
+    k
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn param_usage_in_macro_with_nested_tt_2() {
+        check_assist(
+            extract_function,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+struct S(i32);
+impl S {
+    fn foo(&self) {
+        let n = 1;
+        $0let k = n * m!((n) + { self.0 });$0
+        let m = k + 1;
+    }
+}
+"#,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+struct S(i32);
+impl S {
+    fn foo(&self) {
+        let n = 1;
+        let k = self.fun_name(n);
+        let m = k + 1;
+    }
+
+    fn $0fun_name(&self, n: i32) -> i32 {
+        let k = n * m!((n) + { self.0 });
+        k
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn extract_with_await() {
         check_assist(
             extract_function,
@@ -4640,6 +4728,7 @@ const fn $0fun_name() {
         check_assist(
             extract_function,
             r#"
+//- minicore: iterator
 fn foo() {
     let mut x = 5;
     for _ in 0..10 {
@@ -4663,6 +4752,7 @@ fn $0fun_name(x: &mut i32) {
         check_assist(
             extract_function,
             r#"
+//- minicore: iterator
 fn foo() {
     for _ in 0..10 {
         let mut x = 5;
@@ -4686,6 +4776,7 @@ fn $0fun_name(mut x: i32) {
         check_assist(
             extract_function,
             r#"
+//- minicore: iterator
 fn foo() {
     loop {
         let mut x = 5;
@@ -5388,6 +5479,30 @@ fn $0fun_name<T: Debug>(i: T) {
     }
 
     #[test]
+    fn dont_emit_type_with_hidden_lifetime_parameter() {
+        // FIXME: We should emit a `<T: Debug>` generic argument for the generated function
+        check_assist(
+            extract_function,
+            r#"
+struct Struct<'a, T>(&'a T);
+fn func<T: Debug>(i: Struct<'_, T>) {
+    $0foo(i);$0
+}
+"#,
+            r#"
+struct Struct<'a, T>(&'a T);
+fn func<T: Debug>(i: Struct<'_, T>) {
+    fun_name(i);
+}
+
+fn $0fun_name(i: Struct<'_, T>) {
+    foo(i);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn preserve_generics_from_body() {
         check_assist(
             extract_function,
@@ -5799,5 +5914,41 @@ fn $0fun_name() -> ControlFlow<()> {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn in_left_curly_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo() { $0}$0");
+    }
+
+    #[test]
+    fn in_right_curly_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo() $0{$0 }");
+    }
+
+    #[test]
+    fn in_left_paren_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo( $0)$0 { }");
+    }
+
+    #[test]
+    fn in_right_paren_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo $0($0 ) { }");
+    }
+
+    #[test]
+    fn in_left_brack_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo(arr: &mut [i32$0]$0) {}");
+    }
+
+    #[test]
+    fn in_right_brack_is_not_applicable() {
+        cov_mark::check!(extract_function_in_braces_is_not_applicable);
+        check_assist_not_applicable(extract_function, r"fn foo(arr: &mut $0[$0i32]) {}");
     }
 }

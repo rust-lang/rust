@@ -45,7 +45,7 @@ pub(crate) fn complete_item_list(
                         acc.add_macro(ctx, path_ctx, m, name)
                     }
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
-                        acc.add_module(ctx, path_ctx, m, name)
+                        acc.add_module(ctx, path_ctx, m, name, vec![])
                     }
                     _ => (),
                 }
@@ -55,12 +55,12 @@ pub(crate) fn complete_item_list(
         }
         Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         Qualified::No if ctx.qualifier_ctx.none() => {
-            ctx.process_all_names(&mut |name, def| match def {
+            ctx.process_all_names(&mut |name, def, doc_aliases| match def {
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
                     acc.add_macro(ctx, path_ctx, m, name)
                 }
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
-                    acc.add_module(ctx, path_ctx, m, name)
+                    acc.add_module(ctx, path_ctx, m, name, doc_aliases)
                 }
                 _ => (),
             });

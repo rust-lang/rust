@@ -23,7 +23,7 @@ pub(crate) fn complete_dot(
         let mut item =
             CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
         item.detail("expr.await");
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
     }
 
     if let DotAccessKind::Method { .. } = dot_access.kind {
@@ -167,6 +167,43 @@ fn foo(s: S) { s.$0 }
 "#,
             expect![[r#"
                 fd foo   u32
+                me bar() fn(&self)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn no_unstable_method_on_stable() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+fn foo(s: std::S) { s.$0 }
+//- /std.rs crate:std
+pub struct S;
+impl S {
+    #[unstable]
+    pub fn bar(&self) {}
+}
+"#,
+            expect![""],
+        );
+    }
+
+    #[test]
+    fn unstable_method_on_nightly() {
+        check(
+            r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+fn foo(s: std::S) { s.$0 }
+//- /std.rs crate:std
+pub struct S;
+impl S {
+    #[unstable]
+    pub fn bar(&self) {}
+}
+"#,
+            expect![[r#"
                 me bar() fn(&self)
             "#]],
         );

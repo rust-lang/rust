@@ -13,10 +13,6 @@ note: function defined here
    |
 LL | fn takes_option(_arg: Option<&String>) {}
    |    ^^^^^^^^^^^^ ---------------------
-help: you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`
-   |
-LL |     takes_option(None.as_ref());
-   |                  ~~~~~~~~~~~~~
 help: consider removing the borrow
    |
 LL -     takes_option(&None);
@@ -27,10 +23,8 @@ error[E0308]: mismatched types
   --> $DIR/issue-100605.rs:8:18
    |
 LL |     takes_option(&res);
-   |     ------------ ^^^^
-   |     |            |
-   |     |            expected `Option<&String>`, found `&Option<String>`
-   |     |            help: you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`: `res.as_ref()`
+   |     ------------ ^^^^ expected `Option<&String>`, found `&Option<String>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note:   expected enum `Option<&String>`
@@ -40,6 +34,11 @@ note: function defined here
    |
 LL | fn takes_option(_arg: Option<&String>) {}
    |    ^^^^^^^^^^^^ ---------------------
+help: try using `.as_ref()` to convert `&Option<String>` to `Option<&String>`
+   |
+LL -     takes_option(&res);
+LL +     takes_option(res.as_ref());
+   |
 
 error: aborting due to 2 previous errors
 

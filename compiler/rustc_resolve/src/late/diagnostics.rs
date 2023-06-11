@@ -149,6 +149,7 @@ struct BaseError {
     span_label: Option<(Span, &'static str)>,
     could_be_expr: bool,
     suggestion: Option<(Span, &'static str, String)>,
+    module: Option<DefId>,
 }
 
 #[derive(Debug)]
@@ -210,10 +211,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     _ => false,
                 },
                 suggestion: None,
+                module: None,
             }
         } else {
             let item_span = path.last().unwrap().ident.span;
-            let (mod_prefix, mod_str, suggestion) = if path.len() == 1 {
+            let (mod_prefix, mod_str, module, suggestion) = if path.len() == 1 {
                 debug!(?self.diagnostic_metadata.current_impl_items);
                 debug!(?self.diagnostic_metadata.current_function);
                 let suggestion = if self.current_trait_ref.is_none()
@@ -247,26 +249,37 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 } else {
                     None
                 };
-                (String::new(), "this scope".to_string(), suggestion)
+                (String::new(), "this scope".to_string(), None, suggestion)
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
                 if self.r.tcx.sess.edition() > Edition::Edition2015 {
                     // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
                     // which overrides all other expectations of item type
                     expected = "crate";
-                    (String::new(), "the list of imported crates".to_string(), None)
+                    (String::new(), "the list of imported crates".to_string(), None, None)
                 } else {
-                    (String::new(), "the crate root".to_string(), None)
+                    (
+                        String::new(),
+                        "the crate root".to_string(),
+                        Some(CRATE_DEF_ID.to_def_id()),
+                        None,
+                    )
                 }
             } else if path.len() == 2 && path[0].ident.name == kw::Crate {
-                (String::new(), "the crate root".to_string(), None)
+                (String::new(), "the crate root".to_string(), Some(CRATE_DEF_ID.to_def_id()), None)
             } else {
                 let mod_path = &path[..path.len() - 1];
-                let mod_prefix = match self.resolve_path(mod_path, Some(TypeNS), None) {
+                let mod_res = self.resolve_path(mod_path, Some(TypeNS), None);
+                let mod_prefix = match mod_res {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
                     _ => None,
-                }
-                .map_or_else(String::new, |res| format!("{} ", res.descr()));
-                (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), None)
+                };
+
+                let module_did = mod_prefix.as_ref().and_then(Res::mod_def_id);
+
+                let mod_prefix =
+                    mod_prefix.map_or_else(String::new, |res| (format!("{} ", res.descr())));
+
+                (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), module_did, None)
             };
 
             let (fallback_label, suggestion) = if path_str == "async"
@@ -300,6 +313,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 span_label: None,
                 could_be_expr: false,
                 suggestion,
+                module,
             }
         }
     }
@@ -315,6 +329,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     ) -> (DiagnosticBuilder<'tcx, ErrorGuaranteed>, Vec<ImportSuggestion>) {
         debug!(?res, ?source);
         let base_error = self.make_base_error(path, span, source, res);
+
         let code = source.error_code(res.is_some());
         let mut err = self.r.tcx.sess.struct_span_err_with_code(
             base_error.span,
@@ -365,6 +380,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             err.span_label(base_error.span, base_error.fallback_label);
         }
         self.err_code_special_cases(&mut err, source, path, span);
+
+        if let Some(module) = base_error.module {
+            self.r.find_cfg_stripped(&mut err, &path.last().unwrap().ident.name, module);
+        }
 
         (err, candidates)
     }

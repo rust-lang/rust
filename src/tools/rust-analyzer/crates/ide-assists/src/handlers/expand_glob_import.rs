@@ -65,7 +65,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
             let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
             let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
-                let path = make::ext::ident_path(&n.to_string());
+                let path = make::ext::ident_path(&n.display(ctx.db()).to_string());
                 make::use_tree(path, None, None, false)
             }))
             .clone_for_update();

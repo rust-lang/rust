@@ -57,11 +57,13 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
     let local = ctx.sema.to_def(&pat)?;
     let ty = ctx.sema.type_of_pat(&pat.into())?.original;
 
-    if ty.contains_unknown() || ty.is_closure() {
-        cov_mark::hit!(promote_lcoal_not_applicable_if_ty_not_inferred);
-        return None;
-    }
-    let ty = ty.display_source_code(ctx.db(), module.into()).ok()?;
+    let ty = match ty.display_source_code(ctx.db(), module.into(), false) {
+        Ok(ty) => ty,
+        Err(_) => {
+            cov_mark::hit!(promote_local_not_applicable_if_ty_not_inferred);
+            return None;
+        }
+    };
 
     let initializer = let_stmt.initializer()?;
     if !is_body_const(&ctx.sema, &initializer) {
@@ -187,7 +189,7 @@ fn foo() {
 
     #[test]
     fn not_applicable_unknown_ty() {
-        cov_mark::check!(promote_lcoal_not_applicable_if_ty_not_inferred);
+        cov_mark::check!(promote_local_not_applicable_if_ty_not_inferred);
         check_assist_not_applicable(
             promote_local_to_const,
             r"

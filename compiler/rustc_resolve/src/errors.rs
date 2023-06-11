@@ -330,6 +330,7 @@ pub(crate) struct ParamInTyOfConstParam {
     pub(crate) param_kind: Option<ParamKindInTyOfConstParam>,
 }
 
+#[derive(Debug)]
 #[derive(Subdiagnostic)]
 pub(crate) enum ParamKindInTyOfConstParam {
     #[note(resolve_type_param_in_ty_of_const_param)]
@@ -365,6 +366,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
 #[help(resolve_param_in_non_trivial_anon_const_help)]
 pub(crate) struct ParamInNonTrivialAnonConstHelp;
 
+#[derive(Debug)]
 #[derive(Subdiagnostic)]
 pub(crate) enum ParamKindInNonTrivialAnonConst {
     #[note(resolve_type_param_in_non_trivial_anon_const)]
@@ -562,6 +564,7 @@ pub(crate) struct CfgAccessibleUnsure {
     pub(crate) span: Span,
 }
 
+#[derive(Debug)]
 #[derive(Diagnostic)]
 #[diag(resolve_param_in_enum_discriminant)]
 pub(crate) struct ParamInEnumDiscriminant {
@@ -573,6 +576,7 @@ pub(crate) struct ParamInEnumDiscriminant {
     pub(crate) param_kind: ParamKindInEnumDiscriminant,
 }
 
+#[derive(Debug)]
 #[derive(Subdiagnostic)]
 pub(crate) enum ParamKindInEnumDiscriminant {
     #[note(resolve_type_param_in_enum_discriminant)]

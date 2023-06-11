@@ -233,7 +233,17 @@ pub trait ToStableHashKey<HCX> {
 ///  - `DefIndex`, `CrateNum`, `LocalDefId`, because their concrete
 ///    values depend on state that might be different between
 ///    compilation sessions.
-pub unsafe trait StableOrd: Ord {}
+///
+/// The associated constant `CAN_USE_UNSTABLE_SORT` denotes whether
+/// unstable sorting can be used for this type. Set to true if and
+/// only if `a == b` implies `a` and `b` are fully indistinguishable.
+pub unsafe trait StableOrd: Ord {
+    const CAN_USE_UNSTABLE_SORT: bool;
+}
+
+unsafe impl<T: StableOrd> StableOrd for &T {
+    const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
+}
 
 /// Implement HashStable by just calling `Hash::hash()`. Also implement `StableOrd` for the type since
 /// that has the same requirements.
@@ -253,7 +263,9 @@ macro_rules! impl_stable_traits_for_trivial_type {
             }
         }
 
-        unsafe impl $crate::stable_hasher::StableOrd for $t {}
+        unsafe impl $crate::stable_hasher::StableOrd for $t {
+            const CAN_USE_UNSTABLE_SORT: bool = true;
+        }
     };
 }
 
@@ -339,6 +351,10 @@ impl<T1: HashStable<CTX>, T2: HashStable<CTX>, CTX> HashStable<CTX> for (T1, T2)
     }
 }
 
+unsafe impl<T1: StableOrd, T2: StableOrd> StableOrd for (T1, T2) {
+    const CAN_USE_UNSTABLE_SORT: bool = T1::CAN_USE_UNSTABLE_SORT && T2::CAN_USE_UNSTABLE_SORT;
+}
+
 impl<T1, T2, T3, CTX> HashStable<CTX> for (T1, T2, T3)
 where
     T1: HashStable<CTX>,
@@ -351,6 +367,11 @@ where
         _1.hash_stable(ctx, hasher);
         _2.hash_stable(ctx, hasher);
     }
+}
+
+unsafe impl<T1: StableOrd, T2: StableOrd, T3: StableOrd> StableOrd for (T1, T2, T3) {
+    const CAN_USE_UNSTABLE_SORT: bool =
+        T1::CAN_USE_UNSTABLE_SORT && T2::CAN_USE_UNSTABLE_SORT && T3::CAN_USE_UNSTABLE_SORT;
 }
 
 impl<T1, T2, T3, T4, CTX> HashStable<CTX> for (T1, T2, T3, T4)
@@ -367,6 +388,15 @@ where
         _2.hash_stable(ctx, hasher);
         _3.hash_stable(ctx, hasher);
     }
+}
+
+unsafe impl<T1: StableOrd, T2: StableOrd, T3: StableOrd, T4: StableOrd> StableOrd
+    for (T1, T2, T3, T4)
+{
+    const CAN_USE_UNSTABLE_SORT: bool = T1::CAN_USE_UNSTABLE_SORT
+        && T2::CAN_USE_UNSTABLE_SORT
+        && T3::CAN_USE_UNSTABLE_SORT
+        && T4::CAN_USE_UNSTABLE_SORT;
 }
 
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
@@ -459,6 +489,10 @@ impl<CTX> HashStable<CTX> for str {
     }
 }
 
+unsafe impl StableOrd for &str {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
+
 impl<CTX> HashStable<CTX> for String {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
@@ -468,7 +502,9 @@ impl<CTX> HashStable<CTX> for String {
 
 // Safety: String comparison only depends on their contents and the
 // contents are not changed by (de-)serialization.
-unsafe impl StableOrd for String {}
+unsafe impl StableOrd for String {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
 
 impl<HCX> ToStableHashKey<HCX> for String {
     type KeyType = String;
@@ -494,7 +530,9 @@ impl<CTX> HashStable<CTX> for bool {
 }
 
 // Safety: sort order of bools is not changed by (de-)serialization.
-unsafe impl StableOrd for bool {}
+unsafe impl StableOrd for bool {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
 
 impl<T, CTX> HashStable<CTX> for Option<T>
 where
@@ -512,7 +550,9 @@ where
 }
 
 // Safety: the Option wrapper does not add instability to comparison.
-unsafe impl<T: StableOrd> StableOrd for Option<T> {}
+unsafe impl<T: StableOrd> StableOrd for Option<T> {
+    const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
+}
 
 impl<T1, T2, CTX> HashStable<CTX> for Result<T1, T2>
 where

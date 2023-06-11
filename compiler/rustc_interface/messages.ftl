@@ -33,6 +33,7 @@ interface_mixed_proc_macro_crate =
 interface_multiple_output_types_adaption =
     due to multiple output types requested, the explicitly specified output file name will be adapted for each output type
 
+interface_multiple_output_types_to_stdout = can't use option `-o` or `--emit` to write multiple output types to stdout
 interface_out_dir_error =
     failed to find or create the directory specified by `--out-dir`
 

@@ -1,6 +1,8 @@
 use super::FnCtxt;
 
-use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel, SuggestBoxing};
+use crate::errors::{
+    AddReturnTypeSuggestion, ExpectedReturnTypeLabel, SuggestBoxing, SuggestConvertViaMethod,
+};
 use crate::fluent_generated as fluent;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
@@ -275,6 +277,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let expr = expr.peel_blocks();
+        let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
+
         if let Some((suggestion, msg, applicability, verbose, annotation)) =
             self.suggest_deref_or_ref(expr, found, expected)
         {
@@ -325,9 +329,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             return true;
-        } else if self.suggest_else_fn_with_closure(err, expr, found, expected) {
+        }
+
+        if self.suggest_else_fn_with_closure(err, expr, found, expected) {
             return true;
-        } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
+        }
+
+        if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
             && let ty::FnDef(def_id, ..) = *found.kind()
             && let Some(sp) = self.tcx.hir().span_if_local(def_id)
         {
@@ -343,95 +351,154 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(sp, format!("{descr} `{name}` defined here"));
             }
             return true;
-        } else if self.suggest_cast(err, expr, found, expected, expected_ty_expr) {
-            return true;
-        } else {
-            let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
-            if !methods.is_empty() {
-                let mut suggestions = methods.iter()
-                    .filter_map(|conversion_method| {
-                        let receiver_method_ident = expr.method_ident();
-                        if let Some(method_ident) = receiver_method_ident
-                            && method_ident.name == conversion_method.name
-                        {
-                            return None // do not suggest code that is already there (#53348)
-                        }
+        }
 
-                        let method_call_list = [sym::to_vec, sym::to_string];
-                        let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
-                            && receiver_method.ident.name == sym::clone
-                            && method_call_list.contains(&conversion_method.name)
-                            // If receiver is `.clone()` and found type has one of those methods,
-                            // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
-                            // to an owned type (`Vec` or `String`). These conversions clone internally,
-                            // so we remove the user's `clone` call.
-                        {
-                            vec![(
-                                receiver_method.ident.span,
-                                conversion_method.name.to_string()
-                            )]
-                        } else if expr.precedence().order()
-                            < ExprPrecedence::MethodCall.order()
-                        {
-                            vec![
-                                (expr.span.shrink_to_lo(), "(".to_string()),
-                                (expr.span.shrink_to_hi(), format!(").{}()", conversion_method.name)),
-                            ]
-                        } else {
-                            vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
-                        };
-                        let struct_pat_shorthand_field = self.maybe_get_struct_pattern_shorthand_field(expr);
-                        if let Some(name) = struct_pat_shorthand_field {
-                            sugg.insert(
-                                0,
-                                (expr.span.shrink_to_lo(), format!("{}: ", name)),
-                            );
-                        }
-                        Some(sugg)
-                    })
-                    .peekable();
-                if suggestions.peek().is_some() {
-                    err.multipart_suggestions(
-                        "try using a conversion method",
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
-                    return true;
-                }
-            } else if let ty::Adt(found_adt, found_substs) = found.kind()
-                && self.tcx.is_diagnostic_item(sym::Option, found_adt.did())
-                && let ty::Adt(expected_adt, expected_substs) = expected.kind()
-                && self.tcx.is_diagnostic_item(sym::Option, expected_adt.did())
-                && let ty::Ref(_, inner_ty, _) = expected_substs.type_at(0).kind()
-                && inner_ty.is_str()
-            {
-                let ty = found_substs.type_at(0);
-                let mut peeled = ty;
-                let mut ref_cnt = 0;
-                while let ty::Ref(_, inner, _) = peeled.kind() {
-                    peeled = *inner;
-                    ref_cnt += 1;
-                }
-                if let ty::Adt(adt, _) = peeled.kind()
-                    && Some(adt.did()) == self.tcx.lang_items().string()
-                {
-                    let sugg = if ref_cnt == 0 {
-                        ".as_deref()"
+        if self.suggest_cast(err, expr, found, expected, expected_ty_expr) {
+            return true;
+        }
+
+        if !methods.is_empty() {
+            let mut suggestions = methods
+                .iter()
+                .filter_map(|conversion_method| {
+                    let receiver_method_ident = expr.method_ident();
+                    if let Some(method_ident) = receiver_method_ident
+                        && method_ident.name == conversion_method.name
+                    {
+                        return None // do not suggest code that is already there (#53348)
+                    }
+
+                    let method_call_list = [sym::to_vec, sym::to_string];
+                    let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
+                        && receiver_method.ident.name == sym::clone
+                        && method_call_list.contains(&conversion_method.name)
+                        // If receiver is `.clone()` and found type has one of those methods,
+                        // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
+                        // to an owned type (`Vec` or `String`). These conversions clone internally,
+                        // so we remove the user's `clone` call.
+                    {
+                        vec![(
+                            receiver_method.ident.span,
+                            conversion_method.name.to_string()
+                        )]
+                    } else if expr.precedence().order()
+                        < ExprPrecedence::MethodCall.order()
+                    {
+                        vec![
+                            (expr.span.shrink_to_lo(), "(".to_string()),
+                            (expr.span.shrink_to_hi(), format!(").{}()", conversion_method.name)),
+                        ]
                     } else {
-                        ".map(|x| x.as_str())"
+                        vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
                     };
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_hi(),
-                        fluent::hir_typeck_convert_to_str,
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                    return true;
-                }
+                    let struct_pat_shorthand_field =
+                        self.maybe_get_struct_pattern_shorthand_field(expr);
+                    if let Some(name) = struct_pat_shorthand_field {
+                        sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
+                    }
+                    Some(sugg)
+                })
+                .peekable();
+            if suggestions.peek().is_some() {
+                err.multipart_suggestions(
+                    "try using a conversion method",
+                    suggestions,
+                    Applicability::MaybeIncorrect,
+                );
+                return true;
+            }
+        }
+
+        if let Some((found_ty_inner, expected_ty_inner, error_tys)) =
+            self.deconstruct_option_or_result(found, expected)
+            && let ty::Ref(_, peeled, hir::Mutability::Not) = *expected_ty_inner.kind()
+        {
+            // Suggest removing any stray borrows (unless there's macro shenanigans involved).
+            let inner_expr = expr.peel_borrows();
+            if !inner_expr.span.eq_ctxt(expr.span) {
+                return false;
+            }
+            let borrow_removal_span = if inner_expr.hir_id == expr.hir_id {
+                None
+            } else {
+                Some(expr.span.shrink_to_lo().until(inner_expr.span))
+            };
+            // Given `Result<_, E>`, check our expected ty is `Result<_, &E>` for
+            // `as_ref` and `as_deref` compatibility.
+            let error_tys_equate_as_ref = error_tys.map_or(true, |(found, expected)| {
+                self.can_eq(self.param_env, self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, found), expected)
+            });
+            // FIXME: This could/should be extended to suggest `as_mut` and `as_deref_mut`,
+            // but those checks need to be a bit more delicate and the benefit is diminishing.
+            if self.can_eq(self.param_env, found_ty_inner, peeled) && error_tys_equate_as_ref {
+                err.subdiagnostic(SuggestConvertViaMethod {
+                    span: expr.span.shrink_to_hi(),
+                    sugg: ".as_ref()",
+                    expected,
+                    found,
+                    borrow_removal_span,
+                });
+                return true;
+            } else if let Some((deref_ty, _)) =
+                self.autoderef(expr.span, found_ty_inner).silence_errors().nth(1)
+                && self.can_eq(self.param_env, deref_ty, peeled)
+                && error_tys_equate_as_ref
+            {
+                err.subdiagnostic(SuggestConvertViaMethod {
+                    span: expr.span.shrink_to_hi(),
+                    sugg: ".as_deref()",
+                    expected,
+                    found,
+                    borrow_removal_span,
+                });
+                return true;
+            } else if let ty::Adt(adt, _) = found_ty_inner.peel_refs().kind()
+                && Some(adt.did()) == self.tcx.lang_items().string()
+                && peeled.is_str()
+                // `Result::map`, conversely, does not take ref of the error type.
+                && error_tys.map_or(true, |(found, expected)| {
+                    self.can_eq(self.param_env, found, expected)
+                })
+            {
+                err.span_suggestion_verbose(
+                    expr.span.shrink_to_hi(),
+                    fluent::hir_typeck_convert_to_str,
+                    ".map(|x| x.as_str())",
+                    Applicability::MachineApplicable,
+                );
+                return true;
             }
         }
 
         false
+    }
+
+    fn deconstruct_option_or_result(
+        &self,
+        found_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> Option<(Ty<'tcx>, Ty<'tcx>, Option<(Ty<'tcx>, Ty<'tcx>)>)> {
+        let ty::Adt(found_adt, found_substs) = found_ty.peel_refs().kind() else {
+            return None;
+        };
+        let ty::Adt(expected_adt, expected_substs) = expected_ty.kind() else {
+            return None;
+        };
+        if self.tcx.is_diagnostic_item(sym::Option, found_adt.did())
+            && self.tcx.is_diagnostic_item(sym::Option, expected_adt.did())
+        {
+            Some((found_substs.type_at(0), expected_substs.type_at(0), None))
+        } else if self.tcx.is_diagnostic_item(sym::Result, found_adt.did())
+            && self.tcx.is_diagnostic_item(sym::Result, expected_adt.did())
+        {
+            Some((
+                found_substs.type_at(0),
+                expected_substs.type_at(0),
+                Some((found_substs.type_at(1), expected_substs.type_at(1))),
+            ))
+        } else {
+            None
+        }
     }
 
     /// When encountering the expected boxed value allocated in the stack, suggest allocating it

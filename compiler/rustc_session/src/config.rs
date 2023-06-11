@@ -30,6 +30,7 @@ use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsStr;
 use std::fmt;
 use std::hash::Hash;
 use std::iter;
@@ -311,7 +312,9 @@ pub enum OutputType {
 }
 
 // Safety: Trivial C-Style enums have a stable sort order across compilation sessions.
-unsafe impl StableOrd for OutputType {}
+unsafe impl StableOrd for OutputType {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
 
 impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
     type KeyType = Self;
@@ -333,7 +336,7 @@ impl OutputType {
         }
     }
 
-    fn shorthand(&self) -> &'static str {
+    pub fn shorthand(&self) -> &'static str {
         match *self {
             OutputType::Bitcode => "llvm-bc",
             OutputType::Assembly => "asm",
@@ -384,6 +387,18 @@ impl OutputType {
             OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
             OutputType::Exe => "",
+        }
+    }
+
+    pub fn is_text_output(&self) -> bool {
+        match *self {
+            OutputType::Assembly
+            | OutputType::LlvmAssembly
+            | OutputType::Mir
+            | OutputType::DepInfo => true,
+            OutputType::Bitcode | OutputType::Object | OutputType::Metadata | OutputType::Exe => {
+                false
+            }
         }
     }
 }
@@ -438,14 +453,14 @@ pub enum ResolveDocLinks {
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
 /// should only depend on the output types, not the paths they're written to.
 #[derive(Clone, Debug, Hash, HashStable_Generic)]
-pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
+pub struct OutputTypes(BTreeMap<OutputType, Option<OutFileName>>);
 
 impl OutputTypes {
-    pub fn new(entries: &[(OutputType, Option<PathBuf>)]) -> OutputTypes {
+    pub fn new(entries: &[(OutputType, Option<OutFileName>)]) -> OutputTypes {
         OutputTypes(BTreeMap::from_iter(entries.iter().map(|&(k, ref v)| (k, v.clone()))))
     }
 
-    pub fn get(&self, key: &OutputType) -> Option<&Option<PathBuf>> {
+    pub fn get(&self, key: &OutputType) -> Option<&Option<OutFileName>> {
         self.0.get(key)
     }
 
@@ -453,11 +468,15 @@ impl OutputTypes {
         self.0.contains_key(key)
     }
 
-    pub fn keys(&self) -> BTreeMapKeysIter<'_, OutputType, Option<PathBuf>> {
+    pub fn iter(&self) -> BTreeMapIter<'_, OutputType, Option<OutFileName>> {
+        self.0.iter()
+    }
+
+    pub fn keys(&self) -> BTreeMapKeysIter<'_, OutputType, Option<OutFileName>> {
         self.0.keys()
     }
 
-    pub fn values(&self) -> BTreeMapValuesIter<'_, OutputType, Option<PathBuf>> {
+    pub fn values(&self) -> BTreeMapValuesIter<'_, OutputType, Option<OutFileName>> {
         self.0.values()
     }
 
@@ -610,6 +629,8 @@ pub enum TraitSolver {
     Chalk,
     /// Experimental trait solver in `rustc_trait_selection::solve`
     Next,
+    /// Use the new trait solver during coherence
+    NextCoherence,
 }
 
 pub enum Input {
@@ -658,11 +679,71 @@ impl Input {
     }
 }
 
+#[derive(Clone, Hash, Debug, HashStable_Generic, PartialEq)]
+pub enum OutFileName {
+    Real(PathBuf),
+    Stdout,
+}
+
+impl OutFileName {
+    pub fn parent(&self) -> Option<&Path> {
+        match *self {
+            OutFileName::Real(ref path) => path.parent(),
+            OutFileName::Stdout => None,
+        }
+    }
+
+    pub fn filestem(&self) -> Option<&OsStr> {
+        match *self {
+            OutFileName::Real(ref path) => path.file_stem(),
+            OutFileName::Stdout => Some(OsStr::new("stdout")),
+        }
+    }
+
+    pub fn is_stdout(&self) -> bool {
+        match *self {
+            OutFileName::Real(_) => false,
+            OutFileName::Stdout => true,
+        }
+    }
+
+    pub fn is_tty(&self) -> bool {
+        match *self {
+            OutFileName::Real(_) => false,
+            OutFileName::Stdout => atty::is(atty::Stream::Stdout),
+        }
+    }
+
+    pub fn as_path(&self) -> &Path {
+        match *self {
+            OutFileName::Real(ref path) => path.as_ref(),
+            OutFileName::Stdout => &Path::new("stdout"),
+        }
+    }
+
+    /// For a given output filename, return the actual name of the file that
+    /// can be used to write codegen data of type `flavor`. For real-path
+    /// output filenames, this would be trivial as we can just use the path.
+    /// Otherwise for stdout, return a temporary path so that the codegen data
+    /// may be later copied to stdout.
+    pub fn file_for_writing(
+        &self,
+        outputs: &OutputFilenames,
+        flavor: OutputType,
+        codegen_unit_name: Option<&str>,
+    ) -> PathBuf {
+        match *self {
+            OutFileName::Real(ref path) => path.clone(),
+            OutFileName::Stdout => outputs.temp_path(flavor, codegen_unit_name),
+        }
+    }
+}
+
 #[derive(Clone, Hash, Debug, HashStable_Generic)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
     filestem: String,
-    pub single_output_file: Option<PathBuf>,
+    pub single_output_file: Option<OutFileName>,
     pub temps_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
@@ -675,7 +756,7 @@ impl OutputFilenames {
     pub fn new(
         out_directory: PathBuf,
         out_filestem: String,
-        single_output_file: Option<PathBuf>,
+        single_output_file: Option<OutFileName>,
         temps_directory: Option<PathBuf>,
         extra: String,
         outputs: OutputTypes,
@@ -689,12 +770,12 @@ impl OutputFilenames {
         }
     }
 
-    pub fn path(&self, flavor: OutputType) -> PathBuf {
+    pub fn path(&self, flavor: OutputType) -> OutFileName {
         self.outputs
             .get(&flavor)
             .and_then(|p| p.to_owned())
             .or_else(|| self.single_output_file.clone())
-            .unwrap_or_else(|| self.output_path(flavor))
+            .unwrap_or_else(|| OutFileName::Real(self.output_path(flavor)))
     }
 
     /// Gets the output path where a compilation artifact of the given type
@@ -1821,7 +1902,10 @@ fn parse_output_types(
             for output_type in list.split(',') {
                 let (shorthand, path) = match output_type.split_once('=') {
                     None => (output_type, None),
-                    Some((shorthand, path)) => (shorthand, Some(PathBuf::from(path))),
+                    Some((shorthand, "-")) => (shorthand, Some(OutFileName::Stdout)),
+                    Some((shorthand, path)) => {
+                        (shorthand, Some(OutFileName::Real(PathBuf::from(path))))
+                    }
                 };
                 let output_type = OutputType::from_shorthand(shorthand).unwrap_or_else(|| {
                     early_error(
@@ -2905,7 +2989,7 @@ pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
         InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto, LocationDetail, LtoCli,
-        OomStrategy, OptLevel, OutputType, OutputTypes, Passes, ResolveDocLinks,
+        OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Passes, ResolveDocLinks,
         SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
         TraitSolver, TrimmedDefPaths,
     };
@@ -3003,6 +3087,7 @@ pub(crate) mod dep_tracking {
         SourceFileHashAlgorithm,
         TrimmedDefPaths,
         Option<LdImpl>,
+        OutFileName,
         OutputType,
         RealFileName,
         LocationDetail,

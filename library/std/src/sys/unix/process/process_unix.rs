@@ -35,8 +35,26 @@ cfg_if::cfg_if! {
     if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
-        // arbitrary number of tries:
-        const MAX_FORKSPAWN_TRIES: u32 = 4;
+        use crate::time::Duration;
+        use crate::sync::LazyLock;
+        // Get smallest amount of time we can sleep.
+        // Return a common value if it cannot be determined.
+        fn get_clock_resolution() -> Duration {
+            static MIN_DELAY: LazyLock<Duration, fn() -> Duration> = LazyLock::new(|| {
+                let mut mindelay = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0
+                {
+                    Duration::from_nanos(mindelay.tv_nsec as u64)
+                } else {
+                    Duration::from_millis(1)
+                }
+            });
+            *MIN_DELAY
+        }
+        // Arbitrary minimum sleep duration for retrying fork/spawn
+        const MIN_FORKSPAWN_SLEEP: Duration = Duration::from_nanos(1);
+        // Maximum duration of sleeping before giving up and returning an error
+        const MAX_FORKSPAWN_SLEEP: Duration = Duration::from_millis(1000);
     }
 }
 
@@ -163,12 +181,25 @@ impl Command {
     unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         use crate::sys::os::errno;
 
-        let mut tries_left = MAX_FORKSPAWN_TRIES;
+        let mut delay = MIN_FORKSPAWN_SLEEP;
+
         loop {
             let r = libc::fork();
-            if r == -1 as libc::pid_t && tries_left > 0 && errno() as libc::c_int == libc::EBADF {
-                thread::yield_now();
-                tries_left -= 1;
+            if r == -1 as libc::pid_t && errno() as libc::c_int == libc::EBADF {
+                if delay < get_clock_resolution() {
+                    // We cannot sleep this short (it would be longer).
+                    // Yield instead.
+                    thread::yield_now();
+                } else if delay < MAX_FORKSPAWN_SLEEP {
+                    thread::sleep(delay);
+                } else {
+                    return Err(io::const_io_error!(
+                        ErrorKind::WouldBlock,
+                        "forking returned EBADF too often",
+                    ));
+                }
+                delay *= 2;
+                continue;
             } else {
                 return cvt(r).map(|res| (res, -1));
             }
@@ -480,17 +511,28 @@ impl Command {
             attrp: *const posix_spawnattr_t,
             argv: *const *mut c_char,
             envp: *const *mut c_char,
-        ) -> i32 {
-            let mut tries_left = MAX_FORKSPAWN_TRIES;
+        ) -> io::Result<i32> {
+            let mut delay = MIN_FORKSPAWN_SLEEP;
             loop {
                 match libc::posix_spawnp(pid, file, file_actions, attrp, argv, envp) {
-                    libc::EBADF if tries_left > 0 => {
-                        thread::yield_now();
-                        tries_left -= 1;
+                    libc::EBADF => {
+                        if delay < get_clock_resolution() {
+                            // We cannot sleep this short (it would be longer).
+                            // Yield instead.
+                            thread::yield_now();
+                        } else if delay < MAX_FORKSPAWN_SLEEP {
+                            thread::sleep(delay);
+                        } else {
+                            return Err(io::const_io_error!(
+                                ErrorKind::WouldBlock,
+                                "posix_spawnp returned EBADF too often",
+                            ));
+                        }
+                        delay *= 2;
                         continue;
                     }
                     r => {
-                        return r;
+                        return Ok(r);
                     }
                 }
             }
@@ -620,14 +662,20 @@ impl Command {
             let spawn_fn = libc::posix_spawnp;
             #[cfg(target_os = "nto")]
             let spawn_fn = retrying_libc_posix_spawnp;
-            cvt_nz(spawn_fn(
+
+            let spawn_res = spawn_fn(
                 &mut p.pid,
                 self.get_program_cstr().as_ptr(),
                 file_actions.0.as_ptr(),
                 attrs.0.as_ptr(),
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
-            ))?;
+            );
+
+            #[cfg(target_os = "nto")]
+            let spawn_res = spawn_res?;
+
+            cvt_nz(spawn_res)?;
             Ok(Some(p))
         }
     }

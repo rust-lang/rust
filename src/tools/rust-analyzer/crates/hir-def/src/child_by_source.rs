@@ -10,9 +10,9 @@ use syntax::ast::HasDocComments;
 
 use crate::{
     db::DefDatabase,
-    dyn_map::DynMap,
+    dyn_map::{keys, DynMap},
     item_scope::ItemScope,
-    keys,
+    nameres::DefMap,
     src::{HasChildSource, HasSource},
     AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, FieldId, ImplId, Lookup, MacroId,
     ModuleDefId, ModuleId, TraitId, VariantId,
@@ -206,7 +206,7 @@ impl ChildBySource for DefWithBodyId {
         for (_, def_map) in body.blocks(db) {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
-            def_map[def_map.root()].scope.child_by_source_to(db, res, file_id);
+            def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
         }
     }
 }

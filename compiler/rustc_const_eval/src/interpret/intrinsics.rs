@@ -77,7 +77,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u64(tcx.type_id_hash(tp_ty).as_u64())
+            ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
         }
         sym::variant_count => match tp_ty.kind() {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
@@ -169,7 +169,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = match intrinsic_name {
                     sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
                     sym::needs_drop => self.tcx.types.bool,
-                    sym::type_id => self.tcx.types.u64,
+                    sym::type_id => self.tcx.types.u128,
                     sym::type_name => self.tcx.mk_static_str(),
                     _ => bug!(),
                 };
@@ -238,9 +238,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::unchecked_shr
             | sym::unchecked_add
             | sym::unchecked_sub
-            | sym::unchecked_mul
-            | sym::unchecked_div
-            | sym::unchecked_rem => {
+            | sym::unchecked_mul => {
                 let l = self.read_immediate(&args[0])?;
                 let r = self.read_immediate(&args[1])?;
                 let bin_op = match intrinsic_name {
@@ -249,8 +247,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::unchecked_add => BinOp::Add,
                     sym::unchecked_sub => BinOp::Sub,
                     sym::unchecked_mul => BinOp::Mul,
-                    sym::unchecked_div => BinOp::Div,
-                    sym::unchecked_rem => BinOp::Rem,
                     _ => bug!(),
                 };
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, &l, &r)?;

@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 anymap = "1.0.0-beta.2"
 arrayvec = "0.7.2"
-bitflags = "1.3.2"
+bitflags = "2.1.0"
 cov-mark = "2.0.0-pre.1"
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.4.0", features = ["raw-api"] }
@@ -29,6 +29,7 @@ once_cell = "1.17.0"
 rustc-hash = "1.1.0"
 smallvec.workspace = true
 tracing = "0.1.35"
+triomphe.workspace = true
 
 rustc_abi = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }
 rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
