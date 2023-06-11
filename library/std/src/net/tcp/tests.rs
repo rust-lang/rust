@@ -47,6 +47,26 @@ fn connect_error() {
 }
 
 #[test]
+fn connect_timeout_error() {
+    let socket_addr = next_test_ip4();
+    let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
+    assert!(!matches!(result, Err(e) if e.kind() == ErrorKind::TimedOut));
+
+    let _listener = TcpListener::bind(&socket_addr).unwrap();
+    assert!(TcpStream::connect_timeout(&socket_addr, Duration::MAX).is_ok());
+}
+
+#[test]
+fn connect_timeout_ok_bind() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap(); // :0 picks some free port
+    let port = listener.local_addr().unwrap().port(); // obtain the port it picked
+    assert!(
+        TcpStream::connect_timeout(&format!("127.0.0.1:{port}").parse().unwrap(), Duration::MAX)
+            .is_ok()
+    );
+}
+
+#[test]
 fn listen_localhost() {
     let socket_addr = next_test_ip4();
     let listener = t!(TcpListener::bind(&socket_addr));
