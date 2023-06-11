@@ -7,16 +7,24 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for empty `if` statements with no else branch.
     ///
     /// ### Why is this bad?
+    /// It can be entirely omitted, and often the condition too.
+    ///
+    /// ### Known issues
+    /// This will only suggest to remove the `if` statement, not the condition. Other lints such as
+    /// `no_effect` will take care of removing the condition if it's unnecessary.
     ///
     /// ### Example
-    /// ```rust
-    /// // example code where clippy issues a warning
+    /// ```rust,ignore
+    /// if really_expensive_condition(&i) {}
+    /// if really_expensive_condition_with_side_effects(&mut i) {}
     /// ```
     /// Use instead:
-    /// ```rust
-    /// // example code which does not raise clippy warning
+    /// ```rust,ignore
+    /// // <omitted>
+    /// really_expensive_condition_with_side_effects(&mut i);
     /// ```
     #[clippy::version = "1.72.0"]
     pub NEEDLESS_IF,
