@@ -199,24 +199,8 @@ fn impl_def_from_trait(
         node
     };
 
-    // <<<<<<< HEAD
-    //     let trait_items = trait_items
-    //         .into_iter()
-    //         .map(|it| {
-    //             if sema.hir_file_for(it.syntax()).is_macro() {
-    //                 if let Some(it) = ast::AssocItem::cast(insert_ws_into(it.syntax().clone())) {
-    //                     return it;
-    //                 }
-    //             }
-    //             it.clone_for_update()
-    //         })
-    //         .collect();
-    //     let first_assoc_item =
-    //         add_trait_assoc_items_to_impl(sema, trait_items, trait_, &impl_def, target_scope);
-    // =======
     let first_assoc_item =
         add_trait_assoc_items_to_impl(sema, &trait_items, trait_, &impl_def, target_scope);
-    // >>>>>>> fix(assist): derive source scope from syntax node to be transformed
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
