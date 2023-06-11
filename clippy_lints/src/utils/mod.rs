@@ -12,6 +12,9 @@ fn to_kebab(config_name: &str) -> String {
     config_name.replace('_', "-")
 }
 
+#[cfg(feature = "internal")]
+const BOOK_CONFIGS_PATH: &str = "https://doc.rust-lang.org/clippy/lint_configuration.html";
+
 // ==================================================================
 // Configuration
 // ==================================================================
@@ -65,6 +68,10 @@ impl ClippyConfiguration {
                 .map(|name| format!("* [`{name}`](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"))
                 .join("\n"),
         )
+    }
+    #[cfg(feature = "internal")]
+    fn to_markdown_link(&self) -> String {
+        format!("[`{}`]: {BOOK_CONFIGS_PATH}#{}", self.name, self.name)
     }
 }
 
