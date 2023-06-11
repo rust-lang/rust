@@ -175,7 +175,7 @@ impl GlobalState {
                 msg.ok().map(Event::Lsp),
 
             recv(self.task_pool.receiver) -> task =>
-            Some(Event::Task(task.unwrap())),
+                Some(Event::Task(task.unwrap())),
 
             recv(self.fmt_pool.receiver) -> task =>
                 Some(Event::Task(task.unwrap())),
