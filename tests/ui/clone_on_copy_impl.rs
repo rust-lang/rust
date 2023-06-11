@@ -1,3 +1,5 @@
+#![allow(clippy::needless_clone_impl)]
+
 use std::fmt;
 use std::marker::PhantomData;
 

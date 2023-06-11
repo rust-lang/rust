@@ -226,6 +226,7 @@ mod needless_continue;
 mod needless_else;
 mod needless_for_each;
 mod needless_if;
+mod needless_impls;
 mod needless_late_init;
 mod needless_parens_on_range_literals;
 mod needless_pass_by_value;
@@ -1047,6 +1048,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let stack_size_threshold = conf.stack_size_threshold;
     store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(stack_size_threshold)));
     store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
+    store.register_late_pass(|_| Box::new(needless_impls::NeedlessImpls));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

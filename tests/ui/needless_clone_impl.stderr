@@ -1,0 +1,13 @@
+error: manual implementation of `Clone` on a `Copy` type
+  --> $DIR/needless_clone_impl.rs:10:29
+   |
+LL |       fn clone(&self) -> Self {
+   |  _____________________________^
+LL | |         Self(self.0)
+LL | |     }
+   | |_____^ help: change this to: `{ *self }`
+   |
+   = note: `#[deny(clippy::needless_clone_impl)]` on by default
+
+error: aborting due to previous error
+
