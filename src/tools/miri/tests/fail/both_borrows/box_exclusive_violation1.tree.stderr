@@ -1,0 +1,42 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> $DIR/box_exclusive_violation1.rs:LL:CC
+   |
+LL |         *LEAK = 7;
+   |         ^^^^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Disabled which forbids this child write access
+help: the accessed tag <TAG> was created here
+  --> $DIR/box_exclusive_violation1.rs:LL:CC
+   |
+LL | fn unknown_code_1(x: &i32) {
+   |                   ^
+help: the conflicting tag <TAG> was created here, in the initial state Frozen
+  --> $DIR/box_exclusive_violation1.rs:LL:CC
+   |
+LL |     unknown_code_1(&*our);
+   |                    ^^^^^
+help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x4]
+  --> $DIR/box_exclusive_violation1.rs:LL:CC
+   |
+LL |     *our = 5;
+   |     ^^^^^^^^
+   = help: this transition corresponds to a loss of read permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `unknown_code_2` at $DIR/box_exclusive_violation1.rs:LL:CC
+note: inside `demo_box_advanced_unique`
+  --> $DIR/box_exclusive_violation1.rs:LL:CC
+   |
+LL |     unknown_code_2();
+   |     ^^^^^^^^^^^^^^^^
+note: inside `main`
+  --> $DIR/box_exclusive_violation1.rs:LL:CC
+   |
+LL |     demo_box_advanced_unique(Box::new(0));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+
