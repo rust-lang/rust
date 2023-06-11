@@ -8,6 +8,8 @@ privacy_from_private_dep_in_public_interface =
 privacy_in_public_interface = {$vis_descr} {$kind} `{$descr}` in public interface
     .label = can't leak {$vis_descr} {$kind}
     .visibility_label = `{$descr}` declared as {$vis_descr}
+    .help = - Either remove the `pub` from the function
+            - Or add `pub` to `{$descr}`
 
 privacy_item_is_private = {$kind} `{$descr}` is private
     .label = private {$kind}
