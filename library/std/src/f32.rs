@@ -528,7 +528,7 @@ impl f32 {
 
     /// The positive difference of two numbers.
     ///
-    /// * If `self <= other`: `0:0`
+    /// * If `self <= other`: `0.0`
     /// * Else: `self - other`
     ///
     /// # Examples
