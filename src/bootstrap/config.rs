@@ -10,7 +10,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::fs;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
@@ -48,6 +48,57 @@ pub enum DryRun {
     SelfCheck,
     /// This is a dry run enabled by the `--dry-run` flag.
     UserSelected,
+}
+
+#[derive(Copy, Clone, Default)]
+pub enum DebuginfoLevel {
+    #[default]
+    None,
+    LineTablesOnly,
+    Limited,
+    Full,
+}
+
+// NOTE: can't derive(Deserialize) because the intermediate trip through toml::Value only
+// deserializes i64, and derive() only generates visit_u64
+impl<'de> Deserialize<'de> for DebuginfoLevel {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrInt::String("none") | StringOrInt::Int(0) => DebuginfoLevel::None,
+            StringOrInt::String("line-tables-only") => DebuginfoLevel::LineTablesOnly,
+            StringOrInt::String("limited") | StringOrInt::Int(1) => DebuginfoLevel::Limited,
+            StringOrInt::String("full") | StringOrInt::Int(2) => DebuginfoLevel::Full,
+            StringOrInt::Int(n) => {
+                let other = serde::de::Unexpected::Signed(n);
+                return Err(D::Error::invalid_value(other, &"expected 0, 1, or 2"));
+            }
+            StringOrInt::String(s) => {
+                let other = serde::de::Unexpected::Str(s);
+                return Err(D::Error::invalid_value(
+                    other,
+                    &"expected none, line-tables-only, limited, or full",
+                ));
+            }
+        })
+    }
+}
+
+/// Suitable for passing to `-C debuginfo`
+impl Display for DebuginfoLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use DebuginfoLevel::*;
+        f.write_str(match self {
+            None => "0",
+            LineTablesOnly => "line-tables-only",
+            Limited => "1",
+            Full => "2",
+        })
+    }
 }
 
 /// Global configuration for the entire build and/or bootstrap.
@@ -159,10 +210,10 @@ pub struct Config {
     pub rust_overflow_checks: bool,
     pub rust_overflow_checks_std: bool,
     pub rust_debug_logging: bool,
-    pub rust_debuginfo_level_rustc: u32,
-    pub rust_debuginfo_level_std: u32,
-    pub rust_debuginfo_level_tools: u32,
-    pub rust_debuginfo_level_tests: u32,
+    pub rust_debuginfo_level_rustc: DebuginfoLevel,
+    pub rust_debuginfo_level_std: DebuginfoLevel,
+    pub rust_debuginfo_level_tools: DebuginfoLevel,
+    pub rust_debuginfo_level_tests: DebuginfoLevel,
     pub rust_split_debuginfo: SplitDebuginfo,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
@@ -810,6 +861,13 @@ impl Default for StringOrBool {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StringOrInt<'a> {
+    String(&'a str),
+    Int(i64),
+}
+
 define_config! {
     /// TOML representation of how the Rust build is configured.
     struct Rust {
@@ -822,11 +880,11 @@ define_config! {
         overflow_checks: Option<bool> = "overflow-checks",
         overflow_checks_std: Option<bool> = "overflow-checks-std",
         debug_logging: Option<bool> = "debug-logging",
-        debuginfo_level: Option<u32> = "debuginfo-level",
-        debuginfo_level_rustc: Option<u32> = "debuginfo-level-rustc",
-        debuginfo_level_std: Option<u32> = "debuginfo-level-std",
-        debuginfo_level_tools: Option<u32> = "debuginfo-level-tools",
-        debuginfo_level_tests: Option<u32> = "debuginfo-level-tests",
+        debuginfo_level: Option<DebuginfoLevel> = "debuginfo-level",
+        debuginfo_level_rustc: Option<DebuginfoLevel> = "debuginfo-level-rustc",
+        debuginfo_level_std: Option<DebuginfoLevel> = "debuginfo-level-std",
+        debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
+        debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
         split_debuginfo: Option<String> = "split-debuginfo",
         run_dsymutil: Option<bool> = "run-dsymutil",
         backtrace: Option<bool> = "backtrace",
@@ -1478,17 +1536,17 @@ impl Config {
 
         config.rust_debug_logging = debug_logging.unwrap_or(config.rust_debug_assertions);
 
-        let with_defaults = |debuginfo_level_specific: Option<u32>| {
+        let with_defaults = |debuginfo_level_specific: Option<_>| {
             debuginfo_level_specific.or(debuginfo_level).unwrap_or(if debug == Some(true) {
-                1
+                DebuginfoLevel::Limited
             } else {
-                0
+                DebuginfoLevel::None
             })
         };
         config.rust_debuginfo_level_rustc = with_defaults(debuginfo_level_rustc);
         config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
         config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
-        config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(0);
+        config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
