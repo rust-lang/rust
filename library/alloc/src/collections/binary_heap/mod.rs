@@ -300,14 +300,14 @@ pub struct PeekMut<
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: Ord + fmt::Debug, A: Allocator + 'a> fmt::Debug for PeekMut<'a, T, A> {
+impl<T: Ord + fmt::Debug, A: Allocator> fmt::Debug for PeekMut<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("PeekMut").field(&self.heap.data[0]).finish()
     }
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<'a, T: Ord, A: Allocator + 'a> Drop for PeekMut<'a, T, A> {
+impl<T: Ord, A: Allocator> Drop for PeekMut<'_, T, A> {
     fn drop(&mut self) {
         if let Some(original_len) = self.original_len {
             // SAFETY: That's how many elements were in the Vec at the time of
@@ -324,7 +324,7 @@ impl<'a, T: Ord, A: Allocator + 'a> Drop for PeekMut<'a, T, A> {
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<'a, T: Ord, A: Allocator + 'a> Deref for PeekMut<'a, T, A> {
+impl<T: Ord, A: Allocator> Deref for PeekMut<'_, T, A> {
     type Target = T;
     fn deref(&self) -> &T {
         debug_assert!(!self.heap.is_empty());
@@ -334,7 +334,7 @@ impl<'a, T: Ord, A: Allocator + 'a> Deref for PeekMut<'a, T, A> {
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<'a, T: Ord, A: Allocator + 'a> DerefMut for PeekMut<'a, T, A> {
+impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
     fn deref_mut(&mut self) -> &mut T {
         debug_assert!(!self.heap.is_empty());
 
@@ -362,7 +362,7 @@ impl<'a, T: Ord, A: Allocator + 'a> DerefMut for PeekMut<'a, T, A> {
     }
 }
 
-impl<'a, T: Ord, A: Allocator + 'a> PeekMut<'a, T, A> {
+impl<'a, T: Ord, A: Allocator> PeekMut<'a, T, A> {
     /// Removes the peeked value from the heap and returns it.
     #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
     pub fn pop(mut this: PeekMut<'a, T, A>) -> T {
@@ -415,7 +415,7 @@ struct RebuildOnDrop<
     rebuild_from: usize,
 }
 
-impl<'a, T: Ord, A: Allocator> Drop for RebuildOnDrop<'a, T, A> {
+impl<T: Ord, A: Allocator> Drop for RebuildOnDrop<'_, T, A> {
     fn drop(&mut self) {
         self.heap.rebuild_tail(self.rebuild_from);
     }
@@ -1617,13 +1617,13 @@ unsafe impl<T: Ord, A: Allocator> TrustedLen for IntoIterSorted<T, A> {}
 pub struct Drain<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     iter: vec::Drain<'a, T, A>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T, A: Allocator + 'a> Iterator for Drain<'a, T, A> {
+impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     #[inline]
@@ -1638,7 +1638,7 @@ impl<'a, T, A: Allocator + 'a> Iterator for Drain<'a, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T, A: Allocator + 'a> DoubleEndedIterator for Drain<'a, T, A> {
+impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back()
@@ -1646,14 +1646,14 @@ impl<'a, T, A: Allocator + 'a> DoubleEndedIterator for Drain<'a, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T, A: Allocator + 'a> ExactSizeIterator for Drain<'a, T, A> {
+impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T, A: Allocator + 'a> FusedIterator for Drain<'a, T, A> {}
+impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
@@ -1666,18 +1666,18 @@ impl<'a, T, A: Allocator + 'a> FusedIterator for Drain<'a, T, A> {}
 pub struct DrainSorted<
     'a,
     T: Ord,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     inner: &'a mut BinaryHeap<T, A>,
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<'a, T: Ord, A: Allocator + 'a> Drop for DrainSorted<'a, T, A> {
+impl<'a, T: Ord, A: Allocator> Drop for DrainSorted<'a, T, A> {
     /// Removes heap elements in heap order.
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T: Ord, A: Allocator + 'a>(&'r mut DrainSorted<'a, T, A>);
+        struct DropGuard<'r, 'a, T: Ord, A: Allocator>(&'r mut DrainSorted<'a, T, A>);
 
-        impl<'r, 'a, T: Ord, A: Allocator + 'a> Drop for DropGuard<'r, 'a, T, A> {
+        impl<'r, 'a, T: Ord, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
                 while self.0.inner.pop().is_some() {}
             }
@@ -1692,7 +1692,7 @@ impl<'a, T: Ord, A: Allocator + 'a> Drop for DrainSorted<'a, T, A> {
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<'a, T: Ord, A: Allocator + 'a> Iterator for DrainSorted<'a, T, A> {
+impl<T: Ord, A: Allocator> Iterator for DrainSorted<'_, T, A> {
     type Item = T;
 
     #[inline]
@@ -1708,13 +1708,13 @@ impl<'a, T: Ord, A: Allocator + 'a> Iterator for DrainSorted<'a, T, A> {
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<'a, T: Ord, A: Allocator + 'a> ExactSizeIterator for DrainSorted<'a, T, A> {}
+impl<T: Ord, A: Allocator> ExactSizeIterator for DrainSorted<'_, T, A> {}
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<'a, T: Ord, A: Allocator + 'a> FusedIterator for DrainSorted<'a, T, A> {}
+impl<T: Ord, A: Allocator> FusedIterator for DrainSorted<'_, T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T: Ord, A: Allocator + 'a> TrustedLen for DrainSorted<'a, T, A> {}
+unsafe impl<T: Ord, A: Allocator> TrustedLen for DrainSorted<'_, T, A> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T: Ord, A: Allocator> From<Vec<T, A>> for BinaryHeap<T, A> {
@@ -1791,7 +1791,7 @@ impl<T, A: Allocator> IntoIterator for BinaryHeap<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, A: Allocator + 'a> IntoIterator for &'a BinaryHeap<T, A> {
+impl<'a, T, A: Allocator> IntoIterator for &'a BinaryHeap<T, A> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
