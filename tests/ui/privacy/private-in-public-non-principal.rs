@@ -1,6 +1,12 @@
 #![feature(auto_traits)]
 #![feature(negative_impls)]
 
+#![deny(private_interfaces)]
+
+// In this test both old and new private-in-public diagnostic were emitted.
+// Old diagnostic will be deleted soon.
+// See https://rust-lang.github.io/rfcs/2145-type-privacy.html.
+
 pub trait PubPrincipal {}
 auto trait PrivNonPrincipal {}
 
