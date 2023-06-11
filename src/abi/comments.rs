@@ -83,7 +83,7 @@ pub(super) fn add_local_place_comments<'tcx>(
     let rustc_target::abi::LayoutS {
         size,
         align,
-        has_repr_align: _,
+        repr_align: _,
         abi: _,
         variants: _,
         fields: _,
