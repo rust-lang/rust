@@ -483,10 +483,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.scope_at_offset(node, offset)
     }
 
-    pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
-        self.imp.scope_for_def(def)
-    }
-
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
         self.imp.assert_contains_node(node)
     }
@@ -1305,12 +1301,6 @@ impl<'db> SemanticsImpl<'db> {
                 resolver,
             },
         )
-    }
-
-    fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
-        let file_id = self.db.lookup_intern_trait(def.id).id.file_id();
-        let resolver = def.id.resolver(self.db.upcast());
-        SemanticsScope { db: self.db, file_id, resolver }
     }
 
     fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>>
