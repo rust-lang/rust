@@ -1,5 +1,7 @@
 use crate::context::LintContext;
-use crate::lints::{NoopMethodCallDiag, SuspiciousDoubleRefDiag};
+use crate::lints::{
+    NoopMethodCallDiag, SuspiciousDoubleRefCloneDiag, SuspiciousDoubleRefDerefDiag,
+};
 use crate::LateContext;
 use crate::LateLintPass;
 use rustc_hir::def::DefKind;
@@ -102,13 +104,6 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         // (Re)check that it implements the noop diagnostic.
         let Some(name) = cx.tcx.get_diagnostic_name(i.def_id()) else { return };
 
-        let op = match name {
-            sym::noop_method_borrow => "borrow",
-            sym::noop_method_clone => "clone",
-            sym::noop_method_deref => "deref",
-            _ => return,
-        };
-
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
         let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
         let arg_adjustments = cx.typeck_results().expr_adjustments(receiver);
@@ -129,14 +124,22 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 NoopMethodCallDiag { method: call.ident.name, receiver_ty, label: span },
             );
         } else {
-            if op == "borrow" {
-                return;
+            match name {
+                // If `type_of(x) == T` and `x.borrow()` is used to get `&T`,
+                // then that should be allowed
+                sym::noop_method_borrow => return,
+                sym::noop_method_clone => cx.emit_spanned_lint(
+                    SUSPICIOUS_DOUBLE_REF_OP,
+                    span,
+                    SuspiciousDoubleRefCloneDiag { ty: expr_ty },
+                ),
+                sym::noop_method_deref => cx.emit_spanned_lint(
+                    SUSPICIOUS_DOUBLE_REF_OP,
+                    span,
+                    SuspiciousDoubleRefDerefDiag { ty: expr_ty },
+                ),
+                _ => return,
             }
-            cx.emit_spanned_lint(
-                SUSPICIOUS_DOUBLE_REF_OP,
-                span,
-                SuspiciousDoubleRefDiag { call: call.ident.name, ty: expr_ty, op },
-            )
         }
     }
 }

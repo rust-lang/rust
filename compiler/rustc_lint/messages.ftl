@@ -463,13 +463,11 @@ lint_requested_level = requested on the command line with `{$level} {$lint_name}
 lint_supertrait_as_deref_target = `{$t}` implements `Deref` with supertrait `{$target_principal}` as target
     .label = target type is set here
 
-lint_suspicious_double_ref_op =
-    using `.{$call}()` on a double reference, which returns `{$ty}` instead of {$op ->
-        *[should_not_happen] [{$op}]
-        [deref] dereferencing
-        [borrow] borrowing
-        [clone] cloning
-    } the inner type
+lint_suspicious_double_ref_clone =
+    using `.clone()` on a double reference, which returns `{$ty}` instead of cloning the inner type
+
+lint_suspicious_double_ref_deref =
+    using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
 
 lint_trivial_untranslatable_diag = diagnostic with static strings only
 
