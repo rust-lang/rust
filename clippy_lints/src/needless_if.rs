@@ -96,8 +96,8 @@ impl Visitor<'_> for IsAnyLetVisitor {
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         if matches!(expr.kind, ExprKind::Let(..)) {
             self.0 = true;
+        } else {
+            walk_expr(self, expr);
         }
-
-        walk_expr(self, expr);
     }
 }
