@@ -213,7 +213,8 @@ function setup_rustc() {
 
     rm config.toml || true
 
-    # TODO: copy in build_sysroot/build_sysroot.sh instead to avoid having to rebuild stage0 libraries everytime?
+    # TODO: move these lines to build_sysroot/build_sysroot.sh instead to avoid having to rebuild stage0 libraries everytime?
+    # Since we can't override the sysroot anymore, we create a new toolchain and manually overwrite the sysroot directory.
     my_toolchain_dir=$HOME/.rustup/toolchains/my_toolchain
     rm -rf $my_toolchain_dir
     cp -r $HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE $my_toolchain_dir
@@ -362,16 +363,7 @@ function test_rustc() {
     git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
     git checkout tests/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
 
-    # We need to overwrite the sysroot in the tests, now.
-    # TODO(antoyo): find a faster way to do this.
-    # FIXME: this makes the stderr different since it changes the line numbers.
-    #for file in $(find tests/ui -type f -name '*.rs'); do
-        #sed -ie "1i // compile-flags: --sysroot "$(pwd)"/../build_sysroot/sysroot\n" $file
-    #done
-
-    # TODO: copy the sysroot at the correct location to not have to use the --sysroot flag.
-    #RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext""
-    RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot $HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
+    RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext""
 
 
     if [ $# -eq 0 ]; then
@@ -404,8 +396,7 @@ function test_rustc() {
     fi
 
     echo "[TEST] rustc test suite"
-    #COMPILETEST_FORCE_STAGE0=1 strace -f ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS" &> ../trace
-    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/zero-sized/zero-sized-linkedlist-push.rs --rustc-args "$RUSTC_ARGS"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui --rustc-args "$RUSTC_ARGS"
 }
 
 function test_failing_rustc() {
