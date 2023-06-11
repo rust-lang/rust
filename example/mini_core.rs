@@ -489,7 +489,7 @@ impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Uns
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized, A: Allocator = Global>(Unique<T>, A);
 
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
 impl<T> Box<T> {
     pub fn new(val: T) -> Box<T> {

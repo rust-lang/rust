@@ -254,7 +254,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // SIMD builtins require a constant value.
         self.bitcast_if_needed(value, typ)
     }
-    
+
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         self.context.new_array_access(None, base_addr, self.const_usize(offset.bytes())).get_address(None)
     }

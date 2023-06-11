@@ -502,49 +502,49 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
             let builtin_unreachable: RValue<'gcc> = unsafe { std::mem::transmute(builtin_unreachable) };
             self.call(self.type_void(), None, None, builtin_unreachable, &[], None);
-        }
-
-        // Write results to outputs.
-        //
-        // We need to do this because:
-        //  1. Turning `PlaceRef` into `RValue` is error-prone and has nasty edge cases
-        //     (especially with current `rustc_backend_ssa` API).
-        //  2. Not every output operand has an `out_place`, and it's required by `add_output_operand`.
-        //
-        // Instead, we generate a temporary output variable for each output operand, and then this loop,
-        // generates `out_place = tmp_var;` assignments if out_place exists.
-        for op in &outputs {
-            if let Some(place) = op.out_place {
-                OperandValue::Immediate(op.tmp_var.to_rvalue()).store(self, place);
-            }
-        }
-
     }
+
+    // Write results to outputs.
+    //
+    // We need to do this because:
+    //  1. Turning `PlaceRef` into `RValue` is error-prone and has nasty edge cases
+    //     (especially with current `rustc_backend_ssa` API).
+    //  2. Not every output operand has an `out_place`, and it's required by `add_output_operand`.
+    //
+    // Instead, we generate a temporary output variable for each output operand, and then this loop,
+    // generates `out_place = tmp_var;` assignments if out_place exists.
+    for op in &outputs {
+        if let Some(place) = op.out_place {
+            OperandValue::Immediate(op.tmp_var.to_rvalue()).store(self, place);
+        }
+    }
+
+}
 }
 
 fn estimate_template_length(template: &[InlineAsmTemplatePiece], constants_len: usize, att_dialect: bool) -> usize {
-    let len: usize = template.iter().map(|piece| {
-        match *piece {
-            InlineAsmTemplatePiece::String(ref string) => {
-                string.len()
-            }
-            InlineAsmTemplatePiece::Placeholder { .. } => {
-                // '%' + 1 char modifier + 1 char index
-                3
-            }
+let len: usize = template.iter().map(|piece| {
+    match *piece {
+        InlineAsmTemplatePiece::String(ref string) => {
+            string.len()
         }
-    })
-    .sum();
-
-    // increase it by 5% to account for possible '%' signs that'll be duplicated
-    // I pulled the number out of blue, but should be fair enough
-    // as the upper bound
-    let mut res = (len as f32 * 1.05) as usize + constants_len;
-
-    if att_dialect {
-        res += INTEL_SYNTAX_INS.len() + ATT_SYNTAX_INS.len();
+        InlineAsmTemplatePiece::Placeholder { .. } => {
+            // '%' + 1 char modifier + 1 char index
+            3
+        }
     }
-    res
+})
+.sum();
+
+// increase it by 5% to account for possible '%' signs that'll be duplicated
+// I pulled the number out of blue, but should be fair enough
+// as the upper bound
+let mut res = (len as f32 * 1.05) as usize + constants_len;
+
+if att_dialect {
+    res += INTEL_SYNTAX_INS.len() + ATT_SYNTAX_INS.len();
+}
+res
 }
 
 /// Converts a register class to a GCC constraint code.
