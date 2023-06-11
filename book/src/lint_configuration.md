@@ -343,7 +343,9 @@ The maximum allowed stack size for functions in bytes
 
 **Default Value:** `512000` (`u64`)
 
-* [large_stack_frames](https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_frames)
+---
+**Affected lints:**
+* [`large_stack_frames`](https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_frames)
 
 
 ## `vec-box-size-threshold`
