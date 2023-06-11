@@ -23,6 +23,8 @@ use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
 
+use std::cmp;
+
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
 // other predecessors.
@@ -1360,36 +1362,58 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => match arg.mode {
-                PassMode::Indirect { .. } | PassMode::Cast(..) => {
+                PassMode::Indirect { attrs, .. } => {
+                    // Indirect argument may have higher alignment requirements than the type's alignment.
+                    // This can happen, e.g. when passing types with <4 byte alignment on the stack on x86.
+                    let required_align = match attrs.pointee_align {
+                        Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
+                        None => arg.layout.align.abi,
+                    };
+                    let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
+                    op.val.store(bx, scratch);
+                    (scratch.llval, scratch.align, true)
+                }
+                PassMode::Cast(..) => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
                     op.val.store(bx, scratch);
                     (scratch.llval, scratch.align, true)
                 }
                 _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
             },
-            Ref(llval, _, align) => {
-                if arg.is_indirect() && align < arg.layout.align.abi {
-                    // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
-                    // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
-                    // have scary latent bugs around.
-
-                    let scratch = PlaceRef::alloca(bx, arg.layout);
-                    base::memcpy_ty(
-                        bx,
-                        scratch.llval,
-                        scratch.align,
-                        llval,
-                        align,
-                        op.layout,
-                        MemFlags::empty(),
-                    );
-                    (scratch.llval, scratch.align, true)
-                } else {
-                    (llval, align, true)
+            Ref(llval, _, align) => match arg.mode {
+                PassMode::Indirect { attrs, .. } => {
+                    let required_align = match attrs.pointee_align {
+                        Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
+                        None => arg.layout.align.abi,
+                    };
+                    if align < required_align {
+                        // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
+                        // alignment requirements may be higher than the type's alignment, so copy
+                        // to a higher-aligned alloca.
+                        let scratch = PlaceRef::alloca_aligned(bx, arg.layout, required_align);
+                        base::memcpy_ty(
+                            bx,
+                            scratch.llval,
+                            scratch.align,
+                            llval,
+                            align,
+                            op.layout,
+                            MemFlags::empty(),
+                        );
+                        (scratch.llval, scratch.align, true)
+                    } else {
+                        (llval, align, true)
+                    }
                 }
-            }
+                _ => (llval, align, true),
+            },
             ZeroSized => match arg.mode {
-                PassMode::Indirect { .. } => {
+                PassMode::Indirect { on_stack, .. } => {
+                    if on_stack {
+                        // It doesn't seem like any target can have `byval` ZSTs, so this assert
+                        // is here to replace a would-be untested codepath.
+                        bug!("ZST {op:?} passed on stack with abi {arg:?}");
+                    }
                     // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
                     // a pointer for `repr(C)` structs even when empty, so get
                     // one from an `alloca` (which can be left uninitialized).

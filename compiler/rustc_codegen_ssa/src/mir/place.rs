@@ -48,9 +48,17 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
+        Self::alloca_aligned(bx, layout, layout.align.abi)
+    }
+
+    pub fn alloca_aligned<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        layout: TyAndLayout<'tcx>,
+        align: Align,
+    ) -> Self {
         assert!(layout.is_sized(), "tried to statically allocate unsized place");
-        let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
-        Self::new_sized(tmp, layout)
+        let tmp = bx.alloca(bx.cx().backend_type(layout), align);
+        Self::new_sized_aligned(tmp, layout, align)
     }
 
     /// Returns a place for an indirect reference to an unsized place.

@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 // revisions:m68k wasm x86_64-linux x86_64-windows i686-linux i686-windows
 
 //[m68k] compile-flags: --target m68k-unknown-linux-gnu
@@ -29,6 +30,16 @@
 impl Copy for i32 {}
 impl Copy for i64 {}
 
+// This struct can be represented as a pair, so it exercises the OperandValue::Pair
+// codepath in `codegen_argument`.
+#[repr(C)]
+pub struct NaturalAlign1 {
+    a: i8,
+    b: i8,
+}
+
+// This struct cannot be represented as an immediate, so it exercises the OperandValue::Ref
+// codepath in `codegen_argument`.
 #[repr(C)]
 pub struct NaturalAlign2 {
     a: [i16; 16],
@@ -67,7 +78,93 @@ pub struct ForceAlign16 {
     b: i8
 }
 
+// CHECK-LABEL: @call_na1
+#[no_mangle]
+pub unsafe fn call_na1(x: NaturalAlign1) {
+    // CHECK: start:
+
+    // m68k: [[ALLOCA:%[a-z0-9+]]] = alloca { i8, i8 }, align 1
+    // m68k: call void @natural_align_1({{.*}}byval({ i8, i8 }) align 1{{.*}} [[ALLOCA]])
+
+    // wasm: [[ALLOCA:%[a-z0-9+]]] = alloca { i8, i8 }, align 1
+    // wasm: call void @natural_align_1({{.*}}byval({ i8, i8 }) align 1{{.*}} [[ALLOCA]])
+
+    // x86_64-linux: call void @natural_align_1(i16
+
+    // x86_64-windows: call void @natural_align_1(i16
+
+    // i686-linux: [[ALLOCA:%[a-z0-9+]]] = alloca { i8, i8 }, align 4
+    // i686-linux: call void @natural_align_1({{.*}}byval({ i8, i8 }) align 4{{.*}} [[ALLOCA]])
+
+    // i686-windows: [[ALLOCA:%[a-z0-9+]]] = alloca { i8, i8 }, align 4
+    // i686-windows: call void @natural_align_1({{.*}}byval({ i8, i8 }) align 4{{.*}} [[ALLOCA]])
+    natural_align_1(x);
+}
+
+// CHECK-LABEL: @call_na2
+#[no_mangle]
+pub unsafe fn call_na2(x: NaturalAlign2) {
+    // CHECK: start:
+
+    // m68k-NEXT: call void @natural_align_2
+    // wasm-NEXT: call void @natural_align_2
+    // x86_64-linux-NEXT: call void @natural_align_2
+    // x86_64-windows-NEXT: call void @natural_align_2
+
+    // i686-linux: [[ALLOCA:%[0-9]+]] = alloca %NaturalAlign2, align 4
+    // i686-linux: call void @natural_align_2({{.*}}byval(%NaturalAlign2) align 4{{.*}} [[ALLOCA]])
+
+    // i686-windows: [[ALLOCA:%[0-9]+]] = alloca %NaturalAlign2, align 4
+    // i686-windows: call void @natural_align_2({{.*}}byval(%NaturalAlign2) align 4{{.*}} [[ALLOCA]])
+    natural_align_2(x);
+}
+
+// CHECK-LABEL: @call_fa4
+#[no_mangle]
+pub unsafe fn call_fa4(x: ForceAlign4) {
+    // CHECK: start:
+    // CHECK-NEXT: call void @force_align_4
+    force_align_4(x);
+}
+
+// CHECK-LABEL: @call_na8
+#[no_mangle]
+pub unsafe fn call_na8(x: NaturalAlign8) {
+    // CHECK: start:
+    // CHECK-NEXT: call void @natural_align_8
+    natural_align_8(x);
+}
+
+// CHECK-LABEL: @call_fa8
+#[no_mangle]
+pub unsafe fn call_fa8(x: ForceAlign8) {
+    // CHECK: start:
+    // CHECK-NEXT: call void @force_align_8
+    force_align_8(x);
+}
+
+// CHECK-LABEL: @call_fa16
+#[no_mangle]
+pub unsafe fn call_fa16(x: ForceAlign16) {
+    // CHECK: start:
+    // CHECK-NEXT: call void @force_align_16
+    force_align_16(x);
+}
+
 extern "C" {
+    // m68k: declare void @natural_align_1({{.*}}byval({ i8, i8 }) align 1{{.*}})
+
+    // wasm: declare void @natural_align_1({{.*}}byval({ i8, i8 }) align 1{{.*}})
+
+    // x86_64-linux: declare void @natural_align_1(i16)
+
+    // x86_64-windows: declare void @natural_align_1(i16)
+
+    // i686-linux: declare void @natural_align_1({{.*}}byval({ i8, i8 }) align 4{{.*}})
+
+    // i686-windows: declare void @natural_align_1({{.*}}byval({ i8, i8 }) align 4{{.*}})
+    fn natural_align_1(x: NaturalAlign1);
+
     // m68k: declare void @natural_align_2({{.*}}byval(%NaturalAlign2) align 2{{.*}})
 
     // wasm: declare void @natural_align_2({{.*}}byval(%NaturalAlign2) align 2{{.*}})
@@ -81,7 +178,7 @@ extern "C" {
     // i686-linux: declare void @natural_align_2({{.*}}byval(%NaturalAlign2) align 4{{.*}})
 
     // i686-windows: declare void @natural_align_2({{.*}}byval(%NaturalAlign2) align 4{{.*}})
-    fn natural_align_2(a: NaturalAlign2);
+    fn natural_align_2(x: NaturalAlign2);
 
     // m68k: declare void @force_align_4({{.*}}byval(%ForceAlign4) align 4{{.*}})
 
@@ -96,7 +193,7 @@ extern "C" {
     // i686-linux: declare void @force_align_4({{.*}}byval(%ForceAlign4) align 4{{.*}})
 
     // i686-windows: declare void @force_align_4({{.*}}byval(%ForceAlign4) align 4{{.*}})
-    fn force_align_4(b: ForceAlign4);
+    fn force_align_4(x: ForceAlign4);
 
     // m68k: declare void @natural_align_8({{.*}}byval(%NaturalAlign8) align 4{{.*}})
 
@@ -128,7 +225,7 @@ extern "C" {
     // i686-windows: declare void @force_align_8(
     // i686-windows-NOT: byval
     // i686-windows-SAME: align 8{{.*}})
-    fn force_align_8(y: ForceAlign8);
+    fn force_align_8(x: ForceAlign8);
 
     // m68k: declare void @force_align_16({{.*}}byval(%ForceAlign16) align 16{{.*}})
 
@@ -145,16 +242,5 @@ extern "C" {
     // i686-windows: declare void @force_align_16(
     // i686-windows-NOT: byval
     // i686-windows-SAME: align 16{{.*}})
-    fn force_align_16(z: ForceAlign16);
-}
-
-pub unsafe fn main(
-    a: NaturalAlign2, b: ForceAlign4,
-    x: NaturalAlign8, y: ForceAlign8, z: ForceAlign16
-) {
-    natural_align_2(a);
-    force_align_4(b);
-    natural_align_8(x);
-    force_align_8(y);
-    force_align_16(z);
+    fn force_align_16(x: ForceAlign16);
 }
