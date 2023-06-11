@@ -34,7 +34,6 @@ declare_clippy_lint! {
     ///     let title = movie.title;
     /// }
     /// ```
-    /// ```
     #[clippy::version = "1.72.0"]
     pub MIN_IDENT_CHARS,
     restriction,
@@ -48,6 +47,17 @@ pub struct MinIdentChars {
     pub min_ident_chars_threshold: u64,
 }
 
+impl MinIdentChars {
+    #[expect(clippy::cast_possible_truncation)]
+    fn is_ident_too_short(&self, cx: &LateContext<'_>, str: &str, span: Span) -> bool {
+        !in_external_macro(cx.sess(), span)
+            && str.len() <= self.min_ident_chars_threshold as usize
+            && !str.starts_with('_')
+            && !str.is_empty()
+            && self.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
+    }
+}
+
 impl LateLintPass<'_> for MinIdentChars {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if self.min_ident_chars_threshold == 0 {
@@ -58,15 +68,10 @@ impl LateLintPass<'_> for MinIdentChars {
     }
 
     // This is necessary as `Node::Pat`s are not visited in `visit_id`. :/
-    #[expect(clippy::cast_possible_truncation)]
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
         if let PatKind::Binding(_, _, ident, ..) = pat.kind
             && let str = ident.as_str()
-            && !in_external_macro(cx.sess(), ident.span)
-            && str.len() <= self.min_ident_chars_threshold as usize
-            && !str.starts_with('_')
-            && !str.is_empty()
-            && self.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
+            && self.is_ident_too_short(cx, str, ident.span)
         {
             emit_min_ident_chars(self, cx, str, ident.span);
         }
@@ -79,12 +84,11 @@ struct IdentVisitor<'cx, 'tcx> {
 }
 
 impl Visitor<'_> for IdentVisitor<'_, '_> {
-    #[expect(clippy::cast_possible_truncation)]
     fn visit_id(&mut self, hir_id: HirId) {
         let Self { conf, cx } = *self;
-        // Reimplementation of `find`, as it uses indexing, which can (and will in async functions) panic.
-        // This should probably be fixed on the rustc side, this is just a temporary workaround.
-        // FIXME: Remove me if/when this is fixed in rustc
+        // FIXME(#112534) Reimplementation of `find`, as it uses indexing, which can (and will in
+        // async functions, or really anything async) panic. This should probably be fixed on the
+        // rustc side, this is just a temporary workaround.
         let node = if hir_id.local_id == ItemLocalId::from_u32(0) {
             // In this case, we can just use `find`, `Owner`'s `node` field is private anyway so we can't
             // reimplement it even if we wanted to
@@ -103,12 +107,7 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
         };
 
         let str = ident.as_str();
-        if !in_external_macro(cx.sess(), ident.span)
-            && str.len() <= conf.min_ident_chars_threshold as usize
-            && !str.starts_with('_')
-            && !str.is_empty()
-            && conf.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
-        {
+        if conf.is_ident_too_short(cx, str, ident.span) {
             if let Node::Item(item) = node && let ItemKind::Use(..) = item.kind {
                 return;
             }
