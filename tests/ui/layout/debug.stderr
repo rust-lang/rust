@@ -53,6 +53,7 @@ error: layout_of(E) = Layout {
                        variants: Single {
                            index: 0,
                        },
+                       has_repr_align: false,
                    },
                    Layout {
                        size: Size(12 bytes),
@@ -77,9 +78,11 @@ error: layout_of(E) = Layout {
                        variants: Single {
                            index: 1,
                        },
+                       has_repr_align: false,
                    },
                ],
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:7:1
    |
@@ -124,6 +127,7 @@ error: layout_of(S) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:10:1
    |
@@ -146,6 +150,7 @@ error: layout_of(U) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:13:1
    |
@@ -237,6 +242,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                        variants: Single {
                            index: 0,
                        },
+                       has_repr_align: false,
                    },
                    Layout {
                        size: Size(8 bytes),
@@ -272,9 +278,11 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                        variants: Single {
                            index: 1,
                        },
+                       has_repr_align: false,
                    },
                ],
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:16:1
    |
@@ -301,6 +309,7 @@ error: layout_of(i32) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:19:1
    |
@@ -323,6 +332,7 @@ error: layout_of(V) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:22:1
    |
@@ -345,6 +355,7 @@ error: layout_of(W) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:28:1
    |
@@ -367,6 +378,7 @@ error: layout_of(Y) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:34:1
    |
@@ -389,6 +401,7 @@ error: layout_of(P1) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:41:1
    |
@@ -411,6 +424,7 @@ error: layout_of(P2) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:45:1
    |
@@ -433,6 +447,7 @@ error: layout_of(P3) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:53:1
    |
@@ -455,6 +470,7 @@ error: layout_of(P4) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:57:1
    |
@@ -482,6 +498,7 @@ error: layout_of(P5) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:61:1
    |
@@ -509,6 +526,7 @@ error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
            variants: Single {
                index: 0,
            },
+           has_repr_align: false,
        }
   --> $DIR/debug.rs:64:1
    |
