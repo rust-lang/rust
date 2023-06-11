@@ -121,7 +121,6 @@ use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollec
 
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    target_cgu_count: usize,
     usage_map: &'a UsageMap<'tcx>,
 }
 
@@ -136,7 +135,6 @@ struct PlacedRootMonoItems<'tcx> {
 fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: I,
-    max_cgu_count: usize,
     usage_map: &UsageMap<'tcx>,
 ) -> Vec<CodegenUnit<'tcx>>
 where
@@ -144,7 +142,7 @@ where
 {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
-    let cx = &PartitioningCx { tcx, target_cgu_count: max_cgu_count, usage_map };
+    let cx = &PartitioningCx { tcx, usage_map };
 
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
@@ -309,7 +307,7 @@ fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut Vec<CodegenUnit<'tcx>>,
 ) {
-    assert!(cx.target_cgu_count >= 1);
+    assert!(cx.tcx.sess.codegen_units() >= 1);
 
     // A sorted order here ensures merging is deterministic.
     assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
@@ -320,7 +318,7 @@ fn merge_codegen_units<'tcx>(
 
     // Merge the two smallest codegen units until the target size is
     // reached.
-    while codegen_units.len() > cx.target_cgu_count {
+    while codegen_units.len() > cx.tcx.sess.codegen_units() {
         // Sort small cgus to the back
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         let mut smallest = codegen_units.pop().unwrap();
@@ -922,8 +920,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
-                let mut codegen_units =
-                    partition(tcx, items.iter().copied(), tcx.sess.codegen_units(), &usage_map);
+                let mut codegen_units = partition(tcx, items.iter().copied(), &usage_map);
                 codegen_units[0].make_primary();
                 &*tcx.arena.alloc_from_iter(codegen_units)
             },
