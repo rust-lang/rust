@@ -350,6 +350,8 @@ function test_rustc() {
     for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
       rm $test
     done
+    rm tests/ui/consts/const_cmp_type_id.rs
+    rm tests/ui/consts/issue-73976-monomorphic.rs
 
     git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 

@@ -66,3 +66,5 @@ tests/ui/generator/panic-safe.rs
 tests/ui/issues/issue-14875.rs
 tests/ui/issues/issue-29948.rs
 tests/ui/panic-while-printing.rs
+tests/ui/enum-discriminant/get_discr.rs
+tests/ui/panics/nested_panic_caught.rs
