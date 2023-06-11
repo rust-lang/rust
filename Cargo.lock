@@ -1953,8 +1953,14 @@ version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24fddda5af7e54bf7da53067d6e802dbcc381d0a8eef629df528e3ebf68755cb"
 dependencies = [
+<<<<<<< HEAD
  "hermit-abi 0.3.2",
  "rustix 0.38.2",
+=======
+ "hermit-abi 0.3.1",
+ "io-lifetimes",
+ "rustix",
+>>>>>>> 3435df2bc6c (define hermit_abi as public depedenceny)
  "windows-sys 0.48.0",
 ]
 
@@ -4939,8 +4945,13 @@ dependencies = [
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
+<<<<<<< HEAD
  "hashbrown 0.14.0",
  "hermit-abi 0.3.2",
+=======
+ "hashbrown 0.13.1",
+ "hermit-abi 0.3.1",
+>>>>>>> 3435df2bc6c (define hermit_abi as public depedenceny)
  "libc",
  "miniz_oxide",
  "object",
