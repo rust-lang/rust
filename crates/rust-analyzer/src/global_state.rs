@@ -54,6 +54,7 @@ pub(crate) struct GlobalState {
     req_queue: ReqQueue,
 
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
+    pub(crate) fmt_pool: Handle<TaskPool<Task>, Receiver<Task>>,
 
     pub(crate) config: Arc<Config>,
     pub(crate) config_errors: Option<ConfigError>,
@@ -151,6 +152,11 @@ impl GlobalState {
             let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
+        let fmt_pool = {
+            let (sender, receiver) = unbounded();
+            let handle = TaskPool::new_with_threads(sender, 1);
+            Handle { handle, receiver }
+        };
 
         let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
         if let Some(capacities) = config.lru_query_capacities() {
@@ -161,6 +167,7 @@ impl GlobalState {
             sender,
             req_queue: ReqQueue::default(),
             task_pool,
+            fmt_pool,
             loader,
             config: Arc::new(config.clone()),
             analysis_host,
