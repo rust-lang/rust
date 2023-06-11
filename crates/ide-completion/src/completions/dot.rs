@@ -979,4 +979,46 @@ fn test(thing: impl Encrypt) {
             "#]],
         )
     }
+
+    #[test]
+    fn only_consider_same_type_once() {
+        check(
+            r#"
+//- minicore: deref
+struct A(u8);
+struct B(u16);
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for B {
+    type Target = A;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                fd 0                      u16
+                fd 0                      u8
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
+    fn no_inference_var_in_completion() {
+        check(
+            r#"
+struct S<T>(T);
+fn test(s: S<Unknown>) {
+    s.$0
+}
+"#,
+            expect![[r#"
+                fd 0 {unknown}
+            "#]],
+        );
+    }
 }

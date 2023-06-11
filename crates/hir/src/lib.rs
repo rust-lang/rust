@@ -3795,14 +3795,16 @@ impl Type {
         }
     }
 
-    pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {
+    /// Returns types that this type dereferences to (including this type itself). The returned
+    /// iterator won't yield the same type more than once even if the deref chain contains a cycle.
+    pub fn autoderef(&self, db: &dyn HirDatabase) -> impl Iterator<Item = Type> + '_ {
         self.autoderef_(db).map(move |ty| self.derived(ty))
     }
 
-    fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
+    fn autoderef_(&self, db: &dyn HirDatabase) -> impl Iterator<Item = Ty> {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
-        autoderef(db, self.env.clone(), canonical).map(|canonical| canonical.value)
+        autoderef(db, self.env.clone(), canonical)
     }
 
     // This would be nicer if it just returned an iterator, but that runs into

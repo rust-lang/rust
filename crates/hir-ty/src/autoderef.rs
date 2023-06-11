@@ -22,17 +22,37 @@ pub(crate) enum AutoderefKind {
     Overloaded,
 }
 
+/// Returns types that `ty` transitively dereferences to. This function is only meant to be used
+/// outside `hir-ty`.
+///
+/// It is guaranteed that:
+/// - the yielded types don't contain inference variables (but may contain `TyKind::Error`).
+/// - a type won't be yielded more than once; in other words, the returned iterator will stop if it
+///   detects a cycle in the deref chain.
 pub fn autoderef(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     ty: Canonical<Ty>,
-) -> impl Iterator<Item = Canonical<Ty>> + '_ {
+) -> impl Iterator<Item = Ty> {
     let mut table = InferenceTable::new(db, env);
     let ty = table.instantiate_canonical(ty);
     let mut autoderef = Autoderef::new(&mut table, ty);
     let mut v = Vec::new();
     while let Some((ty, _steps)) = autoderef.next() {
-        v.push(autoderef.table.canonicalize(ty).value);
+        // `ty` may contain unresolved inference variables. Since there's no chance they would be
+        // resolved, just replace with fallback type.
+        let resolved = autoderef.table.resolve_completely(ty);
+
+        // If the deref chain contains a cycle (e.g. `A` derefs to `B` and `B` derefs to `A`), we
+        // would revisit some already visited types. Stop here to avoid duplication.
+        //
+        // XXX: The recursion limit for `Autoderef` is currently 10, so `Vec::contains()` shouldn't
+        // be too expensive. Replace this duplicate check with `FxHashSet` if it proves to be more
+        // performant.
+        if v.contains(&resolved) {
+            break;
+        }
+        v.push(resolved);
     }
     v.into_iter()
 }
