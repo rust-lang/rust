@@ -53,7 +53,7 @@ pub struct ForceAlign4 {
     b: i8,
 }
 
-// on i686-windows, this should be passed on stack using `byval`
+// On i686-windows, this is passed on stack using `byval`
 #[repr(C)]
 pub struct NaturalAlign8 {
     a: i64,
@@ -61,14 +61,38 @@ pub struct NaturalAlign8 {
     c: i64
 }
 
-// on i686-windows, this is passed by reference (because alignment is >4 and requested/forced),
-// even though it has the exact same layout as `NaturalAlign8` (!!!)
+// On i686-windows, this is passed by reference (because alignment is >4 and requested/forced),
+// even though it has the exact same layout as `NaturalAlign8`!
 #[repr(C)]
 #[repr(align(8))]
 pub struct ForceAlign8 {
     a: i64,
     b: i64,
     c: i64
+}
+
+// On i686-windows, this is passed by reference because alignment is requested,
+// even though the requested alignment is less than the natural alignment.
+#[repr(C)]
+#[repr(align(1))]
+pub struct LowerFA8 {
+    a: i64,
+    b: i64,
+    c: i64
+}
+
+// On i686-windows, this is passed on stack again, because the wrapper struct does not have
+// requested/forced alignment.
+#[repr(C)]
+pub struct WrappedFA8 {
+    a: ForceAlign8
+}
+
+// On i686-windows, this has the same ABI as ForceAlign8, i.e. passed by reference.
+#[repr(transparent)]
+pub struct TransparentFA8 {
+    _0: (),
+    a: ForceAlign8
 }
 
 #[repr(C)]
@@ -141,6 +165,30 @@ pub unsafe fn call_fa8(x: ForceAlign8) {
     // CHECK: start:
     // CHECK-NEXT: call void @force_align_8
     force_align_8(x);
+}
+
+// CHECK-LABEL: @call_lfa8
+#[no_mangle]
+pub unsafe fn call_lfa8(x: LowerFA8) {
+    // CHECK: start:
+    // CHECK-NEXT: call void @lower_fa8
+    lower_fa8(x);
+}
+
+// CHECK-LABEL: @call_wfa8
+#[no_mangle]
+pub unsafe fn call_wfa8(x: WrappedFA8) {
+    // CHECK: start:
+    // CHECK-NEXT: call void @wrapped_fa8
+    wrapped_fa8(x);
+}
+
+// CHECK-LABEL: @call_tfa8
+#[no_mangle]
+pub unsafe fn call_tfa8(x: TransparentFA8) {
+    // CHECK: start:
+    // CHECK-NEXT: call void @transparent_fa8
+    transparent_fa8(x);
 }
 
 // CHECK-LABEL: @call_fa16
@@ -226,6 +274,55 @@ extern "C" {
     // i686-windows-NOT: byval
     // i686-windows-SAME: align 8{{.*}})
     fn force_align_8(x: ForceAlign8);
+
+    // m68k: declare void @lower_fa8({{.*}}byval(%LowerFA8) align 4{{.*}})
+
+    // wasm: declare void @lower_fa8({{.*}}byval(%LowerFA8) align 8{{.*}})
+
+    // x86_64-linux: declare void @lower_fa8({{.*}}byval(%LowerFA8) align 8{{.*}})
+
+    // x86_64-windows: declare void @lower_fa8(
+    // x86_64-windows-NOT: byval
+    // x86_64-windows-SAME: align 8{{.*}})
+
+    // i686-linux: declare void @lower_fa8({{.*}}byval(%LowerFA8) align 4{{.*}})
+
+    // i686-windows: declare void @lower_fa8(
+    // i686-windows-NOT: byval
+    // i686-windows-SAME: align 8{{.*}})
+    fn lower_fa8(x: LowerFA8);
+
+    // m68k: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 8{{.*}})
+
+    // wasm: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 8{{.*}})
+
+    // x86_64-linux: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 8{{.*}})
+
+    // x86_64-windows: declare void @wrapped_fa8(
+    // x86_64-windows-NOT: byval
+    // x86_64-windows-SAME: align 8{{.*}})
+
+    // i686-linux: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 4{{.*}})
+
+    // i686-windows: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 4{{.*}})
+    fn wrapped_fa8(x: WrappedFA8);
+
+    // m68k: declare void @transparent_fa8({{.*}}byval(%TransparentFA8) align 8{{.*}})
+
+    // wasm: declare void @transparent_fa8({{.*}}byval(%TransparentFA8) align 8{{.*}})
+
+    // x86_64-linux: declare void @transparent_fa8({{.*}}byval(%TransparentFA8) align 8{{.*}})
+
+    // x86_64-windows: declare void @transparent_fa8(
+    // x86_64-windows-NOT: byval
+    // x86_64-windows-SAME: align 8{{.*}})
+
+    // i686-linux: declare void @transparent_fa8({{.*}}byval(%TransparentFA8) align 4{{.*}})
+
+    // i686-windows: declare void @transparent_fa8(
+    // i686-windows-NOT: byval
+    // i686-windows-SAME: align 8{{.*}})
+    fn transparent_fa8(x: TransparentFA8);
 
     // m68k: declare void @force_align_16({{.*}}byval(%ForceAlign16) align 16{{.*}})
 
