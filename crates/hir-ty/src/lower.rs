@@ -29,9 +29,9 @@ use hir_def::{
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{ConstRef, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, StaticId,
-    StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UnionId,
-    VariantId,
+    GenericDefId, HasModule, ImplId, InTypeConstLoc, ItemContainerId, LocalFieldId, Lookup,
+    ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId,
+    TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::Name, ExpandResult};
 use intern::Interned;
@@ -2047,7 +2047,7 @@ pub(crate) fn const_or_path_to_chalk(
             )
             .unwrap_or_else(|| unknown_const(expected_ty))
         }
-        &ConstRef::Complex(x) => {
+        &ConstRef::Complex(it) => {
             let crate_data = &db.crate_graph()[owner.module(db.upcast()).krate()];
             if crate_data.env.get("__ra_is_test_fixture").is_none() && crate_data.origin.is_local()
             {
@@ -2056,11 +2056,11 @@ pub(crate) fn const_or_path_to_chalk(
                 return unknown_const(expected_ty);
             }
             let c = db
-                .intern_in_type_const((
-                    x,
+                .intern_in_type_const(InTypeConstLoc {
+                    id: it,
                     owner,
-                    Box::new(InTypeConstIdMetadata(expected_ty.clone())),
-                ))
+                    thing: Box::new(InTypeConstIdMetadata(expected_ty.clone())),
+                })
                 .into();
             intern_const_scalar(
                 ConstScalar::UnevaluatedConst(c, Substitution::empty(Interner)),

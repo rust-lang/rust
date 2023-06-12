@@ -7,7 +7,7 @@ use hir_def::{
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
-    EnumVariantId, GeneralConstId, StaticId,
+    ConstBlockLoc, EnumVariantId, GeneralConstId, StaticId,
 };
 use la_arena::{Idx, RawIdx};
 use stdx::never;
@@ -216,14 +216,14 @@ pub(crate) fn const_eval_query(
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
         }
         GeneralConstId::ConstBlockId(c) => {
-            let (def, root) = db.lookup_intern_anonymous_const(c);
-            let body = db.body(def);
-            let infer = db.infer(def);
+            let ConstBlockLoc { parent, root } = db.lookup_intern_anonymous_const(c);
+            let body = db.body(parent);
+            let infer = db.infer(parent);
             Arc::new(monomorphize_mir_body_bad(
                 db,
-                lower_to_mir(db, def, &body, &infer, root)?,
+                lower_to_mir(db, parent, &body, &infer, root)?,
                 subst,
-                db.trait_environment_for_body(def),
+                db.trait_environment_for_body(parent),
             )?)
         }
         GeneralConstId::InTypeConstId(c) => db.mir_body(c.into())?,

@@ -1,7 +1,7 @@
 //! Defines database & queries for name resolution.
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
-use hir_expand::{db::ExpandDatabase, AstId, HirFileId};
+use hir_expand::{db::ExpandDatabase, HirFileId};
 use intern::Interned;
 use la_arena::ArenaMap;
 use syntax::{ast, AstPtr};
@@ -16,22 +16,22 @@ use crate::{
         TraitAliasData, TraitData, TypeAliasData,
     },
     generics::GenericParams,
-    hir::ExprId,
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree},
     lang_item::{LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
-    AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc,
-    ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc,
-    InTypeConstId, LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId,
-    MacroRulesLoc, OpaqueInternableThing, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
-    StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc,
-    TypeOwnerId, UnionId, UnionLoc, VariantId,
+    AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
+    EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId,
+    ImplLoc, InTypeConstId, InTypeConstLoc, LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc,
+    MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
+    StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
+    UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
+    // region: items
     #[salsa::interned]
     fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
     #[salsa::interned]
@@ -55,20 +55,19 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_extern_block(&self, loc: ExternBlockLoc) -> ExternBlockId;
     #[salsa::interned]
-    fn intern_block(&self, loc: BlockLoc) -> BlockId;
-    #[salsa::interned]
     fn intern_macro2(&self, loc: Macro2Loc) -> Macro2Id;
     #[salsa::interned]
     fn intern_proc_macro(&self, loc: ProcMacroLoc) -> ProcMacroId;
     #[salsa::interned]
     fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
+    // endregion: items
+
     #[salsa::interned]
-    fn intern_anonymous_const(&self, id: (DefWithBodyId, ExprId)) -> ConstBlockId;
+    fn intern_block(&self, loc: BlockLoc) -> BlockId;
     #[salsa::interned]
-    fn intern_in_type_const(
-        &self,
-        id: (AstId<ast::ConstArg>, TypeOwnerId, Box<dyn OpaqueInternableThing>),
-    ) -> InTypeConstId;
+    fn intern_anonymous_const(&self, id: ConstBlockLoc) -> ConstBlockId;
+    #[salsa::interned]
+    fn intern_in_type_const(&self, id: InTypeConstLoc) -> InTypeConstId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]

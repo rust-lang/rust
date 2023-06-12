@@ -40,7 +40,7 @@ use crate::{
     nameres::{DefMap, MacroSubNs},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    AdtId, BlockId, BlockLoc, DefWithBodyId, ModuleDefId, UnresolvedMacro,
+    AdtId, BlockId, BlockLoc, ConstBlockLoc, DefWithBodyId, ModuleDefId, UnresolvedMacro,
 };
 
 pub(super) fn lower(
@@ -297,7 +297,10 @@ impl ExprCollector<'_> {
                         let (result_expr_id, prev_binding_owner) =
                             this.initialize_binding_owner(syntax_ptr);
                         let inner_expr = this.collect_block(e);
-                        let x = this.db.intern_anonymous_const((this.owner, inner_expr));
+                        let x = this.db.intern_anonymous_const(ConstBlockLoc {
+                            parent: this.owner,
+                            root: inner_expr,
+                        });
                         this.body.exprs[result_expr_id] = Expr::Const(x);
                         this.current_binding_owner = prev_binding_owner;
                         result_expr_id
