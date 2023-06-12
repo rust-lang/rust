@@ -99,60 +99,74 @@ fn unord<F: Float>(a: F, b: F) -> bool {
 }
 
 intrinsics! {
+    #[avr_skip]
     pub extern "C" fn __lesf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gesf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 
+    #[avr_skip]
     #[arm_aeabi_alias = __aeabi_fcmpun]
     pub extern "C" fn __unordsf2(a: f32, b: f32) -> i32 {
         unord(a, b) as i32
     }
 
+    #[avr_skip]
     pub extern "C" fn __eqsf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __ltsf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __nesf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gtsf2(a: f32, b: f32) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __ledf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gedf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_ge_abi()
     }
 
+    #[avr_skip]
     #[arm_aeabi_alias = __aeabi_dcmpun]
     pub extern "C" fn __unorddf2(a: f64, b: f64) -> i32 {
         unord(a, b) as i32
     }
 
+    #[avr_skip]
     pub extern "C" fn __eqdf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __ltdf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __nedf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_le_abi()
     }
 
+    #[avr_skip]
     pub extern "C" fn __gtdf2(a: f64, b: f64) -> i32 {
         cmp(a, b).to_ge_abi()
     }

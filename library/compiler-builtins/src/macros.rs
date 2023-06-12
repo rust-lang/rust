@@ -437,12 +437,11 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // For division and modulo, AVR uses a custom calling convention¹ that does
-    // not match our definitions here. Ideally we would just use hand-written
-    // naked functions, but that's quite a lot of code to port² - so for the
-    // time being we are just ignoring the problematic functions, letting
-    // avr-gcc (which is required to compile to AVR anyway) link them from
-    // libgcc.
+    // For some intrinsics, AVR uses a custom calling convention¹ that does not
+    // match our definitions here. Ideally we would just use hand-written naked
+    // functions, but that's quite a lot of code to port² - so for the time
+    // being we are just ignoring the problematic functions, letting avr-gcc
+    // (which is required to compile to AVR anyway) link them from libgcc.
     //
     // ¹ https://gcc.gnu.org/wiki/avr-gcc (see "Exceptions to the Calling
     //   Convention")
