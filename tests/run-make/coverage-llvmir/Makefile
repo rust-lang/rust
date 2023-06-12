@@ -6,7 +6,7 @@
 # version during testing, with an additional directive at the top of this file
 # that sets, for example: `min-llvm-version: 12.0`
 
-include ../coverage/coverage_tools.mk
+include ../tools.mk
 
 BASEDIR=../coverage-llvmir
 

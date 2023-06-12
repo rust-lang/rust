@@ -913,7 +913,7 @@ pub fn make_test_description<R: Read>(
         // The run-coverage tests are treated as having these extra directives,
         // without needing to specify them manually in every test file.
         // (Some of the comments below have been copied over from
-        // `tests/run-make/coverage-reports/Makefile`.)
+        // `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
         Mode::RunCoverage => {
             &[
                 "needs-profiler-support",
