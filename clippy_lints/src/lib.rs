@@ -288,6 +288,7 @@ mod shadow;
 mod significant_drop_tightening;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
+mod single_range_in_vec_init;
 mod size_of_in_element_count;
 mod size_of_ref;
 mod slow_vector_initialization;
@@ -1045,6 +1046,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     let stack_size_threshold = conf.stack_size_threshold;
     store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(stack_size_threshold)));
+    store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
