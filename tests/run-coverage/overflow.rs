@@ -1,5 +1,5 @@
 #![allow(unused_assignments)]
-// expect-exit-status-101
+// failure-status: 101
 
 fn might_overflow(to_add: u32) -> u32 {
     if to_add > 5 {

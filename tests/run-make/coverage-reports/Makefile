@@ -1,3 +1,7 @@
+# NOTE: Most of the tests previously associated with this makefile have been
+# migrated over to the custom `run-coverage` test suite instead, so only a few
+# harder-to-port tests remain here.
+
 # needs-profiler-support
 # ignore-windows-gnu
 

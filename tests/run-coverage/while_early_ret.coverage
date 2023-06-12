@@ -1,5 +1,5 @@
     1|       |#![allow(unused_assignments)]
-    2|       |// expect-exit-status-1
+    2|       |// failure-status: 1
     3|       |
     4|      1|fn main() -> Result<(),u8> {
     5|      1|    let mut countdown = 10;

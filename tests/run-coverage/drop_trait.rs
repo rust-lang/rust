@@ -1,5 +1,5 @@
 #![allow(unused_assignments)]
-// expect-exit-status-1
+// failure-status: 1
 
 struct Firework {
     strength: i32,

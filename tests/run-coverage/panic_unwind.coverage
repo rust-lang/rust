@@ -1,5 +1,5 @@
     1|       |#![allow(unused_assignments)]
-    2|       |// expect-exit-status-101
+    2|       |// failure-status: 101
     3|       |
     4|      4|fn might_panic(should_panic: bool) {
     5|      4|    if should_panic {

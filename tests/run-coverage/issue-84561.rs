@@ -1,6 +1,6 @@
 // This demonstrated Issue #84561: function-like macros produce unintuitive coverage results.
 
-// expect-exit-status-101
+// failure-status: 101
 #[derive(PartialEq, Eq)]
 struct Foo(u32);
 fn test3() {

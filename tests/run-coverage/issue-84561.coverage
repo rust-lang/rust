@@ -1,6 +1,6 @@
     1|       |// This demonstrated Issue #84561: function-like macros produce unintuitive coverage results.
     2|       |
-    3|       |// expect-exit-status-101
+    3|       |// failure-status: 101
     4|     21|#[derive(PartialEq, Eq)]
     5|       |struct Foo(u32);
     6|      1|fn test3() {
