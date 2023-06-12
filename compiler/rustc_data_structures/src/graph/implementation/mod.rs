@@ -22,6 +22,7 @@
 
 use crate::snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use rustc_index::bit_set::BitSet;
+use rustc_index::Idx;
 use std::fmt::Debug;
 
 #[cfg(test)]
@@ -59,8 +60,18 @@ impl<N> SnapshotVecDelegate for Edge<N> {
     fn reverse(_: &mut Vec<Edge<N>>, _: ()) {}
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Ord, PartialOrd)]
 pub struct NodeIndex(pub usize);
+
+impl Idx for NodeIndex {
+    fn new(idx: usize) -> Self {
+        NodeIndex(idx)
+    }
+
+    fn index(self) -> usize {
+        self.0
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct EdgeIndex(pub usize);
