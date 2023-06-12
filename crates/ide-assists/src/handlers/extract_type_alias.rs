@@ -158,7 +158,7 @@ fn collect_used_generics<'gp>(
                     .and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
             ),
             ast::Type::ArrayType(ar) => {
-                if let Some(ast::Expr::PathExpr(p)) = ar.expr() {
+                if let Some(ast::Expr::PathExpr(p)) = ar.const_arg().and_then(|x| x.expr()) {
                     if let Some(path) = p.path() {
                         if let Some(name_ref) = path.as_single_name_ref() {
                             if let Some(param) = known_generics.iter().find(|gp| {

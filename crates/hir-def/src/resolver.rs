@@ -24,8 +24,8 @@ use crate::{
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId,
-    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
-    VariantId,
+    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId,
+    TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -1009,6 +1009,24 @@ impl HasResolver for ExternBlockId {
     }
 }
 
+impl HasResolver for TypeOwnerId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        match self {
+            TypeOwnerId::FunctionId(x) => x.resolver(db),
+            TypeOwnerId::StaticId(x) => x.resolver(db),
+            TypeOwnerId::ConstId(x) => x.resolver(db),
+            TypeOwnerId::InTypeConstId(x) => x.lookup(db).1.resolver(db),
+            TypeOwnerId::AdtId(x) => x.resolver(db),
+            TypeOwnerId::TraitId(x) => x.resolver(db),
+            TypeOwnerId::TraitAliasId(x) => x.resolver(db),
+            TypeOwnerId::TypeAliasId(x) => x.resolver(db),
+            TypeOwnerId::ImplId(x) => x.resolver(db),
+            TypeOwnerId::EnumVariantId(x) => x.resolver(db),
+            TypeOwnerId::ModuleId(x) => x.resolver(db),
+        }
+    }
+}
+
 impl HasResolver for DefWithBodyId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {
@@ -1016,6 +1034,7 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::FunctionId(f) => f.resolver(db),
             DefWithBodyId::StaticId(s) => s.resolver(db),
             DefWithBodyId::VariantId(v) => v.parent.resolver(db),
+            DefWithBodyId::InTypeConstId(c) => c.lookup(db).1.resolver(db),
         }
     }
 }

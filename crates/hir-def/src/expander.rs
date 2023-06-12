@@ -155,7 +155,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::with_hygiene(db, &self.cfg_expander.hygiene);
+        let ctx = LowerCtx::new(db, &self.cfg_expander.hygiene, self.current_file_id);
         Path::from_src(path, &ctx)
     }
 

@@ -32,6 +32,7 @@
 //!     include:
 //!     index: sized
 //!     infallible:
+//!     int_impl: size_of, transmute
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     manually_drop: drop
@@ -44,6 +45,7 @@
 //!     range:
 //!     result:
 //!     send: sized
+//!     size_of: sized
 //!     sized:
 //!     slice:
 //!     sync: sized
@@ -345,6 +347,12 @@ pub mod mem {
         pub fn transmute<Src, Dst>(src: Src) -> Dst;
     }
     // endregion:transmute
+
+    // region:size_of
+    extern "rust-intrinsic" {
+        pub fn size_of<T>() -> usize;
+    }
+    // endregion:size_of
 }
 
 pub mod ptr {
@@ -1306,6 +1314,25 @@ impl bool {
     }
 }
 // endregion:bool_impl
+
+// region:int_impl
+macro_rules! impl_int {
+    ($($t:ty)*) => {
+        $(
+            impl $t {
+                pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                    unsafe { mem::transmute(bytes) }
+                }
+            }
+        )*
+    }
+}
+
+impl_int! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+}
+// endregion:int_impl
 
 // region:error
 pub mod error {

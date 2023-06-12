@@ -57,7 +57,10 @@ mod test_db;
 mod macro_expansion_tests;
 mod pretty;
 
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    panic::{RefUnwindSafe, UnwindSafe},
+};
 
 use base_db::{
     impl_intern_key,
@@ -89,8 +92,8 @@ use crate::{
     builtin_type::BuiltinType,
     data::adt::VariantData,
     item_tree::{
-        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, ModItem,
-        Static, Struct, Trait, TraitAlias, TypeAlias, Union,
+        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, Static,
+        Struct, Trait, TraitAlias, TypeAlias, Union,
     },
 };
 
@@ -476,27 +479,181 @@ impl_from!(
     for ModuleDefId
 );
 
-// FIXME: make this a DefWithBodyId
+/// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
+/// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct AnonymousConstId(InternId);
-impl_intern_key!(AnonymousConstId);
+pub struct ConstBlockId(InternId);
+impl_intern_key!(ConstBlockId);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum TypeOwnerId {
+    FunctionId(FunctionId),
+    StaticId(StaticId),
+    ConstId(ConstId),
+    InTypeConstId(InTypeConstId),
+    AdtId(AdtId),
+    TraitId(TraitId),
+    TraitAliasId(TraitAliasId),
+    TypeAliasId(TypeAliasId),
+    ImplId(ImplId),
+    EnumVariantId(EnumVariantId),
+    // FIXME(const-generic-body): ModuleId should not be a type owner. This needs to be fixed to make `TypeOwnerId` actually
+    // useful for assigning ids to in type consts.
+    ModuleId(ModuleId),
+}
+
+impl TypeOwnerId {
+    fn as_generic_def_id(self) -> Option<GenericDefId> {
+        Some(match self {
+            TypeOwnerId::FunctionId(x) => GenericDefId::FunctionId(x),
+            TypeOwnerId::ConstId(x) => GenericDefId::ConstId(x),
+            TypeOwnerId::AdtId(x) => GenericDefId::AdtId(x),
+            TypeOwnerId::TraitId(x) => GenericDefId::TraitId(x),
+            TypeOwnerId::TraitAliasId(x) => GenericDefId::TraitAliasId(x),
+            TypeOwnerId::TypeAliasId(x) => GenericDefId::TypeAliasId(x),
+            TypeOwnerId::ImplId(x) => GenericDefId::ImplId(x),
+            TypeOwnerId::EnumVariantId(x) => GenericDefId::EnumVariantId(x),
+            TypeOwnerId::InTypeConstId(_) | TypeOwnerId::ModuleId(_) | TypeOwnerId::StaticId(_) => {
+                return None
+            }
+        })
+    }
+}
+
+impl_from!(
+    FunctionId,
+    StaticId,
+    ConstId,
+    InTypeConstId,
+    AdtId,
+    TraitId,
+    TraitAliasId,
+    TypeAliasId,
+    ImplId,
+    EnumVariantId,
+    ModuleId
+    for TypeOwnerId
+);
+
+// Every `DefWithBodyId` is a type owner, since bodies can contain type (e.g. `{ let x: Type = _; }`)
+impl From<DefWithBodyId> for TypeOwnerId {
+    fn from(value: DefWithBodyId) -> Self {
+        match value {
+            DefWithBodyId::FunctionId(x) => x.into(),
+            DefWithBodyId::StaticId(x) => x.into(),
+            DefWithBodyId::ConstId(x) => x.into(),
+            DefWithBodyId::InTypeConstId(x) => x.into(),
+            DefWithBodyId::VariantId(x) => x.into(),
+        }
+    }
+}
+
+impl From<GenericDefId> for TypeOwnerId {
+    fn from(value: GenericDefId) -> Self {
+        match value {
+            GenericDefId::FunctionId(x) => x.into(),
+            GenericDefId::AdtId(x) => x.into(),
+            GenericDefId::TraitId(x) => x.into(),
+            GenericDefId::TraitAliasId(x) => x.into(),
+            GenericDefId::TypeAliasId(x) => x.into(),
+            GenericDefId::ImplId(x) => x.into(),
+            GenericDefId::EnumVariantId(x) => x.into(),
+            GenericDefId::ConstId(x) => x.into(),
+        }
+    }
+}
+
+/// A thing that we want to store in interned ids, but we don't know its type in `hir-def`. This is
+/// currently only used in `InTypeConstId` for storing the type (which has type `Ty` defined in
+/// the `hir-ty` crate) of the constant in its id, which is a temporary hack so we may want
+/// to remove this after removing that.
+pub trait OpaqueInternableThing:
+    std::any::Any + std::fmt::Debug + Sync + Send + UnwindSafe + RefUnwindSafe
+{
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn box_any(&self) -> Box<dyn std::any::Any>;
+    fn dyn_hash(&self, state: &mut dyn Hasher);
+    fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool;
+    fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing>;
+}
+
+impl Hash for dyn OpaqueInternableThing {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dyn_hash(state);
+    }
+}
+
+impl PartialEq for dyn OpaqueInternableThing {
+    fn eq(&self, other: &Self) -> bool {
+        self.dyn_eq(other)
+    }
+}
+
+impl Eq for dyn OpaqueInternableThing {}
+
+impl Clone for Box<dyn OpaqueInternableThing> {
+    fn clone(&self) -> Self {
+        self.dyn_clone()
+    }
+}
+
+// FIXME(const-generic-body): Use an stable id for in type consts.
+//
+// The current id uses `AstId<ast::ConstArg>` which will be changed by every change in the code. Ideally
+// we should use an id which is relative to the type owner, so that every change will only invalidate the
+// id if it happens inside of the type owner.
+//
+// The solution probably is to have some query on `TypeOwnerId` to traverse its constant children and store
+// their `AstId` in a list (vector or arena), and use the index of that list in the id here. That query probably
+// needs name resolution, and might go far and handles the whole path lowering or type lowering for a `TypeOwnerId`.
+//
+// Whatever path the solution takes, it should answer 3 questions at the same time:
+// * Is the id stable enough?
+// * How to find a constant id using an ast node / position in the source code? This is needed when we want to
+//   provide ide functionalities inside an in type const (which we currently don't support) e.g. go to definition
+//   for a local defined there. A complex id might have some trouble in this reverse mapping.
+// * How to find the return type of a constant using its id? We have this data when we are doing type lowering
+//   and the name of the struct that contains this constant is resolved, so a query that only traverses the
+//   type owner by its syntax tree might have a hard time here.
+
+/// A constant in a type as a substitution for const generics (like `Foo<{ 2 + 2 }>`) or as an array
+/// length (like `[u8; 2 + 2]`). These constants are body owner and are a variant of `DefWithBodyId`. These
+/// are not called `AnonymousConstId` to prevent confusion with [`ConstBlockId`].
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct InTypeConstId(InternId);
+type InTypeConstLoc = (AstId<ast::ConstArg>, TypeOwnerId, Box<dyn OpaqueInternableThing>);
+impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
+
+impl InTypeConstId {
+    pub fn source(&self, db: &dyn db::DefDatabase) -> ast::ConstArg {
+        let src = self.lookup(db).0;
+        let file_id = src.file_id;
+        let root = &db.parse_or_expand(file_id);
+        db.ast_id_map(file_id).get(src.value).to_node(root)
+    }
+}
 
 /// A constant, which might appears as a const item, an annonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GeneralConstId {
     ConstId(ConstId),
-    AnonymousConstId(AnonymousConstId),
+    ConstBlockId(ConstBlockId),
+    InTypeConstId(InTypeConstId),
 }
 
-impl_from!(ConstId, AnonymousConstId for GeneralConstId);
+impl_from!(ConstId, ConstBlockId, InTypeConstId for GeneralConstId);
 
 impl GeneralConstId {
     pub fn generic_def(self, db: &dyn db::DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(x) => Some(x.into()),
-            GeneralConstId::AnonymousConstId(x) => {
+            GeneralConstId::ConstBlockId(x) => {
                 let (parent, _) = db.lookup_intern_anonymous_const(x);
+                parent.as_generic_def_id()
+            }
+            GeneralConstId::InTypeConstId(x) => {
+                let (_, parent, _) = x.lookup(db);
                 parent.as_generic_def_id()
             }
         }
@@ -511,7 +668,8 @@ impl GeneralConstId {
                 .and_then(|x| x.as_str())
                 .unwrap_or("_")
                 .to_owned(),
-            GeneralConstId::AnonymousConstId(id) => format!("{{anonymous const {id:?}}}"),
+            GeneralConstId::ConstBlockId(id) => format!("{{anonymous const {id:?}}}"),
+            GeneralConstId::InTypeConstId(id) => format!("{{in type const {id:?}}}"),
         }
     }
 }
@@ -522,10 +680,11 @@ pub enum DefWithBodyId {
     FunctionId(FunctionId),
     StaticId(StaticId),
     ConstId(ConstId),
+    InTypeConstId(InTypeConstId),
     VariantId(EnumVariantId),
 }
 
-impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
+impl_from!(FunctionId, ConstId, StaticId, InTypeConstId for DefWithBodyId);
 
 impl From<EnumVariantId> for DefWithBodyId {
     fn from(id: EnumVariantId) -> Self {
@@ -540,6 +699,9 @@ impl DefWithBodyId {
             DefWithBodyId::StaticId(_) => None,
             DefWithBodyId::ConstId(c) => Some(c.into()),
             DefWithBodyId::VariantId(c) => Some(c.into()),
+            // FIXME: stable rust doesn't allow generics in constants, but we should
+            // use `TypeOwnerId::as_generic_def_id` when it does.
+            DefWithBodyId::InTypeConstId(_) => None,
         }
     }
 }
@@ -734,6 +896,24 @@ impl HasModule for MacroId {
     }
 }
 
+impl HasModule for TypeOwnerId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        match self {
+            TypeOwnerId::FunctionId(x) => x.lookup(db).module(db),
+            TypeOwnerId::StaticId(x) => x.lookup(db).module(db),
+            TypeOwnerId::ConstId(x) => x.lookup(db).module(db),
+            TypeOwnerId::InTypeConstId(x) => x.lookup(db).1.module(db),
+            TypeOwnerId::AdtId(x) => x.module(db),
+            TypeOwnerId::TraitId(x) => x.lookup(db).container,
+            TypeOwnerId::TraitAliasId(x) => x.lookup(db).container,
+            TypeOwnerId::TypeAliasId(x) => x.lookup(db).module(db),
+            TypeOwnerId::ImplId(x) => x.lookup(db).container,
+            TypeOwnerId::EnumVariantId(x) => x.parent.lookup(db).container,
+            TypeOwnerId::ModuleId(x) => *x,
+        }
+    }
+}
+
 impl HasModule for DefWithBodyId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
@@ -741,17 +921,7 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
             DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
             DefWithBodyId::VariantId(it) => it.parent.lookup(db).container,
-        }
-    }
-}
-
-impl DefWithBodyId {
-    pub fn as_mod_item(self, db: &dyn db::DefDatabase) -> ModItem {
-        match self {
-            DefWithBodyId::FunctionId(it) => it.lookup(db).id.value.into(),
-            DefWithBodyId::StaticId(it) => it.lookup(db).id.value.into(),
-            DefWithBodyId::ConstId(it) => it.lookup(db).id.value.into(),
-            DefWithBodyId::VariantId(it) => it.parent.lookup(db).id.value.into(),
+            DefWithBodyId::InTypeConstId(it) => it.lookup(db).1.module(db),
         }
     }
 }
