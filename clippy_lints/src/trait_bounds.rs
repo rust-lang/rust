@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
-use clippy_utils::{SpanlessEq, SpanlessHash};
+use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use if_chain::if_chain;
 use itertools::Itertools;
@@ -260,7 +260,7 @@ impl TraitBounds {
                     SpanlessTy { ty: p.bounded_ty, cx },
                     p.bounds.iter().collect::<Vec<_>>()
                 );
-
+                if !is_from_proc_macro(cx, p.bounded_ty);
                 then {
                     let trait_bounds = v
                         .iter()
@@ -342,7 +342,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                             "this trait bound is already specified in the where clause",
                             None,
                             "consider removing this trait bound",
-                            );
+                        );
                     }
                 }
             }

@@ -19,8 +19,8 @@ use rustc_ast::{
 };
 use rustc_hir::{
     intravisit::FnKind, Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId,
-    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, Node, QPath, TraitItem,
-    TraitItemKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
+    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem,
+    TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -319,6 +319,31 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     }
 }
 
+fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
+    match ty.kind {
+        TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
+        TyKind::Ptr(MutTy { mutbl, ty }) => (
+            if mutbl.is_mut() {
+                Pat::Str("*const")
+            } else {
+                Pat::Str("*mut")
+            },
+            ty_search_pat(ty).1,
+        ),
+        TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
+        TyKind::BareFn(bare_fn) => (
+            Pat::OwnedStr(format!("{}{} fn", bare_fn.unsafety.prefix_str(), bare_fn.abi.name())),
+            ty_search_pat(ty).1,
+        ),
+        TyKind::Never => (Pat::Str("!"), Pat::Str("")),
+        TyKind::Tup(..) => (Pat::Str("("), Pat::Str(")")),
+        TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
+        TyKind::Path(qpath) => qpath_search_pat(&qpath),
+        // NOTE: This is missing `TraitObject`. It always return true then.
+        _ => (Pat::Str(""), Pat::Str("")),
+    }
+}
+
 pub trait WithSearchPat {
     type Context: LintContext;
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
@@ -345,6 +370,7 @@ impl_with_search_pat!(LateContext: TraitItem with trait_item_search_pat);
 impl_with_search_pat!(LateContext: ImplItem with impl_item_search_pat);
 impl_with_search_pat!(LateContext: FieldDef with field_def_search_pat);
 impl_with_search_pat!(LateContext: Variant with variant_search_pat);
+impl_with_search_pat!(LateContext: Ty with ty_search_pat);
 
 impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;
