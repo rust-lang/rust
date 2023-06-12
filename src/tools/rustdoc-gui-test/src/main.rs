@@ -20,7 +20,7 @@ fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String>
         .unwrap_or(String::new());
     lines
         .lines()
-        .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
+        .find_map(|l| l.rsplit(':').next()?.strip_prefix("browser-ui-test@"))
         .map(|v| v.to_owned())
 }
 
