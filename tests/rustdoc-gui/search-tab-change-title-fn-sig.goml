@@ -55,7 +55,7 @@ assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types"
 
 // Try with a search-by-parameter
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-write: (".search-input", "usize pattern")
+write: (".search-input", "usize,pattern")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
