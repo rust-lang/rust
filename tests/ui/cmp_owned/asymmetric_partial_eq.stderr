@@ -1,5 +1,5 @@
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:42:12
+  --> $DIR/asymmetric_partial_eq.rs:47:12
    |
 LL |         if borrowed.to_owned() == owned {}
    |            ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
@@ -7,7 +7,7 @@ LL |         if borrowed.to_owned() == owned {}
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:43:21
+  --> $DIR/asymmetric_partial_eq.rs:48:21
    |
 LL |         if owned == borrowed.to_owned() {}
    |            ---------^^^^^^^^^^^^^^^^^^^
@@ -15,13 +15,13 @@ LL |         if owned == borrowed.to_owned() {}
    |            help: try: `borrowed == owned`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:61:21
+  --> $DIR/asymmetric_partial_eq.rs:66:21
    |
 LL |         if owned == borrowed.to_owned() {}
    |                     ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:62:12
+  --> $DIR/asymmetric_partial_eq.rs:67:12
    |
 LL |         if borrowed.to_owned() == owned {}
    |            ^^^^^^^^^^^^^^^^^^^---------
@@ -29,7 +29,7 @@ LL |         if borrowed.to_owned() == owned {}
    |            help: try: `owned == borrowed`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:88:20
+  --> $DIR/asymmetric_partial_eq.rs:93:20
    |
 LL |         if "Hi" == borrowed.to_string() {}
    |            --------^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL |         if "Hi" == borrowed.to_string() {}
    |            help: try: `borrowed == "Hi"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/asymmetric_partial_eq.rs:89:12
+  --> $DIR/asymmetric_partial_eq.rs:94:12
    |
 LL |         if borrowed.to_string() == "Hi" {}
    |            ^^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`

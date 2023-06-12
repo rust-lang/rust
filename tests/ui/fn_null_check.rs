@@ -1,6 +1,7 @@
 #![allow(unused)]
 #![warn(clippy::fn_null_check)]
 #![allow(clippy::cmp_null)]
+#![allow(clippy::needless_if)]
 #![allow(clippy::ptr_eq)]
 #![allow(clippy::zero_ptr)]
 

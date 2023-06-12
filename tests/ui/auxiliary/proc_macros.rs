@@ -4,7 +4,7 @@
 #![crate_type = "proc-macro"]
 #![feature(let_chains)]
 #![feature(proc_macro_span)]
-#![allow(dead_code)]
+#![allow(clippy::needless_if, dead_code)]
 
 extern crate proc_macro;
 

@@ -223,6 +223,7 @@ mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_else;
 mod needless_for_each;
+mod needless_if;
 mod needless_late_init;
 mod needless_parens_on_range_literals;
 mod needless_pass_by_value;
@@ -1031,6 +1032,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(endian_bytes::EndianBytes));
     store.register_late_pass(|_| Box::new(redundant_type_annotations::RedundantTypeAnnotations));
     store.register_late_pass(|_| Box::new(arc_with_non_send_sync::ArcWithNonSendSync));
+    store.register_late_pass(|_| Box::new(needless_if::NeedlessIf));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

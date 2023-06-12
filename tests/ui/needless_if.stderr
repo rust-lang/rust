@@ -1,0 +1,37 @@
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:30:5
+   |
+LL |     if (true) {}
+   |     ^^^^^^^^^^^^ help: you can remove it
+   |
+   = note: `-D clippy::needless-if` implied by `-D warnings`
+
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:32:5
+   |
+LL |     if no_side_effects() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `no_side_effects();`
+
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:34:5
+   |
+LL |     if has_side_effects(&mut x) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `has_side_effects(&mut x);`
+
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:40:5
+   |
+LL | /     if {
+LL | |         return;
+LL | |     } {}
+   | |________^
+   |
+help: you can remove it
+   |
+LL ~     {
+LL +         return;
+LL +     };
+   |
+
+error: aborting due to 4 previous errors
+

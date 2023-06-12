@@ -1,5 +1,5 @@
 #![warn(clippy::blocks_in_if_conditions)]
-#![allow(unused, clippy::let_and_return)]
+#![allow(unused, clippy::let_and_return, clippy::needless_if)]
 
 fn predicate<F: FnOnce(T) -> bool, T>(pfn: F, val: T) -> bool {
     pfn(val)
