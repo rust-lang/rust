@@ -320,7 +320,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates
     }
 
-    /// If the self type of a goal is a projection, computing the relevant candidates is difficult.
+    /// If the self type of a goal is an alias, computing the relevant candidates is difficult.
     ///
     /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
     /// self type to the list of candidates in case that succeeds. We also have to consider candidates with the
