@@ -1,3 +1,4 @@
+$DIR/auxiliary/used_crate.rs:
     1|       |#![allow(unused_assignments, unused_variables)]
     2|       |// compile-flags: -C opt-level=3
     3|       |use std::fmt::Debug; // ^^ validates coverage now works with optimizations
@@ -145,4 +146,25 @@
    98|       |// The alternative is to exclude all generics from being included in the "unused
    99|       |// functions" list, which would then omit coverage results for
   100|       |// `unused_generic_function<T>()`, below.
+
+$DIR/uses_crate.rs:
+    1|       |// FIXME #110395
+    2|       |// ignore-linux
+    3|       |
+    4|       |// Validates coverage now works with optimizations
+    5|       |// compile-flags: -C opt-level=3
+    6|       |
+    7|       |#![allow(unused_assignments, unused_variables)]
+    8|       |
+    9|       |// aux-build:used_crate.rs
+   10|       |extern crate used_crate;
+   11|       |
+   12|      1|fn main() {
+   13|      1|    used_crate::used_function();
+   14|      1|    let some_vec = vec![1, 2, 3, 4];
+   15|      1|    used_crate::used_only_from_bin_crate_generic_function(&some_vec);
+   16|      1|    used_crate::used_only_from_bin_crate_generic_function("used from bin uses_crate.rs");
+   17|      1|    used_crate::used_from_bin_crate_and_lib_crate_generic_function(some_vec);
+   18|      1|    used_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function("interesting?");
+   19|      1|}
 

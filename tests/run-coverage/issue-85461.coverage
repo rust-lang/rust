@@ -1,15 +1,3 @@
-$DIR/issue-85461.rs:
-    1|       |// Regression test for #85461: MSVC sometimes fail to link with dead code and #[inline(always)]
-    2|       |// aux-build:inline_always_with_dead_code.rs
-    3|       |extern crate inline_always_with_dead_code;
-    4|       |
-    5|       |use inline_always_with_dead_code::{bar, baz};
-    6|       |
-    7|      1|fn main() {
-    8|      1|    bar::call_me();
-    9|      1|    baz::call_me();
-   10|      1|}
-
 $DIR/auxiliary/inline_always_with_dead_code.rs:
     1|       |// compile-flags: -Cinstrument-coverage -Ccodegen-units=4 -Copt-level=0
     2|       |
@@ -33,4 +21,16 @@ $DIR/auxiliary/inline_always_with_dead_code.rs:
    20|      1|        super::foo::called();
    21|      1|    }
    22|       |}
+
+$DIR/issue-85461.rs:
+    1|       |// Regression test for #85461: MSVC sometimes fail to link with dead code and #[inline(always)]
+    2|       |// aux-build:inline_always_with_dead_code.rs
+    3|       |extern crate inline_always_with_dead_code;
+    4|       |
+    5|       |use inline_always_with_dead_code::{bar, baz};
+    6|       |
+    7|      1|fn main() {
+    8|      1|    bar::call_me();
+    9|      1|    baz::call_me();
+   10|      1|}
 
