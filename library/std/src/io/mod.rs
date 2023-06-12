@@ -2405,6 +2405,9 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         Ok(read)
     }
 
+    // We don't override `read_to_string` here because an UTF-8 sequence could
+    // be split between the two parts of the chain
+
     fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> Result<()> {
         if buf.capacity() == 0 {
             return Ok(());
@@ -2454,6 +2457,9 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
         read += self.second.read_until(byte, buf)?;
         Ok(read)
     }
+
+    // We don't override `read_line` here because an UTF-8 sequence could be
+    // split between the two parts of the chain
 }
 
 impl<T, U> SizeHint for Chain<T, U> {
