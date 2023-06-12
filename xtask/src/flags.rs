@@ -110,10 +110,10 @@ pub struct PublishReleaseNotes {
 #[derive(Debug)]
 pub enum MeasurementType {
     Build,
-    AnalyseSelf,
-    AnalyseRipgrep,
-    AnalyseWebRender,
-    AnalyseDiesel,
+    AnalyzeSelf,
+    AnalyzeRipgrep,
+    AnalyzeWebRender,
+    AnalyzeDiesel,
 }
 
 impl FromStr for MeasurementType {
@@ -121,10 +121,10 @@ impl FromStr for MeasurementType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "build" => Ok(Self::Build),
-            "self" => Ok(Self::AnalyseSelf),
-            "ripgrep" => Ok(Self::AnalyseRipgrep),
-            "webrender" => Ok(Self::AnalyseWebRender),
-            "diesel" => Ok(Self::AnalyseDiesel),
+            "self" => Ok(Self::AnalyzeSelf),
+            "ripgrep" => Ok(Self::AnalyzeRipgrep),
+            "webrender" => Ok(Self::AnalyzeWebRender),
+            "diesel" => Ok(Self::AnalyzeDiesel),
             _ => Err("Invalid option".to_string()),
         }
     }

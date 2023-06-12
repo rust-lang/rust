@@ -35,15 +35,15 @@ impl flags::Metrics {
                     metrics.measure_build(sh)?;
                     "build.json"
                 }
-                MeasurementType::AnalyseSelf => {
+                MeasurementType::AnalyzeSelf => {
                     metrics.measure_analysis_stats_self(sh)?;
                     "self.json"
                 }
-                MeasurementType::AnalyseRipgrep => {
+                MeasurementType::AnalyzeRipgrep => {
                     metrics.measure_analysis_stats(sh, "ripgrep")?;
                     "ripgrep.json"
                 }
-                MeasurementType::AnalyseWebRender => {
+                MeasurementType::AnalyzeWebRender => {
                     {
                         // https://github.com/rust-lang/rust-analyzer/issues/9997
                         let _d = sh.push_dir("target/rustc-perf/collector/benchmarks/webrender");
@@ -52,7 +52,7 @@ impl flags::Metrics {
                     metrics.measure_analysis_stats(sh, "webrender")?;
                     "webrender.json"
                 }
-                MeasurementType::AnalyseDiesel => {
+                MeasurementType::AnalyzeDiesel => {
                     metrics.measure_analysis_stats(sh, "diesel/diesel")?;
                     "diesel.json"
                 }
