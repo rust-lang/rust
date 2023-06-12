@@ -273,6 +273,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
                 e_flags |= elf::EF_RISCV_RVC;
             }
 
+            // Check if embedded is enabled
+            if features.contains("+e") {
+                e_flags |= elf::EF_RISCV_RVE;
+            }
+
             // Select the appropriate floating-point ABI
             if features.contains("+d") {
                 e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE;
