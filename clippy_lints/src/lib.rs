@@ -168,6 +168,7 @@ mod large_enum_variant;
 mod large_futures;
 mod large_include_file;
 mod large_stack_arrays;
+mod large_stack_frames;
 mod len_zero;
 mod let_if_seq;
 mod let_underscore;
@@ -1042,6 +1043,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             min_ident_chars_threshold,
         })
     });
+    let stack_size_threshold = conf.stack_size_threshold;
+    store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(stack_size_threshold)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
