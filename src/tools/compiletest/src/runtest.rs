@@ -1598,12 +1598,23 @@ impl<'test> TestCx<'test> {
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
+        self.exec_compiled_test_general(&[], true)
+    }
+
+    fn exec_compiled_test_general(
+        &self,
+        env_extra: &[(&str, &str)],
+        delete_after_success: bool,
+    ) -> ProcRes {
         let prepare_env = |cmd: &mut Command| {
             for key in &self.props.unset_exec_env {
                 cmd.env_remove(key);
             }
 
             for (key, val) in &self.props.exec_env {
+                cmd.env(key, val);
+            }
+            for (key, val) in env_extra {
                 cmd.env(key, val);
             }
         };
@@ -1684,7 +1695,7 @@ impl<'test> TestCx<'test> {
             }
         };
 
-        if proc_res.status.success() {
+        if delete_after_success && proc_res.status.success() {
             // delete the executable after running it to save space.
             // it is ok if the deletion failed.
             let _ = fs::remove_file(self.make_exe_name());
