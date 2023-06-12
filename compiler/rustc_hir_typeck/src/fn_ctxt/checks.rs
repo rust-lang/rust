@@ -1,4 +1,5 @@
 use crate::coercion::CoerceMany;
+use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::method::MethodCallee;
@@ -814,6 +815,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
+            self.suggest_ptr_null_mut(
+                expected_ty,
+                provided_ty,
+                provided_args[*provided_idx],
+                &mut err,
+            );
+
             // Call out where the function is defined
             self.label_fn_like(
                 &mut err,
@@ -1269,6 +1277,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         err.emit();
+    }
+
+    fn suggest_ptr_null_mut(
+        &self,
+        expected_ty: Ty<'tcx>,
+        provided_ty: Ty<'tcx>,
+        arg: &hir::Expr<'tcx>,
+        err: &mut rustc_errors::DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    ) {
+        if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
+            && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) = provided_ty.kind()
+            && let hir::ExprKind::Call(callee, _) = arg.kind
+            && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind
+            && let Res::Def(_, def_id) = path.res
+            && self.tcx.get_diagnostic_item(sym::ptr_null) == Some(def_id)
+        {
+            // The user provided `ptr::null()`, but the function expects
+            // `ptr::null_mut()`.
+            err.subdiagnostic(SuggestPtrNullMut {
+                span: arg.span
+            });
+        }
     }
 
     // AST fragment checking
