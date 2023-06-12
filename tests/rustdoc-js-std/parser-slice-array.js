@@ -62,7 +62,7 @@ const PARSED = [
         error: null,
     },
     {
-        query: '[] u8',
+        query: '[],u8',
         elems: [
             {
                 name: "[]",
@@ -82,9 +82,9 @@ const PARSED = [
             },
         ],
         foundElems: 2,
-        original: "[] u8",
+        original: "[],u8",
         returned: [],
-        userQuery: "[] u8",
+        userQuery: "[],u8",
         error: null,
     },
     {

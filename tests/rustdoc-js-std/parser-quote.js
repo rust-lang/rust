@@ -38,7 +38,7 @@ const PARSED = [
         original: '"p" -> a',
         returned: [],
         userQuery: '"p" -> a',
-        error: "You cannot have more than one element if you use quotes",
+        error: "Cannot have more than one element if you use quotes",
     },
     {
         query: '"a" -> "p"',

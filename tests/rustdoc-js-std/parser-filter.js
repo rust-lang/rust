@@ -38,7 +38,7 @@ const PARSED = [
         original: "macro<f>:foo",
         returned: [],
         userQuery: "macro<f>:foo",
-        error: "Unexpected `<` in type filter",
+        error: "Unexpected `<` in type filter (before `:`)",
     },
     {
         query: 'macro!',

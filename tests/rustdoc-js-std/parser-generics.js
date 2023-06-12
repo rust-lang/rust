@@ -9,7 +9,7 @@ const PARSED = [
         error: 'Unclosed `<`',
     },
     {
-        query: 'p<> u8',
+        query: 'p<>,u8',
         elems: [
             {
                 name: "p",
@@ -29,9 +29,9 @@ const PARSED = [
             },
         ],
         foundElems: 2,
-        original: "p<> u8",
+        original: "p<>,u8",
         returned: [],
-        userQuery: "p<> u8",
+        userQuery: "p<>,u8",
         error: null,
     },
     {
