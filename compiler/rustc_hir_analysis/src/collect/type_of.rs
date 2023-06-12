@@ -34,12 +34,6 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         Node::Ty(&Ty { kind: TyKind::Typeof(ref e), .. }) if e.hir_id == hir_id => {
             return tcx.typeck(def_id).node_type(e.hir_id)
         }
-        Node::Expr(&Expr { kind: ExprKind::ConstBlock(ref anon_const), .. })
-            if anon_const.hir_id == hir_id =>
-        {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-            return substs.as_inline_const().ty()
-        }
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
         | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
             if asm.operands.iter().any(|(op, _op_sp)| match op {
@@ -435,7 +429,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                     in_trait,
                     ..
                 }) => {
-                    if in_trait && !tcx.impl_defaultness(owner).has_value() {
+                    if in_trait && !tcx.defaultness(owner).has_value() {
                         span_bug!(
                             tcx.def_span(def_id),
                             "tried to get type of this RPITIT with no definition"
@@ -486,6 +480,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
         }
 
         Node::AnonConst(_) => anon_const_type_of(tcx, def_id),
+
+        Node::ConstBlock(_) => {
+            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+            substs.as_inline_const().ty()
+        }
 
         Node::GenericParam(param) => match &param.kind {
             GenericParamKind::Type { default: Some(ty), .. }

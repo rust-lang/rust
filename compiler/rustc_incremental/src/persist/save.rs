@@ -1,5 +1,5 @@
 use crate::errors;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -79,7 +79,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
 pub fn save_work_product_index(
     sess: &Session,
     dep_graph: &DepGraph,
-    new_work_products: FxHashMap<WorkProductId, WorkProduct>,
+    new_work_products: FxIndexMap<WorkProductId, WorkProduct>,
 ) {
     if sess.opts.incremental.is_none() {
         return;
@@ -105,7 +105,7 @@ pub fn save_work_product_index(
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
             debug_assert!(
-                !wp.saved_files.iter().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
+                !wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
             );
         }
     }
@@ -113,13 +113,13 @@ pub fn save_work_product_index(
     // Check that we did not delete one of the current work-products:
     debug_assert!({
         new_work_products.iter().all(|(_, wp)| {
-            wp.saved_files.iter().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
+            wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
         })
     });
 }
 
 fn encode_work_product_index(
-    work_products: &FxHashMap<WorkProductId, WorkProduct>,
+    work_products: &FxIndexMap<WorkProductId, WorkProduct>,
     encoder: &mut FileEncoder,
 ) {
     let serialized_products: Vec<_> = work_products
@@ -146,7 +146,7 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult
 pub fn build_dep_graph(
     sess: &Session,
     prev_graph: SerializedDepGraph,
-    prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
+    prev_work_products: FxIndexMap<WorkProductId, WorkProduct>,
 ) -> Option<DepGraph> {
     if sess.opts.incremental.is_none() {
         // No incremental compilation.

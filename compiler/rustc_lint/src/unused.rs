@@ -556,6 +556,7 @@ trait UnusedDelimLint {
         followed_by_block: bool,
         left_pos: Option<BytePos>,
         right_pos: Option<BytePos>,
+        is_kw: bool,
     );
 
     fn is_expr_delims_necessary(
@@ -624,6 +625,7 @@ trait UnusedDelimLint {
         ctx: UnusedDelimsCtx,
         left_pos: Option<BytePos>,
         right_pos: Option<BytePos>,
+        is_kw: bool,
     ) {
         // If `value` has `ExprKind::Err`, unused delim lint can be broken.
         // For example, the following code caused ICE.
@@ -667,7 +669,7 @@ trait UnusedDelimLint {
             left_pos.is_some_and(|s| s >= value.span.lo()),
             right_pos.is_some_and(|s| s <= value.span.hi()),
         );
-        self.emit_unused_delims(cx, value.span, spans, ctx.into(), keep_space);
+        self.emit_unused_delims(cx, value.span, spans, ctx.into(), keep_space, is_kw);
     }
 
     fn emit_unused_delims(
@@ -677,6 +679,7 @@ trait UnusedDelimLint {
         spans: Option<(Span, Span)>,
         msg: &str,
         keep_space: (bool, bool),
+        is_kw: bool,
     ) {
         let primary_span = if let Some((lo, hi)) = spans {
             if hi.is_empty() {
@@ -690,7 +693,7 @@ trait UnusedDelimLint {
         let suggestion = spans.map(|(lo, hi)| {
             let sm = cx.sess().source_map();
             let lo_replace =
-                    if keep_space.0 &&
+                    if (keep_space.0 || is_kw) &&
                         let Ok(snip) = sm.span_to_prev_source(lo) && !snip.ends_with(' ') {
                         " "
                         } else {
@@ -720,7 +723,7 @@ trait UnusedDelimLint {
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use rustc_ast::ExprKind::*;
-        let (value, ctx, followed_by_block, left_pos, right_pos) = match e.kind {
+        let (value, ctx, followed_by_block, left_pos, right_pos, is_kw) = match e.kind {
             // Do not lint `unused_braces` in `if let` expressions.
             If(ref cond, ref block, _)
                 if !matches!(cond.kind, Let(_, _, _))
@@ -728,7 +731,7 @@ trait UnusedDelimLint {
             {
                 let left = e.span.lo() + rustc_span::BytePos(2);
                 let right = block.span.lo();
-                (cond, UnusedDelimsCtx::IfCond, true, Some(left), Some(right))
+                (cond, UnusedDelimsCtx::IfCond, true, Some(left), Some(right), true)
             }
 
             // Do not lint `unused_braces` in `while let` expressions.
@@ -738,27 +741,27 @@ trait UnusedDelimLint {
             {
                 let left = e.span.lo() + rustc_span::BytePos(5);
                 let right = block.span.lo();
-                (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right))
+                (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right), true)
             }
 
             ForLoop(_, ref cond, ref block, ..) => {
-                (cond, UnusedDelimsCtx::ForIterExpr, true, None, Some(block.span.lo()))
+                (cond, UnusedDelimsCtx::ForIterExpr, true, None, Some(block.span.lo()), true)
             }
 
             Match(ref head, _) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
                 let left = e.span.lo() + rustc_span::BytePos(5);
-                (head, UnusedDelimsCtx::MatchScrutineeExpr, true, Some(left), None)
+                (head, UnusedDelimsCtx::MatchScrutineeExpr, true, Some(left), None, true)
             }
 
             Ret(Some(ref value)) => {
                 let left = e.span.lo() + rustc_span::BytePos(3);
-                (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None)
+                (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None, true)
             }
 
-            Index(_, ref value) => (value, UnusedDelimsCtx::IndexExpr, false, None, None),
+            Index(_, ref value) => (value, UnusedDelimsCtx::IndexExpr, false, None, None, false),
 
             Assign(_, ref value, _) | AssignOp(.., ref value) => {
-                (value, UnusedDelimsCtx::AssignedValue, false, None, None)
+                (value, UnusedDelimsCtx::AssignedValue, false, None, None, false)
             }
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
@@ -778,12 +781,20 @@ trait UnusedDelimLint {
                     return;
                 }
                 for arg in args_to_check {
-                    self.check_unused_delims_expr(cx, arg, ctx, false, None, None);
+                    self.check_unused_delims_expr(cx, arg, ctx, false, None, None, false);
                 }
                 return;
             }
         };
-        self.check_unused_delims_expr(cx, &value, ctx, followed_by_block, left_pos, right_pos);
+        self.check_unused_delims_expr(
+            cx,
+            &value,
+            ctx,
+            followed_by_block,
+            left_pos,
+            right_pos,
+            is_kw,
+        );
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
@@ -794,7 +805,7 @@ trait UnusedDelimLint {
                         None => UnusedDelimsCtx::AssignedValue,
                         Some(_) => UnusedDelimsCtx::AssignedValueLetElse,
                     };
-                    self.check_unused_delims_expr(cx, init, ctx, false, None, None);
+                    self.check_unused_delims_expr(cx, init, ctx, false, None, None, false);
                 }
             }
             StmtKind::Expr(ref expr) => {
@@ -805,6 +816,7 @@ trait UnusedDelimLint {
                     false,
                     None,
                     None,
+                    false,
                 );
             }
             _ => {}
@@ -824,6 +836,7 @@ trait UnusedDelimLint {
                 false,
                 None,
                 None,
+                false,
             );
         }
     }
@@ -879,6 +892,7 @@ impl UnusedDelimLint for UnusedParens {
         followed_by_block: bool,
         left_pos: Option<BytePos>,
         right_pos: Option<BytePos>,
+        is_kw: bool,
     ) {
         match value.kind {
             ast::ExprKind::Paren(ref inner) => {
@@ -893,7 +907,7 @@ impl UnusedDelimLint for UnusedParens {
                                 _,
                             ) if node.lazy()))
                 {
-                    self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
+                    self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                 }
             }
             ast::ExprKind::Let(_, ref expr, _) => {
@@ -904,6 +918,7 @@ impl UnusedDelimLint for UnusedParens {
                     followed_by_block,
                     None,
                     None,
+                    false,
                 );
             }
             _ => {}
@@ -942,7 +957,7 @@ impl UnusedParens {
                 .span
                 .find_ancestor_inside(value.span)
                 .map(|inner| (value.span.with_hi(inner.lo()), value.span.with_lo(inner.hi())));
-            self.emit_unused_delims(cx, value.span, spans, "pattern", keep_space);
+            self.emit_unused_delims(cx, value.span, spans, "pattern", keep_space, false);
         }
     }
 }
@@ -967,6 +982,7 @@ impl EarlyLintPass for UnusedParens {
                     true,
                     None,
                     None,
+                    true,
                 );
                 for stmt in &block.stmts {
                     <Self as UnusedDelimLint>::check_stmt(self, cx, stmt);
@@ -985,6 +1001,7 @@ impl EarlyLintPass for UnusedParens {
                         false,
                         None,
                         None,
+                        true,
                     );
                 }
             }
@@ -1043,6 +1060,7 @@ impl EarlyLintPass for UnusedParens {
                     false,
                     None,
                     None,
+                    false,
                 );
             }
             ast::TyKind::Paren(r) => {
@@ -1057,7 +1075,7 @@ impl EarlyLintPass for UnusedParens {
                             .find_ancestor_inside(ty.span)
                             .map(|r| (ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())));
 
-                        self.emit_unused_delims(cx, ty.span, spans, "type", (false, false));
+                        self.emit_unused_delims(cx, ty.span, spans, "type", (false, false), false);
                     }
                 }
                 self.with_self_ty_parens = false;
@@ -1130,6 +1148,7 @@ impl UnusedDelimLint for UnusedBraces {
         followed_by_block: bool,
         left_pos: Option<BytePos>,
         right_pos: Option<BytePos>,
+        is_kw: bool,
     ) {
         match value.kind {
             ast::ExprKind::Block(ref inner, None)
@@ -1170,7 +1189,7 @@ impl UnusedDelimLint for UnusedBraces {
                             && !value.span.from_expansion()
                             && !inner.span.from_expansion()
                         {
-                            self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
+                            self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                         }
                     }
                 }
@@ -1183,6 +1202,7 @@ impl UnusedDelimLint for UnusedBraces {
                     followed_by_block,
                     None,
                     None,
+                    false,
                 );
             }
             _ => {}
@@ -1207,6 +1227,7 @@ impl EarlyLintPass for UnusedBraces {
                 false,
                 None,
                 None,
+                false,
             );
         }
     }
@@ -1220,6 +1241,7 @@ impl EarlyLintPass for UnusedBraces {
                 false,
                 None,
                 None,
+                false,
             );
         }
     }
@@ -1233,6 +1255,7 @@ impl EarlyLintPass for UnusedBraces {
                 false,
                 None,
                 None,
+                false,
             );
         }
     }
@@ -1247,6 +1270,7 @@ impl EarlyLintPass for UnusedBraces {
                     false,
                     None,
                     None,
+                    false,
                 );
             }
 
@@ -1258,6 +1282,7 @@ impl EarlyLintPass for UnusedBraces {
                     false,
                     None,
                     None,
+                    false,
                 );
             }
 

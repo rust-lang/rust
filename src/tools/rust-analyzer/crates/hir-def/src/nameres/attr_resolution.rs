@@ -4,7 +4,8 @@ use hir_expand::{attrs::Attr, MacroCallId};
 use syntax::{ast, SmolStr};
 
 use crate::{
-    attr_macro_as_call_id, builtin_attr,
+    attr::builtin::{find_builtin_attr_idx, TOOL_MODULES},
+    attr_macro_as_call_id,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
     macro_id_to_def_id,
@@ -13,7 +14,7 @@ use crate::{
     AstIdWithPath, LocalModuleId, UnresolvedMacro,
 };
 
-use super::DefMap;
+use super::{DefMap, MacroSubNs};
 
 pub enum ResolvedAttr {
     /// Attribute resolved to an attribute macro.
@@ -42,9 +43,12 @@ impl DefMap {
             original_module,
             &ast_id.path,
             BuiltinShadowMode::Module,
+            Some(MacroSubNs::Attr),
         );
         let def = match resolved_res.resolved_def.take_macros() {
             Some(def) => {
+                // `MacroSubNs` is just a hint, so the path may still resolve to a custom derive
+                // macro, or even function-like macro when the path is qualified.
                 if def.is_attribute(db) {
                     def
                 } else {
@@ -60,7 +64,6 @@ impl DefMap {
             attr,
             self.krate,
             macro_id_to_def_id(db, def),
-            false,
         )))
     }
 
@@ -75,20 +78,16 @@ impl DefMap {
             let name = name.to_smol_str();
             let pred = |n: &_| *n == name;
 
-            let registered = self.registered_tools.iter().map(SmolStr::as_str);
-            let is_tool = builtin_attr::TOOL_MODULES.iter().copied().chain(registered).any(pred);
+            let registered = self.data.registered_tools.iter().map(SmolStr::as_str);
+            let is_tool = TOOL_MODULES.iter().copied().chain(registered).any(pred);
             // FIXME: tool modules can be shadowed by actual modules
             if is_tool {
                 return true;
             }
 
             if segments.len() == 1 {
-                let registered = self.registered_attrs.iter().map(SmolStr::as_str);
-                let is_inert = builtin_attr::INERT_ATTRIBUTES
-                    .iter()
-                    .map(|it| it.name)
-                    .chain(registered)
-                    .any(pred);
+                let mut registered = self.data.registered_attrs.iter().map(SmolStr::as_str);
+                let is_inert = find_builtin_attr_idx(&name).is_some() || registered.any(pred);
                 return is_inert;
             }
         }

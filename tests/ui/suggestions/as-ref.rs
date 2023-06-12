@@ -24,4 +24,6 @@ fn main() {
     let multiple_ref_result = &&Ok(Foo);
     multiple_ref_result.map(|arg| takes_ref(arg)); //~ ERROR mismatched types [E0308]
     multiple_ref_result.and_then(|arg| Ok(takes_ref(arg))); //~ ERROR mismatched types [E0308]
+
+    let _: Result<&usize, _> = &Ok(42); //~ ERROR mismatched types [E0308]
 }

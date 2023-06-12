@@ -69,6 +69,8 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
         .opt_level(2)
         .warnings(false)
         .debug(false)
+        // Compress debuginfo
+        .flag_if_supported("-gz")
         .target(&target.triple)
         .host(&build.build.triple);
     match build.crt_static(target) {

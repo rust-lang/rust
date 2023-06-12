@@ -50,7 +50,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // We do not allow generic parameters in anon consts if we are inside
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
-            } else if tcx.lazy_normalization() {
+            } else if tcx.features().generic_const_exprs {
                 let parent_node = tcx.hir().get_parent(hir_id);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
                     && constant.hir_id == hir_id
@@ -123,9 +123,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     {
                         Some(parent_def_id.to_def_id())
                     }
-                    Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) => {
-                        Some(tcx.typeck_root_def_id(def_id.to_def_id()))
-                    }
                     // Exclude `GlobalAsm` here which cannot have generics.
                     Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
                         if asm.operands.iter().any(|(op, _op_sp)| match op {
@@ -142,7 +139,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
             }
         }
-        Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
+        Node::ConstBlock(_)
+        | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             Some(tcx.typeck_root_def_id(def_id.to_def_id()))
         }
         Node::Item(item) => match item.kind {
@@ -339,17 +337,14 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }
 
     // provide junk type parameter defs for const blocks.
-    if let Node::AnonConst(_) = node {
-        let parent_node = tcx.hir().get_parent(hir_id);
-        if let Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) = parent_node {
-            params.push(ty::GenericParamDef {
-                index: next_index(),
-                name: Symbol::intern("<const_ty>"),
-                def_id: def_id.to_def_id(),
-                pure_wrt_drop: false,
-                kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
-            });
-        }
+    if let Node::ConstBlock(_) = node {
+        params.push(ty::GenericParamDef {
+            index: next_index(),
+            name: Symbol::intern("<const_ty>"),
+            def_id: def_id.to_def_id(),
+            pure_wrt_drop: false,
+            kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
+        });
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();

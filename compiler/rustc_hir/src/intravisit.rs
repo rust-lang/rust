@@ -335,6 +335,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
     }
+    fn visit_inline_const(&mut self, c: &'v ConstBlock) {
+        walk_inline_const(self, c)
+    }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         walk_expr(self, ex)
     }
@@ -679,13 +682,18 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
     visitor.visit_nested_body(constant.body);
 }
 
+pub fn walk_inline_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v ConstBlock) {
+    visitor.visit_id(constant.hir_id);
+    visitor.visit_nested_body(constant.body);
+}
+
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
     match expression.kind {
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprKind::ConstBlock(ref anon_const) => visitor.visit_anon_const(anon_const),
+        ExprKind::ConstBlock(ref const_block) => visitor.visit_inline_const(const_block),
         ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
             visitor.visit_array_length(count)

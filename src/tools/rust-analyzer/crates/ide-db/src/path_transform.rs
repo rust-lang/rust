@@ -116,7 +116,9 @@ impl<'a> PathTransform<'a> {
                         Some((
                             k,
                             ast::make::ty(
-                                &default.display_source_code(db, source_module.into()).ok()?,
+                                &default
+                                    .display_source_code(db, source_module.into(), false)
+                                    .ok()?,
                             ),
                         ))
                     }

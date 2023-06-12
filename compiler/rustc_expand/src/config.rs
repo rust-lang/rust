@@ -197,9 +197,11 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
         config_tokens: false,
         lint_node_id: ast::CRATE_NODE_ID,
     };
-    let attrs: ast::AttrVec =
-        attrs.iter().flat_map(|attr| strip_unconfigured.process_cfg_attr(attr)).collect();
-    if strip_unconfigured.in_cfg(&attrs) { attrs } else { ast::AttrVec::new() }
+    attrs
+        .iter()
+        .flat_map(|attr| strip_unconfigured.process_cfg_attr(attr))
+        .take_while(|attr| !is_cfg(attr) || strip_unconfigured.cfg_true(attr).0)
+        .collect()
 }
 
 #[macro_export]
@@ -416,20 +418,28 @@ impl<'a> StripUnconfigured<'a> {
 
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr))
+        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr).0)
     }
 
-    pub(crate) fn cfg_true(&self, attr: &Attribute) -> bool {
+    pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
         let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
             Ok(meta_item) => meta_item,
             Err(mut err) => {
                 err.emit();
-                return true;
+                return (true, None);
             }
         };
-        parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
-            attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.lint_node_id, self.features)
-        })
+        (
+            parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
+                attr::cfg_matches(
+                    &meta_item,
+                    &self.sess.parse_sess,
+                    self.lint_node_id,
+                    self.features,
+                )
+            }),
+            Some(meta_item),
+        )
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`

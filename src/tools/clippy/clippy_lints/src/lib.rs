@@ -202,6 +202,7 @@ mod missing_assert_message;
 mod missing_const_for_fn;
 mod missing_doc;
 mod missing_enforced_import_rename;
+mod missing_fields_in_debug;
 mod missing_inline;
 mod missing_trait_methods;
 mod mixed_read_write_in_expression;
@@ -217,6 +218,7 @@ mod needless_arbitrary_self_type;
 mod needless_bool;
 mod needless_borrowed_ref;
 mod needless_continue;
+mod needless_else;
 mod needless_for_each;
 mod needless_late_init;
 mod needless_parens_on_range_literals;
@@ -333,7 +335,7 @@ mod zero_sized_map_values;
 
 pub use crate::utils::conf::{lookup_conf_file, Conf};
 use crate::utils::{
-    conf::{format_error, metadata::get_configuration_metadata, TryConf},
+    conf::{metadata::get_configuration_metadata, TryConf},
     FindAll,
 };
 
@@ -369,23 +371,36 @@ pub fn read_conf(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>
         },
     };
 
-    let TryConf { conf, errors, warnings } = utils::conf::read(file_name);
+    let TryConf { conf, errors, warnings } = utils::conf::read(sess, file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
-        sess.err(format!(
-            "error reading Clippy's configuration file `{}`: {}",
-            file_name.display(),
-            format_error(error)
-        ));
+        if let Some(span) = error.span {
+            sess.span_err(
+                span,
+                format!("error reading Clippy's configuration file: {}", error.message),
+            );
+        } else {
+            sess.err(format!(
+                "error reading Clippy's configuration file `{}`: {}",
+                file_name.display(),
+                error.message
+            ));
+        }
     }
 
     for warning in warnings {
-        sess.struct_warn(format!(
-            "error reading Clippy's configuration file `{}`: {}",
-            file_name.display(),
-            format_error(warning)
-        ))
-        .emit();
+        if let Some(span) = warning.span {
+            sess.span_warn(
+                span,
+                format!("error reading Clippy's configuration file: {}", warning.message),
+            );
+        } else {
+            sess.warn(format!(
+                "error reading Clippy's configuration file `{}`: {}",
+                file_name.display(),
+                warning.message
+            ));
+        }
     }
 
     conf
@@ -990,6 +1005,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
     store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
+    store.register_early_pass(|| Box::new(needless_else::NeedlessElse));
+    store.register_late_pass(|_| Box::new(missing_fields_in_debug::MissingFieldsInDebug));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

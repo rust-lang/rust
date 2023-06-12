@@ -1,5 +1,6 @@
 // build-fail
 // normalize-stderr-test: ".nll/" -> "/"
+// ignore-compare-mode-next-solver (hangs)
 
 trait Mirror {
     type Image;

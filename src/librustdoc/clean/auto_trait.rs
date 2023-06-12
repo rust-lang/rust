@@ -124,7 +124,7 @@ where
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
                 trait_: Some(clean_trait_ref_with_bindings(self.cx, trait_ref, ThinVec::new())),
-                for_: clean_middle_ty(ty::Binder::dummy(ty), self.cx, None),
+                for_: clean_middle_ty(ty::Binder::dummy(ty), self.cx, None, None),
                 items: Vec::new(),
                 polarity,
                 kind: ImplKind::Auto,

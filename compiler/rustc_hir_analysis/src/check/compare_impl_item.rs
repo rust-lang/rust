@@ -302,7 +302,7 @@ fn compare_method_predicate_entailment<'tcx>(
         return Err(emitted);
     }
 
-    if check_implied_wf == CheckImpliedWfMode::Check {
+    if check_implied_wf == CheckImpliedWfMode::Check && !(impl_sig, trait_sig).references_error() {
         // We need to check that the impl's args are well-formed given
         // the hybrid param-env (impl + trait method where-clauses).
         ocx.register_obligation(traits::Obligation::new(
@@ -1216,7 +1216,7 @@ fn compare_number_of_generics<'tcx>(
     // has mismatched type or const generic arguments, then the method that it's
     // inheriting the generics from will also have mismatched arguments, and
     // we'll report an error for that instead. Delay a bug for safety, though.
-    if tcx.opt_rpitit_info(trait_.def_id).is_some() {
+    if trait_.opt_rpitit_info.is_some() {
         return Err(tcx.sess.delay_span_bug(
             rustc_span::DUMMY_SP,
             "errors comparing numbers of generics of trait/impl functions were not emitted",
@@ -2006,7 +2006,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // A synthetic impl Trait for RPITIT desugaring has no HIR, which we currently use to get the
     // span for an impl's associated type. Instead, for these, use the def_span for the synthesized
     // associated type.
-    let impl_ty_span = if tcx.opt_rpitit_info(impl_ty.def_id).is_some() {
+    let impl_ty_span = if impl_ty.opt_rpitit_info.is_some() {
         tcx.def_span(impl_ty_def_id)
     } else {
         match tcx.hir().get_by_def_id(impl_ty_def_id) {

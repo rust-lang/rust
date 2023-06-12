@@ -554,9 +554,6 @@ fn report_missing_placeholders(
     fmt_span: Span,
 ) {
     let mut diag = if let &[(span, named)] = &unused[..] {
-        //let mut diag = ecx.struct_span_err(span, msg);
-        //diag.span_label(span, msg);
-        //diag
         ecx.create_err(errors::FormatUnusedArg { span, named })
     } else {
         let unused_labels =

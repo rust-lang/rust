@@ -25,7 +25,7 @@ mod wild_in_or_pats;
 
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_opt, walk_span_to_context};
-use clippy_utils::{higher, in_constant, is_span_match, tokenize_with_text};
+use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, tokenize_with_text};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -974,12 +974,16 @@ impl_lint_pass!(Matches => [
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if is_direct_expn_of(expr.span, "matches").is_none() && in_external_macro(cx.sess(), expr.span) {
             return;
         }
         let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
+            if is_direct_expn_of(expr.span, "matches").is_some() {
+                redundant_pattern_match::check_match(cx, expr, ex, arms);
+            }
+
             if source == MatchSource::Normal && !is_span_match(cx, expr.span) {
                 return;
             }

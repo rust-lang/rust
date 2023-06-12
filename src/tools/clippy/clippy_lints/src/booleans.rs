@@ -88,7 +88,6 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
         NonminimalBoolVisitor { cx }.visit_body(body);
     }
 }
-
 struct NonminimalBoolVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
@@ -473,6 +472,10 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                     self.bool_expr(e);
                 },
                 ExprKind::Unary(UnOp::Not, inner) => {
+                    if let ExprKind::Unary(UnOp::Not, ex) = inner.kind &&
+                    !self.cx.typeck_results().node_types()[ex.hir_id].is_bool() {
+                        return;
+                    }
                     if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
                         self.bool_expr(e);
                     }

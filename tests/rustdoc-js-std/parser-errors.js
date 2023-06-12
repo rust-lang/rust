@@ -1,50 +1,6 @@
-const QUERY = [
-    '<P>',
-    '-> <P>',
-    'a<"P">',
-    '"P" "P"',
-    'P "P"',
-    '"p" p',
-    '"const": p',
-    "a<:a>",
-    "a<::a>",
-    "((a))",
-    "(p -> p",
-    "::a::b",
-    "a::::b",
-    "a::b::",
-    ":a",
-    "a b:",
-    "a (b:",
-    "_:",
-    "_:a",
-    "a-bb",
-    "a>bb",
-    "ab'",
-    "a->",
-    '"p" <a>',
-    '"p" a<a>',
-    "a,<",
-    "aaaaa<>b",
-    "fn:aaaaa<>b",
-    "->a<>b",
-    "a<->",
-    "a:: a",
-    "a ::a",
-    "a<a>:",
-    "a<>:",
-    "a,:",
-    "  a<>  :",
-    "mod : :",
-    "a!a",
-    "a!!",
-    "mod:a!",
-    "a!::a",
-    "a<",
-];
-
 const PARSED = [
     {
+        query: '<P>',
         elems: [],
         foundElems: 0,
         original: "<P>",
@@ -53,6 +9,7 @@ const PARSED = [
         error: "Found generics without a path",
     },
     {
+        query: '-> <P>',
         elems: [],
         foundElems: 0,
         original: "-> <P>",
@@ -61,6 +18,7 @@ const PARSED = [
         error: "Found generics without a path",
     },
     {
+        query: 'a<"P">',
         elems: [],
         foundElems: 0,
         original: "a<\"P\">",
@@ -69,6 +27,7 @@ const PARSED = [
         error: "Unexpected `\"` in generics",
     },
     {
+        query: '"P" "P"',
         elems: [],
         foundElems: 0,
         original: "\"P\" \"P\"",
@@ -77,6 +36,7 @@ const PARSED = [
         error: "Cannot have more than one literal search element",
     },
     {
+        query: 'P "P"',
         elems: [],
         foundElems: 0,
         original: "P \"P\"",
@@ -85,6 +45,7 @@ const PARSED = [
         error: "Cannot use literal search when there is more than one element",
     },
     {
+        query: '"p" p',
         elems: [],
         foundElems: 0,
         original: "\"p\" p",
@@ -93,6 +54,7 @@ const PARSED = [
         error: "You cannot have more than one element if you use quotes",
     },
     {
+        query: '"const": p',
         elems: [],
         foundElems: 0,
         original: "\"const\": p",
@@ -101,6 +63,7 @@ const PARSED = [
         error: "You cannot use quotes on type filter",
     },
     {
+        query: "a<:a>",
         elems: [],
         foundElems: 0,
         original: "a<:a>",
@@ -109,6 +72,7 @@ const PARSED = [
         error: "Expected type filter before `:`",
     },
     {
+        query: "a<::a>",
         elems: [],
         foundElems: 0,
         original: "a<::a>",
@@ -117,6 +81,7 @@ const PARSED = [
         error: "Unexpected `::`: paths cannot start with `::`",
     },
     {
+        query: "((a))",
         elems: [],
         foundElems: 0,
         original: "((a))",
@@ -125,6 +90,7 @@ const PARSED = [
         error: "Unexpected `(`",
     },
     {
+        query: "(p -> p",
         elems: [],
         foundElems: 0,
         original: "(p -> p",
@@ -133,6 +99,7 @@ const PARSED = [
         error: "Unexpected `(`",
     },
     {
+        query: "::a::b",
         elems: [],
         foundElems: 0,
         original: "::a::b",
@@ -141,6 +108,7 @@ const PARSED = [
         error: "Paths cannot start with `::`",
     },
     {
+        query: "a::::b",
         elems: [],
         foundElems: 0,
         original: "a::::b",
@@ -149,6 +117,7 @@ const PARSED = [
         error: "Unexpected `::::`",
     },
     {
+        query: "a::b::",
         elems: [],
         foundElems: 0,
         original: "a::b::",
@@ -157,6 +126,7 @@ const PARSED = [
         error: "Paths cannot end with `::`",
     },
     {
+        query: ":a",
         elems: [],
         foundElems: 0,
         original: ":a",
@@ -165,6 +135,7 @@ const PARSED = [
         error: "Expected type filter before `:`",
     },
     {
+        query: "a b:",
         elems: [],
         foundElems: 0,
         original: "a b:",
@@ -173,6 +144,7 @@ const PARSED = [
         error: "Unexpected `:` (expected path after type filter)",
     },
     {
+        query: "a (b:",
         elems: [],
         foundElems: 0,
         original: "a (b:",
@@ -181,6 +153,7 @@ const PARSED = [
         error: "Unexpected `(`",
     },
     {
+        query: "_:",
         elems: [],
         foundElems: 0,
         original: "_:",
@@ -189,6 +162,7 @@ const PARSED = [
         error: "Unexpected `:` (expected path after type filter)",
     },
     {
+        query: "_:a",
         elems: [],
         foundElems: 0,
         original: "_:a",
@@ -197,6 +171,7 @@ const PARSED = [
         error: "Unknown type filter `_`",
     },
     {
+        query: "a-bb",
         elems: [],
         foundElems: 0,
         original: "a-bb",
@@ -205,6 +180,7 @@ const PARSED = [
         error: "Unexpected `-` (did you mean `->`?)",
     },
     {
+        query: "a>bb",
         elems: [],
         foundElems: 0,
         original: "a>bb",
@@ -213,6 +189,7 @@ const PARSED = [
         error: "Unexpected `>` (did you mean `->`?)",
     },
     {
+        query: "ab'",
         elems: [],
         foundElems: 0,
         original: "ab'",
@@ -221,6 +198,7 @@ const PARSED = [
         error: "Unexpected `'`",
     },
     {
+        query: "a->",
         elems: [],
         foundElems: 0,
         original: "a->",
@@ -229,6 +207,7 @@ const PARSED = [
         error: "Expected at least one item after `->`",
     },
     {
+        query: '"p" <a>',
         elems: [],
         foundElems: 0,
         original: '"p" <a>',
@@ -237,6 +216,7 @@ const PARSED = [
         error: "Found generics without a path",
     },
     {
+        query: '"p" a<a>',
         elems: [],
         foundElems: 0,
         original: '"p" a<a>',
@@ -245,6 +225,7 @@ const PARSED = [
         error: "You cannot have more than one element if you use quotes",
     },
     {
+        query: "a,<",
         elems: [],
         foundElems: 0,
         original: 'a,<',
@@ -253,6 +234,7 @@ const PARSED = [
         error: 'Found generics without a path',
     },
     {
+        query: "aaaaa<>b",
         elems: [],
         foundElems: 0,
         original: 'aaaaa<>b',
@@ -261,6 +243,7 @@ const PARSED = [
         error: 'Expected `,`, ` `, `:` or `->`, found `b`',
     },
     {
+        query: "fn:aaaaa<>b",
         elems: [],
         foundElems: 0,
         original: 'fn:aaaaa<>b',
@@ -269,6 +252,7 @@ const PARSED = [
         error: 'Expected `,`, ` `, `:` or `->`, found `b`',
     },
     {
+        query: "->a<>b",
         elems: [],
         foundElems: 0,
         original: '->a<>b',
@@ -277,6 +261,7 @@ const PARSED = [
         error: 'Expected `,` or ` `, found `b`',
     },
     {
+        query: "a<->",
         elems: [],
         foundElems: 0,
         original: 'a<->',
@@ -285,6 +270,7 @@ const PARSED = [
         error: 'Unexpected `-` after `<`',
     },
     {
+        query: "a:: a",
         elems: [],
         foundElems: 0,
         original: 'a:: a',
@@ -293,6 +279,7 @@ const PARSED = [
         error: 'Paths cannot end with `::`',
     },
     {
+        query: "a ::a",
         elems: [],
         foundElems: 0,
         original: 'a ::a',
@@ -301,6 +288,7 @@ const PARSED = [
         error: 'Paths cannot start with `::`',
     },
     {
+        query: "a<a>:",
         elems: [],
         foundElems: 0,
         original: "a<a>:",
@@ -309,6 +297,7 @@ const PARSED = [
         error: 'Unexpected `<` in type filter',
     },
     {
+        query: "a<>:",
         elems: [],
         foundElems: 0,
         original: "a<>:",
@@ -317,6 +306,7 @@ const PARSED = [
         error: 'Unexpected `<` in type filter',
     },
     {
+        query: "a,:",
         elems: [],
         foundElems: 0,
         original: "a,:",
@@ -325,6 +315,7 @@ const PARSED = [
         error: 'Unexpected `,` in type filter',
     },
     {
+        query: "  a<>  :",
         elems: [],
         foundElems: 0,
         original: "a<>  :",
@@ -333,6 +324,7 @@ const PARSED = [
         error: 'Unexpected `<` in type filter',
     },
     {
+        query: "mod : :",
         elems: [],
         foundElems: 0,
         original: "mod : :",
@@ -341,6 +333,7 @@ const PARSED = [
         error: 'Unexpected `:`',
     },
     {
+        query: "a!a",
         elems: [],
         foundElems: 0,
         original: "a!a",
@@ -349,6 +342,7 @@ const PARSED = [
         error: 'Unexpected `!`: it can only be at the end of an ident',
     },
     {
+        query: "a!!",
         elems: [],
         foundElems: 0,
         original: "a!!",
@@ -357,6 +351,7 @@ const PARSED = [
         error: 'Cannot have more than one `!` in an ident',
     },
     {
+        query: "mod:a!",
         elems: [],
         foundElems: 0,
         original: "mod:a!",
@@ -365,6 +360,7 @@ const PARSED = [
         error: 'Invalid search type: macro `!` and `mod` both specified',
     },
     {
+        query: "a!::a",
         elems: [],
         foundElems: 0,
         original: "a!::a",
@@ -373,6 +369,7 @@ const PARSED = [
         error: 'Cannot have associated items in macros',
     },
     {
+        query: "a<",
         elems: [],
         foundElems: 0,
         original: "a<",

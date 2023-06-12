@@ -85,6 +85,10 @@ clean_crate_tree! {
 }
 
 fn clean_default(build: &Build, all: bool) {
+    if build.config.dry_run() {
+        return;
+    }
+
     rm_rf("tmp".as_ref());
 
     if all {

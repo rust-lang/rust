@@ -1,6 +1,9 @@
 // See src/libstd/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
+#[cfg(not(bootstrap))]
+use crate::marker::ConstParamTy;
+use crate::marker::{StructuralEq, StructuralPartialEq};
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -42,6 +45,28 @@ macro_rules! tuple_impls {
             impl<$($T: Eq),+> Eq for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "structural_match", issue = "31434")]
+            #[cfg(not(bootstrap))]
+            impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+)
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "structural_match", issue = "31434")]
+            impl<$($T),+> StructuralPartialEq for ($($T,)+)
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "structural_match", issue = "31434")]
+            impl<$($T),+> StructuralEq for ($($T,)+)
             {}
         }
 

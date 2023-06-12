@@ -4,8 +4,10 @@ error: cannot find macro `macro_two` in this scope
 LL |     macro_two!();
    |     ^^^^^^^^^
    |
-   = help: consider importing this macro:
-           two_macros::macro_two
+help: consider importing this macro
+   |
+LL + use two_macros::macro_two;
+   |
 
 error: aborting due to previous error
 

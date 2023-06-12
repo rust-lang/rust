@@ -13,7 +13,7 @@ macro_rules! define_semantic_token_types {
             $($standard:ident),*$(,)?
         }
         custom {
-            $(($custom:ident, $string:literal)),*$(,)?
+            $(($custom:ident, $string:literal) $(=> $fallback:ident)?),*$(,)?
         }
 
     ) => {
@@ -24,6 +24,15 @@ macro_rules! define_semantic_token_types {
             $(SemanticTokenType::$standard,)*
             $($custom),*
         ];
+
+        pub(crate) fn standard_fallback_type(token: SemanticTokenType) -> Option<SemanticTokenType> {
+            $(
+                if token == $custom {
+                    None $(.or(Some(SemanticTokenType::$fallback)))?
+                } else
+            )*
+            { Some(token )}
+        }
     };
 }
 
@@ -51,42 +60,46 @@ define_semantic_token_types![
 
     custom {
         (ANGLE, "angle"),
-        (ARITHMETIC, "arithmetic"),
-        (ATTRIBUTE, "attribute"),
-        (ATTRIBUTE_BRACKET, "attributeBracket"),
-        (BITWISE, "bitwise"),
+        (ARITHMETIC, "arithmetic") => OPERATOR,
+        (ATTRIBUTE, "attribute") => DECORATOR,
+        (ATTRIBUTE_BRACKET, "attributeBracket") => DECORATOR,
+        (BITWISE, "bitwise") => OPERATOR,
         (BOOLEAN, "boolean"),
         (BRACE, "brace"),
         (BRACKET, "bracket"),
-        (BUILTIN_ATTRIBUTE, "builtinAttribute"),
+        (BUILTIN_ATTRIBUTE, "builtinAttribute") => DECORATOR,
         (BUILTIN_TYPE, "builtinType"),
-        (CHAR, "character"),
+        (CHAR, "character") => STRING,
         (COLON, "colon"),
         (COMMA, "comma"),
-        (COMPARISON, "comparison"),
+        (COMPARISON, "comparison") => OPERATOR,
         (CONST_PARAMETER, "constParameter"),
-        (DERIVE, "derive"),
-        (DERIVE_HELPER, "deriveHelper"),
+        (DERIVE, "derive") => DECORATOR,
+        (DERIVE_HELPER, "deriveHelper") => DECORATOR,
         (DOT, "dot"),
-        (ESCAPE_SEQUENCE, "escapeSequence"),
-        (FORMAT_SPECIFIER, "formatSpecifier"),
-        (GENERIC, "generic"),
+        (ESCAPE_SEQUENCE, "escapeSequence") => STRING,
+        (FORMAT_SPECIFIER, "formatSpecifier") => STRING,
+        (GENERIC, "generic") => TYPE_PARAMETER,
         (LABEL, "label"),
         (LIFETIME, "lifetime"),
-        (LOGICAL, "logical"),
-        (MACRO_BANG, "macroBang"),
+        (LOGICAL, "logical") => OPERATOR,
+        (MACRO_BANG, "macroBang") => MACRO,
         (PARENTHESIS, "parenthesis"),
         (PUNCTUATION, "punctuation"),
-        (SELF_KEYWORD, "selfKeyword"),
-        (SELF_TYPE_KEYWORD, "selfTypeKeyword"),
+        (SELF_KEYWORD, "selfKeyword") => KEYWORD,
+        (SELF_TYPE_KEYWORD, "selfTypeKeyword") => KEYWORD,
         (SEMICOLON, "semicolon"),
         (TYPE_ALIAS, "typeAlias"),
-        (TOOL_MODULE, "toolModule"),
+        (TOOL_MODULE, "toolModule") => DECORATOR,
         (UNION, "union"),
         (UNRESOLVED_REFERENCE, "unresolvedReference"),
     }
 ];
 
+macro_rules! count_tts {
+    () => {0usize};
+    ($_head:tt $($tail:tt)*) => {1usize + count_tts!($($tail)*)};
+}
 macro_rules! define_semantic_token_modifiers {
     (
         standard {
@@ -105,6 +118,8 @@ macro_rules! define_semantic_token_modifiers {
             $(SemanticTokenModifier::$standard,)*
             $($custom),*
         ];
+
+        const LAST_STANDARD_MOD: usize = count_tts!($($standard)*);
     };
 }
 
@@ -126,6 +141,7 @@ define_semantic_token_modifiers![
         (INJECTED, "injected"),
         (INTRA_DOC_LINK, "intraDocLink"),
         (LIBRARY, "library"),
+        (MACRO_MODIFIER, "macro"),
         (MUTABLE, "mutable"),
         (PUBLIC, "public"),
         (REFERENCE, "reference"),
@@ -136,6 +152,13 @@ define_semantic_token_modifiers![
 
 #[derive(Default)]
 pub(crate) struct ModifierSet(pub(crate) u32);
+
+impl ModifierSet {
+    pub(crate) fn standard_fallback(&mut self) {
+        // Remove all non standard modifiers
+        self.0 = self.0 & !(!0u32 << LAST_STANDARD_MOD)
+    }
+}
 
 impl ops::BitOrAssign<SemanticTokenModifier> for ModifierSet {
     fn bitor_assign(&mut self, rhs: SemanticTokenModifier) {

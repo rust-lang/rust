@@ -6,6 +6,7 @@ edition = "2021"
 [lib]
 
 [dependencies]
+atty = "0.2.13"
 libloading = "0.7.1"
 tracing = "0.1"
 rustc-rayon-core = { version = "0.5.0", optional = true }

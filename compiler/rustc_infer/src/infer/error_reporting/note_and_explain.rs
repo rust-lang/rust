@@ -374,12 +374,18 @@ impl<T> Trait<T> for X {
     ) {
         let tcx = self.tcx;
 
+        // Don't suggest constraining a projection to something containing itself
+        if self.tcx.erase_regions(values.found).contains(self.tcx.erase_regions(values.expected)) {
+            return;
+        }
+
         let msg = || {
             format!(
                 "consider constraining the associated type `{}` to `{}`",
                 values.expected, values.found
             )
         };
+
         let body_owner = tcx.hir().get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
@@ -586,7 +592,7 @@ fn foo(&self) -> Self::T { String::new() }
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } =
-                                tcx.impl_defaultness(item.id.owner_id)
+                                tcx.defaultness(item.id.owner_id)
                             {
                                 let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
                                 if self.infcx.can_eq(param_env, assoc_ty, found) {

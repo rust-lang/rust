@@ -1,6 +1,6 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{fmt, hash::BuildHasherDefault, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
 use fst::{self, Streamer};
@@ -8,10 +8,11 @@ use hir_expand::name::Name;
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
 use rustc_hash::{FxHashSet, FxHasher};
+use triomphe::Arc;
 
 use crate::{
-    db::DefDatabase, item_scope::ItemInNs, visibility::Visibility, AssocItemId, ModuleDefId,
-    ModuleId, TraitId,
+    db::DefDatabase, item_scope::ItemInNs, nameres::DefMap, visibility::Visibility, AssocItemId,
+    ModuleDefId, ModuleId, TraitId,
 };
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -32,13 +33,23 @@ pub struct ImportPath {
     pub segments: Vec<Name>,
 }
 
-impl fmt::Display for ImportPath {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.segments.iter().format("::"), f)
-    }
-}
-
 impl ImportPath {
+    pub fn display<'a>(&'a self, db: &'a dyn DefDatabase) -> impl fmt::Display + 'a {
+        struct Display<'a> {
+            db: &'a dyn DefDatabase,
+            path: &'a ImportPath,
+        }
+        impl fmt::Display for Display<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(
+                    &self.path.segments.iter().map(|it| it.display(self.db.upcast())).format("::"),
+                    f,
+                )
+            }
+        }
+        Display { db, path: self }
+    }
+
     fn len(&self) -> usize {
         self.segments.len()
     }
@@ -75,7 +86,7 @@ impl ImportMap {
         let mut importables = import_map
             .map
             .iter()
-            .map(|(item, info)| (item, fst_path(&info.path)))
+            .map(|(item, info)| (item, fst_path(db, &info.path)))
             .collect::<Vec<_>>();
         importables.sort_by(|(_, fst_path), (_, fst_path2)| fst_path.cmp(fst_path2));
 
@@ -110,6 +121,25 @@ impl ImportMap {
 
     pub fn import_info_for(&self, item: ItemInNs) -> Option<&ImportInfo> {
         self.map.get(&item)
+    }
+
+    #[cfg(test)]
+    fn fmt_for_test(&self, db: &dyn DefDatabase) -> String {
+        let mut importable_paths: Vec<_> = self
+            .map
+            .iter()
+            .map(|(item, info)| {
+                let ns = match item {
+                    ItemInNs::Types(_) => "t",
+                    ItemInNs::Values(_) => "v",
+                    ItemInNs::Macros(_) => "m",
+                };
+                format!("- {} ({ns})", info.path.display(db))
+            })
+            .collect();
+
+        importable_paths.sort();
+        importable_paths.join("\n")
     }
 
     fn collect_trait_assoc_items(
@@ -153,7 +183,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMap {
 
     // We look only into modules that are public(ly reexported), starting with the crate root.
     let empty = ImportPath { segments: vec![] };
-    let root = def_map.module_id(def_map.root());
+    let root = def_map.module_id(DefMap::ROOT);
     let mut worklist = vec![(root, empty)];
     while let Some((module, mod_path)) = worklist.pop() {
         let ext_def_map;
@@ -233,13 +263,10 @@ impl fmt::Debug for ImportMap {
         let mut importable_paths: Vec<_> = self
             .map
             .iter()
-            .map(|(item, info)| {
-                let ns = match item {
-                    ItemInNs::Types(_) => "t",
-                    ItemInNs::Values(_) => "v",
-                    ItemInNs::Macros(_) => "m",
-                };
-                format!("- {} ({ns})", info.path)
+            .map(|(item, _)| match item {
+                ItemInNs::Types(it) => format!("- {it:?} (t)",),
+                ItemInNs::Values(it) => format!("- {it:?} (v)",),
+                ItemInNs::Macros(it) => format!("- {it:?} (m)",),
             })
             .collect();
 
@@ -248,9 +275,9 @@ impl fmt::Debug for ImportMap {
     }
 }
 
-fn fst_path(path: &ImportPath) -> String {
+fn fst_path(db: &dyn DefDatabase, path: &ImportPath) -> String {
     let _p = profile::span("fst_path");
-    let mut s = path.to_string();
+    let mut s = path.display(db).to_string();
     s.make_ascii_lowercase();
     s
 }
@@ -343,7 +370,12 @@ impl Query {
         self
     }
 
-    fn import_matches(&self, import: &ImportInfo, enforce_lowercase: bool) -> bool {
+    fn import_matches(
+        &self,
+        db: &dyn DefDatabase,
+        import: &ImportInfo,
+        enforce_lowercase: bool,
+    ) -> bool {
         let _p = profile::span("import_map::Query::import_matches");
         if import.is_trait_assoc_item {
             if self.exclude_import_kinds.contains(&ImportKind::AssociatedItem) {
@@ -354,9 +386,9 @@ impl Query {
         }
 
         let mut input = if import.is_trait_assoc_item || self.name_only {
-            import.path.segments.last().unwrap().to_string()
+            import.path.segments.last().unwrap().display(db.upcast()).to_string()
         } else {
-            import.path.to_string()
+            import.path.display(db).to_string()
         };
         if enforce_lowercase || !self.case_sensitive {
             input.make_ascii_lowercase();
@@ -421,25 +453,27 @@ pub fn search_dependencies(
         let importables = &import_map.importables[indexed_value.value as usize..];
 
         let common_importable_data = &import_map.map[&importables[0]];
-        if !query.import_matches(common_importable_data, true) {
+        if !query.import_matches(db, common_importable_data, true) {
             continue;
         }
 
         // Path shared by the importable items in this group.
-        let common_importables_path_fst = fst_path(&common_importable_data.path);
+        let common_importables_path_fst = fst_path(db, &common_importable_data.path);
         // Add the items from this `ModPath` group. Those are all subsequent items in
         // `importables` whose paths match `path`.
         let iter = importables
             .iter()
             .copied()
-            .take_while(|item| common_importables_path_fst == fst_path(&import_map.map[item].path))
+            .take_while(|item| {
+                common_importables_path_fst == fst_path(db, &import_map.map[item].path)
+            })
             .filter(|&item| match item_import_kind(item) {
                 Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
                 None => true,
             })
             .filter(|item| {
                 !query.case_sensitive // we've already checked the common importables path case-insensitively
-                        || query.import_matches(&import_map.map[item], false)
+                        || query.import_matches(db, &import_map.map[item], false)
             });
         res.extend(iter);
 
@@ -472,7 +506,7 @@ mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
 
-    use crate::{test_db::TestDB, ItemContainerId, Lookup};
+    use crate::{db::DefDatabase, test_db::TestDB, ItemContainerId, Lookup};
 
     use super::*;
 
@@ -496,7 +530,7 @@ mod tests {
                 let (path, mark) = match assoc_item_path(&db, &dependency_imports, dependency) {
                     Some(assoc_item_path) => (assoc_item_path, "a"),
                     None => (
-                        dependency_imports.path_of(dependency)?.to_string(),
+                        dependency_imports.path_of(dependency)?.display(&db).to_string(),
                         match dependency {
                             ItemInNs::Types(ModuleDefId::FunctionId(_))
                             | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
@@ -547,7 +581,11 @@ mod tests {
                         None
                     }
                 })?;
-            return Some(format!("{}::{assoc_item_name}", dependency_imports.path_of(trait_)?));
+            return Some(format!(
+                "{}::{}",
+                dependency_imports.path_of(trait_)?.display(db),
+                assoc_item_name.display(db.upcast())
+            ));
         }
         None
     }
@@ -587,7 +625,7 @@ mod tests {
 
                 let map = db.import_map(krate);
 
-                Some(format!("{name}:\n{map:?}\n"))
+                Some(format!("{name}:\n{}\n", map.fmt_for_test(db.upcast())))
             })
             .sorted()
             .collect::<String>();

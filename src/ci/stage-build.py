@@ -124,6 +124,12 @@ class Pipeline:
     def metrics_path(self) -> Path:
         return self.build_root() / "build" / "metrics.json"
 
+    def executable_extension(self) -> str:
+        raise NotImplementedError
+
+    def skipped_tests(self) -> Iterable[str]:
+        return ()
+
 
 class LinuxPipeline(Pipeline):
     def checkout_path(self) -> Path:
@@ -151,6 +157,13 @@ class LinuxPipeline(Pipeline):
 
     def supports_bolt(self) -> bool:
         return True
+
+    def executable_extension(self) -> str:
+        return ""
+
+    def skipped_tests(self) -> Iterable[str]:
+        # This test fails because of linker errors, as of June 2023.
+        yield "tests/ui/process/nofile-limit.rs"
 
 
 class WindowsPipeline(Pipeline):
@@ -210,6 +223,13 @@ class WindowsPipeline(Pipeline):
 
     def supports_bolt(self) -> bool:
         return False
+
+    def executable_extension(self) -> str:
+        return ".exe"
+
+    def skipped_tests(self) -> Iterable[str]:
+        # This test fails as of June 2023
+        yield "tests\\codegen\\vec-shrink-panik.rs"
 
 
 def get_timestamp() -> float:
@@ -403,9 +423,9 @@ def delete_directory(path: Path):
     shutil.rmtree(path)
 
 
-def unpack_archive(archive: Path):
+def unpack_archive(archive: Path, target_dir: Optional[Path] = None):
     LOGGER.info(f"Unpacking archive `{archive}`")
-    shutil.unpack_archive(archive)
+    shutil.unpack_archive(str(archive), extract_dir=str(target_dir) if target_dir is not None else None)
 
 
 def download_file(src: str, target: Path):
@@ -455,6 +475,7 @@ def cmd(
             )
     return subprocess.run(args, env=environment, check=True)
 
+
 class BenchmarkRunner:
     def run_rustc(self, pipeline: Pipeline):
         raise NotImplementedError
@@ -464,6 +485,7 @@ class BenchmarkRunner:
 
     def run_bolt(self, pipeline: Pipeline):
         raise NotImplementedError
+
 
 class DefaultBenchmarkRunner(BenchmarkRunner):
     def run_rustc(self, pipeline: Pipeline):
@@ -478,6 +500,7 @@ class DefaultBenchmarkRunner(BenchmarkRunner):
                 LLVM_PROFILE_FILE=str(pipeline.rustc_profile_template_path())
             )
         )
+
     def run_llvm(self, pipeline: Pipeline):
         run_compiler_benchmarks(
             pipeline,
@@ -493,6 +516,7 @@ class DefaultBenchmarkRunner(BenchmarkRunner):
             scenarios=["Full"],
             crates=LLVM_BOLT_CRATES
         )
+
 
 def run_compiler_benchmarks(
         pipeline: Pipeline,
@@ -596,11 +620,17 @@ def get_files(directory: Path, filter: Optional[Callable[[Path], bool]] = None) 
             yield path
 
 
-def build_rustc(
+def bootstrap_build(
         pipeline: Pipeline,
         args: List[str],
-        env: Optional[Dict[str, str]] = None
+        env: Optional[Dict[str, str]] = None,
+        targets: Iterable[str] = ("library/std", )
 ):
+    if env is None:
+        env = {}
+    else:
+        env = dict(env)
+    env["RUST_BACKTRACE"] = "1"
     arguments = [
                     sys.executable,
                     pipeline.checkout_path() / "x.py",
@@ -608,8 +638,7 @@ def build_rustc(
                     "--target", PGO_HOST,
                     "--host", PGO_HOST,
                     "--stage", "2",
-                    "library/std"
-                ] + args
+                    ] + list(targets) + args
     cmd(arguments, env=env)
 
 
@@ -650,9 +679,7 @@ def gather_llvm_profiles(pipeline: Pipeline, runner: BenchmarkRunner):
 def gather_rustc_profiles(pipeline: Pipeline, runner: BenchmarkRunner):
     LOGGER.info("Running benchmarks with PGO instrumented rustc")
 
-
     runner.run_rustc(pipeline)
-
 
     profile_path = pipeline.rustc_profile_merged_file()
     LOGGER.info(f"Merging Rustc PGO profiles to {profile_path}")
@@ -754,95 +781,215 @@ def record_metrics(pipeline: Pipeline, timer: Timer):
     if metrics is None:
         return
     llvm_steps = tuple(metrics.find_all_by_type("bootstrap::llvm::Llvm"))
-    assert len(llvm_steps) > 0
     llvm_duration = sum(step.duration for step in llvm_steps)
 
     rustc_steps = tuple(metrics.find_all_by_type("bootstrap::compile::Rustc"))
-    assert len(rustc_steps) > 0
     rustc_duration = sum(step.duration for step in rustc_steps)
 
     # The LLVM step is part of the Rustc step
-    rustc_duration -= llvm_duration
+    rustc_duration = max(0, rustc_duration - llvm_duration)
 
-    timer.add_duration("LLVM", llvm_duration)
-    timer.add_duration("Rustc", rustc_duration)
+    if llvm_duration > 0:
+        timer.add_duration("LLVM", llvm_duration)
+    if rustc_duration > 0:
+        timer.add_duration("Rustc", rustc_duration)
 
     log_metrics(metrics)
 
 
-def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRunner, final_build_args: List[str]):
+def run_tests(pipeline: Pipeline):
+    """
+    After `dist` is executed, we extract its archived components into a sysroot directory,
+    and then use that extracted rustc as a stage0 compiler.
+    Then we run a subset of tests using that compiler, to have a basic smoke test which checks
+    whether the optimization pipeline hasn't broken something.
+    """
+    build_dir = pipeline.build_root() / "build"
+    dist_dir = build_dir / "dist"
+
+    def extract_dist_dir(name: str) -> Path:
+        target_dir = build_dir / "optimized-dist"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        unpack_archive(dist_dir / f"{name}.tar.xz", target_dir=target_dir)
+        extracted_path = target_dir / name
+        assert extracted_path.is_dir()
+        return extracted_path
+
+    # Extract rustc, libstd, cargo and src archives to create the optimized sysroot
+    rustc_dir = extract_dist_dir(f"rustc-nightly-{PGO_HOST}") / "rustc"
+    libstd_dir = extract_dist_dir(f"rust-std-nightly-{PGO_HOST}") / f"rust-std-{PGO_HOST}"
+    cargo_dir = extract_dist_dir(f"cargo-nightly-{PGO_HOST}") / f"cargo"
+    extracted_src_dir = extract_dist_dir("rust-src-nightly") / "rust-src"
+
+    # We need to manually copy libstd to the extracted rustc sysroot
+    shutil.copytree(
+        libstd_dir / "lib" / "rustlib" / PGO_HOST / "lib",
+        rustc_dir / "lib" / "rustlib" / PGO_HOST / "lib"
+    )
+
+    # Extract sources - they aren't in the `rustc-nightly-{host}` tarball, so we need to manually copy libstd
+    # sources to the extracted sysroot. We need sources available so that `-Zsimulate-remapped-rust-src-base`
+    # works correctly.
+    shutil.copytree(
+        extracted_src_dir / "lib" / "rustlib" / "src",
+        rustc_dir / "lib" / "rustlib" / "src"
+    )
+
+    rustc_path = rustc_dir / "bin" / f"rustc{pipeline.executable_extension()}"
+    assert rustc_path.is_file()
+    cargo_path = cargo_dir / "bin" / f"cargo{pipeline.executable_extension()}"
+    assert cargo_path.is_file()
+
+    config_content = f"""profile = "user"
+changelog-seen = 2
+
+[build]
+rustc = "{rustc_path.as_posix()}"
+cargo = "{cargo_path.as_posix()}"
+
+[llvm]
+download-ci-llvm = true
+"""
+    logging.info(f"Using following `config.toml` for running tests:\n{config_content}")
+
+    # Simulate a stage 0 compiler with the extracted optimized dist artifacts.
+    with open("config.toml", "w") as f:
+        f.write(config_content)
+
+    args = [
+        sys.executable,
+        pipeline.checkout_path() / "x.py",
+        "test",
+        "--stage", "0",
+        "tests/assembly",
+        "tests/codegen",
+        "tests/codegen-units",
+        "tests/incremental",
+        "tests/mir-opt",
+        "tests/pretty",
+        "tests/run-pass-valgrind",
+        "tests/ui",
+        ]
+    for test_path in pipeline.skipped_tests():
+        args.extend(["--exclude", test_path])
+    cmd(args=args, env=dict(
+        COMPILETEST_FORCE_STAGE0="1"
+    ))
+
+
+def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRunner, dist_build_args: List[str]):
     # Clear and prepare tmp directory
     shutil.rmtree(pipeline.opt_artifacts(), ignore_errors=True)
     os.makedirs(pipeline.opt_artifacts(), exist_ok=True)
 
     pipeline.build_rustc_perf()
 
-    # Stage 1: Build rustc + PGO instrumented LLVM
-    with timer.section("Stage 1 (LLVM PGO)") as stage1:
-        with stage1.section("Build rustc and LLVM") as rustc_build:
-            build_rustc(pipeline, args=[
-                "--llvm-profile-generate"
-            ], env=dict(
-                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
-            ))
-            record_metrics(pipeline, rustc_build)
+    """
+    Stage 1: Build PGO instrumented rustc
 
-        with stage1.section("Gather profiles"):
-            gather_llvm_profiles(pipeline, runner)
-        print_free_disk_space(pipeline)
-
-    clear_llvm_files(pipeline)
-    final_build_args += [
-        "--llvm-profile-use",
-        pipeline.llvm_profile_merged_file()
-    ]
-
-    # Stage 2: Build PGO instrumented rustc + LLVM
-    with timer.section("Stage 2 (rustc PGO)") as stage2:
-        with stage2.section("Build rustc and LLVM") as rustc_build:
-            build_rustc(pipeline, args=[
+    We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the same time
+    can cause issues.
+    """
+    with timer.section("Stage 1 (rustc PGO)") as stage1:
+        with stage1.section("Build PGO instrumented rustc and LLVM") as rustc_pgo_instrument:
+            bootstrap_build(pipeline, args=[
                 "--rust-profile-generate",
                 pipeline.rustc_profile_dir_root()
             ])
-            record_metrics(pipeline, rustc_build)
+            record_metrics(pipeline, rustc_pgo_instrument)
 
-        with stage2.section("Gather profiles"):
+        with stage1.section("Gather profiles"):
             gather_rustc_profiles(pipeline, runner)
         print_free_disk_space(pipeline)
 
-    clear_llvm_files(pipeline)
-    final_build_args += [
-        "--rust-profile-use",
-        pipeline.rustc_profile_merged_file()
-    ]
+        with stage1.section("Build PGO optimized rustc") as rustc_pgo_use:
+            bootstrap_build(pipeline, args=[
+                "--rust-profile-use",
+                pipeline.rustc_profile_merged_file()
+            ])
+            record_metrics(pipeline, rustc_pgo_use)
+        dist_build_args += [
+            "--rust-profile-use",
+            pipeline.rustc_profile_merged_file()
+        ]
 
-    # Stage 3: Build rustc + BOLT instrumented LLVM
+    """
+    Stage 2: Gather LLVM PGO profiles
+    """
+    with timer.section("Stage 2 (LLVM PGO)") as stage2:
+        # Clear normal LLVM artifacts
+        clear_llvm_files(pipeline)
+
+        with stage2.section("Build PGO instrumented LLVM") as llvm_pgo_instrument:
+            bootstrap_build(pipeline, args=[
+                "--llvm-profile-generate",
+                # We want to keep the already built PGO-optimized `rustc`.
+                "--keep-stage", "0",
+                "--keep-stage", "1"
+            ], env=dict(
+                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
+            ))
+            record_metrics(pipeline, llvm_pgo_instrument)
+
+        with stage2.section("Gather profiles"):
+            gather_llvm_profiles(pipeline, runner)
+
+        dist_build_args += [
+            "--llvm-profile-use",
+            pipeline.llvm_profile_merged_file(),
+        ]
+        print_free_disk_space(pipeline)
+
+        # Clear PGO-instrumented LLVM artifacts
+        clear_llvm_files(pipeline)
+
+    """
+    Stage 3: Build BOLT instrumented LLVM
+
+    We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
+    Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
+    BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
+    therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
+    """
     if pipeline.supports_bolt():
         with timer.section("Stage 3 (LLVM BOLT)") as stage3:
-            with stage3.section("Build rustc and LLVM") as rustc_build:
-                build_rustc(pipeline, args=[
+            with stage3.section("Build BOLT instrumented LLVM") as llvm_bolt_instrument:
+                bootstrap_build(pipeline, args=[
                     "--llvm-profile-use",
                     pipeline.llvm_profile_merged_file(),
                     "--llvm-bolt-profile-generate",
-                    "--rust-profile-use",
-                    pipeline.rustc_profile_merged_file()
+                    # We want to keep the already built PGO-optimized `rustc`.
+                    "--keep-stage", "0",
+                    "--keep-stage", "1"
                 ])
-                record_metrics(pipeline, rustc_build)
+                record_metrics(pipeline, llvm_bolt_instrument)
 
             with stage3.section("Gather profiles"):
                 gather_llvm_bolt_profiles(pipeline, runner)
 
-        # LLVM is not being cleared here, we want to reuse the previous build
-        print_free_disk_space(pipeline)
-        final_build_args += [
-            "--llvm-bolt-profile-use",
-            pipeline.llvm_bolt_profile_merged_file()
-        ]
+            dist_build_args += [
+                "--llvm-bolt-profile-use",
+                pipeline.llvm_bolt_profile_merged_file()
+            ]
+            print_free_disk_space(pipeline)
 
-    # Stage 4: Build PGO optimized rustc + PGO/BOLT optimized LLVM
-    with timer.section("Stage 4 (final build)") as stage4:
-        cmd(final_build_args)
-        record_metrics(pipeline, stage4)
+    # We want to keep the already built PGO-optimized `rustc`.
+    dist_build_args += [
+        "--keep-stage", "0",
+        "--keep-stage", "1"
+    ]
+
+    """
+    Final stage: Build PGO optimized rustc + PGO/BOLT optimized LLVM
+    """
+    with timer.section("Final stage (dist build)") as final_stage:
+        cmd(dist_build_args)
+        record_metrics(pipeline, final_stage)
+
+    # Try builds can be in various broken states, so we don't want to gatekeep them with tests
+    if not is_try_build():
+        with timer.section("Run tests"):
+            run_tests(pipeline)
 
 
 def run(runner: BenchmarkRunner):

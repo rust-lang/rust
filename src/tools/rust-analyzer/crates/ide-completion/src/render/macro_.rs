@@ -74,7 +74,7 @@ fn render(
             item.insert_text(banged_name(&escaped_name)).lookup_by(banged_name(&name));
         }
         _ => {
-            cov_mark::hit!(dont_insert_macro_call_parens_unncessary);
+            cov_mark::hit!(dont_insert_macro_call_parens_unnecessary);
             item.insert_text(escaped_name);
         }
     };
@@ -140,8 +140,8 @@ mod tests {
     use crate::tests::check_edit;
 
     #[test]
-    fn dont_insert_macro_call_parens_unncessary() {
-        cov_mark::check!(dont_insert_macro_call_parens_unncessary);
+    fn dont_insert_macro_call_parens_unnecessary() {
+        cov_mark::check!(dont_insert_macro_call_parens_unnecessary);
         check_edit(
             "frobnicate",
             r#"

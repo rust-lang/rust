@@ -146,10 +146,20 @@ fn fire() {
         Variant::A(0, 0)
     }
 
-    // Should not be renamed
     let v = if let Variant::A(a, 0) = e() { a } else { return };
-    // Should be renamed
-    let v = if let Variant::B(b) = e() { b } else { return };
+
+    // `mut v` is inserted into the pattern
+    let mut v = if let Variant::B(b) = e() { b } else { return };
+
+    // Nesting works
+    let nested = Ok(Some(e()));
+    let v = if let Ok(Some(Variant::B(b))) | Err(Some(Variant::A(b, _))) = nested {
+        b
+    } else {
+        return;
+    };
+    // dot dot works
+    let v = if let Variant::A(.., a) = e() { a } else { return };
 }
 
 fn not_fire() {

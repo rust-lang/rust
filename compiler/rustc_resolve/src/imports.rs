@@ -803,14 +803,34 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 module
             }
-            PathResult::Failed { is_error_from_last_segment: false, span, label, suggestion } => {
+            PathResult::Failed {
+                is_error_from_last_segment: false,
+                span,
+                label,
+                suggestion,
+                module,
+            } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
-                    self.report_error(span, ResolutionError::FailedToResolve { label, suggestion });
+                    self.report_error(
+                        span,
+                        ResolutionError::FailedToResolve {
+                            last_segment: None,
+                            label,
+                            suggestion,
+                            module,
+                        },
+                    );
                 }
                 return None;
             }
-            PathResult::Failed { is_error_from_last_segment: true, span, label, suggestion } => {
+            PathResult::Failed {
+                is_error_from_last_segment: true,
+                span,
+                label,
+                suggestion,
+                ..
+            } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
                     let err = match self.make_path_suggestion(

@@ -70,7 +70,7 @@ declare_clippy_lint! {
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq)]
 enum RetReplacement<'tcx> {
     Empty,
     Block,
@@ -80,7 +80,7 @@ enum RetReplacement<'tcx> {
 }
 
 impl<'tcx> RetReplacement<'tcx> {
-    fn sugg_help(self) -> &'static str {
+    fn sugg_help(&self) -> &'static str {
         match self {
             Self::Empty | Self::Expr(..) => "remove `return`",
             Self::Block => "replace `return` with an empty block",
@@ -88,10 +88,11 @@ impl<'tcx> RetReplacement<'tcx> {
             Self::IfSequence(..) => "remove `return` and wrap the sequence with parentheses",
         }
     }
-    fn applicability(&self) -> Option<Applicability> {
+
+    fn applicability(&self) -> Applicability {
         match self {
-            Self::Expr(_, ap) | Self::IfSequence(_, ap) => Some(*ap),
-            _ => None,
+            Self::Expr(_, ap) | Self::IfSequence(_, ap) => *ap,
+            _ => Applicability::MachineApplicable,
         }
     }
 }
@@ -271,7 +272,7 @@ fn check_final_expr<'tcx>(
                 return;
             }
 
-            emit_return_lint(cx, ret_span, semi_spans, replacement);
+            emit_return_lint(cx, ret_span, semi_spans, &replacement);
         },
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
@@ -306,20 +307,17 @@ fn expr_contains_conjunctive_ifs<'tcx>(expr: &'tcx Expr<'tcx>) -> bool {
     contains_if(expr, false)
 }
 
-fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, semi_spans: Vec<Span>, replacement: RetReplacement<'_>) {
+fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, semi_spans: Vec<Span>, replacement: &RetReplacement<'_>) {
     if ret_span.from_expansion() {
         return;
     }
 
-    let applicability = replacement.applicability().unwrap_or(Applicability::MachineApplicable);
-    let return_replacement = replacement.to_string();
-    let sugg_help = replacement.sugg_help();
     span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
-        diag.span_suggestion_hidden(ret_span, sugg_help, return_replacement, applicability);
-        // for each parent statement, we need to remove the semicolon
-        for semi_stmt_span in semi_spans {
-            diag.tool_only_span_suggestion(semi_stmt_span, "remove this semicolon", "", applicability);
-        }
+        let suggestions = std::iter::once((ret_span, replacement.to_string()))
+            .chain(semi_spans.into_iter().map(|span| (span, String::new())))
+            .collect();
+
+        diag.multipart_suggestion_verbose(replacement.sugg_help(), suggestions, replacement.applicability());
     });
 }
 

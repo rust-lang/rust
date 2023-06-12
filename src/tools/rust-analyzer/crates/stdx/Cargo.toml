@@ -15,6 +15,8 @@ doctest = false
 libc = "0.2.135"
 backtrace = { version = "0.3.65", optional = true }
 always-assert = { version = "0.1.2", features = ["log"] }
+jod-thread = "0.1.2"
+crossbeam-channel = "0.5.5"
 # Think twice before adding anything here
 
 [target.'cfg(windows)'.dependencies]

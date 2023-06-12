@@ -34,24 +34,7 @@ pub fn search_for_structural_match_violation<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), adt_const_param: false })
-        .break_value()
-}
-
-/// This method traverses the structure of `ty`, trying to find any
-/// types that are not allowed to be used in a const generic.
-///
-/// This is either because the type does not implement `StructuralEq`
-/// and `StructuralPartialEq`, or because the type is intentionally
-/// not supported in const generics (such as floats and raw pointers,
-/// which are allowed in match blocks).
-pub fn search_for_adt_const_param_violation<'tcx>(
-    span: Span,
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-) -> Option<Ty<'tcx>> {
-    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), adt_const_param: true })
-        .break_value()
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default() }).break_value()
 }
 
 /// This implements the traversal over the structure of a given type to try to
@@ -65,11 +48,6 @@ struct Search<'tcx> {
     /// Tracks ADTs previously encountered during search, so that
     /// we will not recur on them again.
     seen: FxHashSet<hir::def_id::DefId>,
-
-    // Additionally deny things that have been allowed in patterns,
-    // but are not allowed in adt const params, such as floats and
-    // fn ptrs.
-    adt_const_param: bool,
 }
 
 impl<'tcx> Search<'tcx> {
@@ -124,41 +102,29 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
             }
 
             ty::FnPtr(..) => {
-                if !self.adt_const_param {
-                    return ControlFlow::Continue(());
-                } else {
-                    return ControlFlow::Break(ty);
-                }
+                return ControlFlow::Continue(());
             }
 
             ty::RawPtr(..) => {
-                if !self.adt_const_param {
-                    // structural-match ignores substructure of
-                    // `*const _`/`*mut _`, so skip `super_visit_with`.
-                    //
-                    // For example, if you have:
-                    // ```
-                    // struct NonStructural;
-                    // #[derive(PartialEq, Eq)]
-                    // struct T(*const NonStructural);
-                    // const C: T = T(std::ptr::null());
-                    // ```
-                    //
-                    // Even though `NonStructural` does not implement `PartialEq`,
-                    // structural equality on `T` does not recur into the raw
-                    // pointer. Therefore, one can still use `C` in a pattern.
-                    return ControlFlow::Continue(());
-                } else {
-                    return ControlFlow::Break(ty);
-                }
+                // structural-match ignores substructure of
+                // `*const _`/`*mut _`, so skip `super_visit_with`.
+                //
+                // For example, if you have:
+                // ```
+                // struct NonStructural;
+                // #[derive(PartialEq, Eq)]
+                // struct T(*const NonStructural);
+                // const C: T = T(std::ptr::null());
+                // ```
+                //
+                // Even though `NonStructural` does not implement `PartialEq`,
+                // structural equality on `T` does not recur into the raw
+                // pointer. Therefore, one can still use `C` in a pattern.
+                return ControlFlow::Continue(());
             }
 
             ty::Float(_) => {
-                if !self.adt_const_param {
-                    return ControlFlow::Continue(());
-                } else {
-                    return ControlFlow::Break(ty);
-                }
+                return ControlFlow::Continue(());
             }
 
             ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {

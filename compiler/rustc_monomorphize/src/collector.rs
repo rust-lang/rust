@@ -35,15 +35,15 @@
 //!
 //! - A "mono item" is something that results in a function or global in
 //!   the LLVM IR of a codegen unit. Mono items do not stand on their
-//!   own, they can reference other mono items. For example, if function
+//!   own, they can use other mono items. For example, if function
 //!   `foo()` calls function `bar()` then the mono item for `foo()`
-//!   references the mono item for function `bar()`. In general, the
-//!   definition for mono item A referencing a mono item B is that
-//!   the LLVM artifact produced for A references the LLVM artifact produced
+//!   uses the mono item for function `bar()`. In general, the
+//!   definition for mono item A using a mono item B is that
+//!   the LLVM artifact produced for A uses the LLVM artifact produced
 //!   for B.
 //!
-//! - Mono items and the references between them form a directed graph,
-//!   where the mono items are the nodes and references form the edges.
+//! - Mono items and the uses between them form a directed graph,
+//!   where the mono items are the nodes and uses form the edges.
 //!   Let's call this graph the "mono item graph".
 //!
 //! - The mono item graph for a program contains all mono items
@@ -53,12 +53,11 @@
 //! mono item graph for the current crate. It runs in two phases:
 //!
 //! 1. Discover the roots of the graph by traversing the HIR of the crate.
-//! 2. Starting from the roots, find neighboring nodes by inspecting the MIR
+//! 2. Starting from the roots, find uses by inspecting the MIR
 //!    representation of the item corresponding to a given node, until no more
 //!    new nodes are found.
 //!
 //! ### Discovering roots
-//!
 //! The roots of the mono item graph correspond to the public non-generic
 //! syntactic items in the source code. We find them by walking the HIR of the
 //! crate, and whenever we hit upon a public function, method, or static item,
@@ -69,25 +68,23 @@
 //! specified. Functions marked `#[no_mangle]` and functions called by inlinable
 //! functions also always act as roots.)
 //!
-//! ### Finding neighbor nodes
-//! Given a mono item node, we can discover neighbors by inspecting its
-//! MIR. We walk the MIR and any time we hit upon something that signifies a
-//! reference to another mono item, we have found a neighbor. Since the
-//! mono item we are currently at is always monomorphic, we also know the
-//! concrete type arguments of its neighbors, and so all neighbors again will be
-//! monomorphic. The specific forms a reference to a neighboring node can take
-//! in MIR are quite diverse. Here is an overview:
+//! ### Finding uses
+//! Given a mono item node, we can discover uses by inspecting its MIR. We walk
+//! the MIR to find other mono items used by each mono item. Since the mono
+//! item we are currently at is always monomorphic, we also know the concrete
+//! type arguments of its used mono items. The specific forms a use can take in
+//! MIR are quite diverse. Here is an overview:
 //!
 //! #### Calling Functions/Methods
-//! The most obvious form of one mono item referencing another is a
+//! The most obvious way for one mono item to use another is a
 //! function or method call (represented by a CALL terminator in MIR). But
-//! calls are not the only thing that might introduce a reference between two
+//! calls are not the only thing that might introduce a use between two
 //! function mono items, and as we will see below, they are just a
 //! specialization of the form described next, and consequently will not get any
 //! special treatment in the algorithm.
 //!
 //! #### Taking a reference to a function or method
-//! A function does not need to actually be called in order to be a neighbor of
+//! A function does not need to actually be called in order to be used by
 //! another function. It suffices to just take a reference in order to introduce
 //! an edge. Consider the following example:
 //!
@@ -109,18 +106,18 @@
 //! The MIR of none of these functions will contain an explicit call to
 //! `print_val::<i32>`. Nonetheless, in order to mono this program, we need
 //! an instance of this function. Thus, whenever we encounter a function or
-//! method in operand position, we treat it as a neighbor of the current
+//! method in operand position, we treat it as a use of the current
 //! mono item. Calls are just a special case of that.
 //!
 //! #### Drop glue
 //! Drop glue mono items are introduced by MIR drop-statements. The
-//! generated mono item will again have drop-glue item neighbors if the
+//! generated mono item will have additional drop-glue item uses if the
 //! type to be dropped contains nested values that also need to be dropped. It
-//! might also have a function item neighbor for the explicit `Drop::drop`
+//! might also have a function item use for the explicit `Drop::drop`
 //! implementation of its type.
 //!
 //! #### Unsizing Casts
-//! A subtle way of introducing neighbor edges is by casting to a trait object.
+//! A subtle way of introducing use edges is by casting to a trait object.
 //! Since the resulting fat-pointer contains a reference to a vtable, we need to
 //! instantiate all object-safe methods of the trait, as we need to store
 //! pointers to these functions even if they never get called anywhere. This can
@@ -151,7 +148,7 @@
 //! Mono item collection can be performed in one of two modes:
 //!
 //! - Lazy mode means that items will only be instantiated when actually
-//!   referenced. The goal is to produce the least amount of machine code
+//!   used. The goal is to produce the least amount of machine code
 //!   possible.
 //!
 //! - Eager mode is meant to be used in conjunction with incremental compilation
@@ -198,7 +195,6 @@ use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use rustc_target::abi::Size;
-use std::ops::Range;
 use std::path::PathBuf;
 
 use crate::errors::{
@@ -211,66 +207,51 @@ pub enum MonoItemCollectionMode {
     Lazy,
 }
 
-/// Maps every mono item to all mono items it references in its
-/// body.
-pub struct InliningMap<'tcx> {
-    // Maps a source mono item to the range of mono items
-    // accessed by it.
-    // The range selects elements within the `targets` vecs.
-    index: FxHashMap<MonoItem<'tcx>, Range<usize>>,
-    targets: Vec<MonoItem<'tcx>>,
+pub struct UsageMap<'tcx> {
+    // Maps every mono item to the mono items used by it.
+    used_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+
+    // Maps every mono item to the mono items that use it.
+    user_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 }
 
 type MonoItems<'tcx> = Vec<Spanned<MonoItem<'tcx>>>;
 
-impl<'tcx> InliningMap<'tcx> {
-    fn new() -> InliningMap<'tcx> {
-        InliningMap { index: FxHashMap::default(), targets: Vec::new() }
+impl<'tcx> UsageMap<'tcx> {
+    fn new() -> UsageMap<'tcx> {
+        UsageMap { used_map: FxHashMap::default(), user_map: FxHashMap::default() }
     }
 
-    fn record_accesses<'a>(
+    fn record_used<'a>(
         &mut self,
-        source: MonoItem<'tcx>,
-        new_targets: &'a [Spanned<MonoItem<'tcx>>],
+        user_item: MonoItem<'tcx>,
+        used_items: &'a [Spanned<MonoItem<'tcx>>],
     ) where
         'tcx: 'a,
     {
-        let start_index = self.targets.len();
-        let new_items_count = new_targets.len();
-
-        self.targets.reserve(new_items_count);
-
-        for Spanned { node: mono_item, .. } in new_targets.into_iter() {
-            self.targets.push(*mono_item);
+        let used_items: Vec<_> = used_items.iter().map(|item| item.node).collect();
+        for &used_item in used_items.iter() {
+            self.user_map.entry(used_item).or_default().push(user_item);
         }
 
-        let end_index = self.targets.len();
-        assert!(self.index.insert(source, start_index..end_index).is_none());
+        assert!(self.used_map.insert(user_item, used_items).is_none());
     }
 
-    /// Internally iterate over all items referenced by `source` which will be
-    /// made available for inlining.
-    pub fn with_inlining_candidates<F>(&self, tcx: TyCtxt<'tcx>, source: MonoItem<'tcx>, mut f: F)
+    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> Option<&[MonoItem<'tcx>]> {
+        self.user_map.get(&item).map(|items| items.as_slice())
+    }
+
+    /// Internally iterate over all inlined items used by `item`.
+    pub fn for_each_inlined_used_item<F>(&self, tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>, mut f: F)
     where
         F: FnMut(MonoItem<'tcx>),
     {
-        if let Some(range) = self.index.get(&source) {
-            for candidate in self.targets[range.clone()].iter() {
-                let is_inlined = candidate.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
-                if is_inlined {
-                    f(*candidate);
-                }
+        let used_items = self.used_map.get(&item).unwrap();
+        for used_item in used_items.iter() {
+            let is_inlined = used_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
+            if is_inlined {
+                f(*used_item);
             }
-        }
-    }
-
-    /// Internally iterate over all items and the things each accesses.
-    pub fn iter_accesses<F>(&self, mut f: F)
-    where
-        F: FnMut(MonoItem<'tcx>, &[MonoItem<'tcx>]),
-    {
-        for (&accessor, range) in &self.index {
-            f(accessor, &self.targets[range.clone()])
         }
     }
 }
@@ -279,7 +260,7 @@ impl<'tcx> InliningMap<'tcx> {
 pub fn collect_crate_mono_items(
     tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
-) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
+) -> (FxHashSet<MonoItem<'_>>, UsageMap<'_>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
     let roots =
@@ -288,12 +269,12 @@ pub fn collect_crate_mono_items(
     debug!("building mono item graph, beginning at roots");
 
     let mut visited = MTLock::new(FxHashSet::default());
-    let mut inlining_map = MTLock::new(InliningMap::new());
+    let mut usage_map = MTLock::new(UsageMap::new());
     let recursion_limit = tcx.recursion_limit();
 
     {
         let visited: MTLockRef<'_, _> = &mut visited;
-        let inlining_map: MTLockRef<'_, _> = &mut inlining_map;
+        let usage_map: MTLockRef<'_, _> = &mut usage_map;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
             par_for_each_in(roots, |root| {
@@ -304,13 +285,13 @@ pub fn collect_crate_mono_items(
                     visited,
                     &mut recursion_depths,
                     recursion_limit,
-                    inlining_map,
+                    usage_map,
                 );
             });
         });
     }
 
-    (visited.into_inner(), inlining_map.into_inner())
+    (visited.into_inner(), usage_map.into_inner())
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
@@ -353,24 +334,23 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
 /// Collect all monomorphized items reachable from `starting_point`, and emit a note diagnostic if a
 /// post-monomorphization error is encountered during a collection step.
-#[instrument(skip(tcx, visited, recursion_depths, recursion_limit, inlining_map), level = "debug")]
+#[instrument(skip(tcx, visited, recursion_depths, recursion_limit, usage_map), level = "debug")]
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
-    starting_point: Spanned<MonoItem<'tcx>>,
+    starting_item: Spanned<MonoItem<'tcx>>,
     visited: MTLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
-    inlining_map: MTLockRef<'_, InliningMap<'tcx>>,
+    usage_map: MTLockRef<'_, UsageMap<'tcx>>,
 ) {
-    if !visited.lock_mut().insert(starting_point.node) {
+    if !visited.lock_mut().insert(starting_item.node) {
         // We've been here already, no need to search again.
         return;
     }
 
-    let mut neighbors = Vec::new();
+    let mut used_items = Vec::new();
     let recursion_depth_reset;
 
-    //
     // Post-monomorphization errors MVP
     //
     // We can encounter errors while monomorphizing an item, but we don't have a good way of
@@ -396,7 +376,7 @@ fn collect_items_rec<'tcx>(
     // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
     let error_count = tcx.sess.diagnostic().err_count();
 
-    match starting_point.node {
+    match starting_item.node {
         MonoItem::Static(def_id) => {
             let instance = Instance::mono(tcx, def_id);
 
@@ -404,19 +384,19 @@ fn collect_items_rec<'tcx>(
             debug_assert!(should_codegen_locally(tcx, &instance));
 
             let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
-            visit_drop_use(tcx, ty, true, starting_point.span, &mut neighbors);
+            visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
 
             recursion_depth_reset = None;
 
             if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
                 for &id in alloc.inner().provenance().ptrs().values() {
-                    collect_miri(tcx, id, &mut neighbors);
+                    collect_miri(tcx, id, &mut used_items);
                 }
             }
 
             if tcx.needs_thread_local_shim(def_id) {
-                neighbors.push(respan(
-                    starting_point.span,
+                used_items.push(respan(
+                    starting_item.span,
                     MonoItem::Fn(Instance {
                         def: InstanceDef::ThreadLocalShim(def_id),
                         substs: InternalSubsts::empty(),
@@ -432,14 +412,14 @@ fn collect_items_rec<'tcx>(
             recursion_depth_reset = Some(check_recursion_limit(
                 tcx,
                 instance,
-                starting_point.span,
+                starting_item.span,
                 recursion_depths,
                 recursion_limit,
             ));
             check_type_length_limit(tcx, instance);
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                collect_neighbours(tcx, instance, &mut neighbors);
+                collect_used_items(tcx, instance, &mut used_items);
             });
         }
         MonoItem::GlobalAsm(item_id) => {
@@ -457,13 +437,13 @@ fn collect_items_rec<'tcx>(
                         hir::InlineAsmOperand::SymFn { anon_const } => {
                             let fn_ty =
                                 tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut neighbors);
+                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
                             if should_codegen_locally(tcx, &instance) {
                                 trace!("collecting static {:?}", def_id);
-                                neighbors.push(dummy_spanned(MonoItem::Static(*def_id)));
+                                used_items.push(dummy_spanned(MonoItem::Static(*def_id)));
                             }
                         }
                         hir::InlineAsmOperand::In { .. }
@@ -483,19 +463,19 @@ fn collect_items_rec<'tcx>(
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
     if tcx.sess.diagnostic().err_count() > error_count
-        && starting_point.node.is_generic_fn()
-        && starting_point.node.is_user_defined()
+        && starting_item.node.is_generic_fn()
+        && starting_item.node.is_user_defined()
     {
-        let formatted_item = with_no_trimmed_paths!(starting_point.node.to_string());
+        let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
         tcx.sess.emit_note(EncounteredErrorWhileInstantiating {
-            span: starting_point.span,
+            span: starting_item.span,
             formatted_item,
         });
     }
-    inlining_map.lock_mut().record_accesses(starting_point.node, &neighbors);
+    usage_map.lock_mut().record_used(starting_item.node, &used_items);
 
-    for neighbour in neighbors {
-        collect_items_rec(tcx, neighbour, visited, recursion_depths, recursion_limit, inlining_map);
+    for used_item in used_items {
+        collect_items_rec(tcx, used_item, visited, recursion_depths, recursion_limit, usage_map);
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -611,14 +591,14 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     }
 }
 
-struct MirNeighborCollector<'a, 'tcx> {
+struct MirUsedCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     output: &'a mut MonoItems<'tcx>,
     instance: Instance<'tcx>,
 }
 
-impl<'a, 'tcx> MirNeighborCollector<'a, 'tcx> {
+impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -632,7 +612,7 @@ impl<'a, 'tcx> MirNeighborCollector<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
+impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         debug!("visiting rvalue {:?}", *rvalue);
 
@@ -1392,13 +1372,13 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
 
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 #[instrument(skip(tcx, output), level = "debug")]
-fn collect_neighbours<'tcx>(
+fn collect_used_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     output: &mut MonoItems<'tcx>,
 ) {
     let body = tcx.instance_mir(instance.def);
-    MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(&body);
+    MirUsedCollector { tcx, body: &body, output, instance }.visit_body(&body);
 }
 
 #[instrument(skip(tcx, output), level = "debug")]

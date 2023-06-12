@@ -21,7 +21,7 @@ impl<'tcx> InferCtxt<'tcx> {
         recursion_depth: usize,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Ty<'tcx> {
-        if self.tcx.trait_solver_next() {
+        if self.next_trait_solver() {
             // FIXME(-Ztrait-solver=next): Instead of branching here,
             // completely change the normalization routine with the new solver.
             //

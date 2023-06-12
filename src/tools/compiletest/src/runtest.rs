@@ -2127,6 +2127,9 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::NextSolver) => {
                 rustc.args(&["-Ztrait-solver=next"]);
             }
+            Some(CompareMode::NextSolverCoherence) => {
+                rustc.args(&["-Ztrait-solver=next-coherence"]);
+            }
             Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }

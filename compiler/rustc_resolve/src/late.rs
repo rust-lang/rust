@@ -3524,7 +3524,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     None
                 };
 
-                this.r.use_injections.push(UseError {
+                let ue = UseError {
                     err,
                     candidates,
                     def_id,
@@ -3532,7 +3532,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     suggestion,
                     path: path.into(),
                     is_call: source.is_call(),
-                });
+                };
+
+                this.r.use_injections.push(ue);
             }
 
             PartialRes::new(Res::Err)
@@ -3866,8 +3868,22 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                 PartialRes::new(module.res().unwrap())
             }
-            PathResult::Failed { is_error_from_last_segment: false, span, label, suggestion } => {
-                return Err(respan(span, ResolutionError::FailedToResolve { label, suggestion }));
+            PathResult::Failed {
+                is_error_from_last_segment: false,
+                span,
+                label,
+                suggestion,
+                module,
+            } => {
+                return Err(respan(
+                    span,
+                    ResolutionError::FailedToResolve {
+                        last_segment: None,
+                        label,
+                        suggestion,
+                        module,
+                    },
+                ));
             }
             PathResult::Module(..) | PathResult::Failed { .. } => return Ok(None),
             PathResult::Indeterminate => bug!("indeterminate path result in resolve_qpath"),

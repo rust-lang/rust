@@ -58,10 +58,10 @@ error: this could be rewritten as `let...else`
   --> $DIR/manual_let_else_match.rs:70:5
    |
 LL | /     let _value = match f {
-LL | |         Variant::Bar(_) | Variant::Baz(_) => (),
+LL | |         Variant::Bar(v) | Variant::Baz(v) => v,
 LL | |         _ => return,
 LL | |     };
-   | |______^ help: consider writing: `let (Variant::Bar(_) | Variant::Baz(_)) = f else { return };`
+   | |______^ help: consider writing: `let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };`
 
 error: this could be rewritten as `let...else`
   --> $DIR/manual_let_else_match.rs:76:5

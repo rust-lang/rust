@@ -222,6 +222,7 @@ pub struct Build {
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
     initial_libdir: PathBuf,
+    initial_sysroot: PathBuf,
 
     // Runtime state filled in later on
     // C/C++ compilers and archiver for all targets
@@ -389,13 +390,16 @@ impl Build {
             "/dummy".to_string()
         } else {
             output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
-        };
+        }
+        .trim()
+        .to_string();
+
         let initial_libdir = initial_target_dir
             .parent()
             .unwrap()
             .parent()
             .unwrap()
-            .strip_prefix(initial_sysroot.trim())
+            .strip_prefix(&initial_sysroot)
             .unwrap()
             .to_path_buf();
 
@@ -425,6 +429,7 @@ impl Build {
             initial_cargo: config.initial_cargo.clone(),
             initial_lld,
             initial_libdir,
+            initial_sysroot: initial_sysroot.into(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -1045,8 +1050,8 @@ impl Build {
         what: impl Display,
         target: TargetSelection,
     ) -> Option<gha::Group> {
-        let action = action.into();
-        let msg = format!("{action:?}ing {what} for {target}");
+        let action = action.into().description();
+        let msg = format!("{action} {what} for {target}");
         self.group(&msg)
     }
 
@@ -1058,8 +1063,8 @@ impl Build {
         host: TargetSelection,
         target: TargetSelection,
     ) -> Option<gha::Group> {
-        let action = action.into();
-        let msg = |fmt| format!("{action:?}ing {what} {fmt}");
+        let action = action.into().description();
+        let msg = |fmt| format!("{action} {what} {fmt}");
         let msg = if host == target {
             msg(format_args!("(stage{stage} -> stage{}, {target})", stage + 1))
         } else {
@@ -1069,7 +1074,6 @@ impl Build {
     }
 
     fn group(&self, msg: &str) -> Option<gha::Group> {
-        self.info(&msg);
         match self.config.dry_run {
             DryRun::SelfCheck => None,
             DryRun::Disabled | DryRun::UserSelected => Some(gha::group(&msg)),

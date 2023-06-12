@@ -416,12 +416,28 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         _,
                     ) = pat.kind
                 {
-                    err.span_suggestion(
-                        upvar_ident.span,
-                        "consider changing this to be mutable",
-                        format!("mut {}", upvar_ident.name),
-                        Applicability::MachineApplicable,
-                    );
+                    if upvar_ident.name == kw::SelfLower {
+                        for (_, node) in self.infcx.tcx.hir().parent_iter(upvar_hir_id) {
+                            if let Some(fn_decl) = node.fn_decl() {
+                                if !matches!(fn_decl.implicit_self, hir::ImplicitSelfKind::ImmRef | hir::ImplicitSelfKind::MutRef) {
+                                    err.span_suggestion(
+                                        upvar_ident.span,
+                                        "consider changing this to be mutable",
+                                        format!("mut {}", upvar_ident.name),
+                                        Applicability::MachineApplicable,
+                                    );
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        err.span_suggestion(
+                            upvar_ident.span,
+                            "consider changing this to be mutable",
+                            format!("mut {}", upvar_ident.name),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
 
                 let tcx = self.infcx.tcx;

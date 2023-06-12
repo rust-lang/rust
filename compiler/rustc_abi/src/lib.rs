@@ -414,7 +414,9 @@ pub struct Size {
 // Safety: Ord is implement as just comparing numerical values and numerical values
 // are not changed by (de-)serialization.
 #[cfg(feature = "nightly")]
-unsafe impl StableOrd for Size {}
+unsafe impl StableOrd for Size {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
 
 // This is debug-printed a lot in larger structs, don't waste too much space there
 impl fmt::Debug for Size {

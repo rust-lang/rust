@@ -582,22 +582,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts inline const patterns.
     fn lower_inline_const(
         &mut self,
-        anon_const: &'tcx hir::AnonConst,
+        block: &'tcx hir::ConstBlock,
         id: hir::HirId,
         span: Span,
     ) -> PatKind<'tcx> {
         let tcx = self.tcx;
-        let def_id = anon_const.def_id;
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let body_id = match tcx.hir().get(hir_id) {
-            hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def_id.to_def_id()),
-                "from_inline_const can only process anonymous constants"
-            ),
-        };
+        let def_id = block.def_id;
+        let body_id = block.body;
         let expr = &tcx.hir().body(body_id).value;
-        let ty = tcx.typeck(def_id).node_type(hir_id);
+        let ty = tcx.typeck(def_id).node_type(block.hir_id);
 
         // Special case inline consts that are just literals. This is solely
         // a performance optimization, as we could also just go through the regular

@@ -314,6 +314,11 @@ lint_invalid_from_utf8_checked = calls to `{$method}` with a invalid literal alw
 lint_invalid_from_utf8_unchecked = calls to `{$method}` with a invalid literal are undefined behavior
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
+lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be directly compared to itself
+    .suggestion = use `f32::is_nan()` or `f64::is_nan()` instead
+
+lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
+
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
@@ -491,6 +496,10 @@ lint_tykind = usage of `ty::TyKind`
 
 lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
+
+lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
+    .label = argument has type `{$arg_ty}`
+    .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
 
 lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
      .label = this function will not propagate the caller location

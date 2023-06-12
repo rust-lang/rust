@@ -500,6 +500,17 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
         self.in_pat = in_pat;
     }
+
+    fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
+        // When inline const blocks are used in pattern position, paths
+        // referenced by it should be considered as used.
+        let in_pat = mem::replace(&mut self.in_pat, false);
+
+        self.live_symbols.insert(c.def_id);
+        intravisit::walk_inline_const(self, c);
+
+        self.in_pat = in_pat;
+    }
 }
 
 fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {

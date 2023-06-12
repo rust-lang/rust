@@ -14,7 +14,6 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -148,31 +147,25 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg | hir::UnOp::Not, inner) => {
-                let inner_ty = self.fcx.node_ty(inner.hir_id);
-                let inner_ty = self.fcx.resolve_vars_if_possible(inner_ty);
+                let inner_ty = self.typeck_results.node_type(inner.hir_id);
 
                 if inner_ty.is_scalar() {
-                    let mut typeck_results = self.fcx.typeck_results.borrow_mut();
-                    typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
+                    self.typeck_results.node_substs_mut().remove(e.hir_id);
                 }
             }
             hir::ExprKind::Binary(ref op, lhs, rhs) | hir::ExprKind::AssignOp(ref op, lhs, rhs) => {
-                let lhs_ty = self.fcx.node_ty(lhs.hir_id);
-                let lhs_ty = self.fcx.resolve_vars_if_possible(lhs_ty);
-
-                let rhs_ty = self.fcx.node_ty(rhs.hir_id);
-                let rhs_ty = self.fcx.resolve_vars_if_possible(rhs_ty);
+                let lhs_ty = self.typeck_results.node_type(lhs.hir_id);
+                let rhs_ty = self.typeck_results.node_type(rhs.hir_id);
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
-                    let mut typeck_results = self.fcx.typeck_results.borrow_mut();
-                    typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
+                    self.typeck_results.node_substs_mut().remove(e.hir_id);
 
                     match e.kind {
                         hir::ExprKind::Binary(..) => {
                             if !op.node.is_by_value() {
-                                let mut adjustments = typeck_results.adjustments_mut();
+                                let mut adjustments = self.typeck_results.adjustments_mut();
                                 if let Some(a) = adjustments.get_mut(lhs.hir_id) {
                                     a.pop();
                                 }
@@ -182,7 +175,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             }
                         }
                         hir::ExprKind::AssignOp(..)
-                            if let Some(a) = typeck_results.adjustments_mut().get_mut(lhs.hir_id) =>
+                            if let Some(a) = self.typeck_results.adjustments_mut().get_mut(lhs.hir_id) =>
                         {
                             a.pop();
                         }
@@ -200,16 +193,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // if they are not we don't modify the expr, hence we bypass the ICE
     fn is_builtin_index(
         &mut self,
-        typeck_results: &TypeckResults<'tcx>,
         e: &hir::Expr<'_>,
         base_ty: Ty<'tcx>,
         index_ty: Ty<'tcx>,
     ) -> bool {
-        if let Some(elem_ty) = base_ty.builtin_index() {
-            let Some(exp_ty) = typeck_results.expr_ty_opt(e) else {return false;};
-            let resolved_exp_ty = self.resolve(exp_ty, &e.span);
-
-            elem_ty == resolved_exp_ty && index_ty == self.fcx.tcx.types.usize
+        if let Some(elem_ty) = base_ty.builtin_index()
+            && let Some(exp_ty) = self.typeck_results.expr_ty_opt(e)
+        {
+            elem_ty == exp_ty && index_ty == self.fcx.tcx.types.usize
         } else {
             false
         }
@@ -221,38 +212,34 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         if let hir::ExprKind::Index(ref base, ref index) = e.kind {
-            let mut typeck_results = self.fcx.typeck_results.borrow_mut();
-
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
-            let base_ty = typeck_results
-                .expr_ty_adjusted_opt(base)
-                .map(|t| self.fcx.resolve_vars_if_possible(t).kind());
+            let base_ty = self.typeck_results.expr_ty_adjusted_opt(base);
             if base_ty.is_none() {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
                 // emitted, so we delay an ICE if none have. (#64638)
                 self.tcx().sess.delay_span_bug(e.span, format!("bad base: `{:?}`", base));
             }
-            if let Some(ty::Ref(_, base_ty, _)) = base_ty {
-                let index_ty = typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {
-                    // When encountering `return [0][0]` outside of a `fn` body we would attempt
-                    // to access an nonexistent index. We assume that more relevant errors will
-                    // already have been emitted, so we only gate on this with an ICE if no
-                    // error has been emitted. (#64638)
-                    self.fcx.tcx.ty_error_with_message(
-                        e.span,
-                        format!("bad index {:?} for base: `{:?}`", index, base),
-                    )
-                });
-                let index_ty = self.fcx.resolve_vars_if_possible(index_ty);
-                let resolved_base_ty = self.resolve(*base_ty, &base.span);
-
-                if self.is_builtin_index(&typeck_results, e, resolved_base_ty, index_ty) {
+            if let Some(base_ty) = base_ty
+                && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
+            {
+                let index_ty =
+                    self.typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {
+                        // When encountering `return [0][0]` outside of a `fn` body we would attempt
+                        // to access an nonexistent index. We assume that more relevant errors will
+                        // already have been emitted, so we only gate on this with an ICE if no
+                        // error has been emitted. (#64638)
+                        self.fcx.tcx.ty_error_with_message(
+                            e.span,
+                            format!("bad index {:?} for base: `{:?}`", index, base),
+                        )
+                    });
+                if self.is_builtin_index(e, base_ty_inner, index_ty) {
                     // Remove the method call record
-                    typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
+                    self.typeck_results.node_substs_mut().remove(e.hir_id);
 
-                    if let Some(a) = typeck_results.adjustments_mut().get_mut(base.hir_id) {
+                    if let Some(a) = self.typeck_results.adjustments_mut().get_mut(base.hir_id) {
                         // Discard the need for a mutable borrow
 
                         // Extra adjustment made when indexing causes a drop
@@ -283,9 +270,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        self.fix_scalar_builtin_expr(e);
-        self.fix_index_builtin_expr(e);
-
         match e.kind {
             hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
                 let body = self.fcx.tcx.hir().body(body);
@@ -314,6 +298,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(e.span, e.hir_id);
         intravisit::walk_expr(self, e);
+
+        self.fix_scalar_builtin_expr(e);
+        self.fix_index_builtin_expr(e);
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
@@ -591,7 +578,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .insert(opaque_type_key, hidden_type)
                 && last_opaque_ty.ty != hidden_type.ty
             {
-                assert!(!self.tcx().trait_solver_next());
+                assert!(!self.fcx.next_trait_solver());
                 hidden_type
                     .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
                     .stash(
@@ -812,7 +799,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match self.fcx.fully_resolve(t) {
-            Ok(t) if self.fcx.tcx.trait_solver_next() => {
+            Ok(t) if self.fcx.next_trait_solver() => {
                 // We must normalize erasing regions here, since later lints
                 // expect that types that show up in the typeck are fully
                 // normalized.

@@ -15,7 +15,7 @@ extern crate rustc_target;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -49,11 +49,11 @@ impl CodegenBackend for TheBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         let codegen_results = ongoing_codegen
             .downcast::<CodegenResults>()
             .expect("in join_codegen: ongoing_codegen is not a CodegenResults");
-        Ok((*codegen_results, FxHashMap::default()))
+        Ok((*codegen_results, FxIndexMap::default()))
     }
 
     fn link(
@@ -62,7 +62,7 @@ impl CodegenBackend for TheBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
-        use rustc_session::{config::CrateType, output::out_filename};
+        use rustc_session::{config::{CrateType, OutFileName}, output::out_filename};
         use std::io::Write;
         let crate_name = codegen_results.crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {
@@ -70,8 +70,16 @@ impl CodegenBackend for TheBackend {
                 sess.fatal(format!("Crate type is {:?}", crate_type));
             }
             let output_name = out_filename(sess, crate_type, &outputs, crate_name);
-            let mut out_file = ::std::fs::File::create(output_name).unwrap();
-            write!(out_file, "This has been \"compiled\" successfully.").unwrap();
+            match output_name {
+                OutFileName::Real(ref path) => {
+                    let mut out_file = ::std::fs::File::create(path).unwrap();
+                    write!(out_file, "This has been \"compiled\" successfully.").unwrap();
+                }
+                OutFileName::Stdout => {
+                    let mut stdout = std::io::stdout();
+                    write!(stdout, "This has been \"compiled\" successfully.").unwrap();
+                }
+            }
         }
         Ok(())
     }

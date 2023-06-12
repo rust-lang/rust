@@ -29,9 +29,8 @@ parking_lot = "0.12.1"
 xflags = "0.3.0"
 oorandom = "11.1.3"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.137", features = ["derive"] }
-serde_json = { version = "1.0.81", features = ["preserve_order"] }
-threadpool = "1.8.1"
+serde_json = { workspace = true, features = ["preserve_order"] }
+serde.workspace = true
 rayon = "1.6.1"
 num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
@@ -45,7 +44,19 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
 ] }
 tracing-log = "0.1.3"
 tracing-tree = "0.2.1"
+triomphe.workspace = true
+nohash-hasher.workspace = true
 always-assert = "0.1.2"
+
+# These dependencies are unused, but we pin them to a version here to restrict them for our transitive dependencies
+# so that we don't pull in duplicates of their dependencies like windows-sys and syn 1 vs 2
+# these would pull in serde 2
+thiserror = "=1.0.39"
+serde_repr = "=0.1.11"
+# these would pull in windows-sys 0.45.0
+mio = "=0.8.5"
+filetime = "=0.2.19"
+parking_lot_core = "=0.9.6"
 
 cfg.workspace = true
 flycheck.workspace = true
@@ -57,7 +68,7 @@ ide-db.workspace = true
 ide-ssr.workspace = true
 ide.workspace = true
 proc-macro-api.workspace = true
-proc-macro-srv.workspace = true
+proc-macro-srv-cli.workspace = true
 profile.workspace = true
 project-model.workspace = true
 stdx.workspace = true
@@ -75,7 +86,6 @@ jemallocator = { version = "0.5.0", package = "tikv-jemallocator", optional = tr
 
 [dev-dependencies]
 expect-test = "1.4.0"
-jod-thread = "0.1.2"
 xshell = "0.2.2"
 
 test-utils.workspace = true
@@ -85,8 +95,5 @@ mbe.workspace = true
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
-in-rust-tree = [
-    "proc-macro-srv/sysroot-abi",
-    "ide/in-rust-tree",
-    "syntax/in-rust-tree",
-]
+sysroot-abi = ["proc-macro-srv-cli/sysroot-abi"]
+in-rust-tree = ["sysroot-abi", "ide/in-rust-tree", "syntax/in-rust-tree"]

@@ -4,6 +4,11 @@ error[E0425]: cannot find function `bar` in module `a`
 LL |     a::bar();
    |        ^^^ not found in `a`
    |
+note: found an item that was configured out
+  --> $DIR/macro-outer-attributes.rs:9:14
+   |
+LL |       pub fn bar() { });
+   |              ^^^
 help: consider importing this function
    |
 LL + use b::bar;

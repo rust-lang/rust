@@ -13,10 +13,6 @@ use object::Object;
 use paths::AbsPath;
 use proc_macro_api::{read_dylib_info, ProcMacroKind};
 
-use crate::tt;
-
-use super::abis::Abi;
-
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
 fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> io::Error {
@@ -82,14 +78,17 @@ fn load_library(file: &Path) -> Result<Library, libloading::Error> {
 pub enum LoadProcMacroDylibError {
     Io(io::Error),
     LibLoading(libloading::Error),
-    UnsupportedABI(String),
+    AbiMismatch(String),
 }
 
 impl fmt::Display for LoadProcMacroDylibError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io(e) => e.fmt(f),
-            Self::UnsupportedABI(v) => write!(f, "unsupported ABI `{v}`"),
+            Self::AbiMismatch(v) => {
+                use crate::RUSTC_VERSION_STRING;
+                write!(f, "mismatched ABI expected: `{RUSTC_VERSION_STRING}`, got `{v}`")
+            }
             Self::LibLoading(e) => e.fmt(f),
         }
     }
@@ -110,7 +109,7 @@ impl From<libloading::Error> for LoadProcMacroDylibError {
 struct ProcMacroLibraryLibloading {
     // Hold on to the library so it doesn't unload
     _lib: Library,
-    abi: Abi,
+    proc_macros: crate::proc_macros::ProcMacros,
 }
 
 impl ProcMacroLibraryLibloading {
@@ -125,8 +124,9 @@ impl ProcMacroLibraryLibloading {
         let version_info = read_dylib_info(abs_file)?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
-        let abi = Abi::from_lib(&lib, symbol_name, version_info)?;
-        Ok(ProcMacroLibraryLibloading { _lib: lib, abi })
+        let proc_macros =
+            crate::proc_macros::ProcMacros::from_lib(&lib, symbol_name, version_info)?;
+        Ok(ProcMacroLibraryLibloading { _lib: lib, proc_macros })
     }
 }
 
@@ -150,15 +150,15 @@ impl Expander {
     pub fn expand(
         &self,
         macro_name: &str,
-        macro_body: &tt::Subtree,
-        attributes: Option<&tt::Subtree>,
-    ) -> Result<tt::Subtree, String> {
-        let result = self.inner.abi.expand(macro_name, macro_body, attributes);
+        macro_body: &crate::tt::Subtree,
+        attributes: Option<&crate::tt::Subtree>,
+    ) -> Result<crate::tt::Subtree, String> {
+        let result = self.inner.proc_macros.expand(macro_name, macro_body, attributes);
         result.map_err(|e| e.as_str().unwrap_or_else(|| "<unknown error>".to_string()))
     }
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
-        self.inner.abi.list_macros()
+        self.inner.proc_macros.list_macros()
     }
 }
 

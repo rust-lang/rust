@@ -54,8 +54,8 @@ impl OngoingCodegen {
         self,
         sess: &Session,
         backend_config: &BackendConfig,
-    ) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
-        let mut work_products = FxHashMap::default();
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+        let mut work_products = FxIndexMap::default();
         let mut modules = vec![];
 
         for module_codegen in self.modules {

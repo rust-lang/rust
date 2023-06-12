@@ -45,9 +45,9 @@ pub mod graphviz;
 pub mod lattice;
 mod visitor;
 
-pub use self::cursor::{ResultsCursor, ResultsRefCursor};
+pub use self::cursor::{ResultsClonedCursor, ResultsCursor, ResultsRefCursor};
 pub use self::direction::{Backward, Direction, Forward};
-pub use self::engine::{Engine, Results};
+pub use self::engine::{Engine, EntrySets, Results, ResultsCloned};
 pub use self::lattice::{JoinSemiLattice, MeetSemiLattice};
 pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 
@@ -146,7 +146,7 @@ pub trait AnalysisDomain<'tcx> {
 pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -159,7 +159,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// *part* of the effect of a statement (e.g. for two-phase borrows). As a general rule,
     /// analyses should not implement this without also implementing `apply_statement_effect`.
     fn apply_before_statement_effect(
-        &self,
+        &mut self,
         _state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -173,7 +173,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// `InitializedPlaces` analyses, the return place for a function call is not marked as
     /// initialized here.
     fn apply_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -186,7 +186,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
     /// analyses should not implement this without also implementing `apply_terminator_effect`.
     fn apply_before_terminator_effect(
-        &self,
+        &mut self,
         _state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -201,7 +201,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// This is separate from `apply_terminator_effect` to properly track state across unwind
     /// edges.
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -214,7 +214,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ///
     /// By default, no effects happen.
     fn apply_yield_resume_effect(
-        &self,
+        &mut self,
         _state: &mut Self::Domain,
         _resume_block: BasicBlock,
         _resume_place: mir::Place<'tcx>,
@@ -235,7 +235,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// engine doesn't need to clone the exit state for a block unless
     /// `SwitchIntEdgeEffects::apply` is actually called.
     fn apply_switch_int_edge_effects(
-        &self,
+        &mut self,
         _block: BasicBlock,
         _discr: &mir::Operand<'tcx>,
         _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
@@ -269,6 +269,21 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     }
 }
 
+/// Defines an `Analysis` which can be cloned for use in multiple `ResultsCursor`s or
+/// `ResultsVisitor`s. Note this need not be a full clone, only enough of one to be used with a new
+/// `ResultsCursor` or `ResultsVisitor`
+pub trait CloneAnalysis {
+    fn clone_analysis(&self) -> Self;
+}
+impl<'tcx, A> CloneAnalysis for A
+where
+    A: Analysis<'tcx> + Copy,
+{
+    fn clone_analysis(&self) -> Self {
+        *self
+    }
+}
+
 /// A gen/kill dataflow problem.
 ///
 /// Each method in this trait has a corresponding one in `Analysis`. However, these methods only
@@ -282,7 +297,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     /// See `Analysis::apply_statement_effect`.
     fn statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -290,7 +305,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     /// See `Analysis::apply_before_statement_effect`.
     fn before_statement_effect(
-        &self,
+        &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -299,7 +314,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     /// See `Analysis::apply_terminator_effect`.
     fn terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -307,7 +322,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     /// See `Analysis::apply_before_terminator_effect`.
     fn before_terminator_effect(
-        &self,
+        &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -318,7 +333,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     /// See `Analysis::apply_call_return_effect`.
     fn call_return_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -326,7 +341,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     /// See `Analysis::apply_yield_resume_effect`.
     fn yield_resume_effect(
-        &self,
+        &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
         _resume_block: BasicBlock,
         _resume_place: mir::Place<'tcx>,
@@ -335,7 +350,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 
     /// See `Analysis::apply_switch_int_edge_effects`.
     fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
-        &self,
+        &mut self,
         _block: BasicBlock,
         _discr: &mir::Operand<'tcx>,
         _edge_effects: &mut impl SwitchIntEdgeEffects<G>,
@@ -349,7 +364,7 @@ where
     A::Domain: GenKill<A::Idx> + BitSetExt<A::Idx>,
 {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut A::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -358,7 +373,7 @@ where
     }
 
     fn apply_before_statement_effect(
-        &self,
+        &mut self,
         state: &mut A::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -367,7 +382,7 @@ where
     }
 
     fn apply_terminator_effect(
-        &self,
+        &mut self,
         state: &mut A::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -376,7 +391,7 @@ where
     }
 
     fn apply_before_terminator_effect(
-        &self,
+        &mut self,
         state: &mut A::Domain,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -387,7 +402,7 @@ where
     /* Edge-specific effects */
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         state: &mut A::Domain,
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -396,7 +411,7 @@ where
     }
 
     fn apply_yield_resume_effect(
-        &self,
+        &mut self,
         state: &mut A::Domain,
         resume_block: BasicBlock,
         resume_place: mir::Place<'tcx>,
@@ -405,7 +420,7 @@ where
     }
 
     fn apply_switch_int_edge_effects(
-        &self,
+        &mut self,
         block: BasicBlock,
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<A::Domain>,

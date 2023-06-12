@@ -1,8 +1,10 @@
 use std::ptr;
 
+use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
+use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
@@ -776,7 +778,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .tcx
                 .sess
                 .create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span }),
-            ResolutionError::FailedToResolve { label, suggestion } => {
+            ResolutionError::FailedToResolve { last_segment, label, suggestion, module } => {
                 let mut err =
                     struct_span_err!(self.tcx.sess, span, E0433, "failed to resolve: {}", &label);
                 err.span_label(span, label);
@@ -787,6 +789,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         return err;
                     }
                     err.multipart_suggestion(msg, suggestions, applicability);
+                }
+
+                if let Some(ModuleOrUniformRoot::Module(module)) = module
+                    && let Some(module) = module.opt_def_id()
+                    && let Some(last_segment) = last_segment
+                {
+                    self.find_cfg_stripped(&mut err, &last_segment, module);
                 }
 
                 err
@@ -971,9 +980,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.tcx.sess.create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => {
-                self.into_struct_error(span, ResolutionError::FailedToResolve { label, suggestion })
-            }
+            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
+                span,
+                ResolutionError::FailedToResolve {
+                    last_segment: None,
+                    label,
+                    suggestion,
+                    module: None,
+                },
+            ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.tcx.sess.create_err(errs::ExpectedFound { span, res, path_str })
             }
@@ -1337,6 +1352,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         macro_kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
+        krate: &Crate,
     ) {
         let is_expected = &|res: Res| res.macro_kind() == Some(macro_kind);
         let suggestion = self.early_lookup_typo_candidate(
@@ -1349,13 +1365,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
+        let (span, found_use) = match parent_scope.module.nearest_parent_mod().as_local() {
+            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id]),
+            None => (None, FoundUse::No),
+        };
         show_candidates(
             self.tcx,
             err,
-            None,
+            span,
             &import_suggestions,
             Instead::No,
-            FoundUse::Yes,
+            found_use,
             DiagnosticMode::Normal,
             vec![],
             "",
@@ -1721,10 +1741,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
         ignore_binding: Option<&'a NameBinding<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
-        i: usize,
+        failed_segment_idx: usize,
         ident: Ident,
     ) -> (String, Option<Suggestion>) {
-        let is_last = i == path.len() - 1;
+        let is_last = failed_segment_idx == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
         let module_res = match module {
             Some(ModuleOrUniformRoot::Module(module)) => module.res(),
@@ -1758,8 +1778,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 (format!("could not find `{ident}` in the crate root"), None)
             }
-        } else if i > 0 {
-            let parent = path[i - 1].ident.name;
+        } else if failed_segment_idx > 0 {
+            let parent = path[failed_segment_idx - 1].ident.name;
             let parent = match parent {
                 // ::foo is mounted at the crate root for 2015, and is the extern
                 // prelude for 2018+
@@ -2205,6 +2225,44 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                .to_string())))
         } else {
             None
+        }
+    }
+
+    /// Finds a cfg-ed out item inside `module` with the matching name.
+    pub(crate) fn find_cfg_stripped(
+        &mut self,
+        err: &mut Diagnostic,
+        last_segment: &Symbol,
+        module: DefId,
+    ) {
+        let local_items;
+        let symbols = if module.is_local() {
+            local_items = self
+                .stripped_cfg_items
+                .iter()
+                .filter_map(|item| {
+                    let parent_module = self.opt_local_def_id(item.parent_module)?.to_def_id();
+                    Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg.clone() })
+                })
+                .collect::<Vec<_>>();
+            local_items.as_slice()
+        } else {
+            self.tcx.stripped_cfg_items(module.krate)
+        };
+
+        for &StrippedCfgItem { parent_module, name, ref cfg } in symbols {
+            if parent_module != module || name.name != *last_segment {
+                continue;
+            }
+
+            err.span_note(name.span, "found an item that was configured out");
+
+            if let MetaItemKind::List(nested) = &cfg.kind
+                && let NestedMetaItem::MetaItem(meta_item) = &nested[0]
+                && let MetaItemKind::NameValue(feature_name) = &meta_item.kind
+            {
+                err.note(format!("the item is gated behind the `{}` feature", feature_name.symbol));
+            }
         }
     }
 }

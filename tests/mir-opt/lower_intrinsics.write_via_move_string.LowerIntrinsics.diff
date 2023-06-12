@@ -17,7 +17,7 @@
           _4 = move _2;                    // scope 1 at $DIR/lower_intrinsics.rs:+1:50: +1:51
 -         _0 = write_via_move::<String>(move _3, move _4) -> [return: bb1, unwind unreachable]; // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:52
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:129:14: 129:46
+-                                          // + span: $DIR/lower_intrinsics.rs:135:14: 135:46
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*mut String, String) {write_via_move::<String>}, val: Value(<ZST>) }
 +         (*_3) = move _4;                 // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:52
 +         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:52

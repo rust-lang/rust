@@ -1247,30 +1247,6 @@ pub struct FnConsiderCasting {
 }
 
 #[derive(Subdiagnostic)]
-pub enum SuggestAsRefWhereAppropriate<'a> {
-    #[suggestion(
-        infer_sarwa_option,
-        code = "{snippet}.as_ref()",
-        applicability = "machine-applicable"
-    )]
-    Option {
-        #[primary_span]
-        span: Span,
-        snippet: &'a str,
-    },
-    #[suggestion(
-        infer_sarwa_result,
-        code = "{snippet}.as_ref()",
-        applicability = "machine-applicable"
-    )]
-    Result {
-        #[primary_span]
-        span: Span,
-        snippet: &'a str,
-    },
-}
-
-#[derive(Subdiagnostic)]
 pub enum SuggestAccessingField<'a> {
     #[suggestion(
         infer_suggest_accessing_field,

@@ -947,6 +947,8 @@ pub trait ResolverExpand {
     /// HIR proc macros items back to their harness items.
     fn declare_proc_macro(&mut self, id: NodeId);
 
+    fn append_stripped_cfg_item(&mut self, parent_node: NodeId, name: Ident, cfg: ast::MetaItem);
+
     /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
     fn registered_tools(&self) -> &RegisteredTools;
 }
@@ -965,7 +967,7 @@ pub trait LintStoreExpand {
 
 type LintStoreExpandDyn<'a> = Option<&'a (dyn LintStoreExpand + 'a)>;
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ModuleData {
     /// Path to the module starting from the crate name, like `my_crate::foo::bar`.
     pub mod_path: Vec<Ident>,
@@ -1108,6 +1110,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -1116,6 +1119,7 @@ impl<'a> ExtCtxt<'a> {
         self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
 
+    #[track_caller]
     pub fn create_err(
         &self,
         err: impl IntoDiagnostic<'a>,
@@ -1123,6 +1127,7 @@ impl<'a> ExtCtxt<'a> {
         self.sess.create_err(err)
     }
 
+    #[track_caller]
     pub fn emit_err(&self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.sess.emit_err(err)
     }
@@ -1133,10 +1138,12 @@ impl<'a> ExtCtxt<'a> {
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.sess.parse_sess.span_diagnostic.span_err(sp, msg);
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.sess.parse_sess.span_diagnostic.span_warn(sp, msg);
     }

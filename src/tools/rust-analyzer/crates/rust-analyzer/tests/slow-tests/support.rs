@@ -9,11 +9,10 @@ use std::{
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
-use project_model::ProjectManifest;
 use rust_analyzer::{config::Config, lsp_ext, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
-use test_utils::Fixture;
+use test_utils::FixtureWithProjectMeta;
 use vfs::AbsPathBuf;
 
 use crate::testdir::TestDir;
@@ -37,8 +36,12 @@ impl<'a> Project<'a> {
                     "sysroot": null,
                     // Can't use test binary as rustc wrapper.
                     "buildScripts": {
-                        "useRustcWrapper": false
+                        "useRustcWrapper": false,
+                        "enable": false,
                     },
+                },
+                "procMacro": {
+                    "enable": false,
                 }
             }),
         }
@@ -80,10 +83,12 @@ impl<'a> Project<'a> {
             profile::init_from(crate::PROFILE);
         });
 
-        let (mini_core, proc_macros, fixtures) = Fixture::parse(self.fixture);
-        assert!(proc_macros.is_empty());
+        let FixtureWithProjectMeta { fixture, mini_core, proc_macro_names, toolchain } =
+            FixtureWithProjectMeta::parse(self.fixture);
+        assert!(proc_macro_names.is_empty());
         assert!(mini_core.is_none());
-        for entry in fixtures {
+        assert!(toolchain.is_none());
+        for entry in fixture {
             let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
@@ -95,10 +100,6 @@ impl<'a> Project<'a> {
         if roots.is_empty() {
             roots.push(tmp_dir_path.clone());
         }
-        let discovered_projects = roots
-            .into_iter()
-            .map(|it| ProjectManifest::discover_single(&it).unwrap())
-            .collect::<Vec<_>>();
 
         let mut config = Config::new(
             tmp_dir_path,
@@ -138,10 +139,10 @@ impl<'a> Project<'a> {
                 })),
                 ..Default::default()
             },
-            Vec::new(),
+            roots,
         );
-        config.discovered_projects = Some(discovered_projects);
         config.update(self.config).expect("invalid config");
+        config.rediscover_workspaces();
 
         Server::new(tmp_dir, config)
     }
@@ -154,7 +155,7 @@ pub(crate) fn project(fixture: &str) -> Server {
 pub(crate) struct Server {
     req_id: Cell<i32>,
     messages: RefCell<Vec<Message>>,
-    _thread: jod_thread::JoinHandle<()>,
+    _thread: stdx::thread::JoinHandle,
     client: Connection,
     /// XXX: remove the tempdir last
     dir: TestDir,
@@ -164,7 +165,7 @@ impl Server {
     fn new(dir: TestDir, config: Config) -> Server {
         let (connection, client) = Connection::memory();
 
-        let _thread = jod_thread::Builder::new()
+        let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("test server".to_string())
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
@@ -251,6 +252,9 @@ impl Server {
                     .clone()
                     .extract::<lsp_ext::ServerStatusParams>("experimental/serverStatus")
                     .unwrap();
+                if status.health != lsp_ext::Health::Ok {
+                    panic!("server errored/warned while loading workspace: {:?}", status.message);
+                }
                 status.quiescent
             }
             _ => false,

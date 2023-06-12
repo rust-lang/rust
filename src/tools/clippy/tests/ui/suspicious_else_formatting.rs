@@ -1,7 +1,7 @@
 //@aux-build:proc_macro_suspicious_else_formatting.rs
 
 #![warn(clippy::suspicious_else_formatting)]
-#![allow(clippy::if_same_then_else, clippy::let_unit_value)]
+#![allow(clippy::if_same_then_else, clippy::let_unit_value, clippy::needless_else)]
 
 extern crate proc_macro_suspicious_else_formatting;
 use proc_macro_suspicious_else_formatting::DeriveBadSpan;

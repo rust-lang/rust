@@ -25,6 +25,7 @@ use errors::{
     ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst, ParamKindInTyOfConstParam,
 };
 use rustc_arena::{DroplessArena, TypedArena};
+use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, attr, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
@@ -171,6 +172,7 @@ enum ImplTraitContext {
     Universal(LocalDefId),
 }
 
+#[derive(Debug)]
 struct BindingError {
     name: Symbol,
     origin: BTreeSet<Span>,
@@ -178,6 +180,7 @@ struct BindingError {
     could_be_path: bool,
 }
 
+#[derive(Debug)]
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer function.
     GenericParamsFromOuterFunction(Res, HasGenericParams),
@@ -207,7 +210,12 @@ enum ResolutionError<'a> {
     /// Error E0431: `self` import can only appear in an import list with a non-empty prefix.
     SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// Error E0433: failed to resolve.
-    FailedToResolve { label: String, suggestion: Option<Suggestion> },
+    FailedToResolve {
+        last_segment: Option<Symbol>,
+        label: String,
+        suggestion: Option<Suggestion>,
+        module: Option<ModuleOrUniformRoot<'a>>,
+    },
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
@@ -402,6 +410,7 @@ enum PathResult<'a> {
         label: String,
         suggestion: Option<Suggestion>,
         is_error_from_last_segment: bool,
+        module: Option<ModuleOrUniformRoot<'a>>,
     },
 }
 
@@ -410,11 +419,12 @@ impl<'a> PathResult<'a> {
         span: Span,
         is_error_from_last_segment: bool,
         finalize: bool,
+        module: Option<ModuleOrUniformRoot<'a>>,
         label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
     ) -> PathResult<'a> {
         let (label, suggestion) =
             if finalize { label_and_suggestion() } else { (String::new(), None) };
-        PathResult::Failed { span, label, suggestion, is_error_from_last_segment }
+        PathResult::Failed { span, label, suggestion, is_error_from_last_segment, module }
     }
 }
 
@@ -685,6 +695,7 @@ struct PrivacyError<'a> {
     dedup_span: Span,
 }
 
+#[derive(Debug)]
 struct UseError<'a> {
     err: DiagnosticBuilder<'a, ErrorGuaranteed>,
     /// Candidates which user could `use` to access the missing type.
@@ -1059,6 +1070,9 @@ pub struct Resolver<'a, 'tcx> {
     /// Whether lifetime elision was successful.
     lifetime_elision_allowed: FxHashSet<NodeId>,
 
+    /// Names of items that were stripped out via cfg with their corresponding cfg meta item.
+    stripped_cfg_items: Vec<StrippedCfgItem<NodeId>>,
+
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
@@ -1353,6 +1367,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             proc_macros: Default::default(),
             confused_type_with_std_module: Default::default(),
             lifetime_elision_allowed: Default::default(),
+            stripped_cfg_items: Default::default(),
             effective_visibilities: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
@@ -1410,6 +1425,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let effective_visibilities = self.effective_visibilities;
+
+        self.tcx.feed_local_crate().stripped_cfg_items(self.tcx.arena.alloc_from_iter(
+            self.stripped_cfg_items.into_iter().filter_map(|item| {
+                let parent_module = self.node_id_to_def_id.get(&item.parent_module)?.to_def_id();
+                Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg })
+            }),
+        ));
+
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities,
@@ -1499,7 +1522,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.tcx.sess.time("check_hidden_glob_reexports", || {
                 self.check_hidden_glob_reexports(exported_ambiguities)
             });
-            self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
+            self.tcx
+                .sess
+                .time("finalize_macro_resolutions", || self.finalize_macro_resolutions(krate));
             self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
             self.tcx.sess.time("resolve_main", || self.resolve_main());
             self.tcx.sess.time("resolve_check_unused", || self.check_unused(krate));

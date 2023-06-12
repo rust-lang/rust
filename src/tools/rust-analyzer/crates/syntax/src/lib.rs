@@ -43,10 +43,11 @@ pub mod utils;
 pub mod ted;
 pub mod hacks;
 
-use std::{marker::PhantomData, sync::Arc};
+use std::marker::PhantomData;
 
 use stdx::format_to;
 use text_edit::Indel;
+use triomphe::Arc;
 
 pub use crate::{
     ast::{AstNode, AstToken},

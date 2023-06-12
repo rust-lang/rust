@@ -116,7 +116,6 @@ pub enum ConstVariableOriginKind {
     MiscVariable,
     ConstInference,
     ConstParameterDefinition(Symbol, DefId),
-    SubstitutionPlaceholder,
 }
 
 #[derive(Copy, Clone, Debug)]

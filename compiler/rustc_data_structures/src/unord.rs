@@ -140,12 +140,12 @@ impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
     }
 
     #[inline]
-    pub fn into_sorted_stable_ord(self, use_stable_sort: bool) -> Vec<T>
+    pub fn into_sorted_stable_ord(self) -> Vec<T>
     where
         T: Ord + StableOrd,
     {
         let mut items: Vec<T> = self.0.collect();
-        if use_stable_sort {
+        if !T::CAN_USE_UNSTABLE_SORT {
             items.sort();
         } else {
             items.sort_unstable()
@@ -160,6 +160,10 @@ impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
         let mut items: SmallVec<[T; LEN]> = self.0.collect();
         items.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
         items
+    }
+
+    pub fn collect<C: From<UnordItems<T, I>>>(self) -> C {
+        self.into()
     }
 }
 

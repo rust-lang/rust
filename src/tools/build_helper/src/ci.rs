@@ -46,6 +46,8 @@ pub mod gha {
     pub fn group(name: impl std::fmt::Display) -> Group {
         if std::env::var_os("GITHUB_ACTIONS").is_some() {
             eprintln!("::group::{name}");
+        } else {
+            eprintln!("{name}")
         }
         Group(())
     }

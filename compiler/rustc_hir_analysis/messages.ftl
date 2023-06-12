@@ -195,6 +195,13 @@ hir_analysis_return_type_notation_conflicting_bound =
 hir_analysis_return_type_notation_equality_bound =
     return type notation is not allowed to use type equality
 
+hir_analysis_return_type_notation_illegal_param_const =
+    return type notation is not allowed for functions that have const parameters
+    .label = const parameter declared here
+hir_analysis_return_type_notation_illegal_param_type =
+    return type notation is not allowed for functions that have type parameters
+    .label = type parameter declared here
+
 hir_analysis_return_type_notation_missing_method =
     cannot find associated function `{$assoc_name}` for `{$ty_name}`
 

@@ -128,7 +128,7 @@ export async function buildCargoTask(
         name,
         TASK_SOURCE,
         exec,
-        ["$rustc"]
+        ["$rustc", "$rust-panic"]
     );
 }
 

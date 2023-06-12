@@ -1,3 +1,5 @@
+use crate::marker::ConstParamTy;
+
 /// Are values of a type transmutable into values of another type?
 ///
 /// This trait is implemented on-the-fly by the compiler for types `Src` and `Self` when the bits of
@@ -32,6 +34,9 @@ pub struct Assume {
     /// instance of the destination type.
     pub validity: bool,
 }
+
+#[unstable(feature = "transmutability", issue = "99571")]
+impl ConstParamTy for Assume {}
 
 impl Assume {
     /// Do not assume that *you* have ensured any safety properties are met.

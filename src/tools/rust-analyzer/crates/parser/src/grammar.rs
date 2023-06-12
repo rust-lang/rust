@@ -66,6 +66,10 @@ pub(crate) mod entry {
             patterns::pattern_single(p);
         }
 
+        pub(crate) fn pat_top(p: &mut Parser<'_>) {
+            patterns::pattern_top(p);
+        }
+
         pub(crate) fn ty(p: &mut Parser<'_>) {
             types::type_(p);
         }
@@ -218,17 +222,22 @@ fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
                     // pub(self) struct S;
                     // pub(super) struct S;
 
+                    // test_err crate_visibility_empty_recover
+                    // pub() struct S;
+
                     // test pub_parens_typepath
                     // struct B(pub (super::A));
                     // struct B(pub (crate::A,));
-                    T![crate] | T![self] | T![super] | T![ident] if p.nth(2) != T![:] => {
+                    T![crate] | T![self] | T![super] | T![ident] | T![')'] if p.nth(2) != T![:] => {
                         // If we are in a tuple struct, then the parens following `pub`
                         // might be an tuple field, not part of the visibility. So in that
                         // case we don't want to consume an identifier.
 
                         // test pub_tuple_field
                         // struct MyStruct(pub (u32, u32));
-                        if !(in_tuple_field && matches!(p.nth(1), T![ident])) {
+                        // struct MyStruct(pub (u32));
+                        // struct MyStruct(pub ());
+                        if !(in_tuple_field && matches!(p.nth(1), T![ident] | T![')'])) {
                             p.bump(T!['(']);
                             paths::use_path(p);
                             p.expect(T![')']);
@@ -243,7 +252,7 @@ fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
                         paths::use_path(p);
                         p.expect(T![')']);
                     }
-                    _ => (),
+                    _ => {}
                 }
             }
             m.complete(p, VISIBILITY);

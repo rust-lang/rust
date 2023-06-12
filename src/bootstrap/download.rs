@@ -271,11 +271,8 @@ impl Config {
         // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
         // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
         // Cache the entries when we extract it so we only have to read it once.
-        let mut recorded_entries = if dst.ends_with("ci-rustc") && pattern == "rustc-dev" {
-            Some(BufWriter::new(t!(File::create(dst.join(".rustc-dev-contents")))))
-        } else {
-            None
-        };
+        let mut recorded_entries =
+            if dst.ends_with("ci-rustc") { recorded_entries(dst, pattern) } else { None };
 
         for member in t!(tar.entries()) {
             let mut member = t!(member);
@@ -332,6 +329,17 @@ impl Config {
     }
 }
 
+fn recorded_entries(dst: &Path, pattern: &str) -> Option<BufWriter<File>> {
+    let name = if pattern == "rustc-dev" {
+        ".rustc-dev-contents"
+    } else if pattern.starts_with("rust-std") {
+        ".rust-std-contents"
+    } else {
+        return None;
+    };
+    Some(BufWriter::new(t!(File::create(dst.join(name)))))
+}
+
 enum DownloadSource {
     CI,
     Dist,
@@ -382,11 +390,20 @@ impl Config {
         Some(rustfmt_path)
     }
 
-    pub(crate) fn rustc_dev_contents(&self) -> Vec<String> {
+    pub(crate) fn ci_rust_std_contents(&self) -> Vec<String> {
+        self.ci_component_contents(".rust-std-contents")
+    }
+
+    pub(crate) fn ci_rustc_dev_contents(&self) -> Vec<String> {
+        self.ci_component_contents(".rustc-dev-contents")
+    }
+
+    fn ci_component_contents(&self, stamp_file: &str) -> Vec<String> {
         assert!(self.download_rustc());
         let ci_rustc_dir = self.out.join(&*self.build.triple).join("ci-rustc");
-        let rustc_dev_contents_file = t!(File::open(ci_rustc_dir.join(".rustc-dev-contents")));
-        t!(BufReader::new(rustc_dev_contents_file).lines().collect())
+        let stamp_file = ci_rustc_dir.join(stamp_file);
+        let contents_file = t!(File::open(&stamp_file), stamp_file.display().to_string());
+        t!(BufReader::new(contents_file).lines().collect())
     }
 
     pub(crate) fn download_ci_rustc(&self, commit: &str) {

@@ -362,12 +362,12 @@ fn import_for_item(
 
     let original_item_candidate = item_for_path_search(db, original_item)?;
     let import_path_candidate = mod_path(original_item_candidate)?;
-    let import_path_string = import_path_candidate.to_string();
+    let import_path_string = import_path_candidate.display(db).to_string();
 
     let expected_import_end = if item_as_assoc(db, original_item).is_some() {
         unresolved_qualifier.to_string()
     } else {
-        format!("{unresolved_qualifier}::{}", item_name(db, original_item)?)
+        format!("{unresolved_qualifier}::{}", item_name(db, original_item)?.display(db))
     };
     if !import_path_string.contains(unresolved_first_segment)
         || !import_path_string.ends_with(&expected_import_end)

@@ -87,8 +87,8 @@ pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Matc
 use crate::{errors::bail, matching::MatchFailureReason};
 use hir::Semantics;
 use ide_db::base_db::{FileId, FilePosition, FileRange};
+use nohash_hasher::IntMap;
 use resolving::ResolvedRule;
-use stdx::hash::NoHashHashMap;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
 use text_edit::TextEdit;
 
@@ -168,9 +168,9 @@ impl<'db> MatchFinder<'db> {
     }
 
     /// Finds matches for all added rules and returns edits for all found matches.
-    pub fn edits(&self) -> NoHashHashMap<FileId, TextEdit> {
+    pub fn edits(&self) -> IntMap<FileId, TextEdit> {
         use ide_db::base_db::SourceDatabaseExt;
-        let mut matches_by_file = NoHashHashMap::default();
+        let mut matches_by_file = IntMap::default();
         for m in self.matches().matches {
             matches_by_file
                 .entry(m.range.file_id)
@@ -184,6 +184,7 @@ impl<'db> MatchFinder<'db> {
                 (
                     file_id,
                     replacing::matches_to_edit(
+                        self.sema.db,
                         &matches,
                         &self.sema.db.file_text(file_id),
                         &self.rules,
@@ -224,7 +225,7 @@ impl<'db> MatchFinder<'db> {
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
         let file_text = self.sema.db.file_text(file_id);
-        let mut remaining_text = file_text.as_str();
+        let mut remaining_text = &*file_text;
         let mut base = 0;
         let len = snippet.len() as u32;
         while let Some(offset) = remaining_text.find(snippet) {

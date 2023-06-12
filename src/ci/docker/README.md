@@ -270,7 +270,7 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Operating System > Linux kernel version = 5.19.16
 - Binary utilities > Version of binutils = 2.40
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 12.2.0
+- C compiler > gcc version = 13.1.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`

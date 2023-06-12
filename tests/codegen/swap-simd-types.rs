@@ -30,3 +30,12 @@ pub fn swap_m256_slice(x: &mut [__m256], y: &mut [__m256]) {
         x.swap_with_slice(y);
     }
 }
+
+// CHECK-LABEL: @swap_bytes32
+#[no_mangle]
+pub fn swap_bytes32(x: &mut [u8; 32], y: &mut [u8; 32]) {
+// CHECK-NOT: alloca
+// CHECK: load <32 x i8>{{.+}}align 1
+// CHECK: store <32 x i8>{{.+}}align 1
+    swap(x, y)
+}

@@ -675,6 +675,17 @@ impl LinkOutputKind {
             _ => return None,
         })
     }
+
+    pub fn can_link_dylib(self) -> bool {
+        match self {
+            LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => false,
+            LinkOutputKind::DynamicNoPicExe
+            | LinkOutputKind::DynamicPicExe
+            | LinkOutputKind::DynamicDylib
+            | LinkOutputKind::StaticDylib
+            | LinkOutputKind::WasiReactorExe => true,
+        }
+    }
 }
 
 impl fmt::Display for LinkOutputKind {
@@ -1284,6 +1295,7 @@ supported_targets! {
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
+    ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
@@ -1292,6 +1304,9 @@ supported_targets! {
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
     ("riscv64gc-unknown-linux-musl", riscv64gc_unknown_linux_musl),
+
+    ("loongarch64-unknown-none", loongarch64_unknown_none),
+    ("loongarch64-unknown-none-softfloat", loongarch64_unknown_none_softfloat),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),

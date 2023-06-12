@@ -190,20 +190,13 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
 
         let kind = token.kind(conv);
         if kind == COMMENT {
-            if let Some(tokens) = conv.convert_doc_comment(&token) {
-                // FIXME: There has to be a better way to do this
-                // Add the comments token id to the converted doc string
+            // Since `convert_doc_comment` can fail, we need to peek the next id, so that we can
+            // figure out which token id to use for the doc comment, if it is converted successfully.
+            let next_id = conv.id_alloc().peek_next_id();
+            if let Some(tokens) = conv.convert_doc_comment(&token, next_id) {
                 let id = conv.id_alloc().alloc(range, synth_id);
-                result.extend(tokens.into_iter().map(|mut tt| {
-                    if let tt::TokenTree::Subtree(sub) = &mut tt {
-                        if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) =
-                            sub.token_trees.get_mut(2)
-                        {
-                            lit.span = id
-                        }
-                    }
-                    tt
-                }));
+                debug_assert_eq!(id, next_id);
+                result.extend(tokens);
             }
             continue;
         }
@@ -382,49 +375,46 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
     text.into()
 }
 
-fn convert_doc_comment(token: &syntax::SyntaxToken) -> Option<Vec<tt::TokenTree>> {
+fn convert_doc_comment(
+    token: &syntax::SyntaxToken,
+    span: tt::TokenId,
+) -> Option<Vec<tt::TokenTree>> {
     cov_mark::hit!(test_meta_doc_comments);
     let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
 
     // Make `doc="\" Comments\""
-    let meta_tkns = vec![mk_ident("doc"), mk_punct('='), mk_doc_literal(&comment)];
+    let meta_tkns =
+        vec![mk_ident("doc", span), mk_punct('=', span), mk_doc_literal(&comment, span)];
 
     // Make `#![]`
     let mut token_trees = Vec::with_capacity(3);
-    token_trees.push(mk_punct('#'));
+    token_trees.push(mk_punct('#', span));
     if let ast::CommentPlacement::Inner = doc {
-        token_trees.push(mk_punct('!'));
+        token_trees.push(mk_punct('!', span));
     }
     token_trees.push(tt::TokenTree::from(tt::Subtree {
-        delimiter: tt::Delimiter {
-            open: tt::TokenId::UNSPECIFIED,
-            close: tt::TokenId::UNSPECIFIED,
-            kind: tt::DelimiterKind::Bracket,
-        },
+        delimiter: tt::Delimiter { open: span, close: span, kind: tt::DelimiterKind::Bracket },
         token_trees: meta_tkns,
     }));
 
     return Some(token_trees);
 
     // Helper functions
-    fn mk_ident(s: &str) -> tt::TokenTree {
-        tt::TokenTree::from(tt::Leaf::from(tt::Ident {
-            text: s.into(),
-            span: tt::TokenId::unspecified(),
-        }))
+    fn mk_ident(s: &str, span: tt::TokenId) -> tt::TokenTree {
+        tt::TokenTree::from(tt::Leaf::from(tt::Ident { text: s.into(), span }))
     }
 
-    fn mk_punct(c: char) -> tt::TokenTree {
+    fn mk_punct(c: char, span: tt::TokenId) -> tt::TokenTree {
         tt::TokenTree::from(tt::Leaf::from(tt::Punct {
             char: c,
             spacing: tt::Spacing::Alone,
-            span: tt::TokenId::unspecified(),
+            span,
         }))
     }
 
-    fn mk_doc_literal(comment: &ast::Comment) -> tt::TokenTree {
-        let lit = tt::Literal { text: doc_comment_text(comment), span: tt::TokenId::unspecified() };
+    fn mk_doc_literal(comment: &ast::Comment, span: tt::TokenId) -> tt::TokenTree {
+        let lit = tt::Literal { text: doc_comment_text(comment), span };
 
         tt::TokenTree::from(tt::Leaf::from(lit))
     }
@@ -480,6 +470,10 @@ impl TokenIdAlloc {
             }
         }
     }
+
+    fn peek_next_id(&self) -> tt::TokenId {
+        tt::TokenId(self.next_id)
+    }
 }
 
 /// A raw token (straight from lexer) converter
@@ -502,7 +496,11 @@ trait SrcToken<Ctx>: std::fmt::Debug {
 trait TokenConverter: Sized {
     type Token: SrcToken<Self>;
 
-    fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>>;
+    fn convert_doc_comment(
+        &self,
+        token: &Self::Token,
+        span: tt::TokenId,
+    ) -> Option<Vec<tt::TokenTree>>;
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)>;
 
@@ -532,9 +530,9 @@ impl<'a> SrcToken<RawConverter<'a>> for usize {
 impl<'a> TokenConverter for RawConverter<'a> {
     type Token = usize;
 
-    fn convert_doc_comment(&self, &token: &usize) -> Option<Vec<tt::TokenTree>> {
+    fn convert_doc_comment(&self, &token: &usize, span: tt::TokenId) -> Option<Vec<tt::TokenTree>> {
         let text = self.lexed.text(token);
-        convert_doc_comment(&doc_comment(text))
+        convert_doc_comment(&doc_comment(text), span)
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {
@@ -681,8 +679,12 @@ impl SrcToken<Converter> for SynToken {
 
 impl TokenConverter for Converter {
     type Token = SynToken;
-    fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>> {
-        convert_doc_comment(token.token()?)
+    fn convert_doc_comment(
+        &self,
+        token: &Self::Token,
+        span: tt::TokenId,
+    ) -> Option<Vec<tt::TokenTree>> {
+        convert_doc_comment(token.token()?, span)
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {

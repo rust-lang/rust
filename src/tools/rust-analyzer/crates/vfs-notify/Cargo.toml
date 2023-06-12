@@ -13,10 +13,10 @@ doctest = false
 
 [dependencies]
 tracing = "0.1.35"
-jod-thread = "0.1.2"
 walkdir = "2.3.2"
 crossbeam-channel = "0.5.5"
 notify = "5.0"
 
+stdx.workspace = true
 vfs.workspace = true
 paths.workspace = true

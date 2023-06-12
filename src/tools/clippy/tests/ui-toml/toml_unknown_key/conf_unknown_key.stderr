@@ -1,4 +1,4 @@
-error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown field `foobar`, expected one of
+error: error reading Clippy's configuration file: unknown field `foobar`, expected one of
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
@@ -54,7 +54,71 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            vec-box-size-threshold
            verbose-bit-mask-threshold
            warn-on-all-wildcard-imports
-       at line 5 column 1
+  --> $DIR/clippy.toml:2:1
+   |
+LL | foobar = 42
+   | ^^^^^^
 
-error: aborting due to previous error
+error: error reading Clippy's configuration file: unknown field `barfoo`, expected one of
+           allow-dbg-in-tests
+           allow-expect-in-tests
+           allow-mixed-uninlined-format-args
+           allow-print-in-tests
+           allow-unwrap-in-tests
+           allowed-scripts
+           arithmetic-side-effects-allowed
+           arithmetic-side-effects-allowed-binary
+           arithmetic-side-effects-allowed-unary
+           array-size-threshold
+           avoid-breaking-exported-api
+           await-holding-invalid-types
+           blacklisted-names
+           cargo-ignore-publish
+           cognitive-complexity-threshold
+           cyclomatic-complexity-threshold
+           disallowed-macros
+           disallowed-methods
+           disallowed-names
+           disallowed-types
+           doc-valid-idents
+           enable-raw-pointer-heuristic-for-send
+           enforced-import-renames
+           enum-variant-name-threshold
+           enum-variant-size-threshold
+           future-size-threshold
+           ignore-interior-mutability
+           large-error-threshold
+           literal-representation-threshold
+           matches-for-let-else
+           max-fn-params-bools
+           max-include-file-size
+           max-struct-bools
+           max-suggested-slice-pattern-length
+           max-trait-bounds
+           missing-docs-in-crate-items
+           msrv
+           pass-by-value-size-limit
+           semicolon-inside-block-ignore-singleline
+           semicolon-outside-block-ignore-multiline
+           single-char-binding-names-threshold
+           standard-macro-braces
+           suppress-restriction-lint-in-const
+           third-party
+           too-large-for-stack
+           too-many-arguments-threshold
+           too-many-lines-threshold
+           trivial-copy-size-limit
+           type-complexity-threshold
+           unnecessary-box-size
+           unreadable-literal-lint-fractions
+           upper-case-acronyms-aggressive
+           vec-box-size-threshold
+           verbose-bit-mask-threshold
+           warn-on-all-wildcard-imports
+  --> $DIR/clippy.toml:4:1
+   |
+LL | barfoo = 53
+   | ^^^^^^
+
+error: aborting due to 2 previous errors
 

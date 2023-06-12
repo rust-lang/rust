@@ -16,8 +16,8 @@ use std::fmt;
 
 use base_db::CrateId;
 use hir_def::{
-    adt::VariantData,
-    expr::{Pat, PatId},
+    data::adt::VariantData,
+    hir::{Pat, PatId},
     src::HasSource,
     AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, StaticId,
     StructId,
@@ -223,7 +223,7 @@ impl<'a> DeclValidator<'a> {
         }
 
         // Check the function name.
-        let function_name = data.name.to_string();
+        let function_name = data.name.display(self.db.upcast()).to_string();
         let fn_name_replacement = to_lower_snake_case(&function_name).map(|new_name| Replacement {
             current_name: data.name.clone(),
             suggested_text: new_name,
@@ -244,7 +244,9 @@ impl<'a> DeclValidator<'a> {
                     id,
                     Replacement {
                         current_name: bind_name.clone(),
-                        suggested_text: to_lower_snake_case(&bind_name.to_string())?,
+                        suggested_text: to_lower_snake_case(
+                            &bind_name.display(self.db.upcast()).to_string(),
+                        )?,
                         expected_case: CaseType::LowerSnakeCase,
                     },
                 ))
@@ -287,7 +289,7 @@ impl<'a> DeclValidator<'a> {
             ident_type: IdentType::Function,
             ident: AstPtr::new(&ast_ptr),
             expected_case: fn_name_replacement.expected_case,
-            ident_text: fn_name_replacement.current_name.to_string(),
+            ident_text: fn_name_replacement.current_name.display(self.db.upcast()).to_string(),
             suggested_text: fn_name_replacement.suggested_text,
         };
 
@@ -343,7 +345,10 @@ impl<'a> DeclValidator<'a> {
                             ident_type,
                             ident: AstPtr::new(&name_ast),
                             expected_case: replacement.expected_case,
-                            ident_text: replacement.current_name.to_string(),
+                            ident_text: replacement
+                                .current_name
+                                .display(self.db.upcast())
+                                .to_string(),
                             suggested_text: replacement.suggested_text,
                         };
 
@@ -362,7 +367,7 @@ impl<'a> DeclValidator<'a> {
         let non_snake_case_allowed = self.allowed(struct_id.into(), allow::NON_SNAKE_CASE, false);
 
         // Check the structure name.
-        let struct_name = data.name.to_string();
+        let struct_name = data.name.display(self.db.upcast()).to_string();
         let struct_name_replacement = if !non_camel_case_allowed {
             to_camel_case(&struct_name).map(|new_name| Replacement {
                 current_name: data.name.clone(),
@@ -379,7 +384,7 @@ impl<'a> DeclValidator<'a> {
         if !non_snake_case_allowed {
             if let VariantData::Record(fields) = data.variant_data.as_ref() {
                 for (_, field) in fields.iter() {
-                    let field_name = field.name.to_string();
+                    let field_name = field.name.display(self.db.upcast()).to_string();
                     if let Some(new_name) = to_lower_snake_case(&field_name) {
                         let replacement = Replacement {
                             current_name: field.name.clone(),
@@ -434,7 +439,7 @@ impl<'a> DeclValidator<'a> {
                 ident_type: IdentType::Structure,
                 ident: AstPtr::new(&ast_ptr),
                 expected_case: replacement.expected_case,
-                ident_text: replacement.current_name.to_string(),
+                ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
                 suggested_text: replacement.suggested_text,
             };
 
@@ -479,7 +484,7 @@ impl<'a> DeclValidator<'a> {
                 ident_type: IdentType::Field,
                 ident: AstPtr::new(&ast_ptr),
                 expected_case: field_to_rename.expected_case,
-                ident_text: field_to_rename.current_name.to_string(),
+                ident_text: field_to_rename.current_name.display(self.db.upcast()).to_string(),
                 suggested_text: field_to_rename.suggested_text,
             };
 
@@ -496,7 +501,7 @@ impl<'a> DeclValidator<'a> {
         }
 
         // Check the enum name.
-        let enum_name = data.name.to_string();
+        let enum_name = data.name.display(self.db.upcast()).to_string();
         let enum_name_replacement = to_camel_case(&enum_name).map(|new_name| Replacement {
             current_name: data.name.clone(),
             suggested_text: new_name,
@@ -510,7 +515,9 @@ impl<'a> DeclValidator<'a> {
             .filter_map(|(_, variant)| {
                 Some(Replacement {
                     current_name: variant.name.clone(),
-                    suggested_text: to_camel_case(&variant.name.to_string())?,
+                    suggested_text: to_camel_case(
+                        &variant.name.display(self.db.upcast()).to_string(),
+                    )?,
                     expected_case: CaseType::UpperCamelCase,
                 })
             })
@@ -558,7 +565,7 @@ impl<'a> DeclValidator<'a> {
                 ident_type: IdentType::Enum,
                 ident: AstPtr::new(&ast_ptr),
                 expected_case: replacement.expected_case,
-                ident_text: replacement.current_name.to_string(),
+                ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
                 suggested_text: replacement.suggested_text,
             };
 
@@ -603,7 +610,7 @@ impl<'a> DeclValidator<'a> {
                 ident_type: IdentType::Variant,
                 ident: AstPtr::new(&ast_ptr),
                 expected_case: variant_to_rename.expected_case,
-                ident_text: variant_to_rename.current_name.to_string(),
+                ident_text: variant_to_rename.current_name.display(self.db.upcast()).to_string(),
                 suggested_text: variant_to_rename.suggested_text,
             };
 
@@ -623,7 +630,7 @@ impl<'a> DeclValidator<'a> {
             None => return,
         };
 
-        let const_name = name.to_string();
+        let const_name = name.display(self.db.upcast()).to_string();
         let replacement = if let Some(new_name) = to_upper_snake_case(&const_name) {
             Replacement {
                 current_name: name.clone(),
@@ -648,7 +655,7 @@ impl<'a> DeclValidator<'a> {
             ident_type: IdentType::Constant,
             ident: AstPtr::new(&ast_ptr),
             expected_case: replacement.expected_case,
-            ident_text: replacement.current_name.to_string(),
+            ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
             suggested_text: replacement.suggested_text,
         };
 
@@ -668,7 +675,7 @@ impl<'a> DeclValidator<'a> {
 
         let name = &data.name;
 
-        let static_name = name.to_string();
+        let static_name = name.display(self.db.upcast()).to_string();
         let replacement = if let Some(new_name) = to_upper_snake_case(&static_name) {
             Replacement {
                 current_name: name.clone(),
@@ -693,7 +700,7 @@ impl<'a> DeclValidator<'a> {
             ident_type: IdentType::StaticVariable,
             ident: AstPtr::new(&ast_ptr),
             expected_case: replacement.expected_case,
-            ident_text: replacement.current_name.to_string(),
+            ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
             suggested_text: replacement.suggested_text,
         };
 

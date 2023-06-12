@@ -297,8 +297,8 @@ fn associated_type_for_impl_trait_in_trait(
     // Copy visility of the containing function.
     trait_assoc_ty.visibility(tcx.visibility(fn_def_id));
 
-    // Copy impl_defaultness of the containing function.
-    trait_assoc_ty.impl_defaultness(tcx.impl_defaultness(fn_def_id));
+    // Copy defaultness of the containing function.
+    trait_assoc_ty.defaultness(tcx.defaultness(fn_def_id));
 
     // Copy type_of of the opaque.
     trait_assoc_ty.type_of(ty::EarlyBinder::bind(tcx.mk_opaque(
@@ -393,8 +393,8 @@ fn associated_type_for_impl_trait_in_impl(
     // Copy visility of the containing function.
     impl_assoc_ty.visibility(tcx.visibility(impl_fn_def_id));
 
-    // Copy impl_defaultness of the containing function.
-    impl_assoc_ty.impl_defaultness(tcx.impl_defaultness(impl_fn_def_id));
+    // Copy defaultness of the containing function.
+    impl_assoc_ty.defaultness(tcx.defaultness(impl_fn_def_id));
 
     // Copy generics_of the trait's associated item but the impl as the parent.
     // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) resolves to the trait instead of the impl

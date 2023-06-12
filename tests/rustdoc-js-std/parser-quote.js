@@ -1,15 +1,6 @@
-const QUERY = [
-    '-> "p"',
-    '"p",',
-    '"p" -> a',
-    '"a" -> "p"',
-    '->"-"',
-    '"a',
-    '""',
-];
-
 const PARSED = [
     {
+        query: '-> "p"',
         elems: [],
         foundElems: 1,
         original: '-> "p"',
@@ -25,6 +16,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '"p",',
         elems: [{
             name: "p",
             fullPath: ["p"],
@@ -40,6 +32,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: '"p" -> a',
         elems: [],
         foundElems: 0,
         original: '"p" -> a',
@@ -48,6 +41,7 @@ const PARSED = [
         error: "You cannot have more than one element if you use quotes",
     },
     {
+        query: '"a" -> "p"',
         elems: [],
         foundElems: 0,
         original: '"a" -> "p"',
@@ -56,6 +50,7 @@ const PARSED = [
         error: "Cannot have more than one literal search element",
     },
     {
+        query: '->"-"',
         elems: [],
         foundElems: 0,
         original: '->"-"',
@@ -64,6 +59,7 @@ const PARSED = [
         error: 'Unexpected `-` in a string element',
     },
     {
+        query: '"a',
         elems: [],
         foundElems: 0,
         original: '"a',
@@ -72,6 +68,7 @@ const PARSED = [
         error: 'Unclosed `"`',
     },
     {
+        query: '""',
         elems: [],
         foundElems: 0,
         original: '""',

@@ -21,7 +21,6 @@ export class Config {
         "serverPath",
         "server",
         "files",
-        "lens", // works as lens.*
     ].map((opt) => `${this.rootSection}.${opt}`);
 
     readonly package: {
@@ -70,7 +69,7 @@ export class Config {
         if (!requiresReloadOpt) return;
 
         if (this.restartServerOnConfigChange) {
-            await vscode.commands.executeCommand("rust-analyzer.reload");
+            await vscode.commands.executeCommand("rust-analyzer.restartServer");
             return;
         }
 
@@ -78,7 +77,7 @@ export class Config {
         const userResponse = await vscode.window.showInformationMessage(message, "Restart now");
 
         if (userResponse) {
-            const command = "rust-analyzer.reload";
+            const command = "rust-analyzer.restartServer";
             await vscode.commands.executeCommand(command);
         }
     }
@@ -284,6 +283,10 @@ export class Config {
 
     get useRustcErrorCode() {
         return this.get<boolean>("diagnostics.useRustcErrorCode");
+    }
+
+    get showDependenciesExplorer() {
+        return this.get<boolean>("showDependenciesExplorer");
     }
 }
 

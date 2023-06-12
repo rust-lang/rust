@@ -282,6 +282,10 @@ pub struct DocTestUnknown {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(passes_doc_test_literal)]
+pub struct DocTestLiteral;
+
+#[derive(LintDiagnostic)]
 #[diag(passes_doc_test_takes_list)]
 pub struct DocTestTakesList;
 

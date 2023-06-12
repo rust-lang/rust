@@ -20,9 +20,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // const test: Foo = Foo {foo: 1, bar: 0}
 // ```
 pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let record = ctx.find_node_at_offset::<Either<ast::RecordExpr, ast::RecordPat>>()?;
+    let path = ctx.find_node_at_offset::<ast::Path>()?;
+    let record =
+        path.syntax().parent().and_then(<Either<ast::RecordExpr, ast::RecordPat>>::cast)?;
 
-    let path = record.as_ref().either(|it| it.path(), |it| it.path())?;
     let ranks = compute_fields_ranks(&path, ctx)?;
     let get_rank_of_field =
         |of: Option<_>| *ranks.get(&of.unwrap_or_default()).unwrap_or(&usize::MAX);
@@ -96,7 +97,7 @@ fn compute_fields_ranks(
         .fields(ctx.db())
         .into_iter()
         .enumerate()
-        .map(|(idx, field)| (field.name(ctx.db()).to_string(), idx))
+        .map(|(idx, field)| (field.name(ctx.db()).display(ctx.db()).to_string(), idx))
         .collect();
 
     Some(res)

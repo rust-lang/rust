@@ -13,7 +13,7 @@
           _2 = &raw const (*_1);           // scope 1 at $DIR/lower_intrinsics.rs:+1:46: +1:47
 -         _0 = read_via_copy::<Never>(move _2) -> unwind unreachable; // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:48
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:124:14: 124:45
+-                                          // + span: $DIR/lower_intrinsics.rs:130:14: 130:45
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const Never) -> Never {read_via_copy::<Never>}, val: Value(<ZST>) }
 +         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:48
       }

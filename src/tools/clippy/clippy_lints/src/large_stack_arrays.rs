@@ -38,7 +38,7 @@ impl_lint_pass!(LargeStackArrays => [LARGE_STACK_ARRAYS]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if let ExprKind::Repeat(_, _) = expr.kind
+        if let ExprKind::Repeat(_, _) | ExprKind::Array(_) = expr.kind
           && let ty::Array(element_type, cst) = cx.typeck_results().expr_ty(expr).kind()
           && let ConstKind::Value(ty::ValTree::Leaf(element_count)) = cst.kind()
           && let Ok(element_count) = element_count.try_to_target_usize(cx.tcx)

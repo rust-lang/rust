@@ -699,6 +699,25 @@ pub struct ForgetCopyDiag<'a> {
     pub label: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_undropped_manually_drops)]
+pub struct UndroppedManuallyDropsDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+    #[subdiagnostic]
+    pub suggestion: UndroppedManuallyDropsSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+pub struct UndroppedManuallyDropsSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop::into_inner(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
 // invalid_from_utf8.rs
 #[derive(LintDiagnostic)]
 pub enum InvalidFromUtf8Diag {
@@ -1414,6 +1433,36 @@ pub struct OverflowingLiteral<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_comparisons)]
 pub struct UnusedComparisons;
+
+#[derive(LintDiagnostic)]
+pub enum InvalidNanComparisons {
+    #[diag(lint_invalid_nan_comparisons_eq_ne)]
+    EqNe {
+        #[subdiagnostic]
+        suggestion: InvalidNanComparisonsSuggestion,
+    },
+    #[diag(lint_invalid_nan_comparisons_lt_le_gt_ge)]
+    LtLeGtGe,
+}
+
+#[derive(Subdiagnostic)]
+pub enum InvalidNanComparisonsSuggestion {
+    #[multipart_suggestion(
+        lint_suggestion,
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    Spanful {
+        #[suggestion_part(code = "!")]
+        neg: Option<Span>,
+        #[suggestion_part(code = ".is_nan()")]
+        float: Span,
+        #[suggestion_part(code = "")]
+        nan_plus_binop: Span,
+    },
+    #[help(lint_suggestion)]
+    Spanless,
+}
 
 pub struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,

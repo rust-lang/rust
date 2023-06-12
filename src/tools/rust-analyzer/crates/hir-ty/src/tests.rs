@@ -10,14 +10,14 @@ mod display_source_code;
 mod incremental;
 mod diagnostics;
 
-use std::{collections::HashMap, env, sync::Arc};
+use std::{collections::HashMap, env};
 
 use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
     db::{DefDatabase, InternDatabase},
-    expr::{ExprId, PatId},
+    hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
     src::HasSource,
@@ -32,6 +32,7 @@ use syntax::{
 };
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 use tracing_tree::HierarchicalLayer;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -148,10 +149,13 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
     });
     let mut unexpected_type_mismatches = String::new();
     for def in defs {
-        let (_body, body_source_map) = db.body_with_source_map(def);
+        let (body, body_source_map) = db.body_with_source_map(def);
         let inference_result = db.infer(def);
 
-        for (pat, ty) in inference_result.type_of_pat.iter() {
+        for (pat, mut ty) in inference_result.type_of_pat.iter() {
+            if let Pat::Bind { id, .. } = body.pats[pat] {
+                ty = &inference_result.type_of_binding[id];
+            }
             let node = match pat_node(&body_source_map, pat, &db) {
                 Some(value) => value,
                 None => continue,
@@ -159,7 +163,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let range = node.as_ref().original_file_range(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
-                    ty.display_source_code(&db, def.module(&db)).unwrap()
+                    ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
                     ty.display_test(&db).to_string()
                 };
@@ -175,7 +179,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let range = node.as_ref().original_file_range(&db);
             if let Some(expected) = types.remove(&range) {
                 let actual = if display_source {
-                    ty.display_source_code(&db, def.module(&db)).unwrap()
+                    ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
                     ty.display_test(&db).to_string()
                 };
@@ -198,8 +202,8 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
 
         for (expr_or_pat, mismatch) in inference_result.type_mismatches() {
             let Some(node) = (match expr_or_pat {
-                hir_def::expr::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
-                hir_def::expr::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
+                hir_def::hir::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
+                hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
             }) else { continue; };
             let range = node.as_ref().original_file_range(&db);
             let actual = format!(
@@ -246,7 +250,7 @@ fn expr_node(
 ) -> Option<InFile<SyntaxNode>> {
     Some(match body_source_map.expr_syntax(expr) {
         Ok(sp) => {
-            let root = db.parse_or_expand(sp.file_id).unwrap();
+            let root = db.parse_or_expand(sp.file_id);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
         }
         Err(SyntheticSyntax) => return None,
@@ -260,7 +264,7 @@ fn pat_node(
 ) -> Option<InFile<SyntaxNode>> {
     Some(match body_source_map.pat_syntax(pat) {
         Ok(sp) => {
-            let root = db.parse_or_expand(sp.file_id).unwrap();
+            let root = db.parse_or_expand(sp.file_id);
             sp.map(|ptr| {
                 ptr.either(
                     |it| it.to_node(&root).syntax().clone(),
@@ -283,14 +287,18 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let mut buf = String::new();
 
     let mut infer_def = |inference_result: Arc<InferenceResult>,
+                         body: Arc<Body>,
                          body_source_map: Arc<BodySourceMap>| {
         let mut types: Vec<(InFile<SyntaxNode>, &Ty)> = Vec::new();
         let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
 
-        for (pat, ty) in inference_result.type_of_pat.iter() {
+        for (pat, mut ty) in inference_result.type_of_pat.iter() {
+            if let Pat::Bind { id, .. } = body.pats[pat] {
+                ty = &inference_result.type_of_binding[id];
+            }
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
                 Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    let root = db.parse_or_expand(sp.file_id);
                     sp.map(|ptr| {
                         ptr.either(
                             |it| it.to_node(&root).syntax().clone(),
@@ -309,7 +317,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         for (expr, ty) in inference_result.type_of_expr.iter() {
             let node = match body_source_map.expr_syntax(expr) {
                 Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    let root = db.parse_or_expand(sp.file_id);
                     sp.map(|ptr| ptr.to_node(&root).syntax().clone())
                 }
                 Err(SyntheticSyntax) => continue,
@@ -385,9 +393,9 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
     });
     for def in defs {
-        let (_body, source_map) = db.body_with_source_map(def);
+        let (body, source_map) = db.body_with_source_map(def);
         let infer = db.infer(def);
-        infer_def(infer, source_map);
+        infer_def(infer, body, source_map);
     }
 
     buf.truncate(buf.trim_end().len());
@@ -572,10 +580,9 @@ fn salsa_bug() {
             let x = 1;
             x.push(1);
         }
-    "
-    .to_string();
+    ";
 
-    db.set_file_text(pos.file_id, Arc::new(new_text));
+    db.set_file_text(pos.file_id, Arc::from(new_text));
 
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);

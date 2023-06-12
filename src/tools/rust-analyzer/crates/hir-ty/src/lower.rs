@@ -8,7 +8,6 @@
 use std::{
     cell::{Cell, RefCell, RefMut},
     iter,
-    sync::Arc,
 };
 
 use base_db::CrateId;
@@ -18,19 +17,20 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    adt::StructKind,
-    body::{Expander, LowerCtx},
     builtin_type::BuiltinType,
+    data::adt::StructKind,
+    expander::Expander,
     generics::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
     lang_item::{lang_attr, LangItem},
-    path::{GenericArg, ModPath, Path, PathKind, PathSegment, PathSegments},
+    nameres::MacroSubNs,
+    path::{GenericArg, GenericArgs, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{ConstRefOrPath, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
-    AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId, VariantId,
+    AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
+    GenericDefId, HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, StaticId,
+    StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::Name, ExpandResult};
 use intern::Interned;
@@ -39,6 +39,7 @@ use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use syntax::ast;
+use triomphe::Arc;
 
 use crate::{
     all_super_traits,
@@ -103,7 +104,7 @@ impl ImplTraitLoweringState {
 #[derive(Debug)]
 pub struct TyLoweringContext<'a> {
     pub db: &'a dyn HirDatabase,
-    pub resolver: &'a Resolver,
+    resolver: &'a Resolver,
     in_binders: DebruijnIndex,
     /// Note: Conceptually, it's thinkable that we could be in a location where
     /// some type params should be represented as placeholders, and others
@@ -378,10 +379,19 @@ impl<'a> TyLoweringContext<'a> {
                 };
                 let ty = {
                     let macro_call = macro_call.to_node(self.db.upcast());
-                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
+                    let resolver = |path| {
+                        self.resolver.resolve_path_as_macro(
+                            self.db.upcast(),
+                            &path,
+                            Some(MacroSubNs::Bang),
+                        )
+                    };
+                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call, resolver)
+                    {
                         Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
-                            let ctx = LowerCtx::new(self.db.upcast(), expander.current_file_id());
-                            let type_ref = TypeRef::from_ast(&ctx, expanded);
+                            let ctx = expander.ctx(self.db.upcast());
+                            // FIXME: Report syntax errors in expansion here
+                            let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
 
                             drop(expander);
                             let ty = self.lower_ty(&type_ref);
@@ -425,11 +435,10 @@ impl<'a> TyLoweringContext<'a> {
         if path.segments().len() > 1 {
             return None;
         }
-        let resolution =
-            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
-                Some((it, None)) => it,
-                _ => return None,
-            };
+        let resolution = match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
+            Some((it, None)) => it,
+            _ => return None,
+        };
         match resolution {
             TypeNs::GenericParam(param_id) => Some(param_id.into()),
             _ => None,
@@ -608,7 +617,7 @@ impl<'a> TyLoweringContext<'a> {
         }
 
         let (resolution, remaining_index) =
-            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
+            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
                 Some(it) => it,
                 None => return (TyKind::Error.intern(Interner), None),
             };
@@ -716,7 +725,7 @@ impl<'a> TyLoweringContext<'a> {
         resolved: ValueTyDefId,
         infer_args: bool,
     ) -> Substitution {
-        let last = path.segments().last().expect("path should have at least one segment");
+        let last = path.segments().last();
         let (segment, generic_def) = match resolved {
             ValueTyDefId::FunctionId(it) => (last, Some(it.into())),
             ValueTyDefId::StructId(it) => (last, Some(it.into())),
@@ -732,18 +741,40 @@ impl<'a> TyLoweringContext<'a> {
                 let len = path.segments().len();
                 let penultimate = len.checked_sub(2).and_then(|idx| path.segments().get(idx));
                 let segment = match penultimate {
-                    Some(segment) if segment.args_and_bindings.is_some() => segment,
+                    Some(segment) if segment.args_and_bindings.is_some() => Some(segment),
                     _ => last,
                 };
                 (segment, Some(var.parent.into()))
             }
         };
-        self.substs_from_path_segment(segment, generic_def, infer_args, None)
+        if let Some(segment) = segment {
+            self.substs_from_path_segment(segment, generic_def, infer_args, None)
+        } else if let Some(generic_def) = generic_def {
+            // lang item
+            self.substs_from_args_and_bindings(None, Some(generic_def), infer_args, None)
+        } else {
+            Substitution::empty(Interner)
+        }
     }
 
     fn substs_from_path_segment(
         &self,
         segment: PathSegment<'_>,
+        def: Option<GenericDefId>,
+        infer_args: bool,
+        explicit_self_ty: Option<Ty>,
+    ) -> Substitution {
+        self.substs_from_args_and_bindings(
+            segment.args_and_bindings,
+            def,
+            infer_args,
+            explicit_self_ty,
+        )
+    }
+
+    fn substs_from_args_and_bindings(
+        &self,
+        args_and_bindings: Option<&GenericArgs>,
         def: Option<GenericDefId>,
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
@@ -780,7 +811,7 @@ impl<'a> TyLoweringContext<'a> {
         };
         let mut had_explicit_args = false;
 
-        if let Some(generic_args) = &segment.args_and_bindings {
+        if let Some(generic_args) = &args_and_bindings {
             if !generic_args.has_self_type {
                 fill_self_params();
             }
@@ -879,12 +910,11 @@ impl<'a> TyLoweringContext<'a> {
         path: &Path,
         explicit_self_ty: Option<Ty>,
     ) -> Option<TraitRef> {
-        let resolved =
-            match self.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path.mod_path())? {
-                // FIXME(trait_alias): We need to handle trait alias here.
-                TypeNs::TraitId(tr) => tr,
-                _ => return None,
-            };
+        let resolved = match self.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path)? {
+            // FIXME(trait_alias): We need to handle trait alias here.
+            TypeNs::TraitId(tr) => tr,
+            _ => return None,
+        };
         let segment = path.segments().last().expect("path should have at least one segment");
         Some(self.lower_trait_ref_from_resolved_path(resolved, segment, explicit_self_ty))
     }
@@ -968,7 +998,7 @@ impl<'a> TyLoweringContext<'a> {
                         // ignore `T: Drop` or `T: Destruct` bounds.
                         // - `T: ~const Drop` has a special meaning in Rust 1.61 that we don't implement.
                         //   (So ideally, we'd only ignore `~const Drop` here)
-                        // - `Destruct` impls are built-in in 1.62 (current nightlies as of 08-04-2022), so until
+                        // - `Destruct` impls are built-in in 1.62 (current nightly as of 08-04-2022), so until
                         //   the builtin impls are supported by Chalk, we ignore them here.
                         if let Some(lang) = lang_attr(self.db.upcast(), tr.hir_trait_id()) {
                             if matches!(lang, LangItem::Drop | LangItem::Destruct) {
@@ -1062,23 +1092,23 @@ impl<'a> TyLoweringContext<'a> {
                     associated_ty_id: to_assoc_type_id(associated_ty),
                     substitution,
                 };
-                let mut preds: SmallVec<[_; 1]> = SmallVec::with_capacity(
+                let mut predicates: SmallVec<[_; 1]> = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = &binding.type_ref {
                     let ty = self.lower_ty(type_ref);
                     let alias_eq =
                         AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                    preds.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
+                    predicates.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
                 }
                 for bound in binding.bounds.iter() {
-                    preds.extend(self.lower_type_bound(
+                    predicates.extend(self.lower_type_bound(
                         bound,
                         TyKind::Alias(AliasTy::Projection(projection_ty.clone())).intern(Interner),
                         false,
                     ));
                 }
-                preds
+                predicates
             })
     }
 
@@ -1145,7 +1175,7 @@ impl<'a> TyLoweringContext<'a> {
                 return None;
             }
 
-            // As multiple occurrences of the same auto traits *are* permitted, we dedulicate the
+            // As multiple occurrences of the same auto traits *are* permitted, we deduplicate the
             // bounds. We shouldn't have repeated elements besides auto traits at this point.
             bounds.dedup();
 
@@ -1381,9 +1411,7 @@ pub(crate) fn generic_predicates_for_param_query(
                             Some(it) => it,
                             None => return true,
                         };
-                        let tr = match resolver
-                            .resolve_path_in_type_ns_fully(db.upcast(), path.mod_path())
-                        {
+                        let tr = match resolver.resolve_path_in_type_ns_fully(db.upcast(), path) {
                             Some(TypeNs::TraitId(tr)) => tr,
                             _ => return false,
                         };
@@ -1420,7 +1448,19 @@ pub(crate) fn generic_predicates_for_param_recover(
     _param_id: &TypeOrConstParamId,
     _assoc_name: &Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
-    Arc::new([])
+    // FIXME: use `Arc::from_iter` when it becomes available
+    Arc::from(vec![])
+}
+
+pub(crate) fn trait_environment_for_body_query(
+    db: &dyn HirDatabase,
+    def: DefWithBodyId,
+) -> Arc<TraitEnvironment> {
+    let Some(def) = def.as_generic_def_id() else {
+        let krate = def.module(db.upcast()).krate();
+        return Arc::new(TraitEnvironment::empty(krate));
+    };
+    db.trait_environment(def)
 }
 
 pub(crate) fn trait_environment_query(
@@ -1478,7 +1518,7 @@ pub(crate) fn trait_environment_query(
 
     let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
 
-    Arc::new(TraitEnvironment { krate, traits_from_clauses: traits_in_scope, env })
+    Arc::new(TraitEnvironment { krate, block: None, traits_from_clauses: traits_in_scope, env })
 }
 
 /// Resolve the where clause(s) of an item with generics.
@@ -1547,30 +1587,33 @@ pub(crate) fn generic_defaults_query(
     let generic_params = generics(db.upcast(), def);
     let parent_start_idx = generic_params.len_self();
 
-    let defaults = generic_params
-        .iter()
-        .enumerate()
-        .map(|(idx, (id, p))| {
-            let p = match p {
-                TypeOrConstParamData::TypeParamData(p) => p,
-                TypeOrConstParamData::ConstParamData(_) => {
-                    // FIXME: implement const generic defaults
-                    let val = unknown_const_as_generic(
-                        db.const_param_ty(ConstParamId::from_unchecked(id)),
-                    );
-                    return make_binders(db, &generic_params, val);
-                }
-            };
-            let mut ty =
-                p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
+    let defaults = Arc::from(
+        generic_params
+            .iter()
+            .enumerate()
+            .map(|(idx, (id, p))| {
+                let p = match p {
+                    TypeOrConstParamData::TypeParamData(p) => p,
+                    TypeOrConstParamData::ConstParamData(_) => {
+                        // FIXME: implement const generic defaults
+                        let val = unknown_const_as_generic(
+                            db.const_param_ty(ConstParamId::from_unchecked(id)),
+                        );
+                        return make_binders(db, &generic_params, val);
+                    }
+                };
+                let mut ty =
+                    p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
 
-            // Each default can only refer to previous parameters.
-            // Type variable default referring to parameter coming
-            // after it is forbidden (FIXME: report diagnostic)
-            ty = fallback_bound_vars(ty, idx, parent_start_idx);
-            crate::make_binders(db, &generic_params, ty.cast(Interner))
-        })
-        .collect();
+                // Each default can only refer to previous parameters.
+                // Type variable default referring to parameter coming
+                // after it is forbidden (FIXME: report diagnostic)
+                ty = fallback_bound_vars(ty, idx, parent_start_idx);
+                crate::make_binders(db, &generic_params, ty.cast(Interner))
+            })
+            // FIXME: use `Arc::from_iter` when it becomes available
+            .collect::<Vec<_>>(),
+    );
 
     defaults
 }
@@ -1583,18 +1626,21 @@ pub(crate) fn generic_defaults_recover(
     let generic_params = generics(db.upcast(), *def);
     // FIXME: this code is not covered in tests.
     // we still need one default per parameter
-    let defaults = generic_params
-        .iter_id()
-        .map(|id| {
-            let val = match id {
-                Either::Left(_) => {
-                    GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
-                }
-                Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
-            };
-            crate::make_binders(db, &generic_params, val)
-        })
-        .collect();
+    let defaults = Arc::from(
+        generic_params
+            .iter_id()
+            .map(|id| {
+                let val = match id {
+                    Either::Left(_) => {
+                        GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
+                    }
+                    Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
+                };
+                crate::make_binders(db, &generic_params, val)
+            })
+            // FIXME: use `Arc::from_iter` when it becomes available
+            .collect::<Vec<_>>(),
+    );
 
     defaults
 }
@@ -1605,7 +1651,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let ctx_params = TyLoweringContext::new(db, &resolver)
         .with_impl_trait_mode(ImplTraitLoweringMode::Variable)
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = data.params.iter().map(|(_, tr)| ctx_params.lower_ty(tr)).collect::<Vec<_>>();
+    let params = data.params.iter().map(|tr| ctx_params.lower_ty(tr)).collect::<Vec<_>>();
     let ctx_ret = TyLoweringContext::new(db, &resolver)
         .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
         .with_type_param_mode(ParamLoweringMode::Variable);
@@ -1948,7 +1994,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
             // as types. Maybe here is not the best place to do it, but
             // it works.
             if let TypeRef::Path(p) = t {
-                let p = p.mod_path();
+                let p = p.mod_path()?;
                 if p.kind == PathKind::Plain {
                     if let [n] = p.segments() {
                         let c = ConstRefOrPath::Path(n.clone());
@@ -1977,8 +2023,16 @@ pub(crate) fn const_or_path_to_chalk(
         ConstRefOrPath::Scalar(s) => intern_const_ref(db, s, expected_ty, resolver.krate()),
         ConstRefOrPath::Path(n) => {
             let path = ModPath::from_segments(PathKind::Plain, Some(n.clone()));
-            path_to_const(db, resolver, &path, mode, args, debruijn)
-                .unwrap_or_else(|| unknown_const(expected_ty))
+            path_to_const(
+                db,
+                resolver,
+                &Path::from_known_path_with_no_generic(path),
+                mode,
+                args,
+                debruijn,
+                expected_ty.clone(),
+            )
+            .unwrap_or_else(|| unknown_const(expected_ty))
         }
     }
 }

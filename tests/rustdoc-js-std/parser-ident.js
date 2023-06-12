@@ -1,14 +1,6 @@
-const QUERY = [
-    "R<!>",
-    "!",
-    "a!",
-    "a!::b",
-    "!::b",
-    "a!::b!",
-];
-
 const PARSED = [
     {
+        query: "R<!>",
         elems: [{
             name: "r",
             fullPath: ["r"],
@@ -32,6 +24,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: "!",
         elems: [{
             name: "!",
             fullPath: ["!"],
@@ -47,6 +40,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: "a!",
         elems: [{
             name: "a",
             fullPath: ["a"],
@@ -62,6 +56,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: "a!::b",
         elems: [],
         foundElems: 0,
         original: "a!::b",
@@ -70,6 +65,7 @@ const PARSED = [
         error: "Cannot have associated items in macros",
     },
     {
+        query: "!::b",
         elems: [{
             name: "!::b",
             fullPath: ["!", "b"],
@@ -85,6 +81,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: "a!::b!",
         elems: [],
         foundElems: 0,
         original: "a!::b!",

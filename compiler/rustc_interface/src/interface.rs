@@ -14,7 +14,7 @@ use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
-use rustc_session::config::{self, ErrorOutputType, Input, OutputFilenames};
+use rustc_session::config::{self, ErrorOutputType, Input, OutFileName, OutputFilenames};
 use rustc_session::config::{CheckCfg, ExpectedValues};
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
@@ -252,7 +252,7 @@ pub struct Config {
 
     pub input: Input,
     pub output_dir: Option<PathBuf>,
-    pub output_file: Option<PathBuf>,
+    pub output_file: Option<OutFileName>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub locale_resources: &'static [&'static str],
 
