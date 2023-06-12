@@ -33,6 +33,7 @@ where
         Self { src, dst, scope, assume, context }
     }
 
+    // FIXME(bryangarza): Delete this when all usages are removed
     pub(crate) fn map_layouts<F, M>(
         self,
         f: F,
@@ -67,30 +68,26 @@ mod rustc {
         /// then computes an answer using those trees.
         #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
         pub fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
-            let query_or_answer = self.map_layouts(|src, dst, scope, &context| {
-                // Convert `src` and `dst` from their rustc representations, to `Tree`-based
-                // representations. If these conversions fail, conclude that the transmutation is
-                // unacceptable; the layouts of both the source and destination types must be
-                // well-defined.
-                let src = Tree::from_ty(src, context);
-                let dst = Tree::from_ty(dst, context);
+            let Self { src, dst, scope, assume, context } = self;
 
-                match (src, dst) {
-                    // Answer `Ok(None)` here, because 'unknown layout' and type errors will already
-                    // be reported by rustc. No need to spam the user with more errors.
-                    (Err(Err::TypeError(_)), _)
-                    | (_, Err(Err::TypeError(_)))
-                    | (Err(Err::Unknown), _)
-                    | (_, Err(Err::Unknown)) => Err(Ok(None)),
-                    (Err(Err::Unspecified), _) => Err(Err(Reason::SrcIsUnspecified)),
-                    (_, Err(Err::Unspecified)) => Err(Err(Reason::DstIsUnspecified)),
-                    (Ok(src), Ok(dst)) => Ok((src, dst)),
+            // Convert `src` and `dst` from their rustc representations, to `Tree`-based
+            // representations. If these conversions fail, conclude that the transmutation is
+            // unacceptable; the layouts of both the source and destination types must be
+            // well-defined.
+            let src = Tree::from_ty(src, context);
+            let dst = Tree::from_ty(dst, context);
+
+            match (src, dst) {
+                (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => {
+                    Answer::No(Reason::TypeError)
                 }
-            });
-
-            match query_or_answer {
-                Ok(query) => query.answer(),
-                Err(answer) => answer,
+                (Err(Err::UnknownLayout), _) => Answer::No(Reason::SrcLayoutUnknown),
+                (_, Err(Err::UnknownLayout)) => Answer::No(Reason::DstLayoutUnknown),
+                (Err(Err::Unspecified), _) => Answer::No(Reason::SrcIsUnspecified),
+                (_, Err(Err::Unspecified)) => Answer::No(Reason::DstIsUnspecified),
+                (Ok(src), Ok(dst)) => {
+                    MaybeTransmutableQuery { src, dst, scope, assume, context }.answer()
+                }
             }
         }
     }
@@ -108,6 +105,7 @@ where
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
         let assume_visibility = self.assume.safety;
+        // FIXME(bryangarza): Refactor this code to get rid of `map_layouts`
         let query_or_answer = self.map_layouts(|src, dst, scope, context| {
             // Remove all `Def` nodes from `src`, without checking their visibility.
             let src = src.prune(&|def| true);
@@ -128,12 +126,13 @@ where
             // Convert `src` from a tree-based representation to an NFA-based representation.
             // If the conversion fails because `src` is uninhabited, conclude that the transmutation
             // is acceptable, because instances of the `src` type do not exist.
-            let src = Nfa::from_tree(src).map_err(|Uninhabited| Ok(None))?;
+            let src = Nfa::from_tree(src).map_err(|Uninhabited| Answer::Yes)?;
 
             // Convert `dst` from a tree-based representation to an NFA-based representation.
             // If the conversion fails because `src` is uninhabited, conclude that the transmutation
             // is unacceptable, because instances of the `dst` type do not exist.
-            let dst = Nfa::from_tree(dst).map_err(|Uninhabited| Err(Reason::DstIsPrivate))?;
+            let dst =
+                Nfa::from_tree(dst).map_err(|Uninhabited| Answer::No(Reason::DstIsPrivate))?;
 
             Ok((src, dst))
         });
@@ -155,6 +154,7 @@ where
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
+        // FIXME(bryangarza): Refactor this code to get rid of `map_layouts`
         let query_or_answer = self
             .map_layouts(|src, dst, scope, context| Ok((Dfa::from_nfa(src), Dfa::from_nfa(dst))));
 
@@ -226,13 +226,13 @@ where
                 // So, if it's possible to transmute to a smaller Dst by truncating, and we can guarantee
                 // that none of the actually-used data can introduce an invalid state for Dst's type, we
                 // are able to safely transmute, even with truncation.
-                Ok(None)
+                Answer::Yes
             } else if src_state == self.src.accepting {
                 // extension: `size_of(Src) >= size_of(Dst)`
                 if let Some(dst_state_prime) = self.dst.byte_from(dst_state, Byte::Uninit) {
                     self.answer_memo(cache, src_state, dst_state_prime)
                 } else {
-                    Err(Reason::DstIsTooBig)
+                    Answer::No(Reason::DstIsTooBig)
                 }
             } else {
                 let src_quantifier = if self.assume.validity {
@@ -265,7 +265,7 @@ where
                             } else {
                                 // otherwise, we've exhausted our options.
                                 // the DFAs, from this point onwards, are bit-incompatible.
-                                Err(Reason::DstIsBitIncompatible)
+                                Answer::No(Reason::DstIsBitIncompatible)
                             }
                         },
                     ),
@@ -282,8 +282,8 @@ where
                 // the algoritm; only its performance.
                 debug!(?bytes_answer);
                 match bytes_answer {
-                    Err(_) if !self.assume.validity => return bytes_answer,
-                    Ok(None) if self.assume.validity => return bytes_answer,
+                    Answer::No(_) if !self.assume.validity => return bytes_answer,
+                    Answer::Yes if self.assume.validity => return bytes_answer,
                     _ => {}
                 };
 
@@ -299,11 +299,11 @@ where
                                     .into_iter()
                                     .map(|(&dst_ref, &dst_state_prime)| {
                                         if !src_ref.is_mutable() && dst_ref.is_mutable() {
-                                            Err(Reason::DstIsMoreUnique)
+                                            Answer::No(Reason::DstIsMoreUnique)
                                         } else if !self.assume.alignment
                                             && src_ref.min_align() < dst_ref.min_align()
                                         {
-                                            Err(Reason::DstHasStricterAlignment {
+                                            Answer::No(Reason::DstHasStricterAlignment {
                                                 src_min_align: src_ref.min_align(),
                                                 dst_min_align: dst_ref.min_align(),
                                             })
@@ -311,10 +311,10 @@ where
                                             // ...such that `src` is transmutable into `dst`, if
                                             // `src_ref` is transmutability into `dst_ref`.
                                             and(
-                                                Ok(Some(Condition::IfTransmutable {
+                                                Answer::If(Condition::IfTransmutable {
                                                     src: src_ref,
                                                     dst: dst_ref,
-                                                })),
+                                                }),
                                                 self.answer_memo(
                                                     cache,
                                                     src_state_prime,
@@ -346,65 +346,56 @@ fn and<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R>
 where
     R: PartialEq,
 {
-    // If both are errors, then we should return the more specific one
-    if lhs.is_err() && rhs.is_err() {
-        if lhs == Err(Reason::DstIsBitIncompatible) {
-            return rhs;
-        } else {
-            return lhs;
-        }
-    }
-    Ok(match (lhs?, rhs?) {
+    match (lhs, rhs) {
+        // If both are errors, then we should return the more specific one
+        (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
+        | (Answer::No(reason), Answer::No(_))
+        // If either is an error, return it
+        | (Answer::No(reason), _) | (_, Answer::No(reason)) => Answer::No(reason),
         // If only one side has a condition, pass it along
-        (None, other) | (other, None) => other,
+        | (Answer::Yes, other) | (other, Answer::Yes) => other,
         // If both sides have IfAll conditions, merge them
-        (Some(Condition::IfAll(mut lhs)), Some(Condition::IfAll(ref mut rhs))) => {
+        (Answer::If(Condition::IfAll(mut lhs)), Answer::If(Condition::IfAll(ref mut rhs))) => {
             lhs.append(rhs);
-            Some(Condition::IfAll(lhs))
+            Answer::If(Condition::IfAll(lhs))
         }
         // If only one side is an IfAll, add the other Condition to it
-        (Some(cond), Some(Condition::IfAll(mut conds)))
-        | (Some(Condition::IfAll(mut conds)), Some(cond)) => {
+        (Answer::If(cond), Answer::If(Condition::IfAll(mut conds)))
+        | (Answer::If(Condition::IfAll(mut conds)), Answer::If(cond)) => {
             conds.push(cond);
-            Some(Condition::IfAll(conds))
+            Answer::If(Condition::IfAll(conds))
         }
         // Otherwise, both lhs and rhs conditions can be combined in a parent IfAll
-        (Some(lhs), Some(rhs)) => Some(Condition::IfAll(vec![lhs, rhs])),
-    })
+        (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAll(vec![lhs, rhs])),
+    }
 }
 
 fn or<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R>
 where
     R: PartialEq,
 {
-    // If both are errors, then we should return the more specific one
-    if lhs.is_err() && rhs.is_err() {
-        if lhs == Err(Reason::DstIsBitIncompatible) {
-            return rhs;
-        } else {
-            return lhs;
-        }
-    }
-    // Otherwise, errors can be ignored for the rest of the pattern matching
-    let lhs = lhs.unwrap_or(None);
-    let rhs = rhs.unwrap_or(None);
-    Ok(match (lhs, rhs) {
+    match (lhs, rhs) {
+        // If both are errors, then we should return the more specific one
+        (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
+        | (Answer::No(reason), Answer::No(_)) => Answer::No(reason),
+        // Otherwise, errors can be ignored for the rest of the pattern matching
+        (Answer::No(_), other) | (other, Answer::No(_)) => or(other, Answer::Yes),
         // If only one side has a condition, pass it along
-        (None, other) | (other, None) => other,
+        (Answer::Yes, other) | (other, Answer::Yes) => other,
         // If both sides have IfAny conditions, merge them
-        (Some(Condition::IfAny(mut lhs)), Some(Condition::IfAny(ref mut rhs))) => {
+        (Answer::If(Condition::IfAny(mut lhs)), Answer::If(Condition::IfAny(ref mut rhs))) => {
             lhs.append(rhs);
-            Some(Condition::IfAny(lhs))
+            Answer::If(Condition::IfAny(lhs))
         }
         // If only one side is an IfAny, add the other Condition to it
-        (Some(cond), Some(Condition::IfAny(mut conds)))
-        | (Some(Condition::IfAny(mut conds)), Some(cond)) => {
+        (Answer::If(cond), Answer::If(Condition::IfAny(mut conds)))
+        | (Answer::If(Condition::IfAny(mut conds)), Answer::If(cond)) => {
             conds.push(cond);
-            Some(Condition::IfAny(conds))
+            Answer::If(Condition::IfAny(conds))
         }
         // Otherwise, both lhs and rhs conditions can be combined in a parent IfAny
-        (Some(lhs), Some(rhs)) => Some(Condition::IfAny(vec![lhs, rhs])),
-    })
+        (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAny(vec![lhs, rhs])),
+    }
 }
 
 pub enum Quantifier {
@@ -421,15 +412,20 @@ impl Quantifier {
         use std::ops::ControlFlow::{Break, Continue};
 
         let (init, try_fold_f): (_, fn(_, _) -> _) = match self {
-            Self::ThereExists => (Err(Reason::DstIsBitIncompatible), |accum: Answer<R>, next| {
-                match or(accum, next) {
-                    Ok(None) => Break(Ok(None)),
+            Self::ThereExists => {
+                (Answer::No(Reason::DstIsBitIncompatible), |accum: Answer<R>, next| {
+                    match or(accum, next) {
+                        Answer::Yes => Break(Answer::Yes),
+                        maybe => Continue(maybe),
+                    }
+                })
+            }
+            Self::ForAll => (Answer::Yes, |accum: Answer<R>, next| {
+                let answer = and(accum, next);
+                match answer {
+                    Answer::No(_) => Break(answer),
                     maybe => Continue(maybe),
                 }
-            }),
-            Self::ForAll => (Ok(None), |accum: Answer<R>, next| match and(accum, next) {
-                Err(reason) => Break(Err(reason)),
-                maybe => Continue(maybe),
             }),
         };
 

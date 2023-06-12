@@ -188,14 +188,14 @@ pub(crate) mod rustc {
         /// The layout of the type is unspecified.
         Unspecified,
         /// This error will be surfaced elsewhere by rustc, so don't surface it.
-        Unknown,
+        UnknownLayout,
         TypeError(ErrorGuaranteed),
     }
 
     impl<'tcx> From<LayoutError<'tcx>> for Err {
         fn from(err: LayoutError<'tcx>) -> Self {
             match err {
-                LayoutError::Unknown(..) => Self::Unknown,
+                LayoutError::Unknown(..) => Self::UnknownLayout,
                 err => unimplemented!("{:?}", err),
             }
         }

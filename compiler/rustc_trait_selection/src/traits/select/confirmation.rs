@@ -285,28 +285,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        use rustc_transmute::{Answer, Condition};
         #[instrument(level = "debug", skip(tcx, obligation, predicate))]
         fn flatten_answer_tree<'tcx>(
             tcx: TyCtxt<'tcx>,
             obligation: &TraitObligation<'tcx>,
             predicate: TraitPredicate<'tcx>,
-            answer: rustc_transmute::Condition<rustc_transmute::layout::rustc::Ref<'tcx>>,
+            cond: Condition<rustc_transmute::layout::rustc::Ref<'tcx>>,
         ) -> Vec<PredicateObligation<'tcx>> {
-            match answer {
+            match cond {
                 // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
                 // Not possible until the trait solver supports disjunctions of obligations
-                rustc_transmute::Condition::IfAll(answers)
-                | rustc_transmute::Condition::IfAny(answers) => {
-                    let mut nested = vec![];
-                    for flattened in answers
-                        .into_iter()
-                        .map(|answer| flatten_answer_tree(tcx, obligation, predicate, answer))
-                    {
-                        nested.extend(flattened);
-                    }
-                    nested
-                }
-                rustc_transmute::Condition::IfTransmutable { src, dst } => {
+                Condition::IfAll(conds) | Condition::IfAny(conds) => conds
+                    .into_iter()
+                    .flat_map(|cond| flatten_answer_tree(tcx, obligation, predicate, cond))
+                    .collect(),
+                Condition::IfTransmutable { src, dst } => {
                     let trait_def_id = obligation.predicate.def_id();
                     let scope = predicate.trait_ref.substs.type_at(2);
                     let assume_const = predicate.trait_ref.substs.const_at(3);
@@ -333,11 +327,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // If Dst is mutable, check bidirectionally.
                     // For example, transmuting bool -> u8 is OK as long as you can't update that u8
                     // to be > 1, because you could later transmute the u8 back to a bool and get UB.
-                    let mut obligations = vec![make_obl(src.ty, dst.ty)];
-                    if dst.mutability == Mutability::Mut {
-                        obligations.push(make_obl(dst.ty, src.ty));
+                    match dst.mutability {
+                        Mutability::Not => vec![make_obl(src.ty, dst.ty)],
+                        Mutability::Mut => vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)],
                     }
-                    obligations
                 }
             }
         }
@@ -370,9 +363,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let fully_flattened = match maybe_transmutable {
-            Err(_) => Err(Unimplemented)?,
-            Ok(Some(mt)) => flatten_answer_tree(self.tcx(), obligation, predicate, mt),
-            Ok(None) => vec![],
+            Answer::No(_) => Err(Unimplemented)?,
+            Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation, predicate, cond),
+            Answer::Yes => vec![],
         };
 
         debug!(?fully_flattened);

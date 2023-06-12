@@ -19,10 +19,16 @@ pub struct Assume {
     pub validity: bool,
 }
 
-/// Either we have an error, or we have an optional Condition that must hold.
-pub type Answer<R> = Result<Option<Condition<R>>, Reason>;
+/// Either we have an error, transmutation is allowed, or we have an optional
+/// Condition that must hold.
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+pub enum Answer<R> {
+    Yes,
+    No(Reason),
+    If(Condition<R>),
+}
 
-/// A condition which must hold for safe transmutation to be possible
+/// A condition which must hold for safe transmutation to be possible.
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum Condition<R> {
     /// `Src` is transmutable into `Dst`, if `src` is transmutable into `dst`.
@@ -35,7 +41,7 @@ pub enum Condition<R> {
     IfAny(Vec<Condition<R>>),
 }
 
-/// Answers: Why wasn't the source type transmutable into the destination type?
+/// Answers "why wasn't the source type transmutable into the destination type?"
 #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub enum Reason {
     /// The layout of the source type is unspecified.
@@ -52,6 +58,12 @@ pub enum Reason {
     DstHasStricterAlignment { src_min_align: usize, dst_min_align: usize },
     /// Can't go from shared pointer to unique pointer
     DstIsMoreUnique,
+    /// Encountered a type error
+    TypeError,
+    /// The layout of src is unknown
+    SrcLayoutUnknown,
+    /// The layout of dst is unknown
+    DstLayoutUnknown,
 }
 
 #[cfg(feature = "rustc")]
