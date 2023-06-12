@@ -1320,6 +1320,11 @@ host_test!(RunMakeFullDeps {
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
 host_test!(RunCoverage { path: "tests/run-coverage", mode: "run-coverage", suite: "run-coverage" });
+host_test!(RunCoverageRustdoc {
+    path: "tests/run-coverage-rustdoc",
+    mode: "run-coverage",
+    suite: "run-coverage-rustdoc"
+});
 
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1505,6 +1510,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
+            || suite == "run-coverage-rustdoc"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }

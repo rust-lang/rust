@@ -695,6 +695,7 @@ impl<'a> Builder<'a> {
                 test::Debuginfo,
                 test::UiFullDeps,
                 test::Rustdoc,
+                test::RunCoverageRustdoc,
                 test::Pretty,
                 test::Crate,
                 test::CrateLibrustc,
