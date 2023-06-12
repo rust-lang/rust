@@ -11,7 +11,9 @@ use syntax::{
 
 #[derive(Default)]
 struct AstSubsts {
-    types: Vec<ast::TypeArg>,
+    // ast::TypeArgs stands in fact for both type and const params
+    // as consts declared elsewhere look just like type params.
+    types_and_consts: Vec<ast::TypeArg>,
     lifetimes: Vec<ast::LifetimeArg>,
 }
 
@@ -108,7 +110,7 @@ impl<'a> PathTransform<'a> {
             Some(hir::GenericDef::Trait(_)) => 1,
             _ => 0,
         };
-        let type_substs: FxHashMap<_, _> = self
+        let type_and_const_substs: FxHashMap<_, _> = self
             .generic_def
             .into_iter()
             .flat_map(|it| it.type_params(db))
@@ -119,19 +121,17 @@ impl<'a> PathTransform<'a> {
             // can still hit those trailing values and check if they actually have
             // a default type. If they do, go for that type from `hir` to `ast` so
             // the resulting change can be applied correctly.
-            .zip(self.substs.types.iter().map(Some).chain(std::iter::repeat(None)))
-            .filter_map(|(k, v)| match k.split(db) {
-                Either::Left(_) => None, // FIXME: map const types too
-                Either::Right(t) => match v {
-                    Some(v) => Some((k, v.ty()?.clone())),
-                    None => {
-                        let default = t.default(db)?;
-                        let v = ast::make::ty(
-                            &default.display_source_code(db, source_module.into(), false).ok()?,
-                        );
-                        Some((k, v))
-                    }
-                },
+            .zip(self.substs.types_and_consts.iter().map(Some).chain(std::iter::repeat(None)))
+            .filter_map(|(k, v)| match (k.split(db), v) {
+                (_, Some(v)) => Some((k, v.ty()?.clone())),
+                (Either::Right(t), None) => {
+                    let default = t.default(db)?;
+                    let v = ast::make::ty(
+                        &default.display_source_code(db, source_module.into(), false).ok()?,
+                    );
+                    Some((k, v))
+                }
+                (Either::Left(_), None) => None, // FIXME: get default const value
             })
             .collect();
         let lifetime_substs: FxHashMap<_, _> = self
@@ -141,12 +141,17 @@ impl<'a> PathTransform<'a> {
             .zip(self.substs.lifetimes.clone())
             .filter_map(|(k, v)| Some((k.name(db).display(db.upcast()).to_string(), v.lifetime()?)))
             .collect();
-        Ctx { type_substs, lifetime_substs, target_module, source_scope: self.source_scope }
+        Ctx {
+            type_and_const_substs,
+            lifetime_substs,
+            target_module,
+            source_scope: self.source_scope,
+        }
     }
 }
 
 struct Ctx<'a> {
-    type_substs: FxHashMap<hir::TypeOrConstParam, ast::Type>,
+    type_and_const_substs: FxHashMap<hir::TypeOrConstParam, ast::Type>,
     lifetime_substs: FxHashMap<LifetimeName, ast::Lifetime>,
     target_module: hir::Module,
     source_scope: &'a SemanticsScope<'a>,
@@ -203,7 +208,7 @@ impl<'a> Ctx<'a> {
 
         match resolution {
             hir::PathResolution::TypeParam(tp) => {
-                if let Some(subst) = self.type_substs.get(&tp.merge()) {
+                if let Some(subst) = self.type_and_const_substs.get(&tp.merge()) {
                     let parent = path.syntax().parent()?;
                     if let Some(parent) = ast::Path::cast(parent.clone()) {
                         // Path inside path means that there is an associated
@@ -270,8 +275,12 @@ impl<'a> Ctx<'a> {
                 }
                 ted::replace(path.syntax(), res.syntax())
             }
+            hir::PathResolution::ConstParam(cp) => {
+                if let Some(subst) = self.type_and_const_substs.get(&cp.merge()) {
+                    ted::replace(path.syntax(), subst.clone_subtree().clone_for_update().syntax());
+                }
+            }
             hir::PathResolution::Local(_)
-            | hir::PathResolution::ConstParam(_)
             | hir::PathResolution::SelfType(_)
             | hir::PathResolution::Def(_)
             | hir::PathResolution::BuiltinAttr(_)
@@ -298,9 +307,14 @@ fn get_syntactic_substs(impl_def: ast::Impl) -> Option<AstSubsts> {
 fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<AstSubsts> {
     let mut result = AstSubsts::default();
     generic_arg_list.generic_args().for_each(|generic_arg| match generic_arg {
-        ast::GenericArg::TypeArg(type_arg) => result.types.push(type_arg),
+        // Const params are marked as consts on definition only,
+        // being passed to the trait they are indistguishable from type params;
+        // anyway, we don't really need to distinguish them here.
+        ast::GenericArg::TypeArg(type_or_const_arg) => {
+            result.types_and_consts.push(type_or_const_arg)
+        }
         ast::GenericArg::LifetimeArg(l_arg) => result.lifetimes.push(l_arg),
-        _ => (), // FIXME: don't filter out const params
+        _ => (),
     });
 
     Some(result)

@@ -419,6 +419,37 @@ impl<'x, 'y, T, V, U: Default> Trait<'x, 'y, T, V, U> for () {
     }
 
     #[test]
+    fn test_const_substitution() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+trait Foo<const N: usize, T> {
+    fn get_n_sq(&self, arg: &T) -> usize { N * N }
+}
+
+struct S<T> {
+    wrapped: T
+}
+
+impl<const X: usize, Y, Z> Foo<X, Z> for S<Y> {
+    $0
+}"#,
+            r#"
+trait Foo<const N: usize, T> {
+    fn get_n_sq(&self, arg: &T) -> usize { N * N }
+}
+
+struct S<T> {
+    wrapped: T
+}
+
+impl<const X: usize, Y, Z> Foo<X, Z> for S<Y> {
+    $0fn get_n_sq(&self, arg: &Z) -> usize { X * X }
+}"#,
+        )
+    }
+
+    #[test]
     fn test_cursor_after_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
