@@ -89,6 +89,8 @@ hir_typeck_suggest_boxing_note = for more on the distinction between the stack a
 
 hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `Box::new`
 
+hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
+
 hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field
