@@ -5,9 +5,12 @@
     clippy::blocks_in_if_conditions,
     clippy::if_same_then_else,
     clippy::ifs_same_cond,
+    clippy::let_unit_value,
     clippy::needless_else,
     clippy::no_effect,
     clippy::nonminimal_bool,
+    clippy::short_circuit_statement,
+    clippy::unnecessary_operation,
     unused
 )]
 #![warn(clippy::needless_if)]
@@ -16,12 +19,7 @@ extern crate proc_macros;
 use proc_macros::external;
 use proc_macros::with_span;
 
-fn no_side_effects() -> bool {
-    true
-}
-
-fn has_side_effects(a: &mut u32) -> bool {
-    *a = 1;
+fn maybe_side_effect() -> bool {
     true
 }
 
@@ -29,10 +27,7 @@ fn main() {
     // Lint
     if (true) {}
     // Do not remove the condition
-    if no_side_effects() {}
-    let mut x = 0;
-    if has_side_effects(&mut x) {}
-    assert_eq!(x, 1);
+    if maybe_side_effect() {}
     // Do not lint
     if (true) {
     } else {
@@ -44,10 +39,11 @@ fn main() {
     if (true) {
     } else if (true) {
     }
-    // Do not lint if any `let` is present
+    // Do not lint `if let` or let chains
     if let true = true {}
     if let true = true && true {}
     if true && let true = true {}
+    // Can lint nested `if let`s
     if {
         if let true = true && true { true } else { false }
     } && true
@@ -57,4 +53,42 @@ fn main() {
         span
         if (true) {}
     }
+
+    if true {
+        // comment
+    }
+
+    if true {
+        #[cfg(any())]
+        foo;
+    }
+
+    macro_rules! empty_expansion {
+        () => {};
+    }
+
+    if true {
+        empty_expansion!();
+    }
+
+    macro_rules! empty_repetition {
+        ($($t:tt)*) => {
+            if true {
+                $($t)*
+            }
+        }
+    }
+
+    empty_repetition!();
+
+    // Must be placed into an expression context to not be interpreted as a block
+    if { maybe_side_effect() } {}
+    // Would be a block followed by `&&true` - a double reference to `true`
+    if { maybe_side_effect() } && true {}
+
+    // Don't leave trailing attributes
+    #[allow(unused)]
+    if true {}
+
+    let () = if maybe_side_effect() {};
 }

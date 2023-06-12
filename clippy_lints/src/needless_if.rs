@@ -1,9 +1,6 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, is_from_proc_macro, source::snippet_with_applicability};
+use clippy_utils::{diagnostics::span_lint_and_sugg, higher::If, is_from_proc_macro, source::snippet_opt};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    intravisit::{walk_expr, Visitor},
-    Expr, ExprKind, Node,
-};
+use rustc_hir::{ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -37,67 +34,42 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessIf => [NEEDLESS_IF]);
 
 impl LateLintPass<'_> for NeedlessIf {
-    fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if let ExprKind::If(if_expr, block, else_expr) = &expr.kind
-            && let ExprKind::Block(block, ..) = block.kind
+    fn check_stmt<'tcx>(&mut self, cx: &LateContext<'tcx>, stmt: &Stmt<'tcx>) {
+        if let StmtKind::Expr(expr) = stmt.kind
+            && let Some(If {cond, then, r#else: None }) = If::hir(expr)
+            && let ExprKind::Block(block, ..) = then.kind
             && block.stmts.is_empty()
             && block.expr.is_none()
-            && else_expr.is_none()
             && !in_external_macro(cx.sess(), expr.span)
+            && !is_from_proc_macro(cx, expr)
+            && let Some(then_snippet) = snippet_opt(cx, then.span)
+            // Ignore
+            // - empty macro expansions
+            // - empty reptitions in macro expansions
+            // - comments
+            // - #[cfg]'d out code
+            && then_snippet.chars().all(|ch| matches!(ch, '{' | '}') || ch.is_ascii_whitespace())
+            && let Some(cond_snippet) = snippet_opt(cx, cond.span)
         {
-            // Ignore `else if`
-            if let Some(parent_id) = cx.tcx.hir().opt_parent_id(expr.hir_id)
-                && let Some(Node::Expr(Expr {
-                    kind: ExprKind::If(_, _, Some(else_expr)),
-                    ..
-                })) = cx.tcx.hir().find(parent_id)
-                && else_expr.hir_id == expr.hir_id
-            {
-                return;
-            }
-
-            if is_any_if_let(if_expr) || is_from_proc_macro(cx, expr) {
-                return;
-            }
-
-            let mut app = Applicability::MachineApplicable;
-            let snippet = snippet_with_applicability(cx, if_expr.span, "{ ... }", &mut app);
-
             span_lint_and_sugg(
                 cx,
                 NEEDLESS_IF,
-                expr.span,
+                stmt.span,
                 "this `if` branch is empty",
                 "you can remove it",
-                if if_expr.can_have_side_effects() {
-                    format!("{snippet};")
+                if cond.can_have_side_effects() || !cx.tcx.hir().attrs(stmt.hir_id).is_empty() {
+                    // `{ foo }` or `{ foo } && bar` placed into a statement position would be
+                    // interpreted as a block statement, force it to be an expression
+                    if cond_snippet.starts_with('{') {
+                        format!("({cond_snippet});")
+                    } else {
+                        format!("{cond_snippet};")
+                    }
                 } else {
                     String::new()
                 },
-                app,
+                Applicability::MachineApplicable,
             );
-        }
-    }
-}
-
-/// Returns true if any `Expr` contained within this `Expr` is a `Let`, else false.
-///
-/// Really wish `Expr` had a `walk` method...
-fn is_any_if_let(expr: &Expr<'_>) -> bool {
-    let mut v = IsAnyLetVisitor(false);
-
-    v.visit_expr(expr);
-    v.0
-}
-
-struct IsAnyLetVisitor(bool);
-
-impl Visitor<'_> for IsAnyLetVisitor {
-    fn visit_expr(&mut self, expr: &Expr<'_>) {
-        if matches!(expr.kind, ExprKind::Let(..)) {
-            self.0 = true;
-        } else {
-            walk_expr(self, expr);
         }
     }
 }
