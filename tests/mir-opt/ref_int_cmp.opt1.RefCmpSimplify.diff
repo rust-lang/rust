@@ -1,0 +1,50 @@
+- // MIR for `opt1` before RefCmpSimplify
++ // MIR for `opt1` after RefCmpSimplify
+  
+  fn opt1(_1: &u8, _2: &u8) -> bool {
+      debug x => _1;                       // in scope 0 at $DIR/ref_int_cmp.rs:+0:13: +0:14
+      debug y => _2;                       // in scope 0 at $DIR/ref_int_cmp.rs:+0:21: +0:22
+      let mut _0: bool;                    // return place in scope 0 at $DIR/ref_int_cmp.rs:+0:32: +0:36
+      let mut _3: &&u8;                    // in scope 0 at $DIR/ref_int_cmp.rs:+1:3: +1:4
+      let mut _4: &&u8;                    // in scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+      let _5: &u8;                         // in scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+      let mut _8: &u8;                     // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _9: &u8;                     // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      scope 1 (inlined cmp::impls::<impl PartialOrd for &u8>::lt) { // at $DIR/ref_int_cmp.rs:5:3: 5:8
+          debug self => _3;                // in scope 1 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          debug other => _4;               // in scope 1 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          let mut _6: &u8;                 // in scope 1 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          let mut _7: &u8;                 // in scope 1 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          scope 2 (inlined cmp::impls::<impl PartialOrd for u8>::lt) { // at $SRC_DIR/core/src/cmp.rs:LL:COL
+              debug self => _6;            // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+              debug other => _7;           // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+              let mut _10: u8;             // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+              let mut _11: u8;             // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/ref_int_cmp.rs:+1:3: +1:4
+          _3 = &_1;                        // scope 0 at $DIR/ref_int_cmp.rs:+1:3: +1:4
+          StorageLive(_4);                 // scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+          StorageLive(_5);                 // scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+          _5 = _2;                         // scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+          _4 = &_5;                        // scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+          _6 = deref_copy (*_3);           // scope 1 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _7 = deref_copy (*_4);           // scope 1 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          StorageLive(_10);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _10 = (*_6);                     // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _10 = (*_1);                     // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          StorageLive(_11);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _11 = (*_7);                     // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _11 = (*_5);                     // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _0 = Lt(move _10, move _11);     // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          StorageDead(_11);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          StorageDead(_10);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          StorageDead(_4);                 // scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+          StorageDead(_3);                 // scope 0 at $DIR/ref_int_cmp.rs:+1:7: +1:8
+          StorageDead(_5);                 // scope 0 at $DIR/ref_int_cmp.rs:+2:1: +2:2
+          return;                          // scope 0 at $DIR/ref_int_cmp.rs:+2:2: +2:2
+      }
+  }
+  

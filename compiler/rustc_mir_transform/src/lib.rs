@@ -86,6 +86,7 @@ mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
 mod prettify;
+mod ref_cmp_simplify;
 mod ref_prop;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
@@ -561,6 +562,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &instsimplify::InstSimplify,
             &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
+            &ref_cmp_simplify::RefCmpSimplify,
             &ref_prop::ReferencePropagation,
             // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
             // destroy the SSA property. It should still happen before const-propagation, so the
