@@ -686,6 +686,7 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::RunPassValgrind,
+                test::RunCoverage,
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
