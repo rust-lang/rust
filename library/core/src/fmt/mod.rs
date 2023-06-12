@@ -570,10 +570,7 @@ pub trait Debug {
     /// let position = Position { longitude: 1.987, latitude: 2.983 };
     /// assert_eq!(format!("{position:?}"), "(1.987, 2.983)");
     ///
-    /// assert_eq!(format!("{position:#?}"), "(
-    ///     1.987,
-    ///     2.983,
-    /// )");
+    /// assert_eq!(format!("{position:#?}"), "(\n    1.987,\n    2.983,\n)");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
