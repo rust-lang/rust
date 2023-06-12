@@ -67,7 +67,7 @@ where
     MS::Item: Into<()>,
 {
     // Error: Apparently Balance::new doesn't exist during MIR validation
-    let _ = ImplShoulExist::<MS, ()>::access_fn(ms);
+    ImplShoulExist::<MS, ()>::access_fn(ms);
 }
 
 fn main() {}

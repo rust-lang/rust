@@ -116,6 +116,6 @@ fn main() {
         //~^ ERROR unused variable: `c`
         #[cfg_attr(something, cfg(nothing))] d: i32,
     | {};
-    let _ = a(1);
-    let _ = c(1, 2);
+    a(1);
+    c(1, 2);
 }

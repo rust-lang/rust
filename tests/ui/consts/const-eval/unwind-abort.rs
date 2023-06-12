@@ -8,5 +8,5 @@ const _: () = foo();
 // Ensure that the CTFE engine handles calls to `extern "C"` aborting gracefully
 
 fn main() {
-    let _ = foo();
+    foo();
 }
