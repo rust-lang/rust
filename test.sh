@@ -213,13 +213,7 @@ function setup_rustc() {
 
     rm config.toml || true
 
-    # TODO: move these lines to build_sysroot/build_sysroot.sh instead to avoid having to rebuild stage0 libraries everytime?
-    # Since we can't override the sysroot anymore, we create a new toolchain and manually overwrite the sysroot directory.
     my_toolchain_dir=$HOME/.rustup/toolchains/my_toolchain
-    rm -rf $my_toolchain_dir
-    cp -r $HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE $my_toolchain_dir
-    rm -rf $my_toolchain_dir/lib/rustlib/x86_64-unknown-linux-gnu/
-    cp -r ../build_sysroot/sysroot/* $my_toolchain_dir
 
     cat > config.toml <<EOF
 changelog-seen = 2
@@ -230,10 +224,8 @@ deny-warnings = false
 
 [build]
 cargo = "$my_toolchain_dir/bin/cargo"
-#cargo = "$(rustup which cargo)"
 local-rebuild = true
 rustc = "$my_toolchain_dir/bin/rustc"
-#rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
 
 [target.x86_64-unknown-linux-gnu]
 llvm-filecheck = "`which FileCheck-10 || which FileCheck-11 || which FileCheck-12 || which FileCheck-13 || which FileCheck-14`"
