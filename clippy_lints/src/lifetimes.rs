@@ -562,7 +562,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                 // if the bounds define new lifetimes, they are fine to occur
                 let allowed_lts = allowed_lts_from(pred.bound_generic_params);
                 // now walk the bounds
-                for bound in pred.bounds.iter() {
+                for bound in pred.bounds {
                     walk_param_bound(&mut visitor, bound);
                 }
                 // and check that all lifetimes are allowed

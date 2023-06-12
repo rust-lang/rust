@@ -139,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     ) = cx.tcx.hir().get_if_local(*def_id);
                 then {
                     if self_bounds_map.is_empty() {
-                        for bound in self_bounds.iter() {
+                        for bound in *self_bounds {
                             let Some((self_res, self_segments, _)) = get_trait_info_from_bound(bound) else { continue };
                             self_bounds_map.insert(self_res, self_segments);
                         }
@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
                 // Iterate the bounds and add them to our seen hash
                 // If we haven't yet seen it, add it to the fixed traits
-                for bound in bounds.iter() {
+                for bound in bounds {
                     let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
 
                     let new_trait = seen_def_ids.insert(def_id);

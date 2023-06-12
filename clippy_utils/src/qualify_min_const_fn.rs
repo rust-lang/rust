@@ -61,7 +61,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 
-    for bb in body.basic_blocks.iter() {
+    for bb in &*body.basic_blocks {
         check_terminator(tcx, body, bb.terminator(), msrv)?;
         for stmt in &bb.statements {
             check_statement(tcx, body, def_id, stmt)?;
@@ -89,7 +89,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
             ty::Dynamic(preds, _, _) => {
-                for pred in preds.iter() {
+                for pred in *preds {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
                             return Err((

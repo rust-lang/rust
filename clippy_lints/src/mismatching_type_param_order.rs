@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
             then {
                 // get the name and span of the generic parameters in the Impl
                 let mut impl_params = Vec::new();
-                for p in generic_args.args.iter() {
+                for p in generic_args.args {
                     match p {
                         GenericArg::Type(Ty {kind: TyKind::Path(QPath::Resolved(_, path)), ..}) =>
                             impl_params.push((path.segments[0].ident.to_string(), path.span)),

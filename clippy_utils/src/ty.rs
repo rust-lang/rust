@@ -277,7 +277,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         },
         ty::Dynamic(binder, _, _) => {
-            for predicate in binder.iter() {
+            for predicate in *binder {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
                     if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
                         return true;
@@ -1178,5 +1178,53 @@ pub fn is_interior_mut_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             }
         },
         _ => false,
+    }
+}
+
+pub fn make_normalized_projection_with_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    container_id: DefId,
+    assoc_ty: Symbol,
+    substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
+        #[cfg(debug_assertions)]
+        if let Some((i, subst)) = ty
+            .substs
+            .iter()
+            .enumerate()
+            .find(|(_, subst)| subst.has_late_bound_regions())
+        {
+            debug_assert!(
+                false,
+                "substs contain late-bound region at index `{i}` which can't be normalized.\n\
+                    use `TyCtxt::erase_late_bound_regions`\n\
+                    note: subst is `{subst:#?}`",
+            );
+            return None;
+        }
+        let cause = rustc_middle::traits::ObligationCause::dummy();
+        match tcx
+            .infer_ctxt()
+            .build()
+            .at(&cause, param_env)
+            .query_normalize(tcx.mk_projection(ty.def_id, ty.substs))
+        {
+            Ok(ty) => Some(ty.value),
+            Err(e) => {
+                debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
+                None
+            },
+        }
+    }
+    helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, substs)?)
+}
+
+pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    let cause = rustc_middle::traits::ObligationCause::dummy();
+    match tcx.infer_ctxt().build().at(&cause, param_env).query_normalize(ty) {
+        Ok(ty) => ty.value,
+        Err(_) => ty,
     }
 }

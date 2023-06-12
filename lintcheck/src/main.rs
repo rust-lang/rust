@@ -474,7 +474,7 @@ fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
             });
         } else if let Some(ref versions) = tk.versions {
             // if we have multiple versions, save each one
-            for ver in versions.iter() {
+            for ver in versions {
                 crate_sources.push(CrateSource::CratesIo {
                     name: tk.name.clone(),
                     version: ver.to_string(),

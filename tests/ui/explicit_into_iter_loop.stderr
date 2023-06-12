@@ -1,0 +1,40 @@
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/explicit_into_iter_loop.rs:10:18
+   |
+LL |         for _ in iterator.into_iter() {}
+   |                  ^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `iterator`
+   |
+   = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/explicit_into_iter_loop.rs:23:14
+   |
+LL |     for _ in t.into_iter() {}
+   |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/explicit_into_iter_loop.rs:26:14
+   |
+LL |     for _ in r.into_iter() {}
+   |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `r`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/explicit_into_iter_loop.rs:34:14
+   |
+LL |     for _ in mr.into_iter() {}
+   |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&*mr`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/explicit_into_iter_loop.rs:46:14
+   |
+LL |     for _ in u.into_iter() {}
+   |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut u`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/explicit_into_iter_loop.rs:49:14
+   |
+LL |     for _ in mr.into_iter() {}
+   |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut *mr`
+
+error: aborting due to 6 previous errors
+
