@@ -1,5 +1,5 @@
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:8:24
+  --> $DIR/cloned_instead_of_copied.rs:9:24
    |
 LL |     let _ = [1].iter().cloned();
    |                        ^^^^^^ help: try: `copied`
@@ -7,43 +7,43 @@ LL |     let _ = [1].iter().cloned();
    = note: `-D clippy::cloned-instead-of-copied` implied by `-D warnings`
 
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:9:31
+  --> $DIR/cloned_instead_of_copied.rs:10:31
    |
 LL |     let _ = vec!["hi"].iter().cloned();
    |                               ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:10:22
+  --> $DIR/cloned_instead_of_copied.rs:11:22
    |
 LL |     let _ = Some(&1).cloned();
    |                      ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:11:34
+  --> $DIR/cloned_instead_of_copied.rs:12:34
    |
 LL |     let _ = Box::new([1].iter()).cloned();
    |                                  ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:12:32
+  --> $DIR/cloned_instead_of_copied.rs:13:32
    |
 LL |     let _ = Box::new(Some(&1)).cloned();
    |                                ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:28:22
+  --> $DIR/cloned_instead_of_copied.rs:29:22
    |
 LL |     let _ = Some(&1).cloned(); // Option::copied needs 1.35
    |                      ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:33:24
+  --> $DIR/cloned_instead_of_copied.rs:34:24
    |
 LL |     let _ = [1].iter().cloned(); // Iterator::copied needs 1.36
    |                        ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> $DIR/cloned_instead_of_copied.rs:34:22
+  --> $DIR/cloned_instead_of_copied.rs:35:22
    |
 LL |     let _ = Some(&1).cloned();
    |                      ^^^^^^ help: try: `copied`

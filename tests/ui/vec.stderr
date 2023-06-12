@@ -61,34 +61,40 @@ LL |     on_mut_slice(&mut vec![1; 2]);
    |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1; 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:75:17
+  --> $DIR/vec.rs:75:19
+   |
+LL |     let _x: i32 = vec![1, 2, 3].iter().sum();
+   |                   ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:78:17
    |
 LL |     let mut x = vec![1, 2, 3];
    |                 ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:81:22
+  --> $DIR/vec.rs:84:22
    |
 LL |     let _x: &[i32] = &vec![1, 2, 3];
    |                      ^^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:83:14
+  --> $DIR/vec.rs:86:14
    |
 LL |     for _ in vec![1, 2, 3] {}
    |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:117:14
+  --> $DIR/vec.rs:120:14
    |
 LL |     for a in vec![1, 2, 3] {
    |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:121:14
+  --> $DIR/vec.rs:124:14
    |
 LL |     for a in vec![String::new(), String::new()] {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `[String::new(), String::new()]`
 
-error: aborting due to 15 previous errors
+error: aborting due to 16 previous errors
 
