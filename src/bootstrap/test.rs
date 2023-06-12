@@ -1035,7 +1035,7 @@ impl Step for RustdocGUI {
         }
 
         let _time = util::timeit(&builder);
-        crate::render_tests::try_run_tests(builder, &mut cmd);
+        crate::render_tests::try_run_tests(builder, &mut cmd, true);
     }
 }
 
@@ -1732,7 +1732,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             suite, mode, &compiler.host, target
         ));
         let _time = util::timeit(&builder);
-        crate::render_tests::try_run_tests(builder, &mut cmd);
+        crate::render_tests::try_run_tests(builder, &mut cmd, false);
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -1755,7 +1755,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 suite, mode, compare_mode, &compiler.host, target
             ));
             let _time = util::timeit(&builder);
-            crate::render_tests::try_run_tests(builder, &mut cmd);
+            crate::render_tests::try_run_tests(builder, &mut cmd, false);
         }
     }
 }
