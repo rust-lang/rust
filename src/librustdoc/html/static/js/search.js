@@ -386,6 +386,35 @@ function initSearch(rawSearchIndex) {
         if (query.literalSearch && parserState.totalElems - parserState.genericsElems > 0) {
             throw ["You cannot have more than one element if you use quotes"];
         }
+        const typeFilter = parserState.typeFilter;
+        parserState.typeFilter = null;
+        if (name === "!") {
+            if (typeFilter !== null && typeFilter !== "primitive") {
+                throw [
+                    "Invalid search type: primitive never type ",
+                    "!",
+                    " and ",
+                    typeFilter,
+                    " both specified",
+                ];
+            }
+            if (generics.length !== 0) {
+                throw [
+                    "Never type ",
+                    "!",
+                    " does not accept generic parameters",
+                ];
+            }
+            return {
+                name: "never",
+                id: -1,
+                fullPath: ["never"],
+                pathWithoutLast: [],
+                pathLast: "never",
+                generics: [],
+                typeFilter: "primitive",
+            };
+        }
         const pathSegments = name.split("::");
         if (pathSegments.length > 1) {
             for (let i = 0, len = pathSegments.length; i < len; ++i) {
@@ -399,6 +428,13 @@ function initSearch(rawSearchIndex) {
                     }
                     throw ["Unexpected ", "::::"];
                 }
+
+                if (pathSegment === "!") {
+                    pathSegments[i] = "never";
+                    if (i !== 0) {
+                        throw ["Never type ", "!", " is not associated item"];
+                    }
+                }
             }
         }
         // In case we only have something like `<p>`, there is no name.
@@ -409,8 +445,6 @@ function initSearch(rawSearchIndex) {
         if (isInGenerics) {
             parserState.genericsElems += 1;
         }
-        const typeFilter = parserState.typeFilter;
-        parserState.typeFilter = null;
         return {
             name: name,
             id: -1,
@@ -459,10 +493,11 @@ function initSearch(rawSearchIndex) {
                         break;
                     }
                     if (foundExclamation !== -1) {
-                        if (start <= (end - 2)) {
+                        if (foundExclamation !== start &&
+                            isIdentCharacter(parserState.userQuery[foundExclamation - 1])
+                        ) {
                             throw ["Cannot have associated items in macros"];
                         } else {
-                            // if start == end - 1, we got the never type
                             // while the never type has no associated macros, we still
                             // can parse a path like that
                             foundExclamation = -1;
@@ -478,7 +513,10 @@ function initSearch(rawSearchIndex) {
             end = parserState.pos;
         }
         // if start == end - 1, we got the never type
-        if (foundExclamation !== -1 && start <= (end - 2)) {
+        if (foundExclamation !== -1 &&
+            foundExclamation !== start &&
+            isIdentCharacter(parserState.userQuery[foundExclamation - 1])
+        ) {
             if (parserState.typeFilter === null) {
                 parserState.typeFilter = "macro";
             } else if (parserState.typeFilter !== "macro") {
