@@ -161,7 +161,7 @@ pub struct TestProps {
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
-    pub failure_status: i32,
+    pub failure_status: Option<i32>,
     // For UI tests, allows compiler to exit with arbitrary failure status
     pub dont_check_failure_status: bool,
     // Whether or not `rustfix` should apply the `CodeSuggestion`s of this test and compile the
@@ -257,7 +257,7 @@ impl TestProps {
             check_test_line_numbers_match: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
-            failure_status: -1,
+            failure_status: None,
             dont_check_failure_status: false,
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
@@ -428,7 +428,7 @@ impl TestProps {
                     .parse_name_value_directive(ln, FAILURE_STATUS)
                     .and_then(|code| code.trim().parse::<i32>().ok())
                 {
-                    self.failure_status = code;
+                    self.failure_status = Some(code);
                 }
 
                 config.set_name_directive(
@@ -491,11 +491,8 @@ impl TestProps {
             });
         }
 
-        if self.failure_status == -1 {
-            self.failure_status = 1;
-        }
         if self.should_ice {
-            self.failure_status = 101;
+            self.failure_status = Some(101);
         }
 
         if config.mode == Mode::Incremental {
