@@ -8,7 +8,6 @@ use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{get_parent_expr, higher, is_trait_method};
 use if_chain::if_chain;
-use rustc_ast::BindingAnnotation;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -54,11 +53,7 @@ declare_clippy_lint! {
 impl_lint_pass!(UselessVec => [USELESS_VEC]);
 
 fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(e).kind() {
-        ty.is_slice()
-    } else {
-        false
-    }
+    matches!(cx.typeck_results().expr_ty_adjusted(e).kind(), ty::Ref(_, ty, _) if ty.is_slice())
 }
 
 /// Checks if the given expression is a method call to a `Vec` method
@@ -76,13 +71,21 @@ fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for UselessVec {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // search for `&vec![_]` expressions where the adjusted type is `&[_]`
+        // search for `&vec![_]` or `vec![_]` expressions where the adjusted type is `&[_]`
         if_chain! {
             if adjusts_to_slice(cx, expr);
-            if let ExprKind::AddrOf(BorrowKind::Ref, mutability, addressee) = expr.kind;
-            if let Some(vec_args) = higher::VecArgs::hir(cx, addressee);
+            if let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows());
             then {
-                self.check_vec_macro(cx, &vec_args, mutability, expr.span, SuggestSlice::Yes);
+                let (suggest_slice, span) = if let ExprKind::AddrOf(BorrowKind::Ref, mutability, _) = expr.kind {
+                    // `expr` is `&vec![_]`, so suggest `&[_]` (or `&mut[_]` resp.)
+                    (SuggestedType::SliceRef(mutability), expr.span)
+                } else {
+                    // `expr` is the `vec![_]` expansion, so suggest `[_]`
+                    // and also use the span of the actual `vec![_]` expression
+                    (SuggestedType::Array, expr.span.ctxt().outer_expn_data().call_site)
+                };
+
+                self.check_vec_macro(cx, &vec_args, span, suggest_slice);
             }
         }
 
@@ -93,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             // for now ignore locals with type annotations.
             // this is to avoid compile errors when doing the suggestion here: let _: Vec<_> = vec![..];
             && local.ty.is_none()
-            && let PatKind::Binding(BindingAnnotation(_, mutbl), id, ..) = local.pat.kind
+            && let PatKind::Binding(_, id, ..) = local.pat.kind
             && is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(expr)))
         {
             let only_slice_uses = for_each_local_use_after_expr(cx, id, expr.hir_id, |expr| {
@@ -113,9 +116,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 self.check_vec_macro(
                     cx,
                     &vec_args,
-                    mutbl,
                     expr.span.ctxt().outer_expn_data().call_site,
-                    SuggestSlice::No
+                    SuggestedType::Array
                 );
             }
         }
@@ -128,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             then {
                 // report the error around the `vec!` not inside `<std macros>:`
                 let span = arg.span.ctxt().outer_expn_data().call_site;
-                self.check_vec_macro(cx, &vec_args, Mutability::Not, span, SuggestSlice::No);
+                self.check_vec_macro(cx, &vec_args, span, SuggestedType::Array);
             }
         }
     }
@@ -137,11 +139,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
 }
 
 #[derive(Copy, Clone)]
-enum SuggestSlice {
+enum SuggestedType {
     /// Suggest using a slice `&[..]` / `&mut [..]`
-    Yes,
+    SliceRef(Mutability),
     /// Suggest using an array: `[..]`
-    No,
+    Array,
 }
 
 impl UselessVec {
@@ -149,16 +151,10 @@ impl UselessVec {
         &mut self,
         cx: &LateContext<'tcx>,
         vec_args: &higher::VecArgs<'tcx>,
-        mutability: Mutability,
         span: Span,
-        suggest_slice: SuggestSlice,
+        suggest_slice: SuggestedType,
     ) {
         let mut applicability = Applicability::MachineApplicable;
-
-        let (borrow_prefix_mut, borrow_prefix) = match suggest_slice {
-            SuggestSlice::Yes => ("&mut ", "&"),
-            SuggestSlice::No => ("", ""),
-        };
 
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
@@ -168,21 +164,13 @@ impl UselessVec {
                         return;
                     }
 
-                    match mutability {
-                        Mutability::Mut => {
-                            format!(
-                                "{borrow_prefix_mut}[{}; {}]",
-                                snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
-                                snippet_with_applicability(cx, len.span, "len", &mut applicability)
-                            )
-                        },
-                        Mutability::Not => {
-                            format!(
-                                "{borrow_prefix}[{}; {}]",
-                                snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
-                                snippet_with_applicability(cx, len.span, "len", &mut applicability)
-                            )
-                        },
+                    let elem = snippet_with_applicability(cx, elem.span, "elem", &mut applicability);
+                    let len = snippet_with_applicability(cx, len.span, "len", &mut applicability);
+
+                    match suggest_slice {
+                        SuggestedType::SliceRef(Mutability::Mut) => format!("&mut [{elem}; {len}]"),
+                        SuggestedType::SliceRef(Mutability::Not) => format!("&[{elem}; {len}]"),
+                        SuggestedType::Array => format!("[{elem}; {len}]"),
                     }
                 } else {
                     return;
@@ -194,25 +182,24 @@ impl UselessVec {
                         return;
                     }
                     let span = args[0].span.to(last.span);
+                    let args = snippet_with_applicability(cx, span, "..", &mut applicability);
 
-                    match mutability {
-                        Mutability::Mut => {
-                            format!(
-                                "{borrow_prefix_mut}[{}]",
-                                snippet_with_applicability(cx, span, "..", &mut applicability)
-                            )
+                    match suggest_slice {
+                        SuggestedType::SliceRef(Mutability::Mut) => {
+                            format!("&mut [{args}]")
                         },
-                        Mutability::Not => {
-                            format!(
-                                "{borrow_prefix}[{}]",
-                                snippet_with_applicability(cx, span, "..", &mut applicability)
-                            )
+                        SuggestedType::SliceRef(Mutability::Not) => {
+                            format!("&[{args}]")
+                        },
+                        SuggestedType::Array => {
+                            format!("[{args}]")
                         },
                     }
                 } else {
-                    match mutability {
-                        Mutability::Mut => format!("{borrow_prefix_mut}[]"),
-                        Mutability::Not => format!("{borrow_prefix}[]"),
+                    match suggest_slice {
+                        SuggestedType::SliceRef(Mutability::Mut) => "&mut []".to_owned(),
+                        SuggestedType::SliceRef(Mutability::Not) => "&[]".to_owned(),
+                        SuggestedType::Array => "[]".to_owned(),
                     }
                 }
             },
@@ -226,8 +213,8 @@ impl UselessVec {
             &format!(
                 "you can use {} directly",
                 match suggest_slice {
-                    SuggestSlice::Yes => "a slice",
-                    SuggestSlice::No => "an array",
+                    SuggestedType::SliceRef(_) => "a slice",
+                    SuggestedType::Array => "an array",
                 }
             ),
             snippet,
