@@ -7,7 +7,7 @@
 //! to reimplement all the rendering logic in this module because of that.
 
 use crate::builder::Builder;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdout, Command, Stdio};
 use std::time::Duration;
 use termcolor::{Color, ColorSpec, WriteColor};
@@ -20,15 +20,15 @@ pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Comma
     }
     cmd.args(&["-Z", "unstable-options", "--format", "json"]);
 
-    try_run_tests(builder, cmd)
+    try_run_tests(builder, cmd, false)
 }
 
-pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
+pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bool) -> bool {
     if builder.config.dry_run() {
         return true;
     }
 
-    if !run_tests(builder, cmd) {
+    if !run_tests(builder, cmd, stream) {
         if builder.fail_fast {
             crate::detail_exit_macro!(1);
         } else {
@@ -41,7 +41,7 @@ pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     }
 }
 
-fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
+fn run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bool) -> bool {
     cmd.stdout(Stdio::piped());
 
     builder.verbose(&format!("running: {cmd:?}"));
@@ -50,7 +50,12 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 
     // This runs until the stdout of the child is closed, which means the child exited. We don't
     // run this on another thread since the builder is not Sync.
-    Renderer::new(process.stdout.take().unwrap(), builder).render_all();
+    let renderer = Renderer::new(process.stdout.take().unwrap(), builder);
+    if stream {
+        renderer.stream_all();
+    } else {
+        renderer.render_all();
+    }
 
     let result = process.wait_with_output().unwrap();
     if !result.status.success() && builder.is_verbose() {
@@ -108,6 +113,23 @@ impl<'a> Renderer<'a> {
                     stdout.write_all(&line).unwrap();
                     let _ = stdout.flush();
                 }
+            }
+        }
+    }
+
+    /// Renders the stdout characters one by one
+    fn stream_all(mut self) {
+        let mut buffer = [0; 1];
+        loop {
+            match self.stdout.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(_) => {
+                    let mut stdout = std::io::stdout();
+                    stdout.write_all(&buffer).unwrap();
+                    let _ = stdout.flush();
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => break,
+                Err(err) => panic!("failed to read output of test runner: {err}"),
             }
         }
     }
