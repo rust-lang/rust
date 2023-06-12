@@ -1,4 +1,4 @@
-../coverage/doctest.rs:
+$DIR/doctest.rs:
     1|       |//! This test ensures that code from doctests is properly re-mapped.
     2|       |//! See <https://github.com/rust-lang/rust/issues/79417> for more info.
     3|       |//!
@@ -67,7 +67,7 @@
    63|       |//!     doctest_main()
    64|       |//! }
    65|       |//! ```
-   66|       |
+   66|       |// aux-build:doctest_crate.rs
    67|       |/// doctest attached to fn testing external code:
    68|       |/// ```
    69|      1|/// extern crate doctest_crate;
@@ -102,7 +102,7 @@
    98|       |// what affect it might have on diagnostic messages from the compiler, and whether anyone would care
    99|       |// if the indentation changed. I don't know if there is a more viable solution.
 
-../coverage/lib/doctest_crate.rs:
+$DIR/auxiliary/doctest_crate.rs:
     1|       |/// A function run only from within doctests
     2|      3|pub fn fn_run_in_doctests(conditional: usize) {
     3|      3|    match conditional {

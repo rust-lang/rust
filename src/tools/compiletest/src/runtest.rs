@@ -524,6 +524,14 @@ impl<'test> TestCx<'test> {
         let proc_res = self.run_llvm_tool("llvm-cov", |cmd| {
             cmd.args(["show", "--format=text", "--show-line-counts-or-regions"]);
 
+            // Temporarily ignore these files so that we can migrate the
+            // existing output snapshots mostly as-is.
+            // This code will be removed later in the same PR.
+            cmd.args([
+                "--ignore-filename-regex",
+                "(uses_crate.rs|uses_inline_crate.rs|unused_mod.rs)",
+            ]);
+
             cmd.arg("--Xdemangler");
             cmd.arg(self.config.rust_demangler_path.as_ref().unwrap());
 
@@ -690,6 +698,10 @@ impl<'test> TestCx<'test> {
         // Sort the file sections (not including the final empty "section").
         let except_last = sections.len() - 1;
         (&mut sections[..except_last]).sort();
+        // Temporarily sort the file sections in reverse order so that we can
+        // migrate the existing output snapshots mostly as-is.
+        // This code will be removed later in the same PR.
+        (&mut sections[..except_last]).sort_by(|a, b| b.cmp(a));
 
         // Join the file sections back into a flat list of lines, with
         // sections separated by blank lines.

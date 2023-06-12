@@ -1,8 +1,12 @@
 // FIXME #110395
-// ignore-llvm-cov-show-diffs
+// ignore-linux
+
+// Validates coverage now works with optimizations
+// compile-flags: -C opt-level=3
 
 #![allow(unused_assignments, unused_variables)]
-// compile-flags: -C opt-level=3 # validates coverage now works with optimizations
+
+// aux-build:used_crate.rs
 extern crate used_crate;
 
 fn main() {

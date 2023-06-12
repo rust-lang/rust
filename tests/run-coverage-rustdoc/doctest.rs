@@ -63,7 +63,7 @@
 //!     doctest_main()
 //! }
 //! ```
-
+// aux-build:doctest_crate.rs
 /// doctest attached to fn testing external code:
 /// ```
 /// extern crate doctest_crate;

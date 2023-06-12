@@ -1,7 +1,7 @@
     1|       |#![allow(unused_assignments, unused_variables)]
     2|       |
-    3|       |// compile-flags: -C opt-level=3 # validates coverage now works with optimizations
-    4|       |
+    3|       |// compile-flags: -C opt-level=3
+    4|       |// ^^ validates coverage now works with optimizations
     5|       |use std::fmt::Debug;
     6|       |
     7|      1|pub fn used_function() {

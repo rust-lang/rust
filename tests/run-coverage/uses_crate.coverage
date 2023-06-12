@@ -1,6 +1,6 @@
     1|       |#![allow(unused_assignments, unused_variables)]
-    2|       |// compile-flags: -C opt-level=3 # validates coverage now works with optimizations
-    3|       |use std::fmt::Debug;
+    2|       |// compile-flags: -C opt-level=3
+    3|       |use std::fmt::Debug; // ^^ validates coverage now works with optimizations
     4|       |
     5|      1|pub fn used_function() {
     6|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure

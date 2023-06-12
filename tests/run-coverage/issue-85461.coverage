@@ -1,6 +1,6 @@
-../coverage/issue-85461.rs:
+$DIR/issue-85461.rs:
     1|       |// Regression test for #85461: MSVC sometimes fail to link with dead code and #[inline(always)]
-    2|       |
+    2|       |// aux-build:inline_always_with_dead_code.rs
     3|       |extern crate inline_always_with_dead_code;
     4|       |
     5|       |use inline_always_with_dead_code::{bar, baz};
@@ -10,7 +10,7 @@
     9|      1|    baz::call_me();
    10|      1|}
 
-../coverage/lib/inline_always_with_dead_code.rs:
+$DIR/auxiliary/inline_always_with_dead_code.rs:
     1|       |// compile-flags: -Cinstrument-coverage -Ccodegen-units=4 -Copt-level=0
     2|       |
     3|       |#![allow(dead_code)]
