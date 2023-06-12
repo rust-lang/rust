@@ -1598,7 +1598,15 @@ impl<'test> TestCx<'test> {
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
-        let env = &self.props.exec_env;
+        let prepare_env = |cmd: &mut Command| {
+            for key in &self.props.unset_exec_env {
+                cmd.env_remove(key);
+            }
+
+            for (key, val) in &self.props.exec_env {
+                cmd.env(key, val);
+            }
+        };
 
         let proc_res = match &*self.config.target {
             // This is pretty similar to below, we're transforming:
@@ -1635,10 +1643,7 @@ impl<'test> TestCx<'test> {
                     .args(support_libs)
                     .args(args);
 
-                for key in &self.props.unset_exec_env {
-                    test_client.env_remove(key);
-                }
-                test_client.envs(env.clone());
+                prepare_env(&mut test_client);
 
                 self.compose_and_run(
                     test_client,
@@ -1653,10 +1658,7 @@ impl<'test> TestCx<'test> {
                 let mut wr_run = Command::new("wr-run");
                 wr_run.args(&[&prog]).args(args);
 
-                for key in &self.props.unset_exec_env {
-                    wr_run.env_remove(key);
-                }
-                wr_run.envs(env.clone());
+                prepare_env(&mut wr_run);
 
                 self.compose_and_run(
                     wr_run,
@@ -1671,10 +1673,7 @@ impl<'test> TestCx<'test> {
                 let mut program = Command::new(&prog);
                 program.args(args).current_dir(&self.output_base_dir());
 
-                for key in &self.props.unset_exec_env {
-                    program.env_remove(key);
-                }
-                program.envs(env.clone());
+                prepare_env(&mut program);
 
                 self.compose_and_run(
                     program,
