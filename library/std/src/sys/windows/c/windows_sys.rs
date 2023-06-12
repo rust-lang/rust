@@ -4276,6 +4276,9 @@ impl ::core::clone::Clone for XSAVE_FORMAT {
     }
 }
 // Begin of ARM32 shim
+// The raw content of this file should be processed by `generate-windows-sys`
+// to be merged with the generated binding. It is not supposed to be used as
+// a normal Rust module.
 cfg_if::cfg_if! {
 if #[cfg(target_arch = "arm")] {
 #[repr(C)]
