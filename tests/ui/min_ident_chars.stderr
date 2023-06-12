@@ -1,0 +1,178 @@
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:9:8
+   |
+LL | struct A {
+   |        ^
+   |
+   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:10:5
+   |
+LL |     a: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:12:5
+   |
+LL |     A: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:13:5
+   |
+LL |     I: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:16:8
+   |
+LL | struct B(u32);
+   |        ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:18:8
+   |
+LL | struct O {
+   |        ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:19:5
+   |
+LL |     o: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:24:6
+   |
+LL | enum C {
+   |      ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:25:5
+   |
+LL |     D,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:26:5
+   |
+LL |     E,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:27:5
+   |
+LL |     F,
+   |     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:51:9
+   |
+LL |     let h = 1;
+   |         ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:52:9
+   |
+LL |     let e = 2;
+   |         ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:53:9
+   |
+LL |     let l = 3;
+   |         ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:54:9
+   |
+LL |     let l = 4;
+   |         ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:55:9
+   |
+LL |     let o = 6;
+   |         ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:59:10
+   |
+LL |     let (h, o, w) = (1, 2, 3);
+   |          ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:59:13
+   |
+LL |     let (h, o, w) = (1, 2, 3);
+   |             ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:60:10
+   |
+LL |     for (a, (r, e)) in (0..1000).enumerate().enumerate() {}
+   |          ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:60:14
+   |
+LL |     for (a, (r, e)) in (0..1000).enumerate().enumerate() {}
+   |              ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:60:17
+   |
+LL |     for (a, (r, e)) in (0..1000).enumerate().enumerate() {}
+   |                 ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:62:16
+   |
+LL |     while let (d, o, _i, n, g) = (true, true, false, false, true) {}
+   |                ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:62:19
+   |
+LL |     while let (d, o, _i, n, g) = (true, true, false, false, true) {}
+   |                   ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:62:29
+   |
+LL |     while let (d, o, _i, n, g) = (true, true, false, false, true) {}
+   |                             ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:66:9
+   |
+LL |     let o = 1;
+   |         ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:67:9
+   |
+LL |     let o = O { o };
+   |         ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:81:4
+   |
+LL | fn b() {}
+   |    ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:82:21
+   |
+LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
+   |                     ^
+
+error: this ident consists of a single char
+  --> $DIR/min_ident_chars.rs:82:29
+   |
+LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
+   |                             ^
+
+error: aborting due to 29 previous errors
+

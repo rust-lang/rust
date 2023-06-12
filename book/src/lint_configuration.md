@@ -663,3 +663,25 @@ Whether to allow module inception if it's not public.
 * [`module_inception`](https://rust-lang.github.io/rust-clippy/master/index.html#module_inception)
 
 
+## `allowed-idents-below-min-chars`
+Allowed names below the minimum allowed characters. The value `".."` can be used as part of
+the list to indicate, that the configured values should be appended to the default
+configuration of Clippy. By default, any configuration will replace the default value.
+
+**Default Value:** `{"j", "z", "i", "y", "n", "x", "w"}` (`rustc_data_structures::fx::FxHashSet<String>`)
+
+---
+**Affected lints:**
+* [`min_ident_chars`](https://rust-lang.github.io/rust-clippy/master/index.html#min_ident_chars)
+
+
+## `min-ident-chars-threshold`
+Minimum chars an ident can have, anything below or equal to this will be linted.
+
+**Default Value:** `1` (`u64`)
+
+---
+**Affected lints:**
+* [`min_ident_chars`](https://rust-lang.github.io/rust-clippy/master/index.html#min_ident_chars)
+
+

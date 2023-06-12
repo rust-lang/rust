@@ -197,6 +197,7 @@ mod matches;
 mod mem_forget;
 mod mem_replace;
 mod methods;
+mod min_ident_chars;
 mod minmax;
 mod misc;
 mod misc_early;
@@ -1033,6 +1034,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(redundant_type_annotations::RedundantTypeAnnotations));
     store.register_late_pass(|_| Box::new(arc_with_non_send_sync::ArcWithNonSendSync));
     store.register_late_pass(|_| Box::new(needless_if::NeedlessIf));
+    let allowed_idents_below_min_chars = conf.allowed_idents_below_min_chars.clone();
+    let min_ident_chars_threshold = conf.min_ident_chars_threshold;
+    store.register_late_pass(move |_| {
+        Box::new(min_ident_chars::MinIdentChars {
+            allowed_idents_below_min_chars: allowed_idents_below_min_chars.clone(),
+            min_ident_chars_threshold,
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
