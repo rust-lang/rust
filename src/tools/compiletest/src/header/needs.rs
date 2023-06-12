@@ -87,7 +87,7 @@ pub(super) fn handle_needs(
         },
         Need {
             name: "needs-profiler-support",
-            condition: std::env::var_os("RUSTC_PROFILER_SUPPORT").is_some(),
+            condition: cache.profiler_support,
             ignore_reason: "ignored when profiler support is disabled",
         },
         Need {
@@ -195,6 +195,7 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_memtag: bool,
     sanitizer_shadow_call_stack: bool,
     sanitizer_safestack: bool,
+    profiler_support: bool,
     xray: bool,
     rust_lld: bool,
     i686_dlltool: bool,
@@ -232,6 +233,7 @@ impl CachedNeedsConditions {
             sanitizer_memtag: util::MEMTAG_SUPPORTED_TARGETS.contains(target),
             sanitizer_shadow_call_stack: util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(target),
             sanitizer_safestack: util::SAFESTACK_SUPPORTED_TARGETS.contains(target),
+            profiler_support: std::env::var_os("RUSTC_PROFILER_SUPPORT").is_some(),
             xray: util::XRAY_SUPPORTED_TARGETS.contains(target),
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
