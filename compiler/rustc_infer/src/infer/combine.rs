@@ -34,7 +34,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
-use rustc_middle::ty::{self, AliasKind, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::DUMMY_SP;
 
@@ -103,12 +103,12 @@ impl<'tcx> InferCtxt<'tcx> {
 
             // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
             (
-                ty::Alias(AliasKind::Projection, _),
+                ty::Alias(..),
                 ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
             )
             | (
                 ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
-                ty::Alias(AliasKind::Projection, _),
+                ty::Alias(..),
             ) if self.next_trait_solver() => {
                 bug!()
             }
