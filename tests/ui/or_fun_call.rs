@@ -5,6 +5,7 @@
     clippy::borrow_as_ptr,
     clippy::uninlined_format_args,
     clippy::unnecessary_wraps,
+    clippy::unnecessary_literal_unwrap,
     clippy::useless_vec
 )]
 

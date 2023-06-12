@@ -1,5 +1,5 @@
 error: called `unwrap` on `x` after checking its variant with `is_ok`
-  --> $DIR/complex_conditionals.rs:8:9
+  --> $DIR/complex_conditionals.rs:12:9
    |
 LL |     if x.is_ok() && y.is_err() {
    |        --------- the check is happening here
@@ -14,7 +14,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap_err()` will always panic
-  --> $DIR/complex_conditionals.rs:9:9
+  --> $DIR/complex_conditionals.rs:13:9
    |
 LL |     if x.is_ok() && y.is_err() {
    |        --------- because of this check
@@ -29,7 +29,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals.rs:10:9
+  --> $DIR/complex_conditionals.rs:14:9
    |
 LL |     if x.is_ok() && y.is_err() {
    |                     ---------- because of this check
@@ -38,7 +38,7 @@ LL |         y.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap_err` on `y` after checking its variant with `is_err`
-  --> $DIR/complex_conditionals.rs:11:9
+  --> $DIR/complex_conditionals.rs:15:9
    |
 LL |     if x.is_ok() && y.is_err() {
    |                     ---------- the check is happening here
@@ -49,7 +49,7 @@ LL |         y.unwrap_err(); // unnecessary
    = help: try using `if let` or `match`
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals.rs:25:9
+  --> $DIR/complex_conditionals.rs:29:9
    |
 LL |     if x.is_ok() || y.is_ok() {
    |        --------- because of this check
@@ -58,7 +58,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap_err` on `x` after checking its variant with `is_ok`
-  --> $DIR/complex_conditionals.rs:26:9
+  --> $DIR/complex_conditionals.rs:30:9
    |
 LL |     if x.is_ok() || y.is_ok() {
    |        --------- the check is happening here
@@ -69,7 +69,7 @@ LL |         x.unwrap_err(); // unnecessary
    = help: try using `if let` or `match`
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals.rs:27:9
+  --> $DIR/complex_conditionals.rs:31:9
    |
 LL |     if x.is_ok() || y.is_ok() {
    |                     --------- because of this check
@@ -78,7 +78,7 @@ LL |         y.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap_err` on `y` after checking its variant with `is_ok`
-  --> $DIR/complex_conditionals.rs:28:9
+  --> $DIR/complex_conditionals.rs:32:9
    |
 LL |     if x.is_ok() || y.is_ok() {
    |                     --------- the check is happening here
@@ -89,7 +89,7 @@ LL |         y.unwrap_err(); // unnecessary
    = help: try using `if let` or `match`
 
 error: called `unwrap` on `x` after checking its variant with `is_ok`
-  --> $DIR/complex_conditionals.rs:32:9
+  --> $DIR/complex_conditionals.rs:36:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
    |        --------- the check is happening here
@@ -99,7 +99,7 @@ LL |         x.unwrap(); // unnecessary
    = help: try using `if let` or `match`
 
 error: this call to `unwrap_err()` will always panic
-  --> $DIR/complex_conditionals.rs:33:9
+  --> $DIR/complex_conditionals.rs:37:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
    |        --------- because of this check
@@ -108,7 +108,7 @@ LL |         x.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals.rs:34:9
+  --> $DIR/complex_conditionals.rs:38:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
    |                       --------- because of this check
@@ -117,7 +117,7 @@ LL |         y.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap_err` on `y` after checking its variant with `is_ok`
-  --> $DIR/complex_conditionals.rs:35:9
+  --> $DIR/complex_conditionals.rs:39:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
    |                       --------- the check is happening here
@@ -128,7 +128,7 @@ LL |         y.unwrap_err(); // unnecessary
    = help: try using `if let` or `match`
 
 error: called `unwrap` on `z` after checking its variant with `is_err`
-  --> $DIR/complex_conditionals.rs:36:9
+  --> $DIR/complex_conditionals.rs:40:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
    |                                    ---------- the check is happening here
@@ -139,7 +139,7 @@ LL |         z.unwrap(); // unnecessary
    = help: try using `if let` or `match`
 
 error: this call to `unwrap_err()` will always panic
-  --> $DIR/complex_conditionals.rs:37:9
+  --> $DIR/complex_conditionals.rs:41:9
    |
 LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
    |                                    ---------- because of this check
@@ -148,7 +148,7 @@ LL |         z.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals.rs:45:9
+  --> $DIR/complex_conditionals.rs:49:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
    |        --------- because of this check
@@ -157,7 +157,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap_err` on `x` after checking its variant with `is_ok`
-  --> $DIR/complex_conditionals.rs:46:9
+  --> $DIR/complex_conditionals.rs:50:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
    |        --------- the check is happening here
@@ -168,7 +168,7 @@ LL |         x.unwrap_err(); // unnecessary
    = help: try using `if let` or `match`
 
 error: called `unwrap` on `y` after checking its variant with `is_ok`
-  --> $DIR/complex_conditionals.rs:47:9
+  --> $DIR/complex_conditionals.rs:51:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
    |                       --------- the check is happening here
@@ -179,7 +179,7 @@ LL |         y.unwrap(); // unnecessary
    = help: try using `if let` or `match`
 
 error: this call to `unwrap_err()` will always panic
-  --> $DIR/complex_conditionals.rs:48:9
+  --> $DIR/complex_conditionals.rs:52:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
    |                       --------- because of this check
@@ -188,7 +188,7 @@ LL |         y.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals.rs:49:9
+  --> $DIR/complex_conditionals.rs:53:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
    |                                    ---------- because of this check
@@ -197,7 +197,7 @@ LL |         z.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap_err` on `z` after checking its variant with `is_err`
-  --> $DIR/complex_conditionals.rs:50:9
+  --> $DIR/complex_conditionals.rs:54:9
    |
 LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
    |                                    ---------- the check is happening here

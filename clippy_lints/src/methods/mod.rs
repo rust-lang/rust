@@ -93,6 +93,7 @@ mod unnecessary_fold;
 mod unnecessary_iter_cloned;
 mod unnecessary_join;
 mod unnecessary_lazy_eval;
+mod unnecessary_literal_unwrap;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
 mod unwrap_or_else_default;
@@ -271,6 +272,32 @@ declare_clippy_lint! {
     pub UNWRAP_USED,
     restriction,
     "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.unwrap()` related calls on `Result`s and `Option`s that are constructed.
+    ///
+    /// ### Why is this bad?
+    /// It is better to write the value directly without the indirection.
+    ///
+    /// ### Examples
+    /// ```rust
+    /// let val1 = Some(1).unwrap();
+    /// let val2 = Ok::<_, ()>(1).unwrap();
+    /// let val3 = Err::<(), _>(1).unwrap_err();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let val1 = 1;
+    /// let val2 = 1;
+    /// let val3 = 1;
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub UNNECESSARY_LITERAL_UNWRAP,
+    complexity,
+    "using `unwrap()` related calls on `Result` and `Option` constructors"
 }
 
 declare_clippy_lint! {
@@ -3349,6 +3376,7 @@ impl_lint_pass!(Methods => [
     SUSPICIOUS_COMMAND_ARG_SPACE,
     CLEAR_WITH_DRAIN,
     MANUAL_NEXT_BACK,
+    UNNECESSARY_LITERAL_UNWRAP,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3606,12 +3634,18 @@ impl Methods {
                         case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
                     }
                 },
-                ("expect", [_]) => match method_call(recv) {
-                    Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
-                    Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
-                    _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                ("expect", [_]) => {
+                    match method_call(recv) {
+                        Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
+                        Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
+                        _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("expect_err", [_]) => expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests),
+                ("expect_err", [_]) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                    expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests);
+                },
                 ("extend", [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
                     extend_with_drain::check(cx, expr, recv, arg);
@@ -3816,28 +3850,41 @@ impl Methods {
                         },
                         _ => {},
                     }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                     unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
                 },
-                ("unwrap_err", []) => unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests),
-                ("unwrap_or", [u_arg]) => match method_call(recv) {
-                    Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {
-                        manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
-                    },
-                    Some(("map", m_recv, [m_arg], span, _)) => {
-                        option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
-                    },
-                    Some(("then_some", t_recv, [t_arg], _, _)) => {
-                        obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
-                    },
-                    _ => {},
+                ("unwrap_err", []) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                    unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests);
                 },
-                ("unwrap_or_else", [u_arg]) => match method_call(recv) {
-                    Some(("map", recv, [map_arg], _, _))
-                        if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
-                    _ => {
-                        unwrap_or_else_default::check(cx, expr, recv, u_arg);
-                        unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
-                    },
+                ("unwrap_or", [u_arg]) => {
+                    match method_call(recv) {
+                        Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {
+                            manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
+                        },
+                        Some(("map", m_recv, [m_arg], span, _)) => {
+                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
+                        },
+                        Some(("then_some", t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
+                        },
+                        _ => {},
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                },
+                ("unwrap_or_default", []) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                }
+                ("unwrap_or_else", [u_arg]) => {
+                    match method_call(recv) {
+                        Some(("map", recv, [map_arg], _, _))
+                            if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
+                        _ => {
+                            unwrap_or_else_default::check(cx, expr, recv, u_arg);
+                            unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
+                        },
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("zip", [arg]) => {
                     if let ExprKind::MethodCall(name, iter_recv, [], _) = recv.kind

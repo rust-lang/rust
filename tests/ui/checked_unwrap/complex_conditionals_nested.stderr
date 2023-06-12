@@ -1,5 +1,5 @@
 error: called `unwrap` on `x` after checking its variant with `is_some`
-  --> $DIR/complex_conditionals_nested.rs:8:13
+  --> $DIR/complex_conditionals_nested.rs:12:13
    |
 LL |         if x.is_some() {
    |         -------------- help: try: `if let Some(..) = x`
@@ -13,7 +13,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals_nested.rs:10:13
+  --> $DIR/complex_conditionals_nested.rs:14:13
    |
 LL |         if x.is_some() {
    |            ----------- because of this check

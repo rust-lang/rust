@@ -7,7 +7,8 @@
     clippy::explicit_auto_deref,
     clippy::needless_borrow,
     clippy::no_effect,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::unnecessary_literal_unwrap
 )]
 
 use std::ops::{Deref, DerefMut};
