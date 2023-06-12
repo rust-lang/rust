@@ -1,10 +1,6 @@
 use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    get_trait_def_id,
-    higher::VecArgs,
-    macros::root_macro_call_first_node,
-    source::{snippet_opt, snippet_with_applicability},
-    ty::implements_trait,
+    diagnostics::span_lint_and_then, get_trait_def_id, higher::VecArgs, macros::root_macro_call_first_node,
+    source::snippet_opt, ty::implements_trait,
 };
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
@@ -18,9 +14,9 @@ declare_clippy_lint! {
     /// Checks for `Vec` or array initializations that contain only one range.
     ///
     /// ### Why is this bad?
-    /// This is almost always incorrect, as it will result in a `Vec` that has only element. Almost
-    /// always, the programmer intended for it to include all elements in the range or for the end
-    /// of the range to be the length instead.
+    /// This is almost always incorrect, as it will result in a `Vec` that has only one element.
+    /// Almost always, the programmer intended for it to include all elements in the range or for
+    /// the end of the range to be the length instead.
     ///
     /// ### Example
     /// ```rust
@@ -75,8 +71,8 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
         //                   ^^^^^^       ^^^^^^^
         // span: `vec![0..200]` or `[0..200]`
         //        ^^^^^^^^^^^^      ^^^^^^^^
-        // kind: What to print, an array or a `Vec`
-        let (inner_expr, span, kind) = if let ExprKind::Array([inner_expr]) = expr.kind
+        // suggested_type: What to print, "an array" or "a `Vec`"
+        let (inner_expr, span, suggested_type) = if let ExprKind::Array([inner_expr]) = expr.kind
             && !expr.span.from_expansion()
         {
             (inner_expr, expr.span, SuggestedType::Array)
@@ -96,13 +92,11 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             && let ty = cx.typeck_results().expr_ty(start.expr)
             && let Some(snippet) = snippet_opt(cx, span)
             // `is_from_proc_macro` will skip any `vec![]`. Let's not!
-            && snippet.starts_with(kind.starts_with())
-            && snippet.ends_with(kind.ends_with())
+            && snippet.starts_with(suggested_type.starts_with())
+            && snippet.ends_with(suggested_type.ends_with())
+            && let Some(start_snippet) = snippet_opt(cx, start.span)
+            && let Some(end_snippet) = snippet_opt(cx, end.span)
         {
-            let mut app = Applicability::MaybeIncorrect;
-            let start_snippet = snippet_with_applicability(cx, start.span, "...", &mut app);
-            let end_snippet = snippet_with_applicability(cx, end.span, "...", &mut app);
-
             let should_emit_every_value = if let Some(step_def_id) = get_trait_def_id(cx, &["core", "iter", "Step"])
                 && implements_trait(cx, ty, step_def_id, &[])
             {
@@ -126,23 +120,23 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                     cx,
                     SINGLE_RANGE_IN_VEC_INIT,
                     span,
-                    &format!("{kind} of `Range` that is only one element"),
+                    &format!("{suggested_type} of `Range` that is only one element"),
                     |diag| {
                         if should_emit_every_value {
                             diag.span_suggestion(
                                 span,
-                                "if you wanted a `Vec` that contains every value in the range, try",
+                                "if you wanted a `Vec` that contains the entire range, try",
                                 format!("({start_snippet}..{end_snippet}).collect::<std::vec::Vec<{ty}>>()"),
-                                app,
+                                Applicability::MaybeIncorrect,
                             );
                         }
 
                         if should_emit_of_len {
                             diag.span_suggestion(
                                 inner_expr.span,
-                                format!("if you wanted {kind} of len {end_snippet}, try"),
+                                format!("if you wanted {suggested_type} of len {end_snippet}, try"),
                                 format!("{start_snippet}; {end_snippet}"),
-                                app,
+                                Applicability::MaybeIncorrect,
                             );
                         }
                     },

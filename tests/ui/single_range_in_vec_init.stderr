@@ -5,7 +5,7 @@ LL |     [0..200];
    |     ^^^^^^^^
    |
    = note: `-D clippy::single-range-in-vec-init` implied by `-D warnings`
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0..200).collect::<std::vec::Vec<i32>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -20,7 +20,7 @@ error: a `Vec` of `Range` that is only one element
 LL |     vec![0..200];
    |     ^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0..200).collect::<std::vec::Vec<i32>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,7 +35,7 @@ error: an array of `Range` that is only one element
 LL |     [0u8..200];
    |     ^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0u8..200).collect::<std::vec::Vec<u8>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,7 +50,7 @@ error: an array of `Range` that is only one element
 LL |     [0usize..200];
    |     ^^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0usize..200).collect::<std::vec::Vec<usize>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,7 +65,7 @@ error: an array of `Range` that is only one element
 LL |     [0..200usize];
    |     ^^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0..200usize).collect::<std::vec::Vec<usize>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,7 +80,7 @@ error: a `Vec` of `Range` that is only one element
 LL |     vec![0u8..200];
    |     ^^^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0u8..200).collect::<std::vec::Vec<u8>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,7 +95,7 @@ error: a `Vec` of `Range` that is only one element
 LL |     vec![0usize..200];
    |     ^^^^^^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0usize..200).collect::<std::vec::Vec<usize>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,7 +110,7 @@ error: a `Vec` of `Range` that is only one element
 LL |     vec![0..200usize];
    |     ^^^^^^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0..200usize).collect::<std::vec::Vec<usize>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,7 +125,7 @@ error: an array of `Range` that is only one element
 LL |     [0..200isize];
    |     ^^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0..200isize).collect::<std::vec::Vec<isize>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,7 +136,7 @@ error: a `Vec` of `Range` that is only one element
 LL |     vec![0..200isize];
    |     ^^^^^^^^^^^^^^^^^
    |
-help: if you wanted a `Vec` that contains every value in the range, try
+help: if you wanted a `Vec` that contains the entire range, try
    |
 LL |     (0..200isize).collect::<std::vec::Vec<isize>>();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
