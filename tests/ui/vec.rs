@@ -71,6 +71,9 @@ fn main() {
         println!("{:?}", a);
     }
 
+    // https://github.com/rust-lang/rust-clippy/issues/2262#issuecomment-783979246
+    let _x: i32 = vec![1, 2, 3].iter().sum();
+
     // Do lint
     let mut x = vec![1, 2, 3];
     x.fill(123);
