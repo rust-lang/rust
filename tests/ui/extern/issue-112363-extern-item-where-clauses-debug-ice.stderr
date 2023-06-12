@@ -1,0 +1,47 @@
+error: incorrect `type` inside `extern` block
+  --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:10
+   |
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign types and types inside of them cannot have a body
+LL |     type Item = [T] where [T]: Sized;
+   |          ^^^^   --- the invalid body
+   |          |
+   |          cannot have a body
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `type`s inside `extern` blocks cannot have `where` clauses
+  --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:21
+   |
+LL | extern "C" {
+   | ---------- `extern` block begins here
+LL |     type Item = [T] where [T]: Sized;
+   |                     ^^^^^^^^^^^^^^^^ help: remove the `where` clause
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:28
+   |
+LL |     type Item = [T] where [T]: Sized;
+   |                            ^ not found in this scope
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:18
+   |
+LL |     type Item = [T] where [T]: Sized;
+   |                  ^ not found in this scope
+
+error[E0658]: extern types are experimental
+  --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:5
+   |
+LL |     type Item = [T] where [T]: Sized;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43467 <https://github.com/rust-lang/rust/issues/43467> for more information
+   = help: add `#![feature(extern_types)]` to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0412, E0658.
+For more information about an error, try `rustc --explain E0412`.

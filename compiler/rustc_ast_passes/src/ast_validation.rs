@@ -364,7 +364,12 @@ impl<'a> AstValidator<'a> {
         self.err_handler().emit_err(errors::BoundInContext { span, ctx });
     }
 
-    fn check_foreign_ty_genericless(&self, generics: &Generics, where_span: Span) {
+    fn check_foreign_ty_genericless(
+        &self,
+        generics: &Generics,
+        before_where_clause: &TyAliasWhereClause,
+        after_where_clause: &TyAliasWhereClause,
+    ) {
         let cannot_have = |span, descr, remove_descr| {
             self.err_handler().emit_err(errors::ExternTypesCannotHave {
                 span,
@@ -378,9 +383,14 @@ impl<'a> AstValidator<'a> {
             cannot_have(generics.span, "generic parameters", "generic parameters");
         }
 
-        if !generics.where_clause.predicates.is_empty() {
-            cannot_have(where_span, "`where` clauses", "`where` clause");
-        }
+        let check_where_clause = |where_clause: &TyAliasWhereClause| {
+            if let TyAliasWhereClause(true, where_clause_span) = where_clause {
+                cannot_have(*where_clause_span, "`where` clauses", "`where` clause");
+            }
+        };
+
+        check_where_clause(before_where_clause);
+        check_where_clause(after_where_clause);
     }
 
     fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
@@ -1039,7 +1049,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
-                self.check_foreign_ty_genericless(generics, where_clauses.0.1);
+                self.check_foreign_ty_genericless(generics, &where_clauses.0, &where_clauses.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
