@@ -254,6 +254,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(result.callee)
     }
 
+    pub fn lookup_method_for_diagnostic(
+        &self,
+        self_ty: Ty<'tcx>,
+        segment: &hir::PathSegment<'_>,
+        span: Span,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        self_expr: &'tcx hir::Expr<'tcx>,
+    ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
+        let pick = self.lookup_probe_for_diagnostic(
+            segment.ident,
+            self_ty,
+            call_expr,
+            ProbeScope::TraitsInScope,
+            None,
+        )?;
+
+        Ok(self
+            .confirm_method_for_diagnostic(span, self_expr, call_expr, self_ty, &pick, segment)
+            .callee)
+    }
+
     #[instrument(level = "debug", skip(self, call_expr))]
     pub fn lookup_probe(
         &self,
