@@ -2104,7 +2104,7 @@ pub struct InTypeConst {
 
 impl InTypeConst {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).1.module(db.upcast()) }
+        Module { id: self.id.lookup(db.upcast()).owner.module(db.upcast()) }
     }
 }
 

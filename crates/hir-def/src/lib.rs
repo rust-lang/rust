@@ -62,11 +62,7 @@ use std::{
     panic::{RefUnwindSafe, UnwindSafe},
 };
 
-use base_db::{
-    impl_intern_key,
-    salsa::{self, InternId},
-    CrateId, ProcMacroKind,
-};
+use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
 use hir_expand::{
     ast_id_map::FileAstId,
     attrs::{Attr, AttrId, AttrInput},
@@ -482,8 +478,16 @@ impl_from!(
 /// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
 /// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct ConstBlockId(InternId);
-impl_intern_key!(ConstBlockId);
+pub struct ConstBlockId(salsa::InternId);
+impl_intern!(ConstBlockId, ConstBlockLoc, intern_anonymous_const, lookup_intern_anonymous_const);
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+pub struct ConstBlockLoc {
+    /// The parent of the anonymous const block.
+    pub parent: DefWithBodyId,
+    /// The root expression of this const block in the parent body.
+    pub root: hir::ExprId,
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum TypeOwnerId {
@@ -563,6 +567,7 @@ impl From<GenericDefId> for TypeOwnerId {
     }
 }
 
+// FIXME: This should not be a thing
 /// A thing that we want to store in interned ids, but we don't know its type in `hir-def`. This is
 /// currently only used in `InTypeConstId` for storing the type (which has type `Ty` defined in
 /// the `hir-ty` crate) of the constant in its id, which is a temporary hack so we may want
@@ -620,13 +625,26 @@ impl Clone for Box<dyn OpaqueInternableThing> {
 /// length (like `[u8; 2 + 2]`). These constants are body owner and are a variant of `DefWithBodyId`. These
 /// are not called `AnonymousConstId` to prevent confusion with [`ConstBlockId`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct InTypeConstId(InternId);
-type InTypeConstLoc = (AstId<ast::ConstArg>, TypeOwnerId, Box<dyn OpaqueInternableThing>);
+pub struct InTypeConstId(salsa::InternId);
 impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
+
+#[derive(Debug, Hash, Eq, Clone)]
+pub struct InTypeConstLoc {
+    pub id: AstId<ast::ConstArg>,
+    /// The thing this const arg appears in
+    pub owner: TypeOwnerId,
+    pub thing: Box<dyn OpaqueInternableThing>,
+}
+
+impl PartialEq for InTypeConstLoc {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.owner == other.owner && &*self.thing == &*other.thing
+    }
+}
 
 impl InTypeConstId {
     pub fn source(&self, db: &dyn db::DefDatabase) -> ast::ConstArg {
-        let src = self.lookup(db).0;
+        let src = self.lookup(db).id;
         let file_id = src.file_id;
         let root = &db.parse_or_expand(file_id);
         db.ast_id_map(file_id).get(src.value).to_node(root)
@@ -647,15 +665,9 @@ impl_from!(ConstId, ConstBlockId, InTypeConstId for GeneralConstId);
 impl GeneralConstId {
     pub fn generic_def(self, db: &dyn db::DefDatabase) -> Option<GenericDefId> {
         match self {
-            GeneralConstId::ConstId(x) => Some(x.into()),
-            GeneralConstId::ConstBlockId(x) => {
-                let (parent, _) = db.lookup_intern_anonymous_const(x);
-                parent.as_generic_def_id()
-            }
-            GeneralConstId::InTypeConstId(x) => {
-                let (_, parent, _) = x.lookup(db);
-                parent.as_generic_def_id()
-            }
+            GeneralConstId::ConstId(it) => Some(it.into()),
+            GeneralConstId::ConstBlockId(it) => it.lookup(db).parent.as_generic_def_id(),
+            GeneralConstId::InTypeConstId(it) => it.lookup(db).owner.as_generic_def_id(),
         }
     }
 
@@ -902,7 +914,7 @@ impl HasModule for TypeOwnerId {
             TypeOwnerId::FunctionId(x) => x.lookup(db).module(db),
             TypeOwnerId::StaticId(x) => x.lookup(db).module(db),
             TypeOwnerId::ConstId(x) => x.lookup(db).module(db),
-            TypeOwnerId::InTypeConstId(x) => x.lookup(db).1.module(db),
+            TypeOwnerId::InTypeConstId(x) => x.lookup(db).owner.module(db),
             TypeOwnerId::AdtId(x) => x.module(db),
             TypeOwnerId::TraitId(x) => x.lookup(db).container,
             TypeOwnerId::TraitAliasId(x) => x.lookup(db).container,
@@ -921,7 +933,7 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
             DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
             DefWithBodyId::VariantId(it) => it.parent.lookup(db).container,
-            DefWithBodyId::InTypeConstId(it) => it.lookup(db).1.module(db),
+            DefWithBodyId::InTypeConstId(it) => it.lookup(db).owner.module(db),
         }
     }
 }

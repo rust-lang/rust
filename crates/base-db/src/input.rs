@@ -473,6 +473,8 @@ impl CrateGraph {
         self.arena.iter().map(|(idx, _)| idx)
     }
 
+    // FIXME: used for `handle_hack_cargo_workspace`, should be removed later
+    #[doc(hidden)]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (CrateId, &mut CrateData)> + '_ {
         self.arena.iter_mut()
     }

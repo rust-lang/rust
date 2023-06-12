@@ -118,7 +118,8 @@ impl Body {
         let _p = profile::span("body_with_source_map_query");
         let mut params = None;
 
-        let (file_id, body, is_async_fn) = {
+        let mut is_async_fn = false;
+        let InFile { file_id, value: body } = {
             match def {
                 DefWithBodyId::FunctionId(f) => {
                     let data = db.function_data(f);
@@ -138,26 +139,24 @@ impl Body {
                             }),
                         )
                     });
-                    (src.file_id, src.value.body().map(ast::Expr::from), data.has_async_kw())
+                    is_async_fn = data.has_async_kw();
+                    src.map(|it| it.body().map(ast::Expr::from))
                 }
                 DefWithBodyId::ConstId(c) => {
                     let c = c.lookup(db);
                     let src = c.source(db);
-                    (src.file_id, src.value.body(), false)
+                    src.map(|it| it.body())
                 }
                 DefWithBodyId::StaticId(s) => {
                     let s = s.lookup(db);
                     let src = s.source(db);
-                    (src.file_id, src.value.body(), false)
+                    src.map(|it| it.body())
                 }
                 DefWithBodyId::VariantId(v) => {
                     let src = v.parent.child_source(db);
-                    let variant = &src.value[v.local_id];
-                    (src.file_id, variant.expr(), false)
+                    src.map(|it| it[v.local_id].expr())
                 }
-                DefWithBodyId::InTypeConstId(c) => {
-                    (c.lookup(db).0.file_id, c.source(db).expr(), false)
-                }
+                DefWithBodyId::InTypeConstId(c) => c.lookup(db).id.map(|_| c.source(db).expr()),
             }
         };
         let module = def.module(db);

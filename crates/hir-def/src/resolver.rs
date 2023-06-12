@@ -1015,7 +1015,7 @@ impl HasResolver for TypeOwnerId {
             TypeOwnerId::FunctionId(x) => x.resolver(db),
             TypeOwnerId::StaticId(x) => x.resolver(db),
             TypeOwnerId::ConstId(x) => x.resolver(db),
-            TypeOwnerId::InTypeConstId(x) => x.lookup(db).1.resolver(db),
+            TypeOwnerId::InTypeConstId(x) => x.lookup(db).owner.resolver(db),
             TypeOwnerId::AdtId(x) => x.resolver(db),
             TypeOwnerId::TraitId(x) => x.resolver(db),
             TypeOwnerId::TraitAliasId(x) => x.resolver(db),
@@ -1034,7 +1034,7 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::FunctionId(f) => f.resolver(db),
             DefWithBodyId::StaticId(s) => s.resolver(db),
             DefWithBodyId::VariantId(v) => v.parent.resolver(db),
-            DefWithBodyId::InTypeConstId(c) => c.lookup(db).1.resolver(db),
+            DefWithBodyId::InTypeConstId(c) => c.lookup(db).owner.resolver(db),
         }
     }
 }
