@@ -53,15 +53,12 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
 };
-use rustc_trait_selection::traits::ObligationCtxt;
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 
@@ -1115,47 +1112,15 @@ fn render_assoc_items<'a, 'cx: 'a>(
     containing_item: &'a clean::Item,
     it: DefId,
     what: AssocItemRender<'a>,
-    aliased_type: Option<DefId>,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     let mut derefs = DefIdSet::default();
     derefs.insert(it);
     display_fn(move |f| {
-        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs, aliased_type);
+        render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs);
         Ok(())
     })
 }
 
-/// Check whether `impl_def_id` may apply to *some instantiation* of `item_def_id`.
-fn is_valid_impl_for(tcx: TyCtxt<'_>, item_def_id: DefId, impl_def_id: DefId) -> bool {
-    let infcx = tcx.infer_ctxt().intercrate(true).build();
-    let ocx = ObligationCtxt::new(&infcx);
-    let param_env = ParamEnv::empty();
-
-    let alias_substs = infcx.fresh_substs_for_item(rustc_span::DUMMY_SP, item_def_id);
-    let alias_ty = tcx.type_of(item_def_id).subst(tcx, alias_substs);
-    let alias_bounds = tcx.predicates_of(item_def_id).instantiate(tcx, alias_substs);
-
-    let impl_substs = infcx.fresh_substs_for_item(rustc_span::DUMMY_SP, impl_def_id);
-    let impl_self_ty = tcx.type_of(impl_def_id).subst(tcx, impl_substs);
-    let impl_bounds = tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs);
-
-    if ocx.eq(&ObligationCause::dummy(), param_env, impl_self_ty, alias_ty).is_err() {
-        return false;
-    }
-    ocx.register_obligations(
-        alias_bounds
-            .iter()
-            .chain(impl_bounds)
-            .map(|(p, _)| Obligation::new(tcx, ObligationCause::dummy(), param_env, p)),
-    );
-
-    let errors = ocx.select_where_possible();
-    errors.is_empty()
-}
-
-// If `aliased_type` is `Some`, it means `it` is a type alias and `aliased_type` is the "actual"
-// type aliased behind `it`. It is used to check whether or not the implementation of the aliased
-// type can be displayed on the alias doc page.
 fn render_assoc_items_inner(
     mut w: &mut dyn fmt::Write,
     cx: &mut Context<'_>,
@@ -1163,28 +1128,12 @@ fn render_assoc_items_inner(
     it: DefId,
     what: AssocItemRender<'_>,
     derefs: &mut DefIdSet,
-    aliased_type: Option<DefId>,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
     let cache = &shared.cache;
-    let empty = Vec::new();
-    let v = match cache.impls.get(&it) {
-        Some(v) => v,
-        None => &empty,
-    };
-    let v2 = match aliased_type {
-        Some(aliased_type) => cache.impls.get(&aliased_type).unwrap_or(&empty),
-        None => &empty,
-    };
-    if v.is_empty() && v2.is_empty() {
-        return;
-    }
-    let mut saw_impls = FxHashSet::default();
-    let (non_trait, traits): (Vec<_>, _) =
-        v.iter().chain(v2).partition(|i| i.inner_impl().trait_.is_none());
-    let tcx = cx.tcx();
-    let is_alias = aliased_type.is_some();
+    let Some(v) = cache.impls.get(&it) else { return };
+    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::html();
         let (render_mode, id, class_html) = match what {
@@ -1216,12 +1165,6 @@ fn render_assoc_items_inner(
         };
         let mut impls_buf = Buffer::html();
         for i in &non_trait {
-            if !saw_impls.insert(i.def_id()) {
-                continue;
-            }
-            if is_alias && !is_valid_impl_for(tcx, it, i.def_id()) {
-                continue;
-            }
             render_impl(
                 &mut impls_buf,
                 cx,
@@ -1250,14 +1193,9 @@ fn render_assoc_items_inner(
     if !traits.is_empty() {
         let deref_impl =
             traits.iter().find(|t| t.trait_did() == cx.tcx().lang_items().deref_trait());
-        if let Some(impl_) = deref_impl &&
-            (!is_alias || is_valid_impl_for(tcx, it, impl_.def_id()))
-        {
+        if let Some(impl_) = deref_impl {
             let has_deref_mut =
-                traits.iter().any(|t| {
-                    t.trait_did() == cx.tcx().lang_items().deref_mut_trait() &&
-                    (!is_alias || is_valid_impl_for(tcx, it, t.def_id()))
-                });
+                traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
             render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs);
         }
 
@@ -1267,14 +1205,10 @@ fn render_assoc_items_inner(
             return;
         }
 
-        let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) = traits
-            .into_iter()
-            .filter(|t| saw_impls.insert(t.def_id()))
-            .partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) = concrete
-            .into_iter()
-            .filter(|t| !is_alias || is_valid_impl_for(tcx, it, t.def_id()))
-            .partition(|t| t.inner_impl().kind.is_blanket());
+        let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
+            traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
+        let (blanket_impl, concrete): (Vec<&Impl>, _) =
+            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
         render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl);
     }
@@ -1313,10 +1247,10 @@ fn render_deref_methods(
                 return;
             }
         }
-        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs, None);
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
     } else if let Some(prim) = target.primitive_type() {
         if let Some(&did) = cache.primitive_locations.get(&prim) {
-            render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs, None);
+            render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
         }
     }
 }
