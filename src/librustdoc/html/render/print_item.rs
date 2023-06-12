@@ -42,6 +42,10 @@ use crate::html::{highlight, static_files};
 use askama::Template;
 use itertools::Itertools;
 
+trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
+    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
+}
+
 /// Generates an Askama template struct for rendering items with common methods.
 ///
 /// Usage:
@@ -121,6 +125,16 @@ macro_rules! item_template_methods {
             display_fn(move |f| {
                 let (item, cx) = self.item_and_mut_cx();
                 let v = render_attributes_in_pre(item, "", &cx);
+                write!(f, "{v}")
+            })
+        }
+        item_template_methods!($($rest)*);
+    };
+    (render_attributes_in_code $($rest:tt)*) => {
+        fn render_attributes_in_code<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+            display_fn(move |f| {
+                let (it, cx) = self.item_and_mut_cx();
+                let v = render_attributes_in_code(it, cx.tcx());
                 write!(f, "{v}")
             })
         }
@@ -320,63 +334,6 @@ fn toggle_open(mut w: impl fmt::Write, text: impl fmt::Display) {
 
 fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
-}
-
-trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
-    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
-}
-
-fn item_template_document<'a: 'b, 'b, 'cx: 'a>(
-    templ: &'b impl ItemTemplate<'a, 'cx>,
-) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-    display_fn(move |f| {
-        let (item, mut cx) = templ.item_and_mut_cx();
-        let v = document(*cx, item, None, HeadingOffset::H2);
-        write!(f, "{v}")
-    })
-}
-
-fn item_template_document_type_layout<'a: 'b, 'b, 'cx: 'a>(
-    templ: &'b impl ItemTemplate<'a, 'cx>,
-) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-    display_fn(move |f| {
-        let (item, cx) = templ.item_and_mut_cx();
-        let def_id = item.item_id.expect_def_id();
-        let v = document_type_layout(*cx, def_id);
-        write!(f, "{v}")
-    })
-}
-
-fn item_template_render_attributes_in_pre<'a: 'b, 'b, 'cx: 'a>(
-    templ: &'b impl ItemTemplate<'a, 'cx>,
-) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-    display_fn(move |f| {
-        let (item, cx) = templ.item_and_mut_cx();
-        let tcx = cx.tcx();
-        let v = render_attributes_in_pre(item, "", tcx);
-        write!(f, "{v}")
-    })
-}
-
-fn item_template_render_attributes_in_code<'a: 'b, 'b, 'cx: 'a>(
-    templ: &'b impl ItemTemplate<'a, 'cx>,
-) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-    display_fn(move |f| {
-        let (it, cx) = templ.item_and_mut_cx();
-        let v = render_attributes_in_code(it, cx.tcx());
-        write!(f, "{v}")
-    })
-}
-
-fn item_template_render_assoc_items<'a: 'b, 'b, 'cx: 'a>(
-    templ: &'b impl ItemTemplate<'a, 'cx>,
-) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-    display_fn(move |f| {
-        let (item, mut cx) = templ.item_and_mut_cx();
-        let def_id = item.item_id.expect_def_id();
-        let v = render_assoc_items(*cx, item, def_id, AssocItemRender::All, None);
-        write!(f, "{v}")
-    })
 }
 
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
@@ -1864,26 +1821,22 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
 }
 
 fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
-    #[derive(Template)]
-    #[template(path = "item_struct.html")]
-    struct ItemStruct<'a, 'cx> {
-        cx: std::cell::RefCell<&'a mut Context<'cx>>,
-        it: &'a clean::Item,
-        s: &'a clean::Struct,
-        should_render_fields: bool,
-    }
+    item_template!(
+        #[template(path = "item_struct.html")]
+        struct ItemStruct<'a, 'cx> {
+            cx: RefCell<&'a mut Context<'cx>>,
+            it: &'a clean::Item,
+            s: &'a clean::Struct,
+            should_render_fields: bool,
+        },
+        methods = [render_attributes_in_code, document, render_assoc_items, document_type_layout]
+    );
 
     struct Field<'a> {
         item: &'a clean::Item,
         name: String,
         id: String,
         ty: String,
-    }
-
-    impl<'a, 'cx: 'a> ItemTemplate<'a, 'cx> for ItemStruct<'a, 'cx> {
-        fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>) {
-            (self.it, self.cx.borrow_mut())
-        }
     }
 
     impl<'a, 'cx: 'a> ItemStruct<'a, 'cx> {
