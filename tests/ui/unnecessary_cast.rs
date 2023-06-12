@@ -66,12 +66,22 @@ fn main() {
     foo!(b, f32);
     foo!(c, f64);
 
+    // do not lint cast from cfg-dependant type
+    let x = 0 as std::ffi::c_ulong;
+    let y = x as u64;
+    let x: std::ffi::c_ulong = 0;
+    let y = x as u64;
+
     // do not lint cast to cfg-dependant type
-    1 as std::os::raw::c_char;
+    let x = 1 as std::os::raw::c_char;
+    let y = x as u64;
 
     // do not lint cast to alias type
     1 as I32Alias;
     &1 as &I32Alias;
+    // or from
+    let x: I32Alias = 1;
+    let y = x as u64;
 
     let i8_ptr: *const i8 = &1;
     let u8_ptr: *const u8 = &1;
