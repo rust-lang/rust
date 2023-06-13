@@ -232,9 +232,13 @@ impl CodeStats {
             .map(|(_did, stats)| stats)
             .collect::<Vec<_>>();
 
-        // Sort by the cost % in reverse order (from biggest to smallest)
+        // Primary sort: cost % in reverse order (from largest to smallest)
+        // Secondary sort: trait_name
         infos.sort_by(|a, b| {
-            a.upcasting_cost_percent.total_cmp(&b.upcasting_cost_percent).reverse()
+            a.upcasting_cost_percent
+                .total_cmp(&b.upcasting_cost_percent)
+                .reverse()
+                .then_with(|| a.trait_name.cmp(&b.trait_name))
         });
 
         for VTableSizeInfo {
