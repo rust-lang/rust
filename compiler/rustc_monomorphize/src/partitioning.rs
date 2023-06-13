@@ -129,6 +129,11 @@ struct PlacedRootMonoItems<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
 
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
+
+    /// These must be obtained when the iterator in `partition` runs. They
+    /// can't be obtained later because some inlined functions might not be
+    /// reachable.
+    unique_inlined_stats: (usize, usize),
 }
 
 // The output CGUs are sorted by name.
@@ -147,7 +152,7 @@ where
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
-    let PlacedRootMonoItems { mut codegen_units, internalization_candidates } = {
+    let PlacedRootMonoItems { mut codegen_units, internalization_candidates, unique_inlined_stats } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
         place_root_mono_items(cx, mono_items)
     };
@@ -156,7 +161,7 @@ where
         cgu.create_size_estimate(tcx);
     }
 
-    debug_dump(tcx, "INITIAL PARTITIONING", &codegen_units);
+    debug_dump(tcx, "ROOTS", &codegen_units, unique_inlined_stats);
 
     // Merge until we have at most `max_cgu_count` codegen units.
     // `merge_codegen_units` is responsible for updating the CGU size
@@ -164,7 +169,7 @@ where
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
         merge_codegen_units(cx, &mut codegen_units);
-        debug_dump(tcx, "POST MERGING", &codegen_units);
+        debug_dump(tcx, "MERGE", &codegen_units, unique_inlined_stats);
     }
 
     // In the next step, we use the inlining map to determine which additional
@@ -180,7 +185,7 @@ where
         cgu.create_size_estimate(tcx);
     }
 
-    debug_dump(tcx, "POST INLINING", &codegen_units);
+    debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
@@ -224,7 +229,7 @@ where
     // Ensure CGUs are sorted by name, so that we get deterministic results.
     assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
 
-    debug_dump(tcx, "FINAL", &codegen_units);
+    debug_dump(tcx, "FINAL", &codegen_units, unique_inlined_stats);
 
     codegen_units
 }
@@ -250,10 +255,16 @@ where
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
     let cgu_name_cache = &mut FxHashMap::default();
 
+    let mut num_unique_inlined_items = 0;
+    let mut unique_inlined_items_size = 0;
     for mono_item in mono_items {
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
-            InstantiationMode::LocalCopy => continue,
+            InstantiationMode::LocalCopy => {
+                num_unique_inlined_items += 1;
+                unique_inlined_items_size += mono_item.size_estimate(cx.tcx);
+                continue;
+            }
         }
 
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
@@ -298,7 +309,11 @@ where
     let mut codegen_units: Vec<_> = codegen_units.into_values().collect();
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
-    PlacedRootMonoItems { codegen_units, internalization_candidates }
+    PlacedRootMonoItems {
+        codegen_units,
+        internalization_candidates,
+        unique_inlined_stats: (num_unique_inlined_items, unique_inlined_items_size),
+    }
 }
 
 // This function requires the CGUs to be sorted by name on input, and ensures
@@ -812,31 +827,91 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
     }
 }
 
-fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<'tcx>]) {
+fn debug_dump<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'tcx>,
+    label: &str,
+    cgus: &[CodegenUnit<'tcx>],
+    (unique_inlined_items, unique_inlined_size): (usize, usize),
+) {
     let dump = move || {
         use std::fmt::Write;
 
-        let num_cgus = cgus.len();
-        let num_items: usize = cgus.iter().map(|cgu| cgu.items().len()).sum();
-        let total_size: usize = cgus.iter().map(|cgu| cgu.size_estimate()).sum();
-        let max_size = cgus.iter().map(|cgu| cgu.size_estimate()).max().unwrap();
-        let min_size = cgus.iter().map(|cgu| cgu.size_estimate()).min().unwrap();
-        let max_min_size_ratio = max_size as f64 / min_size as f64;
+        let mut num_cgus = 0;
+        let mut all_cgu_sizes = Vec::new();
+
+        // Note: every unique root item is placed exactly once, so the number
+        // of unique root items always equals the number of placed root items.
+
+        let mut root_items = 0;
+        // unique_inlined_items is passed in above.
+        let mut placed_inlined_items = 0;
+
+        let mut root_size = 0;
+        // unique_inlined_size is passed in above.
+        let mut placed_inlined_size = 0;
+
+        for cgu in cgus.iter() {
+            num_cgus += 1;
+            all_cgu_sizes.push(cgu.size_estimate());
+
+            for (item, _) in cgu.items() {
+                match item.instantiation_mode(tcx) {
+                    InstantiationMode::GloballyShared { .. } => {
+                        root_items += 1;
+                        root_size += item.size_estimate(tcx);
+                    }
+                    InstantiationMode::LocalCopy => {
+                        placed_inlined_items += 1;
+                        placed_inlined_size += item.size_estimate(tcx);
+                    }
+                }
+            }
+        }
+
+        all_cgu_sizes.sort_unstable_by_key(|&n| cmp::Reverse(n));
+
+        let unique_items = root_items + unique_inlined_items;
+        let placed_items = root_items + placed_inlined_items;
+        let items_ratio = placed_items as f64 / unique_items as f64;
+
+        let unique_size = root_size + unique_inlined_size;
+        let placed_size = root_size + placed_inlined_size;
+        let size_ratio = placed_size as f64 / unique_size as f64;
+
+        let mean_cgu_size = placed_size as f64 / num_cgus as f64;
+
+        assert_eq!(placed_size, all_cgu_sizes.iter().sum::<usize>());
 
         let s = &mut String::new();
+        let _ = writeln!(s, "{label}");
         let _ = writeln!(
             s,
-            "{label} ({num_items} items, total_size={total_size}; {num_cgus} CGUs, \
-             max_size={max_size}, min_size={min_size}, max_size/min_size={max_min_size_ratio:.1}):"
+            "- unique items: {unique_items} ({root_items} root + {unique_inlined_items} inlined), \
+               unique size: {unique_size} ({root_size} root + {unique_inlined_size} inlined)\n\
+             - placed items: {placed_items} ({root_items} root + {placed_inlined_items} inlined), \
+               placed size: {placed_size} ({root_size} root + {placed_inlined_size} inlined)\n\
+             - placed/unique items ratio: {items_ratio:.2}, \
+               placed/unique size ratio: {size_ratio:.2}\n\
+             - CGUs: {num_cgus}, mean size: {mean_cgu_size:.1}, sizes: {}",
+            list(&all_cgu_sizes),
         );
+        let _ = writeln!(s);
+
         for (i, cgu) in cgus.iter().enumerate() {
+            let name = cgu.name();
+            let size = cgu.size_estimate();
             let num_items = cgu.items().len();
-            let _ = writeln!(
-                s,
-                "- CGU[{i}] {} ({num_items} items, size={}):",
-                cgu.name(),
-                cgu.size_estimate()
-            );
+            let mean_size = size as f64 / num_items as f64;
+
+            let mut placed_item_sizes: Vec<_> =
+                cgu.items().iter().map(|(item, _)| item.size_estimate(tcx)).collect();
+            placed_item_sizes.sort_unstable_by_key(|&n| cmp::Reverse(n));
+            let sizes = list(&placed_item_sizes);
+
+            let _ = writeln!(s, "- CGU[{i}]");
+            let _ = writeln!(s, "  - {name}, size: {size}");
+            let _ =
+                writeln!(s, "  - items: {num_items}, mean size: {mean_size:.1}, sizes: {sizes}",);
 
             for (item, linkage) in cgu.items_in_deterministic_order(tcx) {
                 let symbol_name = item.symbol_name(tcx).name;
@@ -852,7 +927,43 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
             let _ = writeln!(s);
         }
 
-        std::mem::take(s)
+        return std::mem::take(s);
+
+        // Converts a slice to a string, capturing repetitions to save space.
+        // E.g. `[4, 4, 4, 3, 2, 1, 1, 1, 1, 1]` -> "[4 (x3), 3, 2, 1 (x5)]".
+        fn list(ns: &[usize]) -> String {
+            let mut v = Vec::new();
+            if ns.is_empty() {
+                return "[]".to_string();
+            }
+
+            let mut elem = |curr, curr_count| {
+                if curr_count == 1 {
+                    v.push(format!("{curr}"));
+                } else {
+                    v.push(format!("{curr} (x{curr_count})"));
+                }
+            };
+
+            let mut curr = ns[0];
+            let mut curr_count = 1;
+
+            for &n in &ns[1..] {
+                if n != curr {
+                    elem(curr, curr_count);
+                    curr = n;
+                    curr_count = 1;
+                } else {
+                    curr_count += 1;
+                }
+            }
+            elem(curr, curr_count);
+
+            let mut s = "[".to_string();
+            s.push_str(&v.join(", "));
+            s.push_str("]");
+            s
+        }
     };
 
     debug!("{}", dump());
