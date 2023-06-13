@@ -13,7 +13,7 @@ extern crate proc_macros;
 
 use proc_macros::with_span;
 
-struct Game;
+struct Game; // You just lost.
 
 // This should not be linted because it's already const
 const fn already_const() -> i32 {
@@ -125,4 +125,35 @@ mod const_fn_stabilized_after_msrv {
 with_span! {
     span
     fn dont_check_in_proc_macro() {}
+}
+
+// Do not lint `String` has `Vec<u8>`, which cannot be dropped in const contexts
+fn a(this: String) {}
+
+enum A {
+    F(String),
+    N,
+}
+
+// Same here.
+fn b(this: A) {}
+
+// Minimized version of `a`.
+fn c(this: Vec<u16>) {}
+
+struct F(A);
+
+// Do not lint
+fn f(this: F) {}
+
+// Do not lint
+fn g<T>(this: T) {}
+
+struct Issue10617(String);
+
+impl Issue10617 {
+    // Do not lint
+    pub fn name(self) -> String {
+        self.0
+    }
 }
