@@ -549,7 +549,6 @@ impl GlobalState {
                 self.vfs_progress_n_total = n_total;
                 self.vfs_progress_n_done = n_done;
 
-                // if n_total != 0 {
                 let state = if n_done == 0 {
                     Progress::Begin
                 } else if n_done < n_total {
@@ -565,7 +564,6 @@ impl GlobalState {
                     Some(Progress::fraction(n_done, n_total)),
                     None,
                 );
-                // }
             }
         }
     }

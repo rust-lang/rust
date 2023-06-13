@@ -101,7 +101,6 @@ pub struct ItemTree {
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, RawAttrs>,
 
-    // FIXME: Remove this indirection, an item tree is almost always non-empty?
     data: Option<Box<ItemTreeData>>,
 }
 
@@ -718,7 +717,6 @@ pub struct Mod {
 pub enum ModKind {
     /// `mod m { ... }`
     Inline { items: Box<[ModItem]> },
-
     /// `mod m;`
     Outline,
 }
@@ -890,10 +888,6 @@ impl ModItem {
             ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
             ModItem::Function(func) => Some(AssocItem::Function(*func)),
         }
-    }
-
-    pub fn downcast<N: ItemTreeNode>(self) -> Option<FileItemTreeId<N>> {
-        N::id_from_mod_item(self)
     }
 
     pub fn ast_id(&self, tree: &ItemTree) -> FileAstId<ast::Item> {
