@@ -17,6 +17,7 @@ mod libc {
     pub use libc::c_int;
     pub struct ucred;
     pub struct cmsghdr;
+    pub struct sockcred2;
     pub type pid_t = i32;
     pub type gid_t = u32;
     pub type uid_t = u32;
