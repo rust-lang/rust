@@ -172,7 +172,7 @@ fn impl_def_from_trait(
 ) -> Option<(ast::Impl, ast::AssocItem)> {
     let trait_ = trait_?;
     let target_scope = sema.scope(annotated_name.syntax())?;
-    let trait_items = filter_assoc_items(sema, &trait_.items(sema.db), DefaultMethods::No);
+    let trait_items = filter_assoc_items(sema, &trait_.items(sema.db), DefaultMethods::No, true);
     if trait_items.is_empty() {
         return None;
     }

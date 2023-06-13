@@ -3,7 +3,7 @@
 use std::ops;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HirDisplay, InFile, Semantics};
+use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
 use ide_db::{
     famous_defs::FamousDefs, path_transform::PathTransform,
     syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
@@ -94,16 +94,44 @@ pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
     items: &[hir::AssocItem],
     default_methods: DefaultMethods,
+    ignore_hidden: bool,
 ) -> Vec<InFile<ast::AssocItem>> {
+    // FIXME : How to use the closure below  this so I can write sth like
+    // sema.source(hide(it)?)?...
+
+    // let hide = |it: impl HasAttrs| {
+    //     if default_methods == DefaultMethods::IgnoreHidden && it.attrs(sema.db).has_doc_hidden() {
+    //         None;
+    //     }
+    //     Some(it)
+    // };
+
     return items
         .iter()
         // Note: This throws away items with no source.
         .copied()
         .filter_map(|assoc_item| {
             let item = match assoc_item {
-                hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
-                hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
-                hir::AssocItem::Const(it) => sema.source(it)?.map(ast::AssocItem::Const),
+                hir::AssocItem::Function(it) => {
+                    if ignore_hidden && it.attrs(sema.db).has_doc_hidden() {
+                        return None;
+                    }
+                    sema.source(it)?.map(ast::AssocItem::Fn)
+                }
+                hir::AssocItem::TypeAlias(it) => {
+                    if ignore_hidden && it.attrs(sema.db).has_doc_hidden() {
+                        return None;
+                    }
+
+                    sema.source(it)?.map(ast::AssocItem::TypeAlias)
+                }
+                hir::AssocItem::Const(it) => {
+                    if ignore_hidden && it.attrs(sema.db).has_doc_hidden() {
+                        return None;
+                    }
+
+                    sema.source(it)?.map(ast::AssocItem::Const)
+                }
             };
             Some(item)
         })

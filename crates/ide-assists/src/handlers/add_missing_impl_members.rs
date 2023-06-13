@@ -43,6 +43,7 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext<'_
         acc,
         ctx,
         DefaultMethods::No,
+        true,
         "add_impl_missing_members",
         "Implement missing members",
     )
@@ -87,6 +88,7 @@ pub(crate) fn add_missing_default_members(
         acc,
         ctx,
         DefaultMethods::Only,
+        true,
         "add_impl_default_members",
         "Implement default members",
     )
@@ -96,6 +98,7 @@ fn add_missing_impl_members_inner(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
     mode: DefaultMethods,
+    ignore_hidden: bool,
     assist_id: &'static str,
     label: &'static str,
 ) -> Option<()> {
@@ -119,6 +122,7 @@ fn add_missing_impl_members_inner(
         &ctx.sema,
         &ide_db::traits::get_missing_assoc_items(&ctx.sema, &impl_def),
         mode,
+        ignore_hidden,
     );
 
     if missing_items.is_empty() {
@@ -1965,5 +1969,40 @@ impl AnotherTrait<i32> for () {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn doc_hidden_default_impls_ignored() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+struct Foo;
+trait Trait {
+    #[doc(hidden)]
+    fn func_with_default_impl() -> u32 {
+        42
+    }
+    fn another_default_impl() -> u32 {
+        43
+    }
+}
+impl Tra$0it for Foo {}"#,
+            r#"
+struct Foo;
+trait Trait {
+    #[doc(hidden)]
+    fn func_with_default_impl() -> u32 {
+        42
+    }
+    fn another_default_impl() -> u32 {
+        43
+    }
+}
+impl Trait for Foo {
+    $0fn another_default_impl() -> u32 {
+        43
+    }
+}"#,
+        )
     }
 }
