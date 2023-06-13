@@ -1792,7 +1792,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--adb-path").arg("adb");
         cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
-        if target.contains("android") {
+        if target.contains("android") && !builder.config.dry_run() {
             // Assume that cc for this target comes from the android sysroot
             cmd.arg("--android-cross-path")
                 .arg(builder.cc(target).parent().unwrap().parent().unwrap());
