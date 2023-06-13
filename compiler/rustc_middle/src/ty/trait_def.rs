@@ -57,6 +57,9 @@ pub struct TraitDef {
     /// denied. This only applies to built-in trait, and is marked via
     /// `#[rustc_do_not_implement_via_object]`.
     pub do_not_implement_via_object: bool,
+
+    /// Whether a trait is fully built-in, and any implementation is disallowed.
+    pub deny_explicit_impl: bool,
 }
 
 /// Whether this trait is treated specially by the standard library

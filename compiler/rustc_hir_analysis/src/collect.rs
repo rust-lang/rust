@@ -986,6 +986,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
             no_dups.then_some(list)
         });
     let do_not_implement_via_object = tcx.has_attr(def_id, sym::rustc_do_not_implement_via_object);
+    let deny_explicit_impl = tcx.has_attr(def_id, sym::rustc_deny_explicit_impl);
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
@@ -997,7 +998,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         skip_array_during_method_dispatch,
         specialization_kind,
         must_implement_one_of,
-        do_not_implement_via_object,
+        implement_via_object,
+        deny_explicit_impl,
     }
 }
 
