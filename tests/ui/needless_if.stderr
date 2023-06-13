@@ -1,5 +1,5 @@
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:30:5
+  --> $DIR/needless_if.rs:28:5
    |
 LL |     if (true) {}
    |     ^^^^^^^^^^^^ help: you can remove it
@@ -7,19 +7,13 @@ LL |     if (true) {}
    = note: `-D clippy::needless-if` implied by `-D warnings`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:32:5
+  --> $DIR/needless_if.rs:30:5
    |
-LL |     if no_side_effects() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `no_side_effects();`
+LL |     if maybe_side_effect() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `maybe_side_effect();`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:34:5
-   |
-LL |     if has_side_effects(&mut x) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `has_side_effects(&mut x);`
-
-error: this `if` branch is empty
-  --> $DIR/needless_if.rs:40:5
+  --> $DIR/needless_if.rs:35:5
    |
 LL | /     if {
 LL | |         return;
@@ -28,10 +22,44 @@ LL | |     } {}
    |
 help: you can remove it
    |
-LL ~     {
+LL ~     ({
 LL +         return;
-LL +     };
+LL +     });
    |
 
-error: aborting due to 4 previous errors
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:47:5
+   |
+LL | /     if {
+LL | |         if let true = true && true { true } else { false }
+LL | |     } && true
+LL | |     {}
+   | |______^
+   |
+help: you can remove it
+   |
+LL ~     ({
+LL +         if let true = true && true { true } else { false }
+LL +     } && true);
+   |
+
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:85:5
+   |
+LL |     if { maybe_side_effect() } {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() });`
+
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:87:5
+   |
+LL |     if { maybe_side_effect() } && true {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() } && true);`
+
+error: this `if` branch is empty
+  --> $DIR/needless_if.rs:91:5
+   |
+LL |     if true {}
+   |     ^^^^^^^^^^ help: you can remove it: `true;`
+
+error: aborting due to 7 previous errors
 
