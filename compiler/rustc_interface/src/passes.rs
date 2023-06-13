@@ -880,9 +880,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             let mut first_dsa = true;
 
             // Number of vtable entries, if we didn't have upcasting
-            let mut unupcasted_cost = 0;
+            let mut entries_ignoring_upcasting = 0;
             // Number of vtable entries needed solely for upcasting
-            let mut upcast_cost = 0;
+            let mut entries_for_upcasting = 0;
 
             let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
 
@@ -911,9 +911,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         // If this is the first dsa, it would be included either way,
                         // otherwise it's needed for upcasting
                         if std::mem::take(&mut first_dsa) {
-                            unupcasted_cost += 3;
+                            entries_ignoring_upcasting += 3;
                         } else {
-                            upcast_cost += 3;
+                            entries_for_upcasting += 3;
                         }
                     }
 
@@ -926,10 +926,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         // We can't really do that as, for example, all not trivial bounds on generic
                         // parameters are impossible (since we don't know the parameters...),
                         // see the comment above.
-                        unupcasted_cost += own_existential_entries.len();
+                        entries_ignoring_upcasting += own_existential_entries.len();
 
                         if emit_vptr {
-                            upcast_cost += 1;
+                            entries_for_upcasting += 1;
                         }
                     }
                 }
@@ -942,10 +942,12 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 &name,
                 VTableSizeInfo {
                     trait_name: name.clone(),
-                    size_words_without_upcasting: unupcasted_cost,
-                    size_words_with_upcasting: unupcasted_cost + upcast_cost,
-                    difference_words: upcast_cost,
-                    difference_percent: upcast_cost as f64 / unupcasted_cost as f64 * 100.,
+                    entries: entries_ignoring_upcasting + entries_for_upcasting,
+                    entries_ignoring_upcasting,
+                    entries_for_upcasting,
+                    upcasting_cost_percent: entries_for_upcasting as f64
+                        / entries_ignoring_upcasting as f64
+                        * 100.,
                 },
             )
         }

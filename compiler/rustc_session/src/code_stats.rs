@@ -68,10 +68,21 @@ pub struct TypeSizeInfo {
 
 pub struct VTableSizeInfo {
     pub trait_name: String,
-    pub size_words_without_upcasting: usize,
-    pub size_words_with_upcasting: usize,
-    pub difference_words: usize,
-    pub difference_percent: f64,
+
+    /// Number of entries in a vtable with the current algorithm
+    /// (i.e. with upcasting).
+    pub entries: usize,
+
+    /// Number of entries in a vtable, as-if we did not have trait upcasting.
+    pub entries_ignoring_upcasting: usize,
+
+    /// Number of entries in a vtable needed solely for upcasting
+    /// (i.e. `entries - entries_ignoring_upcasting`).
+    pub entries_for_upcasting: usize,
+
+    /// Cost of having upcasting in % relative to the number of entries without
+    /// upcasting (i.e. `entries_for_upcasting / entries_ignoring_upcasting * 100%`).
+    pub upcasting_cost_percent: f64,
 }
 
 #[derive(Default)]
@@ -216,25 +227,26 @@ impl CodeStats {
     }
 
     pub fn print_vtable_sizes(&self, crate_name: &str) {
-        let mut rr = std::mem::take(&mut *self.vtable_sizes.lock()).into_iter().collect::<Vec<_>>();
+        let mut infos = std::mem::take(&mut *self.vtable_sizes.lock())
+            .into_iter()
+            .map(|(_did, stats)| stats)
+            .collect::<Vec<_>>();
 
-        rr.sort_by(|(_, stats_a), (_, stats_b)| {
-            stats_b.difference_percent.total_cmp(&stats_a.difference_percent)
+        // Sort by the cost % in reverse order (from biggest to smallest)
+        infos.sort_by(|a, b| {
+            a.upcasting_cost_percent.total_cmp(&b.upcasting_cost_percent).reverse()
         });
 
-        for (
-            _,
-            VTableSizeInfo {
-                trait_name,
-                size_words_without_upcasting,
-                size_words_with_upcasting,
-                difference_words,
-                difference_percent,
-            },
-        ) in rr
+        for VTableSizeInfo {
+            trait_name,
+            entries,
+            entries_ignoring_upcasting,
+            entries_for_upcasting,
+            upcasting_cost_percent,
+        } in infos
         {
             println!(
-                r#"print-vtable-sizes {{ "crate_name": "{crate_name}", "trait_name": "{trait_name}", "size_unupcastable_words": "{size_words_without_upcasting}", "size_upcastable_words": "{size_words_with_upcasting}", diff: "{difference_words}", diff_p: "{difference_percent}" }}"#
+                r#"print-vtable-sizes {{ "crate_name": "{crate_name}", "trait_name": "{trait_name}", "entries": "{entries}", "entries_ignoring_upcasting": "{entries_ignoring_upcasting}", "entries_for_upcasting": "{entries_for_upcasting}", "upcasting_cost_percent": "{upcasting_cost_percent}" }}"#
             );
         }
     }
