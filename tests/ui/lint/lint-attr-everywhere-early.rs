@@ -147,7 +147,7 @@ fn expressions() {
         #![deny(unsafe_code)]
         unsafe {} //~ ERROR usage of an `unsafe` block
     }
-    let block_tail = {
+    let block_tail: () = {
         #[deny(unsafe_code)]
         unsafe {} //~ ERROR usage of an `unsafe` block
     };

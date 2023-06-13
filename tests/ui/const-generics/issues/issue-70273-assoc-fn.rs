@@ -10,5 +10,5 @@ impl T<0usize> for S {
 }
 
 fn main() {
-    let _err = <S as T<0usize>>::f();
+    <S as T<0usize>>::f();
 }

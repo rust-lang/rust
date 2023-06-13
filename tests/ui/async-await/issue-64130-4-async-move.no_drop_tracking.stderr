@@ -6,13 +6,13 @@ LL | pub fn foo() -> impl Future + Send {
    |
    = help: the trait `Sync` is not implemented for `(dyn Any + Send + 'static)`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-64130-4-async-move.rs:27:32
+  --> $DIR/issue-64130-4-async-move.rs:27:23
    |
 LL |         match client.status() {
    |               ------ has type `&Client` which is not `Send`
 LL |             200 => {
-LL |                 let _x = get().await;
-   |                                ^^^^^ await occurs here, with `client` maybe used later
+LL |                 get().await;
+   |                       ^^^^^ await occurs here, with `client` maybe used later
 ...
 LL |     }
    |     - `client` is later dropped here

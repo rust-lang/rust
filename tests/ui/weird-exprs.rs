@@ -81,7 +81,7 @@ fn angrydome() {
       break; }
 }
 
-fn evil_lincoln() { let _evil = println!("lincoln"); }
+fn evil_lincoln() { let _evil: () = println!("lincoln"); }
 
 fn dots() {
     assert_eq!(String::from(".................................................."),
@@ -137,7 +137,7 @@ fn punch_card() -> impl std::fmt::Debug {
 }
 
 fn r#match() {
-    let val = match match match match match () {
+    let val: () = match match match match match () {
         () => ()
     } {
         () => ()
@@ -166,7 +166,7 @@ fn match_nested_if() {
 }
 
 fn monkey_barrel() {
-    let val = ()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=();
+    let val: () = ()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=();
     assert_eq!(val, ());
 }
 
