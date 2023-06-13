@@ -114,7 +114,7 @@ where
 {
     let start = Instant::now();
     for _ in 0..k {
-        black_box(inner());
+        black_box(black_box(&mut *inner)());
     }
     start.elapsed().as_nanos() as u64
 }
