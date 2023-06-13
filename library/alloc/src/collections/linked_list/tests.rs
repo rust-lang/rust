@@ -985,6 +985,7 @@ fn drain_filter_complex() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn drain_filter_drop_panic_leak() {
     let d0 = CrashTestDummy::new(0);
     let d1 = CrashTestDummy::new(1);
@@ -1018,6 +1019,7 @@ fn drain_filter_drop_panic_leak() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn drain_filter_pred_panic_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1124,6 +1126,7 @@ fn test_drop_clear() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drop_panic() {
     static mut DROPS: i32 = 0;
 
