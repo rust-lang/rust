@@ -91,8 +91,8 @@ part of another, it doesn't mean the name visible in the outer one is also
 visible in the inner one, or that it refers to the same thing.
 
 To cope with that, the compiler introduces the concept of Ribs. This is
-abstraction of a scope. Every time the set of visible names potentially changes,
-a new rib is pushed onto a stack. The places where this can happen includes for
+an abstraction of a scope. Every time the set of visible names potentially changes,
+a new rib is pushed onto a stack. The places where this can happen include for
 example:
 
 * The obvious places ‒ curly braces enclosing a block, function boundaries,
@@ -103,8 +103,8 @@ example:
 
 When searching for a name, the stack of ribs is traversed from the innermost
 outwards. This helps to find the closest meaning of the name (the one not
-shadowed by anything else). The transition to outer rib may also change the
-rules what names are usable ‒ if there are nested functions (not closures),
+shadowed by anything else). The transition to outer rib may also affect
+what names are usable ‒ if there are nested functions (not closures),
 the inner one can't access parameters and local bindings of the outer one,
 even though they should be visible by ordinary scoping rules. An example:
 
