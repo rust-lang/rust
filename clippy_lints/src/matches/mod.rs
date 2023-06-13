@@ -559,6 +559,9 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `match` with identical arm bodies.
     ///
+    /// Note: Does not lint on wildcards if the `non_exhaustive_omitted_patterns_lint` feature is
+    /// enabled and disallowed.
+    ///
     /// ### Why is this bad?
     /// This is probably a copy & paste error. If arm bodies
     /// are the same on purpose, you can factor them

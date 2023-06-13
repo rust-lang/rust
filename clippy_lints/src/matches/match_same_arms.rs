@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{path_to_local, search_same, SpanlessEq, SpanlessHash};
+use clippy_utils::{is_lint_allowed, path_to_local, search_same, SpanlessEq, SpanlessHash};
 use core::cmp::Ordering;
 use core::iter;
 use core::slice;
@@ -9,6 +9,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatKind, RangeEnd};
+use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Symbol;
@@ -103,17 +104,21 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();
     for (&(i, arm1), &(j, arm2)) in search_same(&indexed_arms, hash, eq) {
         if matches!(arm2.pat.kind, PatKind::Wild) {
-            span_lint_and_then(
-                cx,
-                MATCH_SAME_ARMS,
-                arm1.span,
-                "this match arm has an identical body to the `_` wildcard arm",
-                |diag| {
-                    diag.span_suggestion(arm1.span, "try removing the arm", "", Applicability::MaybeIncorrect)
-                        .help("or try changing either arm body")
-                        .span_note(arm2.span, "`_` wildcard arm here");
-                },
-            );
+            if !cx.tcx.features().non_exhaustive_omitted_patterns_lint
+                || is_lint_allowed(cx, NON_EXHAUSTIVE_OMITTED_PATTERNS, arm2.hir_id)
+            {
+                span_lint_and_then(
+                    cx,
+                    MATCH_SAME_ARMS,
+                    arm1.span,
+                    "this match arm has an identical body to the `_` wildcard arm",
+                    |diag| {
+                        diag.span_suggestion(arm1.span, "try removing the arm", "", Applicability::MaybeIncorrect)
+                            .help("or try changing either arm body")
+                            .span_note(arm2.span, "`_` wildcard arm here");
+                    },
+                );
+            }
         } else {
             let back_block = backwards_blocking_idxs[j];
             let (keep_arm, move_arm) = if back_block < i || (back_block == 0 && forwards_blocking_idxs[i] <= j) {
