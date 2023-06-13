@@ -541,7 +541,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // type whose creation requires no write. E.g. a generator whose initial state
         // consists solely of uninitialized memory (so it doesn't capture any locals).
         let value = self.get_const(place)?;
-        if !self.should_const_prop(&value) {
+        if !self.tcx.consider_optimizing(|| format!("ConstantPropagation - {value:?}")) {
             return None;
         }
         trace!("replacing {:?} with {:?}", place, value);
@@ -551,10 +551,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         let Right(imm) = imm else { return None };
         match *imm {
-            interpret::Immediate::Scalar(scalar) => {
+            Immediate::Scalar(scalar) if scalar.try_to_int().is_ok() => {
                 Some(self.operand_from_scalar(scalar, value.layout.ty))
             }
-            Immediate::ScalarPair(..) => {
+            Immediate::ScalarPair(l, r) if l.try_to_int().is_ok() && r.try_to_int().is_ok() => {
                 let alloc = self
                     .ecx
                     .intern_with_temp_alloc(value.layout, |ecx, dest| {
@@ -575,21 +575,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // Scalars or scalar pairs that contain undef values are assumed to not have
             // successfully evaluated and are thus not propagated.
             _ => None,
-        }
-    }
-
-    /// Returns `true` if and only if this `op` should be const-propagated into.
-    fn should_const_prop(&mut self, op: &OpTy<'tcx>) -> bool {
-        if !self.tcx.consider_optimizing(|| format!("ConstantPropagation - OpTy: {:?}", op)) {
-            return false;
-        }
-
-        match **op {
-            interpret::Operand::Immediate(Immediate::Scalar(s)) => s.try_to_int().is_ok(),
-            interpret::Operand::Immediate(Immediate::ScalarPair(l, r)) => {
-                l.try_to_int().is_ok() && r.try_to_int().is_ok()
-            }
-            _ => false,
         }
     }
 
@@ -744,8 +729,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
     ) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Index(local) = elem
             && let Some(value) = self.get_const(local.into())
-            && self.should_const_prop(&value)
-            && let interpret::Operand::Immediate(interpret::Immediate::Scalar(scalar)) = *value
+            && let interpret::Operand::Immediate(Immediate::Scalar(scalar)) = *value
             && let Ok(offset) = scalar.to_target_usize(&self.tcx)
             && let Some(min_length) = offset.checked_add(1)
         {
