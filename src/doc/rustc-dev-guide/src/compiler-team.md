@@ -124,7 +124,7 @@ for you.
 
 [reviewer rotation]: https://github.com/rust-lang/rust/blob/36285c5de8915ecc00d91ae0baa79a87ed5858d5/triagebot.toml#L528-L577
 [triagebot]: https://github.com/rust-lang/triagebot/
-[automatically assigns]: https://github.com/rust-lang/triagebot/wiki/Assignment
+[automatically assigns]: https://forge.rust-lang.org/triagebot/pr-assignment.html
 
 Getting on the reviewer rotation is much appreciated as it lowers the
 review burden for all of us! However, if you don't have time to give

@@ -44,13 +44,13 @@ the `@rustbot` command will look like this:
     @rustbot label -S-waiting-on-author +S-waiting-on-review
 
 The syntax for this command is pretty loose, so there are other variants of this
-command invocation. For more details, see [the wiki page about labeling][labeling].
+command invocation. For more details, see [the docs page about labeling][labeling].
 
-[labeling]: https://github.com/rust-lang/triagebot/wiki/Labeling
+[labeling]: https://forge.rust-lang.org/triagebot/labeling.html
 
 ## Other commands
 
-If you are interested in seeing what `@rustbot` is capable of, check out its [wiki],
+If you are interested in seeing what `@rustbot` is capable of, check out its [documentation],
 which is meant as a reference for the bot and should be kept up to date every time the
 bot gets an upgrade.
 
@@ -58,6 +58,6 @@ bot gets an upgrade.
 existing commands or suggestions for new commands, feel free to reach out
 [on Zulip][zulip] or file an issue in [the triagebot repository][repo]
 
-[wiki]: https://github.com/rust-lang/triagebot/wiki
+[documentation]: https://forge.rust-lang.org/triagebot/index.html
 [zulip]: https://rust-lang.zulipchat.com/#narrow/stream/224082-t-release.2Ftriagebot
 [repo]: https://github.com/rust-lang/triagebot/

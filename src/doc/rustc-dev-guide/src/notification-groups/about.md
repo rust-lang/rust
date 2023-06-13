@@ -14,7 +14,7 @@ Of course, you don't have to wait for new issues to be tagged! If you
 prefer, you can use the Github label for a notification group to
 search for existing issues that haven't been claimed yet.
 
-[claim the issue]: https://github.com/rust-lang/triagebot/wiki/Assignment
+[claim the issue]: https://forge.rust-lang.org/triagebot/issue-assignment.html
 
 ## List of notification groups
 
@@ -95,5 +95,5 @@ or contributors, and is typically done as part of compiler team
 triage.**
 
 [rustbot]: https://github.com/rust-lang/triagebot/
-[`ping`]: https://github.com/rust-lang/triagebot/wiki/Pinging
+[`ping`]: https://forge.rust-lang.org/triagebot/pinging.html
 [`triagebot.toml`]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
