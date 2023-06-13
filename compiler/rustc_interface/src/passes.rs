@@ -918,24 +918,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                     }
 
                     traits::vtable::VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                        let existential_trait_ref = trait_ref.map_bound(|trait_ref| {
-                            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-                        });
-
                         // Lookup the shape of vtable for the trait.
                         let own_existential_entries =
-                            tcx.own_existential_vtable_entries(existential_trait_ref.def_id());
+                            tcx.own_existential_vtable_entries(trait_ref.def_id());
 
-                        let own_entries = own_existential_entries.iter().copied().map(|_def_id| {
-                            // The original code here ignores the method if its predicates are impossible.
-                            // We can't really do that as, for example, all not trivial bounds on generic
-                            // parameters are impossible (since we don't know the parameters...),
-                            // see the comment above.
-
-                            1
-                        });
-
-                        unupcasted_cost += own_entries.sum::<usize>();
+                        // The original code here ignores the method if its predicates are impossible.
+                        // We can't really do that as, for example, all not trivial bounds on generic
+                        // parameters are impossible (since we don't know the parameters...),
+                        // see the comment above.
+                        unupcasted_cost += own_existential_entries.len();
 
                         if emit_vptr {
                             upcast_cost += 1;
