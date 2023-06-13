@@ -613,7 +613,7 @@ fn hash_expand(
                 span: tt::TokenId::unspecified(),
             };
             return quote! {
-                fn hash<H: #krate::hash::Hasher>(&self, state: &mut H) {
+                fn hash<H: #krate::hash::Hasher>(&self, ra_expand_state: &mut H) {
                     match #star self {}
                 }
             };
@@ -621,7 +621,7 @@ fn hash_expand(
         let arms = adt.shape.as_pattern(&adt.name).into_iter().zip(adt.shape.field_names()).map(
             |(pat, names)| {
                 let expr = {
-                    let it = names.iter().map(|x| quote! { #x . hash(state); });
+                    let it = names.iter().map(|x| quote! { #x . hash(ra_expand_state); });
                     quote! { {
                         ##it
                     } }
@@ -633,8 +633,8 @@ fn hash_expand(
             },
         );
         quote! {
-            fn hash<H: #krate::hash::Hasher>(&self, state: &mut H) {
-                #krate::mem::discriminant(self).hash(state);
+            fn hash<H: #krate::hash::Hasher>(&self, ra_expand_state: &mut H) {
+                #krate::mem::discriminant(self).hash(ra_expand_state);
                 match self {
                     ##arms
                 }

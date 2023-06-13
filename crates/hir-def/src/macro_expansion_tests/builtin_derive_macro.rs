@@ -396,18 +396,18 @@ enum Command {
 }
 
 impl < > core::hash::Hash for Command< > where {
-    fn hash<H: core::hash::Hasher>(&self , state: &mut H) {
-        core::mem::discriminant(self ).hash(state);
+    fn hash<H: core::hash::Hasher>(&self , ra_expand_state: &mut H) {
+        core::mem::discriminant(self ).hash(ra_expand_state);
         match self {
             Command::Move {
                 x: x, y: y,
             }
             => {
-                x.hash(state);
-                y.hash(state);
+                x.hash(ra_expand_state);
+                y.hash(ra_expand_state);
             }
             , Command::Do(f0, )=> {
-                f0.hash(state);
+                f0.hash(ra_expand_state);
             }
             , Command::Jump=> {}
             ,
