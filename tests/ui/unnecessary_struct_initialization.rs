@@ -1,6 +1,6 @@
 //@run-rustfix
 
-#![allow(clippy::needless_clone_impl, unused)]
+#![allow(clippy::incorrect_clone_impl_on_copy_type, unused)]
 #![warn(clippy::unnecessary_struct_initialization)]
 
 struct S {

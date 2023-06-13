@@ -1,4 +1,4 @@
-#![allow(clippy::needless_clone_impl)]
+#![allow(clippy::incorrect_clone_impl_on_copy_type)]
 
 use std::fmt;
 use std::marker::PhantomData;

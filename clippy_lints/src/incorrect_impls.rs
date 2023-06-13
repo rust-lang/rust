@@ -42,13 +42,13 @@ declare_clippy_lint! {
     /// impl Copy for A {}
     /// ```
     #[clippy::version = "1.72.0"]
-    pub NEEDLESS_CLONE_IMPL,
+    pub INCORRECT_CLONE_IMPL_ON_COPY_TYPE,
     correctness,
     "manual implementation of `Clone` on a `Copy` type"
 }
-declare_lint_pass!(NeedlessImpls => [NEEDLESS_CLONE_IMPL]);
+declare_lint_pass!(IncorrectImpls => [INCORRECT_CLONE_IMPL_ON_COPY_TYPE]);
 
-impl LateLintPass<'_> for NeedlessImpls {
+impl LateLintPass<'_> for IncorrectImpls {
     #[expect(clippy::needless_return)]
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         let node = get_parent_node(cx.tcx, impl_item.hir_id());
@@ -77,7 +77,6 @@ impl LateLintPass<'_> for NeedlessImpls {
 
         // Actual implementation; remove this comment once aforementioned PR is merged
         if cx.tcx.is_diagnostic_item(sym::Clone, trait_impl_def_id)
-            && impl_item.ident.name == sym::clone
             && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
             && implements_trait(
                     cx,
@@ -86,20 +85,36 @@ impl LateLintPass<'_> for NeedlessImpls {
                     trait_impl.substs,
                 )
         {
-            if block.stmts.is_empty()
-                && let Some(expr) = block.expr
-                && let ExprKind::Unary(UnOp::Deref, inner) = expr.kind
-                && let ExprKind::Path(qpath) = inner.kind
-                && last_path_segment(&qpath).ident.name == symbol::kw::SelfLower
-            {} else {
+            if impl_item.ident.name == sym::clone {
+                if block.stmts.is_empty()
+                    && let Some(expr) = block.expr
+                    && let ExprKind::Unary(UnOp::Deref, inner) = expr.kind
+                    && let ExprKind::Path(qpath) = inner.kind
+                    && last_path_segment(&qpath).ident.name == symbol::kw::SelfLower
+                {} else {
+                    span_lint_and_sugg(
+                        cx,
+                        INCORRECT_CLONE_IMPL_ON_COPY_TYPE,
+                        block.span,
+                        "incorrect implementation of `clone` on a `Copy` type",
+                        "change this to",
+                        "{ *self }".to_owned(),
+                        Applicability::MaybeIncorrect,
+                    );
+
+                    return;
+                }
+            }
+
+            if impl_item.ident.name == sym::clone_from {
                 span_lint_and_sugg(
                     cx,
-                    NEEDLESS_CLONE_IMPL,
-                    block.span,
-                    "manual implementation of `Clone` on a `Copy` type",
-                    "change this to",
-                    "{ *self }".to_owned(),
-                    Applicability::Unspecified,
+                    INCORRECT_CLONE_IMPL_ON_COPY_TYPE,
+                    impl_item.span,
+                    "incorrect implementation of `clone_from` on a `Copy` type",
+                    "remove this",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
                 );
 
                 return;

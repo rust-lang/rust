@@ -1,4 +1,4 @@
-#![allow(clippy::needless_clone_impl, dead_code)]
+#![allow(clippy::incorrect_clone_impl_on_copy_type, dead_code)]
 #![warn(clippy::expl_impl_clone_on_copy)]
 
 #[derive(Copy)]
