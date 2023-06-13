@@ -838,7 +838,13 @@ function initSearch(rawSearchIndex) {
                 throw ["Unexpected ", c];
             } else if (c === ":" && !isPathStart(parserState)) {
                 if (parserState.typeFilter !== null) {
-                    throw ["Unexpected ", ":"];
+                    throw [
+                        "Unexpected ",
+                        ":",
+                        " (expected path after type filter ",
+                        parserState.typeFilter + ":",
+                        ")",
+                    ];
                 } else if (query.elems.length === 0) {
                     throw ["Expected type filter before ", ":"];
                 } else if (query.literalSearch) {
@@ -852,6 +858,9 @@ function initSearch(rawSearchIndex) {
                 parserState.totalElems -= 1;
                 query.literalSearch = false;
                 foundStopChar = true;
+                continue;
+            } else if (isWhitespace(c)) {
+                skipWhitespace(parserState);
                 continue;
             }
             if (!foundStopChar) {
@@ -983,7 +992,7 @@ function initSearch(rawSearchIndex) {
      * path = ident *(DOUBLE-COLON/{WS} ident) [!]
      * slice = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
      * arg = [type-filter *WS COLON *WS] (path [generics] / slice)
-     * type-sep = COMMA *(COMMA)
+     * type-sep = *WS COMMA *(COMMA)
      * nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep)
      * generics = OPEN-ANGLE-BRACKET [ nonempty-arg-list ] *(type-sep)
      *            CLOSE-ANGLE-BRACKET
