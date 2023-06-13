@@ -51,7 +51,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
     state.proc_macro_clients = Arc::from(Vec::new());
     state.proc_macro_changed = false;
 
-    state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), ());
+    state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), false);
     Ok(())
 }
 
