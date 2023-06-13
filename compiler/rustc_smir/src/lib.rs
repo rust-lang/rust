@@ -13,6 +13,7 @@
 #![cfg_attr(not(feature = "default"), feature(rustc_private))]
 #![feature(local_key_cell_methods)]
 #![feature(ptr_metadata)]
+#![feature(type_alias_impl_trait)] // Used to define opaque types.
 
 // Declare extern rustc_* crates to enable building this crate separately from the compiler.
 #[cfg(not(feature = "default"))]
