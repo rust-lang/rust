@@ -2192,7 +2192,7 @@ function initSearch(rawSearchIndex) {
             error.forEach((value, index) => {
                 value = value.split("<").join("&lt;").split(">").join("&gt;");
                 if (index % 2 !== 0) {
-                    error[index] = `<code>${value}</code>`;
+                    error[index] = `<code>${value.replaceAll(" ", "&nbsp;")}</code>`;
                 } else {
                     error[index] = value;
                 }
