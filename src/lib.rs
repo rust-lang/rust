@@ -88,7 +88,7 @@ mod prelude {
     };
     pub(crate) use rustc_target::abi::{Abi, FieldIdx, Scalar, Size, VariantIdx, FIRST_VARIANT};
 
-    pub(crate) use rustc_data_structures::fx::FxHashMap;
+    pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 
     pub(crate) use rustc_index::Idx;
 
@@ -223,7 +223,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         Ok(ongoing_codegen
             .downcast::<driver::aot::OngoingCodegen>()
             .unwrap()
