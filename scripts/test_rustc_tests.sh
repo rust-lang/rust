@@ -116,6 +116,8 @@ rm tests/ui/lint/lint-const-item-mutation.rs # same
 rm tests/ui/pattern/usefulness/doc-hidden-non-exhaustive.rs # same
 rm tests/ui/suggestions/derive-trait-for-method-call.rs # same
 rm tests/ui/typeck/issue-46112.rs # same
+rm tests/ui/consts/const_cmp_type_id.rs # same
+rm tests/ui/consts/issue-73976-monomorphic.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
@@ -139,6 +141,7 @@ rm -r tests/run-make/multiple-emits # same
 rm -r tests/run-make/output-type-permutations # same
 rm -r tests/run-make/used # same
 rm -r tests/run-make/no-alloc-shim
+rm -r tests/run-make/emit-to-stdout
 
 # bugs in the test suite
 # ======================
