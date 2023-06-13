@@ -1,0 +1,11 @@
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "D", "entries": "7", "entries_ignoring_upcasting": "4", "entries_for_upcasting": "3", "upcasting_cost_percent": "75" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "E", "entries": "6", "entries_ignoring_upcasting": "4", "entries_for_upcasting": "2", "upcasting_cost_percent": "50" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "G", "entries": "14", "entries_ignoring_upcasting": "11", "entries_for_upcasting": "3", "upcasting_cost_percent": "27.27272727272727" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "A", "entries": "6", "entries_ignoring_upcasting": "5", "entries_for_upcasting": "1", "upcasting_cost_percent": "20" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "B", "entries": "4", "entries_ignoring_upcasting": "4", "entries_for_upcasting": "0", "upcasting_cost_percent": "0" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "F", "entries": "6", "entries_ignoring_upcasting": "6", "entries_for_upcasting": "0", "upcasting_cost_percent": "0" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "_::S", "entries": "3", "entries_ignoring_upcasting": "3", "entries_for_upcasting": "0", "upcasting_cost_percent": "0" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "_::S", "entries": "3", "entries_ignoring_upcasting": "3", "entries_for_upcasting": "0", "upcasting_cost_percent": "0" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "help::MarkerWithSuper", "entries": "4", "entries_ignoring_upcasting": "4", "entries_for_upcasting": "0", "upcasting_cost_percent": "0" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "help::Super", "entries": "4", "entries_ignoring_upcasting": "4", "entries_for_upcasting": "0", "upcasting_cost_percent": "0" }
+print-vtable-sizes { "crate_name": "<UNKNOWN_CRATE>", "trait_name": "help::V", "entries": "3", "entries_ignoring_upcasting": "3", "entries_for_upcasting": "0", "upcasting_cost_percent": "0" }
