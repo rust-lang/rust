@@ -10,7 +10,7 @@ macro_rules! unimpl {
 pub mod net {
     #![allow(warnings)]
     use crate::fmt;
-    use crate::io::{self, IoSlice, IoSliceMut};
+    use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
     use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
     use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
     use crate::sys::fd::FileDesc;
@@ -215,6 +215,10 @@ pub mod net {
         }
 
         pub fn read(&self, _: &mut [u8]) -> io::Result<usize> {
+            unimpl!();
+        }
+
+        pub fn read_buf(&self, _: BorrowedCursor<'_>) -> io::Result<()> {
             unimpl!();
         }
 
