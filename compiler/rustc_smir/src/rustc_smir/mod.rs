@@ -7,10 +7,12 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
+use crate::rustc_internal::{self, opaque};
 use crate::stable_mir::{self, ty::TyKind, Context};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_target::abi::FieldIdx;
 use tracing::debug;
 
 impl<'tcx> Context for Tables<'tcx> {
@@ -127,6 +129,13 @@ pub(crate) trait Stable {
     fn stable(&self) -> Self::T;
 }
 
+impl Stable for DefId {
+    type T = stable_mir::CrateItem;
+    fn stable(&self) -> Self::T {
+        rustc_internal::crate_item(*self)
+    }
+}
+
 impl<'tcx> Stable for mir::Statement<'tcx> {
     type T = stable_mir::mir::Statement;
     fn stable(&self) -> Self::T {
@@ -158,12 +167,18 @@ impl<'tcx> Stable for mir::Rvalue<'tcx> {
         match self {
             Use(op) => stable_mir::mir::Rvalue::Use(op.stable()),
             Repeat(_, _) => todo!(),
-            Ref(_, _, _) => todo!(),
-            ThreadLocalRef(_) => todo!(),
-            AddressOf(_, _) => todo!(),
-            Len(_) => todo!(),
+            Ref(region, kind, place) => {
+                stable_mir::mir::Rvalue::Ref(opaque(region), kind.stable(), place.stable())
+            }
+            ThreadLocalRef(def_id) => stable_mir::mir::Rvalue::ThreadLocalRef(def_id.stable()),
+            AddressOf(mutability, place) => {
+                stable_mir::mir::Rvalue::AddressOf(mutability.stable(), place.stable())
+            }
+            Len(place) => stable_mir::mir::Rvalue::Len(place.stable()),
             Cast(_, _, _) => todo!(),
-            BinaryOp(_, _) => todo!(),
+            BinaryOp(bin_op, ops) => {
+                stable_mir::mir::Rvalue::BinaryOp(bin_op.stable(), ops.0.stable(), ops.1.stable())
+            }
             CheckedBinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::CheckedBinaryOp(
                 bin_op.stable(),
                 ops.0.stable(),
@@ -171,11 +186,114 @@ impl<'tcx> Stable for mir::Rvalue<'tcx> {
             ),
             NullaryOp(_, _) => todo!(),
             UnaryOp(un_op, op) => stable_mir::mir::Rvalue::UnaryOp(un_op.stable(), op.stable()),
-            Discriminant(_) => todo!(),
+            Discriminant(place) => stable_mir::mir::Rvalue::Discriminant(place.stable()),
             Aggregate(_, _) => todo!(),
             ShallowInitBox(_, _) => todo!(),
-            CopyForDeref(_) => todo!(),
+            CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable()),
         }
+    }
+}
+
+impl Stable for mir::Mutability {
+    type T = stable_mir::mir::Mutability;
+    fn stable(&self) -> Self::T {
+        use mir::Mutability::*;
+        match *self {
+            Not => stable_mir::mir::Mutability::Not,
+            Mut => stable_mir::mir::Mutability::Mut,
+        }
+    }
+}
+
+impl Stable for mir::BorrowKind {
+    type T = stable_mir::mir::BorrowKind;
+    fn stable(&self) -> Self::T {
+        use mir::BorrowKind::*;
+        match *self {
+            Shared => stable_mir::mir::BorrowKind::Shared,
+            Shallow => stable_mir::mir::BorrowKind::Shallow,
+            Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable() },
+        }
+    }
+}
+
+impl Stable for mir::MutBorrowKind {
+    type T = stable_mir::mir::MutBorrowKind;
+    fn stable(&self) -> Self::T {
+        use mir::MutBorrowKind::*;
+        match *self {
+            Default => stable_mir::mir::MutBorrowKind::Default,
+            TwoPhaseBorrow => stable_mir::mir::MutBorrowKind::TwoPhaseBorrow,
+            ClosureCapture => stable_mir::mir::MutBorrowKind::ClosureCapture,
+        }
+    }
+}
+
+impl<'tcx> Stable for mir::NullOp<'tcx> {
+    type T = stable_mir::mir::NullOp;
+    fn stable(&self) -> Self::T {
+        use mir::NullOp::*;
+        match self {
+            SizeOf => stable_mir::mir::NullOp::SizeOf,
+            AlignOf => stable_mir::mir::NullOp::AlignOf,
+            OffsetOf(indices) => {
+                stable_mir::mir::NullOp::OffsetOf(indices.iter().map(|idx| idx.stable()).collect())
+            }
+        }
+    }
+}
+
+impl Stable for mir::CastKind {
+    type T = stable_mir::mir::CastKind;
+    fn stable(&self) -> Self::T {
+        use mir::CastKind::*;
+        match self {
+            PointerExposeAddress => stable_mir::mir::CastKind::PointerExposeAddress,
+            PointerFromExposedAddress => stable_mir::mir::CastKind::PointerFromExposedAddress,
+            Pointer(cast) => stable_mir::mir::CastKind::Pointer(cast.stable()),
+            DynStar => stable_mir::mir::CastKind::DynStar,
+            IntToInt => stable_mir::mir::CastKind::IntToInt,
+            FloatToInt => stable_mir::mir::CastKind::FloatToInt,
+            FloatToFloat => stable_mir::mir::CastKind::FloatToFloat,
+            IntToFloat => stable_mir::mir::CastKind::IntToFloat,
+            PtrToPtr => stable_mir::mir::CastKind::PtrToPtr,
+            FnPtrToPtr => stable_mir::mir::CastKind::FnPtrToPtr,
+            Transmute => stable_mir::mir::CastKind::Transmute,
+        }
+    }
+}
+
+impl Stable for ty::adjustment::PointerCast {
+    type T = stable_mir::mir::PointerCast;
+    fn stable(&self) -> Self::T {
+        use ty::adjustment::PointerCast;
+        match self {
+            PointerCast::ReifyFnPointer => stable_mir::mir::PointerCast::ReifyFnPointer,
+            PointerCast::UnsafeFnPointer => stable_mir::mir::PointerCast::UnsafeFnPointer,
+            PointerCast::ClosureFnPointer(unsafety) => {
+                stable_mir::mir::PointerCast::ClosureFnPointer(unsafety.stable())
+            }
+            PointerCast::MutToConstPointer => stable_mir::mir::PointerCast::MutToConstPointer,
+            PointerCast::ArrayToPointer => stable_mir::mir::PointerCast::ArrayToPointer,
+            PointerCast::Unsize => stable_mir::mir::PointerCast::Unsize,
+        }
+    }
+}
+
+impl Stable for rustc_hir::Unsafety {
+    type T = stable_mir::mir::Safety;
+    fn stable(&self) -> Self::T {
+        match self {
+            rustc_hir::Unsafety::Unsafe => stable_mir::mir::Safety::Unsafe,
+            rustc_hir::Unsafety::Normal => stable_mir::mir::Safety::Normal,
+        }
+    }
+}
+
+impl Stable for FieldIdx {
+    type T = usize;
+    fn stable(&self) -> Self::T {
+        self.as_usize()
     }
 }
 
