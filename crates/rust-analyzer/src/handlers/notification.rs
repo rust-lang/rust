@@ -127,7 +127,7 @@ pub(crate) fn handle_did_save_text_document(
             if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
                 state
                     .fetch_workspaces_queue
-                    .request_op(format!("DidSaveTextDocument {}", abs_path.display()), ());
+                    .request_op(format!("DidSaveTextDocument {}", abs_path.display()), false);
             }
         }
 
@@ -205,7 +205,7 @@ pub(crate) fn handle_did_change_workspace_folders(
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();
-        state.fetch_workspaces_queue.request_op("client workspaces changed".to_string(), ())
+        state.fetch_workspaces_queue.request_op("client workspaces changed".to_string(), false)
     }
 
     Ok(())

@@ -115,9 +115,11 @@ impl GlobalState {
             self.register_did_save_capability();
         }
 
-        self.fetch_workspaces_queue.request_op("startup".to_string(), ());
-        if let Some((cause, ())) = self.fetch_workspaces_queue.should_start_op() {
-            self.fetch_workspaces(cause);
+        self.fetch_workspaces_queue.request_op("startup".to_string(), false);
+        if let Some((cause, force_crate_graph_reload)) =
+            self.fetch_workspaces_queue.should_start_op()
+        {
+            self.fetch_workspaces(cause, force_crate_graph_reload);
         }
 
         while let Some(event) = self.next_event(&inbox) {
@@ -367,8 +369,10 @@ impl GlobalState {
         }
 
         if self.config.cargo_autoreload() {
-            if let Some((cause, ())) = self.fetch_workspaces_queue.should_start_op() {
-                self.fetch_workspaces(cause);
+            if let Some((cause, force_crate_graph_reload)) =
+                self.fetch_workspaces_queue.should_start_op()
+            {
+                self.fetch_workspaces(cause, force_crate_graph_reload);
             }
         }
 
@@ -471,8 +475,9 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
                     ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
-                    ProjectWorkspaceProgress::End(workspaces) => {
-                        self.fetch_workspaces_queue.op_completed(Some(workspaces));
+                    ProjectWorkspaceProgress::End(workspaces, force_reload_crate_graph) => {
+                        self.fetch_workspaces_queue
+                            .op_completed(Some((workspaces, force_reload_crate_graph)));
                         if let Err(e) = self.fetch_workspace_error() {
                             tracing::error!("FetchWorkspaceError:\n{e}");
                         }
