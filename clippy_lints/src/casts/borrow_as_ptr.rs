@@ -1,6 +1,8 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use std::ops::ControlFlow;
+
 use clippy_utils::is_no_std_crate;
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::{diagnostics::span_lint_and_sugg, visitors::for_each_unconsumed_temporary};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
@@ -23,6 +25,10 @@ pub(super) fn check<'tcx>(
         };
         let mut app = Applicability::MachineApplicable;
         let snip = snippet_with_context(cx, e.span, cast_expr.span.ctxt(), "..", &mut app).0;
+        // Fix #9884
+        if for_each_unconsumed_temporary(cx, expr, |_| ControlFlow::Break(true)).is_break() {
+            return;
+        }
 
         span_lint_and_sugg(
             cx,
