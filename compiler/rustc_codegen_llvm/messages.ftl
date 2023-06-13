@@ -1,7 +1,8 @@
 codegen_llvm_copy_bitcode = failed to copy bitcode to object file: {$err}
 
 codegen_llvm_dlltool_fail_import_library =
-    Dlltool could not create import library: {$stdout}
+    Dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
+    {$stdout}
     {$stderr}
 
 codegen_llvm_dynamic_linking_with_lto =
