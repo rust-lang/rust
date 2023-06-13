@@ -2032,17 +2032,26 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|x| return x`
 /// * `|x| { return x }`
 /// * `|x| { return x; }`
+/// * `|(x, y)| (x, y)`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
 fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
-    let id = if_chain! {
-        if let [param] = func.params;
-        if let PatKind::Binding(_, id, _, _) = param.pat.kind;
-        then {
-            id
-        } else {
-            return false;
+    fn check_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
+        match (pat.kind, expr.kind) {
+            (PatKind::Binding(_, id, _, _), _) => {
+                path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
+            },
+            (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
+                if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
+            {
+                pats.iter().zip(tup).all(|(pat, expr)| check_pat(cx, pat, expr))
+            },
+            _ => false,
         }
+    }
+
+    let [param] = func.params else {
+        return false;
     };
 
     let mut expr = func.value;
@@ -2075,7 +2084,7 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                     }
                 }
             },
-            _ => return path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty(),
+            _ => return check_pat(cx, param.pat, expr),
         }
     }
 }
