@@ -66,8 +66,9 @@ where
     pub fn try_collect_active_jobs<Qcx: Copy>(
         &self,
         qcx: Qcx,
-        make_query: fn(Qcx, K) -> QueryStackFrame<D>,
+        make_query: fn(Qcx, K, bool) -> QueryStackFrame<D>,
         jobs: &mut QueryMap<D>,
+        can_call_queries: bool,
     ) -> Option<()> {
         let mut active = Vec::new();
 
@@ -100,7 +101,7 @@ where
         // Call `make_query` while we're not holding a `self.active` lock as `make_query` may call
         // queries leading to a deadlock.
         for (key, job) in active {
-            let query = make_query(qcx, key);
+            let query = make_query(qcx, key, can_call_queries);
             jobs.insert(job.id, QueryJobInfo { query, job });
         }
 
@@ -267,7 +268,7 @@ where
     Qcx: QueryContext,
 {
     let error = try_execute.find_cycle_in_stack(
-        qcx.try_collect_active_jobs().unwrap(),
+        qcx.try_collect_active_jobs(true).unwrap(),
         &qcx.current_query_job(),
         span,
     );

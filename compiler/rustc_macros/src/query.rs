@@ -273,11 +273,15 @@ fn add_query_desc_cached_impl(
 
     let desc = quote! {
         #[allow(unused_variables)]
-        pub fn #name<'tcx>(tcx: TyCtxt<'tcx>, key: crate::query::queries::#name::Key<'tcx>) -> String {
-            let (#tcx, #key) = (tcx, key);
-            ::rustc_middle::ty::print::with_no_trimmed_paths!(
+        pub fn #name<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            key: crate::query::queries::#name::Key<'tcx>,
+            use_queries: bool
+        ) -> String {
+            ::rustc_middle::query::print::run(tcx, use_queries, |ctx| {
+                let (#tcx, #key) = (ctx, ctx.arg(key));
                 format!(#desc)
-            )
+            })
         }
     };
 

@@ -78,11 +78,11 @@ impl QueryContext for QueryCtxt<'_> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
-    fn try_collect_active_jobs(self) -> Option<QueryMap<DepKind>> {
+    fn try_collect_active_jobs(self, can_call_queries: bool) -> Option<QueryMap<DepKind>> {
         let mut jobs = QueryMap::default();
 
         for collect in super::TRY_COLLECT_ACTIVE_JOBS.iter() {
-            collect(self.tcx, &mut jobs);
+            collect(self.tcx, &mut jobs, can_call_queries);
         }
 
         Some(jobs)
@@ -153,7 +153,7 @@ impl QueryContext for QueryCtxt<'_> {
     fn depth_limit_error(self, job: QueryJobId) {
         let mut span = None;
         let mut layout_of_depth = None;
-        if let Some(map) = self.try_collect_active_jobs() {
+        if let Some(map) = self.try_collect_active_jobs(true) {
             if let Some((info, depth)) = job.try_find_layout_root(map) {
                 span = Some(info.job.span);
                 layout_of_depth = Some(LayoutOfDepth { desc: info.query.description, depth });
@@ -296,18 +296,25 @@ pub(crate) fn create_query_frame<
     K: Copy + Key + for<'a> HashStable<StableHashingContext<'a>>,
 >(
     tcx: TyCtxt<'tcx>,
-    do_describe: fn(TyCtxt<'tcx>, K) -> String,
+    do_describe: fn(TyCtxt<'tcx>, K, bool) -> String,
     key: K,
     kind: DepKind,
     name: &'static str,
+    can_call_queries: bool,
 ) -> QueryStackFrame<DepKind> {
+    if !can_call_queries {
+        // Return a minimal query frame if we can't call queries
+        let description = do_describe(tcx, key, false);
+        return QueryStackFrame::new(description, None, None, None, kind, None, || Hash64::ZERO);
+    }
+
     // Avoid calling queries while formatting the description
     let description = ty::print::with_no_queries!(
         // Disable visible paths printing for performance reasons.
         // Showing visible path instead of any path is not that important in production.
         ty::print::with_no_visible_paths!(
             // Force filename-line mode to avoid invoking `type_of` query.
-            ty::print::with_forced_impl_filename_line!(do_describe(tcx, key))
+            ty::print::with_forced_impl_filename_line!(do_describe(tcx, key, true))
         )
     );
     let description =
@@ -650,16 +657,28 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap<DepKind>) {
-                let make_query = |tcx, key| {
+            pub fn try_collect_active_jobs<'tcx>(
+                tcx: TyCtxt<'tcx>,
+                qmap: &mut QueryMap<DepKind>,
+                can_call_queries: bool,
+            ) {
+                let make_query = |tcx, key, can_call_queries| {
                     let kind = rustc_middle::dep_graph::DepKind::$name;
                     let name = stringify!($name);
-                    $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
+                    $crate::plumbing::create_query_frame(
+                        tcx,
+                        rustc_middle::query::descs::$name,
+                        key,
+                        kind,
+                        name,
+                        can_call_queries,
+                    )
                 };
                 tcx.query_system.states.$name.try_collect_active_jobs(
                     tcx,
                     make_query,
                     qmap,
+                    can_call_queries,
                 ).unwrap();
             }
 
@@ -710,7 +729,7 @@ macro_rules! define_queries {
 
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
-        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<DepKind>)] =
+        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<DepKind>, can_call_queries: bool)] =
             &[$(query_impl::$name::try_collect_active_jobs),*];
 
         const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[

@@ -888,6 +888,31 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Prints a CrateNum without using queries.
+    pub fn safe_crate_str_untracked(self, krate: CrateNum) -> String {
+        if krate == LOCAL_CRATE {
+            "crate".to_owned()
+        } else {
+            let cstore = &*self.cstore_untracked();
+            cstore.crate_name(krate).as_str().to_owned()
+        }
+    }
+
+    /// Prints a DefId without using queries.
+    pub fn safe_def_path_str_untracked(self, def_id: DefId) -> String {
+        if def_id.is_local() {
+            let format = self.def_path(def_id).to_string_no_crate_verbose();
+            // Strip `::` from the formatted def path if present
+            format.strip_prefix("::").map(|stripped| stripped.to_owned()).unwrap_or(format)
+        } else {
+            format!(
+                "{}{}",
+                self.safe_crate_str_untracked(def_id.krate),
+                self.def_path(def_id).to_string_no_crate_verbose()
+            )
+        }
+    }
+
     pub fn def_path_debug_str(self, def_id: DefId) -> String {
         // We are explicitly not going through queries here in order to get
         // crate name and stable crate id since this code is called from debug!()

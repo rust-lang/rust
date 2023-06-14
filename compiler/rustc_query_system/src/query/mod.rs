@@ -106,7 +106,7 @@ pub trait QueryContext: HasDepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(self) -> Option<QueryJobId>;
 
-    fn try_collect_active_jobs(self) -> Option<QueryMap<Self::DepKind>>;
+    fn try_collect_active_jobs(self, can_call_queries: bool) -> Option<QueryMap<Self::DepKind>>;
 
     /// Load side effects associated to the node in the previous session.
     fn load_side_effects(self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;

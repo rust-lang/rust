@@ -193,7 +193,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
             // locals to it. The new thread runs the deadlock handler.
             let query_map = tls::with(|tcx| {
                 QueryCtxt::new(tcx)
-                    .try_collect_active_jobs()
+                    .try_collect_active_jobs(true)
                     .expect("active jobs shouldn't be locked in deadlock handler")
             });
             let registry = rayon_core::Registry::current();
