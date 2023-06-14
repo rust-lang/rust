@@ -94,3 +94,32 @@ fn msrv_1_41() {
 
     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
 }
+
+mod issue_10579 {
+    // Different variations of the same issue.
+    fn v1() {
+        let x = vec![1, 2, 3, 0];
+        let y = x.strip_suffix(&[0]).map(|s| s.to_vec()).unwrap_or(x);
+        println!("{y:?}");
+    }
+    fn v2() {
+        let x = vec![1, 2, 3, 0];
+        let y = Some(()).map(|_| x.to_vec()).unwrap_or(x);
+        println!("{y:?}");
+    }
+    fn v3() {
+        let x = vec![1, 2, 3, 0];
+        let xref = &x;
+        let y = Some(()).map(|_| xref.to_vec()).unwrap_or(x);
+        println!("{y:?}");
+    }
+    fn v4() {
+        struct VecInStruct {
+            v: Vec<u8>,
+        }
+        let s = VecInStruct { v: vec![1, 2, 3, 0] };
+
+        let y = Some(()).map(|_| s.v.clone()).unwrap_or(s.v);
+        println!("{y:?}");
+    }
+}
