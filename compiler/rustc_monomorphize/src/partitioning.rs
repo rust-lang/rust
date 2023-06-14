@@ -529,20 +529,15 @@ fn mark_code_coverage_dead_code_cgu<'tcx>(codegen_units: &mut [CodegenUnit<'tcx>
     // the object file (CGU) containing the dead function stubs is included
     // in the final binary. This will probably require forcing these
     // function symbols to be included via `-u` or `/include` linker args.
-    let mut cgus: Vec<&mut CodegenUnit<'tcx>> = codegen_units.iter_mut().collect();
-    cgus.sort_by_key(|cgu| cgu.size_estimate());
+    let dead_code_cgu = codegen_units
+        .iter_mut()
+        .filter(|cgu| cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External))
+        .min_by_key(|cgu| cgu.size_estimate());
 
-    let dead_code_cgu = if let Some(cgu) = cgus
-        .into_iter()
-        .rev()
-        .find(|cgu| cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External))
-    {
-        cgu
-    } else {
-        // If there are no CGUs that have externally linked items,
-        // then we just pick the first CGU as a fallback.
-        &mut codegen_units[0]
-    };
+    // If there are no CGUs that have externally linked items, then we just
+    // pick the first CGU as a fallback.
+    let dead_code_cgu = if let Some(cgu) = dead_code_cgu { cgu } else { &mut codegen_units[0] };
+
     dead_code_cgu.make_code_coverage_dead_code_cgu();
 }
 
