@@ -166,7 +166,7 @@ impl Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
 
-    pub fn to_str(&self) -> Option<&str> {
+    pub fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {
         self.inner.as_str()
     }
 
