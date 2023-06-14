@@ -188,10 +188,6 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     }
 }
 
-pub fn postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Postorder<'a, 'tcx> {
-    Postorder::new(&body.basic_blocks, START_BLOCK)
-}
-
 impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
@@ -218,6 +214,42 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
         (lower, Some(upper))
     }
 }
+
+/// Creates an iterator over the `Body`'s basic blocks, that:
+/// - returns basic blocks in a postorder,
+/// - traverses the `BasicBlocks` CFG cache's reverse postorder backwards, and does not cache the
+///   postorder itself.
+pub fn postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> PostorderIter<'a, 'tcx> {
+    let blocks = body.basic_blocks.reverse_postorder();
+    let len = blocks.len();
+    PostorderIter { body, blocks, idx: len }
+}
+
+#[derive(Clone)]
+pub struct PostorderIter<'a, 'tcx> {
+    body: &'a Body<'tcx>,
+    blocks: &'a [BasicBlock],
+    idx: usize,
+}
+
+impl<'a, 'tcx> Iterator for PostorderIter<'a, 'tcx> {
+    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+
+    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+        if self.idx == 0 {
+            return None;
+        }
+        self.idx -= 1;
+
+        self.blocks.get(self.idx).map(|&bb| (bb, &self.body[bb]))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.idx, Some(self.idx))
+    }
+}
+
+impl<'a, 'tcx> ExactSizeIterator for PostorderIter<'a, 'tcx> {}
 
 /// Reverse postorder traversal of a graph
 ///
