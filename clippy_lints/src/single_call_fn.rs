@@ -88,14 +88,14 @@ impl<'tcx> LateLintPass<'tcx> for SingleCallFn {
         cx.tcx.hir().visit_all_item_likes_in_crate(&mut v);
 
         for usage in self.def_id_to_usage.values() {
-            let fn_span = usage.0;
-            if let [usage] = *usage.1 {
+            let single_call_fn_span = usage.0;
+            if let [caller_span] = *usage.1 {
                 span_lint_and_help(
                     cx,
                     SINGLE_CALL_FN,
-                    fn_span,
+                    single_call_fn_span,
                     "this function is only used once",
-                    Some(usage),
+                    Some(caller_span),
                     "used here",
                 );
             }

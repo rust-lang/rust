@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-#![allow(unused)]
+#![allow(clippy::redundant_closure_call, unused)]
 #![warn(clippy::single_call_fn)]
 #![no_main]
 
@@ -8,6 +8,23 @@ extern crate proc_macros;
 
 // Do not lint since it's public
 pub fn f() {}
+
+fn i() {}
+fn j() {}
+
+fn h() {
+    // Linted
+    let a = i;
+    // Do not lint closures
+    let a = (|| {
+        // Not linted
+        a();
+        // Imo, it's reasonable to lint this as the function is still only being used once. Just in
+        // a closure.
+        j();
+    });
+    a();
+}
 
 fn g() {
     f();
