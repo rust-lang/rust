@@ -8,7 +8,8 @@ use rustc_hir::{
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{Adt, AdtDef, SubstsRef};
+use rustc_middle::ty::adjustment::{Adjust, PointerCast};
+use rustc_middle::ty::{self, Adt, AdtDef, SubstsRef, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -75,6 +76,19 @@ fn is_path_self(e: &Expr<'_>) -> bool {
     }
 }
 
+fn contains_trait_object(cx: &LateContext<'_>, ty: ty::Ty<'_>) -> bool {
+    match ty.kind() {
+        ty::TyKind::Ref(_, ty, _) => {
+            contains_trait_object(cx, *ty)
+        },
+        ty::TyKind::Adt(def, substs) => {
+            def.is_box() && substs[0].as_type().map_or(false, |ty| contains_trait_object(cx, ty))
+        }
+        ty::TyKind::Dynamic(..) => true,
+        _ => false,
+    }
+}
+
 fn check_struct<'tcx>(
     cx: &LateContext<'tcx>,
     item: &'tcx Item<'_>,
@@ -82,6 +96,7 @@ fn check_struct<'tcx>(
     func_expr: &Expr<'_>,
     adt_def: AdtDef<'_>,
     substs: SubstsRef<'_>,
+    typeck_results: &'tcx TypeckResults<'tcx>,
 ) {
     if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind {
         if let Some(PathSegment { args, .. }) = p.segments.last() {
@@ -96,10 +111,23 @@ fn check_struct<'tcx>(
             }
         }
     }
+
+    // the default() call might unsize coerce to a trait object (e.g. Box<T> to Box<dyn Trait>),
+    // which would not be the same if derived (see #10158).
+    // this closure checks both if the expr is equivalent to a `default()` call and does not
+    // have such coercions.
+    let is_default_without_adjusts = |expr| {
+        is_default_equivalent(cx, expr)
+            && typeck_results.expr_adjustments(expr).iter().all(|adj| {
+                !matches!(adj.kind, Adjust::Pointer(PointerCast::Unsize) 
+                    if contains_trait_object(cx, adj.target))
+            })
+    };
+
     let should_emit = match peel_blocks(func_expr).kind {
-        ExprKind::Tup(fields) => fields.iter().all(|e| is_default_equivalent(cx, e)),
-        ExprKind::Call(callee, args) if is_path_self(callee) => args.iter().all(|e| is_default_equivalent(cx, e)),
-        ExprKind::Struct(_, fields, _) => fields.iter().all(|ef| is_default_equivalent(cx, ef.expr)),
+        ExprKind::Tup(fields) => fields.iter().all(|e| is_default_without_adjusts(e)),
+        ExprKind::Call(callee, args) if is_path_self(callee) => args.iter().all(|e| is_default_without_adjusts(e)),
+        ExprKind::Struct(_, fields, _) => fields.iter().all(|ef| is_default_without_adjusts(ef.expr)),
         _ => false,
     };
 
@@ -197,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
 
             then {
                 if adt_def.is_struct() {
-                    check_struct(cx, item, self_ty, func_expr, adt_def, substs);
+                    check_struct(cx, item, self_ty, func_expr, adt_def, substs, cx.tcx.typeck_body(*b));
                 } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
                     check_enum(cx, item, func_expr, adt_def);
                 }
