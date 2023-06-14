@@ -338,7 +338,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         } else {
                             resolution.binding = Some(nonglob_binding);
                         }
-                        resolution.shadowed_glob = Some(glob_binding);
+
+                        if let Some(old_binding) = resolution.shadowed_glob {
+                            assert!(old_binding.is_glob_import());
+                            if glob_binding.res() != old_binding.res() {
+                                resolution.shadowed_glob = Some(this.ambiguity(
+                                    AmbiguityKind::GlobVsGlob,
+                                    old_binding,
+                                    glob_binding,
+                                ));
+                            } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
+                                resolution.shadowed_glob = Some(glob_binding);
+                            }
+                        } else {
+                            resolution.shadowed_glob = Some(glob_binding);
+                        }
                     }
                     (false, false) => {
                         return Err(old_binding);
