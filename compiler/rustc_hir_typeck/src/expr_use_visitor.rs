@@ -443,7 +443,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         if matches!((lhs, wild, rhs), (&[], Some(_), &[]))
                             // Arrays have a statically known size, so
                             // there is no need to read their length
-                            || discr_place.place.base_ty.is_array()
+                            || place.place.ty().peel_refs().is_array()
                         {
                         } else {
                             needs_to_be_read = true;
