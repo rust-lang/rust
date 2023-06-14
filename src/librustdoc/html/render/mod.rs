@@ -1940,8 +1940,6 @@ pub(crate) fn small_url_encode(s: String) -> String {
             // While the same is not true for hashes, rustdoc only needs to be
             // consistent with itself when encoding them.
             st += "+";
-        } else if b == b'%' {
-            st += "%%";
         } else {
             write!(st, "%{:02X}", b).unwrap();
         }
