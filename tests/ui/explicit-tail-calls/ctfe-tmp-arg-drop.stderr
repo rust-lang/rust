@@ -2,9 +2,8 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/ctfe-tmp-arg-drop.rs:6:23
    |
 LL |     become takes_view(HasDrop.as_view());
-   |     ------------------^^^^^^^-----------
-   |     |                 |                |
-   |     |                 |                temporary value is freed at the end of this statement
+   |     ------------------^^^^^^^------------ temporary value is freed at the end of this statement
+   |     |                 |
    |     |                 creates a temporary value which is freed while still in use
    |     borrow later used here
    |

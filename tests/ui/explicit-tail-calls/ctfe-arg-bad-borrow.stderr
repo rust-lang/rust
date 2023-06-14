@@ -4,9 +4,10 @@ error[E0597]: `local` does not live long enough
 LL |     let local = Type;
    |         ----- binding `local` declared here
 LL |     become takes_borrow(&local);
-   |                         ^^^^^^- `local` dropped here while still borrowed
-   |                         |
-   |                         borrowed value does not live long enough
+   |                         ^^^^^^ borrowed value does not live long enough
+LL |
+LL | }
+   | - `local` dropped here while still borrowed
 
 error: aborting due to previous error
 
