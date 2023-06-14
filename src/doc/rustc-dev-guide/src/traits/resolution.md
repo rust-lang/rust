@@ -247,7 +247,7 @@ In this second selection, we do not consider any where-clauses to be in scope
 because we know that each resolution will resolve to a particular impl.
 
 One interesting twist has to do with nested obligations. In general, in codegen,
-we only to figure out which candidate applies, we do not care about nested obligations,
+we only need to figure out which candidate applies, and we do not care about nested obligations,
 as these are already assumed to be true. Nonetheless, we *do* currently fulfill all of them.
 That is because it can sometimes inform the results of type inference.
 That is, we do not have the full substitutions in terms of the type variables
