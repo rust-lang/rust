@@ -960,6 +960,8 @@ pub(crate) mod builtin {
     ///
     /// A compile time error is never emitted when using this macro regardless
     /// of whether the environment variable is present or not.
+    /// To emit a compile error if the environment variable is not present,
+    /// use the [`env!`] macro instead.
     ///
     /// # Examples
     ///
