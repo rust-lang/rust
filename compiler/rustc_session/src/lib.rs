@@ -27,7 +27,7 @@ pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pas
 pub use rustc_lint_defs as lint;
 pub mod parse;
 
-mod code_stats;
+pub mod code_stats;
 #[macro_use]
 pub mod config;
 pub mod cstore;

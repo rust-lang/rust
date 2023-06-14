@@ -333,6 +333,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 };
 
                 let prof = compiler.sess.prof.clone();
+
                 prof.generic_activity("drop_compiler").run(move || drop(compiler));
                 r
             })

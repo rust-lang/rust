@@ -430,6 +430,13 @@ fn run_compiler(
                 sess.code_stats.print_type_sizes();
             }
 
+            if sess.opts.unstable_opts.print_vtable_sizes {
+                let crate_name =
+                    compiler.session().opts.crate_name.as_deref().unwrap_or("<UNKNOWN_CRATE>");
+
+                sess.code_stats.print_vtable_sizes(crate_name);
+            }
+
             let linker = queries.linker()?;
             Ok(Some(linker))
         })?;
