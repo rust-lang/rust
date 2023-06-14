@@ -1,0 +1,98 @@
+error: redundant guard
+  --> $DIR/redundant_guards.rs:21:20
+   |
+LL |         C(x, y) if let 1 = y => ..,
+   |                    ^^^^^^^^^
+   |
+   = note: `-D clippy::redundant-guards` implied by `-D warnings`
+help: try
+   |
+LL -         C(x, y) if let 1 = y => ..,
+LL +         C(x, 1) => ..,
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:27:20
+   |
+LL |         Some(x) if matches!(x, Some(1) if true) => ..,
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |         Some(Some(1)) if true => ..,
+   |              ~~~~~~~  ~~~~~~~
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:28:20
+   |
+LL |         Some(x) if matches!(x, Some(1)) => {
+   |                    ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if matches!(x, Some(1)) => {
+LL +         Some(Some(1)) => {
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:32:20
+   |
+LL |         Some(x) if let Some(1) = x => ..,
+   |                    ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if let Some(1) = x => ..,
+LL +         Some(Some(1)) => ..,
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:33:20
+   |
+LL |         Some(x) if x == Some(2) => ..,
+   |                    ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if x == Some(2) => ..,
+LL +         Some(Some(2)) => ..,
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:56:20
+   |
+LL |         B { e } if matches!(e, Some(A(2))) => ..,
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         B { e } if matches!(e, Some(A(2))) => ..,
+LL +         B { e: Some(A(2)) } => ..,
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:93:20
+   |
+LL |         E::A(y) if y == "not from an or pattern" => {},
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         E::A(y) if y == "not from an or pattern" => {},
+LL +         E::A("not from an or pattern") => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:100:14
+   |
+LL |         x if matches!(x, Some(0)) => ..,
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         x if matches!(x, Some(0)) => ..,
+LL +         Some(0) => ..,
+   |
+
+error: aborting due to 8 previous errors
+
