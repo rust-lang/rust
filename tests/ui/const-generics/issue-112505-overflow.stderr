@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/issue-112505-overflow.rs:4:14
+   |
+LL |     unsafe { std::mem::transmute(v) }
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type `[[[u32; 8888888]; 9999999]; 777777777]` are too big for the current architecture)
+   = note: target type: `[[[u32; 9999999]; 777777777]; 239]` (59484438436515561504 bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.
