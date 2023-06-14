@@ -29,6 +29,10 @@ static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 
 /// Returns the path to the `cargo-clippy` binary
+///
+/// # Panics
+///
+/// Panics if the path of current executable could not be retrieved.
 #[must_use]
 pub fn cargo_clippy_path() -> PathBuf {
     let mut path = std::env::current_exe().expect("failed to get current executable name");
@@ -61,6 +65,8 @@ pub fn clippy_project_root() -> PathBuf {
     panic!("error: Can't determine root of project. Please run inside a Clippy working dir.");
 }
 
+/// # Panics
+/// Panics if given command result was failed.
 pub fn exit_if_err(status: io::Result<ExitStatus>) {
     match status.expect("failed to run command").code() {
         Some(0) => {},
