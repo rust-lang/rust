@@ -771,9 +771,7 @@ fn print_crate_info(
                 use rustc_target::spec::SplitDebuginfo::{Off, Packed, Unpacked};
 
                 for split in &[Off, Packed, Unpacked] {
-                    let stable = sess.target.options.supported_split_debuginfo.contains(split);
-                    let unstable_ok = sess.unstable_options();
-                    if stable || unstable_ok {
+                    if sess.target.options.supported_split_debuginfo.contains(split) {
                         safe_println!("{split}");
                     }
                 }
