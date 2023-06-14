@@ -1,5 +1,5 @@
 // unit-test: ConstProp
-// ignore-wasm32 compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -Zmir-enable-passes=+NormalizeArrayLen
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 

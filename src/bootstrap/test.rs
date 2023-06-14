@@ -23,12 +23,29 @@ use crate::doc::DocumentationFormat;
 use crate::flags::Subcommand;
 use crate::llvm;
 use crate::render_tests::add_flags_and_try_run_tests;
+use crate::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
+
+// mir-opt tests have different variants depending on whether a target is 32bit or 64bit, and
+// blessing them requires blessing with each target. To aid developers, when blessing the mir-opt
+// test suite the corresponding target of the opposite pointer size is also blessed.
+//
+// This array serves as the known mappings between 32bit and 64bit targets. If you're developing on
+// a target where a target with the opposite pointer size exists, feel free to add it here.
+const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
+    // (32bit, 64bit)
+    ("i686-unknown-linux-gnu", "x86_64-unknown-linux-gnu"),
+    ("i686-unknown-linux-musl", "x86_64-unknown-linux-musl"),
+    ("i686-pc-windows-msvc", "x86_64-pc-windows-msvc"),
+    ("i686-pc-windows-gnu", "x86_64-pc-windows-gnu"),
+    ("i686-apple-darwin", "x86_64-apple-darwin"),
+    ("i686-apple-darwin", "aarch64-apple-darwin"),
+];
 
 fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
@@ -1261,8 +1278,6 @@ default_test!(RunPassValgrind {
     suite: "run-pass-valgrind"
 });
 
-default_test!(MirOpt { path: "tests/mir-opt", mode: "mir-opt", suite: "mir-opt" });
-
 default_test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen" });
 
 default_test!(CodegenUnits {
@@ -1298,6 +1313,91 @@ host_test!(RunMakeFullDeps {
 });
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
+
+// For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct MirOpt {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for MirOpt {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.suite_path("tests/mir-opt")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(MirOpt { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let run = |target| {
+            builder.ensure(Compiletest {
+                compiler: self.compiler,
+                target: target,
+                mode: "mir-opt",
+                suite: "mir-opt",
+                path: "tests/mir-opt",
+                compare_mode: None,
+            })
+        };
+
+        // We use custom logic to bless the mir-opt suite: mir-opt tests have multiple variants
+        // (32bit vs 64bit, and panic=abort vs panic=unwind), and all of them needs to be blessed.
+        // When blessing, we try best-effort to also bless the other variants, to aid developers.
+        if builder.config.cmd.bless() {
+            let targets = MIR_OPT_BLESS_TARGET_MAPPING
+                .iter()
+                .filter(|(target_32bit, target_64bit)| {
+                    *target_32bit == &*self.target.triple || *target_64bit == &*self.target.triple
+                })
+                .next()
+                .map(|(target_32bit, target_64bit)| {
+                    let target_32bit = TargetSelection::from_user(target_32bit);
+                    let target_64bit = TargetSelection::from_user(target_64bit);
+
+                    // Running compiletest requires a C compiler to be available, but it might not
+                    // have been detected by bootstrap if the target we're testing wasn't in the
+                    // --target flags.
+                    if !builder.cc.borrow().contains_key(&target_32bit) {
+                        crate::cc_detect::find_target(builder, target_32bit);
+                    }
+                    if !builder.cc.borrow().contains_key(&target_64bit) {
+                        crate::cc_detect::find_target(builder, target_64bit);
+                    }
+
+                    vec![target_32bit, target_64bit]
+                })
+                .unwrap_or_else(|| {
+                    eprintln!(
+                        "\
+Note that not all variants of mir-opt tests are going to be blessed, as no mapping between
+a 32bit and a 64bit target was found for {target}.
+You can add that mapping by changing MIR_OPT_BLESS_TARGET_MAPPING in src/bootstrap/test.rs",
+                        target = self.target,
+                    );
+                    vec![self.target]
+                });
+
+            for target in targets {
+                run(target);
+
+                let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
+                    compiler: self.compiler,
+                    base: target,
+                });
+                run(panic_abort_target);
+            }
+        } else {
+            run(self.target);
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
@@ -1667,7 +1767,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
         if target.contains("msvc") {
-            for &(ref k, ref v) in builder.cc[&target].env() {
+            for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
                 }
@@ -1692,7 +1792,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--adb-path").arg("adb");
         cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
-        if target.contains("android") {
+        if target.contains("android") && !builder.config.dry_run() {
             // Assume that cc for this target comes from the android sysroot
             cmd.arg("--android-cross-path")
                 .arg(builder.cc(target).parent().unwrap().parent().unwrap());

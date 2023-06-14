@@ -1650,7 +1650,8 @@ impl<'a> Builder<'a> {
             }
         };
         cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
-        if self.cc[&target].args().iter().any(|arg| arg == "-gz") {
+        if !self.config.dry_run() && self.cc.borrow()[&target].args().iter().any(|arg| arg == "-gz")
+        {
             rustflags.arg("-Clink-arg=-gz");
         }
         cargo.env(

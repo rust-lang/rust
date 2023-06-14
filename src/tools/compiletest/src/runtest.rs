@@ -3565,6 +3565,7 @@ impl<'test> TestCx<'test> {
         let files = miropt_test_tools::files_for_miropt_test(
             &self.testpaths.file,
             self.config.get_pointer_width(),
+            self.config.target_cfg().panic.for_miropt_test_tools(),
         );
 
         let mut out = Vec::new();
@@ -3582,25 +3583,24 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_mir_dump(&self) {
-        let test_file_contents = fs::read_to_string(&self.testpaths.file).unwrap();
-
         let test_dir = self.testpaths.file.parent().unwrap();
         let test_crate =
             self.testpaths.file.file_stem().unwrap().to_str().unwrap().replace("-", "_");
 
-        let mut bit_width = String::new();
-        if test_file_contents.lines().any(|l| l == "// EMIT_MIR_FOR_EACH_BIT_WIDTH") {
-            bit_width = format!(".{}bit", self.config.get_pointer_width());
-        }
+        let suffix = miropt_test_tools::output_file_suffix(
+            &self.testpaths.file,
+            self.config.get_pointer_width(),
+            self.config.target_cfg().panic.for_miropt_test_tools(),
+        );
 
         if self.config.bless {
             for e in
-                glob(&format!("{}/{}.*{}.mir", test_dir.display(), test_crate, bit_width)).unwrap()
+                glob(&format!("{}/{}.*{}.mir", test_dir.display(), test_crate, suffix)).unwrap()
             {
                 std::fs::remove_file(e.unwrap()).unwrap();
             }
             for e in
-                glob(&format!("{}/{}.*{}.diff", test_dir.display(), test_crate, bit_width)).unwrap()
+                glob(&format!("{}/{}.*{}.diff", test_dir.display(), test_crate, suffix)).unwrap()
             {
                 std::fs::remove_file(e.unwrap()).unwrap();
             }
@@ -3609,6 +3609,7 @@ impl<'test> TestCx<'test> {
         let files = miropt_test_tools::files_for_miropt_test(
             &self.testpaths.file,
             self.config.get_pointer_width(),
+            self.config.target_cfg().panic.for_miropt_test_tools(),
         );
         for miropt_test_tools::MiroptTestFiles { from_file, to_file, expected_file, passes: _ } in
             files
