@@ -2105,7 +2105,7 @@ fn render_union<'a, 'cx: 'a>(
             f.write_str(" ")?;
         }
 
-        write!(f, "{{\n")?;
+        f.write_str("{{\n")?;
         let count_fields =
             fields.iter().filter(|field| matches!(*field.kind, clean::StructFieldItem(..))).count();
         let toggle = should_hide_fields(count_fields);
@@ -2126,7 +2126,7 @@ fn render_union<'a, 'cx: 'a>(
         }
 
         if it.has_stripped_entries().unwrap() {
-            write!(f, "    /* private fields */\n")?;
+            f.write_str("    /* private fields */\n")?;
         }
         if toggle {
             toggle_close(&mut f);
@@ -2164,14 +2164,9 @@ fn render_struct<'a, 'cx: 'a>(
                 let mut buf = Buffer::html();
                 let where_displayed =
                     g.map(|g| print_where_clause_and_check(&mut buf, g, cx)).unwrap_or(false);
-                write!(f, "{}", buf.into_inner())?;
 
                 // If there wasn't a `where` clause, we add a whitespace.
-                if !where_displayed {
-                    f.write_str(" {")?;
-                } else {
-                    f.write_str("{")?;
-                }
+                write!(f, "{}{}{{", buf.into_inner(), if !where_displayed { " " } else { "" })?;
 
                 let count_fields = fields
                     .iter()
@@ -2201,7 +2196,7 @@ fn render_struct<'a, 'cx: 'a>(
                     }
                     write!(f, "\n{}", tab)?;
                 } else if it.has_stripped_entries().unwrap() {
-                    write!(f, " /* private fields */ ")?;
+                    f.write_str(" /* private fields */ ")?;
                 }
                 if toggle {
                     toggle_close(&mut f);
@@ -2209,14 +2204,14 @@ fn render_struct<'a, 'cx: 'a>(
                 f.write_str("}")?;
             }
             Some(CtorKind::Fn) => {
-                write!(f, "(")?;
+                f.write_str("(")?;
                 for (i, field) in fields.iter().enumerate() {
                     if i > 0 {
-                        write!(f, ", ")?;
+                        f.write_str(", ")?;
                     }
                     match *field.kind {
                         clean::StrippedItem(box clean::StructFieldItem(..)) => {
-                            write!(f, "_")?;
+                            f.write_str("_")?;
                         }
                         clean::StructFieldItem(ref ty) => {
                             write!(
@@ -2233,13 +2228,13 @@ fn render_struct<'a, 'cx: 'a>(
                         _ => unreachable!(),
                     }
                 }
-                write!(f, ")")?;
+                f.write_str(")")?;
                 if let Some(g) = g {
                     write!(f, "{}", print_where_clause(g, cx, 0, Ending::NoNewline))?;
                 }
                 // We only want a ";" when we are displaying a tuple struct, not a variant tuple struct.
                 if structhead {
-                    write!(f, ";")?;
+                    f.write_str(";")?;
                 }
             }
             Some(CtorKind::Const) => {
@@ -2247,7 +2242,7 @@ fn render_struct<'a, 'cx: 'a>(
                 if let Some(g) = g {
                     write!(f, "{}", print_where_clause(g, cx, 0, Ending::NoNewline))?;
                 }
-                write!(f, ";")?;
+                f.write_str(";")?;
             }
         }
         Ok(())
