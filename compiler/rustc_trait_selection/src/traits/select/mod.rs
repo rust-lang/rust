@@ -365,7 +365,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     if !candidate_set.ambiguous && no_candidates_apply {
-                        let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+                        let trait_ref = self.infcx.resolve_vars_if_possible(
+                            stack.obligation.predicate.skip_binder().trait_ref,
+                        );
                         if !trait_ref.references_error() {
                             let self_ty = trait_ref.self_ty();
                             let (trait_desc, self_desc) = with_no_trimmed_paths!({
