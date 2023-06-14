@@ -8,7 +8,6 @@
 //!     m.insert(1u32, 2u32);
 //! }
 //! ```
-//!
 
 /// some description here
 /// ```rust,no_test
