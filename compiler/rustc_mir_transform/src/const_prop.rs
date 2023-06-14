@@ -118,8 +118,8 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         // Traverse the body in reverse post-order, to ensure that `FullConstProp` locals are
         // assigned before being read.
-        let postorder = body.basic_blocks.postorder().to_vec();
-        for bb in postorder.into_iter().rev() {
+        let rpo = body.basic_blocks.reverse_postorder().to_vec();
+        for bb in rpo {
             let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
             optimization_finder.visit_basic_block_data(bb, data);
         }
