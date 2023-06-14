@@ -136,7 +136,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn write_ty_to_typeck_results(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_typeck_results({:?}, {:?})", hir_id, ty);
-        assert!(!ty.has_infer() && !ty.has_placeholders() && !ty.has_free_regions());
+        assert!(
+            !ty.has_infer() && !ty.has_placeholders() && !ty.has_free_regions(),
+            "{ty} can't be put into typeck results"
+        );
         self.typeck_results.node_types_mut().insert(hir_id, ty);
     }
 
@@ -803,7 +806,11 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
                 // We must normalize erasing regions here, since later lints
                 // expect that types that show up in the typeck are fully
                 // normalized.
-                self.fcx.tcx.try_normalize_erasing_regions(self.fcx.param_env, t).unwrap_or(t)
+                if let Ok(t) = self.fcx.tcx.try_normalize_erasing_regions(self.fcx.param_env, t) {
+                    t
+                } else {
+                    EraseEarlyRegions { tcx: self.fcx.tcx }.fold_ty(t)
+                }
             }
             Ok(t) => {
                 // Do not anonymize late-bound regions
