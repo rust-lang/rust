@@ -831,6 +831,115 @@ impl Foo<T> for S<T> {
     }
 
     #[test]
+    fn test_qualify_generic_default_parameter() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub struct S;
+    pub trait Foo<T = S> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S { $0 }"#,
+            r#"
+mod m {
+    pub struct S;
+    pub trait Foo<T = S> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S {
+    fn bar(&self, other: &m::S) {
+        ${0:todo!()}
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_qualify_generic_default_parameter_2() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = Wrapper<S, bool>> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S { $0 }"#,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = Wrapper<S, bool>> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S {
+    fn bar(&self, other: &m::Wrapper<m::S, bool>) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_qualify_generic_default_parameter_3() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = S, V = Wrapper<T, S>> {
+        fn bar(&self, other: &V);
+    }
+}
+
+struct S;
+impl m::Foo for S { $0 }"#,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = S, V = Wrapper<T, S>> {
+        fn bar(&self, other: &V);
+    }
+}
+
+struct S;
+impl m::Foo for S {
+    fn bar(&self, other: &m::Wrapper<m::S, m::S>) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_assoc_type_bounds_are_removed() {
         check_assist(
             add_missing_impl_members,
