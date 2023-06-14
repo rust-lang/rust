@@ -867,29 +867,26 @@ pub mod fmt {
     }
 
     #[lang = "format_argument"]
-    pub struct ArgumentV1<'a> {
+    pub struct Argument<'a> {
         value: &'a Opaque,
         formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
     }
 
-    impl<'a> ArgumentV1<'a> {
-        pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+    impl<'a> Argument<'a> {
+        pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
             use crate::mem::transmute;
-            unsafe { ArgumentV1 { formatter: transmute(f), value: transmute(x) } }
+            unsafe { Argument { formatter: transmute(f), value: transmute(x) } }
         }
     }
 
     #[lang = "format_arguments"]
     pub struct Arguments<'a> {
         pieces: &'a [&'static str],
-        args: &'a [ArgumentV1<'a>],
+        args: &'a [Argument<'a>],
     }
 
     impl<'a> Arguments<'a> {
-        pub const fn new_v1(
-            pieces: &'a [&'static str],
-            args: &'a [ArgumentV1<'a>],
-        ) -> Arguments<'a> {
+        pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
             Arguments { pieces, args }
         }
     }
