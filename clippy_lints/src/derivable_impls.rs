@@ -76,12 +76,10 @@ fn is_path_self(e: &Expr<'_>) -> bool {
     }
 }
 
-fn contains_trait_object(cx: &LateContext<'_>, ty: ty::Ty<'_>) -> bool {
+fn contains_trait_object(ty: ty::Ty<'_>) -> bool {
     match ty.kind() {
-        ty::TyKind::Ref(_, ty, _) => contains_trait_object(cx, *ty),
-        ty::TyKind::Adt(def, substs) => {
-            def.is_box() && substs[0].as_type().map_or(false, |ty| contains_trait_object(cx, ty))
-        },
+        ty::TyKind::Ref(_, ty, _) => contains_trait_object(*ty),
+        ty::TyKind::Adt(def, substs) => def.is_box() && substs[0].as_type().map_or(false, contains_trait_object),
         ty::TyKind::Dynamic(..) => true,
         _ => false,
     }
@@ -118,13 +116,13 @@ fn check_struct<'tcx>(
         is_default_equivalent(cx, expr)
             && typeck_results.expr_adjustments(expr).iter().all(|adj| {
                 !matches!(adj.kind, Adjust::Pointer(PointerCast::Unsize)
-                    if contains_trait_object(cx, adj.target))
+                    if contains_trait_object(adj.target))
             })
     };
 
     let should_emit = match peel_blocks(func_expr).kind {
-        ExprKind::Tup(fields) => fields.iter().all(|e| is_default_without_adjusts(e)),
-        ExprKind::Call(callee, args) if is_path_self(callee) => args.iter().all(|e| is_default_without_adjusts(e)),
+        ExprKind::Tup(fields) => fields.iter().all(is_default_without_adjusts),
+        ExprKind::Call(callee, args) if is_path_self(callee) => args.iter().all(is_default_without_adjusts),
         ExprKind::Struct(_, fields, _) => fields.iter().all(|ef| is_default_without_adjusts(ef.expr)),
         _ => false,
     };
