@@ -12,14 +12,10 @@ use rustc_span::{source_map::Span, sym};
 
 use super::UNNECESSARY_FOLD;
 
-/// No turbofish needed in any case.
-fn no_turbofish(_: &LateContext<'_>, _: &hir::Expr<'_>) -> bool {
-    false
-}
-
-/// Turbofish (`::<T>`) may be needed, but can be omitted if we are certain
-/// that the type can be inferred from usage.
-fn turbofish_if_not_inferred(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+/// Do we need to suggest turbofish when suggesting a replacement method?
+/// Changing `fold` to `sum` needs it sometimes when the return type can't be
+/// inferred. This checks for some common cases where it can be safely omitted
+fn needs_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let parent = cx.tcx.hir().get_parent(expr.hir_id);
 
     // some common cases where turbofish isn't needed:
@@ -53,26 +49,7 @@ fn turbofish_if_not_inferred(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool
 struct Replacement {
     method_name: &'static str,
     has_args: bool,
-    requires_turbofish: fn(&LateContext<'_>, &hir::Expr<'_>) -> bool,
-}
-impl Replacement {
-    /// `any(f)`, `all(f)`
-    pub fn non_generic(method_name: &'static str) -> Self {
-        Self {
-            method_name,
-            has_args: true,
-            requires_turbofish: no_turbofish,
-        }
-    }
-
-    /// `sum::<T>()`, `product::<T>()`
-    pub fn generic(method_name: &'static str) -> Self {
-        Self {
-            method_name,
-            has_args: false,
-            requires_turbofish: turbofish_if_not_inferred,
-        }
-    }
+    has_generic_return: bool,
 }
 
 pub(super) fn check(
@@ -111,7 +88,7 @@ pub(super) fn check(
             then {
                 let mut applicability = Applicability::MachineApplicable;
 
-                let turbofish = if (replacement.requires_turbofish)(cx, expr) {
+                let turbofish = if replacement.has_generic_return {
                     format!("::<{}>", cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs())
                 } else {
                     String::new()
@@ -159,7 +136,11 @@ pub(super) fn check(
                     acc,
                     fold_span,
                     hir::BinOpKind::Or,
-                    Replacement::non_generic("any"),
+                    Replacement {
+                        has_args: true,
+                        has_generic_return: false,
+                        method_name: "any",
+                    },
                 );
             },
             ast::LitKind::Bool(true) => {
@@ -169,7 +150,11 @@ pub(super) fn check(
                     acc,
                     fold_span,
                     hir::BinOpKind::And,
-                    Replacement::non_generic("all"),
+                    Replacement {
+                        has_args: true,
+                        has_generic_return: false,
+                        method_name: "all",
+                    },
                 );
             },
             ast::LitKind::Int(0, _) => check_fold_with_op(
@@ -178,7 +163,11 @@ pub(super) fn check(
                 acc,
                 fold_span,
                 hir::BinOpKind::Add,
-                Replacement::generic("sum"),
+                Replacement {
+                    has_args: false,
+                    has_generic_return: needs_turbofish(cx, expr),
+                    method_name: "sum",
+                },
             ),
             ast::LitKind::Int(1, _) => {
                 check_fold_with_op(
@@ -187,7 +176,11 @@ pub(super) fn check(
                     acc,
                     fold_span,
                     hir::BinOpKind::Mul,
-                    Replacement::generic("product"),
+                    Replacement {
+                        has_args: false,
+                        has_generic_return: needs_turbofish(cx, expr),
+                        method_name: "product",
+                    },
                 );
             },
             _ => (),
