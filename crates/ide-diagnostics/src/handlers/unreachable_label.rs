@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unreachable-label
 pub(crate) fn unreachable_label(
@@ -6,10 +6,11 @@ pub(crate) fn unreachable_label(
     d: &hir::UnreachableLabel,
 ) -> Diagnostic {
     let name = &d.name;
-    Diagnostic::new(
-        "unreachable-label",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0767"),
         format!("use of unreachable label `{}`", name.display(ctx.sema.db)),
-        ctx.sema.diagnostics_display_range(d.node.clone().map(|it| it.into())).range,
+        d.node.clone().map(|it| it.into()),
     )
 }
 

@@ -3,7 +3,7 @@ use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSyste
 use itertools::Itertools;
 use syntax::AstNode;
 
-use crate::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-module
 //
@@ -12,8 +12,9 @@ pub(crate) fn unresolved_module(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedModule,
 ) -> Diagnostic {
-    Diagnostic::new(
-        "unresolved-module",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0583"),
         match &*d.candidates {
             [] => "unresolved module".to_string(),
             [candidate] => format!("unresolved module, can't find module file: {candidate}"),
@@ -25,7 +26,7 @@ pub(crate) fn unresolved_module(
                 )
             }
         },
-        ctx.sema.diagnostics_display_range(d.decl.clone().map(|it| it.into())).range,
+        d.decl.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }
@@ -82,8 +83,8 @@ mod baz {}
             expect![[r#"
                 [
                     Diagnostic {
-                        code: DiagnosticCode(
-                            "unresolved-module",
+                        code: RustcHardError(
+                            "E0583",
                         ),
                         message: "unresolved module, can't find module file: foo.rs, or foo/mod.rs",
                         range: 0..8,
@@ -147,6 +148,22 @@ mod baz {}
                                     trigger_signature_help: false,
                                 },
                             ],
+                        ),
+                        main_node: Some(
+                            InFile {
+                                file_id: FileId(
+                                    FileId(
+                                        0,
+                                    ),
+                                ),
+                                value: MODULE@0..8
+                                  MOD_KW@0..3 "mod"
+                                  WHITESPACE@3..4 " "
+                                  NAME@4..7
+                                    IDENT@4..7 "foo"
+                                  SEMICOLON@7..8 ";"
+                                ,
+                            },
                         ),
                     },
                 ]

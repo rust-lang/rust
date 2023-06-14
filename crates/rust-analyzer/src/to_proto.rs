@@ -94,7 +94,10 @@ pub(crate) fn document_highlight_kind(
 pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
         Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
+        Severity::Warning => lsp_types::DiagnosticSeverity::WARNING,
         Severity::WeakWarning => lsp_types::DiagnosticSeverity::HINT,
+        // unreachable
+        Severity::Allow => lsp_types::DiagnosticSeverity::INFORMATION,
     }
 }
 

@@ -57,11 +57,11 @@ pub fn incorrect_case(
 
 #[derive(Debug)]
 pub enum CaseType {
-    // `some_var`
+    /// `some_var`
     LowerSnakeCase,
-    // `SOME_CONST`
+    /// `SOME_CONST`
     UpperSnakeCase,
-    // `SomeStruct`
+    /// `SomeStruct`
     UpperCamelCase,
 }
 

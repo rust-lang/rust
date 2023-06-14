@@ -6,16 +6,17 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
+use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: no-such-field
 //
 // This diagnostic is triggered if created structure does not have field provided in record.
 pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
-    Diagnostic::new(
-        "no-such-field",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0559"),
         "no such field",
-        ctx.sema.diagnostics_display_range(d.field.clone().map(|it| it.into())).range,
+        d.field.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }

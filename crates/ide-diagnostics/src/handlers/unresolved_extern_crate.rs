@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-extern-crate
 //
@@ -7,10 +7,11 @@ pub(crate) fn unresolved_extern_crate(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedExternCrate,
 ) -> Diagnostic {
-    Diagnostic::new(
-        "unresolved-extern-crate",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("unresolved-extern-crate"),
         "unresolved extern crate",
-        ctx.sema.diagnostics_display_range(d.decl.clone().map(|it| it.into())).range,
+        d.decl.clone().map(|it| it.into()),
     )
 }
 

@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
 // Diagnostic: macro-error
 //
@@ -6,7 +6,12 @@ use crate::{Diagnostic, DiagnosticsContext};
 pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = ctx.resolve_precise_location(&d.node, d.precise_location);
-    Diagnostic::new("macro-error", d.message.clone(), display_range).experimental()
+    Diagnostic::new(
+        DiagnosticCode::Ra("macro-error", Severity::Error),
+        d.message.clone(),
+        display_range,
+    )
+    .experimental()
 }
 
 // Diagnostic: macro-error
@@ -16,7 +21,12 @@ pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefErr
     // Use more accurate position if available.
     let display_range =
         ctx.resolve_precise_location(&d.node.clone().map(|it| it.syntax_node_ptr()), d.name);
-    Diagnostic::new("macro-def-error", d.message.clone(), display_range).experimental()
+    Diagnostic::new(
+        DiagnosticCode::Ra("macro-def-error", Severity::Error),
+        d.message.clone(),
+        display_range,
+    )
+    .experimental()
 }
 
 #[cfg(test)]

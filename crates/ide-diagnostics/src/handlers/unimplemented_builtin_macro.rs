@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext, Severity};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
 // Diagnostic: unimplemented-builtin-macro
 //
@@ -7,10 +7,10 @@ pub(crate) fn unimplemented_builtin_macro(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnimplementedBuiltinMacro,
 ) -> Diagnostic {
-    Diagnostic::new(
-        "unimplemented-builtin-macro",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::Ra("unimplemented-builtin-macro", Severity::WeakWarning),
         "unimplemented built-in macro".to_string(),
-        ctx.sema.diagnostics_display_range(d.node.clone()).range,
+        d.node.clone(),
     )
-    .severity(Severity::WeakWarning)
 }

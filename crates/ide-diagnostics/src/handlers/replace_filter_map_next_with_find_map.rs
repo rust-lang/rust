@@ -6,7 +6,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Assist, Diagnostic, DiagnosticsContext, Severity};
+use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: replace-filter-map-next-with-find-map
 //
@@ -15,12 +15,12 @@ pub(crate) fn replace_filter_map_next_with_find_map(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::ReplaceFilterMapNextWithFindMap,
 ) -> Diagnostic {
-    Diagnostic::new(
-        "replace-filter-map-next-with-find-map",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::Clippy("filter_map_next"),
         "replace filter_map(..).next() with find_map(..)",
-        ctx.sema.diagnostics_display_range(InFile::new(d.file, d.next_expr.clone().into())).range,
+        InFile::new(d.file, d.next_expr.clone().into()),
     )
-    .severity(Severity::WeakWarning)
     .with_fixes(fixes(ctx, d))
 }
 
@@ -64,7 +64,7 @@ mod tests {
     pub(crate) fn check_diagnostics(ra_fixture: &str) {
         let mut config = DiagnosticsConfig::test_sample();
         config.disabled.insert("inactive-code".to_string());
-        config.disabled.insert("unresolved-method".to_string());
+        config.disabled.insert("E0599".to_string());
         check_diagnostics_with_config(config, ra_fixture)
     }
 
@@ -138,5 +138,34 @@ fn foo() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn respect_lint_attributes_for_clippy_equivalent() {
+        check_diagnostics(
+            r#"
+//- minicore: iterators
+
+fn foo() {
+    #[allow(clippy::filter_map_next)]
+    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}
+
+#[deny(clippy::filter_map_next)]
+fn foo() {
+    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 error: replace filter_map(..).next() with find_map(..)
+
+fn foo() {
+    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
+
+#[warn(clippy::filter_map_next)]
+fn foo() {
+    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 warn: replace filter_map(..).next() with find_map(..)
+
+"#,
+        );
     }
 }

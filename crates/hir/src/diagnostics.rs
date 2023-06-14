@@ -3,7 +3,7 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnostics should
 //! be expressed in terms of hir types themselves.
-pub use hir_ty::diagnostics::{IncoherentImpl, IncorrectCase};
+pub use hir_ty::diagnostics::{CaseType, IncoherentImpl, IncorrectCase};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};

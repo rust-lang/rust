@@ -748,6 +748,7 @@ dependencies = [
  "hir",
  "ide-db",
  "itertools",
+ "once_cell",
  "profile",
  "serde_json",
  "sourcegen",

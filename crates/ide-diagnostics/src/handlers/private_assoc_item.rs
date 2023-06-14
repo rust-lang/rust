@@ -1,6 +1,6 @@
 use either::Either;
 
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: private-assoc-item
 //
@@ -16,8 +16,9 @@ pub(crate) fn private_assoc_item(
         .name(ctx.sema.db)
         .map(|name| format!("`{}` ", name.display(ctx.sema.db)))
         .unwrap_or_default();
-    Diagnostic::new(
-        "private-assoc-item",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0624"),
         format!(
             "{} {}is private",
             match d.item {
@@ -27,15 +28,13 @@ pub(crate) fn private_assoc_item(
             },
             name,
         ),
-        ctx.sema
-            .diagnostics_display_range(d.expr_or_pat.clone().map(|it| match it {
+        d.expr_or_pat.clone().map(|it| match it {
+            Either::Left(it) => it.into(),
+            Either::Right(it) => match it {
                 Either::Left(it) => it.into(),
-                Either::Right(it) => match it {
-                    Either::Left(it) => it.into(),
-                    Either::Right(it) => it.into(),
-                },
-            }))
-            .range,
+                Either::Right(it) => it.into(),
+            },
+        }),
     )
 }
 

@@ -8,7 +8,7 @@ use ide_db::{
 use syntax::{ast, AstNode, TextRange};
 use text_edit::TextEdit;
 
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-method
 //
@@ -22,14 +22,15 @@ pub(crate) fn unresolved_method(
     } else {
         ""
     };
-    Diagnostic::new(
-        "unresolved-method",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0599"),
         format!(
             "no method `{}` on type `{}`{field_suffix}",
             d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
-        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+        d.expr.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
     .experimental()

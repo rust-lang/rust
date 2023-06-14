@@ -15,7 +15,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: missing-fields
 //
@@ -42,7 +42,7 @@ pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingField
             .unwrap_or_else(|| d.field_list_parent.clone().either(|it| it.into(), |it| it.into())),
     );
 
-    Diagnostic::new("missing-fields", message, ctx.sema.diagnostics_display_range(ptr).range)
+    Diagnostic::new_with_syntax_node_ptr(ctx, DiagnosticCode::RustcHardError("E0063"), message, ptr)
         .with_fixes(fixes(ctx, d))
 }
 

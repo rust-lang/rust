@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: break-outside-of-loop
 //
@@ -13,10 +13,11 @@ pub(crate) fn break_outside_of_loop(
         let construct = if d.is_break { "break" } else { "continue" };
         format!("{construct} outside of loop")
     };
-    Diagnostic::new(
-        "break-outside-of-loop",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0268"),
         message,
-        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+        d.expr.clone().map(|it| it.into()),
     )
 }
 
