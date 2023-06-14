@@ -709,6 +709,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         scope: Ty<'tcx>,
         assume: rustc_transmute::Assume,
     ) -> Result<Certainty, NoSolution> {
+        use rustc_transmute::Answer;
         // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             ObligationCause::dummy(),
@@ -716,11 +717,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             scope,
             assume,
         ) {
-            rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
-            rustc_transmute::Answer::No(_)
-            | rustc_transmute::Answer::IfTransmutable { .. }
-            | rustc_transmute::Answer::IfAll(_)
-            | rustc_transmute::Answer::IfAny(_) => Err(NoSolution),
+            Answer::Yes => Ok(Certainty::Yes),
+            Answer::No(_) | Answer::If(_) => Err(NoSolution),
         }
     }
 

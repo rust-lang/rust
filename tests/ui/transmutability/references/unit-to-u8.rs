@@ -1,11 +1,5 @@
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
-
-//! Transmutations involving references are not yet supported.
-
-#![crate_type = "lib"]
+// check-fail
 #![feature(transmutability)]
-#![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
@@ -18,13 +12,13 @@ mod assert {
                 alignment: true,
                 lifetimes: true,
                 safety: true,
-                validity: true,
+                validity: false,
             }
         }>
     {}
 }
 
-fn not_yet_implemented() {
+fn main() {
     #[repr(C)] struct Unit;
-    assert::is_maybe_transmutable::<&'static Unit, &'static Unit>(); //~ ERROR cannot be safely transmuted
+    assert::is_maybe_transmutable::<&'static Unit, &'static u8>(); //~ ERROR cannot be safely transmuted
 }

@@ -8,7 +8,7 @@ extern crate tracing;
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
-pub(crate) mod layout;
+pub mod layout;
 pub(crate) mod maybe_transmutable;
 
 #[derive(Default)]
@@ -19,29 +19,29 @@ pub struct Assume {
     pub validity: bool,
 }
 
-/// The type encodes answers to the question: "Are these types transmutable?"
-#[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
-pub enum Answer<R>
-where
-    R: layout::Ref,
-{
-    /// `Src` is transmutable into `Dst`.
+/// Either we have an error, transmutation is allowed, or we have an optional
+/// Condition that must hold.
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+pub enum Answer<R> {
     Yes,
-
-    /// `Src` is NOT transmutable into `Dst`.
     No(Reason),
+    If(Condition<R>),
+}
 
+/// A condition which must hold for safe transmutation to be possible.
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+pub enum Condition<R> {
     /// `Src` is transmutable into `Dst`, if `src` is transmutable into `dst`.
     IfTransmutable { src: R, dst: R },
 
     /// `Src` is transmutable into `Dst`, if all of the enclosed requirements are met.
-    IfAll(Vec<Answer<R>>),
+    IfAll(Vec<Condition<R>>),
 
     /// `Src` is transmutable into `Dst` if any of the enclosed requirements are met.
-    IfAny(Vec<Answer<R>>),
+    IfAny(Vec<Condition<R>>),
 }
 
-/// Answers: Why wasn't the source type transmutable into the destination type?
+/// Answers "why wasn't the source type transmutable into the destination type?"
 #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub enum Reason {
     /// The layout of the source type is unspecified.
@@ -54,6 +54,16 @@ pub enum Reason {
     DstIsPrivate,
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.
     DstIsTooBig,
+    /// Src should have a stricter alignment than Dst, but it does not.
+    DstHasStricterAlignment { src_min_align: usize, dst_min_align: usize },
+    /// Can't go from shared pointer to unique pointer
+    DstIsMoreUnique,
+    /// Encountered a type error
+    TypeError,
+    /// The layout of src is unknown
+    SrcLayoutUnknown,
+    /// The layout of dst is unknown
+    DstLayoutUnknown,
 }
 
 #[cfg(feature = "rustc")]

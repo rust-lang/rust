@@ -1,11 +1,11 @@
-error[E0277]: `&Unit` cannot be safely transmuted into `&Unit` in the defining scope of `assert::Context`
-  --> $DIR/references.rs:29:52
+error[E0275]: overflow evaluating the requirement `A: BikeshedIntrinsicFrom<B, assert::Context, Assume { alignment: true, lifetimes: false, safety: true, validity: false }>`
+  --> $DIR/recursive-wrapper-types.rs:25:5
    |
-LL |     assert::is_maybe_transmutable::<&'static Unit, &'static Unit>();
-   |                                                    ^^^^^^^^^^^^^ `&Unit` does not have a well-specified layout
+LL |     assert::is_maybe_transmutable::<&'static A, &'static B>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by a bound in `is_maybe_transmutable`
-  --> $DIR/references.rs:16:14
+  --> $DIR/recursive-wrapper-types.rs:11:14
    |
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
@@ -14,7 +14,7 @@ LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
-LL | |                 lifetimes: true,
+LL | |                 lifetimes: false,
 ...  |
 LL | |             }
 LL | |         }>
@@ -22,4 +22,4 @@ LL | |         }>
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0275`.
