@@ -666,17 +666,15 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             tcx.ensure().fn_sig(def_id);
         }
 
-        hir::TraitItemKind::Const(.., Some(_)) => {
+        hir::TraitItemKind::Const(ty, body_id) => {
             tcx.ensure().type_of(def_id);
-        }
-
-        hir::TraitItemKind::Const(hir_ty, _) => {
-            tcx.ensure().type_of(def_id);
-            // Account for `const C: _;`.
-            let mut visitor = HirPlaceholderCollector::default();
-            visitor.visit_trait_item(trait_item);
-            if !tcx.sess.diagnostic().has_stashed_diagnostic(hir_ty.span, StashKey::ItemNoType) {
-                placeholder_type_error(tcx, None, visitor.0, false, None, "constant");
+            if !tcx.sess.diagnostic().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
+                && !(is_suggestable_infer_ty(ty) && body_id.is_some())
+            {
+                // Account for `const C: _;`.
+                let mut visitor = HirPlaceholderCollector::default();
+                visitor.visit_trait_item(trait_item);
+                placeholder_type_error(tcx, None, visitor.0, false, None, "associated constant");
             }
         }
 
@@ -721,7 +719,14 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
 
             placeholder_type_error(tcx, None, visitor.0, false, None, "associated type");
         }
-        hir::ImplItemKind::Const(..) => {}
+        hir::ImplItemKind::Const(ty, _) => {
+            // Account for `const T: _ = ..;`
+            if !is_suggestable_infer_ty(ty) {
+                let mut visitor = HirPlaceholderCollector::default();
+                visitor.visit_impl_item(impl_item);
+                placeholder_type_error(tcx, None, visitor.0, false, None, "associated constant");
+            }
+        }
     }
 }
 

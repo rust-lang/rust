@@ -16,14 +16,14 @@ const TEST4: fn() -> _ = 42;
 
 trait Test5 {
     const TEST5: _ = 42;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
 }
 
 struct Test6;
 
 impl Test6 {
     const TEST6: _ = 13;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
 }
 
 pub fn main() {

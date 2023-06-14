@@ -341,7 +341,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                 .and_then(|body_id| {
                     is_suggestable_infer_ty(ty).then(|| {
                         infer_placeholder_type(
-                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                            tcx,
+                            def_id,
+                            body_id,
+                            ty.span,
+                            item.ident,
+                            "associated constant",
                         )
                     })
                 })
@@ -359,7 +364,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             }
             ImplItemKind::Const(ty, body_id) => {
                 if is_suggestable_infer_ty(ty) {
-                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant")
+                    infer_placeholder_type(
+                        tcx,
+                        def_id,
+                        body_id,
+                        ty.span,
+                        item.ident,
+                        "associated constant",
+                    )
                 } else {
                     icx.to_ty(ty)
                 }
