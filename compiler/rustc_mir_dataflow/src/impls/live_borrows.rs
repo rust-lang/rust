@@ -145,11 +145,83 @@ use rustc_data_structures::graph::scc::Sccs;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty;
+use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::{self, TypeSuperVisitable};
 
 use either::Either;
 use std::cell::RefCell;
-use std::ops::{Deref, DerefMut};
+use std::ops::{ControlFlow, Deref, DerefMut};
+
+const DEPTH_LEVEL: u8 = 5;
+
+/// Checks whether a given type allows for interior mutability
+struct MaybeContainsInteriorMutabilityVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    has_interior_mut: bool,
+    reached_depth_limit: bool,
+    current_depth_level: u8,
+}
+
+impl<'tcx> MaybeContainsInteriorMutabilityVisitor<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        MaybeContainsInteriorMutabilityVisitor {
+            tcx,
+            has_interior_mut: false,
+            reached_depth_limit: false,
+            current_depth_level: 0,
+        }
+    }
+}
+
+impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for MaybeContainsInteriorMutabilityVisitor<'tcx> {
+    type BreakTy = ();
+
+    #[instrument(skip(self), level = "debug")]
+    fn visit_ty(
+        &mut self,
+        t: <TyCtxt<'tcx> as ty::Interner>::Ty,
+    ) -> std::ops::ControlFlow<Self::BreakTy>
+    where
+        <TyCtxt<'tcx> as ty::Interner>::Ty: ty::TypeSuperVisitable<TyCtxt<'tcx>>,
+    {
+        self.current_depth_level += 1;
+        debug!(?self.current_depth_level);
+        if self.current_depth_level >= DEPTH_LEVEL {
+            self.reached_depth_limit = true;
+            return ControlFlow::Break(());
+        }
+
+        let control_flow = match t.kind() {
+            ty::Param(..) => {
+                // Need to be conservative here
+                self.has_interior_mut = true;
+                return ControlFlow::Break(());
+            }
+            ty::Adt(adt_def, substs) => {
+                if adt_def.is_unsafe_cell() {
+                    self.has_interior_mut = true;
+                    return ControlFlow::Break(());
+                }
+
+                let mut control_flow = ControlFlow::Continue(());
+                for field in adt_def.all_fields() {
+                    let field_ty = field.ty(self.tcx, substs);
+                    control_flow = field_ty.visit_with(self);
+
+                    if control_flow == ControlFlow::Break(()) {
+                        return ControlFlow::Break(());
+                    }
+                }
+
+                control_flow
+            }
+            _ => t.super_visit_with(self),
+        };
+
+        self.current_depth_level -= 1;
+        control_flow
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 enum NodeKind {
