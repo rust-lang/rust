@@ -78,12 +78,10 @@ fn is_path_self(e: &Expr<'_>) -> bool {
 
 fn contains_trait_object(cx: &LateContext<'_>, ty: ty::Ty<'_>) -> bool {
     match ty.kind() {
-        ty::TyKind::Ref(_, ty, _) => {
-            contains_trait_object(cx, *ty)
-        },
+        ty::TyKind::Ref(_, ty, _) => contains_trait_object(cx, *ty),
         ty::TyKind::Adt(def, substs) => {
             def.is_box() && substs[0].as_type().map_or(false, |ty| contains_trait_object(cx, ty))
-        }
+        },
         ty::TyKind::Dynamic(..) => true,
         _ => false,
     }
@@ -119,7 +117,7 @@ fn check_struct<'tcx>(
     let is_default_without_adjusts = |expr| {
         is_default_equivalent(cx, expr)
             && typeck_results.expr_adjustments(expr).iter().all(|adj| {
-                !matches!(adj.kind, Adjust::Pointer(PointerCast::Unsize) 
+                !matches!(adj.kind, Adjust::Pointer(PointerCast::Unsize)
                     if contains_trait_object(cx, adj.target))
             })
     };
