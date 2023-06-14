@@ -3,6 +3,7 @@ use super::HashSet;
 
 use crate::panic::{catch_unwind, AssertUnwindSafe};
 use crate::sync::atomic::{AtomicU32, Ordering};
+use crate::sync::Arc;
 
 #[test]
 fn test_zero_capacities() {
@@ -501,4 +502,23 @@ fn from_array() {
 fn const_with_hasher() {
     const X: HashSet<(), ()> = HashSet::with_hasher(());
     assert_eq!(X.len(), 0);
+}
+
+#[test]
+fn test_insert_does_not_overwrite_the_value() {
+    let first_value = Arc::new(17);
+    let second_value = Arc::new(17);
+
+    let mut set = HashSet::new();
+    let inserted = set.insert(first_value.clone());
+    assert!(inserted);
+
+    let inserted = set.insert(second_value);
+    assert!(!inserted);
+
+    assert!(
+        Arc::ptr_eq(set.iter().next().unwrap(), &first_value),
+        "Insert must not overwrite the value, so the contained value pointer \
+            must be the same as first value pointer we inserted"
+    );
 }
