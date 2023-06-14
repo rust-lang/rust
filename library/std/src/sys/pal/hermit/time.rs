@@ -18,6 +18,12 @@ impl Timespec {
         Timespec { t: timespec { tv_sec: 0, tv_nsec: 0 } }
     }
 
+    const fn new(tv_sec: i64, tv_nsec: i64) -> Timespec {
+        assert!(tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64);
+        // SAFETY: The assert above checks tv_nsec is within the valid range
+        Timespec { t: timespec { tv_sec: tv_sec, tv_nsec: tv_nsec } }
+    }
+
     fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         if self >= other {
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
@@ -195,6 +201,10 @@ pub struct SystemTime(Timespec);
 pub const UNIX_EPOCH: SystemTime = SystemTime(Timespec::zero());
 
 impl SystemTime {
+    pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
+        SystemTime(Timespec::new(tv_sec, tv_nsec))
+    }
+
     pub fn now() -> SystemTime {
         let mut time: Timespec = Timespec::zero();
         let _ = unsafe { abi::clock_gettime(CLOCK_REALTIME, core::ptr::addr_of_mut!(time.t)) };

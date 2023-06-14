@@ -2,11 +2,14 @@ use super::abi::{self, O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_W
 use super::fd::FileDesc;
 use crate::ffi::{CStr, OsString};
 use crate::fmt;
-use crate::hash::{Hash, Hasher};
 use crate::io::{self, Error, ErrorKind};
 use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
+use crate::mem;
+use crate::os::hermit::ffi::OsStringExt;
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
+use crate::ptr;
+use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::cvt;
 use crate::sys::time::SystemTime;
@@ -18,12 +21,44 @@ pub use crate::sys_common::fs::{copy, try_exists};
 
 #[derive(Debug)]
 pub struct File(FileDesc);
+#[derive(Clone)]
+pub struct FileAttr {
+    stat_val: stat_struct,
+}
 
-pub struct FileAttr(!);
+impl FileAttr {
+    fn from_stat(stat_val: stat_struct) -> Self {
+        Self { stat_val }
+    }
+}
 
-pub struct ReadDir(!);
+// all DirEntry's will have a reference to this struct
+struct InnerReadDir {
+    dirp: FileDesc,
+    root: PathBuf,
+}
 
-pub struct DirEntry(!);
+pub struct ReadDir {
+    inner: Arc<InnerReadDir>,
+    end_of_stream: bool,
+}
+
+impl ReadDir {
+    fn new(inner: InnerReadDir) -> Self {
+        Self { inner: Arc::new(inner), end_of_stream: false }
+    }
+}
+
+pub struct DirEntry {
+    dir: Arc<InnerReadDir>,
+    entry: dirent_min,
+    name: OsString,
+}
+
+struct dirent_min {
+    d_ino: u64,
+    d_type: u32,
+}
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {
@@ -41,72 +76,78 @@ pub struct OpenOptions {
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FileTimes {}
 
-pub struct FilePermissions(!);
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FilePermissions {
+    mode: u32,
+}
 
-pub struct FileType(!);
+#[derive(Copy, Clone, Eq, Debug)]
+pub struct FileType {
+    mode: u32,
+}
 
-#[derive(Debug)]
-pub struct DirBuilder {}
-
-impl FileAttr {
-    pub fn size(&self) -> u64 {
-        self.0
-    }
-
-    pub fn perm(&self) -> FilePermissions {
-        self.0
-    }
-
-    pub fn file_type(&self) -> FileType {
-        self.0
-    }
-
-    pub fn modified(&self) -> io::Result<SystemTime> {
-        self.0
-    }
-
-    pub fn accessed(&self) -> io::Result<SystemTime> {
-        self.0
-    }
-
-    pub fn created(&self) -> io::Result<SystemTime> {
-        self.0
+impl PartialEq for FileType {
+    fn eq(&self, other: &Self) -> bool {
+        self.mode == other.mode
     }
 }
 
-impl Clone for FileAttr {
-    fn clone(&self) -> FileAttr {
-        self.0
+impl core::hash::Hash for FileType {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.mode.hash(state);
+    }
+}
+
+#[derive(Debug)]
+pub struct DirBuilder {
+    mode: u32,
+}
+
+impl FileAttr {
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::new(self.stat_val.st_mtime, self.stat_val.st_mtime_nsec))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::new(self.stat_val.st_atime, self.stat_val.st_atime_nsec))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::new(self.stat_val.st_ctime, self.stat_val.st_ctime_nsec))
+    }
+
+    pub fn size(&self) -> u64 {
+        self.stat_val.st_size as u64
+    }
+    pub fn perm(&self) -> FilePermissions {
+        FilePermissions { mode: (self.stat_val.st_mode) }
+    }
+
+    pub fn file_type(&self) -> FileType {
+        let masked_mode = self.stat_val.st_mode & S_IFMT;
+        let mode = match masked_mode {
+            S_IFDIR => DT_DIR,
+            S_IFLNK => DT_LNK,
+            S_IFREG => DT_REG,
+            _ => DT_UNKNOWN,
+        };
+        FileType { mode: mode }
     }
 }
 
 impl FilePermissions {
     pub fn readonly(&self) -> bool {
-        self.0
+        // check if any class (owner, group, others) has write permission
+        self.mode & 0o222 == 0
     }
 
     pub fn set_readonly(&mut self, _readonly: bool) {
-        self.0
+        unimplemented!()
     }
-}
 
-impl Clone for FilePermissions {
-    fn clone(&self) -> FilePermissions {
-        self.0
-    }
-}
-
-impl PartialEq for FilePermissions {
-    fn eq(&self, _other: &FilePermissions) -> bool {
-        self.0
-    }
-}
-
-impl Eq for FilePermissions {}
-
-impl fmt::Debug for FilePermissions {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+    #[allow(dead_code)]
+    pub fn mode(&self) -> u32 {
+        self.mode as u32
     }
 }
 
@@ -117,49 +158,21 @@ impl FileTimes {
 
 impl FileType {
     pub fn is_dir(&self) -> bool {
-        self.0
+        self.mode == DT_DIR
     }
-
     pub fn is_file(&self) -> bool {
-        self.0
+        self.mode == DT_REG
     }
-
     pub fn is_symlink(&self) -> bool {
-        self.0
-    }
-}
-
-impl Clone for FileType {
-    fn clone(&self) -> FileType {
-        self.0
-    }
-}
-
-impl Copy for FileType {}
-
-impl PartialEq for FileType {
-    fn eq(&self, _other: &FileType) -> bool {
-        self.0
-    }
-}
-
-impl Eq for FileType {}
-
-impl Hash for FileType {
-    fn hash<H: Hasher>(&self, _h: &mut H) {
-        self.0
-    }
-}
-
-impl fmt::Debug for FileType {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+        self.mode == DT_LNK
     }
 }
 
 impl fmt::Debug for ReadDir {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
+        // Thus the result will be e g 'ReadDir("/home")'
+        fmt::Debug::fmt(&*self.inner.root, f)
     }
 }
 
@@ -167,25 +180,105 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        self.0
+        if self.end_of_stream {
+            return None;
+        }
+
+        unsafe {
+            loop {
+                // As of POSIX.1-2017, readdir() is not required to be thread safe; only
+                // readdir_r() is. However, readdir_r() cannot correctly handle platforms
+                // with unlimited or variable NAME_MAX. Many modern platforms guarantee
+                // thread safety for readdir() as long an individual DIR* is not accessed
+                // concurrently, which is sufficient for Rust.
+                let entry_ptr = match abi::readdir(self.inner.dirp.as_raw_fd()) {
+                    abi::DirectoryEntry::Invalid(e) => {
+                        // We either encountered an error, or reached the end. Either way,
+                        // the next call to next() should return None.
+                        self.end_of_stream = true;
+
+                        return Some(Err(Error::from_raw_os_error(e)));
+                    }
+                    abi::DirectoryEntry::Valid(ptr) => {
+                        if ptr.is_null() {
+                            return None;
+                        }
+
+                        ptr
+                    }
+                };
+
+                macro_rules! offset_ptr {
+                    ($entry_ptr:expr, $field:ident) => {{
+                        const OFFSET: isize = {
+                            let delusion = MaybeUninit::<dirent>::uninit();
+                            let entry_ptr = delusion.as_ptr();
+                            unsafe {
+                                ptr::addr_of!((*entry_ptr).$field)
+                                    .cast::<u8>()
+                                    .offset_from(entry_ptr.cast::<u8>())
+                            }
+                        };
+                        if true {
+                            // Cast to the same type determined by the else branch.
+                            $entry_ptr.byte_offset(OFFSET).cast::<_>()
+                        } else {
+                            #[allow(deref_nullptr)]
+                            {
+                                ptr::addr_of!((*ptr::null::<dirent>()).$field)
+                            }
+                        }
+                    }};
+                }
+
+                // d_name is NOT guaranteed to be null-terminated.
+                let name_bytes = core::slice::from_raw_parts(
+                    offset_ptr!(entry_ptr, d_name) as *const u8,
+                    *offset_ptr!(entry_ptr, d_namelen) as usize,
+                )
+                .to_vec();
+
+                if name_bytes == b"." || name_bytes == b".." {
+                    continue;
+                }
+
+                let name = OsString::from_vec(name_bytes);
+
+                let entry = dirent_min {
+                    d_ino: *offset_ptr!(entry_ptr, d_ino),
+                    d_type: *offset_ptr!(entry_ptr, d_type),
+                };
+
+                return Some(Ok(DirEntry { entry, name: name, dir: Arc::clone(&self.inner) }));
+            }
+        }
     }
 }
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.0
+        self.dir.root.join(self.file_name_os_str())
     }
 
     pub fn file_name(&self) -> OsString {
-        self.0
+        self.file_name_os_str().to_os_string()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        self.0
+        lstat(&self.path())
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        self.0
+        Ok(FileType { mode: self.entry.d_type })
+    }
+
+    #[allow(dead_code)]
+    pub fn ino(&self) -> u64 {
+        self.entry.d_ino
+    }
+
+    pub fn file_name_os_str(&self) -> &OsStr {
+        self.name.as_os_str()
     }
 }
 
@@ -288,7 +381,9 @@ impl File {
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        Err(Error::from_raw_os_error(22))
+        let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+        self.0.fstat(&mut stat_val)?;
+        Ok(FileAttr::from_stat(stat_val))
     }
 
     pub fn fsync(&self) -> io::Result<()> {
@@ -357,11 +452,18 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder {}
+        DirBuilder { mode: 0o777 }
     }
 
-    pub fn mkdir(&self, _p: &Path) -> io::Result<()> {
-        unsupported()
+    pub fn mkdir(&self, path: &Path) -> io::Result<()> {
+        run_path_with_cstr(path, |path| {
+            cvt(unsafe { abi::mkdir(path.as_ptr(), self.mode) }).map(|_| ())
+        })
+    }
+
+    #[allow(dead_code)]
+    pub fn set_mode(&mut self, mode: u32) {
+        self.mode = mode as u32;
     }
 }
 
@@ -416,8 +518,12 @@ impl FromRawFd for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    unsupported()
+pub fn readdir(path: &Path) -> io::Result<ReadDir> {
+    let fd_raw = run_path_with_cstr(path, |path| cvt(unsafe { abi::opendir(path.as_ptr()) }))?;
+    let fd = unsafe { FileDesc::from_raw_fd(fd_raw as i32) };
+    let root = path.to_path_buf();
+    let inner = InnerReadDir { dirp: fd, root };
+    Ok(ReadDir::new(inner))
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
@@ -428,12 +534,12 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
-    match perm.0 {}
+pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+    Err(Error::from_raw_os_error(22))
 }
 
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn rmdir(path: &Path) -> io::Result<()> {
+    run_path_with_cstr(path, |path| cvt(unsafe { abi::rmdir(path.as_ptr()) }).map(|_| ()))
 }
 
 pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
@@ -453,12 +559,20 @@ pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn stat(path: &Path) -> io::Result<FileAttr> {
+    run_path_with_cstr(path, |path| {
+        let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+        cvt(unsafe { abi::stat(path.as_ptr(), &mut stat_val) })?;
+        Ok(FileAttr::from_stat(stat_val))
+    })
 }
 
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn lstat(path: &Path) -> io::Result<FileAttr> {
+    run_path_with_cstr(path, |path| {
+        let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+        cvt(unsafe { abi::lstat(path.as_ptr(), &mut stat_val) })?;
+        Ok(FileAttr::from_stat(stat_val))
+    })
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
