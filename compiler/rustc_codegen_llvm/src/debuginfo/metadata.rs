@@ -1385,7 +1385,7 @@ fn vcall_visibility_metadata<'ll, 'tcx>(
     let trait_def_id = trait_ref_self.def_id();
     let trait_vis = cx.tcx.visibility(trait_def_id);
 
-    let cgus = cx.sess().codegen_units();
+    let cgus = cx.sess().codegen_units().as_usize();
     let single_cgu = cgus == 1;
 
     let lto = cx.sess().lto();

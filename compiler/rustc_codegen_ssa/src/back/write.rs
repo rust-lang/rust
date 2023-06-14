@@ -646,10 +646,10 @@ fn produce_final_output_artifacts(
         // rlib.
         let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
 
-        let keep_numbered_bitcode = user_wants_bitcode && sess.codegen_units() > 1;
+        let keep_numbered_bitcode = user_wants_bitcode && sess.codegen_units().as_usize() > 1;
 
         let keep_numbered_objects =
-            needs_crate_object || (user_wants_objects && sess.codegen_units() > 1);
+            needs_crate_object || (user_wants_objects && sess.codegen_units().as_usize() > 1);
 
         for module in compiled_modules.modules.iter() {
             if let Some(ref path) = module.object {
@@ -1923,7 +1923,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         // FIXME: time_llvm_passes support - does this use a global context or
         // something?
-        if sess.codegen_units() == 1 && sess.opts.unstable_opts.time_llvm_passes {
+        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
             self.backend.print_pass_timings()
         }
 
