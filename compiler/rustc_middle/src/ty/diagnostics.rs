@@ -14,8 +14,8 @@ use rustc_errors::{Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnostic
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::WherePredicate;
-use rustc_span::Span;
+use rustc_hir::{PredicateOrigin, WherePredicate};
+use rustc_span::{BytePos, Span};
 use rustc_type_ir::sty::TyKind::*;
 
 impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
@@ -156,10 +156,11 @@ enum SuggestChangingConstraintsMessage<'a> {
     RestrictBoundFurther,
     RestrictType { ty: &'a str },
     RestrictTypeFurther { ty: &'a str },
-    RemovingQSized,
+    RemoveMaybeUnsized,
+    ReplaceMaybeUnsizedWithSized,
 }
 
-fn suggest_removing_unsized_bound(
+fn suggest_changing_unsized_bound(
     generics: &hir::Generics<'_>,
     suggestions: &mut Vec<(Span, String, SuggestChangingConstraintsMessage<'_>)>,
     param: &hir::GenericParam<'_>,
@@ -183,12 +184,25 @@ fn suggest_removing_unsized_bound(
             if poly.trait_ref.trait_def_id() != def_id {
                 continue;
             }
-            let sp = generics.span_for_bound_removal(where_pos, pos);
-            suggestions.push((
-                sp,
-                String::new(),
-                SuggestChangingConstraintsMessage::RemovingQSized,
-            ));
+            if predicate.origin == PredicateOrigin::ImplTrait && predicate.bounds.len() == 1 {
+                // For `impl ?Sized` with no other bounds, suggest `impl Sized` instead.
+                let bound_span = bound.span();
+                if bound_span.can_be_used_for_suggestions() {
+                    let question_span = bound_span.with_hi(bound_span.lo() + BytePos(1));
+                    suggestions.push((
+                        question_span,
+                        String::new(),
+                        SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized,
+                    ));
+                }
+            } else {
+                let sp = generics.span_for_bound_removal(where_pos, pos);
+                suggestions.push((
+                    sp,
+                    String::new(),
+                    SuggestChangingConstraintsMessage::RemoveMaybeUnsized,
+                ));
+            }
         }
     }
 }
@@ -245,7 +259,7 @@ pub fn suggest_constraining_type_params<'a>(
                     param.span,
                     format!("this type parameter needs to be `{}`", constraint),
                 );
-                suggest_removing_unsized_bound(generics, &mut suggestions, param, def_id);
+                suggest_changing_unsized_bound(generics, &mut suggestions, param, def_id);
             }
         }
 
@@ -395,8 +409,11 @@ pub fn suggest_constraining_type_params<'a>(
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty } => {
                 Cow::from(format!("consider further restricting type parameter `{}`", ty))
             }
-            SuggestChangingConstraintsMessage::RemovingQSized => {
+            SuggestChangingConstraintsMessage::RemoveMaybeUnsized => {
                 Cow::from("consider removing the `?Sized` bound to make the type parameter `Sized`")
+            }
+            SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized => {
+                Cow::from("consider replacing `?Sized` with `Sized`")
             }
         };
 
