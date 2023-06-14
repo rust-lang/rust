@@ -1853,26 +1853,27 @@ impl String {
     /// Consumes and leaks the `String`, returning a mutable reference to the contents,
     /// `&'a mut str`.
     ///
-    /// This is mainly useful for data that lives for the remainder of
-    /// the program's life. Dropping the returned reference will cause a memory
-    /// leak.
+    /// The caller has free choice over the returned lifetime, including `'static`. Indeed,
+    /// this function is ideally used for data that lives for the remainder of the program's life,
+    /// as dropping the returned reference will cause a memory leak.
     ///
     /// It does not reallocate or shrink the `String`,
     /// so the leaked allocation may include unused capacity that is not part
-    /// of the returned slice.
+    /// of the returned slice. If you don't want that, call [`into_boxed_str`],
+    /// and then [`Box::leak`].
+    ///
+    /// [`into_boxed_str`]: Self::into_boxed_str
     ///
     /// # Examples
     ///
     /// Simple usage:
     ///
     /// ```
-    /// #![feature(string_leak)]
-    ///
     /// let x = String::from("bucket");
     /// let static_ref: &'static mut str = x.leak();
     /// assert_eq!(static_ref, "bucket");
     /// ```
-    #[unstable(feature = "string_leak", issue = "102929")]
+    #[stable(feature = "string_leak", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn leak<'a>(self) -> &'a mut str {
         let slice = self.vec.leak();
