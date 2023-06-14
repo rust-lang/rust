@@ -252,13 +252,10 @@ pub fn suggest_constraining_type_params<'a>(
         {
             let mut sized_constraints =
                 constraints.extract_if(|(_, def_id)| *def_id == tcx.lang_items().sized_trait());
-            if let Some((constraint, def_id)) = sized_constraints.next() {
+            if let Some((_, def_id)) = sized_constraints.next() {
                 applicability = Applicability::MaybeIncorrect;
 
-                err.span_label(
-                    param.span,
-                    format!("this type parameter needs to be `{}`", constraint),
-                );
+                err.span_label(param.span, "this type parameter needs to be `Sized`");
                 suggest_changing_unsized_bound(generics, &mut suggestions, param, def_id);
             }
         }
