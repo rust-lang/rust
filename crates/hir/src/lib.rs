@@ -203,7 +203,7 @@ impl Crate {
 
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id);
-        Module { id: def_map.module_id(DefMap::ROOT) }
+        Module { id: def_map.crate_root().into() }
     }
 
     pub fn modules(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -476,7 +476,7 @@ impl Module {
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id.krate());
-        Module { id: def_map.module_id(DefMap::ROOT) }
+        Module { id: def_map.crate_root().into() }
     }
 
     pub fn is_crate_root(self) -> bool {

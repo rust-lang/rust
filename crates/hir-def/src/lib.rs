@@ -93,6 +93,46 @@ use crate::{
     },
 };
 
+/// A `ModuleId` that is always a crate's root module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CrateRootModuleId {
+    krate: CrateId,
+}
+
+impl CrateRootModuleId {
+    pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
+        db.crate_def_map(self.krate)
+    }
+
+    pub fn krate(self) -> CrateId {
+        self.krate
+    }
+}
+
+impl From<CrateRootModuleId> for ModuleId {
+    fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
+        ModuleId { krate, block: None, local_id: DefMap::ROOT }
+    }
+}
+
+impl From<CrateRootModuleId> for ModuleDefId {
+    fn from(value: CrateRootModuleId) -> Self {
+        ModuleDefId::ModuleId(value.into())
+    }
+}
+
+impl TryFrom<ModuleId> for CrateRootModuleId {
+    type Error = ();
+
+    fn try_from(ModuleId { krate, block, local_id }: ModuleId) -> Result<Self, Self::Error> {
+        if block.is_none() && local_id == DefMap::ROOT {
+            Ok(CrateRootModuleId { krate })
+        } else {
+            Err(())
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
     krate: CrateId,
@@ -314,8 +354,7 @@ impl_intern!(MacroRulesId, MacroRulesLoc, intern_macro_rules, lookup_intern_macr
 pub struct ProcMacroId(salsa::InternId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProcMacroLoc {
-    // FIXME: this should be a crate? or just a crate-root module
-    pub container: ModuleId,
+    pub container: CrateRootModuleId,
     pub id: ItemTreeId<Function>,
     pub expander: ProcMacroExpander,
     pub kind: ProcMacroKind,
@@ -903,7 +942,7 @@ impl HasModule for MacroId {
         match self {
             MacroId::MacroRulesId(it) => it.lookup(db).container,
             MacroId::Macro2Id(it) => it.lookup(db).container,
-            MacroId::ProcMacroId(it) => it.lookup(db).container,
+            MacroId::ProcMacroId(it) => it.lookup(db).container.into(),
         }
     }
 }

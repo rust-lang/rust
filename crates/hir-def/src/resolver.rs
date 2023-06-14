@@ -21,11 +21,11 @@ use crate::{
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId,
-    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId,
-    TypeParamId, VariantId,
+    AdtId, AssocItemId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId,
+    EnumVariantId, ExternBlockId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
+    ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId,
+    ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeOwnerId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -943,6 +943,15 @@ impl HasResolver for ModuleId {
             resolver = resolver.push_block_scope(def_map, module);
         }
         resolver
+    }
+}
+
+impl HasResolver for CrateRootModuleId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        Resolver {
+            scopes: vec![],
+            module_scope: ModuleItemMap { def_map: self.def_map(db), module_id: DefMap::ROOT },
+        }
     }
 }
 
