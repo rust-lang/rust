@@ -2105,7 +2105,7 @@ fn render_union<'a, 'cx: 'a>(
             f.write_str(" ")?;
         }
 
-        f.write_str("{{\n")?;
+        f.write_str("{\n")?;
         let count_fields =
             fields.iter().filter(|field| matches!(*field.kind, clean::StructFieldItem(..))).count();
         let toggle = should_hide_fields(count_fields);
