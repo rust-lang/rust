@@ -4,12 +4,13 @@ use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{
+    self as hir,
     def::{CtorKind, CtorOf, DefKind, Res},
-    Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, Ty, TyKind,
+    Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCast};
-use rustc_middle::ty::{self, Adt, AdtDef, SubstsRef, TypeckResults};
+use rustc_middle::ty::{self, Adt, AdtDef, SubstsRef, Ty, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -76,11 +77,11 @@ fn is_path_self(e: &Expr<'_>) -> bool {
     }
 }
 
-fn contains_trait_object(ty: ty::Ty<'_>) -> bool {
+fn contains_trait_object(ty: Ty<'_>) -> bool {
     match ty.kind() {
-        ty::TyKind::Ref(_, ty, _) => contains_trait_object(*ty),
-        ty::TyKind::Adt(def, substs) => def.is_box() && substs[0].as_type().map_or(false, contains_trait_object),
-        ty::TyKind::Dynamic(..) => true,
+        ty::Ref(_, ty, _) => contains_trait_object(*ty),
+        ty::Adt(def, substs) => def.is_box() && substs[0].as_type().map_or(false, contains_trait_object),
+        ty::Dynamic(..) => true,
         _ => false,
     }
 }
@@ -88,7 +89,7 @@ fn contains_trait_object(ty: ty::Ty<'_>) -> bool {
 fn check_struct<'tcx>(
     cx: &LateContext<'tcx>,
     item: &'tcx Item<'_>,
-    self_ty: &Ty<'_>,
+    self_ty: &hir::Ty<'_>,
     func_expr: &Expr<'_>,
     adt_def: AdtDef<'_>,
     substs: SubstsRef<'_>,
