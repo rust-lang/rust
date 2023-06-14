@@ -1,0 +1,31 @@
+error: this function is only used once
+  --> $DIR/single_call_fn.rs:26:1
+   |
+LL | fn a() {}
+   | ^^^^^^^^^
+   |
+help: used here
+  --> $DIR/single_call_fn.rs:29:5
+   |
+LL |     a();
+   |     ^
+   = note: `-D clippy::single-call-fn` implied by `-D warnings`
+
+error: this function is only used once
+  --> $DIR/single_call_fn.rs:16:1
+   |
+LL | / fn c() {
+LL | |     println!("really");
+LL | |     println!("long");
+LL | |     println!("function...");
+LL | | }
+   | |_^
+   |
+help: used here
+  --> $DIR/single_call_fn.rs:23:5
+   |
+LL |     c();
+   |     ^
+
+error: aborting due to 2 previous errors
+

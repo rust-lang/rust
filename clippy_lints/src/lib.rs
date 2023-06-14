@@ -287,6 +287,7 @@ mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
 mod significant_drop_tightening;
+mod single_call_fn;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
 mod single_range_in_vec_init;
@@ -1055,6 +1056,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(stack_size_threshold)));
     store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
     store.register_late_pass(|_| Box::new(incorrect_impls::IncorrectImpls));
+    store.register_late_pass(move |_| {
+        Box::new(single_call_fn::SingleCallFn {
+            avoid_breaking_exported_api,
+            def_id_to_usage: rustc_data_structures::fx::FxHashMap::default(),
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

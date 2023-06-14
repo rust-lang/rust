@@ -5158,6 +5158,7 @@ Released 2018-09-13
 [`significant_drop_in_scrutinee`]: https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_in_scrutinee
 [`significant_drop_tightening`]: https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_tightening
 [`similar_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#similar_names
+[`single_call_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_call_fn
 [`single_char_add_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_add_str
 [`single_char_lifetime_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_lifetime_names
 [`single_char_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_pattern

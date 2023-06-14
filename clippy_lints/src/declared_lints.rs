@@ -570,6 +570,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::shadow::SHADOW_SAME_INFO,
     crate::shadow::SHADOW_UNRELATED_INFO,
     crate::significant_drop_tightening::SIGNIFICANT_DROP_TIGHTENING_INFO,
+    crate::single_call_fn::SINGLE_CALL_FN_INFO,
     crate::single_char_lifetime_names::SINGLE_CHAR_LIFETIME_NAMES_INFO,
     crate::single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS_INFO,
     crate::single_range_in_vec_init::SINGLE_RANGE_IN_VEC_INIT_INFO,
