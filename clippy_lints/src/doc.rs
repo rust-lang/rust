@@ -571,6 +571,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut in_link = None;
     let mut in_heading = false;
     let mut is_rust = false;
+    let mut no_test = false;
     let mut edition = None;
     let mut ticks_unbalanced = false;
     let mut text_to_check: Vec<(CowStr<'_>, Span)> = Vec::new();
@@ -584,6 +585,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         if item == "ignore" {
                             is_rust = false;
                             break;
+                        } else if item == "no_test" {
+                            no_test = true;
                         }
                         if let Some(stripped) = item.strip_prefix("edition") {
                             is_rust = true;
@@ -648,7 +651,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 headers.errors |= in_heading && trimmed_text == "Errors";
                 headers.panics |= in_heading && trimmed_text == "Panics";
                 if in_code {
-                    if is_rust {
+                    if is_rust && !no_test {
                         let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
                         check_code(cx, &text, edition, span);
                     }
