@@ -916,8 +916,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
             }
         }
 
-        // check for `unwrap`
-        if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+        // check for `unwrap` and `expect` both `Option` and `Result`
+        if let Some(arglists) = method_chain_args(expr, &["unwrap"]).or(method_chain_args(expr, &["expect"])) {
             let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
             if is_type_diagnostic_item(self.cx, receiver_ty, sym::Option)
                 || is_type_diagnostic_item(self.cx, receiver_ty, sym::Result)
