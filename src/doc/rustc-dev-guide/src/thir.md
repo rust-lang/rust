@@ -82,7 +82,7 @@ Thir {
                 neg: false,
             },
         },
-        // expression 1, scope surronding literal 1
+        // expression 1, scope surrounding literal 1
         Expr {
             ty: i32,
             temp_lifetime: Some(
