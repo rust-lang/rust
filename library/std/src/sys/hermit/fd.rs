@@ -48,6 +48,11 @@ impl FileDesc {
     pub fn set_nonblocking(&self, _nonblocking: bool) -> io::Result<()> {
         unsupported()
     }
+
+    pub fn fstat(&self, stat: *mut abi::stat) -> io::Result<()> {
+        cvt(unsafe { abi::fstat(self.fd.as_raw_fd(), stat) })?;
+        Ok(())
+    }
 }
 
 impl<'a> Read for &'a FileDesc {
