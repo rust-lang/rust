@@ -52,10 +52,10 @@ use crate::{
     tt,
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantId,
-    ExternBlockLoc, FunctionId, FunctionLoc, ImplLoc, Intern, ItemContainerId, LocalModuleId,
-    Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, ModuleDefId,
-    ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc, StructLoc, TraitAliasLoc, TraitLoc,
-    TypeAliasLoc, UnionLoc, UnresolvedMacro,
+    ExternBlockLoc, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, ImportLoc, Intern,
+    ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
+    MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc, StructLoc,
+    TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -156,10 +156,9 @@ struct Import {
     alias: Option<ImportAlias>,
     visibility: RawVisibility,
     kind: ImportKind,
-    is_prelude: bool,
-    is_extern_crate: bool,
-    is_macro_use: bool,
     source: ImportSource,
+    is_prelude: bool,
+    is_macro_use: bool,
 }
 
 impl Import {
@@ -168,26 +167,23 @@ impl Import {
         krate: CrateId,
         tree: &ItemTree,
         id: ItemTreeId<item_tree::Import>,
-    ) -> Vec<Self> {
+        mut cb: impl FnMut(Self),
+    ) {
         let it = &tree[id.value];
         let attrs = &tree.attrs(db, krate, ModItem::from(id.value).into());
         let visibility = &tree[it.visibility];
         let is_prelude = attrs.by_key("prelude_import").exists();
-
-        let mut res = Vec::new();
         it.use_tree.expand(|idx, path, kind, alias| {
-            res.push(Self {
+            cb(Self {
                 path,
                 alias,
                 visibility: visibility.clone(),
                 kind,
                 is_prelude,
-                is_extern_crate: false,
                 is_macro_use: false,
                 source: ImportSource::Import { id, use_tree: idx },
             });
         });
-        res
     }
 
     fn from_extern_crate(
@@ -205,7 +201,6 @@ impl Import {
             visibility: visibility.clone(),
             kind: ImportKind::Plain,
             is_prelude: false,
-            is_extern_crate: true,
             is_macro_use: attrs.by_key("macro_use").exists(),
             source: ImportSource::ExternCrate(id),
         }
@@ -776,7 +771,7 @@ impl DefCollector<'_> {
         let _p = profile::span("resolve_import")
             .detail(|| format!("{}", import.path.display(self.db.upcast())));
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
-        if import.is_extern_crate {
+        if matches!(import.source, ImportSource::ExternCrate { .. }) {
             let name = import
                 .path
                 .as_ident()
@@ -867,7 +862,7 @@ impl DefCollector<'_> {
                 tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-                if import.is_extern_crate
+                if matches!(import.source, ImportSource::ExternCrate { .. })
                     && self.def_map.block.is_none()
                     && module_id == DefMap::ROOT
                 {
@@ -1585,21 +1580,31 @@ impl ModCollector<'_, '_> {
             match item {
                 ModItem::Mod(m) => self.collect_module(m, &attrs),
                 ModItem::Import(import_id) => {
-                    let imports = Import::from_use(
+                    let _import_id = ImportLoc {
+                        container: module,
+                        id: ItemTreeId::new(self.tree_id, import_id),
+                    }
+                    .intern(db);
+                    Import::from_use(
                         db,
                         krate,
                         self.item_tree,
                         ItemTreeId::new(self.tree_id, import_id),
-                    );
-                    self.def_collector.unresolved_imports.extend(imports.into_iter().map(
-                        |import| ImportDirective {
-                            module_id: self.module_id,
-                            import,
-                            status: PartialResolvedImport::Unresolved,
+                        |import| {
+                            self.def_collector.unresolved_imports.push(ImportDirective {
+                                module_id: self.module_id,
+                                import,
+                                status: PartialResolvedImport::Unresolved,
+                            });
                         },
-                    ));
+                    )
                 }
                 ModItem::ExternCrate(import_id) => {
+                    let _import_id = ExternCrateLoc {
+                        container: module,
+                        id: ItemTreeId::new(self.tree_id, import_id),
+                    }
+                    .intern(db);
                     self.def_collector.unresolved_imports.push(ImportDirective {
                         module_id: self.module_id,
                         import: Import::from_extern_crate(

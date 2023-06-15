@@ -22,16 +22,20 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
-    EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId,
-    ImplLoc, InTypeConstId, InTypeConstLoc, LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc,
-    MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
-    StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
-    UnionLoc, VariantId,
+    EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, ImportId, ImportLoc, InTypeConstId, InTypeConstLoc,
+    LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc,
+    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId,
+    TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     // region: items
+    #[salsa::interned]
+    fn intern_import(&self, loc: ImportLoc) -> ImportId;
+    #[salsa::interned]
+    fn intern_extern_crate(&self, loc: ExternCrateLoc) -> ExternCrateId;
     #[salsa::interned]
     fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
     #[salsa::interned]
