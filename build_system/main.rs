@@ -1,3 +1,7 @@
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
+#![warn(unreachable_pub)]
+
 use std::env;
 use std::path::PathBuf;
 use std::process;
@@ -37,19 +41,19 @@ enum Command {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum SysrootKind {
+enum SysrootKind {
     None,
     Clif,
     Llvm,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum CodegenBackend {
+enum CodegenBackend {
     Local(PathBuf),
     Builtin(String),
 }
 
-pub(crate) fn main() {
+fn main() {
     if env::var("RUST_BACKTRACE").is_err() {
         env::set_var("RUST_BACKTRACE", "1");
     }
@@ -81,17 +85,24 @@ pub(crate) fn main() {
     };
 
     let mut out_dir = PathBuf::from(".");
+    let mut download_dir = None;
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
     let mut frozen = false;
+    let mut skip_tests = vec![];
     let mut use_backend = None;
     while let Some(arg) = args.next().as_deref() {
         match arg {
             "--out-dir" => {
                 out_dir = PathBuf::from(args.next().unwrap_or_else(|| {
                     arg_error!("--out-dir requires argument");
-                }))
+                }));
+            }
+            "--download-dir" => {
+                download_dir = Some(PathBuf::from(args.next().unwrap_or_else(|| {
+                    arg_error!("--download-dir requires argument");
+                })));
             }
             "--debug" => channel = "debug",
             "--sysroot" => {
@@ -105,6 +116,12 @@ pub(crate) fn main() {
             }
             "--no-unstable-features" => use_unstable_features = false,
             "--frozen" => frozen = true,
+            "--skip-test" => {
+                // FIXME check that all passed in tests actually exist
+                skip_tests.push(args.next().unwrap_or_else(|| {
+                    arg_error!("--skip-test requires argument");
+                }));
+            }
             "--use-backend" => {
                 use_backend = Some(match args.next() {
                     Some(name) => name,
@@ -114,6 +131,22 @@ pub(crate) fn main() {
             flag if flag.starts_with("-") => arg_error!("Unknown flag {}", flag),
             arg => arg_error!("Unexpected argument {}", arg),
         }
+    }
+
+    let current_dir = std::env::current_dir().unwrap();
+    out_dir = current_dir.join(out_dir);
+
+    if command == Command::Prepare {
+        prepare::prepare(&path::Dirs {
+            source_dir: current_dir.clone(),
+            download_dir: download_dir
+                .map(|dir| current_dir.join(dir))
+                .unwrap_or_else(|| out_dir.join("download")),
+            build_dir: PathBuf::from("dummy_do_not_use"),
+            dist_dir: PathBuf::from("dummy_do_not_use"),
+            frozen,
+        });
+        process::exit(0);
     }
 
     let rustup_toolchain_name = match (env::var("CARGO"), env::var("RUSTC"), env::var("RUSTDOC")) {
@@ -147,12 +180,11 @@ pub(crate) fn main() {
         .or_else(|| config::get_value("target"))
         .unwrap_or_else(|| bootstrap_host_compiler.triple.clone());
 
-    // FIXME allow changing the location of these dirs using cli arguments
-    let current_dir = std::env::current_dir().unwrap();
-    out_dir = current_dir.join(out_dir);
     let dirs = path::Dirs {
         source_dir: current_dir.clone(),
-        download_dir: out_dir.join("download"),
+        download_dir: download_dir
+            .map(|dir| current_dir.join(dir))
+            .unwrap_or_else(|| out_dir.join("download")),
         build_dir: out_dir.join("build"),
         dist_dir: out_dir.join("dist"),
         frozen,
@@ -167,11 +199,6 @@ pub(crate) fn main() {
         env::set_var("CARGO_TARGET_DIR", &target);
         let _ = std::fs::remove_file(&target);
         std::fs::File::create(target).unwrap();
-    }
-
-    if command == Command::Prepare {
-        prepare::prepare(&dirs, &bootstrap_host_compiler.rustc);
-        process::exit(0);
     }
 
     env::set_var("RUSTC", "rustc_should_be_set_explicitly");
@@ -197,6 +224,7 @@ pub(crate) fn main() {
                 channel,
                 sysroot_kind,
                 use_unstable_features,
+                &skip_tests.iter().map(|test| &**test).collect::<Vec<_>>(),
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),

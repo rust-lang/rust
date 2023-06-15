@@ -1,12 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-pub(crate) fn get_rustc_version(rustc: &Path) -> String {
-    let version_info =
-        Command::new(rustc).stderr(Stdio::inherit()).args(&["-V"]).output().unwrap().stdout;
-    String::from_utf8(version_info).unwrap()
-}
-
 pub(crate) fn get_host_triple(rustc: &Path) -> String {
     let version_info =
         Command::new(rustc).stderr(Stdio::inherit()).args(&["-vV"]).output().unwrap().stdout;

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use super::path::{Dirs, RelPath};
 use super::rustc_info::get_file_name;
-use super::utils::{is_ci, is_ci_opt, CargoProject, Compiler};
+use super::utils::{is_ci, is_ci_opt, maybe_incremental, CargoProject, Compiler};
 
 pub(crate) static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
@@ -14,17 +14,13 @@ pub(crate) fn build_backend(
     use_unstable_features: bool,
 ) -> PathBuf {
     let mut cmd = CG_CLIF.build(&bootstrap_host_compiler, dirs);
-
-    cmd.env("CARGO_BUILD_INCREMENTAL", "true"); // Force incr comp even in release mode
+    maybe_incremental(&mut cmd);
 
     let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
 
     if is_ci() {
         // Deny warnings on CI
         rustflags += " -Dwarnings";
-
-        // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
-        cmd.env("CARGO_BUILD_INCREMENTAL", "false");
 
         if !is_ci_opt() {
             cmd.env("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS", "true");
