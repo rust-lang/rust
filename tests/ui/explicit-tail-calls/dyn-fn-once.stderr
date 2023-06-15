@@ -1,0 +1,40 @@
+error: mismatched function ABIs
+  --> $DIR/dyn-fn-once.rs:4:5
+   |
+LL |     become (Box::new(|| ()) as Box<dyn FnOnce() -> ()>)();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"Rust"`, while callee ABI is `"rust-call"`
+
+error: mismatched signatures
+  --> $DIR/dyn-fn-once.rs:4:5
+   |
+LL |     become (Box::new(|| ()) as Box<dyn FnOnce() -> ()>)();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `fn()`
+   = note: callee signature: `extern "rust-call" fn(Box<dyn FnOnce()>, ())`
+
+error: mismatched function ABIs
+  --> $DIR/dyn-fn-once.rs:10:5
+   |
+LL |     become (&g as &dyn FnOnce() -> ())();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"Rust"`, while callee ABI is `"rust-call"`
+
+error: mismatched signatures
+  --> $DIR/dyn-fn-once.rs:10:5
+   |
+LL |     become (&g as &dyn FnOnce() -> ())();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `fn()`
+   = note: callee signature: `extern "rust-call" fn(dyn FnOnce(), ())`
+
+error: aborting due to 4 previous errors
+
