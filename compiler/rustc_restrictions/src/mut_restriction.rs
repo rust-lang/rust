@@ -76,33 +76,30 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-        if !context.is_mutating_use() {
-            self.super_place(place, context, location);
-            return;
-        }
+        if context.is_mutating_use() {
+            let body_did = self.body.source.instance.def_id();
 
-        let body_did = self.body.source.instance.def_id();
+            for (place_base, elem) in place.iter_projections() {
+                match elem {
+                    ProjectionElem::Field(field, _ty) => {
+                        let field_ty = place_base.ty(self.body, self.tcx);
+                        if !field_ty.ty.is_adt() {
+                            continue;
+                        }
+                        let field_def = field_ty.field_def(field);
+                        let field_mut_restriction = self.tcx.mut_restriction(field_def.did);
 
-        for (place_base, elem) in place.iter_projections() {
-            match elem {
-                ProjectionElem::Field(field, _ty) => {
-                    let field_ty = place_base.ty(self.body, self.tcx);
-                    if !field_ty.ty.is_adt() {
-                        continue;
+                        if field_mut_restriction.is_restricted_in(body_did, self.tcx) {
+                            self.tcx.sess.emit_err(errors::MutOfRestrictedField {
+                                mut_span: self.span,
+                                restriction_span: field_mut_restriction.expect_span(),
+                                restriction_path: field_mut_restriction
+                                    .expect_restriction_path(self.tcx, body_did.krate),
+                            });
+                        }
                     }
-                    let field_def = field_ty.field_def(field);
-                    let field_mut_restriction = self.tcx.mut_restriction(field_def.did);
-
-                    if field_mut_restriction.is_restricted_in(body_did, self.tcx) {
-                        self.tcx.sess.emit_err(errors::MutOfRestrictedField {
-                            mut_span: self.span,
-                            restriction_span: field_mut_restriction.expect_span(),
-                            restriction_path: field_mut_restriction
-                                .expect_restriction_path(self.tcx, body_did.krate),
-                        });
-                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
 

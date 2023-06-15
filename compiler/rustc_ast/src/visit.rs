@@ -968,8 +968,10 @@ pub fn walk_restriction<'a, V: Visitor<'a>, Kind: crate::RestrictionKind>(
     visitor: &mut V,
     restriction: &'a Restriction<Kind>,
 ) {
-    if let RestrictionLevel::Restricted { ref path, id, shorthand: _ } = restriction.level {
-        visitor.visit_path(path, id);
+    match restriction.level {
+        RestrictionLevel::Unrestricted => {}
+        RestrictionLevel::Restricted { ref path, id, shorthand: _ } => visitor.visit_path(path, id),
+        RestrictionLevel::Implied => {}
     }
 }
 

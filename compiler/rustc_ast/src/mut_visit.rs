@@ -1108,7 +1108,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             bounds,
             items,
         }) => {
-            noop_visit_restriction(impl_restriction, vis);
+            vis.visit_restriction(impl_restriction);
             visit_unsafety(unsafety, vis);
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);

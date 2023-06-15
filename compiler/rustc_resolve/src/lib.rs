@@ -980,9 +980,9 @@ pub struct Resolver<'a, 'tcx> {
     /// Visibilities in "lowered" form, for all entities that have them.
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
     has_pub_restricted: bool,
-    // trait def -> restriction scope
+    /// trait def -> restriction scope
     impl_restrictions: FxHashMap<DefId, ty::Restriction>,
-    // field def -> restriction scope
+    /// field def -> restriction scope
     mut_restrictions: FxHashMap<DefId, ty::Restriction>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
