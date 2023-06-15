@@ -118,7 +118,7 @@
 //! ```
 //!
 //! See
-//! https://blog.janestreet.com/using-ascii-waveforms-to-test-hardware-designs/
+//! <https://blog.janestreet.com/using-ascii-waveforms-to-test-hardware-designs/>
 //! for a cool example of snapshot testing in the wild!
 //!
 //! # Alternatives
