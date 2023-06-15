@@ -60,10 +60,12 @@ error: layout_of(A) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/thumb-enum.rs:16:1
    |
@@ -132,10 +134,12 @@ error: layout_of(B) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/thumb-enum.rs:20:1
    |
@@ -204,10 +208,12 @@ error: layout_of(C) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
        }
   --> $DIR/thumb-enum.rs:24:1
    |
@@ -276,10 +282,12 @@ error: layout_of(P) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/thumb-enum.rs:28:1
    |
@@ -348,10 +356,12 @@ error: layout_of(T) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/thumb-enum.rs:34:1
    |

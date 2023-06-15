@@ -259,6 +259,7 @@ fn layout_of_uncached<'tcx>(
                 align: element.align,
                 size,
                 repr_align: None,
+                unadjusted_abi_align: element.align.abi,
             })
         }
         ty::Slice(element) => {
@@ -271,6 +272,7 @@ fn layout_of_uncached<'tcx>(
                 align: element.align,
                 size: Size::ZERO,
                 repr_align: None,
+                unadjusted_abi_align: element.align.abi,
             })
         }
         ty::Str => tcx.mk_layout(LayoutS {
@@ -281,6 +283,7 @@ fn layout_of_uncached<'tcx>(
             align: dl.i8_align,
             size: Size::ZERO,
             repr_align: None,
+            unadjusted_abi_align: dl.i8_align.abi,
         }),
 
         // Odd unit types.
@@ -435,6 +438,7 @@ fn layout_of_uncached<'tcx>(
                 size,
                 align,
                 repr_align: None,
+                unadjusted_abi_align: align.abi,
             })
         }
 
@@ -884,6 +888,7 @@ fn generator_layout<'tcx>(
         size,
         align,
         repr_align: None,
+        unadjusted_abi_align: align.abi,
     });
     debug!("generator layout ({:?}): {:#?}", ty, layout);
     Ok(layout)

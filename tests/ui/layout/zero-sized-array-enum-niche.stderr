@@ -58,6 +58,7 @@ error: layout_of(std::result::Result<[u32; 0], bool>) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -90,10 +91,12 @@ error: layout_of(std::result::Result<[u32; 0], bool>) = Layout {
                            index: 1,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/zero-sized-array-enum-niche.rs:13:1
    |
@@ -160,6 +163,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
                    },
                    Layout {
                        size: Size(4 bytes),
@@ -183,6 +187,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            index: 1,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -215,10 +220,12 @@ error: layout_of(MultipleAlignments) = Layout {
                            index: 2,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/zero-sized-array-enum-niche.rs:21:1
    |
@@ -285,6 +292,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<std::num::NonZeroU16>>) = 
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                    Layout {
                        size: Size(3 bytes),
@@ -317,10 +325,12 @@ error: layout_of(std::result::Result<[u32; 0], Packed<std::num::NonZeroU16>>) = 
                            index: 1,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/zero-sized-array-enum-niche.rs:37:1
    |
@@ -391,6 +401,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -423,10 +434,12 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            index: 1,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/zero-sized-array-enum-niche.rs:44:1
    |

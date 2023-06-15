@@ -54,6 +54,7 @@ error: layout_of(E) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(12 bytes),
@@ -79,10 +80,12 @@ error: layout_of(E) = Layout {
                            index: 1,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/debug.rs:7:1
    |
@@ -128,6 +131,7 @@ error: layout_of(S) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/debug.rs:10:1
    |
@@ -151,6 +155,7 @@ error: layout_of(U) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/debug.rs:13:1
    |
@@ -243,6 +248,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                            index: 0,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                    Layout {
                        size: Size(8 bytes),
@@ -279,10 +285,12 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                            index: 1,
                        },
                        repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
                    },
                ],
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/debug.rs:16:1
    |
@@ -310,6 +318,7 @@ error: layout_of(i32) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
        }
   --> $DIR/debug.rs:19:1
    |
@@ -333,6 +342,7 @@ error: layout_of(V) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
        }
   --> $DIR/debug.rs:22:1
    |
@@ -356,6 +366,7 @@ error: layout_of(W) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
        }
   --> $DIR/debug.rs:28:1
    |
@@ -379,6 +390,7 @@ error: layout_of(Y) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
        }
   --> $DIR/debug.rs:34:1
    |
@@ -402,6 +414,7 @@ error: layout_of(P1) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/debug.rs:41:1
    |
@@ -425,6 +438,7 @@ error: layout_of(P2) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/debug.rs:45:1
    |
@@ -448,6 +462,7 @@ error: layout_of(P3) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/debug.rs:53:1
    |
@@ -471,6 +486,7 @@ error: layout_of(P4) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/debug.rs:57:1
    |
@@ -499,6 +515,7 @@ error: layout_of(P5) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/debug.rs:61:1
    |
@@ -527,6 +544,7 @@ error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
                index: 0,
            },
            repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/debug.rs:64:1
    |

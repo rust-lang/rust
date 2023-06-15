@@ -41,6 +41,7 @@ pub trait LayoutCalculator {
             align,
             size,
             repr_align: None,
+            unadjusted_abi_align: align.abi,
         }
     }
 
@@ -124,6 +125,7 @@ pub trait LayoutCalculator {
             align: dl.i8_align,
             size: Size::ZERO,
             repr_align: None,
+            unadjusted_abi_align: dl.i8_align.abi,
         }
     }
 
@@ -291,6 +293,8 @@ pub trait LayoutCalculator {
             }
 
             let mut align = dl.aggregate_align;
+            let mut unadjusted_abi_align = align.abi;
+
             let mut variant_layouts = variants
                 .iter_enumerated()
                 .map(|(j, v)| {
@@ -298,6 +302,7 @@ pub trait LayoutCalculator {
                     st.variants = Variants::Single { index: j };
 
                     align = align.max(st.align);
+                    unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
 
                     Some(st)
                 })
@@ -425,6 +430,7 @@ pub trait LayoutCalculator {
                 size,
                 align,
                 repr_align: repr.align,
+                unadjusted_abi_align,
             };
 
             Some(TmpLayout { layout, variants: variant_layouts })
@@ -459,6 +465,8 @@ pub trait LayoutCalculator {
         let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
 
         let mut align = dl.aggregate_align;
+        let mut unadjusted_abi_align = align.abi;
+
         let mut size = Size::ZERO;
 
         // We're interested in the smallest alignment, so start large.
@@ -501,6 +509,7 @@ pub trait LayoutCalculator {
                 }
                 size = cmp::max(size, st.size);
                 align = align.max(st.align);
+                unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
                 Some(st)
             })
             .collect::<Option<IndexVec<VariantIdx, _>>>()?;
@@ -695,6 +704,7 @@ pub trait LayoutCalculator {
             align,
             size,
             repr_align: repr.align,
+            unadjusted_abi_align,
         };
 
         let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
@@ -734,10 +744,6 @@ pub trait LayoutCalculator {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
-
-        if let Some(repr_align) = repr.align {
-            align = align.max(AbiAndPrefAlign::new(repr_align));
-        }
 
         // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
         // disabled, we can use that common ABI for the union as a whole.
@@ -791,6 +797,14 @@ pub trait LayoutCalculator {
         if let Some(pack) = repr.pack {
             align = align.min(AbiAndPrefAlign::new(pack));
         }
+        // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
+        // See documentation on `LayoutS::unadjusted_abi_align`.
+        let unadjusted_abi_align = align.abi;
+        if let Some(repr_align) = repr.align {
+            align = align.max(AbiAndPrefAlign::new(repr_align));
+        }
+        // `align` must not be modified after this, or `unadjusted_abi_align` could be inaccurate.
+        let align = align;
 
         // If all non-ZST fields have the same ABI, we may forward that ABI
         // for the union as a whole, unless otherwise inhibited.
@@ -814,6 +828,7 @@ pub trait LayoutCalculator {
             align,
             size: size.align_to(align.abi),
             repr_align: repr.align,
+            unadjusted_abi_align,
         })
     }
 }
@@ -1023,9 +1038,16 @@ fn univariant(
 
         offset = offset.checked_add(field.size(), dl)?;
     }
+
+    // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
+    // See documentation on `LayoutS::unadjusted_abi_align`.
+    let unadjusted_abi_align = align.abi;
     if let Some(repr_align) = repr.align {
         align = align.max(AbiAndPrefAlign::new(repr_align));
     }
+    // `align` must not be modified after this point, or `unadjusted_abi_align` could be inaccurate.
+    let align = align;
+
     debug!("univariant min_size: {:?}", offset);
     let min_size = offset;
     // As stated above, inverse_memory_index holds field indices by increasing offset.
@@ -1111,9 +1133,29 @@ fn univariant(
         abi = Abi::Uninhabited;
     }
 
-    let repr_align = repr.align.or_else(|| {
-        if repr.transparent() { layout_of_single_non_zst_field?.repr_align() } else { None }
-    });
+    let (repr_align, unadjusted_abi_align) = if repr.transparent() {
+        match layout_of_single_non_zst_field {
+            Some(l) => (l.repr_align(), l.unadjusted_abi_align()),
+            None => {
+                // `repr(transparent)` with all ZST fields.
+                //
+                // Using `None` for `repr_align` here is technically incorrect, since one of
+                // the ZSTs could have `repr(align(1))`. It's an interesting question, if you have
+                // `#{repr(transparent)] struct Foo((), ZstWithReprAlign1)`, which of those ZSTs'
+                // ABIs is forwarded by `repr(transparent)`? The answer to that question determines
+                // whether we should use `None` or `Some(align 1)` here. Thanksfully, two things
+                // together mean this doesn't matter:
+                // - You're not allowed to have a `repr(transparent)` struct that contains
+                //   `repr(align)` > 1 ZSTs. See error E0691.
+                // - MSVC never treats requested align 1 differently from natural align 1.
+                //   (And the `repr_align` field is only used on i686-windows, see `LayoutS` docs.)
+                // So just use `None` for now.
+                (None, align.abi)
+            }
+        }
+    } else {
+        (repr.align, unadjusted_abi_align)
+    };
 
     Some(LayoutS {
         variants: Variants::Single { index: FIRST_VARIANT },
@@ -1123,6 +1165,7 @@ fn univariant(
         align,
         size,
         repr_align,
+        unadjusted_abi_align,
     })
 }
 

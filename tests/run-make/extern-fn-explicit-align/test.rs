@@ -34,6 +34,13 @@ pub struct LowerAlign {
     pub b: u64,
 }
 
+#[derive(Copy, Clone)]
+#[repr(C)]
+#[repr(packed)]
+pub struct Packed {
+    pub a: u128
+}
+
 #[link(name = "test", kind = "static")]
 extern "C" {
     fn many_args(
@@ -49,7 +56,9 @@ extern "C" {
         j: WrappedU64s,
         k: *mut (),
         l: LowerAlign,
-        m: *const c_char,
+        m: *mut (),
+        n: Packed,
+        o: *const c_char,
     ) -> i32;
 }
 
@@ -60,6 +69,7 @@ fn main() {
     let two_u64s = TwoU64s { a: 1, b: 2 };
     let wrapped = WrappedU64s { a: TwoU64s { a: 3, b: 4 } };
     let lower = LowerAlign { a: 5, b: 6 };
+    let packed = Packed { a: 7 };
     let string = STRING;
     unsafe {
         many_args(
@@ -75,6 +85,8 @@ fn main() {
             wrapped,
             null_mut(),
             lower,
+            null_mut(),
+            packed,
             string.as_ptr(),
         );
     }

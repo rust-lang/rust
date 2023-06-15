@@ -44,7 +44,12 @@ struct __attribute__((aligned(1))) LowerAlign
 };
 #endif
 
-
+#pragma pack(push, 1)
+struct Packed
+{
+    __uint128_t a;
+};
+#pragma pack(pop)
 
 int32_t many_args(
     void *a,
@@ -59,7 +64,9 @@ int32_t many_args(
     struct WrappedU64s j,
     void *k,
     struct LowerAlign l,
-    const char *m)
+    void *m,
+    struct Packed n,
+    const char *o)
 {
     assert(!a);
     assert(!b);
@@ -77,6 +84,8 @@ int32_t many_args(
     assert(!k);
     assert(l.a == 5);
     assert(l.b == 6);
-    assert(strcmp(m, "Hello world") == 0);
+    assert(!m);
+    assert(n.a == 7);
+    assert(strcmp(o, "Hello world") == 0);
     return 0;
 }
