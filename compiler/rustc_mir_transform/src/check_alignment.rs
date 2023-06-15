@@ -14,6 +14,9 @@ pub struct CheckAlignment;
 
 impl<'tcx> MirPass<'tcx> for CheckAlignment {
     fn is_enabled(&self, sess: &Session) -> bool {
+        if sess.target.llvm_target == "i686-pc-windows-msvc" {
+            return false;
+        }
         sess.opts.debug_assertions
     }
 
