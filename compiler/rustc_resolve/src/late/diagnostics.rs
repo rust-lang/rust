@@ -1012,15 +1012,16 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 self.resolve_path(mod_path, None, None)
             {
                 let resolutions = self.r.resolutions(module).borrow();
-                let targets: Vec<_> =
-                    resolutions
-                        .iter()
-                        .filter_map(|(key, resolution)| {
-                            resolution.borrow().binding.map(|binding| binding.res()).and_then(
-                                |res| if filter_fn(res) { Some((key, res)) } else { None },
-                            )
-                        })
-                        .collect();
+                let targets: Vec<_> = resolutions
+                    .iter()
+                    .filter_map(|(key, resolution)| {
+                        resolution
+                            .borrow()
+                            .available_binding()
+                            .map(|binding| binding.res())
+                            .and_then(|res| if filter_fn(res) { Some((key, res)) } else { None })
+                    })
+                    .collect();
                 if targets.len() == 1 {
                     let target = targets[0];
                     return Some(TypoSuggestion::single_item_from_ident(target.0.ident, target.1));
@@ -1543,7 +1544,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let targets = resolutions
             .borrow()
             .iter()
-            .filter_map(|(key, res)| res.borrow().binding.map(|binding| (key, binding.res())))
+            .filter_map(|(key, res)| {
+                res.borrow().available_binding().map(|binding| (key, binding.res()))
+            })
             .filter(|(_, res)| match (kind, res) {
                 (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,

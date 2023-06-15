@@ -870,16 +870,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let resolution =
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
-        // If the primary binding is unusable, search further and return the shadowed glob
-        // binding if it exists. What we really want here is having two separate scopes in
-        // a module - one for non-globs and one for globs, but until that's done use this
-        // hack to avoid inconsistent resolution ICEs during import validation.
-        let binding =
-            [resolution.binding, resolution.shadowed_glob].into_iter().find_map(|binding| {
-                match (binding, ignore_binding) {
-                    (Some(binding), Some(ignored)) if ptr::eq(binding, ignored) => None,
-                    _ => binding,
-                }
+        let binding = [resolution.non_glob_binding(), resolution.glob_binding()]
+            .into_iter()
+            .find_map(|binding| match (binding, ignore_binding) {
+                (Some(binding), Some(ignored)) if ptr::eq(binding, ignored) => None,
+                _ => binding,
             });
 
         if let Some(Finalize { path_span, report_private, .. }) = finalize {
@@ -900,7 +895,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             // Forbid expanded shadowing to avoid time travel.
-            if let Some(shadowed_glob) = resolution.shadowed_glob
+            if let Some(shadowed_glob) = resolution.glob_binding()
                 && restricted_shadowing
                 && binding.expansion != LocalExpnId::ROOT
                 && binding.res() != shadowed_glob.res()

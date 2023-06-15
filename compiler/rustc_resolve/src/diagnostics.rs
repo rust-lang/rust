@@ -518,7 +518,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ctxt: Option<SyntaxContext>,
     ) {
         for (key, resolution) in self.resolutions(module).borrow().iter() {
-            if let Some(binding) = resolution.borrow().binding {
+            if let Some(binding) = resolution.borrow().available_binding() {
                 let res = binding.res();
                 if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == key.ident.span.ctxt()) {
                     names.push(TypoSuggestion::typo_from_ident(key.ident, res));
