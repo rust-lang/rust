@@ -17,8 +17,8 @@ mod m {
         //~^ ERROR: cannot check whether the hidden type of `inference_cycle[4ecc]::m::Foo::{opaque#0}` satisfies auto traits
     }
 
-    fn baz() {
-        let f: Foo = ();
+    fn baz() -> Foo {
+        ()
     }
 
     fn is_send<T: Send>(_: T) {}

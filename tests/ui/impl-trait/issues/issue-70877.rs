@@ -25,12 +25,12 @@ fn ham() -> Foo {
     Bar(1)
 }
 
-fn oof() -> impl std::fmt::Debug {
+fn oof(_: Foo) -> impl std::fmt::Debug {
     let mut bar = ham();
     let func = bar.next().unwrap();
     return func(&"oof"); //~ ERROR opaque type's hidden type cannot be another opaque type
 }
 
 fn main() {
-    let _ = oof();
+    let _ = oof(ham());
 }

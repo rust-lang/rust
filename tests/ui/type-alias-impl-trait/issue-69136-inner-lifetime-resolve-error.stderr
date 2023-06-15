@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:17:65
+  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:19:65
    |
 LL | type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
    |                                                                 ^^ undeclared lifetime
@@ -14,16 +14,6 @@ help: consider introducing lifetime `'a` here
 LL | type Return<'a, A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
    |             +++
 
-error[E0792]: expected generic type parameter, found `()`
-  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:20:27
-   |
-LL | type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
-   |             - this generic parameter must be used with a generic type parameter
-...
-LL | fn my_fun() -> Return<()> {}
-   |                           ^^
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0261, E0792.
-For more information about an error, try `rustc --explain E0261`.
+For more information about this error, try `rustc --explain E0261`.

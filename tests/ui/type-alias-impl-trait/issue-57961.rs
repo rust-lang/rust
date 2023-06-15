@@ -11,8 +11,8 @@ impl Foo for () {
     //~^ ERROR expected `IntoIter<u32>` to be an iterator that yields `X`, but it yields `u32`
 }
 
-fn incoherent() {
-    let f: X = 22_i32;
+fn incoherent() -> X {
+    22_i32
 }
 
 fn main() {}

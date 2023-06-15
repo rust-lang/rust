@@ -1,7 +1,9 @@
-//! This test checks that we can't actually have an opaque type behind
-//! a binder that references variables from that binder.
+//! This test checks the behaviour of walking into binders
+//! and normalizing something behind them actually works.
 
 // edition: 2021
+
+// check-pass
 
 #![feature(type_alias_impl_trait)]
 
@@ -12,10 +14,10 @@ trait B {
 struct A;
 
 impl<'a> B for &'a A {
-    type C = Tait<'a>;
+    type C = Tait;
 }
 
-type Tait<'a> = impl std::fmt::Debug + 'a;
+type Tait = impl std::fmt::Debug;
 
 struct Terminator;
 
@@ -23,14 +25,12 @@ type Successors<'a> = impl std::fmt::Debug + 'a;
 
 impl Terminator {
     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
-        //~^ ERROR non-defining opaque type use in defining scope
         f = g;
-        //~^ ERROR mismatched types
     }
 }
 
-fn g(x: &()) -> &() {
-    x
+fn g(_: &()) -> String {
+    String::new()
 }
 
 fn main() {}

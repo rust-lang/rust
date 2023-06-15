@@ -1,5 +1,17 @@
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/higher_kinded_params3.rs:25:33
+   |
+LL |     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument `'x` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/higher_kinded_params3.rs:18:17
+   |
+LL | type Tait<'a> = impl std::fmt::Debug + 'a;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0308]: mismatched types
-  --> $DIR/higher_kinded_params3.rs:26:9
+  --> $DIR/higher_kinded_params3.rs:27:9
    |
 LL | type Tait<'a> = impl std::fmt::Debug + 'a;
    |                 ------------------------- the expected opaque type
@@ -10,6 +22,7 @@ LL |         f = g;
    = note: expected fn pointer `for<'x> fn(&'x ()) -> Tait<'x>`
               found fn pointer `for<'a> fn(&'a ()) -> &'a ()`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0308, E0792.
+For more information about an error, try `rustc --explain E0308`.
