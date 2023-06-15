@@ -80,15 +80,7 @@ pub(super) fn add_local_place_comments<'tcx>(
         return;
     }
     let TyAndLayout { ty, layout } = place.layout();
-    let rustc_target::abi::LayoutS {
-        size,
-        align,
-        repr_align: _,
-        abi: _,
-        variants: _,
-        fields: _,
-        largest_niche: _,
-    } = layout.0.0;
+    let rustc_target::abi::LayoutS { size, align, .. } = layout.0.0;
 
     let (kind, extra) = place.debug_comment();
 
