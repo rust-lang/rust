@@ -55,9 +55,9 @@ impl<'tcx> Visitor<'tcx> for ReturnVisitor {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Ret(_) | hir::ExprKind::Match(.., hir::MatchSource::TryDesugar) = ex.kind {
             self.found_return = true;
+        } else {
+            hir_visit::walk_expr(self, ex);
         }
-
-        hir_visit::walk_expr(self, ex);
     }
 }
 
@@ -122,7 +122,7 @@ fn get_parent_call_exprs<'tcx>(
     let mut depth = 1;
     while let Some(parent) = get_parent_expr(cx, expr)
         && let hir::ExprKind::Call(recv, _) = parent.kind
-        && let hir::ExprKind::Call(..) = recv.kind
+        && expr.span == recv.span
     {
         expr = parent;
         depth += 1;
