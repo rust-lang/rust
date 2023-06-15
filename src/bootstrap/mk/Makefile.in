@@ -61,7 +61,7 @@ prepare:
 
 # this intentionally doesn't use `$(BOOTSTRAP)` so we can test the shebang on Windows
 ci-msvc:
-	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 tidy && $(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 --exclude tidy
 
 ## MingW native builders
 
