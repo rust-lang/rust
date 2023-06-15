@@ -164,7 +164,7 @@ pub fn predicate_obligations<'tcx>(
             wf.compute(arg);
         }
 
-        ty::PredicateKind::ConstEvaluatable(ct) => {
+        ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)) => {
             wf.compute(ct.into());
         }
 
@@ -521,8 +521,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 let obligations = self.nominal_obligations(uv.def, uv.substs);
                                 self.out.extend(obligations);
 
-                                let predicate =
-                                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct));
+                                let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                                    ty::Clause::ConstEvaluatable(ct),
+                                ));
                                 let cause = self.cause(traits::WellFormed(None));
                                 self.out.push(traits::Obligation::with_depth(
                                     self.tcx(),
@@ -554,8 +555,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             // the future we may allow directly lowering to `ConstKind::Expr` in which case
                             // we would not be proving bounds we should.
 
-                            let predicate =
-                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct));
+                            let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                                ty::Clause::ConstEvaluatable(ct),
+                            ));
                             let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(
                                 self.tcx(),
@@ -977,7 +979,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::AliasRelate(..)

@@ -353,7 +353,7 @@ fn const_evaluatable_predicates_of(
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
                 let span = self.tcx.def_span(c.def_id);
                 self.preds.insert((
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct))
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)))
                         .to_predicate(self.tcx),
                     span,
                 ));

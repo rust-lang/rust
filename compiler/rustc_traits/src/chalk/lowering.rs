@@ -137,7 +137,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", predicate),
             };
@@ -231,7 +231,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::ConstEquate(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
@@ -680,7 +680,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
@@ -816,7 +816,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => {

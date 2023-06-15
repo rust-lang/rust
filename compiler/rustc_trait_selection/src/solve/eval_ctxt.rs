@@ -326,7 +326,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
                 // FIXME: implement this predicate :)
-                ty::PredicateKind::ConstEvaluatable(_) => {
+                ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(_)) => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 ty::PredicateKind::ConstEquate(_, _) => {

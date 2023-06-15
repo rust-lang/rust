@@ -547,7 +547,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
             | PredicateKind::Coerce(_)
-            | PredicateKind::ConstEvaluatable(_)
+            | PredicateKind::Clause(Clause::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(_) => true,
@@ -587,6 +587,9 @@ pub enum Clause<'tcx> {
 
     /// No syntax: `T` well-formed.
     WellFormed(GenericArg<'tcx>),
+
+    /// Constant initializer must evaluate successfully.
+    ConstEvaluatable(ty::Const<'tcx>),
 }
 
 impl<'tcx> Binder<'tcx, Clause<'tcx>> {
@@ -637,9 +640,6 @@ pub enum PredicateKind<'tcx> {
     /// very much like subtyping and don't handle the full coercion
     /// logic.
     Coerce(CoercePredicate<'tcx>),
-
-    /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(ty::Const<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(Const<'tcx>, Const<'tcx>),
@@ -1328,7 +1328,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(Clause::TypeOutlives(..))
-            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::Clause(Clause::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
@@ -1349,7 +1349,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(Clause::TypeOutlives(..))
-            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::Clause(Clause::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
@@ -1370,7 +1370,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::WellFormed(..))
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
-            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::Clause(Clause::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
@@ -1384,10 +1384,8 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
-            | PredicateKind::WellFormed(..)
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
-            | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,

@@ -1032,9 +1032,9 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                     tcx,
                     cause,
                     wfcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(
                         ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
-                    )),
+                    ))),
                 ));
             }
         }

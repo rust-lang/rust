@@ -1529,14 +1529,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     ty::Clause::RegionOutlives(_)
                     | ty::Clause::ConstArgHasType(..)
-                    | ty::Clause::WellFormed(_) => bug!(),
+                    | ty::Clause::WellFormed(_)
+                    | ty::Clause::ConstEvaluatable(_) => bug!(),
                 },
                 ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ObjectSafe(_)
                 | ty::PredicateKind::ClosureKind(_, _, _)
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::Coerce(_)
-                | ty::PredicateKind::ConstEvaluatable(_)
                 | ty::PredicateKind::ConstEquate(_, _)
                 | ty::PredicateKind::TypeWellFormedFromEnv(_)
                 | ty::PredicateKind::Ambiguous => bug!(),

@@ -180,6 +180,9 @@ impl<'tcx> fmt::Debug for ty::Clause<'tcx> {
             ty::Clause::TypeOutlives(ref pair) => pair.fmt(f),
             ty::Clause::Projection(ref pair) => pair.fmt(f),
             ty::Clause::WellFormed(ref data) => write!(f, "WellFormed({:?})", data),
+            ty::Clause::ConstEvaluatable(ct) => {
+                write!(f, "ConstEvaluatable({ct:?})")
+            }
         }
     }
 }
@@ -195,9 +198,6 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             }
             ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                 write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
-            }
-            ty::PredicateKind::ConstEvaluatable(ct) => {
-                write!(f, "ConstEvaluatable({ct:?})")
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {

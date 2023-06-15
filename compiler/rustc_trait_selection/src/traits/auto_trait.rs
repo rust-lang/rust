@@ -833,7 +833,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::Coerce(..) => {}
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("predicate should only exist in the environment: {bound_predicate:?}")
