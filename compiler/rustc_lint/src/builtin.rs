@@ -1608,6 +1608,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     Clause(Clause::Projection(..)) |
+                    NormalizesTo(..) |
                     AliasRelate(..) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |

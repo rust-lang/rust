@@ -845,6 +845,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::NormalizesTo(..)
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
             }

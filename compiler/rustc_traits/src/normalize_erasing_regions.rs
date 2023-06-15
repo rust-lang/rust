@@ -37,7 +37,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
             // This has been seen to fail in RL, so making it a non-debug assertion to better catch
             // those cases.
             assert_eq!(
-                normalized_obligations.iter().find(|p| not_outlives_predicate(p.predicate)),
+                normalized_obligations.iter().find(|p| !is_outlives_predicate(p.predicate)),
                 None,
             );
 
@@ -54,13 +54,14 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
     }
 }
 
-fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
+fn is_outlives_predicate(p: ty::Predicate<'_>) -> bool {
     match p.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => false,
+        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => true,
         ty::PredicateKind::Clause(ty::Clause::Trait(..))
         | ty::PredicateKind::Clause(ty::Clause::Projection(..))
         | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+        | ty::PredicateKind::NormalizesTo(..)
         | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
@@ -70,6 +71,6 @@ fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => true,
+        | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
     }
 }

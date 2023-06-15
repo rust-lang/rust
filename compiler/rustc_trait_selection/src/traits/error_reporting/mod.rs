@@ -1098,6 +1098,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "TypeWellFormedFromEnv predicate should only exist in the environment"
                     ),
 
+                    ty::PredicateKind::NormalizesTo(..) => span_bug!(
+                        span,
+                        "NormalizesTo predicate should never be the predicate cause of a SelectionError"
+                    ),
+
                     ty::PredicateKind::AliasRelate(..) => span_bug!(
                         span,
                         "AliasRelate predicate should never be the predicate cause of a SelectionError"

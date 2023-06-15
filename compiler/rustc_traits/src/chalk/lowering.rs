@@ -133,6 +133,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 },
                 ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+                | ty::PredicateKind::NormalizesTo(..)
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
@@ -229,6 +230,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             // some of these in terms of chalk operations.
             ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+            | ty::PredicateKind::NormalizesTo(..)
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
@@ -675,6 +677,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
             ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::NormalizesTo(..)
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
@@ -810,6 +813,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
+            | ty::PredicateKind::NormalizesTo(..)
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)

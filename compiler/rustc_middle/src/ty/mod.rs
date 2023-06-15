@@ -537,12 +537,14 @@ impl<'tcx> Predicate<'tcx> {
     pub fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
             PredicateKind::WellFormed(_) => false,
+            // Only used by the new solver where we should not
+            // normalize any goals.
+            PredicateKind::NormalizesTo(..) | PredicateKind::AliasRelate(..) => false,
             PredicateKind::Clause(Clause::Trait(_))
             | PredicateKind::Clause(Clause::RegionOutlives(_))
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
-            | PredicateKind::AliasRelate(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
@@ -653,10 +655,19 @@ pub enum PredicateKind<'tcx> {
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
     Ambiguous,
 
+    /// The alias normalizes to `term`. Unlike `Projection`, this always fails if the alias
+    /// cannot be normalized in the current context.
+    ///
+    /// `Projection(<T as Trait>::Assoc, ?x)` results in `?x == <T as Trait>::Assoc` while
+    /// `NormalizesTo(<T as Trait>::Assoc, ?x)` results in `NoSolution`.
+    ///
+    /// Only used in the new solver.
+    NormalizesTo(ProjectionPredicate<'tcx>),
+
     /// Separate from `Clause::Projection` which is used for normalization in new solver.
     /// This predicate requires two terms to be equal to eachother.
     ///
-    /// Only used for new solver
+    /// Only used in the new solver.
     AliasRelate(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
 }
 
@@ -1320,6 +1331,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1341,6 +1353,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1363,6 +1376,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)

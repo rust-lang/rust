@@ -56,15 +56,20 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                     | ty::PredicateKind::Clause(ty::Clause::Projection(..))
                     | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                     | ty::PredicateKind::WellFormed(..)
-                    | ty::PredicateKind::AliasRelate(..)
-                    | ty::PredicateKind::ObjectSafe(..)
+                    | ty::PredicateKind::ConstEvaluatable(..) => (),
+                    ty::PredicateKind::ObjectSafe(_)
                     | ty::PredicateKind::ClosureKind(..)
                     | ty::PredicateKind::Subtype(..)
                     | ty::PredicateKind::Coerce(..)
-                    | ty::PredicateKind::ConstEvaluatable(..)
                     | ty::PredicateKind::ConstEquate(..)
                     | ty::PredicateKind::Ambiguous
-                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => (),
+                    | ty::PredicateKind::NormalizesTo(..)
+                    | ty::PredicateKind::AliasRelate(..)
+                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                        bug!(
+                            "`explicit_predicates_of` should only deal with clauses: {predicate:?}"
+                        )
+                    }
                 }
             }
 

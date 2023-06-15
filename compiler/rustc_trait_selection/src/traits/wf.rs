@@ -174,6 +174,7 @@ pub fn predicate_obligations<'tcx>(
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
+        | ty::PredicateKind::NormalizesTo(..)
         | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
             bug!("We should only wf check where clauses, unexpected predicate: {predicate:?}")
@@ -971,6 +972,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::NormalizesTo(..)
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
                 ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(

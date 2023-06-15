@@ -369,8 +369,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::AliasRelate(..) => {
+                    bug!("predicate only used by new solver: {:?}", obligation.predicate)
                 }
             },
             Some(pred) => match pred {
@@ -637,8 +637,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::AliasRelate(..) => {
+                    bug!("predicate only used by new solver: {:?}", obligation.predicate)
                 }
                 ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
                     match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(

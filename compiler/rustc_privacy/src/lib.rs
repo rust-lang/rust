@@ -192,6 +192,7 @@ where
             | ty::PredicateKind::ConstEquate(_, _)
             | ty::PredicateKind::TypeWellFormedFromEnv(_)
             | ty::PredicateKind::Ambiguous
+            | ty::PredicateKind::NormalizesTo(..)
             | ty::PredicateKind::AliasRelate(..) => bug!("unexpected predicate: {:?}", predicate),
         }
     }

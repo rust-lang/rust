@@ -26,6 +26,7 @@ pub fn explicit_outlives_bounds<'tcx>(
             ty::PredicateKind::Clause(ty::Clause::Projection(..))
             | ty::PredicateKind::Clause(ty::Clause::Trait(..))
             | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+            | ty::PredicateKind::NormalizesTo(..)
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Subtype(..)

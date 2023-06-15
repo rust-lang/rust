@@ -34,15 +34,18 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
                     | ty::Clause::ConstArgHasType(..),
                 )
                 | ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEvaluatable(..) => continue,
+                ty::PredicateKind::ObjectSafe(_)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::AliasRelate(..) => panic!("alias relate predicate on function: {predicate:#?}"),
-                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
-                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Ambiguous => panic!("ambiguous predicate on function: {predicate:#?}"),
+                | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::NormalizesTo(..)
+                | ty::PredicateKind::AliasRelate(..)
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                    panic!("We should only wf check where clauses, unexpected predicate: {predicate:?}")
+                }
             }
         }
         match predicates.parent {

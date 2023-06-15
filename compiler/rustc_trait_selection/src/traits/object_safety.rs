@@ -308,20 +308,23 @@ fn predicate_references_self<'tcx>(
             has_self_ty(&ty.into()).then_some(sp)
         }
 
-        ty::PredicateKind::AliasRelate(..) => bug!("`AliasRelate` not allowed as assumption"),
-
         ty::PredicateKind::WellFormed(..)
-        | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
         | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
+        // FIXME(generic_const_exprs): this can mention `Self`
+        | ty::PredicateKind::ConstEvaluatable(..) => None,
+
+        ty::PredicateKind::ObjectSafe(_)
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
-        // FIXME(generic_const_exprs): this can mention `Self`
-        | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+        | ty::PredicateKind::NormalizesTo(..)
+        | ty::PredicateKind::AliasRelate(..)
+        | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            bug!("should only check where-clauses for object safety: {predicate:?}")
+        }
     }
 }
 
@@ -349,7 +352,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         return false; /* No Sized trait, can't require it! */
     };
 
-    // Search for a predicate like `Self : Sized` amongst the trait bounds.
+    // Search for a predicate like `Self: Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate(tcx, predicates.into_iter()).any(|pred| match pred.kind().skip_binder() {
@@ -367,6 +370,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::NormalizesTo(..)
         | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,

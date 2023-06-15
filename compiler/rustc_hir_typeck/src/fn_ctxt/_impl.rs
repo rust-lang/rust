@@ -670,6 +670,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
                 | ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::NormalizesTo(..)
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)

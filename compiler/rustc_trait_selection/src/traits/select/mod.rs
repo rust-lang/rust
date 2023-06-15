@@ -983,8 +983,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used for new solver")
+                ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::AliasRelate(..) => {
+                    bug!("predicate only used by new solver: {bound_predicate:?}")
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {

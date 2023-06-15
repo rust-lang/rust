@@ -2896,6 +2896,9 @@ define_print_and_forward_display! {
                 p!("the type `", print(ty), "` is found in the environment")
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
+            ty::PredicateKind::NormalizesTo(ty::ProjectionPredicate { projection_ty, term }) => {
+                p!("`", print(projection_ty), "` normalizes to `", print(term), "`")
+            }
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }
     }
