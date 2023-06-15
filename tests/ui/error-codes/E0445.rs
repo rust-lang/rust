@@ -1,3 +1,4 @@
+#![feature(type_privacy_lints)]
 #[warn(private_bounds)]
 #[warn(private_interfaces)]
 
