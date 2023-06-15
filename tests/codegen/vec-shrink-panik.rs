@@ -38,14 +38,6 @@ pub fn issue71861(vec: Vec<u32>) -> Box<[u32]> {
 #[no_mangle]
 pub fn issue75636<'a>(iter: &[&'a str]) -> Box<[&'a str]> {
     // CHECK-NOT: panic
-
-    // Call to panic_cannot_unwind in case of double-panic is expected,
-    // on LLVM 16 and older, but other panics are not.
-    // old: filter
-    // old-NEXT: ; call core::panicking::panic_cannot_unwind
-    // old-NEXT: panic_cannot_unwind
-
-    // CHECK-NOT: panic
     iter.iter().copied().collect()
 }
 
