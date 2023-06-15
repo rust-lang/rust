@@ -150,9 +150,10 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             hir.node_to_string(diag_expr_id),
             hir.node_to_string(parent)
         );
-        place_with_id
-            .try_into()
-            .map_or((), |tracked_value| self.mark_consumed(parent, tracked_value));
+
+        if let Ok(tracked_value) = place_with_id.try_into() {
+            self.mark_consumed(parent, tracked_value)
+        }
     }
 
     fn borrow(
