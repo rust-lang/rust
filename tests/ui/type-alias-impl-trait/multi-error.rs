@@ -18,7 +18,6 @@ impl Foo for () {
         //~^ ERROR non-defining opaque type use
         ((), ())
         //~^ ERROR mismatched types
-        //~| ERROR mismatched types
     }
 }
 

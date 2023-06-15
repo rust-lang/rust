@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
@@ -65,10 +64,9 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
-    type BreakTy = ErrorGuaranteed;
-
     #[instrument(skip(self), ret, level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<ErrorGuaranteed> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
+        t.super_visit_with(self)?;
         match t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 if !self.seen.insert(alias_ty.def_id.expect_local()) {
@@ -91,24 +89,20 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                             trace!(?pred);
                             self.visit_spanned(span, pred);
                         }
-
-                        ControlFlow::Continue(())
                     }
                     Err(NotUniqueParam::NotParam(arg)) => {
-                        let err = self.tcx.sess.emit_err(NotParam {
+                        self.tcx.sess.emit_err(NotParam {
                             arg,
                             span: self.span(),
                             opaque_span: self.tcx.def_span(alias_ty.def_id),
                         });
-                        ControlFlow::Break(err)
                     }
                     Err(NotUniqueParam::DuplicateParam(arg)) => {
-                        let err = self.tcx.sess.emit_err(DuplicateArg {
+                        self.tcx.sess.emit_err(DuplicateArg {
                             arg,
                             span: self.span(),
                             opaque_span: self.tcx.def_span(alias_ty.def_id),
                         });
-                        ControlFlow::Break(err)
                     }
                 }
             }
@@ -157,10 +151,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         }
                     }
                 }
-                t.super_visit_with(self)
             }
-            _ => t.super_visit_with(self),
+            _ => {}
         }
+        ControlFlow::Continue(())
     }
 }
 
