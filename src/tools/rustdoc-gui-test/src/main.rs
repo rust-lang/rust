@@ -14,13 +14,19 @@ fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String>
     if global {
         command.arg("--global");
     }
-    let lines = command
-        .output()
-        .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
-        .unwrap_or(String::new());
+    let lines = match command.output() {
+        Ok(output) => String::from_utf8_lossy(&output.stdout).into_owned(),
+        Err(e) => {
+            eprintln!(
+                "path to npm can be wrong, provided path: {npm:?}. Try to set npm path \
+            in config.toml in [build.npm]",
+            );
+            panic!("{:?}", e)
+        }
+    };
     lines
         .lines()
-        .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
+        .find_map(|l| l.rsplit(':').next()?.strip_prefix("browser-ui-test@"))
         .map(|v| v.to_owned())
 }
 
