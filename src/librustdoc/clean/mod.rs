@@ -345,7 +345,7 @@ pub(crate) fn clean_predicate<'tcx>(
         }
         // FIXME(generic_const_exprs): should this do something?
         ty::PredicateKind::ConstEvaluatable(..) => None,
-        ty::PredicateKind::WellFormed(..) => None,
+        ty::PredicateKind::Clause(ty::Clause::WellFormed(..)) => None,
         ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
         ty::PredicateKind::Subtype(..)

@@ -183,7 +183,7 @@ where
                 ty.visit_with(self)
             }
             ty::PredicateKind::ConstEvaluatable(ct) => ct.visit_with(self),
-            ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => arg.visit_with(self),
 
             ty::PredicateKind::ObjectSafe(_)
             | ty::PredicateKind::ClosureKind(_, _, _)

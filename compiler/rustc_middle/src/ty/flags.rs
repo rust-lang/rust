@@ -270,7 +270,7 @@ impl FlagComputation {
                 self.add_alias_ty(projection_ty);
                 self.add_term(term);
             }
-            ty::PredicateKind::WellFormed(arg) => {
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
                 self.add_substs(slice::from_ref(&arg));
             }
             ty::PredicateKind::ObjectSafe(_def_id) => {}

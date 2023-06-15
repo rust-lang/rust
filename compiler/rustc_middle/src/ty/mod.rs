@@ -523,7 +523,7 @@ impl<'tcx> Predicate<'tcx> {
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
                 tcx.trait_is_coinductive(data.def_id())
             }
-            ty::PredicateKind::WellFormed(_) => true,
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(_)) => true,
             _ => false,
         }
     }
@@ -536,7 +536,7 @@ impl<'tcx> Predicate<'tcx> {
     #[inline]
     pub fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
-            PredicateKind::WellFormed(_) => false,
+            PredicateKind::Clause(Clause::WellFormed(_)) => false,
             PredicateKind::Clause(Clause::Trait(_))
             | PredicateKind::Clause(Clause::RegionOutlives(_))
             | PredicateKind::Clause(Clause::TypeOutlives(_))
@@ -584,6 +584,9 @@ pub enum Clause<'tcx> {
     /// Ensures that a const generic argument to a parameter `const N: u8`
     /// is of type `u8`.
     ConstArgHasType(Const<'tcx>, Ty<'tcx>),
+
+    /// No syntax: `T` well-formed.
+    WellFormed(GenericArg<'tcx>),
 }
 
 impl<'tcx> Binder<'tcx, Clause<'tcx>> {
@@ -609,9 +612,6 @@ impl<'tcx> Binder<'tcx, Clause<'tcx>> {
 pub enum PredicateKind<'tcx> {
     /// Prove a clause
     Clause(Clause<'tcx>),
-
-    /// No syntax: `T` well-formed.
-    WellFormed(GenericArg<'tcx>),
 
     /// Trait must be object-safe.
     ObjectSafe(DefId),
@@ -1324,7 +1324,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
-            | PredicateKind::WellFormed(..)
+            | PredicateKind::Clause(Clause::WellFormed(..))
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(Clause::TypeOutlives(..))
@@ -1345,7 +1345,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
-            | PredicateKind::WellFormed(..)
+            | PredicateKind::Clause(Clause::WellFormed(..))
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(Clause::TypeOutlives(..))
@@ -1367,7 +1367,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
-            | PredicateKind::WellFormed(..)
+            | PredicateKind::Clause(Clause::WellFormed(..))
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)

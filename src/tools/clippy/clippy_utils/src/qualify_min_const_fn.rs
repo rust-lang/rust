@@ -33,7 +33,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
                     | ty::Clause::Trait(..)
                     | ty::Clause::ConstArgHasType(..),
                 )
-                | ty::PredicateKind::WellFormed(_)
+                | ty::PredicateKind::Clause(ty::Clause::WellFormed(_))
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,

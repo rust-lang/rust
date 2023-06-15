@@ -119,7 +119,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                     )
                                 }
                                 ty::PredicateKind::Clause(_)
-                                | ty::PredicateKind::WellFormed(_)
                                 | ty::PredicateKind::ObjectSafe(_)
                                 | ty::PredicateKind::ClosureKind(_, _, _)
                                 | ty::PredicateKind::ConstEvaluatable(_)

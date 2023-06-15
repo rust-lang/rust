@@ -219,7 +219,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     } else {
                         let span = bound_pred.bounded_ty.span;
                         let predicate = ty::Binder::bind_with_vars(
-                            ty::PredicateKind::WellFormed(ty.into()),
+                            ty::PredicateKind::Clause(ty::Clause::WellFormed(ty.into())),
                             bound_vars,
                         );
                         predicates.insert((predicate.to_predicate(tcx), span));

@@ -122,7 +122,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                         predicate.lower_into(interner),
                     ))
                 }
-                ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
+                ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => match arg.unpack() {
                     ty::GenericArgKind::Type(ty) => chalk_ir::DomainGoal::WellFormed(
                         chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
                     ),
@@ -192,7 +192,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                     chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
                 ))
             }
-            ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => match arg.unpack() {
                 GenericArgKind::Type(ty) => match ty.kind() {
                     // FIXME(chalk): In Chalk, a placeholder is WellFormed if it
                     // `FromEnv`. However, when we "lower" Params, we don't update
@@ -672,7 +672,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => {
                 Some(chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)))
             }
-            ty::PredicateKind::WellFormed(_ty) => None,
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(_ty)) => None,
             ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
             ty::PredicateKind::ObjectSafe(..)
@@ -807,7 +807,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
                 ))
             }
             ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_predicate)) => None,
-            ty::PredicateKind::WellFormed(_ty) => None,
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(_ty)) => None,
             ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))

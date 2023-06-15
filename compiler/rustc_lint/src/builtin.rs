@@ -1610,7 +1610,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Clause(Clause::Projection(..)) |
                     AliasRelate(..) |
                     // Ignore bounds that a user can't type
-                    WellFormed(..) |
+                    Clause(Clause::WellFormed(..)) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |

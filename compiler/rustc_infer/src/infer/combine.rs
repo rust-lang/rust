@@ -417,7 +417,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                 self.tcx(),
                 self.trace.cause.clone(),
                 self.param_env,
-                ty::Binder::dummy(ty::PredicateKind::WellFormed(b_ty.into())),
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(b_ty.into()))),
             ));
         }
 

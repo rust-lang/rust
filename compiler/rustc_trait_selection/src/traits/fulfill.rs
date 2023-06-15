@@ -354,7 +354,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::Clause::RegionOutlives(_))
                 | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
                 | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
-                | ty::PredicateKind::WellFormed(_)
+                | ty::PredicateKind::Clause(ty::Clause::WellFormed(_))
                 | ty::PredicateKind::ObjectSafe(_)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(_)
@@ -433,7 +433,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::WellFormed(arg) => {
+                ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
                     match wf::obligations(
                         self.selcx.infcx,
                         obligation.param_env,
