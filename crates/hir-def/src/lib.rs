@@ -831,6 +831,7 @@ pub enum AttrDefId {
     ImplId(ImplId),
     GenericParamId(GenericParamId),
     ExternBlockId(ExternBlockId),
+    ExternCrateId(ExternCrateId),
 }
 
 impl_from!(
@@ -845,7 +846,8 @@ impl_from!(
     TypeAliasId,
     MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
-    GenericParamId
+    GenericParamId,
+    ExternCrateId
     for AttrDefId
 );
 
@@ -934,6 +936,12 @@ impl HasModule for AdtId {
             AdtId::UnionId(it) => it.lookup(db).container,
             AdtId::EnumId(it) => it.lookup(db).container,
         }
+    }
+}
+
+impl HasModule for ExternCrateId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        self.lookup(db).container
     }
 }
 
@@ -1060,6 +1068,7 @@ impl AttrDefId {
                 .krate
             }
             AttrDefId::MacroId(it) => it.module(db).krate,
+            AttrDefId::ExternCrateId(it) => it.lookup(db).container.krate,
         }
     }
 }

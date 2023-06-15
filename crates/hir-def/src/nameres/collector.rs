@@ -1600,11 +1600,14 @@ impl ModCollector<'_, '_> {
                     )
                 }
                 ModItem::ExternCrate(import_id) => {
-                    let _import_id = ExternCrateLoc {
+                    let extern_crate_id = ExternCrateLoc {
                         container: module,
                         id: ItemTreeId::new(self.tree_id, import_id),
                     }
                     .intern(db);
+                    self.def_collector.def_map.modules[self.module_id]
+                        .scope
+                        .define_extern_crate_decl(extern_crate_id);
                     self.def_collector.unresolved_imports.push(ImportDirective {
                         module_id: self.module_id,
                         import: Import::from_extern_crate(

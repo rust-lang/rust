@@ -22,10 +22,10 @@ use crate::{
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
     AdtId, AssocItemId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId,
-    EnumVariantId, ExternBlockId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
-    ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId,
-    ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeOwnerId, TypeParamId, VariantId,
+    EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId,
+    HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId,
+    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId,
+    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -1014,6 +1014,12 @@ impl HasResolver for ImplId {
 impl HasResolver for ExternBlockId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         // Same as parent's
+        self.lookup(db).container.resolver(db)
+    }
+}
+
+impl HasResolver for ExternCrateId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         self.lookup(db).container.resolver(db)
     }
 }
