@@ -14,6 +14,7 @@ pub struct CheckAlignment;
 
 impl<'tcx> MirPass<'tcx> for CheckAlignment {
     fn is_enabled(&self, sess: &Session) -> bool {
+        // FIXME(#112480) MSVC and rustc disagree on minimum stack alignment on x86 Windows
         if sess.target.llvm_target == "i686-pc-windows-msvc" {
             return false;
         }
