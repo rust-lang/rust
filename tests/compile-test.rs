@@ -50,7 +50,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
     config.program.args.push("-Dwarnings".into());
 
     // Normalize away slashes in windows paths.
-    config.stderr_filter(r#"\\"#, "/");
+    config.stderr_filter(r"\\", "/");
 
     //config.build_base = profile_path.join("test").join(test_dir);
     config.program.program = profile_path.join(if cfg!(windows) {

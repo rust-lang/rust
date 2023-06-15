@@ -717,7 +717,7 @@ Whether to accept a safety comment to be placed above the attributes for the `un
 * [`undocumented_unsafe_blocks`](https://rust-lang.github.io/rust-clippy/master/index.html#undocumented_unsafe_blocks)
 
 
-## `allow-one-hash-in-raw-string`
+## `allow-one-hash-in-raw-strings`
 Whether to allow `r#""#` when `r""` can be used
 
 **Default Value:** `false` (`bool`)

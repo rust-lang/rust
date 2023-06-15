@@ -4,7 +4,7 @@ error: unnecessary raw string literal
 LL |     r#"aaa"#;
    |     ^^^^^^^^ help: try: `"aaa"`
    |
-   = note: `-D clippy::needless-raw-string` implied by `-D warnings`
+   = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
 
 error: unnecessary raw string literal
   --> $DIR/needless_raw_string.rs:10:5

@@ -1062,6 +1062,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             def_id_to_usage: rustc_data_structures::fx::FxHashMap::default(),
         })
     });
+    let needless_raw_string_hashes_allow_one = conf.allow_one_hash_in_raw_strings;
+    store.register_early_pass(move || {
+        Box::new(raw_strings::RawStrings {
+            needless_raw_string_hashes_allow_one,
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

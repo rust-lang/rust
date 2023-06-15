@@ -4,7 +4,7 @@ error: unnecessary raw string literal
 LL |     writeln!(v, r"{}", r"{hello}");
    |                        ^^^^^^^^^^ help: try: `"{hello}"`
    |
-   = note: `-D clippy::needless-raw-string` implied by `-D warnings`
+   = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:9:23

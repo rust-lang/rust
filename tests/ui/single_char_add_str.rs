@@ -1,6 +1,6 @@
 //@run-rustfix
 #![warn(clippy::single_char_add_str)]
-#![allow(clippy::needless_raw_string, clippy::needless_raw_string_hashes)]
+#![allow(clippy::needless_raw_strings, clippy::needless_raw_string_hashes)]
 
 macro_rules! get_string {
     () => {

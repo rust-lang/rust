@@ -1,6 +1,6 @@
 #![allow(
     unused,
-    clippy::needless_raw_string,
+    clippy::needless_raw_strings,
     clippy::needless_raw_string_hashes,
     clippy::needless_borrow
 )]

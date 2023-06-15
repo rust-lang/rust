@@ -540,7 +540,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::ranges::RANGE_MINUS_ONE_INFO,
     crate::ranges::RANGE_PLUS_ONE_INFO,
     crate::ranges::REVERSED_EMPTY_RANGES_INFO,
-    crate::raw_strings::NEEDLESS_RAW_STRING_INFO,
+    crate::raw_strings::NEEDLESS_RAW_STRINGS_INFO,
     crate::raw_strings::NEEDLESS_RAW_STRING_HASHES_INFO,
     crate::rc_clone_in_vec_init::RC_CLONE_IN_VEC_INIT_INFO,
     crate::read_zero_byte_vec::READ_ZERO_BYTE_VEC_INFO,

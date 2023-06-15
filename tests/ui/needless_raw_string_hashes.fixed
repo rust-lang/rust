@@ -1,5 +1,5 @@
 //@run-rustfix
-#![allow(clippy::needless_raw_string, clippy::no_effect, unused)]
+#![allow(clippy::no_effect, unused)]
 #![warn(clippy::needless_raw_string_hashes)]
 #![feature(c_str_literals)]
 

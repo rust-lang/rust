@@ -550,7 +550,7 @@ define_Conf! {
     /// Lint: UNNECESSARY_RAW_STRING_HASHES.
     ///
     /// Whether to allow `r#""#` when `r""` can be used
-    (allow_one_hash_in_raw_string: bool = false),
+    (allow_one_hash_in_raw_strings: bool = false),
 }
 
 /// Search for the configuration file.
