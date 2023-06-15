@@ -1231,11 +1231,15 @@ pub struct NoopMethodCallDiag<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_suspicious_double_ref_op)]
-pub struct SuspiciousDoubleRefDiag<'a> {
-    pub call: Symbol,
+#[diag(lint_suspicious_double_ref_deref)]
+pub struct SuspiciousDoubleRefDerefDiag<'a> {
     pub ty: Ty<'a>,
-    pub op: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_suspicious_double_ref_clone)]
+pub struct SuspiciousDoubleRefCloneDiag<'a> {
+    pub ty: Ty<'a>,
 }
 
 // pass_by_value.rs
@@ -1551,8 +1555,29 @@ pub struct UnusedOp<'a> {
     pub op: &'a str,
     #[label]
     pub label: Span,
-    #[suggestion(style = "verbose", code = "let _ = ", applicability = "maybe-incorrect")]
-    pub suggestion: Span,
+    #[subdiagnostic]
+    pub suggestion: UnusedOpSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnusedOpSuggestion {
+    #[suggestion(
+        lint_suggestion,
+        style = "verbose",
+        code = "let _ = ",
+        applicability = "maybe-incorrect"
+    )]
+    NormalExpr {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    BlockTailExpr {
+        #[suggestion_part(code = "let _ = ")]
+        before_span: Span,
+        #[suggestion_part(code = ";")]
+        after_span: Span,
+    },
 }
 
 #[derive(LintDiagnostic)]
@@ -1595,15 +1620,25 @@ pub struct UnusedDef<'a, 'b> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    lint_suggestion,
-    style = "verbose",
-    code = "let _ = ",
-    applicability = "maybe-incorrect"
-)]
-pub struct UnusedDefSuggestion {
-    #[primary_span]
-    pub span: Span,
+
+pub enum UnusedDefSuggestion {
+    #[suggestion(
+        lint_suggestion,
+        style = "verbose",
+        code = "let _ = ",
+        applicability = "maybe-incorrect"
+    )]
+    NormalExpr {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    BlockTailExpr {
+        #[suggestion_part(code = "let _ = ")]
+        before_span: Span,
+        #[suggestion_part(code = ";")]
+        after_span: Span,
+    },
 }
 
 // Needed because of def_path_str
