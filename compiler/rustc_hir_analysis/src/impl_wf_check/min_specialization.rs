@@ -542,7 +542,7 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::Clause(ty::Clause::Projection(_))
         | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
         | ty::PredicateKind::AliasRelate(..)
-        | ty::PredicateKind::WellFormed(_)
+        | ty::PredicateKind::Clause(ty::Clause::WellFormed(_))
         | ty::PredicateKind::Subtype(_)
         | ty::PredicateKind::Coerce(_)
         | ty::PredicateKind::ObjectSafe(_)

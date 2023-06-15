@@ -310,7 +310,7 @@ fn predicate_references_self<'tcx>(
 
         ty::PredicateKind::AliasRelate(..) => bug!("`AliasRelate` not allowed as assumption"),
 
-        ty::PredicateKind::WellFormed(..)
+        ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
         | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
@@ -361,7 +361,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-        | ty::PredicateKind::WellFormed(..)
+        | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))

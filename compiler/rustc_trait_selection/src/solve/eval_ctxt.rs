@@ -319,7 +319,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::ObjectSafe(trait_def_id) => {
                     self.compute_object_safe_goal(trait_def_id)
                 }
-                ty::PredicateKind::WellFormed(arg) => {
+                ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
                     self.compute_well_formed_goal(Goal { param_env, predicate: arg })
                 }
                 ty::PredicateKind::Ambiguous => {

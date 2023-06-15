@@ -674,7 +674,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::WellFormed(arg) => {
+                ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
                     // So, there is a bit going on here. First, `WellFormed` predicates
                     // are coinductive, like trait predicates with auto traits.
                     // This means that we need to detect if we have recursively

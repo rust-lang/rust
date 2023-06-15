@@ -2877,7 +2877,7 @@ define_print_and_forward_display! {
             ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
                 p!("the constant `", print(ct), "` has type `", print(ty), "`")
             },
-            ty::PredicateKind::WellFormed(arg) => p!(print(arg), " well-formed"),
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => p!(print(arg), " well-formed"),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }

@@ -1516,10 +1516,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ty::Clause::TypeOutlives(_) => {
                         // Do nothing, we deal with regions separately
                     }
-                    ty::Clause::RegionOutlives(_) | ty::Clause::ConstArgHasType(..) => bug!(),
+                    ty::Clause::RegionOutlives(_)
+                    | ty::Clause::ConstArgHasType(..)
+                    | ty::Clause::WellFormed(_) => bug!(),
                 },
-                ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::AliasRelate(..)
+                ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ObjectSafe(_)
                 | ty::PredicateKind::ClosureKind(_, _, _)
                 | ty::PredicateKind::Subtype(_)

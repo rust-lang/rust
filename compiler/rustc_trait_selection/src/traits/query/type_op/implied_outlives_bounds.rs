@@ -137,7 +137,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
 
                 // We need to search through *all* WellFormed predicates
-                ty::PredicateKind::WellFormed(arg) => {
+                ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
                     wf_args.push(arg);
                 }
 

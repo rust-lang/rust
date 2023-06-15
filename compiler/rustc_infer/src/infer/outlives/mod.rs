@@ -29,7 +29,7 @@ pub fn explicit_outlives_bounds<'tcx>(
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Subtype(..)
-            | ty::PredicateKind::WellFormed(..)
+            | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
