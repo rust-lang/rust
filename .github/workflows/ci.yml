@@ -48,17 +48,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-20.04-16core-64gb
-            env: {}
-          - name: mingw-check-tidy
-            os: ubuntu-20.04-16core-64gb
-            env: {}
-          - name: x86_64-gnu-llvm-14
-            os: ubuntu-20.04-16core-64gb
-            env: {}
-          - name: x86_64-gnu-tools
-            os: ubuntu-20.04-16core-64gb
+          - name: x86_64-gnu
+            os: ubuntu-20.04-8core-32gb
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
