@@ -344,7 +344,8 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
 
-        let buf = this.deref_operand(buf_op)?;
+        let buf = this.deref_operand_as(buf_op, this.libc_ty_layout("stat"))?;
+
         this.write_int_fields_named(
             &[
                 ("st_dev", 0),
@@ -1013,15 +1014,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(-1);
         }
 
-        // Under normal circumstances, we would use `deref_operand(statxbuf_op)` to produce a
-        // proper `MemPlace` and then write the results of this function to it. However, the
-        // `syscall` function is untyped. This means that all the `statx` parameters are provided
-        // as `isize`s instead of having the proper types. Thus, we have to recover the layout of
-        // `statxbuf_op` by using the `libc::statx` struct type.
-        let statxbuf = {
-            let statx_layout = this.libc_ty_layout("statx");
-            MPlaceTy::from_aligned_ptr(statxbuf_ptr, statx_layout)
-        };
+        let statxbuf = this.deref_operand_as(statxbuf_op, this.libc_ty_layout("statx"))?;
 
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
@@ -1427,7 +1420,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 //     pub d_name: [c_char; 1024],
                 // }
 
-                let entry_place = this.deref_operand(entry_op)?;
+                let entry_place = this.deref_operand_as(entry_op, this.libc_ty_layout("dirent"))?;
                 let name_place = this.mplace_field(&entry_place, 5)?;
 
                 let file_name = dir_entry.file_name(); // not a Path as there are no separators!
@@ -1442,8 +1435,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         "a directory entry had a name too large to fit in libc::dirent"
                     );
                 }
-
-                let entry_place = this.deref_operand(entry_op)?;
 
                 // If the host is a Unix system, fill in the inode number with its real value.
                 // If not, use 0 as a fallback value.
