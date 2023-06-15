@@ -38,9 +38,10 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, FIRST_VARIANT};
 
-use std::cmp;
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
+
+use itertools::Itertools;
 
 pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicate {
     match op {
@@ -673,8 +674,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // are large size variations, this can reduce memory usage significantly.
     let codegen_units: Vec<_> = {
         let mut sorted_cgus = codegen_units.iter().collect::<Vec<_>>();
-        sorted_cgus.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-        sorted_cgus
+        sorted_cgus.sort_by_cached_key(|cgu| cgu.size_estimate());
+
+        let (first_half, second_half) = sorted_cgus.split_at(sorted_cgus.len() / 2);
+        second_half.iter().rev().interleave(first_half).copied().collect()
     };
 
     // Calculate the CGU reuse
