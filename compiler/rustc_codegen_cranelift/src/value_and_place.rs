@@ -258,6 +258,27 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
+    /// Like [`CValue::value_lane`] except allowing a dynamically calculated lane index.
+    pub(crate) fn value_lane_dyn(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_idx: Value,
+    ) -> CValue<'tcx> {
+        let layout = self.1;
+        assert!(layout.ty.is_simd());
+        let (_lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        match self.0 {
+            CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => unreachable!(),
+            CValueInner::ByRef(ptr, None) => {
+                let field_offset = fx.bcx.ins().imul_imm(lane_idx, lane_layout.size.bytes() as i64);
+                let field_ptr = ptr.offset_value(fx, field_offset);
+                CValue::by_ref(field_ptr, lane_layout)
+            }
+            CValueInner::ByRef(_, Some(_)) => unreachable!(),
+        }
+    }
+
     /// If `ty` is signed, `const_val` must already be sign extended.
     pub(crate) fn const_val(
         fx: &mut FunctionCx<'_, '_, 'tcx>,

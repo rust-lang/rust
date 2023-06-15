@@ -82,6 +82,11 @@ impl BackendConfig {
 
         let mut config = BackendConfig::default();
         for opt in opts {
+            if opt.starts_with("-import-instr-limit") {
+                // Silently ignore -import-instr-limit. It is set by rust's build system even when
+                // testing cg_clif.
+                continue;
+            }
             if let Some((name, value)) = opt.split_once('=') {
                 match name {
                     "mode" => config.codegen_mode = value.parse()?,

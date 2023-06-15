@@ -19,7 +19,10 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
         }
 
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
-        "llvm.x86.sse2.pmovmskb.128" | "llvm.x86.avx2.pmovmskb" | "llvm.x86.sse2.movmsk.pd" => {
+        "llvm.x86.sse2.pmovmskb.128"
+        | "llvm.x86.avx2.pmovmskb"
+        | "llvm.x86.sse.movmsk.ps"
+        | "llvm.x86.sse2.movmsk.pd" => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
             let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
@@ -107,7 +110,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             };
             let a = codegen_operand(fx, a);
             let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
-                .expect("llvm.x86.sse2.psrli.d imm8 not const");
+                .expect("llvm.x86.sse2.pslli.d imm8 not const");
 
             simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
                 .try_to_bits(Size::from_bytes(4))
@@ -116,6 +119,199 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 imm8 if imm8 < 32 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
                 _ => fx.bcx.ins().iconst(types::I32, 0),
             });
+        }
+        "llvm.x86.sse2.psrli.w" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.sse2.psrli.d imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 16 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.sse2.pslli.w" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.sse2.pslli.d imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 16 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.avx.psrli.d" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.avx.psrli.d imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 32 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.avx.pslli.d" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.avx.pslli.d imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 32 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.avx2.psrli.w" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.avx.psrli.w imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 16 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.avx2.pslli.w" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.avx.pslli.w imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 16 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.ssse3.pshuf.b.128" | "llvm.x86.avx2.pshuf.b" => {
+            let (a, b) = match args {
+                [a, b] => (a, b),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let b = codegen_operand(fx, b);
+
+            // Based on the pseudocode at https://github.com/rust-lang/stdarch/blob/1cfbca8b38fd9b4282b2f054f61c6ca69fc7ce29/crates/core_arch/src/x86/avx2.rs#L2319-L2332
+            let zero = fx.bcx.ins().iconst(types::I8, 0);
+            for i in 0..16 {
+                let b_lane = b.value_lane(fx, i).load_scalar(fx);
+                let is_zero = fx.bcx.ins().band_imm(b_lane, 0x80);
+                let a_idx = fx.bcx.ins().band_imm(b_lane, 0xf);
+                let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
+                let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
+                let res = fx.bcx.ins().select(is_zero, zero, a_lane);
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+            }
+
+            if intrinsic == "llvm.x86.avx2.pshuf.b" {
+                for i in 16..32 {
+                    let b_lane = b.value_lane(fx, i).load_scalar(fx);
+                    let is_zero = fx.bcx.ins().band_imm(b_lane, 0x80);
+                    let b_lane_masked = fx.bcx.ins().band_imm(b_lane, 0xf);
+                    let a_idx = fx.bcx.ins().iadd_imm(b_lane_masked, 16);
+                    let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
+                    let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
+                    let res = fx.bcx.ins().select(is_zero, zero, a_lane);
+                    ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                }
+            }
+        }
+        "llvm.x86.avx2.vperm2i128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2x128_si256
+            let (a, b, imm8) = match args {
+                [a, b, imm8] => (a, b, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let b = codegen_operand(fx, b);
+            let imm8 = codegen_operand(fx, imm8).load_scalar(fx);
+
+            let a_0 = a.value_lane(fx, 0).load_scalar(fx);
+            let a_1 = a.value_lane(fx, 1).load_scalar(fx);
+            let a_low = fx.bcx.ins().iconcat(a_0, a_1);
+            let a_2 = a.value_lane(fx, 2).load_scalar(fx);
+            let a_3 = a.value_lane(fx, 3).load_scalar(fx);
+            let a_high = fx.bcx.ins().iconcat(a_2, a_3);
+
+            let b_0 = b.value_lane(fx, 0).load_scalar(fx);
+            let b_1 = b.value_lane(fx, 1).load_scalar(fx);
+            let b_low = fx.bcx.ins().iconcat(b_0, b_1);
+            let b_2 = b.value_lane(fx, 2).load_scalar(fx);
+            let b_3 = b.value_lane(fx, 3).load_scalar(fx);
+            let b_high = fx.bcx.ins().iconcat(b_2, b_3);
+
+            fn select4(
+                fx: &mut FunctionCx<'_, '_, '_>,
+                a_high: Value,
+                a_low: Value,
+                b_high: Value,
+                b_low: Value,
+                control: Value,
+            ) -> Value {
+                let a_or_b = fx.bcx.ins().band_imm(control, 0b0010);
+                let high_or_low = fx.bcx.ins().band_imm(control, 0b0001);
+                let is_zero = fx.bcx.ins().band_imm(control, 0b1000);
+
+                let zero = fx.bcx.ins().iconst(types::I64, 0);
+                let zero = fx.bcx.ins().iconcat(zero, zero);
+
+                let res_a = fx.bcx.ins().select(high_or_low, a_high, a_low);
+                let res_b = fx.bcx.ins().select(high_or_low, b_high, b_low);
+                let res = fx.bcx.ins().select(a_or_b, res_b, res_a);
+                fx.bcx.ins().select(is_zero, zero, res)
+            }
+
+            let control0 = imm8;
+            let res_low = select4(fx, a_high, a_low, b_high, b_low, control0);
+            let (res_0, res_1) = fx.bcx.ins().isplit(res_low);
+
+            let control1 = fx.bcx.ins().ushr_imm(imm8, 4);
+            let res_high = select4(fx, a_high, a_low, b_high, b_low, control1);
+            let (res_2, res_3) = fx.bcx.ins().isplit(res_high);
+
+            ret.place_lane(fx, 0).to_ptr().store(fx, res_0, MemFlags::trusted());
+            ret.place_lane(fx, 1).to_ptr().store(fx, res_1, MemFlags::trusted());
+            ret.place_lane(fx, 2).to_ptr().store(fx, res_2, MemFlags::trusted());
+            ret.place_lane(fx, 3).to_ptr().store(fx, res_3, MemFlags::trusted());
         }
         "llvm.x86.sse2.storeu.dq" => {
             intrinsic_args!(fx, args => (mem_addr, a); intrinsic);

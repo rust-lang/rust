@@ -10,8 +10,8 @@ If not please open an issue.
 ```bash
 $ git clone https://github.com/bjorn3/rustc_codegen_cranelift
 $ cd rustc_codegen_cranelift
-$ ./y.rs prepare
-$ ./y.rs build
+$ ./y.sh prepare
+$ ./y.sh build
 ```
 
 To run the test suite replace the last command with:
@@ -20,9 +20,14 @@ To run the test suite replace the last command with:
 $ ./test.sh
 ```
 
-For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.rs`.
+For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.sh`.
+
+## Precompiled builds
 
 Alternatively you can download a pre built version from the [releases] page.
+Extract the `dist` directory in the archive anywhere you want.
+If you want to use `cargo clif build` instead of having to specify the full path to the `cargo-clif` executable, you can add the `bin` subdirectory of the extracted `dist` directory to your `PATH`.
+(tutorial [for Windows](https://stackoverflow.com/a/44272417), and [for Linux/MacOS](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path/26059#26059)).
 
 [releases]: https://github.com/bjorn3/rustc_codegen_cranelift/releases/tag/dev
 
@@ -30,7 +35,7 @@ Alternatively you can download a pre built version from the [releases] page.
 
 rustc_codegen_cranelift can be used as a near-drop-in replacement for `cargo build` or `cargo run` for existing projects.
 
-Assuming `$cg_clif_dir` is the directory you cloned this repo into and you followed the instructions (`y.rs prepare` and `y.rs build` or `test.sh`).
+Assuming `$cg_clif_dir` is the directory you cloned this repo into and you followed the instructions (`y.sh prepare` and `y.sh build` or `test.sh`).
 
 In the directory with your project (where you can do the usual `cargo build`), run:
 
