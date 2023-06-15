@@ -4834,6 +4834,7 @@ Released 2018-09-13
 [`inconsistent_digit_grouping`]: https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_digit_grouping
 [`inconsistent_struct_constructor`]: https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor
 [`incorrect_clone_impl_on_copy_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#incorrect_clone_impl_on_copy_type
+[`incorrect_partial_ord_impl_on_ord_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#incorrect_partial_ord_impl_on_ord_type
 [`index_refutable_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice
 [`indexing_slicing`]: https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
 [`ineffective_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#ineffective_bit_mask
@@ -5020,7 +5021,6 @@ Released 2018-09-13
 [`needless_option_as_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_as_deref
 [`needless_option_take`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_take
 [`needless_parens_on_range_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_parens_on_range_literals
-[`needless_partial_ord_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_partial_ord_impl
 [`needless_pass_by_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
 [`needless_pub_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pub_self
 [`needless_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark

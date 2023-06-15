@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(unused)]
 #![no_main]
 
@@ -16,7 +15,9 @@ impl Ord for A {
 }
 
 impl PartialOrd for A {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(self)) }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        todo!();
+    }
 }
 
 // do not lint
@@ -48,7 +49,9 @@ impl Ord for C {
 }
 
 impl PartialOrd for C {
-    fn partial_cmp(&self, _: &Self) -> Option<Ordering> { Some(self.cmp(self)) }
+    fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
+        todo!(); // don't run rustfix, or else this will cause it to fail to compile
+    }
 }
 
 // do not lint derived
@@ -80,6 +83,35 @@ impl<A: std::fmt::Debug + Ord + PartialOrd> Ord for Uwu<A> {
 
 impl<A: Ord + PartialOrd> PartialOrd for Uwu<A> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        todo!();
+    }
+}
+
+// do not lint since `Rhs` is not `Self`
+
+#[derive(Eq, PartialEq)]
+struct F(u32);
+
+impl Ord for F {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for F {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq<u32> for F {
+    fn eq(&self, other: &u32) -> bool {
+        todo!();
+    }
+}
+
+impl PartialOrd<u32> for F {
+    fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
         todo!();
     }
 }

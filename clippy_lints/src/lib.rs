@@ -227,7 +227,6 @@ mod needless_continue;
 mod needless_else;
 mod needless_for_each;
 mod needless_if;
-mod needless_impls;
 mod needless_late_init;
 mod needless_parens_on_range_literals;
 mod needless_pass_by_value;
