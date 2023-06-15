@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/higher_kinded_params3.rs:26:9
+   |
+LL | type Tait<'a> = impl std::fmt::Debug + 'a;
+   |                 ------------------------- the expected opaque type
+...
+LL |         f = g;
+   |         ^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'x> fn(&'x ()) -> Tait<'x>`
+              found fn pointer `for<'a> fn(&'a ()) -> &'a ()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

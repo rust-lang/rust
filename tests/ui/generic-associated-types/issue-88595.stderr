@@ -1,8 +1,8 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-88595.rs:21:5
+  --> $DIR/issue-88595.rs:21:23
    |
 LL |     fn a(&'a self) -> Self::B<'a> {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ generic argument `'a` used twice
+   |                       ^^^^^^^^^^^ generic argument `'a` used twice
    |
 note: for this opaque type
   --> $DIR/issue-88595.rs:19:18
@@ -24,10 +24,10 @@ LL |     fn a(&'a self) -> Self::B<'a> {}
    = note: expected opaque type `<C as A<'a>>::B<'a>`
                 found unit type `()`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/issue-88595.rs:21:5
+  --> $DIR/issue-88595.rs:21:8
    |
 LL |     fn a(&'a self) -> Self::B<'a> {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^
 
 error: aborting due to 2 previous errors
 

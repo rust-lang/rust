@@ -12,10 +12,10 @@ LL |         let x: Self::Foo = ();
    = note: expected opaque type `<() as Foo>::Foo`
                 found unit type `()`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/invalid_impl_trait_in_assoc_ty.rs:10:5
+  --> $DIR/invalid_impl_trait_in_assoc_ty.rs:10:8
    |
 LL |     fn bar() {
-   |     ^^^^^^^^
+   |        ^^^
 
 error: aborting due to previous error
 

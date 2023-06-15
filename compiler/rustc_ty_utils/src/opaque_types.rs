@@ -19,15 +19,26 @@ struct OpaqueTypeCollector<'tcx> {
 
     /// Avoid infinite recursion due to recursive declarations.
     seen: FxHashSet<LocalDefId>,
+
+    span: Option<Span>,
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
-        Self { tcx, opaques: Vec::new(), item, seen: Default::default() }
+        Self { tcx, opaques: Vec::new(), item, seen: Default::default(), span: None }
     }
 
     fn span(&self) -> Span {
-        self.tcx.def_span(self.item)
+        self.span.unwrap_or_else(|| {
+            self.tcx.def_ident_span(self.item).unwrap_or_else(|| self.tcx.def_span(self.item))
+        })
+    }
+
+    fn visit_spanned(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
+        let old = self.span;
+        self.span = Some(span);
+        value.visit_with(self);
+        self.span = old;
     }
 
     fn parent_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
@@ -72,13 +83,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         self.opaques.push(alias_ty.def_id.expect_local());
 
                         // Collect opaque types nested within the associated type bounds of this opaque type.
-                        for (pred, _span) in self
+                        for (pred, span) in self
                             .tcx
                             .explicit_item_bounds(alias_ty.def_id)
                             .subst_iter_copied(self.tcx, alias_ty.substs)
                         {
                             trace!(?pred);
-                            pred.visit_with(self)?;
+                            self.visit_spanned(span, pred);
                         }
 
                         ControlFlow::Continue(())
@@ -163,10 +174,23 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
             let mut collector = OpaqueTypeCollector::new(tcx, item);
             match kind {
                 DefKind::AssocFn | DefKind::Fn => {
-                    tcx.fn_sig(item).subst_identity().visit_with(&mut collector);
+                    let ty_sig = tcx.fn_sig(item).subst_identity();
+                    let hir_sig = tcx.hir().get_by_def_id(item).fn_sig().unwrap();
+                    collector.visit_spanned(hir_sig.decl.output.span(), ty_sig.output());
+                    for (hir, ty) in hir_sig.decl.inputs.iter().zip(ty_sig.inputs().iter()) {
+                        collector.visit_spanned(hir.span, ty.map_bound(|x| *x));
+                    }
                 }
                 DefKind::AssocTy | DefKind::AssocConst => {
-                    tcx.type_of(item).subst_identity().visit_with(&mut collector);
+                    let span = match tcx.hir().get_by_def_id(item) {
+                        rustc_hir::Node::ImplItem(it) => match it.kind {
+                            rustc_hir::ImplItemKind::Const(ty, _) => ty.span,
+                            rustc_hir::ImplItemKind::Type(ty) => ty.span,
+                            other => span_bug!(tcx.def_span(item), "{other:#?}"),
+                        },
+                        other => span_bug!(tcx.def_span(item), "{other:#?}"),
+                    };
+                    collector.visit_spanned(span, tcx.type_of(item).subst_identity());
                 }
                 _ => unreachable!(),
             }
