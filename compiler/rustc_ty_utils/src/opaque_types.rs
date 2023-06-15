@@ -22,14 +22,8 @@ struct OpaqueTypeCollector<'tcx> {
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
-    fn collect(
-        tcx: TyCtxt<'tcx>,
-        item: LocalDefId,
-        val: ty::Binder<'tcx, impl TypeVisitable<TyCtxt<'tcx>>>,
-    ) -> Vec<LocalDefId> {
-        let mut collector = Self { tcx, opaques: Vec::new(), item, seen: Default::default() };
-        val.skip_binder().visit_with(&mut collector);
-        collector.opaques
+    fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
+        Self { tcx, opaques: Vec::new(), item, seen: Default::default() }
     }
 
     fn span(&self) -> Span {
@@ -166,21 +160,17 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
     match kind {
         // We're also doing this for `AssocTy` for the wf checks in `check_opaque_meets_bounds`
         DefKind::Fn | DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
-            let defined_opaques = match kind {
-                DefKind::Fn => {
-                    OpaqueTypeCollector::collect(tcx, item, tcx.fn_sig(item).subst_identity())
+            let mut collector = OpaqueTypeCollector::new(tcx, item);
+            match kind {
+                DefKind::AssocFn | DefKind::Fn => {
+                    tcx.fn_sig(item).subst_identity().visit_with(&mut collector);
                 }
-                DefKind::AssocFn => {
-                    OpaqueTypeCollector::collect(tcx, item, tcx.fn_sig(item).subst_identity())
+                DefKind::AssocTy | DefKind::AssocConst => {
+                    tcx.type_of(item).subst_identity().visit_with(&mut collector);
                 }
-                DefKind::AssocTy | DefKind::AssocConst => OpaqueTypeCollector::collect(
-                    tcx,
-                    item,
-                    ty::Binder::dummy(tcx.type_of(item).subst_identity()),
-                ),
                 _ => unreachable!(),
-            };
-            tcx.arena.alloc_from_iter(defined_opaques)
+            }
+            tcx.arena.alloc_from_iter(collector.opaques)
         }
         DefKind::Mod
         | DefKind::Struct
