@@ -1,4 +1,4 @@
-use crate::astconv::{AstConv, OnlySelfBounds};
+use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
@@ -125,7 +125,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     if let Some(self_bounds) = is_trait {
         predicates.extend(
             icx.astconv()
-                .compute_bounds(tcx.types.self_param, self_bounds, OnlySelfBounds(false))
+                .compute_bounds(tcx.types.self_param, self_bounds, PredicateFilter::All)
                 .clauses(),
         );
     }
@@ -530,24 +530,6 @@ pub(super) fn explicit_predicates_of<'tcx>(
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum PredicateFilter {
-    /// All predicates may be implied by the trait.
-    All,
-
-    /// Only traits that reference `Self: ..` are implied by the trait.
-    SelfOnly,
-
-    /// Only traits that reference `Self: ..` and define an associated type
-    /// with the given ident are implied by the trait.
-    SelfThatDefines(Ident),
-
-    /// Only traits that reference `Self: ..` and their associated type bounds.
-    /// For example, given `Self: Tr<A: B>`, this would expand to `Self: Tr`
-    /// and `<Self as Tr>::A: B`.
-    SelfAndAssociatedTypeBounds,
-}
-
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are converted and stored. This also ensures that
 /// the transitive super-predicates are converted.
@@ -610,20 +592,7 @@ pub(super) fn implied_predicates_with_filter(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let superbounds = match filter {
-        // Should imply both "real" supertraits, and also associated type bounds
-        // from the supertraits position.
-        PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
-            icx.astconv().compute_bounds(self_param_ty, bounds, OnlySelfBounds(false))
-        }
-        // Should only imply "real" supertraits, i.e. predicates with the self type `Self`.
-        PredicateFilter::SelfOnly => {
-            icx.astconv().compute_bounds(self_param_ty, bounds, OnlySelfBounds(true))
-        }
-        PredicateFilter::SelfThatDefines(assoc_name) => {
-            icx.astconv().compute_bounds_that_match_assoc_item(self_param_ty, bounds, assoc_name)
-        }
-    };
+    let superbounds = icx.astconv().compute_bounds(self_param_ty, bounds, filter);
 
     let where_bounds_that_match = icx.type_parameter_bounds_in_generics(
         generics,
