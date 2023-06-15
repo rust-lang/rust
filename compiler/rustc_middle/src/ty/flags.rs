@@ -277,7 +277,7 @@ impl FlagComputation {
             ty::PredicateKind::ClosureKind(_def_id, substs, _kind) => {
                 self.add_substs(substs);
             }
-            ty::PredicateKind::ConstEvaluatable(uv) => {
+            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(uv)) => {
                 self.add_const(uv);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {

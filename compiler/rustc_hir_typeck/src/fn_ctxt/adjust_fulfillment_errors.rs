@@ -32,7 +32,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(arg, ty)) => {
                 vec![ty.into(), arg.into()]
             }
-            ty::PredicateKind::ConstEvaluatable(e) => vec![e.into()],
+            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(e)) => vec![e.into()],
             _ => return false,
         };
 

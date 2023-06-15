@@ -130,7 +130,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::Clause(ty::Clause::Projection(..))
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::ObjectSafe(..)
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::AliasRelate(..)

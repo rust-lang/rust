@@ -359,7 +359,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::Coerce(_)
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred =
                         ty::Binder::dummy(infcx.instantiate_binder_with_placeholders(binder));
@@ -498,7 +498,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::ConstEvaluatable(uv) => {
+                ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(uv)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.selcx.infcx,
                         uv,

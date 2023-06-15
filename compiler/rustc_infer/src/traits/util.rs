@@ -249,7 +249,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
             ty::PredicateKind::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
-            ty::PredicateKind::ConstEvaluatable(..) => {
+            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..)) => {
                 // Currently, we do not elaborate const-evaluatable
                 // predicates.
             }
