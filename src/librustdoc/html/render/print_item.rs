@@ -1331,67 +1331,68 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
-fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
-    item_template!(
-        #[template(path = "item_union.html")]
-        struct ItemUnion<'a, 'cx> {
-            cx: RefCell<&'a mut Context<'cx>>,
-            it: &'a clean::Item,
-            s: &'a clean::Union,
-        },
-        methods = [document, document_type_layout, render_attributes_in_pre, render_assoc_items]
-    );
+// Only to be used by the `item_union()` function
+item_template!(
+    #[template(path = "item_union.html")]
+    struct ItemUnion<'a, 'cx> {
+        cx: RefCell<&'a mut Context<'cx>>,
+        it: &'a clean::Item,
+        s: &'a clean::Union,
+    },
+    methods = [document, document_type_layout, render_attributes_in_pre, render_assoc_items]
+);
 
-    impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
-        fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let cx = self.cx.borrow_mut();
-                let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, *cx);
-                write!(f, "{v}")
-            })
-        }
-
-        fn document_field<'b>(
-            &'b self,
-            field: &'a clean::Item,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let mut cx = self.cx.borrow_mut();
-                let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
-                write!(f, "{v}")
-            })
-        }
-
-        fn stability_field(&self, field: &clean::Item) -> Option<String> {
-            let cx = self.cx.borrow();
-            field.stability_class(cx.tcx())
-        }
-
-        fn print_ty<'b>(
-            &'b self,
-            ty: &'a clean::Type,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let cx = self.cx.borrow();
-                let v = ty.print(*cx);
-                write!(f, "{v}")
-            })
-        }
-
-        fn fields_iter(
-            &self,
-        ) -> std::iter::Peekable<impl Iterator<Item = (&'a clean::Item, &'a clean::Type)>> {
-            self.s
-                .fields
-                .iter()
-                .filter_map(|f| match *f.kind {
-                    clean::StructFieldItem(ref ty) => Some((f, ty)),
-                    _ => None,
-                })
-                .peekable()
-        }
+impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
+    fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        display_fn(move |f| {
+            let cx = self.cx.borrow_mut();
+            let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, *cx);
+            write!(f, "{v}")
+        })
     }
 
+    fn document_field<'b>(
+        &'b self,
+        field: &'a clean::Item,
+    ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        display_fn(move |f| {
+            let mut cx = self.cx.borrow_mut();
+            let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
+            write!(f, "{v}")
+        })
+    }
+
+    fn stability_field(&self, field: &clean::Item) -> Option<String> {
+        let cx = self.cx.borrow();
+        field.stability_class(cx.tcx())
+    }
+
+    fn print_ty<'b>(
+        &'b self,
+        ty: &'a clean::Type,
+    ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        display_fn(move |f| {
+            let cx = self.cx.borrow();
+            let v = ty.print(*cx);
+            write!(f, "{v}")
+        })
+    }
+
+    fn fields_iter(
+        &self,
+    ) -> std::iter::Peekable<impl Iterator<Item = (&'a clean::Item, &'a clean::Type)>> {
+        self.s
+            .fields
+            .iter()
+            .filter_map(|f| match *f.kind {
+                clean::StructFieldItem(ref ty) => Some((f, ty)),
+                _ => None,
+            })
+            .peekable()
+    }
+}
+
+fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
     ItemUnion { cx: RefCell::new(cx), it, s }.render_into(w).unwrap();
 }
 
@@ -1820,77 +1821,78 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
+// Only to be used by the `item_struct()` function
+item_template!(
+    #[template(path = "item_struct.html")]
+    struct ItemStruct<'a, 'cx> {
+        cx: RefCell<&'a mut Context<'cx>>,
+        it: &'a clean::Item,
+        s: &'a clean::Struct,
+        should_render_fields: bool,
+    },
+    methods = [render_attributes_in_code, document, render_assoc_items, document_type_layout]
+);
+
+impl<'a, 'cx: 'a> ItemStruct<'a, 'cx> {
+    fn new(
+        cx: std::cell::RefCell<&'a mut Context<'cx>>,
+        it: &'a clean::Item,
+        s: &'a clean::Struct,
+    ) -> Self {
+        let should_render_fields = matches!(s.ctor_kind, None | Some(CtorKind::Fn))
+            && struct_field_items(s).peekable().peek().is_some();
+        Self { cx, it, s, should_render_fields }
+    }
+
+    fn render_struct<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        display_fn(move |f| {
+            let cx = self.cx.borrow();
+            let v = render_struct(
+                self.it,
+                Some(&self.s.generics),
+                self.s.ctor_kind,
+                &self.s.fields,
+                "",
+                true,
+                *cx,
+            );
+            write!(f, "{v}")
+        })
+    }
+
+    fn struct_field_items_iter<'b>(
+        &'b self,
+    ) -> impl Iterator<Item = ItemStructField<'a>> + Captures<'a> + 'b + Captures<'cx> {
+        struct_field_items(self.s).enumerate().map(|(index, (item, ty))| {
+            let mut cx = self.cx.borrow_mut();
+            let name = item.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
+            let id = cx.derive_id(format!("{}.{}", ItemType::StructField, name));
+            let ty = ty.print(*cx).to_string();
+            ItemStructField { item, name, id, ty }
+        })
+    }
+
+    fn document_field<'b>(
+        &'b self,
+        field: &'b clean::Item,
+    ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        display_fn(move |f| {
+            let mut cx = self.cx.borrow_mut();
+            let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
+            write!(f, "{v}")
+        })
+    }
+}
+
+// Only to be used by the `ItemStruct` struct
+struct ItemStructField<'a> {
+    item: &'a clean::Item,
+    name: String,
+    id: String,
+    ty: String,
+}
+
 fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
-    item_template!(
-        #[template(path = "item_struct.html")]
-        struct ItemStruct<'a, 'cx> {
-            cx: RefCell<&'a mut Context<'cx>>,
-            it: &'a clean::Item,
-            s: &'a clean::Struct,
-            should_render_fields: bool,
-        },
-        methods = [render_attributes_in_code, document, render_assoc_items, document_type_layout]
-    );
-
-    struct Field<'a> {
-        item: &'a clean::Item,
-        name: String,
-        id: String,
-        ty: String,
-    }
-
-    impl<'a, 'cx: 'a> ItemStruct<'a, 'cx> {
-        fn new(
-            cx: std::cell::RefCell<&'a mut Context<'cx>>,
-            it: &'a clean::Item,
-            s: &'a clean::Struct,
-        ) -> Self {
-            let should_render_fields = matches!(s.ctor_kind, None | Some(CtorKind::Fn))
-                && struct_field_items(s).peekable().peek().is_some();
-            Self { cx, it, s, should_render_fields }
-        }
-
-        fn render_struct<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let cx = self.cx.borrow();
-                let v = render_struct(
-                    self.it,
-                    Some(&self.s.generics),
-                    self.s.ctor_kind,
-                    &self.s.fields,
-                    "",
-                    true,
-                    *cx,
-                );
-                write!(f, "{v}")
-            })
-        }
-
-        fn struct_field_items_iter<'b>(
-            &'b self,
-        ) -> impl Iterator<Item = Field<'a>> + Captures<'a> + 'b + Captures<'cx> {
-            struct_field_items(self.s).enumerate().map(|(index, (item, ty))| {
-                let mut cx = self.cx.borrow_mut();
-                let name =
-                    item.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
-                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, name));
-                let ty = ty.print(*cx).to_string();
-                Field { item, name, id, ty }
-            })
-        }
-
-        fn document_field<'b>(
-            &'b self,
-            field: &'b clean::Item,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let mut cx = self.cx.borrow_mut();
-                let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
-                write!(f, "{v}")
-            })
-        }
-    }
-
     ItemStruct::new(std::cell::RefCell::new(cx), it, s).render_into(w).unwrap();
 }
 
