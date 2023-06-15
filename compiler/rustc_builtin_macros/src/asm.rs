@@ -379,16 +379,12 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     }
 
     let mut new_abis = Vec::new();
-    loop {
+    while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
         match p.parse_str_lit() {
             Ok(str_lit) => {
                 new_abis.push((str_lit.symbol_unescaped, str_lit.span));
             }
             Err(opt_lit) => {
-                // If the non-string literal is a closing paren then it's the end of the list and is fine
-                if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-                    break;
-                }
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
                 let mut err =
                     p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
