@@ -155,14 +155,16 @@ where
     // functions and statics defined in the local crate.
     let PlacedRootMonoItems { mut codegen_units, internalization_candidates, unique_inlined_stats } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
-        place_root_mono_items(cx, mono_items)
+        let mut placed = place_root_mono_items(cx, mono_items);
+
+        for cgu in &mut placed.codegen_units {
+            cgu.create_size_estimate(tcx);
+        }
+
+        debug_dump(tcx, "ROOTS", &placed.codegen_units, placed.unique_inlined_stats);
+
+        placed
     };
-
-    for cgu in &mut codegen_units {
-        cgu.create_size_estimate(tcx);
-    }
-
-    debug_dump(tcx, "ROOTS", &codegen_units, unique_inlined_stats);
 
     // Merge until we have at most `max_cgu_count` codegen units.
     // `merge_codegen_units` is responsible for updating the CGU size
@@ -179,22 +181,25 @@ where
     // local functions the definition of which is marked with `#[inline]`.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        place_inlined_mono_items(cx, &mut codegen_units)
-    };
+        place_inlined_mono_items(cx, &mut codegen_units);
 
-    for cgu in &mut codegen_units {
-        cgu.create_size_estimate(tcx);
+        for cgu in &mut codegen_units {
+            cgu.create_size_estimate(tcx);
+        }
+
+        debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
     }
-
-    debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(cx, &mut codegen_units, internalization_candidates);
+
+        debug_dump(tcx, "INTERNALIZE", &codegen_units, unique_inlined_stats);
     }
 
+    // Mark one CGU for dead code, if necessary.
     let instrument_dead_code =
         tcx.sess.instrument_coverage() && !tcx.sess.instrument_coverage_except_unused_functions();
     if instrument_dead_code {
@@ -203,8 +208,6 @@ where
 
     // Ensure CGUs are sorted by name, so that we get deterministic results.
     assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
-
-    debug_dump(tcx, "FINAL", &codegen_units, unique_inlined_stats);
 
     codegen_units
 }
