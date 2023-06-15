@@ -10,7 +10,7 @@ fn fill(v: &mut i32) {
 }
 
 fn evil() {
-    unsafe { &mut *(LEAK as *mut i32) }; //~ ERROR: is a dangling pointer
+    let _ = unsafe { &mut *(LEAK as *mut i32) }; //~ ERROR: is a dangling pointer
 }
 
 fn main() {
