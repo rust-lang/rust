@@ -335,10 +335,6 @@ impl<'tcx> CodegenUnit<'tcx> {
             .expect("create_size_estimate must be called before getting a size_estimate")
     }
 
-    pub fn modify_size_estimate(&mut self, delta: usize) {
-        *self.size_estimate.as_mut().unwrap() += delta;
-    }
-
     pub fn contains_item(&self, item: &MonoItem<'tcx>) -> bool {
         self.items().contains_key(item)
     }

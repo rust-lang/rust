@@ -166,19 +166,9 @@ where
         placed
     };
 
-    // Merge until we have at most `max_cgu_count` codegen units.
-    // `merge_codegen_units` is responsible for updating the CGU size
-    // estimates.
-    {
-        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        merge_codegen_units(cx, &mut codegen_units);
-        debug_dump(tcx, "MERGE", &codegen_units, unique_inlined_stats);
-    }
-
-    // In the next step, we use the inlining map to determine which additional
-    // monomorphizations have to go into each codegen unit. These additional
-    // monomorphizations can be drop-glue, functions from external crates, and
-    // local functions the definition of which is marked with `#[inline]`.
+    // Use the usage map to put additional mono items in each codegen unit:
+    // drop-glue, functions from external crates, and local functions the
+    // definition of which is marked with `#[inline]`.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
         place_inlined_mono_items(cx, &mut codegen_units);
@@ -190,8 +180,17 @@ where
         debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
     }
 
-    // Next we try to make as many symbols "internal" as possible, so LLVM has
-    // more freedom to optimize.
+    // Merge until we have at most `max_cgu_count` codegen units.
+    // `merge_codegen_units` is responsible for updating the CGU size
+    // estimates.
+    {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
+        merge_codegen_units(cx, &mut codegen_units);
+        debug_dump(tcx, "MERGE", &codegen_units, unique_inlined_stats);
+    }
+
+    // Make as many symbols "internal" as possible, so LLVM has more freedom to
+    // optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(cx, &mut codegen_units, internalization_candidates);
@@ -314,7 +313,7 @@ fn merge_codegen_units<'tcx>(
     // worse generated code. So we don't allow CGUs smaller than this (unless
     // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
     // common in larger programs, so this isn't all that large.
-    const NON_INCR_MIN_CGU_SIZE: usize = 1000;
+    const NON_INCR_MIN_CGU_SIZE: usize = 1500;
 
     // Repeatedly merge the two smallest codegen units as long as:
     // - we have more CGUs than the upper limit, or
@@ -338,9 +337,11 @@ fn merge_codegen_units<'tcx>(
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 
-        // Move the mono-items from `smallest` to `second_smallest`
-        second_smallest.modify_size_estimate(smallest.size_estimate());
+        // Move the items from `smallest` to `second_smallest`. Some of them
+        // may be duplicate inlined items, in which case the destination CGU is
+        // unaffected. Recalculate size estimates afterwards.
         second_smallest.items_mut().extend(smallest.items_mut().drain());
+        second_smallest.create_size_estimate(cx.tcx);
 
         // Record that `second_smallest` now contains all the stuff that was
         // in `smallest` before.
