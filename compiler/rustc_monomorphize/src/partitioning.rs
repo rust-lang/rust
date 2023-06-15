@@ -319,29 +319,69 @@ fn merge_codegen_units<'tcx>(
     // - we have more CGUs than the upper limit, or
     // - (Non-incremental builds only) the user didn't specify a CGU count, and
     //   there are multiple CGUs, and some are below the minimum size.
+    // - njn: update this comment
     //
     // The "didn't specify a CGU count" condition is because when an explicit
     // count is requested we observe it as closely as possible. For example,
     // the `compiler_builtins` crate sets `codegen-units = 10000` and it's
     // critical they aren't merged. Also, some tests use explicit small values
     // and likewise won't work if small CGUs are merged.
-    while codegen_units.len() > cx.tcx.sess.codegen_units().as_usize()
-        || (cx.tcx.sess.opts.incremental.is_none()
-            && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
-            && codegen_units.len() > 1
-            && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE))
-    {
+    //eprintln!("-----");
+    loop {
+        // njn: where to put this?
         // Sort small cgus to the back.
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
 
+        //eprintln!("cgus: {:?}", codegen_units.iter().map(|cgu| cgu.size_estimate()).collect::<Vec<_>>());
+
+        let merge1 = codegen_units.len() > cx.tcx.sess.codegen_units().as_usize();
+
+        let merge2 = cx.tcx.sess.opts.incremental.is_none()
+            && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
+            && codegen_units.len() >= 2
+            && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE);
+
+        // njn: addition is an imperfect measure, could be overlap
+        let merge3 = cx.tcx.sess.opts.incremental.is_none()
+            && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
+            && codegen_units.len() >= 3
+            && {
+                // eprintln!(
+                //     "sz: {} >= {} + {}?",
+                //     codegen_units[0].size_estimate(),
+                //     codegen_units[codegen_units.len() - 2].size_estimate(),
+                //     codegen_units[codegen_units.len() - 1].size_estimate());
+
+                codegen_units[0].size_estimate()
+                >= codegen_units[codegen_units.len() - 2].size_estimate()
+                    + codegen_units[codegen_units.len() - 1].size_estimate()
+               };
+
+        if !(merge1 || merge2 || merge3) {
+            break;
+        }
+
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
+
+        // let sm_size = smallest.size_estimate();
+        // let sec_sm_size = second_smallest.size_estimate();
 
         // Move the items from `smallest` to `second_smallest`. Some of them
         // may be duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
         second_smallest.items_mut().extend(smallest.items_mut().drain());
         second_smallest.create_size_estimate(cx.tcx);
+
+        // eprintln!(
+        //     "merge: {} {} {}: {} + {} -> {}",
+        //     merge1,
+        //     merge2,
+        //     merge3,
+        //     sec_sm_size,
+        //     sm_size,
+        //     second_smallest.size_estimate()
+        // );
 
         // Record that `second_smallest` now contains all the stuff that was
         // in `smallest` before.
