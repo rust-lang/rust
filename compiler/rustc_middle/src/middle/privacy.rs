@@ -215,7 +215,7 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
     pub fn update(
         &mut self,
         id: Id,
-        nominal_vis: Option<Visibility>,
+        max_vis: Option<Visibility>,
         lazy_private_vis: impl FnOnce() -> Visibility,
         inherited_effective_vis: EffectiveVisibility,
         level: Level,
@@ -239,8 +239,8 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
                 if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
                     && level != l)
                 {
-                    calculated_effective_vis = if let Some(nominal_vis) = nominal_vis && !nominal_vis.is_at_least(inherited_effective_vis_at_level, tcx) {
-                        nominal_vis
+                    calculated_effective_vis = if let Some(max_vis) = max_vis && !max_vis.is_at_least(inherited_effective_vis_at_level, tcx) {
+                        max_vis
                     } else {
                         inherited_effective_vis_at_level
                     }

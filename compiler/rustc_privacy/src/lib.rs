@@ -473,14 +473,14 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         &mut self,
         def_id: LocalDefId,
         inherited_effective_vis: EffectiveVisibility,
-        nominal_vis: Option<ty::Visibility>,
+        max_vis: Option<ty::Visibility>,
         level: Level,
     ) {
         let private_vis = ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id));
-        if Some(private_vis) != nominal_vis {
+        if max_vis != Some(private_vis) {
             self.changed |= self.effective_visibilities.update(
                 def_id,
-                nominal_vis,
+                max_vis,
                 || private_vis,
                 inherited_effective_vis,
                 level,
@@ -774,9 +774,9 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
 
                 for impl_item_ref in impl_.items {
                     let def_id = impl_item_ref.id.owner_id.def_id;
-                    let nominal_vis =
+                    let max_vis =
                         impl_.of_trait.is_none().then(|| self.tcx.local_visibility(def_id));
-                    self.update_eff_vis(def_id, item_ev, nominal_vis, Level::Direct);
+                    self.update_eff_vis(def_id, item_ev, max_vis, Level::Direct);
 
                     if let Some(impl_item_ev) = self.get(def_id) {
                         self.reach(def_id, impl_item_ev).generics().predicates().ty();
@@ -897,9 +897,9 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx>
             // All effective visibilities except `reachable_through_impl_trait` are limited to
             // nominal visibility. If any type or trait is leaked farther than that, it will
             // produce type privacy errors on any use, so we don't consider it leaked.
-            let nominal_vis = (self.level != Level::ReachableThroughImplTrait)
+            let max_vis = (self.level != Level::ReachableThroughImplTrait)
                 .then(|| self.ev.tcx.local_visibility(def_id));
-            self.ev.update_eff_vis(def_id, self.effective_vis, nominal_vis, self.level);
+            self.ev.update_eff_vis(def_id, self.effective_vis, max_vis, self.level);
         }
         ControlFlow::Continue(())
     }
