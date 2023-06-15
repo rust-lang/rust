@@ -989,7 +989,7 @@ fn debug_dump<'a, 'tcx: 'a>(
         }
     };
 
-    debug!("{}", dump());
+    eprintln!("{}", dump());
 }
 
 #[inline(never)] // give this a place in the profiler
