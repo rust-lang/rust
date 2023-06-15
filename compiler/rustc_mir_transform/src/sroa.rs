@@ -436,13 +436,12 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             VarDebugInfoContents::Composite { ty: _, ref mut fragments } => {
                 let mut new_fragments = Vec::new();
                 debug!(?fragments);
-                fragments
-                    .drain_filter(|fragment| {
-                        if let Some(repl) =
+                fragments.retain_mut(|fragment| {
+                    if let Some(repl) =
                             self.replacements.replace_place(self.tcx, fragment.contents.as_ref())
                         {
                             fragment.contents = repl;
-                            false
+                            true
                         } else if let Some(local) = fragment.contents.as_local()
                             && let Some(frg) = self.gather_debug_info_fragments(local)
                         {
@@ -450,12 +449,11 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                                 f.projection.splice(0..0, fragment.projection.iter().copied());
                                 f
                             }));
-                            true
-                        } else {
                             false
+                        } else {
+                            true
                         }
-                    })
-                    .for_each(drop);
+                });
                 debug!(?fragments);
                 debug!(?new_fragments);
                 fragments.extend(new_fragments);

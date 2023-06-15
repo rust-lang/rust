@@ -753,20 +753,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        errors.drain_filter(|error| {
+        errors.retain(|error| {
             let Error::Invalid(
                 provided_idx,
                 expected_idx,
                 Compatibility::Incompatible(Some(e)),
-            ) = error else { return false };
+            ) = error else { return true };
             let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
             if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308) {
                 self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
-                return true;
+                return false;
             }
-            false
+            true
         });
 
         // We're done if we found errors, but we already emitted them.
