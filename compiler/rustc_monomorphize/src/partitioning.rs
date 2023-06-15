@@ -352,9 +352,9 @@ fn merge_codegen_units<'tcx>(
                 //     codegen_units[codegen_units.len() - 2].size_estimate(),
                 //     codegen_units[codegen_units.len() - 1].size_estimate());
 
-                codegen_units[0].size_estimate()
-                >= codegen_units[codegen_units.len() - 2].size_estimate()
-                    + codegen_units[codegen_units.len() - 1].size_estimate()
+                (codegen_units[0].size_estimate() as f64 * 0.8)
+                >= (codegen_units[codegen_units.len() - 2].size_estimate()
+                    + codegen_units[codegen_units.len() - 1].size_estimate()) as f64
                };
 
         if !(merge1 || merge2 || merge3) {
