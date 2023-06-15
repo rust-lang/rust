@@ -70,4 +70,8 @@ fn string_dont_lint(b: &mut String) -> HashSet<char> {
     b.drain(..).collect()
 }
 
+fn not_whole_length(v: &mut Vec<i32>) -> Vec<i32> {
+    v.drain(1..).collect()
+}
+
 fn main() {}

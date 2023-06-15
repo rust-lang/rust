@@ -66,17 +66,19 @@ pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], expr: &Expr<'_>, re
             .or_else(|| check_collections(cx, expr_ty, recv_ty_no_refs))
     {
         let recv = snippet(cx, recv.span, "<expr>");
+        let sugg = if let ty::Ref(..) = recv_ty.kind() {
+            format!("std::mem::take({recv})")
+        } else {
+            format!("std::mem::take(&mut {recv})")
+        };
+
         span_lint_and_sugg(
             cx,
             DRAIN_COLLECT,
             expr.span,
             &format!("you seem to be trying to move all elements into a new `{typename}`"),
             "consider using `mem::take`",
-            if let ty::Ref(..) = recv_ty.kind() {
-                format!("std::mem::take({recv})")
-            } else {
-                format!("std::mem::take(&mut {recv})")
-            },
+            sugg,
             Applicability::MachineApplicable,
         );
     }

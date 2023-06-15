@@ -3260,7 +3260,7 @@ declare_clippy_lint! {
     /// When using `mem::take`, the old collection is replaced with an empty one and ownership of
     /// the old collection is returned.
     ///
-    /// ### Drawback
+    /// ### Known issues
     /// `mem::take(&mut vec)` is almost equivalent to `vec.drain(..).collect()`, except that
     /// it also moves the **capacity**. The user might have explicitly written it this way
     /// to keep the capacity on the original `Vec`.
