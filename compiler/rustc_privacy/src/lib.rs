@@ -894,7 +894,12 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx>
         _descr: &dyn fmt::Display,
     ) -> ControlFlow<Self::BreakTy> {
         if let Some(def_id) = def_id.as_local() {
-            self.ev.update_eff_vis(def_id, self.effective_vis, None, self.level);
+            // All effective visibilities except `reachable_through_impl_trait` are limited to
+            // nominal visibility. If any type or trait is leaked farther than that, it will
+            // produce type privacy errors on any use, so we don't consider it leaked.
+            let nominal_vis = (self.level != Level::ReachableThroughImplTrait)
+                .then(|| self.ev.tcx.local_visibility(def_id));
+            self.ev.update_eff_vis(def_id, self.effective_vis, nominal_vis, self.level);
         }
         ControlFlow::Continue(())
     }
@@ -1869,10 +1874,9 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             return false;
         };
 
-        // FIXME: `Level::Reachable` should be taken instead of `Level::Reexported`
-        let reexported_at_vis = *effective_vis.at_level(Level::Reexported);
+        let reachable_at_vis = *effective_vis.at_level(Level::Reachable);
 
-        if !vis.is_at_least(reexported_at_vis, self.tcx) {
+        if !vis.is_at_least(reachable_at_vis, self.tcx) {
             let lint = if self.in_primary_interface {
                 lint::builtin::PRIVATE_INTERFACES
             } else {
@@ -1889,7 +1893,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         tcx: self.tcx,
                     })
                         .into(),
-                    item_vis_descr: &vis_to_string(self.item_def_id, reexported_at_vis, self.tcx),
+                    item_vis_descr: &vis_to_string(self.item_def_id, reachable_at_vis, self.tcx),
                     ty_span: vis_span,
                     ty_kind: kind,
                     ty_descr: descr.into(),
@@ -2278,7 +2282,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
         changed: false,
     };
 
-    visitor.effective_visibilities.check_invariants(tcx, true);
+    visitor.effective_visibilities.check_invariants(tcx);
     if visitor.impl_trait_pass {
         // Underlying types of `impl Trait`s are marked as reachable unconditionally,
         // so this pass doesn't need to be a part of the fixed point iteration below.
@@ -2295,7 +2299,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
             break;
         }
     }
-    visitor.effective_visibilities.check_invariants(tcx, false);
+    visitor.effective_visibilities.check_invariants(tcx);
 
     let mut check_visitor =
         TestReachabilityVisitor { tcx, effective_visibilities: &visitor.effective_visibilities };
