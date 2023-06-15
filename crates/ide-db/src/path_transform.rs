@@ -17,11 +17,6 @@ struct AstSubsts {
     lifetimes: Vec<ast::LifetimeArg>,
 }
 
-struct TypeOrConstSubst {
-    subst: ast::Type,
-    to_be_transformed: bool,
-}
-
 type LifetimeName = String;
 
 /// `PathTransform` substitutes path in SyntaxNodes in bulk.
@@ -115,8 +110,10 @@ impl<'a> PathTransform<'a> {
             Some(hir::GenericDef::Trait(_)) => 1,
             _ => 0,
         };
-        let type_and_const_substs: FxHashMap<_, _> = self
-            .generic_def
+        let mut type_substs: FxHashMap<hir::TypeParam, ast::Type> = Default::default();
+        let mut const_substs: FxHashMap<hir::ConstParam, SyntaxNode> = Default::default();
+        let mut default_types: Vec<hir::TypeParam> = Default::default();
+        self.generic_def
             .into_iter()
             .flat_map(|it| it.type_params(db))
             .skip(skip)
@@ -127,26 +124,29 @@ impl<'a> PathTransform<'a> {
             // a default type. If they do, go for that type from `hir` to `ast` so
             // the resulting change can be applied correctly.
             .zip(self.substs.types_and_consts.iter().map(Some).chain(std::iter::repeat(None)))
-            .filter_map(|(k, v)| match (k.split(db), v) {
-                (_, Some(v)) => {
-                    let subst =
-                        TypeOrConstSubst { subst: v.ty()?.clone(), to_be_transformed: false };
-                    Some((k, subst))
+            .for_each(|(k, v)| match (k.split(db), v) {
+                (Either::Right(t), Some(v)) => {
+                    if let Some(ty) = v.ty() {
+                        type_substs.insert(t, ty.clone());
+                    }
                 }
                 (Either::Right(t), None) => {
-                    let default = t.default(db)?;
-                    let subst = TypeOrConstSubst {
-                        subst: ast::make::ty(
-                            &default.display_source_code(db, source_module.into(), false).ok()?,
-                        )
-                        .clone_for_update(),
-                        to_be_transformed: true,
-                    };
-                    Some((k, subst))
+                    if let Some(default) = t.default(db) {
+                        if let Some(default) =
+                            &default.display_source_code(db, source_module.into(), false).ok()
+                        {
+                            type_substs.insert(t, ast::make::ty(default).clone_for_update());
+                            default_types.push(t);
+                        }
+                    }
                 }
-                (Either::Left(_), None) => None, // FIXME: get default const value
-            })
-            .collect();
+                (Either::Left(c), Some(v)) => {
+                    if let Some(ty) = v.ty() {
+                        const_substs.insert(c, ty.syntax().clone());
+                    }
+                }
+                (Either::Left(_), None) => (), // FIXME: get default const value
+            });
         let lifetime_substs: FxHashMap<_, _> = self
             .generic_def
             .into_iter()
@@ -154,23 +154,27 @@ impl<'a> PathTransform<'a> {
             .zip(self.substs.lifetimes.clone())
             .filter_map(|(k, v)| Some((k.name(db).display(db.upcast()).to_string(), v.lifetime()?)))
             .collect();
-        Ctx {
-            type_and_const_substs,
+        let ctx = Ctx {
+            type_substs,
+            const_substs,
             lifetime_substs,
             target_module,
             source_scope: self.source_scope,
-        }
+        };
+        ctx.transform_default_type_substs(default_types);
+        ctx
     }
 }
 
 struct Ctx<'a> {
-    type_and_const_substs: FxHashMap<hir::TypeOrConstParam, TypeOrConstSubst>,
+    type_substs: FxHashMap<hir::TypeParam, ast::Type>,
+    const_substs: FxHashMap<hir::ConstParam, SyntaxNode>,
     lifetime_substs: FxHashMap<LifetimeName, ast::Lifetime>,
     target_module: hir::Module,
     source_scope: &'a SemanticsScope<'a>,
 }
 
-fn preorder(item: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
+fn postorder(item: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
     item.preorder().filter_map(|event| match event {
         syntax::WalkEvent::Enter(_) => None,
         syntax::WalkEvent::Leave(node) => Some(node),
@@ -179,29 +183,29 @@ fn preorder(item: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
 
 impl<'a> Ctx<'a> {
     fn apply(&self, item: &SyntaxNode) {
-        for (_, subst) in &self.type_and_const_substs {
-            if subst.to_be_transformed {
-                let paths =
-                    preorder(&subst.subst.syntax()).filter_map(ast::Path::cast).collect::<Vec<_>>();
-                for path in paths {
-                    self.transform_path(path);
-                }
-            }
-        }
-
         // `transform_path` may update a node's parent and that would break the
         // tree traversal. Thus all paths in the tree are collected into a vec
         // so that such operation is safe.
-        let paths = preorder(item).filter_map(ast::Path::cast).collect::<Vec<_>>();
+        let paths = postorder(item).filter_map(ast::Path::cast).collect::<Vec<_>>();
         for path in paths {
             self.transform_path(path);
         }
 
-        preorder(item).filter_map(ast::Lifetime::cast).for_each(|lifetime| {
+        postorder(item).filter_map(ast::Lifetime::cast).for_each(|lifetime| {
             if let Some(subst) = self.lifetime_substs.get(&lifetime.syntax().text().to_string()) {
                 ted::replace(lifetime.syntax(), subst.clone_subtree().clone_for_update().syntax());
             }
         });
+    }
+
+    fn transform_default_type_substs(&self, default_types: Vec<hir::TypeParam>) {
+        for k in default_types {
+            let v = self.type_substs.get(&k).unwrap();
+            let paths = postorder(&v.syntax()).filter_map(ast::Path::cast).collect::<Vec<_>>();
+            for path in paths {
+                self.transform_path(path);
+            }
+        }
     }
 
     fn transform_path(&self, path: ast::Path) -> Option<()> {
@@ -220,9 +224,7 @@ impl<'a> Ctx<'a> {
 
         match resolution {
             hir::PathResolution::TypeParam(tp) => {
-                if let Some(TypeOrConstSubst { subst, .. }) =
-                    self.type_and_const_substs.get(&tp.merge())
-                {
+                if let Some(subst) = self.type_substs.get(&tp) {
                     let parent = path.syntax().parent()?;
                     if let Some(parent) = ast::Path::cast(parent.clone()) {
                         // Path inside path means that there is an associated
@@ -290,10 +292,8 @@ impl<'a> Ctx<'a> {
                 ted::replace(path.syntax(), res.syntax())
             }
             hir::PathResolution::ConstParam(cp) => {
-                if let Some(TypeOrConstSubst { subst, .. }) =
-                    self.type_and_const_substs.get(&cp.merge())
-                {
-                    ted::replace(path.syntax(), subst.clone_subtree().clone_for_update().syntax());
+                if let Some(subst) = self.const_substs.get(&cp) {
+                    ted::replace(path.syntax(), subst.clone_subtree().clone_for_update());
                 }
             }
             hir::PathResolution::Local(_)
