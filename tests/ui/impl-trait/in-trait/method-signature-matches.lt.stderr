@@ -1,0 +1,21 @@
+error[E0053]: method `early` has an incompatible type for trait
+  --> $DIR/method-signature-matches.rs:58:27
+   |
+LL |     fn early<'late, T>(_: &'late ()) {}
+   |                     -     ^^^^^^^^^
+   |                     |     |
+   |                     |     expected type parameter `T`, found `()`
+   |                     |     help: change the parameter type to match the trait: `&'early T`
+   |                     this type parameter
+   |
+note: type in trait
+  --> $DIR/method-signature-matches.rs:53:28
+   |
+LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
+   |                            ^^^^^^^^^
+   = note: expected signature `fn(&'early T)`
+              found signature `fn(&())`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

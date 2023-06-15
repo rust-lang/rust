@@ -45,14 +45,14 @@ impl_Const!(ConstStruct, ConstEnum, AliasedConstStruct, AliasedConstEnum);
 impl_StaticFn!(StaticFnStruct, StaticFnEnum, AliasedStaticFnStruct, AliasedStaticFnEnum);
 
 fn main() {
-    let _ = ConstStruct::C;
-    let _ = ConstEnum::C;
+    let () = ConstStruct::C;
+    let () = ConstEnum::C;
 
     StaticFnStruct::sfn();
     StaticFnEnum::sfn();
 
-    let _ = AliasConstStruct::C;
-    let _ = AliasConstEnum::C;
+    let () = AliasConstStruct::C;
+    let () = AliasConstEnum::C;
 
     AliasStaticFnStruct::sfn();
     AliasStaticFnEnum::sfn();

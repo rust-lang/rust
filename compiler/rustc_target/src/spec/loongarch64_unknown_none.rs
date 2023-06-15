@@ -1,4 +1,4 @@
-use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
+use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel};
 use super::{Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -13,8 +13,7 @@ pub fn target() -> Target {
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::No),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
-            position_independent_executables: true,
-            static_position_independent_executables: true,
+            relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
             code_model: Some(CodeModel::Small),
             ..Default::default()

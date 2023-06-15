@@ -172,7 +172,7 @@ fn expressions() {
         #![deny(enum_intrinsics_non_enums)]
         discriminant::<i32>(&123); //~ ERROR the return value of
     }
-    let block_tail = {
+    let block_tail: () = {
         #[deny(enum_intrinsics_non_enums)]
         discriminant::<i32>(&123); //~ ERROR the return value of
     };

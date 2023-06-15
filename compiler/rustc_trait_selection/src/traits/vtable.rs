@@ -15,13 +15,13 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 #[derive(Clone, Debug)]
-pub(super) enum VtblSegment<'tcx> {
+pub enum VtblSegment<'tcx> {
     MetadataDSA,
     TraitOwnEntries { trait_ref: ty::PolyTraitRef<'tcx>, emit_vptr: bool },
 }
 
 /// Prepare the segments for a vtable
-pub(super) fn prepare_vtable_segments<'tcx, T>(
+pub fn prepare_vtable_segments<'tcx, T>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
     mut segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,

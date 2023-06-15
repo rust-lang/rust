@@ -42,29 +42,29 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "color": "rgb(197, 197, 197)",
-        "code_header_color": "rgb(230, 225, 207)",
+        "color": "#c5c5c5",
+        "code_header_color": "#e6e1cf",
         "focus_background_color": "rgba(255, 236, 164, 0.06)",
-        "headings_color": "rgb(57, 175, 215)",
+        "headings_color": "#39afd7",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "color": "rgb(221, 221, 221)",
-        "code_header_color": "rgb(221, 221, 221)",
-        "focus_background_color": "rgb(73, 74, 61)",
-        "headings_color": "rgb(210, 153, 29)",
+        "color": "#ddd",
+        "code_header_color": "#ddd",
+        "focus_background_color": "#494a3d",
+        "headings_color": "#d2991d",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "light",
-        "color": "rgb(0, 0, 0)",
-        "code_header_color": "rgb(0, 0, 0)",
-        "focus_background_color": "rgb(253, 255, 211)",
-        "headings_color": "rgb(56, 115, 173)",
+        "color": "black",
+        "code_header_color": "black",
+        "focus_background_color": "#fdffd3",
+        "headings_color": "#3873ad",
     },
 )

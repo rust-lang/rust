@@ -1,5 +1,5 @@
 error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
-  --> $DIR/eval-privacy.rs:16:5
+  --> $DIR/eval-privacy.rs:22:5
    |
 LL |     type AssocTy = Const<{ my_const_fn(U) }>;
    |     ^^^^^^^^^^^^ can't leak private type
@@ -7,6 +7,24 @@ LL |     type AssocTy = Const<{ my_const_fn(U) }>;
 LL | const fn my_const_fn(val: u8) -> u8 {
    | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
 
-error: aborting due to previous error
+warning: type `fn(u8) -> u8 {my_const_fn}` is more private than the item `<Const<U> as Trait>::AssocTy`
+   |
+note: associated type `<Const<U> as Trait>::AssocTy` is reachable at visibility `pub`
+  --> $DIR/eval-privacy.rs:22:5
+   |
+LL |     type AssocTy = Const<{ my_const_fn(U) }>;
+   |     ^^^^^^^^^^^^
+note: but type `fn(u8) -> u8 {my_const_fn}` is only usable at visibility `pub(crate)`
+  --> $DIR/eval-privacy.rs:29:1
+   |
+LL | const fn my_const_fn(val: u8) -> u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/eval-privacy.rs:5:9
+   |
+LL | #![warn(private_interfaces)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0446`.

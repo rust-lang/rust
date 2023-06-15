@@ -21,7 +21,7 @@ mod structural_match;
 mod structural_normalize;
 #[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod util;
-mod vtable;
+pub mod vtable;
 pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
@@ -354,7 +354,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // This works fairly well because trait matching does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
-        .drain_filter(|predicate| {
+        .extract_if(|predicate| {
             matches!(
                 predicate.kind().skip_binder(),
                 ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))

@@ -170,8 +170,8 @@ fn format_args() {
 
 #[test]
 fn include() {
-    let _ = include!("auxiliary/macro-comma-support.rs");
-    let _ = include!("auxiliary/macro-comma-support.rs",);
+    include!("auxiliary/macro-comma-support.rs");
+    include!("auxiliary/macro-comma-support.rs",);
 }
 
 #[test]

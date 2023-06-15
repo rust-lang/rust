@@ -24,6 +24,7 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_a
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::Resolver;
+use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::{MetadataLoader, Untracked};
 use rustc_session::output::filename_for_input;
@@ -865,6 +866,92 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         // define a lint filter, as all lint checks should have finished at this point.
         sess.time("check_lint_expectations", || tcx.check_expectations(None));
     });
+
+    if sess.opts.unstable_opts.print_vtable_sizes {
+        let traits = tcx.traits(LOCAL_CRATE);
+
+        for &tr in traits {
+            if !tcx.check_is_object_safe(tr) {
+                continue;
+            }
+
+            let name = ty::print::with_no_trimmed_paths!(tcx.def_path_str(tr));
+
+            let mut first_dsa = true;
+
+            // Number of vtable entries, if we didn't have upcasting
+            let mut entries_ignoring_upcasting = 0;
+            // Number of vtable entries needed solely for upcasting
+            let mut entries_for_upcasting = 0;
+
+            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
+
+            // A slightly edited version of the code in `rustc_trait_selection::traits::vtable::vtable_entries`,
+            // that works without self type and just counts number of entries.
+            //
+            // Note that this is technically wrong, for traits which have associated types in supertraits:
+            //
+            //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
+            //
+            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>` and
+            // `AsRef<()>` are the same trait, thus we assume that those are different, and potentially
+            // over-estimate how many vtable entries there are.
+            //
+            // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
+            // For example:
+            //
+            //   trait B<T> { fn f(&self) where T: Copy; }
+            //
+            // Here `dyn B<u8>` will have 4 entries, while `dyn B<String>` will only have 3.
+            // However, since we don't know `T`, we can't know if `T: Copy` holds or not,
+            // thus we lean on the bigger side and say it has 4 entries.
+            traits::vtable::prepare_vtable_segments(tcx, trait_ref, |segment| {
+                match segment {
+                    traits::vtable::VtblSegment::MetadataDSA => {
+                        // If this is the first dsa, it would be included either way,
+                        // otherwise it's needed for upcasting
+                        if std::mem::take(&mut first_dsa) {
+                            entries_ignoring_upcasting += 3;
+                        } else {
+                            entries_for_upcasting += 3;
+                        }
+                    }
+
+                    traits::vtable::VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                        // Lookup the shape of vtable for the trait.
+                        let own_existential_entries =
+                            tcx.own_existential_vtable_entries(trait_ref.def_id());
+
+                        // The original code here ignores the method if its predicates are impossible.
+                        // We can't really do that as, for example, all not trivial bounds on generic
+                        // parameters are impossible (since we don't know the parameters...),
+                        // see the comment above.
+                        entries_ignoring_upcasting += own_existential_entries.len();
+
+                        if emit_vptr {
+                            entries_for_upcasting += 1;
+                        }
+                    }
+                }
+
+                std::ops::ControlFlow::Continue::<std::convert::Infallible>(())
+            });
+
+            sess.code_stats.record_vtable_size(
+                tr,
+                &name,
+                VTableSizeInfo {
+                    trait_name: name.clone(),
+                    entries: entries_ignoring_upcasting + entries_for_upcasting,
+                    entries_ignoring_upcasting,
+                    entries_for_upcasting,
+                    upcasting_cost_percent: entries_for_upcasting as f64
+                        / entries_ignoring_upcasting as f64
+                        * 100.,
+                },
+            )
+        }
+    }
 
     Ok(())
 }

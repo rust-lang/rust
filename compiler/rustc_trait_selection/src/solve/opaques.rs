@@ -50,7 +50,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     }
                 }
                 // Otherwise, define a new opaque type
-                self.register_opaque_ty(opaque_ty, expected, goal.param_env)?;
+                self.insert_hidden_type(opaque_ty, goal.param_env, expected)?;
+                self.add_item_bounds_for_hidden_type(opaque_ty, goal.param_env, expected);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             (Reveal::UserFacing, SolverMode::Coherence) => {

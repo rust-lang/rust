@@ -169,6 +169,11 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
+        // See src/bootstrap/synthetic_targets.rs
+        if target.is_synthetic() {
+            cargo.env("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET", "1");
+        }
+
         let _guard = builder.msg(
             Kind::Build,
             compiler.stage,
@@ -314,7 +319,7 @@ fn copy_self_contained_objects(
         }
     } else if target.ends_with("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
-            let src = compiler_file(builder, builder.cc(target), target, CLang::C, obj);
+            let src = compiler_file(builder, &builder.cc(target), target, CLang::C, obj);
             let target = libdir_self_contained.join(obj);
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
@@ -995,8 +1000,13 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         && !target.contains("apple")
         && !target.contains("solaris")
     {
-        let file =
-            compiler_file(builder, builder.cxx(target).unwrap(), target, CLang::Cxx, "libstdc++.a");
+        let file = compiler_file(
+            builder,
+            &builder.cxx(target).unwrap(),
+            target,
+            CLang::Cxx,
+            "libstdc++.a",
+        );
         cargo.env("LLVM_STATIC_STDCPP", file);
     }
     if builder.llvm_link_shared() {
@@ -1267,6 +1277,9 @@ pub fn compiler_file(
     c: CLang,
     file: &str,
 ) -> PathBuf {
+    if builder.config.dry_run() {
+        return PathBuf::new();
+    }
     let mut cmd = Command::new(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={}", file));
@@ -1488,6 +1501,10 @@ impl Step for Assemble {
             // Ensure that `libLLVM.so` ends up in the newly created target directory,
             // so that tools using `rustc_private` can use it.
             dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
+            // Lower stages use `ci-rustc-sysroot`, not stageN
+            if target_compiler.stage == builder.top_stage {
+                builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage=target_compiler.stage));
+            }
             return target_compiler;
         }
 
@@ -1525,11 +1542,18 @@ impl Step for Assemble {
 
         let stage = target_compiler.stage;
         let host = target_compiler.host;
-        let msg = if build_compiler.host == host {
-            format!("Assembling stage{} compiler", stage)
+        let (host_info, dir_name) = if build_compiler.host == host {
+            ("".into(), "host".into())
         } else {
-            format!("Assembling stage{} compiler ({})", stage, host)
+            (format!(" ({host})"), host.to_string())
         };
+        // NOTE: "Creating a sysroot" is somewhat inconsistent with our internal terminology, since
+        // sysroots can temporarily be empty until we put the compiler inside. However,
+        // `ensure(Sysroot)` isn't really something that's user facing, so there shouldn't be any
+        // ambiguity.
+        let msg = format!(
+            "Creating a sysroot for stage{stage} compiler{host_info} (use `rustup toolchain link 'name' build/{dir_name}/stage{stage}`)"
+        );
         builder.info(&msg);
 
         // Link in all dylibs to the libdir

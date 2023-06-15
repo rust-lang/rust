@@ -1,5 +1,5 @@
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:19:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:24:1
    |
 LL | trait PrivTr {}
    | ------------ `PrivTr` declared as private
@@ -7,8 +7,26 @@ LL | trait PrivTr {}
 LL | pub struct S
    | ^^^^^^^^^^^^ can't leak private trait
 
+warning: trait `PrivTr` is more private than the item `S`
+   |
+note: struct `S` is reachable at visibility `pub`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:24:1
+   |
+LL | pub struct S
+   | ^^^^^^^^^^^^
+note: but trait `PrivTr` is only usable at visibility `pub(crate)`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
+   |
+LL | trait PrivTr {}
+   | ^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/where-pub-type-impls-priv-trait.rs:7:9
+   |
+LL | #![warn(private_bounds)]
+   |         ^^^^^^^^^^^^^^
+
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:26:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:31:1
    |
 LL | trait PrivTr {}
    | ------------ `PrivTr` declared as private
@@ -16,8 +34,21 @@ LL | trait PrivTr {}
 LL | pub enum E
    | ^^^^^^^^^^ can't leak private trait
 
+warning: trait `PrivTr` is more private than the item `E`
+   |
+note: enum `E` is reachable at visibility `pub`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:31:1
+   |
+LL | pub enum E
+   | ^^^^^^^^^^
+note: but trait `PrivTr` is only usable at visibility `pub(crate)`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
+   |
+LL | trait PrivTr {}
+   | ^^^^^^^^^^^^
+
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:33:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:38:1
    |
 LL |   trait PrivTr {}
    |   ------------ `PrivTr` declared as private
@@ -28,8 +59,24 @@ LL | | where
 LL | |     PubTy: PrivTr
    | |_________________^ can't leak private trait
 
+warning: trait `PrivTr` is more private than the item `f`
+   |
+note: function `f` is reachable at visibility `pub`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:38:1
+   |
+LL | / pub fn f()
+LL | |
+LL | | where
+LL | |     PubTy: PrivTr
+   | |_________________^
+note: but trait `PrivTr` is only usable at visibility `pub(crate)`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
+   |
+LL | trait PrivTr {}
+   | ^^^^^^^^^^^^
+
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:40:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:45:1
    |
 LL | trait PrivTr {}
    | ------------ `PrivTr` declared as private
@@ -37,8 +84,21 @@ LL | trait PrivTr {}
 LL | impl S
    | ^^^^^^ can't leak private trait
 
+warning: trait `PrivTr` is more private than the item `S`
+   |
+note: implementation `S` is reachable at visibility `pub`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:45:1
+   |
+LL | impl S
+   | ^^^^^^
+note: but trait `PrivTr` is only usable at visibility `pub(crate)`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
+   |
+LL | trait PrivTr {}
+   | ^^^^^^^^^^^^
+
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:45:5
+  --> $DIR/where-pub-type-impls-priv-trait.rs:50:5
    |
 LL |   trait PrivTr {}
    |   ------------ `PrivTr` declared as private
@@ -49,6 +109,22 @@ LL | |     where
 LL | |         PubTy: PrivTr
    | |_____________________^ can't leak private trait
 
-error: aborting due to 5 previous errors
+warning: trait `PrivTr` is more private than the item `S::f`
+   |
+note: associated function `S::f` is reachable at visibility `pub`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:50:5
+   |
+LL | /     pub fn f()
+LL | |
+LL | |     where
+LL | |         PubTy: PrivTr
+   | |_____________________^
+note: but trait `PrivTr` is only usable at visibility `pub(crate)`
+  --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
+   |
+LL | trait PrivTr {}
+   | ^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors; 5 warnings emitted
 
 For more information about this error, try `rustc --explain E0445`.

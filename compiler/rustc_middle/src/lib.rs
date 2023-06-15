@@ -54,7 +54,7 @@
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
 #![feature(decl_macro)]
-#![feature(drain_filter)]
+#![feature(extract_if)]
 #![feature(intra_doc_pointers)]
 #![feature(yeet_expr)]
 #![feature(result_option_inspect)]

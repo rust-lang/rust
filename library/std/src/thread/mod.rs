@@ -195,7 +195,7 @@ mod local;
 
 cfg_if::cfg_if! {
     if #[cfg(test)] {
-        // Avoid duplicating the global state assoicated with thread-locals between this crate and
+        // Avoid duplicating the global state associated with thread-locals between this crate and
         // realstd. Miri relies on this.
         pub use realstd::thread::{local_impl, AccessError, LocalKey};
     } else {

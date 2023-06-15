@@ -1,5 +1,6 @@
 use rustc_errors::{
-    DecorateLint, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Handler, IntoDiagnostic,
+    Applicability, DecorateLint, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Handler,
+    IntoDiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
@@ -130,6 +131,12 @@ impl RequiresUnsafeDetail {
 
 pub(crate) struct UnsafeOpInUnsafeFn {
     pub details: RequiresUnsafeDetail,
+
+    /// These spans point to:
+    ///  1. the start of the function body
+    ///  2. the end of the function body
+    ///  3. the function signature
+    pub suggest_unsafe_block: Option<(Span, Span, Span)>,
 }
 
 impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
@@ -138,13 +145,21 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
         self,
         diag: &'b mut DiagnosticBuilder<'a, ()>,
     ) -> &'b mut DiagnosticBuilder<'a, ()> {
-        let desc = diag
-            .handler()
-            .expect("lint should not yet be emitted")
-            .eagerly_translate_to_string(self.details.label(), [].into_iter());
+        let handler = diag.handler().expect("lint should not yet be emitted");
+        let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
         diag.set_arg("details", desc);
         diag.span_label(self.details.span, self.details.label());
         diag.note(self.details.note());
+
+        if let Some((start, end, fn_sig)) = self.suggest_unsafe_block {
+            diag.span_note(fn_sig, crate::fluent_generated::mir_transform_note);
+            diag.tool_only_multipart_suggestion(
+                crate::fluent_generated::mir_transform_suggestion,
+                vec![(start, " unsafe {".into()), (end, "}".into())],
+                Applicability::MaybeIncorrect,
+            );
+        }
+
         diag
     }
 

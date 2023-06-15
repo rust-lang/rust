@@ -207,8 +207,8 @@ impl Slice {
         unsafe { Slice::from_os_str_bytes_unchecked(s.as_bytes()) }
     }
 
-    pub fn to_str(&self) -> Option<&str> {
-        str::from_utf8(&self.inner).ok()
+    pub fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {
+        str::from_utf8(&self.inner)
     }
 
     pub fn to_string_lossy(&self) -> Cow<'_, str> {

@@ -360,6 +360,15 @@ const PARSED = [
         error: 'Invalid search type: macro `!` and `mod` both specified',
     },
     {
+        query: "mod:!",
+        elems: [],
+        foundElems: 0,
+        original: "mod:!",
+        returned: [],
+        userQuery: "mod:!",
+        error: 'Invalid search type: primitive never type `!` and `mod` both specified',
+    },
+    {
         query: "a!::a",
         elems: [],
         foundElems: 0,

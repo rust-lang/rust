@@ -158,13 +158,13 @@ pub(crate) fn try_inline_glob(
                 .filter_map(|child| child.res.opt_def_id())
                 .collect();
             let mut items = build_module_items(cx, did, visited, inlined_names, Some(&reexports));
-            items.drain_filter(|item| {
+            items.retain(|item| {
                 if let Some(name) = item.name {
                     // If an item with the same type and name already exists,
                     // it takes priority over the inlined stuff.
-                    !inlined_names.insert((item.type_(), name))
+                    inlined_names.insert((item.type_(), name))
                 } else {
-                    false
+                    true
                 }
             });
             Some(items)

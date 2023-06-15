@@ -394,6 +394,7 @@ fn test_remove_matches() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_retain() {
     let mut s = String::from("α_β_γ");
 

@@ -1,0 +1,38 @@
+error: struct `PubStruct` is reachable but cannot be named
+  --> $DIR/unnameable_types.rs:6:5
+   |
+LL |     pub struct PubStruct(pub i32);
+   |     ^^^^^^^^^^^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
+   |
+note: the lint level is defined here
+  --> $DIR/unnameable_types.rs:3:9
+   |
+LL | #![deny(unnameable_types)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: enum `PubE` is reachable but cannot be named
+  --> $DIR/unnameable_types.rs:8:5
+   |
+LL |     pub enum PubE {
+   |     ^^^^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
+
+error: trait `PubTr` is reachable but cannot be named
+  --> $DIR/unnameable_types.rs:12:5
+   |
+LL |     pub trait PubTr {
+   |     ^^^^^^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
+
+error: associated type `PubTr::Alias` is reachable but cannot be named
+  --> $DIR/unnameable_types.rs:14:9
+   |
+LL |         type Alias;
+   |         ^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
+
+error: associated type `<PubStruct as PubTr>::Alias` is reachable but cannot be named
+  --> $DIR/unnameable_types.rs:19:9
+   |
+LL |         type Alias = i32;
+   |         ^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
+
+error: aborting due to 5 previous errors
+

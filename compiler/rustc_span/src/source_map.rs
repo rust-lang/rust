@@ -744,6 +744,21 @@ impl SourceMap {
         })
     }
 
+    /// Extends the given `Span` to previous character while the previous character matches the predicate
+    pub fn span_extend_prev_while(
+        &self,
+        span: Span,
+        f: impl Fn(char) -> bool,
+    ) -> Result<Span, SpanSnippetError> {
+        self.span_to_source(span, |s, start, _end| {
+            let n = s[..start]
+                .char_indices()
+                .rfind(|&(_, c)| !f(c))
+                .map_or(start, |(i, _)| start - i - 1);
+            Ok(span.with_lo(span.lo() - BytePos(n as u32)))
+        })
+    }
+
     /// Extends the given `Span` to just before the next occurrence of `c`.
     pub fn span_extend_to_next_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(next_source) = self.span_to_next_source(sp) {

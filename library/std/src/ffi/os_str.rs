@@ -745,7 +745,7 @@ impl OsStr {
                   without modifying the original"]
     #[inline]
     pub fn to_str(&self) -> Option<&str> {
-        self.inner.to_str()
+        self.inner.to_str().ok()
     }
 
     /// Converts an `OsStr` to a <code>[Cow]<[str]></code>.
@@ -1162,6 +1162,24 @@ impl<'a> From<Cow<'a, OsStr>> for OsString {
     #[inline]
     fn from(s: Cow<'a, OsStr>) -> Self {
         s.into_owned()
+    }
+}
+
+#[stable(feature = "str_tryfrom_osstr_impl", since = "CURRENT_RUSTC_VERSION")]
+impl<'a> TryFrom<&'a OsStr> for &'a str {
+    type Error = crate::str::Utf8Error;
+
+    /// Tries to convert an `&OsStr` to a `&str`.
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// let as_str = <&str>::try_from(os_str).unwrap();
+    /// assert_eq!(as_str, "foo");
+    /// ```
+    fn try_from(value: &'a OsStr) -> Result<Self, Self::Error> {
+        value.inner.to_str()
     }
 }
 

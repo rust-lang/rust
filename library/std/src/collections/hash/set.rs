@@ -262,25 +262,24 @@ impl<T, S> HashSet<T, S> {
     /// If the closure returns false, the value will remain in the list and will not be yielded
     /// by the iterator.
     ///
-    /// If the iterator is only partially consumed or not consumed at all, each of the remaining
-    /// values will still be subjected to the closure and removed and dropped if it returns true.
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
     ///
-    /// It is unspecified how many more values will be subjected to the closure
-    /// if a panic occurs in the closure, or if a panic occurs while dropping a value, or if the
-    /// `DrainFilter` itself is leaked.
+    /// [`retain`]: HashSet::retain
     ///
     /// # Examples
     ///
     /// Splitting a set into even and odd values, reusing the original set:
     ///
     /// ```
-    /// #![feature(hash_drain_filter)]
+    /// #![feature(hash_extract_if)]
     /// use std::collections::HashSet;
     ///
     /// let mut set: HashSet<i32> = (0..8).collect();
-    /// let drained: HashSet<i32> = set.drain_filter(|v| v % 2 == 0).collect();
+    /// let extracted: HashSet<i32> = set.extract_if(|v| v % 2 == 0).collect();
     ///
-    /// let mut evens = drained.into_iter().collect::<Vec<_>>();
+    /// let mut evens = extracted.into_iter().collect::<Vec<_>>();
     /// let mut odds = set.into_iter().collect::<Vec<_>>();
     /// evens.sort();
     /// odds.sort();
@@ -290,12 +289,12 @@ impl<T, S> HashSet<T, S> {
     /// ```
     #[inline]
     #[rustc_lint_query_instability]
-    #[unstable(feature = "hash_drain_filter", issue = "59618")]
-    pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, T, F>
+    #[unstable(feature = "hash_extract_if", issue = "59618")]
+    pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, T, F>
     where
         F: FnMut(&T) -> bool,
     {
-        DrainFilter { base: self.base.drain_filter(pred) }
+        ExtractIf { base: self.base.extract_if(pred) }
     }
 
     /// Retains only the elements specified by the predicate.
@@ -868,7 +867,9 @@ where
     /// Returns whether the value was newly inserted. That is:
     ///
     /// - If the set did not previously contain this value, `true` is returned.
-    /// - If the set already contained this value, `false` is returned.
+    /// - If the set already contained this value, `false` is returned,
+    ///   and the set is not modified: original value is not replaced,
+    ///   and the value passed as argument is dropped.
     ///
     /// # Examples
     ///
@@ -1310,27 +1311,27 @@ pub struct Drain<'a, K: 'a> {
 
 /// A draining, filtering iterator over the items of a `HashSet`.
 ///
-/// This `struct` is created by the [`drain_filter`] method on [`HashSet`].
+/// This `struct` is created by the [`extract_if`] method on [`HashSet`].
 ///
-/// [`drain_filter`]: HashSet::drain_filter
+/// [`extract_if`]: HashSet::extract_if
 ///
 /// # Examples
 ///
 /// ```
-/// #![feature(hash_drain_filter)]
+/// #![feature(hash_extract_if)]
 ///
 /// use std::collections::HashSet;
 ///
 /// let mut a = HashSet::from([1, 2, 3]);
 ///
-/// let mut drain_filtered = a.drain_filter(|v| v % 2 == 0);
+/// let mut extract_ifed = a.extract_if(|v| v % 2 == 0);
 /// ```
-#[unstable(feature = "hash_drain_filter", issue = "59618")]
-pub struct DrainFilter<'a, K, F>
+#[unstable(feature = "hash_extract_if", issue = "59618")]
+pub struct ExtractIf<'a, K, F>
 where
     F: FnMut(&K) -> bool,
 {
-    base: base::DrainFilter<'a, K, F>,
+    base: base::ExtractIf<'a, K, F>,
 }
 
 /// A lazy iterator producing elements in the intersection of `HashSet`s.
@@ -1576,8 +1577,8 @@ impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     }
 }
 
-#[unstable(feature = "hash_drain_filter", issue = "59618")]
-impl<K, F> Iterator for DrainFilter<'_, K, F>
+#[unstable(feature = "hash_extract_if", issue = "59618")]
+impl<K, F> Iterator for ExtractIf<'_, K, F>
 where
     F: FnMut(&K) -> bool,
 {
@@ -1593,16 +1594,16 @@ where
     }
 }
 
-#[unstable(feature = "hash_drain_filter", issue = "59618")]
-impl<K, F> FusedIterator for DrainFilter<'_, K, F> where F: FnMut(&K) -> bool {}
+#[unstable(feature = "hash_extract_if", issue = "59618")]
+impl<K, F> FusedIterator for ExtractIf<'_, K, F> where F: FnMut(&K) -> bool {}
 
-#[unstable(feature = "hash_drain_filter", issue = "59618")]
-impl<'a, K, F> fmt::Debug for DrainFilter<'a, K, F>
+#[unstable(feature = "hash_extract_if", issue = "59618")]
+impl<'a, K, F> fmt::Debug for ExtractIf<'a, K, F>
 where
     F: FnMut(&K) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DrainFilter").finish_non_exhaustive()
+        f.debug_struct("ExtractIf").finish_non_exhaustive()
     }
 }
 

@@ -2494,7 +2494,7 @@ fn show_candidates(
     for path_strings in [&mut accessible_path_strings, &mut inaccessible_path_strings] {
         path_strings.sort_by(|a, b| a.0.cmp(&b.0));
         let core_path_strings =
-            path_strings.drain_filter(|p| p.0.starts_with("core::")).collect::<Vec<_>>();
+            path_strings.extract_if(|p| p.0.starts_with("core::")).collect::<Vec<_>>();
         path_strings.extend(core_path_strings);
         path_strings.dedup_by(|a, b| a.0 == b.0);
     }

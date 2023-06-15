@@ -23,7 +23,7 @@ use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
@@ -170,8 +170,8 @@ fn overlap<'tcx>(
     overlap_mode: OverlapMode,
 ) -> Option<OverlapResult<'tcx>> {
     if overlap_mode.use_negative_impl() {
-        if negative_impl(tcx, impl1_def_id, impl2_def_id)
-            || negative_impl(tcx, impl2_def_id, impl1_def_id)
+        if impl_intersection_has_negative_obligation(tcx, impl1_def_id, impl2_def_id)
+            || impl_intersection_has_negative_obligation(tcx, impl2_def_id, impl1_def_id)
         {
             return None;
         }
@@ -198,13 +198,21 @@ fn overlap<'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    let obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
+    // Equate the headers to find their intersection (the general type, with infer vars,
+    // that may apply both impls).
+    let equate_obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
-    if overlap_mode.use_implicit_negative() {
-        if implicit_negative(selcx, param_env, &impl1_header, impl2_header, obligations) {
-            return None;
-        }
+    if overlap_mode.use_implicit_negative()
+        && impl_intersection_has_impossible_obligation(
+            selcx,
+            param_env,
+            &impl1_header,
+            impl2_header,
+            equate_obligations,
+        )
+    {
+        return None;
     }
 
     // We toggle the `leak_check` by using `skip_leak_check` when constructing the
@@ -250,52 +258,38 @@ fn equate_impl_headers<'tcx>(
     result.map(|infer_ok| infer_ok.obligations).ok()
 }
 
-/// Given impl1 and impl2 check if both impls can be satisfied by a common type (including
-/// where-clauses) If so, return false, otherwise return true, they are disjoint.
-fn implicit_negative<'cx, 'tcx>(
+/// Check if both impls can be satisfied by a common type by considering whether
+/// any of either impl's obligations is not known to hold.
+///
+/// For example, given these two impls:
+///     `impl From<MyLocalType> for Box<dyn Error>` (in my crate)
+///     `impl<E> From<E> for Box<dyn Error> where E: Error` (in libstd)
+///
+/// After replacing both impl headers with inference vars (which happens before
+/// this function is called), we get:
+///     `Box<dyn Error>: From<MyLocalType>`
+///     `Box<dyn Error>: From<?E>`
+///
+/// This gives us `?E = MyLocalType`. We then certainly know that `MyLocalType: Error`
+/// never holds in intercrate mode since a local impl does not exist, and a
+/// downstream impl cannot be added -- therefore can consider the intersection
+/// of the two impls above to be empty.
+///
+/// Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
+fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl1_header: &ty::ImplHeader<'tcx>,
     impl2_header: ty::ImplHeader<'tcx>,
     obligations: PredicateObligations<'tcx>,
 ) -> bool {
-    // There's no overlap if obligations are unsatisfiable or if the obligation negated is
-    // satisfied.
-    //
-    // For example, given these two impl headers:
-    //
-    // `impl<'a> From<&'a str> for Box<dyn Error>`
-    // `impl<E> From<E> for Box<dyn Error> where E: Error`
-    //
-    // So we have:
-    //
-    // `Box<dyn Error>: From<&'?a str>`
-    // `Box<dyn Error>: From<?E>`
-    //
-    // After equating the two headers:
-    //
-    // `Box<dyn Error> = Box<dyn Error>`
-    // So, `?E = &'?a str` and then given the where clause `&'?a str: Error`.
-    //
-    // If the obligation `&'?a str: Error` holds, it means that there's overlap. If that doesn't
-    // hold we need to check if `&'?a str: !Error` holds, if doesn't hold there's overlap because
-    // at some point an impl for `&'?a str: Error` could be added.
-    debug!(
-        "implicit_negative(impl1_header={:?}, impl2_header={:?}, obligations={:?})",
-        impl1_header, impl2_header, obligations
-    );
     let infcx = selcx.infcx;
-    let opt_failing_obligation = impl1_header
-        .predicates
-        .iter()
-        .copied()
-        .chain(impl2_header.predicates)
-        .map(|p| infcx.resolve_vars_if_possible(p))
-        .map(|p| Obligation {
-            cause: ObligationCause::dummy(),
-            param_env,
-            recursion_depth: 0,
-            predicate: p,
+
+    let opt_failing_obligation = [&impl1_header.predicates, &impl2_header.predicates]
+        .into_iter()
+        .flatten()
+        .map(|&predicate| {
+            Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate)
         })
         .chain(obligations)
         .find(|o| !selcx.predicate_may_hold_fatal(o));
@@ -308,9 +302,27 @@ fn implicit_negative<'cx, 'tcx>(
     }
 }
 
-/// Given impl1 and impl2 check if both impls are never satisfied by a common type (including
-/// where-clauses) If so, return true, they are disjoint and false otherwise.
-fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> bool {
+/// Check if both impls can be satisfied by a common type by considering whether
+/// any of first impl's obligations is known not to hold *via a negative predicate*.
+///
+/// For example, given these two impls:
+///     `struct MyCustomBox<T: ?Sized>(Box<T>);`
+///     `impl From<&str> for MyCustomBox<dyn Error>` (in my crate)
+///     `impl<E> From<E> for MyCustomBox<dyn Error> where E: Error` (in my crate)
+///
+/// After replacing the second impl's header with inference vars, we get:
+///     `MyCustomBox<dyn Error>: From<&str>`
+///     `MyCustomBox<dyn Error>: From<?E>`
+///
+/// This gives us `?E = &str`. We then try to prove the first impl's predicates
+/// after negating, giving us `&str: !Error`. This is a negative impl provided by
+/// libstd, and therefore we can guarantee for certain that libstd will never add
+/// a positive impl for `&str: Error` (without it being a breaking change).
+fn impl_intersection_has_negative_obligation(
+    tcx: TyCtxt<'_>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
@@ -336,57 +348,45 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
     // Attempt to prove that impl2 applies, given all of the above.
     let selcx = &mut SelectionContext::new(&infcx);
     let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
-    let (subject2, obligations) =
+    let (subject2, normalization_obligations) =
         impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs, |_, _| {
             ObligationCause::dummy()
         });
 
-    !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
-}
-
-fn equate<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    impl_env: ty::ParamEnv<'tcx>,
-    subject1: ImplSubject<'tcx>,
-    subject2: ImplSubject<'tcx>,
-    obligations: impl Iterator<Item = PredicateObligation<'tcx>>,
-    body_def_id: DefId,
-) -> bool {
-    // do the impls unify? If not, not disjoint.
-    let Ok(InferOk { obligations: more_obligations, .. }) =
+    // do the impls unify? If not, then it's not currently possible to prove any
+    // obligations about their intersection.
+    let Ok(InferOk { obligations: equate_obligations, .. }) =
         infcx.at(&ObligationCause::dummy(), impl_env).eq(DefineOpaqueTypes::No,subject1, subject2)
     else {
         debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
-        return true;
+        return false;
     };
 
-    let opt_failing_obligation = obligations
-        .into_iter()
-        .chain(more_obligations)
-        .find(|o| negative_impl_exists(infcx, o, body_def_id));
-
-    if let Some(failing_obligation) = opt_failing_obligation {
-        debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-        false
-    } else {
-        true
+    for obligation in normalization_obligations.into_iter().chain(equate_obligations) {
+        if negative_impl_exists(&infcx, &obligation, impl1_def_id) {
+            debug!("overlap: obligation unsatisfiable {:?}", obligation);
+            return true;
+        }
     }
+
+    false
 }
 
-/// Try to prove that a negative impl exist for the given obligation and its super predicates.
+/// Try to prove that a negative impl exist for the obligation or its supertraits.
+///
+/// If such a negative impl exists, then the obligation definitely must not hold
+/// due to coherence, even if it's not necessarily "knowable" in this crate. Any
+/// valid impl downstream would not be able to exist due to the overlapping
+/// negative impl.
 #[instrument(level = "debug", skip(infcx))]
 fn negative_impl_exists<'tcx>(
     infcx: &InferCtxt<'tcx>,
     o: &PredicateObligation<'tcx>,
     body_def_id: DefId,
 ) -> bool {
-    if resolve_negative_obligation(infcx.fork(), o, body_def_id) {
-        return true;
-    }
-
     // Try to prove a negative obligation exists for super predicates
     for pred in util::elaborate(infcx.tcx, iter::once(o.predicate)) {
-        if resolve_negative_obligation(infcx.fork(), &o.with(infcx.tcx, pred), body_def_id) {
+        if prove_negated_obligation(infcx.fork(), &o.with(infcx.tcx, pred), body_def_id) {
             return true;
         }
     }
@@ -395,7 +395,7 @@ fn negative_impl_exists<'tcx>(
 }
 
 #[instrument(level = "debug", skip(infcx))]
-fn resolve_negative_obligation<'tcx>(
+fn prove_negated_obligation<'tcx>(
     infcx: InferCtxt<'tcx>,
     o: &PredicateObligation<'tcx>,
     body_def_id: DefId,

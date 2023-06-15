@@ -855,7 +855,7 @@ impl<'a> Builder<'a> {
         if compiler.host.contains("msvc") {
             let curpaths = env::var_os("PATH").unwrap_or_default();
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
-            for &(ref k, ref v) in self.cc[&compiler.host].env() {
+            for &(ref k, ref v) in self.cc.borrow()[&compiler.host].env() {
                 if k != "PATH" {
                     continue;
                 }

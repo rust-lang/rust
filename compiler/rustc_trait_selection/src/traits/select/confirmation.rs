@@ -6,6 +6,7 @@
 //!
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
+use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
@@ -13,7 +14,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
 use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
-    TraitRef, Ty, TyCtxt, TypeVisitableExt,
+    TraitPredicate, TraitRef, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
@@ -279,11 +280,60 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ImplSourceBuiltinData { nested: obligations }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn confirm_transmutability_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        debug!(?obligation, "confirm_transmutability_candidate");
+        use rustc_transmute::{Answer, Condition};
+        #[instrument(level = "debug", skip(tcx, obligation, predicate))]
+        fn flatten_answer_tree<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            obligation: &TraitObligation<'tcx>,
+            predicate: TraitPredicate<'tcx>,
+            cond: Condition<rustc_transmute::layout::rustc::Ref<'tcx>>,
+        ) -> Vec<PredicateObligation<'tcx>> {
+            match cond {
+                // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
+                // Not possible until the trait solver supports disjunctions of obligations
+                Condition::IfAll(conds) | Condition::IfAny(conds) => conds
+                    .into_iter()
+                    .flat_map(|cond| flatten_answer_tree(tcx, obligation, predicate, cond))
+                    .collect(),
+                Condition::IfTransmutable { src, dst } => {
+                    let trait_def_id = obligation.predicate.def_id();
+                    let scope = predicate.trait_ref.substs.type_at(2);
+                    let assume_const = predicate.trait_ref.substs.const_at(3);
+                    let make_obl = |from_ty, to_ty| {
+                        let trait_ref1 = ty::TraitRef::new(
+                            tcx,
+                            trait_def_id,
+                            [
+                                ty::GenericArg::from(to_ty),
+                                ty::GenericArg::from(from_ty),
+                                ty::GenericArg::from(scope),
+                                ty::GenericArg::from(assume_const),
+                            ],
+                        );
+                        Obligation::with_depth(
+                            tcx,
+                            obligation.cause.clone(),
+                            obligation.recursion_depth + 1,
+                            obligation.param_env,
+                            trait_ref1,
+                        )
+                    };
+
+                    // If Dst is mutable, check bidirectionally.
+                    // For example, transmuting bool -> u8 is OK as long as you can't update that u8
+                    // to be > 1, because you could later transmute the u8 back to a bool and get UB.
+                    match dst.mutability {
+                        Mutability::Not => vec![make_obl(src.ty, dst.ty)],
+                        Mutability::Mut => vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)],
+                    }
+                }
+            }
+        }
 
         // We erase regions here because transmutability calls layout queries,
         // which does not handle inference regions and doesn't particularly
@@ -301,21 +351,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(Unimplemented);
         };
 
+        let dst = predicate.trait_ref.substs.type_at(0);
+        let src = predicate.trait_ref.substs.type_at(1);
+        debug!(?src, ?dst);
         let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
         let maybe_transmutable = transmute_env.is_transmutable(
             obligation.cause.clone(),
-            rustc_transmute::Types {
-                dst: predicate.trait_ref.substs.type_at(0),
-                src: predicate.trait_ref.substs.type_at(1),
-            },
+            rustc_transmute::Types { dst, src },
             predicate.trait_ref.substs.type_at(2),
             assume,
         );
 
-        match maybe_transmutable {
-            rustc_transmute::Answer::Yes => Ok(ImplSourceBuiltinData { nested: vec![] }),
-            _ => Err(Unimplemented),
-        }
+        let fully_flattened = match maybe_transmutable {
+            Answer::No(_) => Err(Unimplemented)?,
+            Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation, predicate, cond),
+            Answer::Yes => vec![],
+        };
+
+        debug!(?fully_flattened);
+        Ok(ImplSourceBuiltinData { nested: fully_flattened })
     }
 
     /// This handles the case where an `auto trait Foo` impl is being used.

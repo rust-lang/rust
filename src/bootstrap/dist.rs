@@ -170,6 +170,10 @@ fn make_win_dist(
     target: TargetSelection,
     builder: &Builder<'_>,
 ) {
+    if builder.config.dry_run() {
+        return;
+    }
+
     //Ask gcc where it keeps its stuff
     let mut cmd = Command::new(builder.cc(target));
     cmd.arg("-print-search-dirs");

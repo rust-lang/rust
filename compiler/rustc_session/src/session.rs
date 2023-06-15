@@ -234,6 +234,27 @@ pub enum MetadataKind {
     Compressed,
 }
 
+#[derive(Clone, Copy)]
+pub enum CodegenUnits {
+    /// Specified by the user. In this case we try fairly hard to produce the
+    /// number of CGUs requested.
+    User(usize),
+
+    /// A default value, i.e. not specified by the user. In this case we take
+    /// more liberties about CGU formation, e.g. avoid producing very small
+    /// CGUs.
+    Default(usize),
+}
+
+impl CodegenUnits {
+    pub fn as_usize(self) -> usize {
+        match self {
+            CodegenUnits::User(n) => n,
+            CodegenUnits::Default(n) => n,
+        }
+    }
+}
+
 impl Session {
     pub fn miri_unleashed_feature(&self, span: Span, feature_gate: Option<Symbol>) {
         self.miri_unleashed_features.lock().push((span, feature_gate));
@@ -1104,7 +1125,7 @@ impl Session {
 
         // If there's only one codegen unit and LTO isn't enabled then there's
         // no need for ThinLTO so just return false.
-        if self.codegen_units() == 1 {
+        if self.codegen_units().as_usize() == 1 {
             return config::Lto::No;
         }
 
@@ -1206,19 +1227,19 @@ impl Session {
 
     /// Returns the number of codegen units that should be used for this
     /// compilation
-    pub fn codegen_units(&self) -> usize {
+    pub fn codegen_units(&self) -> CodegenUnits {
         if let Some(n) = self.opts.cli_forced_codegen_units {
-            return n;
+            return CodegenUnits::User(n);
         }
         if let Some(n) = self.target.default_codegen_units {
-            return n as usize;
+            return CodegenUnits::Default(n as usize);
         }
 
         // If incremental compilation is turned on, we default to a high number
         // codegen units in order to reduce the "collateral damage" small
         // changes cause.
         if self.opts.incremental.is_some() {
-            return 256;
+            return CodegenUnits::Default(256);
         }
 
         // Why is 16 codegen units the default all the time?
@@ -1271,7 +1292,7 @@ impl Session {
         // As a result 16 was chosen here! Mostly because it was a power of 2
         // and most benchmarks agreed it was roughly a local optimum. Not very
         // scientific.
-        16
+        CodegenUnits::Default(16)
     }
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {

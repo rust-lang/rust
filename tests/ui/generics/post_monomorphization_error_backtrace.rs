@@ -11,7 +11,7 @@ fn assert_zst<T>() {
         //~| NOTE: in this expansion of assert!
         //~| NOTE: the evaluated program panicked
     }
-    let _ = F::<T>::V;
+    F::<T>::V;
 }
 
 fn foo<U>() {
