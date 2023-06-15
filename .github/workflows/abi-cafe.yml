@@ -46,12 +46,12 @@ jobs:
       run: rustup set default-host x86_64-pc-windows-gnu
 
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Build
-      run: ./y.rs build --sysroot none
+      run: ./y.sh build --sysroot none
 
     - name: Test abi-cafe
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: ./y.rs abi-cafe
+      run: ./y.sh abi-cafe

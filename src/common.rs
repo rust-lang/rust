@@ -455,12 +455,12 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {
-        let mut data_ctx = DataContext::new();
-        data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
+        let mut data = DataDescription::new();
+        data.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self.module.declare_anonymous_data(false, false).unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.module.define_data(msg_id, &data_ctx);
+        let _ = self.module.define_data(msg_id, &data);
 
         let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
         if self.clif_comments.enabled() {

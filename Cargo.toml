@@ -3,31 +3,23 @@ name = "rustc_codegen_cranelift"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-# This is used just to teach rust-analyzer how to check the build system. required-features is used
-# to disable it for regular builds.
-name = "y"
-path = "./y.rs"
-required-features = ["__check_build_system_using_ra"]
-
 [lib]
 crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { version = "0.95.1", features = ["unwind", "all-arch"] }
-cranelift-frontend = { version = "0.95.1" }
-cranelift-module = { version = "0.95.1" }
-cranelift-native = { version = "0.95.1" }
-cranelift-jit = { version = "0.95.1", optional = true }
-cranelift-object = { version = "0.95.1" }
+cranelift-codegen = {  version = "0.96.1", features = ["unwind", "all-arch"] }
+cranelift-frontend = { version = "0.96.1" }
+cranelift-module = { version = "0.96.1" }
+cranelift-native = { version = "0.96.1" }
+cranelift-jit = { version = "0.96.1", optional = true }
+cranelift-object = { version = "0.96.1" }
 target-lexicon = "0.12.0"
 gimli = { version = "0.27.2", default-features = false, features = ["write"]}
 object = { version = "0.30.3", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
 indexmap = "1.9.3"
 libloading = { version = "0.7.3", optional = true }
-once_cell = "1.10.0"
 smallvec = "1.8.1"
 
 [patch.crates-io]
@@ -46,7 +38,6 @@ smallvec = "1.8.1"
 unstable-features = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
-__check_build_system_using_ra = []
 
 [package.metadata.rust-analyzer]
 rustc_private = true

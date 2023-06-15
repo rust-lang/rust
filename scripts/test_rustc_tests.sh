@@ -10,10 +10,15 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-# FIXME add needs-asm-support to all tests in tests/ui/asm
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" tests/{codegen-units,ui,incremental}); do
+for test in $(rg --files-with-matches "lto|// needs-asm-support" tests/{codegen-units,ui,incremental}); do
   rm $test
+done
+
+for test in tests/run-make/**/Makefile; do
+  if rg "# needs-asm-support" $test >/dev/null; then
+    rm -r $(dirname $test)
+  fi
 done
 
 for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
@@ -28,30 +33,20 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # ================
 
 # requires stack unwinding
-# FIXME add needs-unwind to these tests
-rm tests/incremental/change_crate_dep_kind.rs
-rm tests/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
-rm -r tests/run-make/c-unwind-abi-catch-lib-panic
-rm -r tests/run-make/c-unwind-abi-catch-panic
-rm -r tests/run-make/debug-assertions
-rm -r tests/run-make/foreign-double-unwind
-rm -r tests/run-make/foreign-exceptions
-rm -r tests/run-make/foreign-rust-exceptions
-rm -r tests/run-make/libtest-json
-rm -r tests/run-make/static-unwinding
+# FIXME add needs-unwind to this test
+rm -r tests/run-make/libtest-junit
 
-# requires compiling with -Cpanic=unwind
-rm -r tests/ui/macros/rfc-2011-nicer-assert-messages/
-rm -r tests/run-make/test-benches
-rm tests/ui/test-attrs/test-type.rs
-rm -r tests/run-make/const_fn_mir
-rm -r tests/run-make/intrinsic-unreachable
+# extra warning about -Cpanic=abort for proc macros
+rm tests/ui/proc-macro/crt-static.rs
+rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs
+rm tests/ui/proc-macro/quote-debug.rs
+rm tests/ui/proc-macro/no-missing-docs.rs
+rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs
+rm tests/ui/proc-macro/allowed-signatures.rs
 
 # vendor intrinsics
 rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
-rm tests/ui/intrinsics/const-eval-select-x86_64.rs # requires x86_64 vendor intrinsics
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
-rm tests/ui/simd/intrinsic/float-math-pass.rs # simd_fcos unimplemented
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
@@ -85,6 +80,7 @@ rm -r tests/run-make/issue-64153
 rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
+rm -r tests/run-make/issue-109934-lto-debuginfo
 
 # optimization tests
 # ==================
@@ -120,13 +116,8 @@ rm tests/ui/lint/lint-const-item-mutation.rs # same
 rm tests/ui/pattern/usefulness/doc-hidden-non-exhaustive.rs # same
 rm tests/ui/suggestions/derive-trait-for-method-call.rs # same
 rm tests/ui/typeck/issue-46112.rs # same
-
-rm tests/ui/proc-macro/crt-static.rs # extra warning about -Cpanic=abort for proc macros
-rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs # same
-rm tests/ui/proc-macro/quote-debug.rs # same
-rm tests/ui/proc-macro/no-missing-docs.rs # same
-rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs # same
-rm tests/ui/proc-macro/allowed-signatures.rs # same
+rm tests/ui/consts/const_cmp_type_id.rs # same
+rm tests/ui/consts/issue-73976-monomorphic.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
@@ -142,15 +133,15 @@ rm -r tests/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to b
 rm tests/incremental/spike-neg1.rs # errors out for some reason
 rm tests/incremental/spike-neg2.rs # same
 
-rm tests/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
-
-rm tests/ui/simd/simd-bitmask.rs # crash
+rm tests/ui/simd/simd-bitmask.rs # simd_bitmask doesn't implement [u*; N] return type
 
 rm -r tests/run-make/issue-51671 # wrong filename given in case of --emit=obj
 rm -r tests/run-make/issue-30063 # same
 rm -r tests/run-make/multiple-emits # same
 rm -r tests/run-make/output-type-permutations # same
 rm -r tests/run-make/used # same
+rm -r tests/run-make/no-alloc-shim
+rm -r tests/run-make/emit-to-stdout
 
 # bugs in the test suite
 # ======================

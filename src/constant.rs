@@ -324,12 +324,12 @@ fn data_id_for_static(
 
         let ref_name = format!("_rust_extern_with_linkage_{}", symbol_name);
         let ref_data_id = module.declare_data(&ref_name, Linkage::Local, false, false).unwrap();
-        let mut data_ctx = DataContext::new();
-        data_ctx.set_align(align);
-        let data = module.declare_data_in_data(data_id, &mut data_ctx);
-        data_ctx.define(std::iter::repeat(0).take(pointer_ty(tcx).bytes() as usize).collect());
-        data_ctx.write_data_addr(0, data, 0);
-        match module.define_data(ref_data_id, &data_ctx) {
+        let mut data = DataDescription::new();
+        data.set_align(align);
+        let data_gv = module.declare_data_in_data(data_id, &mut data);
+        data.define(std::iter::repeat(0).take(pointer_ty(tcx).bytes() as usize).collect());
+        data.write_data_addr(0, data_gv, 0);
+        match module.define_data(ref_data_id, &data) {
             // Every time the static is referenced there will be another definition of this global,
             // so duplicate definitions are expected and allowed.
             Err(ModuleError::DuplicateDefinition(_)) => {}
@@ -394,9 +394,9 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             continue;
         }
 
-        let mut data_ctx = DataContext::new();
+        let mut data = DataDescription::new();
         let alloc = alloc.inner();
-        data_ctx.set_align(alloc.align.bytes());
+        data.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
             let (segment_name, section_name) = if tcx.sess.target.is_like_osx {
@@ -412,11 +412,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             } else {
                 ("", section_name.as_str())
             };
-            data_ctx.set_segment_section(segment_name, section_name);
+            data.set_segment_section(segment_name, section_name);
         }
 
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
-        data_ctx.define(bytes.into_boxed_slice());
+        data.define(bytes.into_boxed_slice());
 
         for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
             let addend = {
@@ -435,8 +435,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     assert_eq!(addend, 0);
                     let func_id =
                         crate::abi::import_function(tcx, module, instance.polymorphize(tcx));
-                    let local_func_id = module.declare_func_in_data(func_id, &mut data_ctx);
-                    data_ctx.write_function_addr(offset.bytes() as u32, local_func_id);
+                    let local_func_id = module.declare_func_in_data(func_id, &mut data);
+                    data.write_function_addr(offset.bytes() as u32, local_func_id);
                     continue;
                 }
                 GlobalAlloc::Memory(target_alloc) => {
@@ -462,11 +462,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 }
             };
 
-            let global_value = module.declare_data_in_data(data_id, &mut data_ctx);
-            data_ctx.write_data_addr(offset.bytes() as u32, global_value, addend as i64);
+            let global_value = module.declare_data_in_data(data_id, &mut data);
+            data.write_data_addr(offset.bytes() as u32, global_value, addend as i64);
         }
 
-        module.define_data(data_id, &data_ctx).unwrap();
+        module.define_data(data_id, &data).unwrap();
         cx.done.insert(data_id);
     }
 
