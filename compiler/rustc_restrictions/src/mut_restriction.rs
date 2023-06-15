@@ -108,7 +108,7 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Aggregate(box AggregateKind::Adt(def_id, variant_idx, _, _, _), _) = rvalue {
-            let adt_def = self.tcx.type_of(def_id).0.ty_adt_def().unwrap();
+            let adt_def = self.tcx.type_of(def_id).skip_binder().ty_adt_def().unwrap();
             let variant = adt_def.variant(*variant_idx);
 
             let construction_restriction = self.tcx.adt_expression_restriction(variant.def_id);

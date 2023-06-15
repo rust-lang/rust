@@ -1019,9 +1019,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             RestrictionResolutionError::AncestorOnly(span) => {
                 self.tcx.sess.create_err(errs::RestrictionAncestorOnly(span))
             }
-            RestrictionResolutionError::FailedToResolve(span, label, suggestion) => {
-                self.into_struct_error(span, ResolutionError::FailedToResolve { label, suggestion })
-            }
+            RestrictionResolutionError::FailedToResolve(span, label, suggestion) => self
+                .into_struct_error(
+                    span,
+                    ResolutionError::FailedToResolve {
+                        last_segment: None,
+                        label,
+                        suggestion,
+                        module: None,
+                    },
+                ),
             RestrictionResolutionError::ExpectedFound(span, path_str, res) => {
                 self.tcx.sess.create_err(errs::ExpectedFound { span, res, path_str })
             }
