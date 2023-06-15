@@ -1342,6 +1342,8 @@ pub struct OverflowingBinHex<'a> {
     pub sign: OverflowingBinHexSign,
     #[subdiagnostic]
     pub sub: Option<OverflowingBinHexSub<'a>>,
+    #[subdiagnostic]
+    pub sign_bit_sub: Option<OverflowingBinHexSignBitSub<'a>>,
 }
 
 pub enum OverflowingBinHexSign {
@@ -1384,6 +1386,21 @@ pub enum OverflowingBinHexSub<'a> {
     },
     #[help(lint_help)]
     Help { suggestion_ty: &'a str },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    lint_sign_bit_suggestion,
+    code = "{lit_no_suffix}{uint_ty} as {int_ty}",
+    applicability = "maybe-incorrect"
+)]
+pub struct OverflowingBinHexSignBitSub<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub lit_no_suffix: &'a str,
+    pub negative_val: String,
+    pub uint_ty: &'a str,
+    pub int_ty: &'a str,
 }
 
 #[derive(LintDiagnostic)]

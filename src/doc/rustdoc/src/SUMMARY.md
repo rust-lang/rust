@@ -7,6 +7,7 @@
 - [How to write documentation](how-to-write-documentation.md)
     - [What to include (and exclude)](write-documentation/what-to-include.md)
     - [The `#[doc]` attribute](write-documentation/the-doc-attribute.md)
+    - [Re-exports](write-documentation/re-exports.md)
     - [Linking to items by name](write-documentation/linking-to-items-by-name.md)
     - [Documentation tests](write-documentation/documentation-tests.md)
 - [Rustdoc-specific lints](lints.md)

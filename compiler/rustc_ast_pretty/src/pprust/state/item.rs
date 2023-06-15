@@ -623,19 +623,8 @@ impl<'a> State<'a> {
 
     pub fn print_where_predicate(&mut self, predicate: &ast::WherePredicate) {
         match predicate {
-            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                bound_generic_params,
-                bounded_ty,
-                bounds,
-                ..
-            }) => {
-                self.print_formal_generic_params(bound_generic_params);
-                self.print_type(bounded_ty);
-                self.word(":");
-                if !bounds.is_empty() {
-                    self.nbsp();
-                    self.print_type_bounds(bounds);
-                }
+            ast::WherePredicate::BoundPredicate(where_bound_predicate) => {
+                self.print_where_bound_predicate(where_bound_predicate);
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 lifetime,
@@ -655,6 +644,19 @@ impl<'a> State<'a> {
                 self.word_space("=");
                 self.print_type(rhs_ty);
             }
+        }
+    }
+
+    pub fn print_where_bound_predicate(
+        &mut self,
+        where_bound_predicate: &ast::WhereBoundPredicate,
+    ) {
+        self.print_formal_generic_params(&where_bound_predicate.bound_generic_params);
+        self.print_type(&where_bound_predicate.bounded_ty);
+        self.word(":");
+        if !where_bound_predicate.bounds.is_empty() {
+            self.nbsp();
+            self.print_type_bounds(&where_bound_predicate.bounds);
         }
     }
 
