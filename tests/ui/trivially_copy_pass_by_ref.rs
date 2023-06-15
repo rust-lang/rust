@@ -5,7 +5,8 @@
     clippy::disallowed_names,
     clippy::needless_lifetimes,
     clippy::redundant_field_names,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::needless_pass_by_ref_mut
 )]
 
 #[derive(Copy, Clone)]

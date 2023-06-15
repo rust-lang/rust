@@ -1,3 +1,11 @@
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/infinite_loop.rs:7:17
+   |
+LL | fn fn_mutref(i: &mut i32) {
+   |                 ^^^^^^^^ help: consider changing to: `&i32`
+   |
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+
 error: variables in the condition are not mutated in the loop body
   --> $DIR/infinite_loop.rs:20:11
    |
@@ -91,5 +99,5 @@ LL |     while y < 10 {
    = note: this loop contains `return`s or `break`s
    = help: rewrite it as `if cond { loop { } }`
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
