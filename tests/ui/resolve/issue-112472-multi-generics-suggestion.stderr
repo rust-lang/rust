@@ -1,0 +1,25 @@
+error[E0404]: expected trait, found enum `ParseError`
+  --> $DIR/issue-112472-multi-generics-suggestion.rs:17:54
+   |
+LL |     <DecodeLine as convert::TryFrom<String>>::Error: ParseError,
+   |                                                      ^^^^^^^^^^ not a trait
+   |
+help: constrain the associated type to `ParseError`
+   |
+LL |     DecodeLine: convert::TryFrom<String, Error = ParseError>,
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0404]: expected trait, found enum `ParseError`
+  --> $DIR/issue-112472-multi-generics-suggestion.rs:25:45
+   |
+LL |     <DecodeLine as TryFrom<String>>::Error: ParseError,
+   |                                             ^^^^^^^^^^ not a trait
+   |
+help: constrain the associated type to `ParseError`
+   |
+LL |     DecodeLine: TryFrom<String, Error = ParseError>,
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0404`.

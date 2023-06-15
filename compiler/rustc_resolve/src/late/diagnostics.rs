@@ -10,7 +10,7 @@ use rustc_ast::{
     self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
     MethodCall, NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
 };
-use rustc_ast_pretty::pprust::path_segment_to_string;
+use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
@@ -1050,7 +1050,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             };
 
         // Confirm that the target is an associated type.
-        let (ty, position, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
+        let (ty, _, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
             // use this to verify that ident is a type param.
             let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else {
                 return false;
@@ -1079,7 +1079,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 return false;
             }
             if let (
-                [ast::PathSegment { ident: constrain_ident, args: None, .. }],
+                [ast::PathSegment { args: None, .. }],
                 [ast::GenericBound::Trait(poly_trait_ref, ast::TraitBoundModifier::None)],
             ) = (&type_param_path.segments[..], &bounds[..])
             {
@@ -1087,29 +1087,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     &poly_trait_ref.trait_ref.path.segments[..]
                 {
                     if ident.span == span {
+                        let Some(new_where_bound_predicate) = mk_where_bound_predicate(path, poly_trait_ref, ty) else { return false; };
                         err.span_suggestion_verbose(
                             *where_span,
                             format!("constrain the associated type to `{}`", ident),
-                            format!(
-                                "{}: {}<{} = {}>",
-                                self.r
-                                    .tcx
-                                    .sess
-                                    .source_map()
-                                    .span_to_snippet(ty.span) // Account for `<&'a T as Foo>::Bar`.
-                                    .unwrap_or_else(|_| constrain_ident.to_string()),
-                                path.segments[..position]
-                                    .iter()
-                                    .map(|segment| path_segment_to_string(segment))
-                                    .collect::<Vec<_>>()
-                                    .join("::"),
-                                path.segments[position..]
-                                    .iter()
-                                    .map(|segment| path_segment_to_string(segment))
-                                    .collect::<Vec<_>>()
-                                    .join("::"),
-                                ident,
-                            ),
+                            where_bound_predicate_to_string(&new_where_bound_predicate),
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -2603,6 +2585,70 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         }
     }
+}
+
+fn mk_where_bound_predicate(
+    path: &Path,
+    poly_trait_ref: &ast::PolyTraitRef,
+    ty: &ast::Ty,
+) -> Option<ast::WhereBoundPredicate> {
+    use rustc_span::DUMMY_SP;
+    let modified_segments = {
+        let mut segments = path.segments.clone();
+        let [preceding @ .., second_last, last] = segments.as_mut_slice() else { return None; };
+        let mut segments = ThinVec::from(preceding);
+
+        let added_constraint = ast::AngleBracketedArg::Constraint(ast::AssocConstraint {
+            id: DUMMY_NODE_ID,
+            ident: last.ident,
+            gen_args: None,
+            kind: ast::AssocConstraintKind::Equality {
+                term: ast::Term::Ty(ast::ptr::P(ast::Ty {
+                    kind: ast::TyKind::Path(None, poly_trait_ref.trait_ref.path.clone()),
+                    id: DUMMY_NODE_ID,
+                    span: DUMMY_SP,
+                    tokens: None,
+                })),
+            },
+            span: DUMMY_SP,
+        });
+
+        match second_last.args.as_deref_mut() {
+            Some(ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs { args, .. })) => {
+                args.push(added_constraint);
+            }
+            Some(_) => return None,
+            None => {
+                second_last.args =
+                    Some(ast::ptr::P(ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
+                        args: ThinVec::from([added_constraint]),
+                        span: DUMMY_SP,
+                    })));
+            }
+        }
+
+        segments.push(second_last.clone());
+        segments
+    };
+
+    let new_where_bound_predicate = ast::WhereBoundPredicate {
+        span: DUMMY_SP,
+        bound_generic_params: ThinVec::new(),
+        bounded_ty: ast::ptr::P(ty.clone()),
+        bounds: vec![ast::GenericBound::Trait(
+            ast::PolyTraitRef {
+                bound_generic_params: ThinVec::new(),
+                trait_ref: ast::TraitRef {
+                    path: ast::Path { segments: modified_segments, span: DUMMY_SP, tokens: None },
+                    ref_id: DUMMY_NODE_ID,
+                },
+                span: DUMMY_SP,
+            },
+            ast::TraitBoundModifier::None,
+        )],
+    };
+
+    Some(new_where_bound_predicate)
 }
 
 /// Report lifetime/lifetime shadowing as an error.
