@@ -1,0 +1,30 @@
+error[E0277]: `&[u8; 0]` cannot be safely transmuted into `&[u16; 0]` in the defining scope of `assert::Context`
+  --> $DIR/align-fail.rs:22:55
+   |
+LL | ...tatic [u8; 0], &'static [u16; 0]>();
+   |                   ^^^^^^^^^^^^^^^^^ The minimum alignment of `&[u8; 0]` (1) should be greater than that of `&[u16; 0]` (2)
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/align-fail.rs:10:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: false,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+help: consider removing the leading `&`-reference
+   |
+LL -     assert::is_maybe_transmutable::<&'static [u8; 0], &'static [u16; 0]>();
+LL +     assert::is_maybe_transmutable::<&'static [u8; 0], [u16; 0]>();
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

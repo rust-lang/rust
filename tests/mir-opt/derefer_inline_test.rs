@@ -1,6 +1,6 @@
 // unit-test: Derefer
 // EMIT_MIR derefer_inline_test.main.Derefer.diff
-// ignore-wasm32 compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #[inline]
 fn f() -> Box<u32> {

@@ -430,6 +430,13 @@ fn run_compiler(
                 sess.code_stats.print_type_sizes();
             }
 
+            if sess.opts.unstable_opts.print_vtable_sizes {
+                let crate_name =
+                    compiler.session().opts.crate_name.as_deref().unwrap_or("<UNKNOWN_CRATE>");
+
+                sess.code_stats.print_vtable_sizes(crate_name);
+            }
+
             let linker = queries.linker()?;
             Ok(Some(linker))
         })?;
@@ -764,9 +771,7 @@ fn print_crate_info(
                 use rustc_target::spec::SplitDebuginfo::{Off, Packed, Unpacked};
 
                 for split in &[Off, Packed, Unpacked] {
-                    let stable = sess.target.options.supported_split_debuginfo.contains(split);
-                    let unstable_ok = sess.unstable_options();
-                    if stable || unstable_ok {
+                    if sess.target.options.supported_split_debuginfo.contains(split) {
                         safe_println!("{split}");
                     }
                 }

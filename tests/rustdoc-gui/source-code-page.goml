@@ -64,23 +64,23 @@ call-function: ("check-colors", {
 compare-elements-position: ("//*[@id='1']", ".rust > code > span", ("y"))
 // Check the `href` property so that users can treat anchors as links.
 assert-property: (".src-line-numbers > a:nth-child(1)", {
-    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#1"
-})
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#1"
+}, ENDS_WITH)
 assert-property: (".src-line-numbers > a:nth-child(2)", {
-    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#2"
-})
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#2"
+}, ENDS_WITH)
 assert-property: (".src-line-numbers > a:nth-child(3)", {
-    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#3"
-})
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#3"
+}, ENDS_WITH)
 assert-property: (".src-line-numbers > a:nth-child(4)", {
-    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#4"
-})
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#4"
+}, ENDS_WITH)
 assert-property: (".src-line-numbers > a:nth-child(5)", {
-    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#5"
-})
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#5"
+}, ENDS_WITH)
 assert-property: (".src-line-numbers > a:nth-child(6)", {
-    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#6"
-})
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#6"
+}, ENDS_WITH)
 
 // Assert that the line numbers text is aligned to the right.
 assert-css: (".src-line-numbers", {"text-align": "right"})

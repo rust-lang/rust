@@ -626,13 +626,8 @@ impl Wtf8 {
     ///
     /// This does not copy the data.
     #[inline]
-    pub fn as_str(&self) -> Option<&str> {
-        // Well-formed WTF-8 is also well-formed UTF-8
-        // if and only if it contains no surrogate.
-        match self.next_surrogate(0) {
-            None => Some(unsafe { str::from_utf8_unchecked(&self.bytes) }),
-            Some(_) => None,
-        }
+    pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
+        str::from_utf8(&self.bytes)
     }
 
     /// Creates an owned `Wtf8Buf` from a borrowed `Wtf8`.

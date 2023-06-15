@@ -1,0 +1,12 @@
+error[E0050]: method `calm_down_please` has 3 parameters but the declaration in trait `TooMuch::calm_down_please` has 0
+  --> $DIR/method-signature-matches.rs:36:28
+   |
+LL |     fn calm_down_please() -> impl Sized;
+   |     ------------------------------------ trait requires 0 parameters
+...
+LL |     fn calm_down_please(_: (), _: (), _: ()) {}
+   |                            ^^^^^^^^^^^^^^^^ expected 0 parameters, found 3
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0050`.

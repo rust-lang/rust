@@ -1930,6 +1930,7 @@ Windows.Win32.Foundation.SetLastError
 Windows.Win32.Foundation.STATUS_DELETE_PENDING
 Windows.Win32.Foundation.STATUS_END_OF_FILE
 Windows.Win32.Foundation.STATUS_INVALID_PARAMETER
+Windows.Win32.Foundation.STATUS_NOT_IMPLEMENTED
 Windows.Win32.Foundation.STATUS_PENDING
 Windows.Win32.Foundation.STATUS_SUCCESS
 Windows.Win32.Foundation.TRUE

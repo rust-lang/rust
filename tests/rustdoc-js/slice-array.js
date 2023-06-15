@@ -51,4 +51,23 @@ const EXPECTED = [
             { 'path': 'slice_array', 'name': 'gamma' },
         ],
     },
+    {
+        'query': '[TraitCat]',
+        'in_args': [
+            { 'path': 'slice_array', 'name': 'gamma' },
+            { 'path': 'slice_array', 'name': 'epsilon' },
+        ],
+    },
+    {
+        'query': 'R<[Q]>',
+        'returned': [
+            { 'path': 'slice_array', 'name': 'bet' },
+        ],
+    },
+    {
+        'query': 'R<[P]>',
+        'in_args': [
+            { 'path': 'slice_array', 'name': 'alpha' },
+        ],
+    },
 ];

@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/rust-call.rs:10:7
+   |
+LL |     f(*slice);
+   |       ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `([u8],)`, the trait `Sized` is not implemented for `[u8]`
+   = note: required because it appears within the type `([u8],)`
+   = note: argument required to be sized due to `extern "rust-call"` ABI
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -131,6 +131,15 @@ pub enum PanicStrategy {
     Abort,
 }
 
+impl PanicStrategy {
+    pub(crate) fn for_miropt_test_tools(&self) -> miropt_test_tools::PanicStrategy {
+        match self {
+            PanicStrategy::Unwind => miropt_test_tools::PanicStrategy::Unwind,
+            PanicStrategy::Abort => miropt_test_tools::PanicStrategy::Abort,
+        }
+    }
+}
+
 /// Configuration for compiletest
 #[derive(Debug, Default, Clone)]
 pub struct Config {
@@ -572,7 +581,7 @@ pub struct TargetCfg {
     #[serde(rename = "target-endian", default)]
     endian: Endian,
     #[serde(rename = "panic-strategy", default)]
-    panic: PanicStrategy,
+    pub(crate) panic: PanicStrategy,
 }
 
 impl TargetCfg {

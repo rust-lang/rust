@@ -1030,7 +1030,11 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// If the closure returns false, the element will remain in the list and will not be yielded
     /// by the iterator.
     ///
-    /// Note that `drain_filter` lets you mutate every element in the filter closure, regardless of
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use `extract_if().for_each(drop)` if you do not need the returned iterator.
+    ///
+    /// Note that `extract_if` lets you mutate every element in the filter closure, regardless of
     /// whether you choose to keep or remove it.
     ///
     /// # Examples
@@ -1038,20 +1042,20 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Splitting a list into evens and odds, reusing the original list:
     ///
     /// ```
-    /// #![feature(drain_filter)]
+    /// #![feature(extract_if)]
     /// use std::collections::LinkedList;
     ///
     /// let mut numbers: LinkedList<u32> = LinkedList::new();
     /// numbers.extend(&[1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
     ///
-    /// let evens = numbers.drain_filter(|x| *x % 2 == 0).collect::<LinkedList<_>>();
+    /// let evens = numbers.extract_if(|x| *x % 2 == 0).collect::<LinkedList<_>>();
     /// let odds = numbers;
     ///
     /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
-    #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A>
+    #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+    pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
     {
@@ -1059,7 +1063,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         let it = self.head;
         let old_len = self.len;
 
-        DrainFilter { list: self, it, pred: filter, idx: 0, old_len }
+        ExtractIf { list: self, it, pred: filter, idx: 0, old_len }
     }
 }
 
@@ -1803,9 +1807,10 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     }
 }
 
-/// An iterator produced by calling `drain_filter` on LinkedList.
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-pub struct DrainFilter<
+/// An iterator produced by calling `extract_if` on LinkedList.
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+pub struct ExtractIf<
     'a,
     T: 'a,
     F: 'a,
@@ -1820,8 +1825,8 @@ pub struct DrainFilter<
     old_len: usize,
 }
 
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Iterator for DrainFilter<'_, T, F, A>
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+impl<T, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {
@@ -1849,40 +1854,13 @@ where
     }
 }
 
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Drop for DrainFilter<'_, T, F, A>
-where
-    F: FnMut(&mut T) -> bool,
-{
-    fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T, F, A: Allocator>(&'r mut DrainFilter<'a, T, F, A>)
-        where
-            F: FnMut(&mut T) -> bool;
-
-        impl<'r, 'a, T, F, A: Allocator> Drop for DropGuard<'r, 'a, T, F, A>
-        where
-            F: FnMut(&mut T) -> bool,
-        {
-            fn drop(&mut self) {
-                self.0.for_each(drop);
-            }
-        }
-
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
-        }
-    }
-}
-
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T: fmt::Debug, F> fmt::Debug for DrainFilter<'_, T, F>
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+impl<T: fmt::Debug, F> fmt::Debug for ExtractIf<'_, T, F>
 where
     F: FnMut(&mut T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DrainFilter").field(&self.list).finish()
+        f.debug_tuple("ExtractIf").field(&self.list).finish()
     }
 }
 

@@ -71,10 +71,10 @@ use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-pub use self::drain_filter::DrainFilter;
+#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+pub use self::extract_if::ExtractIf;
 
-mod drain_filter;
+mod extract_if;
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_splice", since = "1.21.0")]
@@ -2892,6 +2892,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// If the closure returns false, the element will remain in the vector and will not be yielded
     /// by the iterator.
     ///
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
+    ///
+    /// [`retain`]: Vec::retain
+    ///
     /// Using this method is equivalent to the following code:
     ///
     /// ```
@@ -2910,10 +2916,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # assert_eq!(vec, vec![1, 4, 5]);
     /// ```
     ///
-    /// But `drain_filter` is easier to use. `drain_filter` is also more efficient,
+    /// But `extract_if` is easier to use. `extract_if` is also more efficient,
     /// because it can backshift the elements of the array in bulk.
     ///
-    /// Note that `drain_filter` also lets you mutate every element in the filter closure,
+    /// Note that `extract_if` also lets you mutate every element in the filter closure,
     /// regardless of whether you choose to keep or remove it.
     ///
     /// # Examples
@@ -2921,17 +2927,17 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Splitting an array into evens and odds, reusing the original allocation:
     ///
     /// ```
-    /// #![feature(drain_filter)]
+    /// #![feature(extract_if)]
     /// let mut numbers = vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
     ///
-    /// let evens = numbers.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+    /// let evens = numbers.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
     /// let odds = numbers;
     ///
     /// assert_eq!(evens, vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
-    #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A>
+    #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+    pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
     {
@@ -2942,7 +2948,7 @@ impl<T, A: Allocator> Vec<T, A> {
             self.set_len(0);
         }
 
-        DrainFilter { vec: self, idx: 0, del: 0, old_len, pred: filter, panic_flag: false }
+        ExtractIf { vec: self, idx: 0, del: 0, old_len, pred: filter, panic_flag: false }
     }
 }
 

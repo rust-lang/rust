@@ -71,7 +71,7 @@ impl<'a, 'b, U: Unpack<'b>> Backed<'a, U> {
     where
         F: for<'f> FnOnce(<U as Unpack<'f>>::Unpacked) -> (),
     {
-        let result = f(self.1.unpack());
+        let result: () = f(self.1.unpack());
         Backed(self.0, result)
     }
 }

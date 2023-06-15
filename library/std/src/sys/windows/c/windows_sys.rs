@@ -3888,6 +3888,7 @@ pub type STARTUPINFOW_FLAGS = u32;
 pub const STATUS_DELETE_PENDING: NTSTATUS = -1073741738i32;
 pub const STATUS_END_OF_FILE: NTSTATUS = -1073741807i32;
 pub const STATUS_INVALID_PARAMETER: NTSTATUS = -1073741811i32;
+pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = -1073741822i32;
 pub const STATUS_PENDING: NTSTATUS = 259i32;
 pub const STATUS_SUCCESS: NTSTATUS = 0i32;
 pub const STD_ERROR_HANDLE: STD_HANDLE = 4294967284u32;
@@ -4274,3 +4275,23 @@ impl ::core::clone::Clone for XSAVE_FORMAT {
         *self
     }
 }
+// Begin of ARM32 shim
+// The raw content of this file should be processed by `generate-windows-sys`
+// to be merged with the generated binding. It is not supposed to be used as
+// a normal Rust module.
+cfg_if::cfg_if! {
+if #[cfg(target_arch = "arm")] {
+#[repr(C)]
+pub struct WSADATA {
+    pub wVersion: u16,
+    pub wHighVersion: u16,
+    pub szDescription: [u8; 257],
+    pub szSystemStatus: [u8; 129],
+    pub iMaxSockets: u16,
+    pub iMaxUdpDg: u16,
+    pub lpVendorInfo: PSTR,
+}
+pub enum CONTEXT {}
+}
+}
+// End of ARM32 shim

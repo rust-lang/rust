@@ -97,5 +97,5 @@ fn main() {
         #[cfg_attr(something, cfg(nothing))]
         #[deny(unused_mut)] c: i32,
     | {};
-    let _ = c(1, 2);
+    c(1, 2);
 }

@@ -1170,11 +1170,11 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             };
 
             let mut deduped: SsoHashSet<_> = Default::default();
-            result.obligations.drain_filter(|projected_obligation| {
+            result.obligations.retain(|projected_obligation| {
                 if !deduped.insert(projected_obligation.clone()) {
-                    return true;
+                    return false;
                 }
-                false
+                true
             });
 
             if use_cache {

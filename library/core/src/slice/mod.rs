@@ -2995,7 +2995,7 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
-    /// (i.e. does not allocate), and *O*(*n*) on average. The worst-case performance is *O*(*n* log *n*).
+    /// (i.e. does not allocate), and runs in *O*(*n*) time.
     /// This function is also known as "kth element" in other libraries.
     ///
     /// It returns a triplet of the following from the reordered slice:
@@ -3045,9 +3045,8 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) on average.
-    /// The worst-case performance is *O*(*n* log *n*). This function is also known as
-    /// "kth element" in other libraries.
+    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time.
+    /// This function is also known as "kth element" in other libraries.
     ///
     /// It returns a triplet of the following from
     /// the slice reordered according to the provided comparator function: the subslice prior to
@@ -3101,8 +3100,7 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) on average.
-    /// The worst-case performance is *O*(*n* log *n*).
+    /// position `index`), in-place (i.e. does not allocate), and runs in *O*(*n*) time.
     /// This function is also known as "kth element" in other libraries.
     ///
     /// It returns a triplet of the following from

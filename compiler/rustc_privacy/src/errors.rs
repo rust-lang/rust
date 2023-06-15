@@ -98,3 +98,32 @@ pub struct PrivateInPublicLint<'a> {
     pub kind: &'a str,
     pub descr: DiagnosticArgFromDisplay<'a>,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(privacy_unnameable_types_lint)]
+pub struct UnnameableTypesLint<'a> {
+    #[label]
+    pub span: Span,
+    pub kind: &'a str,
+    pub descr: DiagnosticArgFromDisplay<'a>,
+    pub reachable_vis: &'a str,
+    pub reexported_vis: &'a str,
+}
+
+// Used for `private_interfaces` and `private_bounds` lints.
+// They will replace private-in-public errors and compatibility lints in future.
+// See https://rust-lang.github.io/rfcs/2145-type-privacy.html for more details.
+#[derive(LintDiagnostic)]
+#[diag(privacy_private_interface_or_bounds_lint)]
+pub struct PrivateInterfacesOrBoundsLint<'a> {
+    #[note(privacy_item_note)]
+    pub item_span: Span,
+    pub item_kind: &'a str,
+    pub item_descr: DiagnosticArgFromDisplay<'a>,
+    pub item_vis_descr: &'a str,
+    #[note(privacy_ty_note)]
+    pub ty_span: Span,
+    pub ty_kind: &'a str,
+    pub ty_descr: DiagnosticArgFromDisplay<'a>,
+    pub ty_vis_descr: &'a str,
+}

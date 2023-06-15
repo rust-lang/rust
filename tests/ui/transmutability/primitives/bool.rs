@@ -1,10 +1,7 @@
 // revisions: current next
 //[next] compile-flags: -Ztrait-solver=next
 
-#![crate_type = "lib"]
 #![feature(transmutability)]
-#![allow(dead_code)]
-#![allow(incomplete_features)]
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
     pub struct Context;
@@ -20,7 +17,7 @@ mod assert {
     {}
 }
 
-fn contrast_with_u8() {
+fn main() {
     assert::is_transmutable::<u8, bool>(); //~ ERROR cannot be safely transmuted
     assert::is_maybe_transmutable::<u8, bool>();
     assert::is_transmutable::<bool, u8>();

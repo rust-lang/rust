@@ -10,7 +10,7 @@ struct S {x:()}
 
 fn test(slot: &mut Option<Box<dyn FnMut() -> Box<dyn FnMut()>>>) -> () {
   let a = slot.take();
-  let _a = match a {
+  let _a: () = match a {
     // `{let .. a(); }` would break
     Some(mut a) => { let _a = a(); },
     None => (),
@@ -28,7 +28,7 @@ fn not(b: bool) -> bool {
 
 pub fn main() {
     // {} would break
-    let _r = {};
+    let _r: () = {};
     let mut slot = None;
     // `{ test(...); }` would break
     let _s : S  = S{ x: { test(&mut slot); } };

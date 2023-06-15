@@ -2871,6 +2871,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         }
                     }
+
+                    if base_t.is_unsafe_ptr() && idx_t.is_integral() {
+                        err.multipart_suggestion(
+                            "consider using `wrapping_add` or `add` for indexing into raw pointer",
+                            vec![
+                                (base.span.between(idx.span), ".wrapping_add(".to_owned()),
+                                (
+                                    idx.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
+                                    ")".to_owned(),
+                                ),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+
                     let reported = err.emit();
                     self.tcx.ty_error(reported)
                 }

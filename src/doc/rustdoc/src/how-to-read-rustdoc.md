@@ -105,6 +105,11 @@ will match these queries:
 
 But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
 
+Function signature searches also support arrays and slices. The explicit name
+`primitive:slice<u8>` and `primitive:array<u8>` can be used to match a slice
+or array of bytes, while square brackets `[u8]` will match either one. Empty
+square brackets, `[]`, will match any slice regardless of what it contains.
+
 ### Shortcuts
 
 Pressing `S` while focused elsewhere on the page will move focus to the

@@ -496,7 +496,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         // Try to filter out intrinsics candidates, as long as we have
         // some other candidates to suggest.
         let intrinsic_candidates: Vec<_> = candidates
-            .drain_filter(|sugg| {
+            .extract_if(|sugg| {
                 let path = path_names_to_string(&sugg.path);
                 path.starts_with("core::intrinsics::") || path.starts_with("std::intrinsics::")
             })

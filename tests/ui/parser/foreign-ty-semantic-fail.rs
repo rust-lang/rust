@@ -15,4 +15,5 @@ extern "C" {
     //~^ ERROR incorrect `type` inside `extern` block
 
     type E: where;
+    //~^ ERROR `type`s inside `extern` blocks cannot have `where` clauses
 }

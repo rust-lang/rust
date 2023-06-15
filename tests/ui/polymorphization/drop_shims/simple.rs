@@ -14,7 +14,7 @@ fn foo<R, S: FnOnce()>(
     let bar = || {
         let _ = OnDrop(|| ());
     };
-    let _ = bar();
+    bar();
 }
 
 fn main() {

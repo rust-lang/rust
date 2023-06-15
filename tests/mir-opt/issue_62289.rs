@@ -1,6 +1,6 @@
 // check that we don't forget to drop the Box if we early return before
 // initializing it
-// ignore-wasm32-bare compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(rustc_attrs)]
 

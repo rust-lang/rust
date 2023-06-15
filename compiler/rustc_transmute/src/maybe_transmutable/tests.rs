@@ -1,9 +1,11 @@
 use super::query_context::test::{Def, UltraMinimal};
 use crate::maybe_transmutable::MaybeTransmutableQuery;
-use crate::{layout, Answer, Reason};
+use crate::{layout, Reason};
 use itertools::Itertools;
 
 mod bool {
+    use crate::Answer;
+
     use super::*;
 
     #[test]

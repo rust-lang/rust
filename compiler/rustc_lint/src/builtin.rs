@@ -2124,12 +2124,16 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             }
 
             let ty_generics = cx.tcx.generics_of(def_id);
+            let num_where_predicates = hir_generics
+                .predicates
+                .iter()
+                .filter(|predicate| predicate.in_where_clause())
+                .count();
 
             let mut bound_count = 0;
             let mut lint_spans = Vec::new();
             let mut where_lint_spans = Vec::new();
-            let mut dropped_predicate_count = 0;
-            let num_predicates = hir_generics.predicates.len();
+            let mut dropped_where_predicate_count = 0;
             for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
                 let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
                     match where_predicate {
@@ -2186,8 +2190,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 bound_count += bound_spans.len();
 
                 let drop_predicate = bound_spans.len() == bounds.len();
-                if drop_predicate {
-                    dropped_predicate_count += 1;
+                if drop_predicate && in_where_clause {
+                    dropped_where_predicate_count += 1;
                 }
 
                 if drop_predicate {
@@ -2196,7 +2200,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     } else if predicate_span.from_expansion() {
                         // Don't try to extend the span if it comes from a macro expansion.
                         where_lint_spans.push(predicate_span);
-                    } else if i + 1 < num_predicates {
+                    } else if i + 1 < num_where_predicates {
                         // If all the bounds on a predicate were inferable and there are
                         // further predicates, we want to eat the trailing comma.
                         let next_predicate_span = hir_generics.predicates[i + 1].span();
@@ -2224,9 +2228,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 }
             }
 
-            // If all predicates are inferable, drop the entire clause
+            // If all predicates in where clause are inferable, drop the entire clause
             // (including the `where`)
-            if hir_generics.has_where_clause_predicates && dropped_predicate_count == num_predicates
+            if hir_generics.has_where_clause_predicates
+                && dropped_where_predicate_count == num_where_predicates
             {
                 let where_span = hir_generics.where_clause_span;
                 // Extend the where clause back to the closing `>` of the

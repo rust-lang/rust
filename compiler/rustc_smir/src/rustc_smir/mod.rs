@@ -8,6 +8,7 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::stable_mir::{self, ty::TyKind, Context};
+use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use tracing::debug;
@@ -42,8 +43,8 @@ impl<'tcx> Context for Tables<'tcx> {
                 .basic_blocks
                 .iter()
                 .map(|block| stable_mir::mir::BasicBlock {
-                    terminator: rustc_terminator_to_terminator(block.terminator()),
-                    statements: block.statements.iter().map(rustc_statement_to_statement).collect(),
+                    terminator: block.terminator().stable(),
+                    statements: block.statements.iter().map(mir::Statement::stable).collect(),
                 })
                 .collect(),
             locals: mir.local_decls.iter().map(|decl| self.intern_ty(decl.ty)).collect(),
@@ -118,82 +119,95 @@ fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
     stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
 }
 
-fn rustc_statement_to_statement(
-    s: &rustc_middle::mir::Statement<'_>,
-) -> stable_mir::mir::Statement {
-    use rustc_middle::mir::StatementKind::*;
-    match &s.kind {
-        Assign(assign) => stable_mir::mir::Statement::Assign(
-            rustc_place_to_place(&assign.0),
-            rustc_rvalue_to_rvalue(&assign.1),
-        ),
-        FakeRead(_) => todo!(),
-        SetDiscriminant { .. } => todo!(),
-        Deinit(_) => todo!(),
-        StorageLive(_) => todo!(),
-        StorageDead(_) => todo!(),
-        Retag(_, _) => todo!(),
-        PlaceMention(_) => todo!(),
-        AscribeUserType(_, _) => todo!(),
-        Coverage(_) => todo!(),
-        Intrinsic(_) => todo!(),
-        ConstEvalCounter => todo!(),
-        Nop => stable_mir::mir::Statement::Nop,
-    }
+pub trait Stable {
+    type T;
+    fn stable(&self) -> Self::T;
 }
 
-fn rustc_rvalue_to_rvalue(rvalue: &rustc_middle::mir::Rvalue<'_>) -> stable_mir::mir::Rvalue {
-    use rustc_middle::mir::Rvalue::*;
-    match rvalue {
-        Use(op) => stable_mir::mir::Rvalue::Use(rustc_op_to_op(op)),
-        Repeat(_, _) => todo!(),
-        Ref(_, _, _) => todo!(),
-        ThreadLocalRef(_) => todo!(),
-        AddressOf(_, _) => todo!(),
-        Len(_) => todo!(),
-        Cast(_, _, _) => todo!(),
-        BinaryOp(_, _) => todo!(),
-        CheckedBinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::CheckedBinaryOp(
-            rustc_bin_op_to_bin_op(bin_op),
-            rustc_op_to_op(&ops.0),
-            rustc_op_to_op(&ops.1),
-        ),
-        NullaryOp(_, _) => todo!(),
-        UnaryOp(un_op, op) => {
-            stable_mir::mir::Rvalue::UnaryOp(rustc_un_op_to_un_op(un_op), rustc_op_to_op(op))
+impl<'tcx> Stable for mir::Statement<'tcx> {
+    type T = stable_mir::mir::Statement;
+    fn stable(&self) -> Self::T {
+        use rustc_middle::mir::StatementKind::*;
+        match &self.kind {
+            Assign(assign) => {
+                stable_mir::mir::Statement::Assign(assign.0.stable(), assign.1.stable())
+            }
+            FakeRead(_) => todo!(),
+            SetDiscriminant { .. } => todo!(),
+            Deinit(_) => todo!(),
+            StorageLive(_) => todo!(),
+            StorageDead(_) => todo!(),
+            Retag(_, _) => todo!(),
+            PlaceMention(_) => todo!(),
+            AscribeUserType(_, _) => todo!(),
+            Coverage(_) => todo!(),
+            Intrinsic(_) => todo!(),
+            ConstEvalCounter => todo!(),
+            Nop => stable_mir::mir::Statement::Nop,
         }
-        Discriminant(_) => todo!(),
-        Aggregate(_, _) => todo!(),
-        ShallowInitBox(_, _) => todo!(),
-        CopyForDeref(_) => todo!(),
     }
 }
 
-fn rustc_op_to_op(op: &rustc_middle::mir::Operand<'_>) -> stable_mir::mir::Operand {
-    use rustc_middle::mir::Operand::*;
-    match op {
-        Copy(place) => stable_mir::mir::Operand::Copy(rustc_place_to_place(place)),
-        Move(place) => stable_mir::mir::Operand::Move(rustc_place_to_place(place)),
-        Constant(c) => stable_mir::mir::Operand::Constant(c.to_string()),
+impl<'tcx> Stable for mir::Rvalue<'tcx> {
+    type T = stable_mir::mir::Rvalue;
+    fn stable(&self) -> Self::T {
+        use mir::Rvalue::*;
+        match self {
+            Use(op) => stable_mir::mir::Rvalue::Use(op.stable()),
+            Repeat(_, _) => todo!(),
+            Ref(_, _, _) => todo!(),
+            ThreadLocalRef(_) => todo!(),
+            AddressOf(_, _) => todo!(),
+            Len(_) => todo!(),
+            Cast(_, _, _) => todo!(),
+            BinaryOp(_, _) => todo!(),
+            CheckedBinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::CheckedBinaryOp(
+                bin_op.stable(),
+                ops.0.stable(),
+                ops.1.stable(),
+            ),
+            NullaryOp(_, _) => todo!(),
+            UnaryOp(un_op, op) => stable_mir::mir::Rvalue::UnaryOp(un_op.stable(), op.stable()),
+            Discriminant(_) => todo!(),
+            Aggregate(_, _) => todo!(),
+            ShallowInitBox(_, _) => todo!(),
+            CopyForDeref(_) => todo!(),
+        }
     }
 }
 
-fn rustc_place_to_place(place: &rustc_middle::mir::Place<'_>) -> stable_mir::mir::Place {
-    stable_mir::mir::Place {
-        local: place.local.as_usize(),
-        projection: format!("{:?}", place.projection),
+impl<'tcx> Stable for mir::Operand<'tcx> {
+    type T = stable_mir::mir::Operand;
+    fn stable(&self) -> Self::T {
+        use mir::Operand::*;
+        match self {
+            Copy(place) => stable_mir::mir::Operand::Copy(place.stable()),
+            Move(place) => stable_mir::mir::Operand::Move(place.stable()),
+            Constant(c) => stable_mir::mir::Operand::Constant(c.to_string()),
+        }
     }
 }
 
-fn rustc_unwind_to_unwind(
-    unwind: &rustc_middle::mir::UnwindAction,
-) -> stable_mir::mir::UnwindAction {
-    use rustc_middle::mir::UnwindAction;
-    match unwind {
-        UnwindAction::Continue => stable_mir::mir::UnwindAction::Continue,
-        UnwindAction::Unreachable => stable_mir::mir::UnwindAction::Unreachable,
-        UnwindAction::Terminate => stable_mir::mir::UnwindAction::Terminate,
-        UnwindAction::Cleanup(bb) => stable_mir::mir::UnwindAction::Cleanup(bb.as_usize()),
+impl<'tcx> Stable for mir::Place<'tcx> {
+    type T = stable_mir::mir::Place;
+    fn stable(&self) -> Self::T {
+        stable_mir::mir::Place {
+            local: self.local.as_usize(),
+            projection: format!("{:?}", self.projection),
+        }
+    }
+}
+
+impl Stable for mir::UnwindAction {
+    type T = stable_mir::mir::UnwindAction;
+    fn stable(&self) -> Self::T {
+        use rustc_middle::mir::UnwindAction;
+        match self {
+            UnwindAction::Continue => stable_mir::mir::UnwindAction::Continue,
+            UnwindAction::Unreachable => stable_mir::mir::UnwindAction::Unreachable,
+            UnwindAction::Terminate => stable_mir::mir::UnwindAction::Terminate,
+            UnwindAction::Cleanup(bb) => stable_mir::mir::UnwindAction::Cleanup(bb.as_usize()),
+        }
     }
 }
 
@@ -202,168 +216,163 @@ fn rustc_assert_msg_to_msg<'tcx>(
 ) -> stable_mir::mir::AssertMessage {
     use rustc_middle::mir::AssertKind;
     match assert_message {
-        AssertKind::BoundsCheck { len, index } => stable_mir::mir::AssertMessage::BoundsCheck {
-            len: rustc_op_to_op(len),
-            index: rustc_op_to_op(index),
-        },
-        AssertKind::Overflow(bin_op, op1, op2) => stable_mir::mir::AssertMessage::Overflow(
-            rustc_bin_op_to_bin_op(bin_op),
-            rustc_op_to_op(op1),
-            rustc_op_to_op(op2),
-        ),
-        AssertKind::OverflowNeg(op) => {
-            stable_mir::mir::AssertMessage::OverflowNeg(rustc_op_to_op(op))
+        AssertKind::BoundsCheck { len, index } => {
+            stable_mir::mir::AssertMessage::BoundsCheck { len: len.stable(), index: index.stable() }
         }
+        AssertKind::Overflow(bin_op, op1, op2) => {
+            stable_mir::mir::AssertMessage::Overflow(bin_op.stable(), op1.stable(), op2.stable())
+        }
+        AssertKind::OverflowNeg(op) => stable_mir::mir::AssertMessage::OverflowNeg(op.stable()),
         AssertKind::DivisionByZero(op) => {
-            stable_mir::mir::AssertMessage::DivisionByZero(rustc_op_to_op(op))
+            stable_mir::mir::AssertMessage::DivisionByZero(op.stable())
         }
         AssertKind::RemainderByZero(op) => {
-            stable_mir::mir::AssertMessage::RemainderByZero(rustc_op_to_op(op))
+            stable_mir::mir::AssertMessage::RemainderByZero(op.stable())
         }
         AssertKind::ResumedAfterReturn(generator) => {
-            stable_mir::mir::AssertMessage::ResumedAfterReturn(rustc_generator_to_generator(
-                generator,
-            ))
+            stable_mir::mir::AssertMessage::ResumedAfterReturn(generator.stable())
         }
         AssertKind::ResumedAfterPanic(generator) => {
-            stable_mir::mir::AssertMessage::ResumedAfterPanic(rustc_generator_to_generator(
-                generator,
-            ))
+            stable_mir::mir::AssertMessage::ResumedAfterPanic(generator.stable())
         }
         AssertKind::MisalignedPointerDereference { required, found } => {
             stable_mir::mir::AssertMessage::MisalignedPointerDereference {
-                required: rustc_op_to_op(required),
-                found: rustc_op_to_op(found),
+                required: required.stable(),
+                found: found.stable(),
             }
         }
     }
 }
 
-fn rustc_bin_op_to_bin_op(bin_op: &rustc_middle::mir::BinOp) -> stable_mir::mir::BinOp {
-    use rustc_middle::mir::BinOp;
-    match bin_op {
-        BinOp::Add => stable_mir::mir::BinOp::Add,
-        BinOp::Sub => stable_mir::mir::BinOp::Sub,
-        BinOp::Mul => stable_mir::mir::BinOp::Mul,
-        BinOp::Div => stable_mir::mir::BinOp::Div,
-        BinOp::Rem => stable_mir::mir::BinOp::Rem,
-        BinOp::BitXor => stable_mir::mir::BinOp::BitXor,
-        BinOp::BitAnd => stable_mir::mir::BinOp::BitAnd,
-        BinOp::BitOr => stable_mir::mir::BinOp::BitOr,
-        BinOp::Shl => stable_mir::mir::BinOp::Shl,
-        BinOp::Shr => stable_mir::mir::BinOp::Shr,
-        BinOp::Eq => stable_mir::mir::BinOp::Eq,
-        BinOp::Lt => stable_mir::mir::BinOp::Lt,
-        BinOp::Le => stable_mir::mir::BinOp::Le,
-        BinOp::Ne => stable_mir::mir::BinOp::Ne,
-        BinOp::Ge => stable_mir::mir::BinOp::Ge,
-        BinOp::Gt => stable_mir::mir::BinOp::Gt,
-        BinOp::Offset => stable_mir::mir::BinOp::Offset,
+impl Stable for mir::BinOp {
+    type T = stable_mir::mir::BinOp;
+    fn stable(&self) -> Self::T {
+        use mir::BinOp;
+        match self {
+            BinOp::Add => stable_mir::mir::BinOp::Add,
+            BinOp::Sub => stable_mir::mir::BinOp::Sub,
+            BinOp::Mul => stable_mir::mir::BinOp::Mul,
+            BinOp::Div => stable_mir::mir::BinOp::Div,
+            BinOp::Rem => stable_mir::mir::BinOp::Rem,
+            BinOp::BitXor => stable_mir::mir::BinOp::BitXor,
+            BinOp::BitAnd => stable_mir::mir::BinOp::BitAnd,
+            BinOp::BitOr => stable_mir::mir::BinOp::BitOr,
+            BinOp::Shl => stable_mir::mir::BinOp::Shl,
+            BinOp::Shr => stable_mir::mir::BinOp::Shr,
+            BinOp::Eq => stable_mir::mir::BinOp::Eq,
+            BinOp::Lt => stable_mir::mir::BinOp::Lt,
+            BinOp::Le => stable_mir::mir::BinOp::Le,
+            BinOp::Ne => stable_mir::mir::BinOp::Ne,
+            BinOp::Ge => stable_mir::mir::BinOp::Ge,
+            BinOp::Gt => stable_mir::mir::BinOp::Gt,
+            BinOp::Offset => stable_mir::mir::BinOp::Offset,
+        }
     }
 }
 
-fn rustc_un_op_to_un_op(unary_op: &rustc_middle::mir::UnOp) -> stable_mir::mir::UnOp {
-    use rustc_middle::mir::UnOp;
-    match unary_op {
-        UnOp::Not => stable_mir::mir::UnOp::Not,
-        UnOp::Neg => stable_mir::mir::UnOp::Neg,
+impl Stable for mir::UnOp {
+    type T = stable_mir::mir::UnOp;
+    fn stable(&self) -> Self::T {
+        use mir::UnOp;
+        match self {
+            UnOp::Not => stable_mir::mir::UnOp::Not,
+            UnOp::Neg => stable_mir::mir::UnOp::Neg,
+        }
     }
 }
 
-fn rustc_generator_to_generator(
-    generator: &rustc_hir::GeneratorKind,
-) -> stable_mir::mir::GeneratorKind {
-    use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
-    match generator {
-        GeneratorKind::Async(async_gen) => {
-            let async_gen = match async_gen {
-                AsyncGeneratorKind::Block => stable_mir::mir::AsyncGeneratorKind::Block,
-                AsyncGeneratorKind::Closure => stable_mir::mir::AsyncGeneratorKind::Closure,
-                AsyncGeneratorKind::Fn => stable_mir::mir::AsyncGeneratorKind::Fn,
-            };
-            stable_mir::mir::GeneratorKind::Async(async_gen)
-        }
-        GeneratorKind::Gen => stable_mir::mir::GeneratorKind::Gen,
-    }
-}
-
-fn rustc_inline_asm_operand_to_inline_asm_operand(
-    operand: &rustc_middle::mir::InlineAsmOperand<'_>,
-) -> stable_mir::mir::InlineAsmOperand {
-    use rustc_middle::mir::InlineAsmOperand;
-
-    let (in_value, out_place) = match operand {
-        InlineAsmOperand::In { value, .. } => (Some(rustc_op_to_op(value)), None),
-        InlineAsmOperand::Out { place, .. } => {
-            (None, place.map(|place| rustc_place_to_place(&place)))
-        }
-        InlineAsmOperand::InOut { in_value, out_place, .. } => {
-            (Some(rustc_op_to_op(in_value)), out_place.map(|place| rustc_place_to_place(&place)))
-        }
-        InlineAsmOperand::Const { .. }
-        | InlineAsmOperand::SymFn { .. }
-        | InlineAsmOperand::SymStatic { .. } => (None, None),
-    };
-
-    stable_mir::mir::InlineAsmOperand { in_value, out_place, raw_rpr: format!("{:?}", operand) }
-}
-
-fn rustc_terminator_to_terminator(
-    terminator: &rustc_middle::mir::Terminator<'_>,
-) -> stable_mir::mir::Terminator {
-    use rustc_middle::mir::TerminatorKind::*;
-    use stable_mir::mir::Terminator;
-    match &terminator.kind {
-        Goto { target } => Terminator::Goto { target: target.as_usize() },
-        SwitchInt { discr, targets } => Terminator::SwitchInt {
-            discr: rustc_op_to_op(discr),
-            targets: targets
-                .iter()
-                .map(|(value, target)| stable_mir::mir::SwitchTarget {
-                    value,
-                    target: target.as_usize(),
-                })
-                .collect(),
-            otherwise: targets.otherwise().as_usize(),
-        },
-        Resume => Terminator::Resume,
-        Terminate => Terminator::Abort,
-        Return => Terminator::Return,
-        Unreachable => Terminator::Unreachable,
-        Drop { place, target, unwind, replace: _ } => Terminator::Drop {
-            place: rustc_place_to_place(place),
-            target: target.as_usize(),
-            unwind: rustc_unwind_to_unwind(unwind),
-        },
-        Call { func, args, destination, target, unwind, from_hir_call: _, fn_span: _ } => {
-            Terminator::Call {
-                func: rustc_op_to_op(func),
-                args: args.iter().map(|arg| rustc_op_to_op(arg)).collect(),
-                destination: rustc_place_to_place(destination),
-                target: target.map(|t| t.as_usize()),
-                unwind: rustc_unwind_to_unwind(unwind),
+impl Stable for rustc_hir::GeneratorKind {
+    type T = stable_mir::mir::GeneratorKind;
+    fn stable(&self) -> Self::T {
+        use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
+        match self {
+            GeneratorKind::Async(async_gen) => {
+                let async_gen = match async_gen {
+                    AsyncGeneratorKind::Block => stable_mir::mir::AsyncGeneratorKind::Block,
+                    AsyncGeneratorKind::Closure => stable_mir::mir::AsyncGeneratorKind::Closure,
+                    AsyncGeneratorKind::Fn => stable_mir::mir::AsyncGeneratorKind::Fn,
+                };
+                stable_mir::mir::GeneratorKind::Async(async_gen)
             }
+            GeneratorKind::Gen => stable_mir::mir::GeneratorKind::Gen,
         }
-        Assert { cond, expected, msg, target, unwind } => Terminator::Assert {
-            cond: rustc_op_to_op(cond),
-            expected: *expected,
-            msg: rustc_assert_msg_to_msg(msg),
-            target: target.as_usize(),
-            unwind: rustc_unwind_to_unwind(unwind),
-        },
-        InlineAsm { template, operands, options, line_spans, destination, unwind } => {
-            Terminator::InlineAsm {
-                template: format!("{:?}", template),
-                operands: operands
+    }
+}
+
+impl<'tcx> Stable for mir::InlineAsmOperand<'tcx> {
+    type T = stable_mir::mir::InlineAsmOperand;
+    fn stable(&self) -> Self::T {
+        use rustc_middle::mir::InlineAsmOperand;
+
+        let (in_value, out_place) = match self {
+            InlineAsmOperand::In { value, .. } => (Some(value.stable()), None),
+            InlineAsmOperand::Out { place, .. } => (None, place.map(|place| place.stable())),
+            InlineAsmOperand::InOut { in_value, out_place, .. } => {
+                (Some(in_value.stable()), out_place.map(|place| place.stable()))
+            }
+            InlineAsmOperand::Const { .. }
+            | InlineAsmOperand::SymFn { .. }
+            | InlineAsmOperand::SymStatic { .. } => (None, None),
+        };
+
+        stable_mir::mir::InlineAsmOperand { in_value, out_place, raw_rpr: format!("{:?}", self) }
+    }
+}
+
+impl<'tcx> Stable for mir::Terminator<'tcx> {
+    type T = stable_mir::mir::Terminator;
+    fn stable(&self) -> Self::T {
+        use rustc_middle::mir::TerminatorKind::*;
+        use stable_mir::mir::Terminator;
+        match &self.kind {
+            Goto { target } => Terminator::Goto { target: target.as_usize() },
+            SwitchInt { discr, targets } => Terminator::SwitchInt {
+                discr: discr.stable(),
+                targets: targets
                     .iter()
-                    .map(|operand| rustc_inline_asm_operand_to_inline_asm_operand(operand))
+                    .map(|(value, target)| stable_mir::mir::SwitchTarget {
+                        value,
+                        target: target.as_usize(),
+                    })
                     .collect(),
-                options: format!("{:?}", options),
-                line_spans: format!("{:?}", line_spans),
-                destination: destination.map(|d| d.as_usize()),
-                unwind: rustc_unwind_to_unwind(unwind),
+                otherwise: targets.otherwise().as_usize(),
+            },
+            Resume => Terminator::Resume,
+            Terminate => Terminator::Abort,
+            Return => Terminator::Return,
+            Unreachable => Terminator::Unreachable,
+            Drop { place, target, unwind, replace: _ } => Terminator::Drop {
+                place: place.stable(),
+                target: target.as_usize(),
+                unwind: unwind.stable(),
+            },
+            Call { func, args, destination, target, unwind, from_hir_call: _, fn_span: _ } => {
+                Terminator::Call {
+                    func: func.stable(),
+                    args: args.iter().map(|arg| arg.stable()).collect(),
+                    destination: destination.stable(),
+                    target: target.map(|t| t.as_usize()),
+                    unwind: unwind.stable(),
+                }
             }
+            Assert { cond, expected, msg, target, unwind } => Terminator::Assert {
+                cond: cond.stable(),
+                expected: *expected,
+                msg: rustc_assert_msg_to_msg(msg),
+                target: target.as_usize(),
+                unwind: unwind.stable(),
+            },
+            InlineAsm { template, operands, options, line_spans, destination, unwind } => {
+                Terminator::InlineAsm {
+                    template: format!("{:?}", template),
+                    operands: operands.iter().map(|operand| operand.stable()).collect(),
+                    options: format!("{:?}", options),
+                    line_spans: format!("{:?}", line_spans),
+                    destination: destination.map(|d| d.as_usize()),
+                    unwind: unwind.stable(),
+                }
+            }
+            Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),
         }
-        Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),
     }
 }

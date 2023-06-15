@@ -5,6 +5,12 @@
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
+#![warn(private_bounds)]
+#![warn(private_interfaces)]
+
+// In this test both old and new private-in-public diagnostic were emitted.
+// Old diagnostic will be deleted soon.
+// See https://rust-lang.github.io/rfcs/2145-type-privacy.html.
 
 struct PrivTy;
 trait PrivTr {}

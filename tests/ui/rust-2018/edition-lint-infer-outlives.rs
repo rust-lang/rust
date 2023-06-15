@@ -801,4 +801,12 @@ where
     yoo: &'a U
 }
 
+// https://github.com/rust-lang/rust/issues/105150
+struct InferredWhereBoundWithInlineBound<'a, T: ?Sized>
+//~^ ERROR outlives requirements can be inferred
+    where T: 'a,
+{
+    data: &'a T,
+}
+
 fn main() {}

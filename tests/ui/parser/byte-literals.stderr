@@ -4,7 +4,7 @@ error: unknown byte escape: `f`
 LL | static FOO: u8 = b'\f';
    |                     ^ unknown byte escape
    |
-   = help: for more information, visit <https://static.rust-lang.org/doc/master/reference.html#literals>
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 
 error: unknown byte escape: `f`
   --> $DIR/byte-literals.rs:6:8
@@ -12,7 +12,7 @@ error: unknown byte escape: `f`
 LL |     b'\f';
    |        ^ unknown byte escape
    |
-   = help: for more information, visit <https://static.rust-lang.org/doc/master/reference.html#literals>
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 
 error: invalid character in numeric character escape: `Z`
   --> $DIR/byte-literals.rs:7:10
