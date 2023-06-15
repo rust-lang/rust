@@ -11,10 +11,13 @@ use syntax::{
 
 #[derive(Default)]
 struct AstSubsts {
-    // ast::TypeArgs stands in fact for both type and const params
-    // as consts declared elsewhere look just like type params.
-    types_and_consts: Vec<ast::TypeArg>,
+    types_and_consts: Vec<TypeOrConst>,
     lifetimes: Vec<ast::LifetimeArg>,
+}
+
+enum TypeOrConst {
+    Either(ast::TypeArg), // indistinguishable type or const param
+    Const(ast::ConstArg),
 }
 
 type LifetimeName = String;
@@ -125,27 +128,38 @@ impl<'a> PathTransform<'a> {
             // the resulting change can be applied correctly.
             .zip(self.substs.types_and_consts.iter().map(Some).chain(std::iter::repeat(None)))
             .for_each(|(k, v)| match (k.split(db), v) {
-                (Either::Right(t), Some(v)) => {
+                (Either::Right(k), Some(TypeOrConst::Either(v))) => {
                     if let Some(ty) = v.ty() {
-                        type_substs.insert(t, ty.clone());
+                        type_substs.insert(k, ty.clone());
                     }
                 }
-                (Either::Right(t), None) => {
-                    if let Some(default) = t.default(db) {
+                (Either::Right(k), None) => {
+                    if let Some(default) = k.default(db) {
                         if let Some(default) =
                             &default.display_source_code(db, source_module.into(), false).ok()
                         {
-                            type_substs.insert(t, ast::make::ty(default).clone_for_update());
-                            default_types.push(t);
+                            type_substs.insert(k, ast::make::ty(default).clone_for_update());
+                            default_types.push(k);
                         }
                     }
                 }
-                (Either::Left(c), Some(v)) => {
+                (Either::Left(k), Some(TypeOrConst::Either(v))) => {
                     if let Some(ty) = v.ty() {
-                        const_substs.insert(c, ty.syntax().clone());
+                        const_substs.insert(k, ty.syntax().clone());
+                    }
+                }
+                (Either::Left(k), Some(TypeOrConst::Const(v))) => {
+                    if let Some(expr) = v.expr() {
+                        // FIXME: expressions in curly brackets can cause ambiguity after insertion
+                        // (e.g. `N * 2` -> `{1 + 1} * 2`; it's unclear whether `{1 + 1}`
+                        // is a standalone statement or a part of another expresson)
+                        // and sometimes require slight modifications; see
+                        // https://doc.rust-lang.org/reference/statements.html#expression-statements
+                        const_substs.insert(k, expr.syntax().clone());
                     }
                 }
                 (Either::Left(_), None) => (), // FIXME: get default const value
+                _ => (),                       // ignore mismatching params
             });
         let lifetime_substs: FxHashMap<_, _> = self
             .generic_def
@@ -201,6 +215,9 @@ impl<'a> Ctx<'a> {
     fn transform_default_type_substs(&self, default_types: Vec<hir::TypeParam>) {
         for k in default_types {
             let v = self.type_substs.get(&k).unwrap();
+            // `transform_path` may update a node's parent and that would break the
+            // tree traversal. Thus all paths in the tree are collected into a vec
+            // so that such operation is safe.
             let paths = postorder(&v.syntax()).filter_map(ast::Path::cast).collect::<Vec<_>>();
             for path in paths {
                 self.transform_path(path);
@@ -326,8 +343,12 @@ fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<
         // Const params are marked as consts on definition only,
         // being passed to the trait they are indistguishable from type params;
         // anyway, we don't really need to distinguish them here.
-        ast::GenericArg::TypeArg(type_or_const_arg) => {
-            result.types_and_consts.push(type_or_const_arg)
+        ast::GenericArg::TypeArg(type_arg) => {
+            result.types_and_consts.push(TypeOrConst::Either(type_arg))
+        }
+        // Some const values are recognized correctly.
+        ast::GenericArg::ConstArg(const_arg) => {
+            result.types_and_consts.push(TypeOrConst::Const(const_arg));
         }
         ast::GenericArg::LifetimeArg(l_arg) => result.lifetimes.push(l_arg),
         _ => (),

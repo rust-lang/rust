@@ -423,8 +423,13 @@ impl<'x, 'y, T, V, U: Default> Trait<'x, 'y, T, V, U> for () {
         check_assist(
             add_missing_default_members,
             r#"
+struct Bar<const: N: bool> {
+    bar: [i32, N]
+}
+
 trait Foo<const N: usize, T> {
     fn get_n_sq(&self, arg: &T) -> usize { N * N }
+    fn get_array(&self, arg: Bar<N>) -> [i32; N] { [1; N] }
 }
 
 struct S<T> {
@@ -435,8 +440,13 @@ impl<const X: usize, Y, Z> Foo<X, Z> for S<Y> {
     $0
 }"#,
             r#"
+struct Bar<const: N: bool> {
+    bar: [i32, N]
+}
+
 trait Foo<const N: usize, T> {
     fn get_n_sq(&self, arg: &T) -> usize { N * N }
+    fn get_array(&self, arg: Bar<N>) -> [i32; N] { [1; N] }
 }
 
 struct S<T> {
@@ -445,6 +455,31 @@ struct S<T> {
 
 impl<const X: usize, Y, Z> Foo<X, Z> for S<Y> {
     $0fn get_n_sq(&self, arg: &Z) -> usize { X * X }
+
+    fn get_array(&self, arg: Bar<X>) -> [i32; X] { [1; X] }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_const_substitution_2() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+trait Foo<const N: usize, const M: usize, T> {
+    fn get_sum(&self, arg: &T) -> usize { N + M }
+}
+
+impl<X> Foo<42, {20 + 22}, X> for () {
+    $0
+}"#,
+            r#"
+trait Foo<const N: usize, const M: usize, T> {
+    fn get_sum(&self, arg: &T) -> usize { N + M }
+}
+
+impl<X> Foo<42, {20 + 22}, X> for () {
+    $0fn get_sum(&self, arg: &X) -> usize { 42 + {20 + 22} }
 }"#,
         )
     }
