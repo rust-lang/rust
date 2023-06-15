@@ -10,42 +10,6 @@ Subject: [PATCH] [core] Ignore failing tests
  library/core/tests/time.rs       |  1 +
  4 files changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/array.rs b/array.rs
-index 4bc44e9..8e3c7a4 100644
---- a/array.rs
-+++ b/array.rs
-@@ -242,6 +242,7 @@ fn iterator_drops() {
-     assert_eq!(i.get(), 5);
- }
- 
-+/*
- // This test does not work on targets without panic=unwind support.
- // To work around this problem, test is marked is should_panic, so it will
- // be automagically skipped on unsuitable targets, such as
-@@ -283,6 +284,7 @@ fn array_default_impl_avoids_leaks_on_panic() {
-     assert_eq!(COUNTER.load(Relaxed), 0);
-     panic!("test succeeded")
- }
-+*/
- 
- #[test]
- fn empty_array_is_always_default() {
-@@ -304,6 +304,7 @@ fn array_map() {
-     assert_eq!(b, [1, 2, 3]);
- }
- 
-+/*
- // See note on above test for why `should_panic` is used.
- #[test]
- #[should_panic(expected = "test succeeded")]
-@@ -332,6 +333,7 @@ fn array_map_drop_safety() {
-     assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
-     panic!("test succeeded")
- }
-+*/
- 
- #[test]
- fn cell_allows_array_cycle() {
 diff --git a/atomic.rs b/atomic.rs
 index 13b12db..96fe4b9 100644
 --- a/atomic.rs
