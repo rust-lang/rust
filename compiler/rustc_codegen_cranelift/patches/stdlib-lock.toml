@@ -30,7 +30,25 @@ version = "0.0.0"
 dependencies = [
  "compiler_builtins",
  "core",
+ "rand",
+ "rand_xorshift",
 ]
+
+[[package]]
+name = "auxv"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e50430f9beb8effb02399fa81c76eeaa26b05e4f03b09285cad8d079c1af5a3d"
+dependencies = [
+ "byteorder",
+ "gcc",
+]
+
+[[package]]
+name = "byteorder"
+version = "1.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "cc"
@@ -50,16 +68,31 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.91"
+version = "0.1.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "571298a3cce7e2afbd3d61abb91a18667d5ab25993ec577a88ee8ac45f00cc3a"
+checksum = "76630810d973ecea3dbf611e1b7aecfb1012751ef1ff8de3998f89014a166781"
 dependencies = [
+ "cc",
  "rustc-std-workspace-core",
 ]
 
 [[package]]
 name = "core"
 version = "0.0.0"
+dependencies = [
+ "rand",
+ "rand_xorshift",
+]
+
+[[package]]
+name = "cupid"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bad352a84b567cc38a5854e3aa8ee903cb8519a25d0b799b739bafffd1f91a1"
+dependencies = [
+ "gcc",
+ "rustc_version",
+]
 
 [[package]]
 name = "dlmalloc"
@@ -81,6 +114,12 @@ dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
 ]
+
+[[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 
 [[package]]
 name = "getopts"
@@ -106,9 +145,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.12.3"
+version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
@@ -128,9 +167,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.142"
+version = "0.2.146"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a987beff54b60ffa6d51982e1aa1146bc42f19bd26be28b0586f252fccf5317"
+checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -159,9 +198,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.30.3"
+version = "0.30.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea86265d3d3dcb6a27fc51bd29a4bf387fae9d2986b823079d4986af253eb439"
+checksum = "03b4680b86d9cfafba8fc491dc9b6df26b68cf40e9e6cd73909194759a63c385"
 dependencies = [
  "compiler_builtins",
  "memchr",
@@ -201,6 +240,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "profiler_builtins"
+version = "0.0.0"
+dependencies = [
+ "cc",
+ "compiler_builtins",
+ "core",
+]
+
+[[package]]
+name = "rand"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+dependencies = [
+ "rand_core",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
+
+[[package]]
+name = "rand_xorshift"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
+dependencies = [
+ "rand_core",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -232,6 +304,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_version"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
+dependencies = [
+ "semver",
+]
+
+[[package]]
+name = "semver"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
+dependencies = [
+ "semver-parser",
+]
+
+[[package]]
+name = "semver-parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
+
+[[package]]
 name = "std"
 version = "0.0.0"
 dependencies = [
@@ -249,6 +345,9 @@ dependencies = [
  "object",
  "panic_abort",
  "panic_unwind",
+ "profiler_builtins",
+ "rand",
+ "rand_xorshift",
  "rustc-demangle",
  "std_detect",
  "unwind",
@@ -259,8 +358,10 @@ dependencies = [
 name = "std_detect"
 version = "0.1.5"
 dependencies = [
+ "auxv",
  "cfg-if",
  "compiler_builtins",
+ "cupid",
  "libc",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -270,9 +371,7 @@ dependencies = [
 name = "sysroot"
 version = "0.0.0"
 dependencies = [
- "alloc",
- "compiler_builtins",
- "core",
+ "proc_macro",
  "std",
  "test",
 ]
@@ -285,7 +384,6 @@ dependencies = [
  "getopts",
  "panic_abort",
  "panic_unwind",
- "proc_macro",
  "std",
 ]
 

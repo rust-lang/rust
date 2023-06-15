@@ -434,8 +434,36 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_round => {
-            intrinsic_args!(fx, args => (a); intrinsic);
+        sym::simd_fpow => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            if !a.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
+                return;
+            }
+
+            simd_pair_for_each_lane(fx, a, b, ret, &|fx, lane_ty, _ret_lane_ty, a_lane, b_lane| {
+                match lane_ty.kind() {
+                    ty::Float(FloatTy::F32) => fx.lib_call(
+                        "powf",
+                        vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
+                        vec![AbiParam::new(types::F32)],
+                        &[a_lane, b_lane],
+                    )[0],
+                    ty::Float(FloatTy::F64) => fx.lib_call(
+                        "pow",
+                        vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
+                        vec![AbiParam::new(types::F64)],
+                        &[a_lane, b_lane],
+                    )[0],
+                    _ => unreachable!("{:?}", lane_ty),
+                }
+            });
+        }
+
+        sym::simd_fpowi => {
+            intrinsic_args!(fx, args => (a, exp); intrinsic);
+            let exp = exp.load_scalar(fx);
 
             if !a.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
@@ -448,20 +476,69 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 ret,
                 &|fx, lane_ty, _ret_lane_ty, lane| match lane_ty.kind() {
                     ty::Float(FloatTy::F32) => fx.lib_call(
-                        "roundf",
+                        "__powisf2", // compiler-builtins
+                        vec![AbiParam::new(types::F32), AbiParam::new(types::I32)],
                         vec![AbiParam::new(types::F32)],
-                        vec![AbiParam::new(types::F32)],
-                        &[lane],
+                        &[lane, exp],
                     )[0],
                     ty::Float(FloatTy::F64) => fx.lib_call(
-                        "round",
+                        "__powidf2", // compiler-builtins
+                        vec![AbiParam::new(types::F64), AbiParam::new(types::I32)],
                         vec![AbiParam::new(types::F64)],
-                        vec![AbiParam::new(types::F64)],
-                        &[lane],
+                        &[lane, exp],
                     )[0],
                     _ => unreachable!("{:?}", lane_ty),
                 },
             );
+        }
+
+        sym::simd_fsin
+        | sym::simd_fcos
+        | sym::simd_fexp
+        | sym::simd_fexp2
+        | sym::simd_flog
+        | sym::simd_flog10
+        | sym::simd_flog2
+        | sym::simd_round => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            if !a.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
+                return;
+            }
+
+            simd_for_each_lane(fx, a, ret, &|fx, lane_ty, _ret_lane_ty, lane| {
+                let lane_ty = match lane_ty.kind() {
+                    ty::Float(FloatTy::F32) => types::F32,
+                    ty::Float(FloatTy::F64) => types::F64,
+                    _ => unreachable!("{:?}", lane_ty),
+                };
+                let name = match (intrinsic, lane_ty) {
+                    (sym::simd_fsin, types::F32) => "sinf",
+                    (sym::simd_fsin, types::F64) => "sin",
+                    (sym::simd_fcos, types::F32) => "cosf",
+                    (sym::simd_fcos, types::F64) => "cos",
+                    (sym::simd_fexp, types::F32) => "expf",
+                    (sym::simd_fexp, types::F64) => "exp",
+                    (sym::simd_fexp2, types::F32) => "exp2f",
+                    (sym::simd_fexp2, types::F64) => "exp2",
+                    (sym::simd_flog, types::F32) => "logf",
+                    (sym::simd_flog, types::F64) => "log",
+                    (sym::simd_flog10, types::F32) => "log10f",
+                    (sym::simd_flog10, types::F64) => "log10",
+                    (sym::simd_flog2, types::F32) => "log2f",
+                    (sym::simd_flog2, types::F64) => "log2",
+                    (sym::simd_round, types::F32) => "roundf",
+                    (sym::simd_round, types::F64) => "round",
+                    _ => unreachable!("{:?}", intrinsic),
+                };
+                fx.lib_call(
+                    name,
+                    vec![AbiParam::new(lane_ty)],
+                    vec![AbiParam::new(lane_ty)],
+                    &[lane],
+                )[0]
+            });
         }
 
         sym::simd_fabs | sym::simd_fsqrt | sym::simd_ceil | sym::simd_floor | sym::simd_trunc => {
@@ -488,7 +565,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_add_ordered | sym::simd_reduce_add_unordered => {
+        sym::simd_reduce_add_ordered => {
             intrinsic_args!(fx, args => (v, acc); intrinsic);
             let acc = acc.load_scalar(fx);
 
@@ -507,7 +584,25 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_mul_ordered | sym::simd_reduce_mul_unordered => {
+        sym::simd_reduce_add_unordered => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            // FIXME there must be no acc param for integer vectors
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, lane_ty, a, b| {
+                if lane_ty.is_floating_point() {
+                    fx.bcx.ins().fadd(a, b)
+                } else {
+                    fx.bcx.ins().iadd(a, b)
+                }
+            });
+        }
+
+        sym::simd_reduce_mul_ordered => {
             intrinsic_args!(fx, args => (v, acc); intrinsic);
             let acc = acc.load_scalar(fx);
 
@@ -518,6 +613,24 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             simd_reduce(fx, v, Some(acc), ret, &|fx, lane_ty, a, b| {
+                if lane_ty.is_floating_point() {
+                    fx.bcx.ins().fmul(a, b)
+                } else {
+                    fx.bcx.ins().imul(a, b)
+                }
+            });
+        }
+
+        sym::simd_reduce_mul_unordered => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            // FIXME there must be no acc param for integer vectors
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, lane_ty, a, b| {
                 if lane_ty.is_floating_point() {
                     fx.bcx.ins().fmul(a, b)
                 } else {
@@ -581,7 +694,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| fx.bcx.ins().bxor(a, b));
         }
 
-        sym::simd_reduce_min => {
+        sym::simd_reduce_min | sym::simd_reduce_min_nanless => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             if !v.layout().ty.is_simd() {
@@ -600,7 +713,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_max => {
+        sym::simd_reduce_max | sym::simd_reduce_max_nanless => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             if !v.layout().ty.is_simd() {
@@ -878,6 +991,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             fx.tcx.sess.span_err(span, format!("Unknown SIMD intrinsic {}", intrinsic));
             // Prevent verifier error
             fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            return;
         }
     }
     let ret_block = fx.get_block(target);
