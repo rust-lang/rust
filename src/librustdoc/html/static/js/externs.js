@@ -9,7 +9,7 @@ function initSearch(searchIndex){}
 /**
  * @typedef {{
  *     name: string,
- *     id: integer,
+ *     id: integer|null,
  *     fullPath: Array<string>,
  *     pathWithoutLast: Array<string>,
  *     pathLast: string,

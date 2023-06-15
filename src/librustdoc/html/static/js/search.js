@@ -252,7 +252,7 @@ function initSearch(rawSearchIndex) {
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
-     * Returns the number. If name is "" or null, return -1 (pure generic).
+     * Returns the number. If name is "" or null, return null (pure generic).
      *
      * This is effectively string interning, so that function matching can be
      * done more quickly. Two types with the same name but different item kinds
@@ -264,7 +264,7 @@ function initSearch(rawSearchIndex) {
      */
     function buildTypeMapIndex(name) {
         if (name === "" || name === null) {
-            return -1;
+            return null;
         }
 
         if (typeNameIdMap.has(name)) {
@@ -489,7 +489,7 @@ function initSearch(rawSearchIndex) {
             }
             return {
                 name: "never",
-                id: -1,
+                id: null,
                 fullPath: ["never"],
                 pathWithoutLast: [],
                 pathLast: "never",
@@ -531,7 +531,7 @@ function initSearch(rawSearchIndex) {
         }
         return {
             name: name.trim(),
-            id: -1,
+            id: null,
             fullPath: pathSegments,
             pathWithoutLast: pathSegments.slice(0, pathSegments.length - 1),
             pathLast: pathSegments[pathSegments.length - 1],
@@ -660,7 +660,7 @@ function initSearch(rawSearchIndex) {
             }
             elems.push({
                 name: "[]",
-                id: -1,
+                id: null,
                 fullPath: ["[]"],
                 pathWithoutLast: [],
                 pathLast: "[]",
@@ -1172,7 +1172,7 @@ function initSearch(rawSearchIndex) {
             const out = [];
 
             for (const result of results) {
-                if (result.id > -1) {
+                if (result.id !== -1) {
                     const obj = searchIndex[result.id];
                     obj.dist = result.dist;
                     const res = buildHrefAndPath(obj);
@@ -1403,7 +1403,7 @@ function initSearch(rawSearchIndex) {
                 // [unboxing]:
                 // http://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
                 const queryContainsArrayOrSliceElem = queryElemSet.has(typeNameIdOfArrayOrSlice);
-                if (fnType.id === -1 || !(
+                if (fnType.id === null || !(
                     queryElemSet.has(fnType.id) ||
                     (fnType.id === typeNameIdOfSlice && queryContainsArrayOrSliceElem) ||
                     (fnType.id === typeNameIdOfArray && queryContainsArrayOrSliceElem)
@@ -1564,7 +1564,7 @@ function initSearch(rawSearchIndex) {
           * @return {boolean} - Returns true if the type matches, false otherwise.
           */
         function checkType(row, elem) {
-            if (row.id === -1) {
+            if (row.id === null) {
                 // This is a pure "generic" search, no need to run other checks.
                 return row.generics.length > 0 ? checkIfInList(row.generics, elem) : false;
             }
@@ -1891,7 +1891,7 @@ function initSearch(rawSearchIndex) {
                 if (typeNameIdMap.has(elem.pathLast)) {
                     elem.id = typeNameIdMap.get(elem.pathLast);
                 } else if (!parsedQuery.literalSearch) {
-                    let match = -1;
+                    let match = null;
                     let matchDist = maxEditDistance + 1;
                     let matchName = "";
                     for (const [name, id] of typeNameIdMap) {
@@ -1905,7 +1905,7 @@ function initSearch(rawSearchIndex) {
                             matchName = name;
                         }
                     }
-                    if (match !== -1) {
+                    if (match !== null) {
                         parsedQuery.correction = matchName;
                     }
                     elem.id = match;
@@ -2413,7 +2413,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // `0` is used as a sentinel because it's fewer bytes than `null`
             if (pathIndex === 0) {
                 return {
-                    id: -1,
+                    id: null,
                     ty: null,
                     path: null,
                     generics: generics,
@@ -2457,7 +2457,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const pathIndex = functionSearchType[INPUTS_DATA];
             if (pathIndex === 0) {
                 inputs = [{
-                    id: -1,
+                    id: null,
                     ty: null,
                     path: null,
                     generics: [],
@@ -2482,7 +2482,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 const pathIndex = functionSearchType[OUTPUT_DATA];
                 if (pathIndex === 0) {
                     output = [{
-                        id: -1,
+                        id: null,
                         ty: null,
                         path: null,
                         generics: [],
