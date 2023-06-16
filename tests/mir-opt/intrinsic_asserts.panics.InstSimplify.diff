@@ -2,46 +2,35 @@
 + // MIR for `panics` after InstSimplify
   
   fn panics() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/intrinsic_asserts.rs:+0:17: +0:17
-      let _1: ();                          // in scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:50
-      let _2: ();                          // in scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:49
-      let _3: ();                          // in scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
+      let mut _0: ();
+      let _1: ();
+      let _2: ();
+      let _3: ();
   
       bb0: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:50
--         _1 = assert_inhabited::<Never>() -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:50
-+         _1 = assert_inhabited::<Never>() -> unwind unreachable; // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:50
-                                           // mir::Constant
-                                           // + span: $DIR/intrinsic_asserts.rs:17:5: 17:48
-                                           // + literal: Const { ty: extern "rust-intrinsic" fn() {assert_inhabited::<Never>}, val: Value(<ZST>) }
+          nop;
+-         _1 = assert_inhabited::<Never>() -> [return: bb1, unwind unreachable];
++         _1 = assert_inhabited::<Never>() -> unwind unreachable;
       }
   
       bb1: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+1:50: +1:51
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:49
--         _2 = assert_zero_valid::<&u8>() -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:49
-+         _2 = assert_zero_valid::<&u8>() -> unwind unreachable; // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:49
-                                           // mir::Constant
-                                           // + span: $DIR/intrinsic_asserts.rs:18:5: 18:47
-                                           // + user_ty: UserType(0)
-                                           // + literal: Const { ty: extern "rust-intrinsic" fn() {assert_zero_valid::<&u8>}, val: Value(<ZST>) }
+          nop;
+          nop;
+-         _2 = assert_zero_valid::<&u8>() -> [return: bb2, unwind unreachable];
++         _2 = assert_zero_valid::<&u8>() -> unwind unreachable;
       }
   
       bb2: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+2:49: +2:50
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
--         _3 = assert_mem_uninitialized_valid::<&u8>() -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
-+         _3 = assert_mem_uninitialized_valid::<&u8>() -> unwind unreachable; // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
-                                           // mir::Constant
-                                           // + span: $DIR/intrinsic_asserts.rs:19:5: 19:60
-                                           // + user_ty: UserType(1)
-                                           // + literal: Const { ty: extern "rust-intrinsic" fn() {assert_mem_uninitialized_valid::<&u8>}, val: Value(<ZST>) }
+          nop;
+          nop;
+-         _3 = assert_mem_uninitialized_valid::<&u8>() -> [return: bb3, unwind unreachable];
++         _3 = assert_mem_uninitialized_valid::<&u8>() -> unwind unreachable;
       }
   
       bb3: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+3:62: +3:63
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+0:17: +4:2
-          return;                          // scope 0 at $DIR/intrinsic_asserts.rs:+4:2: +4:2
+          nop;
+          nop;
+          return;
       }
   }
   

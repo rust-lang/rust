@@ -3,77 +3,60 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
+use super::build_sysroot::STDLIB_SRC;
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_default_sysroot, get_rustc_version};
-use super::tests::LIBCORE_TESTS_SRC;
-use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
+use super::rustc_info::get_default_sysroot;
+use super::utils::{
+    copy_dir_recursively, git_command, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
+};
 
 pub(crate) fn prepare(dirs: &Dirs) {
-    RelPath::DOWNLOAD.ensure_fresh(dirs);
-
-    spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", "rustc", dirs));
-
-    prepare_stdlib(dirs);
-    spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", "rustc", dirs));
-
-    prepare_coretests(dirs);
-    spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", "rustc", dirs));
-
+    RelPath::DOWNLOAD.ensure_exists(dirs);
     super::tests::RAND_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::RAND.fetch("cargo", "rustc", dirs));
     super::tests::REGEX_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::REGEX.fetch("cargo", "rustc", dirs));
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", "rustc", dirs));
 }
 
-fn prepare_stdlib(dirs: &Dirs) {
-    let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
+pub(crate) fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
+    let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
-    eprintln!("[COPY] stdlib src");
+    apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
 
-    // FIXME ensure builds error out or update the copy if any of the files copied here change
-    BUILD_SYSROOT.ensure_fresh(dirs);
-    copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &BUILD_SYSROOT.to_path(dirs));
+    std::fs::write(
+        STDLIB_SRC.to_path(dirs).join("Cargo.toml"),
+        r#"
+[workspace]
+members = ["./library/sysroot"]
 
-    fs::create_dir_all(SYSROOT_SRC.to_path(dirs).join("library")).unwrap();
-    copy_dir_recursively(
-        &sysroot_src_orig.join("library"),
-        &SYSROOT_SRC.to_path(dirs).join("library"),
-    );
+[patch.crates-io]
+rustc-std-workspace-core = { path = "./library/rustc-std-workspace-core" }
+rustc-std-workspace-alloc = { path = "./library/rustc-std-workspace-alloc" }
+rustc-std-workspace-std = { path = "./library/rustc-std-workspace-std" }
 
-    let rustc_version = get_rustc_version(Path::new("rustc"));
-    fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
+# Mandatory for correctly compiling compiler-builtins
+[profile.dev.package.compiler_builtins]
+debug-assertions = false
+overflow-checks = false
+codegen-units = 10000
 
-    eprintln!("[GIT] init");
-    init_git_repo(&SYSROOT_SRC.to_path(dirs));
+[profile.release.package.compiler_builtins]
+debug-assertions = false
+overflow-checks = false
+codegen-units = 10000
+"#,
+    )
+    .unwrap();
 
-    apply_patches(dirs, "stdlib", &SYSROOT_SRC.to_path(dirs));
-}
-
-fn prepare_coretests(dirs: &Dirs) {
-    let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
-    assert!(sysroot_src_orig.exists());
-
-    eprintln!("[COPY] coretests src");
-
-    fs::create_dir_all(LIBCORE_TESTS_SRC.to_path(dirs)).unwrap();
-    copy_dir_recursively(
-        &sysroot_src_orig.join("library/core/tests"),
-        &LIBCORE_TESTS_SRC.to_path(dirs),
-    );
-
-    eprintln!("[GIT] init");
-    init_git_repo(&LIBCORE_TESTS_SRC.to_path(dirs));
-
-    apply_patches(dirs, "coretests", &LIBCORE_TESTS_SRC.to_path(dirs));
+    let source_lockfile = RelPath::PATCHES.to_path(dirs).join("stdlib-lock.toml");
+    let target_lockfile = STDLIB_SRC.to_path(dirs).join("Cargo.lock");
+    fs::copy(source_lockfile, target_lockfile).unwrap();
 }
 
 pub(crate) struct GitRepo {
     url: GitRepoUrl,
     rev: &'static str,
+    content_hash: &'static str,
     patch_name: &'static str,
 }
 
@@ -81,35 +64,107 @@ enum GitRepoUrl {
     Github { user: &'static str, repo: &'static str },
 }
 
+// Note: This uses a hasher which is not cryptographically secure. This is fine as the hash is meant
+// to protect against accidental modification and outdated downloads, not against manipulation.
+fn hash_file(file: &std::path::Path) -> u64 {
+    let contents = std::fs::read(file).unwrap();
+    #[allow(deprecated)]
+    let mut hasher = std::hash::SipHasher::new();
+    std::hash::Hash::hash(&contents, &mut hasher);
+    std::hash::Hasher::finish(&hasher)
+}
+
+fn hash_dir(dir: &std::path::Path) -> u64 {
+    let mut sub_hashes = std::collections::BTreeMap::new();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        if entry.file_type().unwrap().is_dir() {
+            sub_hashes
+                .insert(entry.file_name().to_str().unwrap().to_owned(), hash_dir(&entry.path()));
+        } else {
+            sub_hashes
+                .insert(entry.file_name().to_str().unwrap().to_owned(), hash_file(&entry.path()));
+        }
+    }
+    #[allow(deprecated)]
+    let mut hasher = std::hash::SipHasher::new();
+    std::hash::Hash::hash(&sub_hashes, &mut hasher);
+    std::hash::Hasher::finish(&hasher)
+}
+
 impl GitRepo {
     pub(crate) const fn github(
         user: &'static str,
         repo: &'static str,
         rev: &'static str,
+        content_hash: &'static str,
         patch_name: &'static str,
     ) -> GitRepo {
-        GitRepo { url: GitRepoUrl::Github { user, repo }, rev, patch_name }
+        GitRepo { url: GitRepoUrl::Github { user, repo }, rev, content_hash, patch_name }
+    }
+
+    fn download_dir(&self, dirs: &Dirs) -> PathBuf {
+        match self.url {
+            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo).to_path(dirs),
+        }
     }
 
     pub(crate) const fn source_dir(&self) -> RelPath {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo),
+            GitRepoUrl::Github { user: _, repo } => RelPath::BUILD.join(repo),
         }
     }
 
     pub(crate) fn fetch(&self, dirs: &Dirs) {
-        match self.url {
-            GitRepoUrl::Github { user, repo } => {
-                clone_repo_shallow_github(
-                    dirs,
-                    &self.source_dir().to_path(dirs),
-                    user,
-                    repo,
-                    self.rev,
+        let download_dir = self.download_dir(dirs);
+
+        if download_dir.exists() {
+            let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+            if actual_hash == self.content_hash {
+                println!("[FRESH] {}", download_dir.display());
+                return;
+            } else {
+                println!(
+                    "Mismatched content hash for {download_dir}: {actual_hash} != {content_hash}. Downloading again.",
+                    download_dir = download_dir.display(),
+                    content_hash = self.content_hash,
                 );
             }
         }
-        apply_patches(dirs, self.patch_name, &self.source_dir().to_path(dirs));
+
+        match self.url {
+            GitRepoUrl::Github { user, repo } => {
+                clone_repo_shallow_github(dirs, &download_dir, user, repo, self.rev);
+            }
+        }
+
+        let source_lockfile =
+            RelPath::PATCHES.to_path(dirs).join(format!("{}-lock.toml", self.patch_name));
+        let target_lockfile = download_dir.join("Cargo.lock");
+        if source_lockfile.exists() {
+            fs::copy(source_lockfile, target_lockfile).unwrap();
+        } else {
+            assert!(target_lockfile.exists());
+        }
+
+        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+        if actual_hash != self.content_hash {
+            println!(
+                "Download of {download_dir} failed with mismatched content hash: {actual_hash} != {content_hash}",
+                download_dir = download_dir.display(),
+                content_hash = self.content_hash,
+            );
+            std::process::exit(1);
+        }
+    }
+
+    pub(crate) fn patch(&self, dirs: &Dirs) {
+        apply_patches(
+            dirs,
+            self.patch_name,
+            &self.download_dir(dirs),
+            &self.source_dir().to_path(dirs),
+        );
     }
 }
 
@@ -126,6 +181,8 @@ fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     let mut checkout_cmd = git_command(download_dir, "checkout");
     checkout_cmd.arg("-q").arg(rev);
     spawn_and_wait(checkout_cmd);
+
+    std::fs::remove_dir_all(download_dir.join(".git")).unwrap();
 }
 
 fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo: &str, rev: &str) {
@@ -173,8 +230,6 @@ fn clone_repo_shallow_github(dirs: &Dirs, download_dir: &Path, user: &str, repo:
     // Rename unpacked dir to the expected name
     std::fs::rename(archive_dir, &download_dir).unwrap();
 
-    init_git_repo(&download_dir);
-
     // Cleanup
     std::fs::remove_file(archive_file).unwrap();
 }
@@ -213,7 +268,22 @@ fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
     patches
 }
 
-fn apply_patches(dirs: &Dirs, crate_name: &str, target_dir: &Path) {
+pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, target_dir: &Path) {
+    // FIXME avoid copy and patch if src, patches and target are unchanged
+
+    eprintln!("[COPY] {crate_name} source");
+
+    remove_dir_if_exists(target_dir);
+    fs::create_dir_all(target_dir).unwrap();
+    if crate_name == "stdlib" {
+        fs::create_dir(target_dir.join("library")).unwrap();
+        copy_dir_recursively(&source_dir.join("library"), &target_dir.join("library"));
+    } else {
+        copy_dir_recursively(source_dir, target_dir);
+    }
+
+    init_git_repo(target_dir);
+
     if crate_name == "<none>" {
         return;
     }

@@ -9,6 +9,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{Ty, TyCtxt, TypeAndMut};
 use rustc_session::Session;
+use rustc_target::spec::PanicStrategy;
 
 pub struct CheckAlignment;
 
@@ -236,7 +237,11 @@ fn insert_alignment_check<'tcx>(
                 required: Operand::Copy(alignment),
                 found: Operand::Copy(addr),
             }),
-            unwind: UnwindAction::Terminate,
+            unwind: if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
+                UnwindAction::Terminate
+            } else {
+                UnwindAction::Unreachable
+            },
         },
     });
 }

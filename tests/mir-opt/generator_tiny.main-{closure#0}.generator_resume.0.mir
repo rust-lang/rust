@@ -22,68 +22,65 @@
 } */
 
 fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator_tiny.rs:19:16: 19:24]>, _2: u8) -> GeneratorState<(), ()> {
-    debug _x => _10;                     // in scope 0 at $DIR/generator_tiny.rs:+0:17: +0:19
-    let mut _0: std::ops::GeneratorState<(), ()>; // return place in scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-    let _3: HasDrop;                     // in scope 0 at $DIR/generator_tiny.rs:+1:13: +1:15
-    let mut _4: !;                       // in scope 0 at $DIR/generator_tiny.rs:+2:9: +5:10
-    let mut _5: ();                      // in scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-    let _6: u8;                          // in scope 0 at $DIR/generator_tiny.rs:+3:13: +3:18
-    let mut _7: ();                      // in scope 0 at $DIR/generator_tiny.rs:+3:13: +3:18
-    let _8: ();                          // in scope 0 at $DIR/generator_tiny.rs:+4:13: +4:21
-    let mut _9: ();                      // in scope 0 at $DIR/generator_tiny.rs:+0:25: +0:25
-    let _10: u8;                         // in scope 0 at $DIR/generator_tiny.rs:+0:17: +0:19
-    let mut _11: u32;                    // in scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
+    debug _x => _10;
+    let mut _0: std::ops::GeneratorState<(), ()>;
+    let _3: HasDrop;
+    let mut _4: !;
+    let mut _5: ();
+    let _6: u8;
+    let mut _7: ();
+    let _8: ();
+    let mut _9: ();
+    let _10: u8;
+    let mut _11: u32;
     scope 1 {
-        debug _d => (((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24])) as variant#3).0: HasDrop); // in scope 1 at $DIR/generator_tiny.rs:+1:13: +1:15
+        debug _d => (((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24])) as variant#3).0: HasDrop);
     }
 
     bb0: {
-        _11 = discriminant((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24]))); // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-        switchInt(move _11) -> [0: bb1, 3: bb5, otherwise: bb6]; // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
+        _11 = discriminant((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24])));
+        switchInt(move _11) -> [0: bb1, 3: bb5, otherwise: bb6];
     }
 
     bb1: {
-        _10 = move _2;                   // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-        nop;                             // scope 0 at $DIR/generator_tiny.rs:+1:13: +1:15
-        (((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24])) as variant#3).0: HasDrop) = HasDrop; // scope 0 at $DIR/generator_tiny.rs:+1:18: +1:25
-        StorageLive(_4);                 // scope 1 at $DIR/generator_tiny.rs:+2:9: +5:10
-        goto -> bb2;                     // scope 1 at $DIR/generator_tiny.rs:+2:9: +5:10
+        _10 = move _2;
+        nop;
+        (((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24])) as variant#3).0: HasDrop) = HasDrop;
+        StorageLive(_4);
+        goto -> bb2;
     }
 
     bb2: {
-        StorageLive(_6);                 // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        StorageLive(_7);                 // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        _7 = ();                         // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        _0 = GeneratorState::<(), ()>::Yielded(move _7); // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        discriminant((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24]))) = 3; // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
-        return;                          // scope 1 at $DIR/generator_tiny.rs:+3:13: +3:18
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = ();
+        _0 = GeneratorState::<(), ()>::Yielded(move _7);
+        discriminant((*(_1.0: &mut [generator@$DIR/generator_tiny.rs:19:16: 19:24]))) = 3;
+        return;
     }
 
     bb3: {
-        StorageDead(_7);                 // scope 1 at $DIR/generator_tiny.rs:+3:17: +3:18
-        StorageDead(_6);                 // scope 1 at $DIR/generator_tiny.rs:+3:18: +3:19
-        StorageLive(_8);                 // scope 1 at $DIR/generator_tiny.rs:+4:13: +4:21
-        _8 = callee() -> [return: bb4, unwind unreachable]; // scope 1 at $DIR/generator_tiny.rs:+4:13: +4:21
-                                         // mir::Constant
-                                         // + span: $DIR/generator_tiny.rs:23:13: 23:19
-                                         // + literal: Const { ty: fn() {callee}, val: Value(<ZST>) }
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageLive(_8);
+        _8 = callee() -> [return: bb4, unwind unreachable];
     }
 
     bb4: {
-        StorageDead(_8);                 // scope 1 at $DIR/generator_tiny.rs:+4:21: +4:22
-        _5 = const ();                   // scope 1 at $DIR/generator_tiny.rs:+2:14: +5:10
-        goto -> bb2;                     // scope 1 at $DIR/generator_tiny.rs:+2:9: +5:10
+        StorageDead(_8);
+        _5 = const ();
+        goto -> bb2;
     }
 
     bb5: {
-        StorageLive(_4);                 // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-        StorageLive(_6);                 // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-        StorageLive(_7);                 // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-        _6 = move _2;                    // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
-        goto -> bb3;                     // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
+        StorageLive(_4);
+        StorageLive(_6);
+        StorageLive(_7);
+        _6 = move _2;
+        goto -> bb3;
     }
 
     bb6: {
-        unreachable;                     // scope 0 at $DIR/generator_tiny.rs:+0:16: +6:6
+        unreachable;
     }
 }

@@ -1,203 +1,200 @@
 // MIR for `XXX` after built
 
 static XXX: &Foo = {
-    let mut _0: &Foo;                    // return place in scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:13: +0:25
-    let _1: &Foo;                        // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:28: +18:2
-    let _2: Foo;                         // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:29: +18:2
-    let mut _3: &[(u32, u32)];           // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-    let mut _4: &[(u32, u32); 42];       // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-    let _5: &[(u32, u32); 42];           // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-    let _6: [(u32, u32); 42];            // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:12: +17:6
-    let mut _7: (u32, u32);              // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:9: +3:15
-    let mut _8: (u32, u32);              // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:17: +3:23
-    let mut _9: (u32, u32);              // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:25: +3:31
-    let mut _10: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:9: +4:15
-    let mut _11: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:17: +4:23
-    let mut _12: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:25: +4:31
-    let mut _13: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:9: +5:15
-    let mut _14: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:17: +5:23
-    let mut _15: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:25: +5:31
-    let mut _16: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:9: +6:15
-    let mut _17: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:17: +6:23
-    let mut _18: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:25: +6:31
-    let mut _19: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:9: +7:15
-    let mut _20: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:17: +7:23
-    let mut _21: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:25: +7:31
-    let mut _22: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:9: +8:15
-    let mut _23: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:17: +8:23
-    let mut _24: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:25: +8:31
-    let mut _25: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:9: +9:15
-    let mut _26: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:17: +9:23
-    let mut _27: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:25: +9:31
-    let mut _28: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:9: +10:15
-    let mut _29: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:17: +10:23
-    let mut _30: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:25: +10:31
-    let mut _31: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:9: +11:15
-    let mut _32: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:17: +11:23
-    let mut _33: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:25: +11:31
-    let mut _34: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:9: +12:15
-    let mut _35: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:17: +12:23
-    let mut _36: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:25: +12:31
-    let mut _37: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:9: +13:15
-    let mut _38: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:17: +13:23
-    let mut _39: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:25: +13:31
-    let mut _40: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:9: +14:15
-    let mut _41: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:17: +14:23
-    let mut _42: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:25: +14:31
-    let mut _43: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:9: +15:15
-    let mut _44: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:17: +15:23
-    let mut _45: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:25: +15:31
-    let mut _46: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:9: +16:15
-    let mut _47: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:17: +16:23
-    let mut _48: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:25: +16:31
+    let mut _0: &Foo;
+    let _1: &Foo;
+    let _2: Foo;
+    let mut _3: &[(u32, u32)];
+    let mut _4: &[(u32, u32); 42];
+    let _5: &[(u32, u32); 42];
+    let _6: [(u32, u32); 42];
+    let mut _7: (u32, u32);
+    let mut _8: (u32, u32);
+    let mut _9: (u32, u32);
+    let mut _10: (u32, u32);
+    let mut _11: (u32, u32);
+    let mut _12: (u32, u32);
+    let mut _13: (u32, u32);
+    let mut _14: (u32, u32);
+    let mut _15: (u32, u32);
+    let mut _16: (u32, u32);
+    let mut _17: (u32, u32);
+    let mut _18: (u32, u32);
+    let mut _19: (u32, u32);
+    let mut _20: (u32, u32);
+    let mut _21: (u32, u32);
+    let mut _22: (u32, u32);
+    let mut _23: (u32, u32);
+    let mut _24: (u32, u32);
+    let mut _25: (u32, u32);
+    let mut _26: (u32, u32);
+    let mut _27: (u32, u32);
+    let mut _28: (u32, u32);
+    let mut _29: (u32, u32);
+    let mut _30: (u32, u32);
+    let mut _31: (u32, u32);
+    let mut _32: (u32, u32);
+    let mut _33: (u32, u32);
+    let mut _34: (u32, u32);
+    let mut _35: (u32, u32);
+    let mut _36: (u32, u32);
+    let mut _37: (u32, u32);
+    let mut _38: (u32, u32);
+    let mut _39: (u32, u32);
+    let mut _40: (u32, u32);
+    let mut _41: (u32, u32);
+    let mut _42: (u32, u32);
+    let mut _43: (u32, u32);
+    let mut _44: (u32, u32);
+    let mut _45: (u32, u32);
+    let mut _46: (u32, u32);
+    let mut _47: (u32, u32);
+    let mut _48: (u32, u32);
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:28: +18:2
-        StorageLive(_2);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:29: +18:2
-        StorageLive(_3);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-        StorageLive(_4);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-        StorageLive(_5);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-        StorageLive(_6);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:12: +17:6
-        StorageLive(_7);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:9: +3:15
-        _7 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:9: +3:15
-        StorageLive(_8);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:17: +3:23
-        _8 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:17: +3:23
-        StorageLive(_9);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:25: +3:31
-        _9 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+3:25: +3:31
-        StorageLive(_10);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:9: +4:15
-        _10 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:9: +4:15
-        StorageLive(_11);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:17: +4:23
-        _11 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:17: +4:23
-        StorageLive(_12);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:25: +4:31
-        _12 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+4:25: +4:31
-        StorageLive(_13);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:9: +5:15
-        _13 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:9: +5:15
-        StorageLive(_14);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:17: +5:23
-        _14 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:17: +5:23
-        StorageLive(_15);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:25: +5:31
-        _15 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+5:25: +5:31
-        StorageLive(_16);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:9: +6:15
-        _16 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:9: +6:15
-        StorageLive(_17);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:17: +6:23
-        _17 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:17: +6:23
-        StorageLive(_18);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:25: +6:31
-        _18 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+6:25: +6:31
-        StorageLive(_19);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:9: +7:15
-        _19 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:9: +7:15
-        StorageLive(_20);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:17: +7:23
-        _20 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:17: +7:23
-        StorageLive(_21);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:25: +7:31
-        _21 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+7:25: +7:31
-        StorageLive(_22);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:9: +8:15
-        _22 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:9: +8:15
-        StorageLive(_23);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:17: +8:23
-        _23 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:17: +8:23
-        StorageLive(_24);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:25: +8:31
-        _24 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+8:25: +8:31
-        StorageLive(_25);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:9: +9:15
-        _25 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:9: +9:15
-        StorageLive(_26);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:17: +9:23
-        _26 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:17: +9:23
-        StorageLive(_27);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:25: +9:31
-        _27 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+9:25: +9:31
-        StorageLive(_28);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:9: +10:15
-        _28 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:9: +10:15
-        StorageLive(_29);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:17: +10:23
-        _29 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:17: +10:23
-        StorageLive(_30);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:25: +10:31
-        _30 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+10:25: +10:31
-        StorageLive(_31);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:9: +11:15
-        _31 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:9: +11:15
-        StorageLive(_32);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:17: +11:23
-        _32 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:17: +11:23
-        StorageLive(_33);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:25: +11:31
-        _33 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+11:25: +11:31
-        StorageLive(_34);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:9: +12:15
-        _34 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:9: +12:15
-        StorageLive(_35);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:17: +12:23
-        _35 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:17: +12:23
-        StorageLive(_36);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:25: +12:31
-        _36 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+12:25: +12:31
-        StorageLive(_37);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:9: +13:15
-        _37 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:9: +13:15
-        StorageLive(_38);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:17: +13:23
-        _38 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:17: +13:23
-        StorageLive(_39);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:25: +13:31
-        _39 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+13:25: +13:31
-        StorageLive(_40);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:9: +14:15
-        _40 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:9: +14:15
-        StorageLive(_41);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:17: +14:23
-        _41 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:17: +14:23
-        StorageLive(_42);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:25: +14:31
-        _42 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+14:25: +14:31
-        StorageLive(_43);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:9: +15:15
-        _43 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:9: +15:15
-        StorageLive(_44);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:17: +15:23
-        _44 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:17: +15:23
-        StorageLive(_45);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:25: +15:31
-        _45 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+15:25: +15:31
-        StorageLive(_46);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:9: +16:15
-        _46 = (const 0_u32, const 1_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:9: +16:15
-        StorageLive(_47);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:17: +16:23
-        _47 = (const 0_u32, const 2_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:17: +16:23
-        StorageLive(_48);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:25: +16:31
-        _48 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+16:25: +16:31
-        _6 = [move _7, move _8, move _9, move _10, move _11, move _12, move _13, move _14, move _15, move _16, move _17, move _18, move _19, move _20, move _21, move _22, move _23, move _24, move _25, move _26, move _27, move _28, move _29, move _30, move _31, move _32, move _33, move _34, move _35, move _36, move _37, move _38, move _39, move _40, move _41, move _42, move _43, move _44, move _45, move _46, move _47, move _48]; // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:12: +17:6
-        StorageDead(_48);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_47);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_46);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_45);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_44);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_43);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_42);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_41);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_40);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_39);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_38);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_37);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_36);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_35);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_34);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_33);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_32);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_31);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_30);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_29);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_28);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_27);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_26);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_25);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_24);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_23);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_22);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_21);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_20);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_19);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_18);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_17);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_16);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_15);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_14);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_13);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_12);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_11);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_10);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_9);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_8);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        StorageDead(_7);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        _5 = &_6;                        // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-        _4 = &(*_5);                     // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-        _3 = move _4 as &[(u32, u32)] (Pointer(Unsize)); // scope 0 at $DIR/storage_live_dead_in_statics.rs:+2:11: +17:6
-        StorageDead(_4);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+17:5: +17:6
-        _2 = Foo { tup: const "hi", data: move _3 }; // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:29: +18:2
-                                         // mir::Constant
-                                         // + span: $DIR/storage_live_dead_in_statics.rs:6:10: 6:14
-                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
-        StorageDead(_3);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+18:1: +18:2
-        _1 = &_2;                        // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:28: +18:2
-        _0 = &(*_1);                     // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:28: +18:2
-        StorageDead(_5);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+18:1: +18:2
-        StorageDead(_1);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:+18:1: +18:2
-        return;                          // scope 0 at $DIR/storage_live_dead_in_statics.rs:+0:1: +18:3
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = (const 0_u32, const 1_u32);
+        StorageLive(_8);
+        _8 = (const 0_u32, const 2_u32);
+        StorageLive(_9);
+        _9 = (const 0_u32, const 3_u32);
+        StorageLive(_10);
+        _10 = (const 0_u32, const 1_u32);
+        StorageLive(_11);
+        _11 = (const 0_u32, const 2_u32);
+        StorageLive(_12);
+        _12 = (const 0_u32, const 3_u32);
+        StorageLive(_13);
+        _13 = (const 0_u32, const 1_u32);
+        StorageLive(_14);
+        _14 = (const 0_u32, const 2_u32);
+        StorageLive(_15);
+        _15 = (const 0_u32, const 3_u32);
+        StorageLive(_16);
+        _16 = (const 0_u32, const 1_u32);
+        StorageLive(_17);
+        _17 = (const 0_u32, const 2_u32);
+        StorageLive(_18);
+        _18 = (const 0_u32, const 3_u32);
+        StorageLive(_19);
+        _19 = (const 0_u32, const 1_u32);
+        StorageLive(_20);
+        _20 = (const 0_u32, const 2_u32);
+        StorageLive(_21);
+        _21 = (const 0_u32, const 3_u32);
+        StorageLive(_22);
+        _22 = (const 0_u32, const 1_u32);
+        StorageLive(_23);
+        _23 = (const 0_u32, const 2_u32);
+        StorageLive(_24);
+        _24 = (const 0_u32, const 3_u32);
+        StorageLive(_25);
+        _25 = (const 0_u32, const 1_u32);
+        StorageLive(_26);
+        _26 = (const 0_u32, const 2_u32);
+        StorageLive(_27);
+        _27 = (const 0_u32, const 3_u32);
+        StorageLive(_28);
+        _28 = (const 0_u32, const 1_u32);
+        StorageLive(_29);
+        _29 = (const 0_u32, const 2_u32);
+        StorageLive(_30);
+        _30 = (const 0_u32, const 3_u32);
+        StorageLive(_31);
+        _31 = (const 0_u32, const 1_u32);
+        StorageLive(_32);
+        _32 = (const 0_u32, const 2_u32);
+        StorageLive(_33);
+        _33 = (const 0_u32, const 3_u32);
+        StorageLive(_34);
+        _34 = (const 0_u32, const 1_u32);
+        StorageLive(_35);
+        _35 = (const 0_u32, const 2_u32);
+        StorageLive(_36);
+        _36 = (const 0_u32, const 3_u32);
+        StorageLive(_37);
+        _37 = (const 0_u32, const 1_u32);
+        StorageLive(_38);
+        _38 = (const 0_u32, const 2_u32);
+        StorageLive(_39);
+        _39 = (const 0_u32, const 3_u32);
+        StorageLive(_40);
+        _40 = (const 0_u32, const 1_u32);
+        StorageLive(_41);
+        _41 = (const 0_u32, const 2_u32);
+        StorageLive(_42);
+        _42 = (const 0_u32, const 3_u32);
+        StorageLive(_43);
+        _43 = (const 0_u32, const 1_u32);
+        StorageLive(_44);
+        _44 = (const 0_u32, const 2_u32);
+        StorageLive(_45);
+        _45 = (const 0_u32, const 3_u32);
+        StorageLive(_46);
+        _46 = (const 0_u32, const 1_u32);
+        StorageLive(_47);
+        _47 = (const 0_u32, const 2_u32);
+        StorageLive(_48);
+        _48 = (const 0_u32, const 3_u32);
+        _6 = [move _7, move _8, move _9, move _10, move _11, move _12, move _13, move _14, move _15, move _16, move _17, move _18, move _19, move _20, move _21, move _22, move _23, move _24, move _25, move _26, move _27, move _28, move _29, move _30, move _31, move _32, move _33, move _34, move _35, move _36, move _37, move _38, move _39, move _40, move _41, move _42, move _43, move _44, move _45, move _46, move _47, move _48];
+        StorageDead(_48);
+        StorageDead(_47);
+        StorageDead(_46);
+        StorageDead(_45);
+        StorageDead(_44);
+        StorageDead(_43);
+        StorageDead(_42);
+        StorageDead(_41);
+        StorageDead(_40);
+        StorageDead(_39);
+        StorageDead(_38);
+        StorageDead(_37);
+        StorageDead(_36);
+        StorageDead(_35);
+        StorageDead(_34);
+        StorageDead(_33);
+        StorageDead(_32);
+        StorageDead(_31);
+        StorageDead(_30);
+        StorageDead(_29);
+        StorageDead(_28);
+        StorageDead(_27);
+        StorageDead(_26);
+        StorageDead(_25);
+        StorageDead(_24);
+        StorageDead(_23);
+        StorageDead(_22);
+        StorageDead(_21);
+        StorageDead(_20);
+        StorageDead(_19);
+        StorageDead(_18);
+        StorageDead(_17);
+        StorageDead(_16);
+        StorageDead(_15);
+        StorageDead(_14);
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        _5 = &_6;
+        _4 = &(*_5);
+        _3 = move _4 as &[(u32, u32)] (Pointer(Unsize));
+        StorageDead(_4);
+        _2 = Foo { tup: const "hi", data: move _3 };
+        StorageDead(_3);
+        _1 = &_2;
+        _0 = &(*_1);
+        StorageDead(_5);
+        StorageDead(_1);
+        return;
     }
 }

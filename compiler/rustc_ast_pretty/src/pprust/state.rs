@@ -824,6 +824,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_type_bounds(bounds))
     }
 
+    fn where_bound_predicate_to_string(
+        &self,
+        where_bound_predicate: &ast::WhereBoundPredicate,
+    ) -> String {
+        Self::to_string(|s| s.print_where_bound_predicate(where_bound_predicate))
+    }
+
     fn pat_to_string(&self, pat: &ast::Pat) -> String {
         Self::to_string(|s| s.print_pat(pat))
     }

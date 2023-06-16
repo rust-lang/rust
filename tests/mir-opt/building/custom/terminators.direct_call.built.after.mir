@@ -1,16 +1,13 @@
 // MIR for `direct_call` after built
 
 fn direct_call(_1: i32) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/terminators.rs:+0:27: +0:30
+    let mut _0: i32;
 
     bb0: {
-        _0 = ident::<i32>(_1) -> bb1;    // scope 0 at $DIR/terminators.rs:+3:13: +3:42
-                                         // mir::Constant
-                                         // + span: $DIR/terminators.rs:15:33: 15:38
-                                         // + literal: Const { ty: fn(i32) -> i32 {ident::<i32>}, val: Value(<ZST>) }
+        _0 = ident::<i32>(_1) -> bb1;
     }
 
     bb1: {
-        return;                          // scope 0 at $DIR/terminators.rs:+7:13: +7:21
+        return;
     }
 }

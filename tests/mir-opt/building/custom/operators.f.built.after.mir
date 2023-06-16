@@ -1,30 +1,30 @@
 // MIR for `f` after built
 
 fn f(_1: i32, _2: bool) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/operators.rs:+0:30: +0:33
-    let mut _3: (i32, bool);             // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: i32;
+    let mut _3: (i32, bool);
 
     bb0: {
-        _1 = Neg(_1);                    // scope 0 at $DIR/operators.rs:+2:9: +2:15
-        _2 = Not(_2);                    // scope 0 at $DIR/operators.rs:+3:9: +3:15
-        _1 = Add(_1, _1);                // scope 0 at $DIR/operators.rs:+4:9: +4:18
-        _1 = Sub(_1, _1);                // scope 0 at $DIR/operators.rs:+5:9: +5:18
-        _1 = Mul(_1, _1);                // scope 0 at $DIR/operators.rs:+6:9: +6:18
-        _1 = Div(_1, _1);                // scope 0 at $DIR/operators.rs:+7:9: +7:18
-        _1 = Rem(_1, _1);                // scope 0 at $DIR/operators.rs:+8:9: +8:18
-        _1 = BitXor(_1, _1);             // scope 0 at $DIR/operators.rs:+9:9: +9:18
-        _1 = BitAnd(_1, _1);             // scope 0 at $DIR/operators.rs:+10:9: +10:18
-        _1 = Shl(_1, _1);                // scope 0 at $DIR/operators.rs:+11:9: +11:19
-        _1 = Shr(_1, _1);                // scope 0 at $DIR/operators.rs:+12:9: +12:19
-        _2 = Eq(_1, _1);                 // scope 0 at $DIR/operators.rs:+13:9: +13:19
-        _2 = Lt(_1, _1);                 // scope 0 at $DIR/operators.rs:+14:9: +14:18
-        _2 = Le(_1, _1);                 // scope 0 at $DIR/operators.rs:+15:9: +15:19
-        _2 = Ge(_1, _1);                 // scope 0 at $DIR/operators.rs:+16:9: +16:19
-        _2 = Gt(_1, _1);                 // scope 0 at $DIR/operators.rs:+17:9: +17:18
-        _3 = CheckedAdd(_1, _1);         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        _2 = (_3.1: bool);               // scope 0 at $DIR/operators.rs:+19:9: +19:18
-        _1 = (_3.0: i32);                // scope 0 at $DIR/operators.rs:+20:9: +20:18
-        _0 = _1;                         // scope 0 at $DIR/operators.rs:+21:9: +21:16
-        return;                          // scope 0 at $DIR/operators.rs:+22:9: +22:17
+        _1 = Neg(_1);
+        _2 = Not(_2);
+        _1 = Add(_1, _1);
+        _1 = Sub(_1, _1);
+        _1 = Mul(_1, _1);
+        _1 = Div(_1, _1);
+        _1 = Rem(_1, _1);
+        _1 = BitXor(_1, _1);
+        _1 = BitAnd(_1, _1);
+        _1 = Shl(_1, _1);
+        _1 = Shr(_1, _1);
+        _2 = Eq(_1, _1);
+        _2 = Lt(_1, _1);
+        _2 = Le(_1, _1);
+        _2 = Ge(_1, _1);
+        _2 = Gt(_1, _1);
+        _3 = CheckedAdd(_1, _1);
+        _2 = (_3.1: bool);
+        _1 = (_3.0: i32);
+        _0 = _1;
+        return;
     }
 }

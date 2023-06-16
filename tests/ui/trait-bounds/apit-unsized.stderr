@@ -1,0 +1,41 @@
+error[E0277]: the size for values of type `impl Iterator<Item = i32> + ?Sized` cannot be known at compilation time
+  --> $DIR/apit-unsized.rs:1:8
+   |
+LL | fn foo(_: impl Iterator<Item = i32> + ?Sized) {}
+   |        ^  ---------------------------------- this type parameter needs to be `Sized`
+   |        |
+   |        doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn foo(_: impl Iterator<Item = i32> + ?Sized) {}
+LL + fn foo(_: impl Iterator<Item = i32>) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo(_: &impl Iterator<Item = i32> + ?Sized) {}
+   |           +
+
+error[E0277]: the size for values of type `impl ?Sized` cannot be known at compilation time
+  --> $DIR/apit-unsized.rs:2:8
+   |
+LL | fn bar(_: impl ?Sized) {}
+   |        ^  ----------- this type parameter needs to be `Sized`
+   |        |
+   |        doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider replacing `?Sized` with `Sized`
+   |
+LL - fn bar(_: impl ?Sized) {}
+LL + fn bar(_: impl Sized) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn bar(_: &impl ?Sized) {}
+   |           +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

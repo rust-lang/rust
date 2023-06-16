@@ -1,55 +1,47 @@
 // MIR for `foo` after Inline
 
 fn foo(_1: T, _2: i32) -> i32 {
-    debug _t => _1;                      // in scope 0 at $DIR/inline_closure.rs:+0:17: +0:19
-    debug q => _2;                       // in scope 0 at $DIR/inline_closure.rs:+0:24: +0:25
-    let mut _0: i32;                     // return place in scope 0 at $DIR/inline_closure.rs:+0:35: +0:38
-    let _3: [closure@foo<T>::{closure#0}]; // in scope 0 at $DIR/inline_closure.rs:+1:9: +1:10
-    let mut _4: &[closure@foo<T>::{closure#0}]; // in scope 0 at $DIR/inline_closure.rs:+2:5: +2:6
-    let mut _5: (i32, i32);              // in scope 0 at $DIR/inline_closure.rs:+2:5: +2:12
-    let mut _6: i32;                     // in scope 0 at $DIR/inline_closure.rs:+2:7: +2:8
-    let mut _7: i32;                     // in scope 0 at $DIR/inline_closure.rs:+2:10: +2:11
-    let mut _8: i32;                     // in scope 0 at $DIR/inline_closure.rs:+2:5: +2:12
-    let mut _9: i32;                     // in scope 0 at $DIR/inline_closure.rs:+2:5: +2:12
+    debug _t => _1;
+    debug q => _2;
+    let mut _0: i32;
+    let _3: [closure@foo<T>::{closure#0}];
+    let mut _4: &[closure@foo<T>::{closure#0}];
+    let mut _5: (i32, i32);
+    let mut _6: i32;
+    let mut _7: i32;
+    let mut _8: i32;
+    let mut _9: i32;
     scope 1 {
-        debug x => _3;                   // in scope 1 at $DIR/inline_closure.rs:+1:9: +1:10
-        scope 2 (inlined foo::<T>::{closure#0}) { // at $DIR/inline_closure.rs:12:5: 12:12
-            debug _t => _8;              // in scope 2 at $DIR/inline_closure.rs:+1:14: +1:16
-            debug _q => _9;              // in scope 2 at $DIR/inline_closure.rs:+1:18: +1:20
+        debug x => _3;
+        scope 2 (inlined foo::<T>::{closure#0}) {
+            debug _t => _8;
+            debug _q => _9;
         }
     }
 
     bb0: {
-        StorageLive(_3);                 // scope 0 at $DIR/inline_closure.rs:+1:9: +1:10
-        _3 = [closure@foo::<T>::{closure#0}]; // scope 0 at $DIR/inline_closure.rs:+1:13: +1:24
-                                         // closure
-                                         // + def_id: DefId(0:6 ~ inline_closure[8f32]::foo::{closure#0})
-                                         // + substs: [
-                                         //     T,
-                                         //     i8,
-                                         //     extern "rust-call" fn((i32, i32)) -> i32,
-                                         //     (),
-                                         // ]
-        StorageLive(_4);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:6
-        _4 = &_3;                        // scope 1 at $DIR/inline_closure.rs:+2:5: +2:6
-        StorageLive(_5);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        StorageLive(_6);                 // scope 1 at $DIR/inline_closure.rs:+2:7: +2:8
-        _6 = _2;                         // scope 1 at $DIR/inline_closure.rs:+2:7: +2:8
-        StorageLive(_7);                 // scope 1 at $DIR/inline_closure.rs:+2:10: +2:11
-        _7 = _2;                         // scope 1 at $DIR/inline_closure.rs:+2:10: +2:11
-        _5 = (move _6, move _7);         // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        StorageLive(_8);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        _8 = move (_5.0: i32);           // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        StorageLive(_9);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        _9 = move (_5.1: i32);           // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        _0 = _8;                         // scope 2 at $DIR/inline_closure.rs:+1:22: +1:24
-        StorageDead(_9);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        StorageDead(_8);                 // scope 1 at $DIR/inline_closure.rs:+2:5: +2:12
-        StorageDead(_7);                 // scope 1 at $DIR/inline_closure.rs:+2:11: +2:12
-        StorageDead(_6);                 // scope 1 at $DIR/inline_closure.rs:+2:11: +2:12
-        StorageDead(_5);                 // scope 1 at $DIR/inline_closure.rs:+2:11: +2:12
-        StorageDead(_4);                 // scope 1 at $DIR/inline_closure.rs:+2:11: +2:12
-        StorageDead(_3);                 // scope 0 at $DIR/inline_closure.rs:+3:1: +3:2
-        return;                          // scope 0 at $DIR/inline_closure.rs:+3:2: +3:2
+        StorageLive(_3);
+        _3 = [closure@foo::<T>::{closure#0}];
+        StorageLive(_4);
+        _4 = &_3;
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = _2;
+        StorageLive(_7);
+        _7 = _2;
+        _5 = (move _6, move _7);
+        StorageLive(_8);
+        _8 = move (_5.0: i32);
+        StorageLive(_9);
+        _9 = move (_5.1: i32);
+        _0 = _8;
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
     }
 }

@@ -1231,11 +1231,15 @@ pub struct NoopMethodCallDiag<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_suspicious_double_ref_op)]
-pub struct SuspiciousDoubleRefDiag<'a> {
-    pub call: Symbol,
+#[diag(lint_suspicious_double_ref_deref)]
+pub struct SuspiciousDoubleRefDerefDiag<'a> {
     pub ty: Ty<'a>,
-    pub op: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_suspicious_double_ref_clone)]
+pub struct SuspiciousDoubleRefCloneDiag<'a> {
+    pub ty: Ty<'a>,
 }
 
 // pass_by_value.rs
@@ -1342,6 +1346,8 @@ pub struct OverflowingBinHex<'a> {
     pub sign: OverflowingBinHexSign,
     #[subdiagnostic]
     pub sub: Option<OverflowingBinHexSub<'a>>,
+    #[subdiagnostic]
+    pub sign_bit_sub: Option<OverflowingBinHexSignBitSub<'a>>,
 }
 
 pub enum OverflowingBinHexSign {
@@ -1384,6 +1390,21 @@ pub enum OverflowingBinHexSub<'a> {
     },
     #[help(lint_help)]
     Help { suggestion_ty: &'a str },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    lint_sign_bit_suggestion,
+    code = "{lit_no_suffix}{uint_ty} as {int_ty}",
+    applicability = "maybe-incorrect"
+)]
+pub struct OverflowingBinHexSignBitSub<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub lit_no_suffix: &'a str,
+    pub negative_val: String,
+    pub uint_ty: &'a str,
+    pub int_ty: &'a str,
 }
 
 #[derive(LintDiagnostic)]
@@ -1534,8 +1555,29 @@ pub struct UnusedOp<'a> {
     pub op: &'a str,
     #[label]
     pub label: Span,
-    #[suggestion(style = "verbose", code = "let _ = ", applicability = "maybe-incorrect")]
-    pub suggestion: Span,
+    #[subdiagnostic]
+    pub suggestion: UnusedOpSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnusedOpSuggestion {
+    #[suggestion(
+        lint_suggestion,
+        style = "verbose",
+        code = "let _ = ",
+        applicability = "maybe-incorrect"
+    )]
+    NormalExpr {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    BlockTailExpr {
+        #[suggestion_part(code = "let _ = ")]
+        before_span: Span,
+        #[suggestion_part(code = ";")]
+        after_span: Span,
+    },
 }
 
 #[derive(LintDiagnostic)]
@@ -1578,15 +1620,25 @@ pub struct UnusedDef<'a, 'b> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    lint_suggestion,
-    style = "verbose",
-    code = "let _ = ",
-    applicability = "maybe-incorrect"
-)]
-pub struct UnusedDefSuggestion {
-    #[primary_span]
-    pub span: Span,
+
+pub enum UnusedDefSuggestion {
+    #[suggestion(
+        lint_suggestion,
+        style = "verbose",
+        code = "let _ = ",
+        applicability = "maybe-incorrect"
+    )]
+    NormalExpr {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(lint_suggestion, style = "verbose", applicability = "maybe-incorrect")]
+    BlockTailExpr {
+        #[suggestion_part(code = "let _ = ")]
+        before_span: Span,
+        #[suggestion_part(code = ";")]
+        after_span: Span,
+    },
 }
 
 // Needed because of def_path_str

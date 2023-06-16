@@ -2,32 +2,32 @@
 + // MIR for `c` after SimplifyLocals-before-const-prop
   
   fn c() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals.rs:+0:8: +0:8
-      let _1: [u8; 10];                    // in scope 0 at $DIR/simplify_locals.rs:+1:9: +1:14
--     let mut _2: &[u8];                   // in scope 0 at $DIR/simplify_locals.rs:+3:20: +3:26
--     let mut _3: &[u8; 10];               // in scope 0 at $DIR/simplify_locals.rs:+3:20: +3:26
--     let _4: &[u8; 10];                   // in scope 0 at $DIR/simplify_locals.rs:+3:20: +3:26
+      let mut _0: ();
+      let _1: [u8; 10];
+-     let mut _2: &[u8];
+-     let mut _3: &[u8; 10];
+-     let _4: &[u8; 10];
       scope 1 {
-          debug bytes => _1;               // in scope 1 at $DIR/simplify_locals.rs:+1:9: +1:14
+          debug bytes => _1;
           scope 2 {
           }
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/simplify_locals.rs:+1:9: +1:14
-          _1 = [const 0_u8; 10];           // scope 0 at $DIR/simplify_locals.rs:+1:17: +1:26
--         StorageLive(_2);                 // scope 1 at $DIR/simplify_locals.rs:+3:20: +3:26
--         StorageLive(_3);                 // scope 1 at $DIR/simplify_locals.rs:+3:20: +3:26
--         StorageLive(_4);                 // scope 1 at $DIR/simplify_locals.rs:+3:20: +3:26
--         _4 = &_1;                        // scope 1 at $DIR/simplify_locals.rs:+3:20: +3:26
--         _3 = &(*_4);                     // scope 1 at $DIR/simplify_locals.rs:+3:20: +3:26
--         _2 = move _3 as &[u8] (Pointer(Unsize)); // scope 1 at $DIR/simplify_locals.rs:+3:20: +3:26
--         StorageDead(_3);                 // scope 1 at $DIR/simplify_locals.rs:+3:25: +3:26
--         StorageDead(_4);                 // scope 1 at $DIR/simplify_locals.rs:+3:26: +3:27
--         StorageDead(_2);                 // scope 1 at $DIR/simplify_locals.rs:+3:26: +3:27
-          _0 = const ();                   // scope 0 at $DIR/simplify_locals.rs:+0:8: +4:2
-          StorageDead(_1);                 // scope 0 at $DIR/simplify_locals.rs:+4:1: +4:2
-          return;                          // scope 0 at $DIR/simplify_locals.rs:+4:2: +4:2
+          StorageLive(_1);
+          _1 = [const 0_u8; 10];
+-         StorageLive(_2);
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = &_1;
+-         _3 = &(*_4);
+-         _2 = move _3 as &[u8] (Pointer(Unsize));
+-         StorageDead(_3);
+-         StorageDead(_4);
+-         StorageDead(_2);
+          _0 = const ();
+          StorageDead(_1);
+          return;
       }
   }
   

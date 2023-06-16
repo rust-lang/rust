@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `T` cannot be known at compilation tim
   --> $DIR/union-sized-field.rs:4:12
    |
 LL | union Foo<T: ?Sized> {
-   |           - this type parameter needs to be `std::marker::Sized`
+   |           - this type parameter needs to be `Sized`
 LL |     value: ManuallyDrop<T>,
    |            ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
@@ -28,7 +28,7 @@ error[E0277]: the size for values of type `T` cannot be known at compilation tim
   --> $DIR/union-sized-field.rs:9:12
    |
 LL | struct Foo2<T: ?Sized> {
-   |             - this type parameter needs to be `std::marker::Sized`
+   |             - this type parameter needs to be `Sized`
 LL |     value: ManuallyDrop<T>,
    |            ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
@@ -54,7 +54,7 @@ error[E0277]: the size for values of type `T` cannot be known at compilation tim
   --> $DIR/union-sized-field.rs:15:11
    |
 LL | enum Foo3<T: ?Sized> {
-   |           - this type parameter needs to be `std::marker::Sized`
+   |           - this type parameter needs to be `Sized`
 LL |     Value(ManuallyDrop<T>),
    |           ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |

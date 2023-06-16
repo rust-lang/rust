@@ -2,22 +2,19 @@
 + // MIR for `mk_cycle` after Inline
   
   fn mk_cycle(_1: &dyn Cache<V = V>) -> () {
-      debug c => _1;                       // in scope 0 at $DIR/dyn_trait.rs:+0:27: +0:28
-      let mut _0: ();                      // return place in scope 0 at $DIR/dyn_trait.rs:+0:49: +0:49
-      let mut _2: &dyn Cache<V = V>;       // in scope 0 at $DIR/dyn_trait.rs:+1:5: +1:22
+      debug c => _1;
+      let mut _0: ();
+      let mut _2: &dyn Cache<V = V>;
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/dyn_trait.rs:+1:5: +1:22
-          _2 = &(*_1);                     // scope 0 at $DIR/dyn_trait.rs:+1:5: +1:22
-          _0 = <dyn Cache<V = V> as Cache>::store_nocache(move _2) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/dyn_trait.rs:+1:5: +1:22
-                                           // mir::Constant
-                                           // + span: $DIR/dyn_trait.rs:22:7: 22:20
-                                           // + literal: Const { ty: for<'a> fn(&'a dyn Cache<V = V>) {<dyn Cache<V = V> as Cache>::store_nocache}, val: Value(<ZST>) }
+          StorageLive(_2);
+          _2 = &(*_1);
+          _0 = <dyn Cache<V = V> as Cache>::store_nocache(move _2) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-          StorageDead(_2);                 // scope 0 at $DIR/dyn_trait.rs:+1:21: +1:22
-          return;                          // scope 0 at $DIR/dyn_trait.rs:+2:2: +2:2
+          StorageDead(_2);
+          return;
       }
   }
   

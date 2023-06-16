@@ -1,26 +1,23 @@
 // MIR for `f_u64` after PreCodegen
 
 fn f_u64() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/intrinsics.rs:+0:16: +0:16
-    let mut _1: u64;                     // in scope 0 at $DIR/intrinsics.rs:+1:5: +1:21
-    scope 1 (inlined f_dispatch::<u64>) { // at $DIR/intrinsics.rs:19:5: 19:21
-        debug t => const 0_u64;          // in scope 1 at $DIR/intrinsics.rs:23:22: 23:23
-        let _2: ();                      // in scope 1 at $DIR/intrinsics.rs:27:9: 27:21
-        scope 2 (inlined std::mem::size_of::<u64>) { // at $DIR/intrinsics.rs:24:8: 24:32
+    let mut _0: ();
+    let mut _1: u64;
+    scope 1 (inlined f_dispatch::<u64>) {
+        debug t => const 0_u64;
+        let _2: ();
+        scope 2 (inlined std::mem::size_of::<u64>) {
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/intrinsics.rs:+1:5: +1:21
-        _1 = const 0_u64;                // scope 0 at $DIR/intrinsics.rs:+1:5: +1:21
-        _2 = f_non_zst::<u64>(move _1) -> [return: bb1, unwind unreachable]; // scope 1 at $DIR/intrinsics.rs:27:9: 27:21
-                                         // mir::Constant
-                                         // + span: $DIR/intrinsics.rs:27:9: 27:18
-                                         // + literal: Const { ty: fn(u64) {f_non_zst::<u64>}, val: Value(<ZST>) }
+        StorageLive(_1);
+        _1 = const 0_u64;
+        _2 = f_non_zst::<u64>(move _1) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
-        StorageDead(_1);                 // scope 0 at $DIR/intrinsics.rs:+1:5: +1:21
-        return;                          // scope 0 at $DIR/intrinsics.rs:+2:2: +2:2
+        StorageDead(_1);
+        return;
     }
 }

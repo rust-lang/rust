@@ -1,22 +1,22 @@
 // MIR for `bar` after built
 
 fn bar(_1: Bar) -> usize {
-    debug bar => _1;                     // in scope 0 at $DIR/enum_cast.rs:+0:8: +0:11
-    let mut _0: usize;                   // return place in scope 0 at $DIR/enum_cast.rs:+0:21: +0:26
-    let _2: Bar;                         // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:8
-    let mut _3: isize;                   // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:8
-    let mut _4: u8;                      // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
-    let mut _5: bool;                    // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
+    debug bar => _1;
+    let mut _0: usize;
+    let _2: Bar;
+    let mut _3: isize;
+    let mut _4: u8;
+    let mut _5: bool;
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/enum_cast.rs:+1:5: +1:8
-        _2 = move _1;                    // scope 0 at $DIR/enum_cast.rs:+1:5: +1:8
-        _3 = discriminant(_2);           // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
-        _4 = _3 as u8 (IntToInt);        // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
-        _5 = Le(_4, const 1_u8);         // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
-        assume(move _5);                 // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
-        _0 = move _3 as usize (IntToInt); // scope 0 at $DIR/enum_cast.rs:+1:5: +1:17
-        StorageDead(_2);                 // scope 0 at $DIR/enum_cast.rs:+1:16: +1:17
-        return;                          // scope 0 at $DIR/enum_cast.rs:+2:2: +2:2
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _4 = _3 as u8 (IntToInt);
+        _5 = Le(_4, const 1_u8);
+        assume(move _5);
+        _0 = move _3 as usize (IntToInt);
+        StorageDead(_2);
+        return;
     }
 }

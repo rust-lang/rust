@@ -2,6 +2,7 @@
 
 #![warn(clippy::transmute_ptr_to_ref)]
 #![allow(clippy::match_single_binding)]
+#![allow(unused_must_use)]
 
 unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     let _: &T = std::mem::transmute(p);
@@ -38,7 +39,7 @@ fn _issue1231() {
 
     type Bar<'a> = &'a u8;
     let raw = 42 as *const i32;
-    unsafe { std::mem::transmute::<_, Bar>(raw) };
+    let _ = unsafe { std::mem::transmute::<_, Bar>(raw) };
 }
 
 unsafe fn _issue8924<'a, 'b, 'c>(x: *const &'a u32, y: *const &'b u32) -> &'c &'b u32 {

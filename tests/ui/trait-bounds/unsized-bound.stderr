@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `B` cannot be known at compilation tim
 LL | impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
    |         -                    ^^^^^^ doesn't have a size known at compile-time
    |         |
-   |         this type parameter needs to be `std::marker::Sized`
+   |         this type parameter needs to be `Sized`
    |
    = note: required because it appears within the type `(A, B)`
 note: required by a bound in `Trait`
@@ -28,7 +28,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
 LL | impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
    |      -                       ^^^^^^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -43,7 +43,7 @@ error[E0277]: the size for values of type `C` cannot be known at compilation tim
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
    |                    -                               ^^^^^^^^^ doesn't have a size known at compile-time
    |                    |
-   |                    this type parameter needs to be `std::marker::Sized`
+   |                    this type parameter needs to be `Sized`
    |
    = note: required because it appears within the type `(A, B, C)`
 note: required by a bound in `Trait`
@@ -65,9 +65,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
   --> $DIR/unsized-bound.rs:5:52
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
-   |      -                                             ^^^^^^^^^ doesn't have a size known at compile-time
-   |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      - this type parameter needs to be `Sized`     ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -80,9 +78,7 @@ error[E0277]: the size for values of type `B` cannot be known at compilation tim
   --> $DIR/unsized-bound.rs:5:52
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
-   |         -                                          ^^^^^^^^^ doesn't have a size known at compile-time
-   |         |
-   |         this type parameter needs to be `std::marker::Sized`
+   |         - this type parameter needs to be `Sized`  ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -97,7 +93,7 @@ error[E0277]: the size for values of type `B` cannot be known at compilation tim
 LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
    |                 -                             ^^^^^^ doesn't have a size known at compile-time
    |                 |
-   |                 this type parameter needs to be `std::marker::Sized`
+   |                 this type parameter needs to be `Sized`
    |
    = note: required because it appears within the type `(A, B)`
 note: required by a bound in `Trait2`
@@ -121,7 +117,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
 LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
    |      -                                        ^^^^^^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -136,7 +132,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
 LL | impl<A> Trait3<A> for A where A: ?Sized {}
    |      -                ^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
 note: required by a bound in `Trait3`
   --> $DIR/unsized-bound.rs:13:14
@@ -159,7 +155,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
 LL | impl<A: ?Sized> Trait4<A> for A {}
    |      -                        ^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
 note: required by a bound in `Trait4`
   --> $DIR/unsized-bound.rs:16:14
@@ -182,7 +178,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
 LL | impl<X, Y> Trait5<X, Y> for X where X: ?Sized {}
    |      -                      ^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
 note: required by a bound in `Trait5`
   --> $DIR/unsized-bound.rs:19:14
@@ -205,7 +201,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
 LL | impl<X: ?Sized, Y> Trait6<X, Y> for X {}
    |      -                              ^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
 note: required by a bound in `Trait6`
   --> $DIR/unsized-bound.rs:22:14
@@ -228,7 +224,7 @@ error[E0277]: the size for values of type `Y` cannot be known at compilation tim
 LL | impl<X, Y> Trait7<X, Y> for X where Y: ?Sized {}
    |         -  ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |         |
-   |         this type parameter needs to be `std::marker::Sized`
+   |         this type parameter needs to be `Sized`
    |
 note: required by a bound in `Trait7`
   --> $DIR/unsized-bound.rs:25:17
@@ -251,7 +247,7 @@ error[E0277]: the size for values of type `Y` cannot be known at compilation tim
 LL | impl<X, Y: ?Sized> Trait8<X, Y> for X {}
    |         -          ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |         |
-   |         this type parameter needs to be `std::marker::Sized`
+   |         this type parameter needs to be `Sized`
    |
 note: required by a bound in `Trait8`
   --> $DIR/unsized-bound.rs:28:17

@@ -2,12 +2,12 @@
 + // MIR for `main` after CopyProp
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/partial_init.rs:+0:15: +0:15
-      let mut _1: (isize,);                // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _0: ();
+      let mut _1: (isize,);
   
       bb0: {
-          (_1.0: isize) = const 1_isize;   // scope 0 at $DIR/partial_init.rs:+4:13: +4:20
-          return;                          // scope 0 at $DIR/partial_init.rs:+5:13: +5:21
+          (_1.0: isize) = const 1_isize;
+          return;
       }
   }
   

@@ -1,21 +1,21 @@
 // MIR for `switch_option` after built
 
 fn switch_option(_1: Option<()>) -> bool {
-    let mut _0: bool;                    // return place in scope 0 at $DIR/enums.rs:+0:45: +0:49
-    let mut _2: isize;                   // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: bool;
+    let mut _2: isize;
 
     bb0: {
-        _2 = discriminant(_1);           // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        switchInt(_2) -> [0: bb1, 1: bb2, otherwise: bb2]; // scope 0 at $DIR/enums.rs:+4:13: +8:14
+        _2 = discriminant(_1);
+        switchInt(_2) -> [0: bb1, 1: bb2, otherwise: bb2];
     }
 
     bb1: {
-        _0 = const false;                // scope 0 at $DIR/enums.rs:+12:13: +12:24
-        return;                          // scope 0 at $DIR/enums.rs:+13:13: +13:21
+        _0 = const false;
+        return;
     }
 
     bb2: {
-        _0 = const true;                 // scope 0 at $DIR/enums.rs:+17:13: +17:23
-        return;                          // scope 0 at $DIR/enums.rs:+18:13: +18:21
+        _0 = const true;
+        return;
     }
 }

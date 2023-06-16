@@ -16,6 +16,9 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "Apache-2.0/MIT",
+    "BSD-2-Clause",                                        // arrayref from Cargo
+    "CC0-1.0 OR Apache-2.0",                               // blake3 from Cargo
+    "CC0-1.0 OR MIT-0 OR Apache-2.0",                      // constant_time_eq from cargo
     "ISC",
     "MIT / Apache-2.0",
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
@@ -54,7 +57,7 @@ const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
     // tidy-alphabetical-start
     ("bitmaps", "MPL-2.0+"),
     ("bytesize", "Apache-2.0"),
-    ("dunce", "CC0-1.0 OR MIT-0"),
+    ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
     ("im-rc", "MPL-2.0+"),
     ("imara-diff", "Apache-2.0"),
@@ -76,6 +79,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-control", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
@@ -306,15 +310,16 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "ahash",
     "anyhow",
+    "arbitrary",
     "autocfg",
     "bitflags",
     "bumpalo",
-    "byteorder",
     "cfg-if",
     "cranelift-bforest",
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",
+    "cranelift-control",
     "cranelift-entity",
     "cranelift-frontend",
     "cranelift-isle",
@@ -324,7 +329,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-object",
     "crc32fast",
     "fallible-iterator",
-    "fxhash",
     "gimli",
     "hashbrown",
     "indexmap",
@@ -334,9 +338,9 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
-    "once_cell",
     "regalloc2",
     "region",
+    "rustc-hash",
     "slice-group-by",
     "smallvec",
     "stable_deref_trait",
@@ -347,6 +351,14 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
     "windows-sys",
+    "windows-targets",
+    "windows_aarch64_gnullvm",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
     // tidy-alphabetical-end
 ];
 
