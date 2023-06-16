@@ -863,7 +863,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
                             if let mir::Operand::Constant(constant) = arg {
-                                let c = self.eval_mir_constant(constant);
+                                let ct = self.monomorphize(constant.literal);
+                                let uv = match ct {
+                                    mir::ConstantKind::Unevaluated(uv, _) => uv.shrink(),
+                                    other => span_bug!(constant.span, "{other:#?}"),
+                                };
+                                let c = self.cx.tcx().const_eval_resolve_for_typeck(
+                                    ty::ParamEnv::reveal_all(),
+                                    uv,
+                                    Some(constant.span),
+                                );
                                 let (llval, ty) = self.simd_shuffle_indices(
                                     &bx,
                                     constant.span,

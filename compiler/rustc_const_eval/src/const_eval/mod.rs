@@ -92,7 +92,6 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     val: mir::ConstantKind<'tcx>,
 ) -> InterpResult<'tcx, mir::DestructuredConstant<'tcx>> {
-    trace!("destructure_mir_constant: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
     let op = ecx.eval_mir_constant(&val, None, None)?;
 

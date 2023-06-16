@@ -65,16 +65,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<ConstValue<'tcx>, ErrorHandled>,
+        constant: Result<Option<ty::ValTree<'tcx>>, ErrorHandled>,
     ) -> (Bx::Value, Ty<'tcx>) {
-        constant
+        let val = constant
+            .ok()
+            .flatten()
             .map(|val| {
                 let field_ty = ty.builtin_index().unwrap();
-                let c = mir::ConstantKind::from_value(val, ty);
-                let values: Vec<_> = bx
-                    .tcx()
-                    .destructure_mir_constant(ty::ParamEnv::reveal_all(), c)
-                    .fields
+                let values: Vec<_> = val
+                    .unwrap_branch()
                     .iter()
                     .map(|field| {
                         if let Some(prim) = field.try_to_scalar() {
@@ -88,15 +87,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     })
                     .collect();
-                let llval = bx.const_struct(&values, false);
-                (llval, c.ty())
+                bx.const_struct(&values, false)
             })
-            .unwrap_or_else(|_| {
+            .unwrap_or_else(|| {
                 bx.tcx().sess.emit_err(errors::ShuffleIndicesEvaluation { span });
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(ty);
                 let llty = bx.backend_type(bx.layout_of(ty));
-                (bx.const_undef(llty), ty)
-            })
+                bx.const_undef(llty)
+            });
+        (val, ty)
     }
 }
