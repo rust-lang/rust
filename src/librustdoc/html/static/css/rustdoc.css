@@ -213,7 +213,7 @@ a.anchor,
 h1 a,
 .search-results a,
 .stab,
-.result-name .primitive > i, .result-name .keyword > i {
+.result-name i {
 	color: var(--main-color);
 }
 
@@ -887,7 +887,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .search-results .result-name span.alias {
 	color: var(--search-results-alias-color);
 }
-.search-results .result-name span.grey {
+.search-results .result-name .grey {
 	color: var(--search-results-grey-color);
 }
 
