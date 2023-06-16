@@ -219,8 +219,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
         // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
         // corresponding `Projection` clause
-        for (projection_bound, span) in &projection_bounds {
-            for def_ids in associated_types.values_mut() {
+        for def_ids in associated_types.values_mut() {
+            for (projection_bound, span) in &projection_bounds {
                 let def_id = projection_bound.projection_def_id();
                 def_ids.remove(&def_id);
                 if tcx.generics_require_sized_self(def_id) {
@@ -232,9 +232,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     );
                 }
             }
-        }
-
-        for def_ids in associated_types.values_mut() {
             // If the associated type has a `where Self: Sized` bound, we do not need to constrain the associated
             // type in the `dyn Trait`.
             def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
