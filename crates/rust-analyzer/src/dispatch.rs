@@ -307,7 +307,7 @@ pub(crate) struct NotificationDispatcher<'a> {
 }
 
 impl<'a> NotificationDispatcher<'a> {
-    pub(crate) fn on<N>(
+    pub(crate) fn on_sync_mut<N>(
         &mut self,
         f: fn(&mut GlobalState, N::Params) -> Result<()>,
     ) -> Result<&mut Self>
