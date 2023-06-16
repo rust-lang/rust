@@ -27,11 +27,11 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceAutoImplData, ImplSourceClosureData, ImplSourceConstDestructData,
-    ImplSourceFnPointerData, ImplSourceFutureData, ImplSourceGeneratorData, ImplSourceObjectData,
-    ImplSourceTraitAliasData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
-    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented,
+    ImplSourceClosureData, ImplSourceFnPointerData, ImplSourceFutureData, ImplSourceGeneratorData,
+    ImplSourceObjectData, ImplSourceTraitAliasData, ImplSourceTraitUpcastingData,
+    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
+    OutputTypeParameterMismatch, PredicateObligation, Selection, SelectionError,
+    TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -71,7 +71,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             AutoImplCandidate => {
                 let data = self.confirm_auto_impl_candidate(obligation);
-                ImplSource::AutoImpl(data)
+                ImplSource::Builtin(data)
             }
 
             ProjectionCandidate(idx, constness) => {
@@ -128,7 +128,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ConstDestructCandidate(def_id) => {
                 let data = self.confirm_const_destruct_candidate(obligation, def_id)?;
-                ImplSource::ConstDestruct(data)
+                ImplSource::Builtin(data)
             }
         };
 
@@ -379,7 +379,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_auto_impl_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
+    ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, "confirm_auto_impl_candidate");
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
@@ -393,7 +393,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         trait_def_id: DefId,
         nested: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
-    ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
+    ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?nested, "vtable_auto_impl");
         ensure_sufficient_stack(|| {
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
@@ -423,7 +423,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             debug!(?obligations, "vtable_auto_impl");
 
-            ImplSourceAutoImplData { trait_def_id, nested: obligations }
+            obligations
         })
     }
 
@@ -1222,10 +1222,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         impl_def_id: Option<DefId>,
-    ) -> Result<ImplSourceConstDestructData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
         if !obligation.is_const() {
-            return Ok(ImplSourceConstDestructData { nested: vec![] });
+            return Ok(vec![]);
         }
 
         let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
@@ -1379,6 +1379,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
-        Ok(ImplSourceConstDestructData { nested })
+        Ok(nested)
     }
 }

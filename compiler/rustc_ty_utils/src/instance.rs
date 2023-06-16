@@ -312,11 +312,9 @@ fn resolve_associated_item<'tcx>(
                 None
             }
         }
-        traits::ImplSource::AutoImpl(..)
-        | traits::ImplSource::Param(..)
+        traits::ImplSource::Param(..)
         | traits::ImplSource::TraitAlias(..)
-        | traits::ImplSource::TraitUpcasting(_)
-        | traits::ImplSource::ConstDestruct(_) => None,
+        | traits::ImplSource::TraitUpcasting(_) => None,
     })
 }
 

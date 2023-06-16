@@ -646,12 +646,6 @@ pub enum ImplSource<'tcx, N> {
     /// ImplSource identifying a particular impl.
     UserDefined(ImplSourceUserDefinedData<'tcx, N>),
 
-    /// ImplSource for auto trait implementations.
-    /// This carries the information and nested obligations with regards
-    /// to an auto implementation for a trait `Trait`. The nested obligations
-    /// ensure the trait implementation holds for all the constituent types.
-    AutoImpl(ImplSourceAutoImplData<N>),
-
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
@@ -683,9 +677,6 @@ pub enum ImplSource<'tcx, N> {
 
     /// ImplSource for a trait alias.
     TraitAlias(ImplSourceTraitAliasData<'tcx, N>),
-
-    /// ImplSource for a `const Drop` implementation.
-    ConstDestruct(ImplSourceConstDestructData<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
@@ -693,7 +684,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
             ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
-            ImplSource::AutoImpl(d) => d.nested,
             ImplSource::Closure(c) => c.nested,
             ImplSource::Generator(c) => c.nested,
             ImplSource::Future(c) => c.nested,
@@ -701,7 +691,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::FnPointer(d) => d.nested,
             ImplSource::TraitAlias(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
-            ImplSource::ConstDestruct(i) => i.nested,
         }
     }
 
@@ -709,7 +698,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
             ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
-            ImplSource::AutoImpl(d) => &d.nested,
             ImplSource::Closure(c) => &c.nested,
             ImplSource::Generator(c) => &c.nested,
             ImplSource::Future(c) => &c.nested,
@@ -717,7 +705,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::FnPointer(d) => &d.nested,
             ImplSource::TraitAlias(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
-            ImplSource::ConstDestruct(i) => &i.nested,
         }
     }
 
@@ -725,7 +712,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
             ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
-            ImplSource::AutoImpl(d) => &mut d.nested,
             ImplSource::Closure(c) => &mut c.nested,
             ImplSource::Generator(c) => &mut c.nested,
             ImplSource::Future(c) => &mut c.nested,
@@ -733,7 +719,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::FnPointer(d) => &mut d.nested,
             ImplSource::TraitAlias(d) => &mut d.nested,
             ImplSource::TraitUpcasting(d) => &mut d.nested,
-            ImplSource::ConstDestruct(i) => &mut i.nested,
         }
     }
 
@@ -753,10 +738,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 upcast_trait_ref: o.upcast_trait_ref,
                 vtable_base: o.vtable_base,
                 nested: o.nested.into_iter().map(f).collect(),
-            }),
-            ImplSource::AutoImpl(d) => ImplSource::AutoImpl(ImplSourceAutoImplData {
-                trait_def_id: d.trait_def_id,
-                nested: d.nested.into_iter().map(f).collect(),
             }),
             ImplSource::Closure(c) => ImplSource::Closure(ImplSourceClosureData {
                 closure_def_id: c.closure_def_id,
@@ -786,11 +767,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData {
                     vtable_vptr_slot: d.vtable_vptr_slot,
                     nested: d.nested.into_iter().map(f).collect(),
-                })
-            }
-            ImplSource::ConstDestruct(i) => {
-                ImplSource::ConstDestruct(ImplSourceConstDestructData {
-                    nested: i.nested.into_iter().map(f).collect(),
                 })
             }
         }
@@ -847,13 +823,6 @@ pub struct ImplSourceClosureData<'tcx, N> {
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub struct ImplSourceAutoImplData<N> {
-    pub trait_def_id: DefId,
-    pub nested: Vec<N>,
-}
-
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceTraitUpcastingData<N> {
     /// The vtable is formed by concatenating together the method lists of
     /// the base object trait and all supertraits, pointers to supertrait vtable will
@@ -883,12 +852,6 @@ pub struct ImplSourceObjectData<'tcx, N> {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
-    pub nested: Vec<N>,
-}
-
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct ImplSourceConstDestructData<N> {
     pub nested: Vec<N>,
 }
 
