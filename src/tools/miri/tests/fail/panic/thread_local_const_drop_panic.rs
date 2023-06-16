@@ -1,4 +1,9 @@
 //@error-in-other-file: aborted execution
+// Backtraces vary wildly between platforms, we have to normalize away almost the entire thing.
+// Full backtraces avoid annoying empty line differences.
+//@compile-flags: -Zmiri-backtrace=full
+//@normalize-stderr-test: "'main'|'<unnamed>'" -> "$$NAME"
+//@normalize-stderr-test: ".*(note|-->|\|).*\n" -> ""
 
 pub struct NoisyDrop {}
 

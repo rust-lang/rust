@@ -1,15 +1,6 @@
-thread '<unnamed>' panicked at 'ow', $DIR/thread_local_drop_panic.rs:LL:CC
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread $NAME panicked at 'ow', $DIR/thread_local_drop_panic.rs:LL:CC
 fatal runtime error: thread local panicked on drop
 error: abnormal termination: the program aborted execution
-  --> RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
-   |
-LL |     unsafe { libc::abort() }
-   |              ^^^^^^^^^^^^^ the program aborted execution
-   |
-   = note: inside `std::sys::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
-   = note: inside `std::sys::PLATFORM::thread_local::fast_local::destroy_value::<NoisyDrop>` at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::sys_common::thread_local_dtor::register_dtor_fallback::run_dtors` at RUSTLIB/std/src/sys_common/thread_local_dtor.rs:LL:CC
 
 error: aborting due to previous error
 
