@@ -155,14 +155,16 @@ where
     // functions and statics defined in the local crate.
     let PlacedRootMonoItems { mut codegen_units, internalization_candidates, unique_inlined_stats } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
-        place_root_mono_items(cx, mono_items)
+        let mut placed = place_root_mono_items(cx, mono_items);
+
+        for cgu in &mut placed.codegen_units {
+            cgu.create_size_estimate(tcx);
+        }
+
+        debug_dump(tcx, "ROOTS", &placed.codegen_units, placed.unique_inlined_stats);
+
+        placed
     };
-
-    for cgu in &mut codegen_units {
-        cgu.create_size_estimate(tcx);
-    }
-
-    debug_dump(tcx, "ROOTS", &codegen_units, unique_inlined_stats);
 
     // Merge until we have at most `max_cgu_count` codegen units.
     // `merge_codegen_units` is responsible for updating the CGU size
@@ -179,58 +181,33 @@ where
     // local functions the definition of which is marked with `#[inline]`.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        place_inlined_mono_items(cx, &mut codegen_units)
-    };
+        place_inlined_mono_items(cx, &mut codegen_units);
 
-    for cgu in &mut codegen_units {
-        cgu.create_size_estimate(tcx);
+        for cgu in &mut codegen_units {
+            cgu.create_size_estimate(tcx);
+        }
+
+        debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
     }
-
-    debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(cx, &mut codegen_units, internalization_candidates);
+
+        debug_dump(tcx, "INTERNALIZE", &codegen_units, unique_inlined_stats);
     }
 
+    // Mark one CGU for dead code, if necessary.
     let instrument_dead_code =
         tcx.sess.instrument_coverage() && !tcx.sess.instrument_coverage_except_unused_functions();
-
     if instrument_dead_code {
-        assert!(
-            codegen_units.len() > 0,
-            "There must be at least one CGU that code coverage data can be generated in."
-        );
-
-        // Find the smallest CGU that has exported symbols and put the dead
-        // function stubs in that CGU. We look for exported symbols to increase
-        // the likelihood the linker won't throw away the dead functions.
-        // FIXME(#92165): In order to truly resolve this, we need to make sure
-        // the object file (CGU) containing the dead function stubs is included
-        // in the final binary. This will probably require forcing these
-        // function symbols to be included via `-u` or `/include` linker args.
-        let mut cgus: Vec<_> = codegen_units.iter_mut().collect();
-        cgus.sort_by_key(|cgu| cgu.size_estimate());
-
-        let dead_code_cgu =
-            if let Some(cgu) = cgus.into_iter().rev().find(|cgu| {
-                cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External)
-            }) {
-                cgu
-            } else {
-                // If there are no CGUs that have externally linked items,
-                // then we just pick the first CGU as a fallback.
-                &mut codegen_units[0]
-            };
-        dead_code_cgu.make_code_coverage_dead_code_cgu();
+        mark_code_coverage_dead_code_cgu(&mut codegen_units);
     }
 
     // Ensure CGUs are sorted by name, so that we get deterministic results.
     assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
-
-    debug_dump(tcx, "FINAL", &codegen_units, unique_inlined_stats);
 
     codegen_units
 }
@@ -363,9 +340,7 @@ fn merge_codegen_units<'tcx>(
 
         // Move the mono-items from `smallest` to `second_smallest`
         second_smallest.modify_size_estimate(smallest.size_estimate());
-        for (k, v) in smallest.items_mut().drain() {
-            second_smallest.items_mut().insert(k, v);
-        }
+        second_smallest.items_mut().extend(smallest.items_mut().drain());
 
         // Record that `second_smallest` now contains all the stuff that was
         // in `smallest` before.
@@ -543,6 +518,28 @@ fn internalize_symbols<'tcx>(
             *linkage_and_visibility = (Linkage::Internal, Visibility::Default);
         }
     }
+}
+
+fn mark_code_coverage_dead_code_cgu<'tcx>(codegen_units: &mut [CodegenUnit<'tcx>]) {
+    assert!(!codegen_units.is_empty());
+
+    // Find the smallest CGU that has exported symbols and put the dead
+    // function stubs in that CGU. We look for exported symbols to increase
+    // the likelihood the linker won't throw away the dead functions.
+    // FIXME(#92165): In order to truly resolve this, we need to make sure
+    // the object file (CGU) containing the dead function stubs is included
+    // in the final binary. This will probably require forcing these
+    // function symbols to be included via `-u` or `/include` linker args.
+    let dead_code_cgu = codegen_units
+        .iter_mut()
+        .filter(|cgu| cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External))
+        .min_by_key(|cgu| cgu.size_estimate());
+
+    // If there are no CGUs that have externally linked items, then we just
+    // pick the first CGU as a fallback.
+    let dead_code_cgu = if let Some(cgu) = dead_code_cgu { cgu } else { &mut codegen_units[0] };
+
+    dead_code_cgu.make_code_coverage_dead_code_cgu();
 }
 
 fn characteristic_def_id_of_mono_item<'tcx>(
