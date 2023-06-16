@@ -338,6 +338,7 @@ mod use_self;
 mod useless_conversion;
 mod vec;
 mod vec_init_then_push;
+mod visibility;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
@@ -1070,6 +1071,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         })
     });
     store.register_late_pass(|_| Box::new(manual_range_patterns::ManualRangePatterns));
+    store.register_early_pass(|| Box::new(visibility::Visibility));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

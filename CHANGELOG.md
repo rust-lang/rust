@@ -5047,6 +5047,7 @@ Released 2018-09-13
 [`needless_option_take`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_option_take
 [`needless_parens_on_range_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_parens_on_range_literals
 [`needless_pass_by_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
+[`needless_pub_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pub_self
 [`needless_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark
 [`needless_range_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_range_loop
 [`needless_raw_string_hashes`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_raw_string_hashes
@@ -5121,6 +5122,8 @@ Released 2018-09-13
 [`ptr_offset_with_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#ptr_offset_with_cast
 [`pub_enum_variant_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_enum_variant_names
 [`pub_use`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_use
+[`pub_with_shorthand`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_with_shorthand
+[`pub_without_shorthand`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_without_shorthand
 [`question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#question_mark
 [`question_mark_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#question_mark_used
 [`range_minus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_minus_one
