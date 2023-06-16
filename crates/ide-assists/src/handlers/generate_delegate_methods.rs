@@ -72,29 +72,27 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         let krate = ty.krate(ctx.db());
         ty.iterate_assoc_items(ctx.db(), krate, |item| {
             if let hir::AssocItem::Function(f) = item {
+                let name = f.name(ctx.db());
                 if f.self_param(ctx.db()).is_some()
                     && f.is_visible_from(ctx.db(), current_module)
-                    && seen_names.insert(f.name(ctx.db()))
+                    && seen_names.insert(name.clone())
                 {
-                    methods.push(f)
+                    methods.push((name, f))
                 }
             }
             Option::<()>::None
         });
     }
-
-    for method in methods {
+    methods.sort_by(|(a, _), (b, _)| a.cmp(b));
+    for (name, method) in methods {
         let adt = ast::Adt::Struct(strukt.clone());
-        let name = method.name(ctx.db()).display(ctx.db()).to_string();
+        let name = name.display(ctx.db()).to_string();
         // if `find_struct_impl` returns None, that means that a function named `name` already exists.
-        let Some(impl_def) = find_struct_impl(ctx, &adt, &[name]) else { continue; };
+        let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else { continue; };
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
-            format!(
-                "Generate delegate for `{field_name}.{}()`",
-                method.name(ctx.db()).display(ctx.db())
-            ),
+            format!("Generate delegate for `{field_name}.{name}()`",),
             target,
             |builder| {
                 // Create the function
@@ -102,9 +100,8 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     Some(source) => source.value,
                     None => return,
                 };
-                let method_name = method.name(ctx.db());
                 let vis = method_source.visibility();
-                let name = make::name(&method.name(ctx.db()).display(ctx.db()).to_string());
+                let fn_name = make::name(&name);
                 let params =
                     method_source.param_list().unwrap_or_else(|| make::param_list(None, []));
                 let type_params = method_source.generic_param_list();
@@ -114,7 +111,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 };
                 let tail_expr = make::expr_method_call(
                     make::ext::field_from_idents(["self", &field_name]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
-                    make::name_ref(&method_name.display(ctx.db()).to_string()),
+                    make::name_ref(&name),
                     arg_list,
                 );
                 let ret_type = method_source.ret_type();
@@ -126,7 +123,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 let body = make::block_expr([], Some(tail_expr_finished));
                 let f = make::fn_(
                     vis,
-                    name,
+                    fn_name,
                     type_params,
                     None,
                     params,
