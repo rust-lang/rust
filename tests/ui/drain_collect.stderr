@@ -1,0 +1,68 @@
+error: you seem to be trying to move all elements into a new `BinaryHeap`
+  --> $DIR/drain_collect.rs:9:5
+   |
+LL |     b.drain().collect()
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+   |
+note: the lint level is defined here
+  --> $DIR/drain_collect.rs:3:9
+   |
+LL | #![deny(clippy::drain_collect)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: you seem to be trying to move all elements into a new `HashMap`
+  --> $DIR/drain_collect.rs:17:5
+   |
+LL |     b.drain().collect()
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: you seem to be trying to move all elements into a new `HashSet`
+  --> $DIR/drain_collect.rs:25:5
+   |
+LL |     b.drain().collect()
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: you seem to be trying to move all elements into a new `Vec`
+  --> $DIR/drain_collect.rs:33:5
+   |
+LL |     b.drain(..).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: you seem to be trying to move all elements into a new `Vec`
+  --> $DIR/drain_collect.rs:41:5
+   |
+LL |     b.drain(..).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: you seem to be trying to move all elements into a new `Vec`
+  --> $DIR/drain_collect.rs:45:5
+   |
+LL |     b.drain(0..).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: you seem to be trying to move all elements into a new `Vec`
+  --> $DIR/drain_collect.rs:49:5
+   |
+LL |     b.drain(..b.len()).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: you seem to be trying to move all elements into a new `Vec`
+  --> $DIR/drain_collect.rs:53:5
+   |
+LL |     b.drain(0..b.len()).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: you seem to be trying to move all elements into a new `Vec`
+  --> $DIR/drain_collect.rs:58:5
+   |
+LL |     b.drain(..).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(&mut b)`
+
+error: you seem to be trying to move all elements into a new `String`
+  --> $DIR/drain_collect.rs:66:5
+   |
+LL |     b.drain(..).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using `mem::take`: `std::mem::take(b)`
+
+error: aborting due to 10 previous errors
+
