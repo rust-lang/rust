@@ -235,13 +235,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         for def_ids in associated_types.values_mut() {
-            for def_id in def_ids.clone() {
-                // If the associated type has a `where Self: Sized` bound, we do not need to constrain the associated
-                // type in the `dyn Trait`.
-                if tcx.generics_require_sized_self(def_id) {
-                    def_ids.remove(&def_id);
-                }
-            }
+            // If the associated type has a `where Self: Sized` bound, we do not need to constrain the associated
+            // type in the `dyn Trait`.
+            def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
         }
 
         self.complain_about_missing_associated_types(
