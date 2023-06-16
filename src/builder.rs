@@ -729,17 +729,25 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
+    fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // TODO(antoyo): handle align of the load instruction.
-        let ptr = self.context.new_cast(None, ptr, pointee_ty.make_pointer());
+        // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
+        // Ideally, we shouldn't need to do this check.
+        let aligned_type =
+            if pointee_ty == self.cx.u128_type || pointee_ty == self.cx.i128_type {
+                pointee_ty
+            }
+            else {
+                pointee_ty.get_aligned(align.bytes())
+            };
+        let ptr = self.context.new_cast(None, ptr, aligned_type.make_pointer());
         let deref = ptr.dereference(None).to_rvalue();
         unsafe { RETURN_VALUE_COUNT += 1 };
-        let loaded_value = function.new_local(None, pointee_ty, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
+        let loaded_value = function.new_local(None, aligned_type, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
         block.add_assignment(None, loaded_value, deref);
         loaded_value.to_rvalue()
     }
@@ -1857,7 +1865,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         #[cfg(feature="master")]
         let (cond, element_type) = {
-            let then_val_vector_type = then_val.get_type().dyncast_vector().expect("vector type");
+            // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+            let then_val_vector_type = then_val.get_type().unqualified().dyncast_vector().expect("vector type");
             let then_val_element_type = then_val_vector_type.get_element_type();
             let then_val_element_size = then_val_element_type.get_size();
 
