@@ -37,11 +37,15 @@ fn test_offset_from() {
         assert_eq!(x.offset_from(y), -12);
         assert_eq!((y as *const u32).offset_from(x as *const u32), 12 / 4);
         assert_eq!((x as *const u32).offset_from(y as *const u32), -12 / 4);
+        assert_eq!(y.wrapping_add(6).offset_from(x), 12+6); // out-of-bounds
+        assert_eq!(x.wrapping_sub(6).offset_from(y), -12-6); // out-of-bounds
 
         let x = (((x as usize) * 2) / 2) as *const u8;
         assert_eq!(y.offset_from(x), 12);
         assert_eq!(y.sub_ptr(x), 12);
         assert_eq!(x.offset_from(y), -12);
+        assert_eq!(y.wrapping_add(6).offset_from(x), 12+6); // out-of-bounds
+        assert_eq!(x.wrapping_sub(6).offset_from(y), -12-6); // out-of-bounds
     }
 }
 
