@@ -83,5 +83,77 @@ note: first possible panic found here
 LL |     assert_ne!(x, 0);
    |     ^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:158:5
+   |
+LL |     pub fn option_unwrap<T>(v: &[T]) -> &T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:160:9
+   |
+LL |         o.unwrap()
+   |         ^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:163:5
+   |
+LL |     pub fn option_expect<T>(v: &[T]) -> &T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:165:9
+   |
+LL |         o.expect("passed an empty thing")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:168:5
+   |
+LL |     pub fn result_unwrap<T>(v: &[T]) -> &T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:170:9
+   |
+LL |         res.unwrap()
+   |         ^^^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:173:5
+   |
+LL |     pub fn result_expect<T>(v: &[T]) -> &T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:175:9
+   |
+LL |         res.expect("passed an empty thing")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:178:5
+   |
+LL |     pub fn last_unwrap(v: &[u32]) -> u32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:179:10
+   |
+LL |         *v.last().unwrap()
+   |          ^^^^^^^^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:182:5
+   |
+LL |     pub fn last_expect(v: &[u32]) -> u32 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:183:10
+   |
+LL |         *v.last().expect("passed an empty thing")
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 
