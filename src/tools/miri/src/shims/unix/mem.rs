@@ -8,7 +8,7 @@
 //! else that goes beyond a basic allocation API.
 
 use crate::*;
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::Size;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -88,7 +88,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("Miri does not support non-zero offsets to mmap");
         }
 
-        let align = Align::from_bytes(this.machine.page_size).unwrap();
+        let align = this.machine.page_align();
         let map_length = this.machine.round_up_to_multiple_of_page_size(length).unwrap_or(u64::MAX);
 
         let ptr =
@@ -115,14 +115,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let old_address = this.read_pointer(old_address)?;
+        let old_address = this.read_scalar(old_address)?.to_target_usize(this)?;
         let old_size = this.read_scalar(old_size)?.to_target_usize(this)?;
         let new_size = this.read_scalar(new_size)?.to_target_usize(this)?;
         let flags = this.read_scalar(flags)?.to_i32()?;
 
         // old_address must be a multiple of the page size
         #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
-        if old_address.addr().bytes() % this.machine.page_size != 0 || new_size == 0 {
+        if old_address % this.machine.page_size != 0 || new_size == 0 {
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         }
@@ -141,6 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(Scalar::from_maybe_pointer(Pointer::null(), this));
         }
 
+        let old_address = Machine::ptr_from_addr_cast(this, old_address)?;
         let align = this.machine.page_align();
         let ptr = this.reallocate_ptr(
             old_address,
@@ -171,56 +172,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let addr = this.read_pointer(addr)?;
+        let addr = this.read_scalar(addr)?.to_target_usize(this)?;
         let length = this.read_scalar(length)?.to_target_usize(this)?;
 
         // addr must be a multiple of the page size
         #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
-        if addr.addr().bytes() % this.machine.page_size != 0 {
+        if addr % this.machine.page_size != 0 {
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
             return Ok(Scalar::from_i32(-1));
         }
 
         let length = this.machine.round_up_to_multiple_of_page_size(length).unwrap_or(u64::MAX);
 
-        let mut addr = addr.addr().bytes();
-        let mut bytes_unmapped = 0;
-        while bytes_unmapped < length {
-            // munmap specifies:
-            // It is not an error if the indicated range does not contain any mapped pages.
-            // So we make sure that if our address is not that of an exposed allocation, we just
-            // step forward to the next page.
-            let ptr = Machine::ptr_from_addr_cast(this, addr)?;
-            let Ok(ptr) = ptr.into_pointer_or_addr() else {
-                bytes_unmapped = bytes_unmapped.checked_add(this.machine.page_size).unwrap();
-                addr = addr.wrapping_add(this.machine.page_size);
-                continue;
-            };
-            // FIXME: This should fail if the pointer is to an unexposed allocation. But it
-            // doesn't.
-            let Some((alloc_id, offset, _prov)) = Machine::ptr_get_alloc(this, ptr) else {
-                bytes_unmapped = bytes_unmapped.checked_add(this.machine.page_size).unwrap();
-                addr = addr.wrapping_add(this.machine.page_size);
-                continue;
-            };
+        let ptr = Machine::ptr_from_addr_cast(this, addr)?;
 
-            if offset != Size::ZERO {
-                throw_unsup_format!("Miri does not support partial munmap");
-            }
-            let (_kind, alloc) = this.memory.alloc_map().get(alloc_id).unwrap();
-            let this_alloc_len = alloc.len() as u64;
-            bytes_unmapped = bytes_unmapped.checked_add(this_alloc_len).unwrap();
-            if bytes_unmapped > length {
-                throw_unsup_format!("Miri does not support partial munmap");
-            }
+        let Ok(ptr) = ptr.into_pointer_or_addr() else {
+            throw_unsup_format!("Miri only supports munmap on memory allocated directly by mmap");
+        };
+        let Some((alloc_id, offset, _prov)) = Machine::ptr_get_alloc(this, ptr) else {
+            throw_unsup_format!("Miri only supports munmap on memory allocated directly by mmap");
+        };
 
-            this.deallocate_ptr(
-                Pointer::new(Some(Provenance::Wildcard), Size::from_bytes(addr)),
-                Some((Size::from_bytes(this_alloc_len), this.machine.page_align())),
-                MemoryKind::Machine(MiriMemoryKind::Mmap),
-            )?;
-            addr = addr.wrapping_add(this_alloc_len);
+        let (_kind, alloc) = this.memory.alloc_map().get(alloc_id).unwrap();
+        if offset != Size::ZERO || alloc.len() as u64 != length {
+            throw_unsup_format!(
+                "Miri only supports munmap calls that exactly unmap a region previously returned by mmap"
+            );
         }
+
+        let len = Size::from_bytes(alloc.len() as u64);
+        this.deallocate_ptr(
+            Pointer::new(Some(Provenance::Wildcard), Size::from_bytes(addr)),
+            Some((len, this.machine.page_align())),
+            MemoryKind::Machine(MiriMemoryKind::Mmap),
+        )?;
 
         Ok(Scalar::from_i32(0))
     }

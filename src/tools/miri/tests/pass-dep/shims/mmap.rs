@@ -63,21 +63,8 @@ fn test_mremap() {
     assert_eq!(res, 0i32);
 }
 
-fn test_munmap() {
-    // Linux specifies that it is not an error if the specified range does not contain any pages.
-    let res = unsafe {
-        libc::munmap(
-            // Some high address we surely have no allocated anything at
-            ptr::invalid_mut(1 << 30),
-            4096,
-        )
-    };
-    assert_eq!(res, 0);
-}
-
 fn main() {
     test_mmap();
-    test_munmap();
     #[cfg(target_os = "linux")]
     test_mremap();
 }

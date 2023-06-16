@@ -13,6 +13,6 @@ fn main() {
             0,
         );
         libc::munmap(ptr, 1);
-        //~^ ERROR: unsupported operation: Miri does not support partial munmap
+        //~^ ERROR: unsupported operation
     }
 }
