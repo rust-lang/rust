@@ -653,7 +653,7 @@ pub enum ImplSource<'tcx, N> {
     Param(Vec<N>, ty::BoundConstness),
 
     /// Virtual calls through an object.
-    Object(ImplSourceObjectData<'tcx, N>),
+    Object(ImplSourceObjectData<N>),
 
     /// Successful resolution for a builtin trait.
     Builtin(Vec<N>),
@@ -735,7 +735,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
             ImplSource::Builtin(n) => ImplSource::Builtin(n.into_iter().map(f).collect()),
             ImplSource::Object(o) => ImplSource::Object(ImplSourceObjectData {
-                upcast_trait_ref: o.upcast_trait_ref,
+                upcast_trait_def_id: o.upcast_trait_def_id,
                 vtable_base: o.vtable_base,
                 nested: o.nested.into_iter().map(f).collect(),
             }),
@@ -835,9 +835,9 @@ pub struct ImplSourceTraitUpcastingData<N> {
 
 #[derive(PartialEq, Eq, Clone, TyEncodable, TyDecodable, HashStable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub struct ImplSourceObjectData<'tcx, N> {
+pub struct ImplSourceObjectData<N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
-    pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
+    pub upcast_trait_def_id: DefId,
 
     /// The vtable is formed by concatenating together the method lists of
     /// the base object trait and all supertraits, pointers to supertrait vtable will

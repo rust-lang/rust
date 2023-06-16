@@ -82,12 +82,12 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<N> {
     }
 }
 
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceObjectData<'tcx, N> {
+impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceObjectData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "ImplSourceObjectData(upcast={:?}, vtable_base={}, nested={:?})",
-            self.upcast_trait_ref, self.vtable_base, self.nested
+            self.upcast_trait_def_id, self.vtable_base, self.nested
         )
     }
 }
