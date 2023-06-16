@@ -893,6 +893,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         ident,
                         binding,
                         dedup_span: path_span,
+                        outermost_res: None,
+                        parent_scope: *parent_scope,
                     });
                 } else {
                     return Err((Determined, Weak::No));
@@ -1369,6 +1371,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut allow_super = true;
         let mut second_binding = None;
 
+        // We'll provide more context to the privacy errors later, up to `len`.
+        let privacy_errors_len = self.privacy_errors.len();
+
         for (segment_idx, &Segment { ident, id, .. }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", segment_idx, ident, id);
             let record_segment_res = |this: &mut Self, res| {
@@ -1506,6 +1511,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         second_binding = Some(binding);
                     }
                     let res = binding.res();
+
+                    // Mark every privacy error in this path with the res to the last element. This allows us
+                    // to detect the item the user cares about and either find an alternative import, or tell
+                    // the user it is not accessible.
+                    for error in &mut self.privacy_errors[privacy_errors_len..] {
+                        error.outermost_res = Some((res, ident));
+                    }
+
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
                     if let Some(next_module) = binding.module() {
                         module = Some(ModuleOrUniformRoot::Module(next_module));

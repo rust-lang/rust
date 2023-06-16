@@ -689,10 +689,13 @@ impl<'a> NameBindingKind<'a> {
     }
 }
 
+#[derive(Debug)]
 struct PrivacyError<'a> {
     ident: Ident,
     binding: &'a NameBinding<'a>,
     dedup_span: Span,
+    outermost_res: Option<(Res, Ident)>,
+    parent_scope: ParentScope<'a>,
 }
 
 #[derive(Debug)]
