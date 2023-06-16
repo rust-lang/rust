@@ -244,7 +244,7 @@ Any other tools or libraries you will need to acquire  from Flatpak.
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
-To use `rust-analyzer`, you need to install and enable one of the two popular two popular LSP client implementations for Emacs, https://github.com/joaotavora/eglot[Eglot] or https://github.com/emacs-lsp/lsp-mode[LSP Mode]. Both enable `rust-analyzer` by default in rust buffers if it is available.
+To use `rust-analyzer`, you need to install and enable one of the two popular LSP client implementations for Emacs, https://github.com/joaotavora/eglot[Eglot] or https://github.com/emacs-lsp/lsp-mode[LSP Mode]. Both enable `rust-analyzer` by default in rust buffers if it is available.
 
 ==== Eglot
 
