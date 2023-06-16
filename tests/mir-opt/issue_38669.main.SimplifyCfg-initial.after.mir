@@ -1,52 +1,52 @@
 // MIR for `main` after SimplifyCfg-initial
 
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/issue_38669.rs:+0:11: +0:11
-    let mut _1: bool;                    // in scope 0 at $DIR/issue_38669.rs:+1:9: +1:25
-    let mut _2: ();                      // in scope 0 at $DIR/issue_38669.rs:+0:1: +8:2
-    let _3: ();                          // in scope 0 at $DIR/issue_38669.rs:+3:9: +5:10
-    let mut _4: bool;                    // in scope 0 at $DIR/issue_38669.rs:+3:12: +3:24
-    let mut _5: !;                       // in scope 0 at $DIR/issue_38669.rs:+3:25: +5:10
+    let mut _0: ();
+    let mut _1: bool;
+    let mut _2: ();
+    let _3: ();
+    let mut _4: bool;
+    let mut _5: !;
     scope 1 {
-        debug should_break => _1;        // in scope 1 at $DIR/issue_38669.rs:+1:9: +1:25
+        debug should_break => _1;
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/issue_38669.rs:+1:9: +1:25
-        _1 = const false;                // scope 0 at $DIR/issue_38669.rs:+1:28: +1:33
-        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/issue_38669.rs:+1:9: +1:25
-        goto -> bb1;                     // scope 1 at $DIR/issue_38669.rs:+2:5: +7:6
+        StorageLive(_1);
+        _1 = const false;
+        FakeRead(ForLet(None), _1);
+        goto -> bb1;
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, unwind: bb5]; // scope 1 at $DIR/issue_38669.rs:+2:5: +7:6
+        falseUnwind -> [real: bb2, unwind: bb5];
     }
 
     bb2: {
-        StorageLive(_3);                 // scope 1 at $DIR/issue_38669.rs:+3:9: +5:10
-        StorageLive(_4);                 // scope 1 at $DIR/issue_38669.rs:+3:12: +3:24
-        _4 = _1;                         // scope 1 at $DIR/issue_38669.rs:+3:12: +3:24
-        switchInt(move _4) -> [0: bb4, otherwise: bb3]; // scope 1 at $DIR/issue_38669.rs:+3:12: +3:24
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = _1;
+        switchInt(move _4) -> [0: bb4, otherwise: bb3];
     }
 
     bb3: {
-        _0 = const ();                   // scope 1 at $DIR/issue_38669.rs:+4:13: +4:18
-        StorageDead(_4);                 // scope 1 at $DIR/issue_38669.rs:+5:9: +5:10
-        StorageDead(_3);                 // scope 1 at $DIR/issue_38669.rs:+5:9: +5:10
-        StorageDead(_1);                 // scope 0 at $DIR/issue_38669.rs:+8:1: +8:2
-        return;                          // scope 0 at $DIR/issue_38669.rs:+8:2: +8:2
+        _0 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_1);
+        return;
     }
 
     bb4: {
-        _3 = const ();                   // scope 1 at $DIR/issue_38669.rs:+5:10: +5:10
-        StorageDead(_4);                 // scope 1 at $DIR/issue_38669.rs:+5:9: +5:10
-        StorageDead(_3);                 // scope 1 at $DIR/issue_38669.rs:+5:9: +5:10
-        _1 = const true;                 // scope 1 at $DIR/issue_38669.rs:+6:9: +6:28
-        _2 = const ();                   // scope 1 at $DIR/issue_38669.rs:+2:10: +7:6
-        goto -> bb1;                     // scope 1 at $DIR/issue_38669.rs:+2:5: +7:6
+        _3 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        _1 = const true;
+        _2 = const ();
+        goto -> bb1;
     }
 
     bb5 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue_38669.rs:+0:1: +8:2
+        resume;
     }
 }

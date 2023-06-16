@@ -2,14 +2,14 @@
 + // MIR for `from_char` after ConstProp
   
   fn from_char() -> i32 {
-      let mut _0: i32;                     // return place in scope 0 at $DIR/transmute.rs:+0:23: +0:26
+      let mut _0: i32;
       scope 1 {
       }
   
       bb0: {
--         _0 = const 'R' as i32 (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:28
-+         _0 = const 82_i32;               // scope 1 at $DIR/transmute.rs:+1:14: +1:28
-          return;                          // scope 0 at $DIR/transmute.rs:+2:2: +2:2
+-         _0 = const 'R' as i32 (Transmute);
++         _0 = const 82_i32;
+          return;
       }
   }
   

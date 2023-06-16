@@ -1,27 +1,27 @@
 // MIR for `ub_if_b` after PreCodegen
 
 fn ub_if_b(_1: Thing) -> Thing {
-    debug t => _1;                       // in scope 0 at $DIR/duplicate_switch_targets.rs:+0:23: +0:24
-    let mut _0: Thing;                   // return place in scope 0 at $DIR/duplicate_switch_targets.rs:+0:36: +0:41
-    let mut _2: isize;                   // in scope 0 at $DIR/duplicate_switch_targets.rs:+2:9: +2:17
-    scope 1 (inlined unreachable_unchecked) { // at $DIR/duplicate_switch_targets.rs:15:21: 15:55
+    debug t => _1;
+    let mut _0: Thing;
+    let mut _2: isize;
+    scope 1 (inlined unreachable_unchecked) {
         scope 2 {
-            scope 3 (inlined unreachable_unchecked::runtime) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+            scope 3 (inlined unreachable_unchecked::runtime) {
             }
         }
     }
 
     bb0: {
-        _2 = discriminant(_1);           // scope 0 at $DIR/duplicate_switch_targets.rs:+1:11: +1:12
-        switchInt(move _2) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/duplicate_switch_targets.rs:+1:5: +1:12
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        _0 = move _1;                    // scope 0 at $DIR/duplicate_switch_targets.rs:+2:21: +2:22
-        return;                          // scope 0 at $DIR/duplicate_switch_targets.rs:+5:2: +5:2
+        _0 = move _1;
+        return;
     }
 
     bb2: {
-        unreachable;                     // scope 2 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+        unreachable;
     }
 }

@@ -1,40 +1,40 @@
 // MIR for `old` after PreCodegen
 
 fn old(_1: Result<T, E>) -> Result<T, E> {
-    debug x => _1;                       // in scope 0 at $DIR/try_identity.rs:+0:14: +0:15
-    let mut _0: std::result::Result<T, E>; // return place in scope 0 at $DIR/try_identity.rs:+0:34: +0:46
-    let mut _2: isize;                   // in scope 0 at $DIR/try_identity.rs:+3:13: +3:18
-    let _3: T;                           // in scope 0 at $DIR/try_identity.rs:+3:16: +3:17
-    let _4: E;                           // in scope 0 at $DIR/try_identity.rs:+4:17: +4:18
+    debug x => _1;
+    let mut _0: std::result::Result<T, E>;
+    let mut _2: isize;
+    let _3: T;
+    let _4: E;
     scope 1 {
-        debug v => _3;                   // in scope 1 at $DIR/try_identity.rs:+3:16: +3:17
+        debug v => _3;
     }
     scope 2 {
-        debug e => _4;                   // in scope 2 at $DIR/try_identity.rs:+4:17: +4:18
+        debug e => _4;
     }
 
     bb0: {
-        _2 = discriminant(_1);           // scope 0 at $DIR/try_identity.rs:+2:15: +2:16
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4]; // scope 0 at $DIR/try_identity.rs:+2:9: +2:16
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
     }
 
     bb1: {
-        _3 = move ((_1 as Ok).0: T);     // scope 0 at $DIR/try_identity.rs:+3:16: +3:17
-        _0 = Result::<T, E>::Ok(move _3); // scope 0 at $DIR/try_identity.rs:+1:5: +6:6
-        goto -> bb3;                     // scope 0 at $DIR/try_identity.rs:+7:1: +7:2
+        _3 = move ((_1 as Ok).0: T);
+        _0 = Result::<T, E>::Ok(move _3);
+        goto -> bb3;
     }
 
     bb2: {
-        _4 = move ((_1 as Err).0: E);    // scope 0 at $DIR/try_identity.rs:+4:17: +4:18
-        _0 = Result::<T, E>::Err(move _4); // scope 2 at $DIR/try_identity.rs:+4:30: +4:36
-        goto -> bb3;                     // scope 0 at $DIR/try_identity.rs:+7:1: +7:2
+        _4 = move ((_1 as Err).0: E);
+        _0 = Result::<T, E>::Err(move _4);
+        goto -> bb3;
     }
 
     bb3: {
-        return;                          // scope 0 at $DIR/try_identity.rs:+7:2: +7:2
+        return;
     }
 
     bb4: {
-        unreachable;                     // scope 0 at $DIR/try_identity.rs:+2:15: +2:16
+        unreachable;
     }
 }

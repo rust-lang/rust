@@ -1,10 +1,10 @@
 // MIR for `raw_pointer_offset` after built
 
 fn raw_pointer_offset(_1: *const i32) -> *const i32 {
-    let mut _0: *const i32;              // return place in scope 0 at $DIR/references.rs:+0:45: +0:55
+    let mut _0: *const i32;
 
     bb0: {
-        _0 = Offset(_1, const 1_isize);  // scope 0 at $DIR/references.rs:+2:9: +2:33
-        return;                          // scope 0 at $DIR/references.rs:+3:9: +3:17
+        _0 = Offset(_1, const 1_isize);
+        return;
     }
 }

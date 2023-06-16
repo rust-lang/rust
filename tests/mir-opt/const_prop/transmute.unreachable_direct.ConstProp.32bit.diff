@@ -2,21 +2,21 @@
 + // MIR for `unreachable_direct` after ConstProp
   
   fn unreachable_direct() -> ! {
-      let mut _0: !;                       // return place in scope 0 at $DIR/transmute.rs:+0:39: +0:40
-      let _1: Never;                       // in scope 0 at $DIR/transmute.rs:+1:9: +1:10
-      let mut _2: ();                      // in scope 0 at $DIR/transmute.rs:+1:39: +1:41
+      let mut _0: !;
+      let _1: Never;
+      let mut _2: ();
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/transmute.rs:+1:9: +1:10
+          debug x => _1;
       }
       scope 2 {
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/transmute.rs:+1:9: +1:10
-          StorageLive(_2);                 // scope 2 at $DIR/transmute.rs:+1:39: +1:41
-          _2 = ();                         // scope 2 at $DIR/transmute.rs:+1:39: +1:41
-          _1 = move _2 as Never (Transmute); // scope 2 at $DIR/transmute.rs:+1:29: +1:42
-          unreachable;                     // scope 2 at $DIR/transmute.rs:+1:29: +1:42
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = ();
+          _1 = move _2 as Never (Transmute);
+          unreachable;
       }
   }
   

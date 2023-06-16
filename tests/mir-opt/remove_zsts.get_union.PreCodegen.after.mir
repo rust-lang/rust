@@ -1,10 +1,10 @@
 // MIR for `get_union` after PreCodegen
 
 fn get_union() -> Foo {
-    let mut _0: Foo;                     // return place in scope 0 at $DIR/remove_zsts.rs:+0:19: +0:22
+    let mut _0: Foo;
 
     bb0: {
-        _0 = Foo { x: const () };        // scope 0 at $DIR/remove_zsts.rs:+1:5: +1:18
-        return;                          // scope 0 at $DIR/remove_zsts.rs:+2:2: +2:2
+        _0 = Foo { x: const () };
+        return;
     }
 }

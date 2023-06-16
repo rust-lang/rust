@@ -353,14 +353,22 @@ where
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
-        writeln!(
-            w,
-            "{:A$} // {}{}",
-            indented_body,
-            if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-            comment(tcx, statement.source_info, body.span),
-            A = ALIGN,
-        )?;
+        if tcx.sess.opts.unstable_opts.mir_include_spans {
+            writeln!(
+                w,
+                "{:A$} // {}{}",
+                indented_body,
+                if tcx.sess.verbose() {
+                    format!("{:?}: ", current_location)
+                } else {
+                    String::new()
+                },
+                comment(tcx, statement.source_info),
+                A = ALIGN,
+            )?;
+        } else {
+            writeln!(w, "{}", indented_body)?;
+        }
 
         write_extra(tcx, w, |visitor| {
             visitor.visit_statement(statement, current_location);
@@ -374,14 +382,18 @@ where
     // Terminator at the bottom.
     extra_data(PassWhere::BeforeLocation(current_location), w)?;
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
-    writeln!(
-        w,
-        "{:A$} // {}{}",
-        indented_terminator,
-        if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-        comment(tcx, data.terminator().source_info, body.span),
-        A = ALIGN,
-    )?;
+    if tcx.sess.opts.unstable_opts.mir_include_spans {
+        writeln!(
+            w,
+            "{:A$} // {}{}",
+            indented_terminator,
+            if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
+            comment(tcx, data.terminator().source_info),
+            A = ALIGN,
+        )?;
+    } else {
+        writeln!(w, "{}", indented_terminator)?;
+    }
 
     write_extra(tcx, w, |visitor| {
         visitor.visit_terminator(data.terminator(), current_location);
@@ -400,10 +412,12 @@ fn write_extra<'tcx, F>(tcx: TyCtxt<'tcx>, write: &mut dyn Write, mut visit_op: 
 where
     F: FnMut(&mut ExtraComments<'tcx>),
 {
-    let mut extra_comments = ExtraComments { tcx, comments: vec![] };
-    visit_op(&mut extra_comments);
-    for comment in extra_comments.comments {
-        writeln!(write, "{:A$} // {}", "", comment, A = ALIGN)?;
+    if tcx.sess.opts.unstable_opts.mir_include_spans {
+        let mut extra_comments = ExtraComments { tcx, comments: vec![] };
+        visit_op(&mut extra_comments);
+        for comment in extra_comments.comments {
+            writeln!(write, "{:A$} // {}", "", comment, A = ALIGN)?;
+        }
     }
     Ok(())
 }
@@ -522,13 +536,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
     }
 }
 
-fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo, function_span: Span) -> String {
-    let location = if tcx.sess.opts.unstable_opts.mir_pretty_relative_line_numbers {
-        tcx.sess.source_map().span_to_relative_line_string(span, function_span)
-    } else {
-        tcx.sess.source_map().span_to_embeddable_string(span)
-    };
-
+fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
+    let location = tcx.sess.source_map().span_to_embeddable_string(span);
     format!("scope {} at {}", scope.index(), location,)
 }
 
@@ -560,13 +569,17 @@ fn write_scope_tree(
             var_debug_info.value,
         );
 
-        writeln!(
-            w,
-            "{0:1$} // in {2}",
-            indented_debug_info,
-            ALIGN,
-            comment(tcx, var_debug_info.source_info, body.span),
-        )?;
+        if tcx.sess.opts.unstable_opts.mir_include_spans {
+            writeln!(
+                w,
+                "{0:1$} // in {2}",
+                indented_debug_info,
+                ALIGN,
+                comment(tcx, var_debug_info.source_info),
+            )?;
+        } else {
+            writeln!(w, "{}", indented_debug_info)?;
+        }
     }
 
     // Local variable types.
@@ -594,14 +607,18 @@ fn write_scope_tree(
 
         let local_name = if local == RETURN_PLACE { " return place" } else { "" };
 
-        writeln!(
-            w,
-            "{0:1$} //{2} in {3}",
-            indented_decl,
-            ALIGN,
-            local_name,
-            comment(tcx, local_decl.source_info, body.span),
-        )?;
+        if tcx.sess.opts.unstable_opts.mir_include_spans {
+            writeln!(
+                w,
+                "{0:1$} //{2} in {3}",
+                indented_decl,
+                ALIGN,
+                local_name,
+                comment(tcx, local_decl.source_info),
+            )?;
+        } else {
+            writeln!(w, "{}", indented_decl,)?;
+        }
     }
 
     let Some(children) = scope_tree.get(&parent) else {
@@ -627,14 +644,18 @@ fn write_scope_tree(
 
         let indented_header = format!("{0:1$}scope {2}{3} {{", "", indent, child.index(), special);
 
-        if let Some(span) = span {
-            writeln!(
-                w,
-                "{0:1$} // at {2}",
-                indented_header,
-                ALIGN,
-                tcx.sess.source_map().span_to_embeddable_string(span),
-            )?;
+        if tcx.sess.opts.unstable_opts.mir_include_spans {
+            if let Some(span) = span {
+                writeln!(
+                    w,
+                    "{0:1$} // at {2}",
+                    indented_header,
+                    ALIGN,
+                    tcx.sess.source_map().span_to_embeddable_string(span),
+                )?;
+            } else {
+                writeln!(w, "{}", indented_header)?;
+            }
         } else {
             writeln!(w, "{}", indented_header)?;
         }

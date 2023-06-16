@@ -1,13 +1,13 @@
 // MIR for `std::ops::Fn::call` before AddMovesForPackedDrops
 
 fn std::ops::Fn::call(_1: *const fn(), _2: ()) -> <fn() as FnOnce<()>>::Output {
-    let mut _0: <fn() as std::ops::FnOnce<()>>::Output; // return place in scope 0 at $SRC_DIR/core/src/ops/function.rs:+0:5: +0:67
+    let mut _0: <fn() as std::ops::FnOnce<()>>::Output;
 
     bb0: {
-        _0 = move (*_1)() -> bb1;        // scope 0 at $SRC_DIR/core/src/ops/function.rs:+0:5: +0:67
+        _0 = move (*_1)() -> bb1;
     }
 
     bb1: {
-        return;                          // scope 0 at $SRC_DIR/core/src/ops/function.rs:+0:5: +0:67
+        return;
     }
 }

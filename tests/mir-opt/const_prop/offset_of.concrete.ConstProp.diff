@@ -2,43 +2,43 @@
 + // MIR for `concrete` after ConstProp
   
   fn concrete() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/offset_of.rs:+0:15: +0:15
-      let _1: usize;                       // in scope 0 at $DIR/offset_of.rs:+1:9: +1:10
+      let mut _0: ();
+      let _1: usize;
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/offset_of.rs:+1:9: +1:10
-          let _2: usize;                   // in scope 1 at $DIR/offset_of.rs:+2:9: +2:10
+          debug x => _1;
+          let _2: usize;
           scope 2 {
-              debug y => _2;               // in scope 2 at $DIR/offset_of.rs:+2:9: +2:10
-              let _3: usize;               // in scope 2 at $DIR/offset_of.rs:+3:9: +3:11
+              debug y => _2;
+              let _3: usize;
               scope 3 {
-                  debug z0 => _3;          // in scope 3 at $DIR/offset_of.rs:+3:9: +3:11
-                  let _4: usize;           // in scope 3 at $DIR/offset_of.rs:+4:9: +4:11
+                  debug z0 => _3;
+                  let _4: usize;
                   scope 4 {
-                      debug z1 => _4;      // in scope 4 at $DIR/offset_of.rs:+4:9: +4:11
+                      debug z1 => _4;
                   }
               }
           }
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/offset_of.rs:+1:9: +1:10
--         _1 = OffsetOf(Alpha, [0]);       // scope 0 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-+         _1 = const 4_usize;              // scope 0 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          StorageLive(_2);                 // scope 1 at $DIR/offset_of.rs:+2:9: +2:10
--         _2 = OffsetOf(Alpha, [1]);       // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-+         _2 = const 0_usize;              // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          StorageLive(_3);                 // scope 2 at $DIR/offset_of.rs:+3:9: +3:11
--         _3 = OffsetOf(Alpha, [2, 0]);    // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-+         _3 = const 2_usize;              // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          StorageLive(_4);                 // scope 3 at $DIR/offset_of.rs:+4:9: +4:11
--         _4 = OffsetOf(Alpha, [2, 1]);    // scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-+         _4 = const 3_usize;              // scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-          _0 = const ();                   // scope 0 at $DIR/offset_of.rs:+0:15: +5:2
-          StorageDead(_4);                 // scope 3 at $DIR/offset_of.rs:+5:1: +5:2
-          StorageDead(_3);                 // scope 2 at $DIR/offset_of.rs:+5:1: +5:2
-          StorageDead(_2);                 // scope 1 at $DIR/offset_of.rs:+5:1: +5:2
-          StorageDead(_1);                 // scope 0 at $DIR/offset_of.rs:+5:1: +5:2
-          return;                          // scope 0 at $DIR/offset_of.rs:+5:2: +5:2
+          StorageLive(_1);
+-         _1 = OffsetOf(Alpha, [0]);
++         _1 = const 4_usize;
+          StorageLive(_2);
+-         _2 = OffsetOf(Alpha, [1]);
++         _2 = const 0_usize;
+          StorageLive(_3);
+-         _3 = OffsetOf(Alpha, [2, 0]);
++         _3 = const 2_usize;
+          StorageLive(_4);
+-         _4 = OffsetOf(Alpha, [2, 1]);
++         _4 = const 3_usize;
+          _0 = const ();
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
       }
   }
   

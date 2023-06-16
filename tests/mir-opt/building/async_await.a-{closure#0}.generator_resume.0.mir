@@ -10,30 +10,30 @@
 } */
 
 fn a::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:11:14: 11:16]>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _4;           // in scope 0 at $DIR/async_await.rs:+0:14: +0:16
-    let mut _0: std::task::Poll<()>;     // return place in scope 0 at $DIR/async_await.rs:+0:14: +0:16
-    let mut _3: ();                      // in scope 0 at $DIR/async_await.rs:+0:14: +0:16
-    let mut _4: &mut std::task::Context<'_>; // in scope 0 at $DIR/async_await.rs:+0:14: +0:16
-    let mut _5: u32;                     // in scope 0 at $DIR/async_await.rs:+0:14: +0:16
+    debug _task_context => _4;
+    let mut _0: std::task::Poll<()>;
+    let mut _3: ();
+    let mut _4: &mut std::task::Context<'_>;
+    let mut _5: u32;
 
     bb0: {
-        _5 = discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:11:14: 11:16]))); // scope 0 at $DIR/async_await.rs:+0:14: +0:16
-        switchInt(move _5) -> [0: bb1, 1: bb2, otherwise: bb3]; // scope 0 at $DIR/async_await.rs:+0:14: +0:16
+        _5 = discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:11:14: 11:16])));
+        switchInt(move _5) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
 
     bb1: {
-        _4 = move _2;                    // scope 0 at $DIR/async_await.rs:+0:14: +0:16
-        _3 = const ();                   // scope 0 at $DIR/async_await.rs:+0:14: +0:16
-        _0 = Poll::<()>::Ready(move _3); // scope 0 at $DIR/async_await.rs:+0:16: +0:16
-        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:11:14: 11:16]))) = 1; // scope 0 at $DIR/async_await.rs:+0:16: +0:16
-        return;                          // scope 0 at $DIR/async_await.rs:+0:16: +0:16
+        _4 = move _2;
+        _3 = const ();
+        _0 = Poll::<()>::Ready(move _3);
+        discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:11:14: 11:16]))) = 1;
+        return;
     }
 
     bb2: {
-        assert(const false, "`async fn` resumed after completion") -> bb2; // scope 0 at $DIR/async_await.rs:+0:14: +0:16
+        assert(const false, "`async fn` resumed after completion") -> bb2;
     }
 
     bb3: {
-        unreachable;                     // scope 0 at $DIR/async_await.rs:+0:14: +0:16
+        unreachable;
     }
 }

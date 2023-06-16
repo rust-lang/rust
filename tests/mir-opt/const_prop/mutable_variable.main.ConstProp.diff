@@ -2,27 +2,27 @@
 + // MIR for `main` after ConstProp
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/mutable_variable.rs:+0:11: +0:11
-      let mut _1: i32;                     // in scope 0 at $DIR/mutable_variable.rs:+1:9: +1:14
+      let mut _0: ();
+      let mut _1: i32;
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/mutable_variable.rs:+1:9: +1:14
-          let _2: i32;                     // in scope 1 at $DIR/mutable_variable.rs:+3:9: +3:10
+          debug x => _1;
+          let _2: i32;
           scope 2 {
-              debug y => _2;               // in scope 2 at $DIR/mutable_variable.rs:+3:9: +3:10
+              debug y => _2;
           }
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/mutable_variable.rs:+1:9: +1:14
-          _1 = const 42_i32;               // scope 0 at $DIR/mutable_variable.rs:+1:17: +1:19
-          _1 = const 99_i32;               // scope 1 at $DIR/mutable_variable.rs:+2:5: +2:11
-          StorageLive(_2);                 // scope 1 at $DIR/mutable_variable.rs:+3:9: +3:10
--         _2 = _1;                         // scope 1 at $DIR/mutable_variable.rs:+3:13: +3:14
-+         _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable.rs:+3:13: +3:14
-          _0 = const ();                   // scope 0 at $DIR/mutable_variable.rs:+0:11: +4:2
-          StorageDead(_2);                 // scope 1 at $DIR/mutable_variable.rs:+4:1: +4:2
-          StorageDead(_1);                 // scope 0 at $DIR/mutable_variable.rs:+4:1: +4:2
-          return;                          // scope 0 at $DIR/mutable_variable.rs:+4:2: +4:2
+          StorageLive(_1);
+          _1 = const 42_i32;
+          _1 = const 99_i32;
+          StorageLive(_2);
+-         _2 = _1;
++         _2 = const 99_i32;
+          _0 = const ();
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
       }
   }
   

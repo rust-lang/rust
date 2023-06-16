@@ -2,26 +2,23 @@
 + // MIR for `multiple_storage` after ReferencePropagation
   
   fn multiple_storage() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/reference_prop.rs:+0:23: +0:23
-      let mut _1: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _2: &i32;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _3: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _2: &i32;
+      let mut _3: i32;
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+6:13: +6:27
-          _1 = const 5_i32;                // scope 0 at $DIR/reference_prop.rs:+7:13: +7:18
-          _2 = &_1;                        // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          StorageDead(_1);                 // scope 0 at $DIR/reference_prop.rs:+9:13: +9:27
-          StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+10:13: +10:27
-          _3 = (*_2);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          _0 = opaque::<i32>(_3) -> bb1;   // scope 0 at $DIR/reference_prop.rs:+14:13: +14:43
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:429:33: 429:39
-                                           // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
+          StorageLive(_1);
+          _1 = const 5_i32;
+          _2 = &_1;
+          StorageDead(_1);
+          StorageLive(_1);
+          _3 = (*_2);
+          _0 = opaque::<i32>(_3) -> bb1;
       }
   
       bb1: {
-          return;                          // scope 0 at $DIR/reference_prop.rs:+18:13: +18:21
+          return;
       }
   }
   

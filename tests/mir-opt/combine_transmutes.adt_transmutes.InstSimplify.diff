@@ -2,31 +2,31 @@
 + // MIR for `adt_transmutes` after InstSimplify
   
   fn adt_transmutes() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/combine_transmutes.rs:+0:32: +0:32
-      let _1: u8;                          // in scope 0 at $DIR/combine_transmutes.rs:+1:9: +1:11
-      let mut _2: std::option::Option<std::num::NonZeroU8>; // in scope 0 at $DIR/combine_transmutes.rs:+1:28: +1:58
-      let mut _4: std::num::Wrapping<i16>; // in scope 0 at $DIR/combine_transmutes.rs:+2:29: +2:54
-      let mut _6: std::num::Wrapping<i16>; // in scope 0 at $DIR/combine_transmutes.rs:+3:29: +3:54
-      let mut _8: Union32;                 // in scope 0 at $DIR/combine_transmutes.rs:+4:29: +4:47
-      let mut _10: Union32;                // in scope 0 at $DIR/combine_transmutes.rs:+5:29: +5:47
-      let mut _12: std::mem::MaybeUninit<std::string::String>; // in scope 0 at $DIR/combine_transmutes.rs:+6:46: +6:77
+      let mut _0: ();
+      let _1: u8;
+      let mut _2: std::option::Option<std::num::NonZeroU8>;
+      let mut _4: std::num::Wrapping<i16>;
+      let mut _6: std::num::Wrapping<i16>;
+      let mut _8: Union32;
+      let mut _10: Union32;
+      let mut _12: std::mem::MaybeUninit<std::string::String>;
       scope 1 {
-          debug _a => _1;                  // in scope 1 at $DIR/combine_transmutes.rs:+1:9: +1:11
-          let _3: i16;                     // in scope 1 at $DIR/combine_transmutes.rs:+2:9: +2:11
+          debug _a => _1;
+          let _3: i16;
           scope 2 {
-              debug _a => _3;              // in scope 2 at $DIR/combine_transmutes.rs:+2:9: +2:11
-              let _5: u16;                 // in scope 2 at $DIR/combine_transmutes.rs:+3:9: +3:11
+              debug _a => _3;
+              let _5: u16;
               scope 3 {
-                  debug _a => _5;          // in scope 3 at $DIR/combine_transmutes.rs:+3:9: +3:11
-                  let _7: u32;             // in scope 3 at $DIR/combine_transmutes.rs:+4:9: +4:11
+                  debug _a => _5;
+                  let _7: u32;
                   scope 4 {
-                      debug _a => _7;      // in scope 4 at $DIR/combine_transmutes.rs:+4:9: +4:11
-                      let _9: i32;         // in scope 4 at $DIR/combine_transmutes.rs:+5:9: +5:11
+                      debug _a => _7;
+                      let _9: i32;
                       scope 5 {
-                          debug _a => _9;  // in scope 5 at $DIR/combine_transmutes.rs:+5:9: +5:11
-                          let _11: std::mem::ManuallyDrop<std::string::String>; // in scope 5 at $DIR/combine_transmutes.rs:+6:9: +6:11
+                          debug _a => _9;
+                          let _11: std::mem::ManuallyDrop<std::string::String>;
                           scope 6 {
-                              debug _a => _11; // in scope 6 at $DIR/combine_transmutes.rs:+6:9: +6:11
+                              debug _a => _11;
                           }
                       }
                   }
@@ -35,56 +35,49 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/combine_transmutes.rs:+1:9: +1:11
-          StorageLive(_2);                 // scope 0 at $DIR/combine_transmutes.rs:+1:28: +1:58
-          _2 = Option::<NonZeroU8>::Some(const _); // scope 0 at $DIR/combine_transmutes.rs:+1:28: +1:58
-                                           // mir::Constant
-                                           // + span: $DIR/combine_transmutes.rs:35:33: 35:57
-                                           // + literal: Const { ty: NonZeroU8, val: Unevaluated(NonZeroU8::MAX, [], None) }
-          _1 = move _2 as u8 (Transmute);  // scope 0 at $DIR/combine_transmutes.rs:+1:18: +1:59
-          StorageDead(_2);                 // scope 0 at $DIR/combine_transmutes.rs:+1:58: +1:59
-          StorageLive(_3);                 // scope 1 at $DIR/combine_transmutes.rs:+2:9: +2:11
-          StorageLive(_4);                 // scope 1 at $DIR/combine_transmutes.rs:+2:29: +2:54
-          _4 = Wrapping::<i16>(const 0_i16); // scope 1 at $DIR/combine_transmutes.rs:+2:29: +2:54
--         _3 = move _4 as i16 (Transmute); // scope 1 at $DIR/combine_transmutes.rs:+2:19: +2:55
-+         _3 = move (_4.0: i16);           // scope 1 at $DIR/combine_transmutes.rs:+2:19: +2:55
-          StorageDead(_4);                 // scope 1 at $DIR/combine_transmutes.rs:+2:54: +2:55
-          StorageLive(_5);                 // scope 2 at $DIR/combine_transmutes.rs:+3:9: +3:11
-          StorageLive(_6);                 // scope 2 at $DIR/combine_transmutes.rs:+3:29: +3:54
-          _6 = Wrapping::<i16>(const 0_i16); // scope 2 at $DIR/combine_transmutes.rs:+3:29: +3:54
-          _5 = move _6 as u16 (Transmute); // scope 2 at $DIR/combine_transmutes.rs:+3:19: +3:55
-          StorageDead(_6);                 // scope 2 at $DIR/combine_transmutes.rs:+3:54: +3:55
-          StorageLive(_7);                 // scope 3 at $DIR/combine_transmutes.rs:+4:9: +4:11
-          StorageLive(_8);                 // scope 3 at $DIR/combine_transmutes.rs:+4:29: +4:47
-          _8 = Union32 { u32: const 0_i32 }; // scope 3 at $DIR/combine_transmutes.rs:+4:29: +4:47
-          _7 = move _8 as u32 (Transmute); // scope 3 at $DIR/combine_transmutes.rs:+4:19: +4:48
-          StorageDead(_8);                 // scope 3 at $DIR/combine_transmutes.rs:+4:47: +4:48
-          StorageLive(_9);                 // scope 4 at $DIR/combine_transmutes.rs:+5:9: +5:11
-          StorageLive(_10);                // scope 4 at $DIR/combine_transmutes.rs:+5:29: +5:47
-          _10 = Union32 { u32: const 0_u32 }; // scope 4 at $DIR/combine_transmutes.rs:+5:29: +5:47
-          _9 = move _10 as i32 (Transmute); // scope 4 at $DIR/combine_transmutes.rs:+5:19: +5:48
-          StorageDead(_10);                // scope 4 at $DIR/combine_transmutes.rs:+5:47: +5:48
-          StorageLive(_11);                // scope 5 at $DIR/combine_transmutes.rs:+6:9: +6:11
-          StorageLive(_12);                // scope 5 at $DIR/combine_transmutes.rs:+6:46: +6:77
-          _12 = MaybeUninit::<String>::uninit() -> [return: bb1, unwind unreachable]; // scope 5 at $DIR/combine_transmutes.rs:+6:46: +6:77
-                                           // mir::Constant
-                                           // + span: $DIR/combine_transmutes.rs:40:46: 40:75
-                                           // + user_ty: UserType(11)
-                                           // + literal: Const { ty: fn() -> MaybeUninit<String> {MaybeUninit::<String>::uninit}, val: Value(<ZST>) }
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Option::<NonZeroU8>::Some(const _);
+          _1 = move _2 as u8 (Transmute);
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = Wrapping::<i16>(const 0_i16);
+-         _3 = move _4 as i16 (Transmute);
++         _3 = move (_4.0: i16);
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = Wrapping::<i16>(const 0_i16);
+          _5 = move _6 as u16 (Transmute);
+          StorageDead(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = Union32 { u32: const 0_i32 };
+          _7 = move _8 as u32 (Transmute);
+          StorageDead(_8);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = Union32 { u32: const 0_u32 };
+          _9 = move _10 as i32 (Transmute);
+          StorageDead(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = MaybeUninit::<String>::uninit() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
--         _11 = move _12 as std::mem::ManuallyDrop<std::string::String> (Transmute); // scope 5 at $DIR/combine_transmutes.rs:+6:36: +6:78
-+         _11 = move (_12.1: std::mem::ManuallyDrop<std::string::String>); // scope 5 at $DIR/combine_transmutes.rs:+6:36: +6:78
-          StorageDead(_12);                // scope 5 at $DIR/combine_transmutes.rs:+6:77: +6:78
-          _0 = const ();                   // scope 0 at $DIR/combine_transmutes.rs:+0:32: +7:2
-          StorageDead(_11);                // scope 5 at $DIR/combine_transmutes.rs:+7:1: +7:2
-          StorageDead(_9);                 // scope 4 at $DIR/combine_transmutes.rs:+7:1: +7:2
-          StorageDead(_7);                 // scope 3 at $DIR/combine_transmutes.rs:+7:1: +7:2
-          StorageDead(_5);                 // scope 2 at $DIR/combine_transmutes.rs:+7:1: +7:2
-          StorageDead(_3);                 // scope 1 at $DIR/combine_transmutes.rs:+7:1: +7:2
-          StorageDead(_1);                 // scope 0 at $DIR/combine_transmutes.rs:+7:1: +7:2
-          return;                          // scope 0 at $DIR/combine_transmutes.rs:+7:2: +7:2
+-         _11 = move _12 as std::mem::ManuallyDrop<std::string::String> (Transmute);
++         _11 = move (_12.1: std::mem::ManuallyDrop<std::string::String>);
+          StorageDead(_12);
+          _0 = const ();
+          StorageDead(_11);
+          StorageDead(_9);
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
       }
   }
   

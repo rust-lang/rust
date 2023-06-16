@@ -1,83 +1,74 @@
 // MIR for `vec_move` after PreCodegen
 
 fn vec_move(_1: Vec<impl Sized>) -> () {
-    debug v => _1;                       // in scope 0 at $DIR/loops.rs:+0:17: +0:22
-    let mut _0: ();                      // return place in scope 0 at $DIR/loops.rs:+0:41: +0:41
-    let mut _2: std::vec::IntoIter<impl Sized>; // in scope 0 at $DIR/loops.rs:+1:14: +1:15
-    let mut _3: std::vec::IntoIter<impl Sized>; // in scope 0 at $DIR/loops.rs:+1:14: +1:15
-    let mut _4: &mut std::vec::IntoIter<impl Sized>; // in scope 0 at $DIR/loops.rs:+1:14: +1:15
-    let mut _5: std::option::Option<impl Sized>; // in scope 0 at $DIR/loops.rs:+1:14: +1:15
-    let mut _6: isize;                   // in scope 0 at $DIR/loops.rs:+1:5: +3:6
-    let _8: ();                          // in scope 0 at $DIR/loops.rs:+1:14: +1:15
+    debug v => _1;
+    let mut _0: ();
+    let mut _2: std::vec::IntoIter<impl Sized>;
+    let mut _3: std::vec::IntoIter<impl Sized>;
+    let mut _4: &mut std::vec::IntoIter<impl Sized>;
+    let mut _5: std::option::Option<impl Sized>;
+    let mut _6: isize;
+    let _8: ();
     scope 1 {
-        debug iter => _3;                // in scope 1 at $DIR/loops.rs:+1:14: +1:15
-        let _7: impl Sized;              // in scope 1 at $DIR/loops.rs:+1:9: +1:10
+        debug iter => _3;
+        let _7: impl Sized;
         scope 2 {
-            debug x => _7;               // in scope 2 at $DIR/loops.rs:+1:9: +1:10
+            debug x => _7;
         }
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/loops.rs:+1:14: +1:15
-        _2 = <Vec<impl Sized> as IntoIterator>::into_iter(move _1) -> bb1; // scope 0 at $DIR/loops.rs:+1:14: +1:15
-                                         // mir::Constant
-                                         // + span: $DIR/loops.rs:26:14: 26:15
-                                         // + literal: Const { ty: fn(Vec<impl Sized>) -> <Vec<impl Sized> as IntoIterator>::IntoIter {<Vec<impl Sized> as IntoIterator>::into_iter}, val: Value(<ZST>) }
+        StorageLive(_2);
+        _2 = <Vec<impl Sized> as IntoIterator>::into_iter(move _1) -> bb1;
     }
 
     bb1: {
-        StorageLive(_3);                 // scope 0 at $DIR/loops.rs:+1:14: +1:15
-        _3 = move _2;                    // scope 0 at $DIR/loops.rs:+1:14: +1:15
-        goto -> bb2;                     // scope 1 at $DIR/loops.rs:+1:5: +3:6
+        StorageLive(_3);
+        _3 = move _2;
+        goto -> bb2;
     }
 
     bb2: {
-        StorageLive(_5);                 // scope 1 at $DIR/loops.rs:+1:14: +1:15
-        _4 = &mut _3;                    // scope 1 at $DIR/loops.rs:+1:14: +1:15
-        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(_4) -> [return: bb3, unwind: bb9]; // scope 1 at $DIR/loops.rs:+1:14: +1:15
-                                         // mir::Constant
-                                         // + span: $DIR/loops.rs:26:14: 26:15
-                                         // + literal: Const { ty: for<'a> fn(&'a mut std::vec::IntoIter<impl Sized>) -> Option<<std::vec::IntoIter<impl Sized> as Iterator>::Item> {<std::vec::IntoIter<impl Sized> as Iterator>::next}, val: Value(<ZST>) }
+        StorageLive(_5);
+        _4 = &mut _3;
+        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(_4) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
-        _6 = discriminant(_5);           // scope 1 at $DIR/loops.rs:+1:14: +1:15
-        switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb8]; // scope 1 at $DIR/loops.rs:+1:14: +1:15
+        _6 = discriminant(_5);
+        switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb8];
     }
 
     bb4: {
-        StorageDead(_5);                 // scope 1 at $DIR/loops.rs:+3:5: +3:6
-        drop(_3) -> bb5;                 // scope 0 at $DIR/loops.rs:+3:5: +3:6
+        StorageDead(_5);
+        drop(_3) -> bb5;
     }
 
     bb5: {
-        StorageDead(_3);                 // scope 0 at $DIR/loops.rs:+3:5: +3:6
-        StorageDead(_2);                 // scope 0 at $DIR/loops.rs:+3:5: +3:6
-        return;                          // scope 0 at $DIR/loops.rs:+4:2: +4:2
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 
     bb6: {
-        _7 = move ((_5 as Some).0: impl Sized); // scope 1 at $DIR/loops.rs:+1:9: +1:10
-        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9]; // scope 2 at $DIR/loops.rs:+2:9: +2:18
-                                         // mir::Constant
-                                         // + span: $DIR/loops.rs:27:9: 27:15
-                                         // + literal: Const { ty: fn(impl Sized) {opaque::<impl Sized>}, val: Value(<ZST>) }
+        _7 = move ((_5 as Some).0: impl Sized);
+        _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
-        StorageDead(_5);                 // scope 1 at $DIR/loops.rs:+3:5: +3:6
-        goto -> bb2;                     // scope 1 at $DIR/loops.rs:+1:5: +3:6
+        StorageDead(_5);
+        goto -> bb2;
     }
 
     bb8: {
-        unreachable;                     // scope 1 at $DIR/loops.rs:+1:14: +1:15
+        unreachable;
     }
 
     bb9 (cleanup): {
-        drop(_3) -> [return: bb10, unwind terminate]; // scope 0 at $DIR/loops.rs:+3:5: +3:6
+        drop(_3) -> [return: bb10, unwind terminate];
     }
 
     bb10 (cleanup): {
-        resume;                          // scope 0 at $DIR/loops.rs:+0:1: +4:2
+        resume;
     }
 }

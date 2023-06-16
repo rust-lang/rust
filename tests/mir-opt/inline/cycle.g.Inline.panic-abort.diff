@@ -2,49 +2,43 @@
 + // MIR for `g` after Inline
   
   fn g() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/cycle.rs:+0:8: +0:8
-      let _1: ();                          // in scope 0 at $DIR/cycle.rs:+1:5: +1:12
-+     let mut _2: fn() {main};             // in scope 0 at $DIR/cycle.rs:+1:5: +1:12
-+     let mut _5: ();                      // in scope 0 at $DIR/cycle.rs:6:5: 6:8
-+     scope 1 (inlined f::<fn() {main}>) { // at $DIR/cycle.rs:12:5: 12:12
-+         debug g => _2;                   // in scope 1 at $DIR/cycle.rs:5:6: 5:7
-+         let mut _3: &fn() {main};        // in scope 1 at $DIR/cycle.rs:6:5: 6:6
-+         let _4: ();                      // in scope 1 at $DIR/cycle.rs:6:5: 6:8
-+         scope 2 (inlined <fn() {main} as Fn<()>>::call - shim(fn() {main})) { // at $DIR/cycle.rs:6:5: 6:8
+      let mut _0: ();
+      let _1: ();
++     let mut _2: fn() {main};
++     let mut _5: ();
++     scope 1 (inlined f::<fn() {main}>) {
++         debug g => _2;
++         let mut _3: &fn() {main};
++         let _4: ();
++         scope 2 (inlined <fn() {main} as Fn<()>>::call - shim(fn() {main})) {
 +         }
 +     }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:12
--         _1 = f::<fn() {main}>(main) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/cycle.rs:+1:5: +1:12
-+         StorageLive(_2);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:12
-+         _2 = main;                       // scope 0 at $DIR/cycle.rs:+1:5: +1:12
-                                           // mir::Constant
--                                          // + span: $DIR/cycle.rs:12:5: 12:6
--                                          // + literal: Const { ty: fn(fn() {main}) {f::<fn() {main}>}, val: Value(<ZST>) }
--                                          // mir::Constant
-                                           // + span: $DIR/cycle.rs:12:7: 12:11
-                                           // + literal: Const { ty: fn() {main}, val: Value(<ZST>) }
-+         StorageLive(_4);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:12
-+         StorageLive(_3);                 // scope 1 at $DIR/cycle.rs:6:5: 6:6
-+         _3 = &_2;                        // scope 1 at $DIR/cycle.rs:6:5: 6:6
-+         StorageLive(_5);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
-+         _5 = const ();                   // scope 1 at $DIR/cycle.rs:6:5: 6:8
-+         _4 = move (*_3)() -> [return: bb2, unwind unreachable]; // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
+          StorageLive(_1);
+-         _1 = f::<fn() {main}>(main) -> [return: bb1, unwind unreachable];
++         StorageLive(_2);
++         _2 = main;
++         StorageLive(_4);
++         StorageLive(_3);
++         _3 = &_2;
++         StorageLive(_5);
++         _5 = const ();
++         _4 = move (*_3)() -> [return: bb2, unwind unreachable];
       }
   
       bb1: {
-+         StorageDead(_4);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:12
-+         StorageDead(_2);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:12
-          StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:+1:12: +1:13
-          _0 = const ();                   // scope 0 at $DIR/cycle.rs:+0:8: +2:2
-          return;                          // scope 0 at $DIR/cycle.rs:+2:2: +2:2
++         StorageDead(_4);
++         StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
 +     }
 + 
 +     bb2: {
-+         StorageDead(_5);                 // scope 1 at $DIR/cycle.rs:6:5: 6:8
-+         StorageDead(_3);                 // scope 1 at $DIR/cycle.rs:6:7: 6:8
-+         drop(_2) -> [return: bb1, unwind unreachable]; // scope 1 at $DIR/cycle.rs:7:1: 7:2
++         StorageDead(_5);
++         StorageDead(_3);
++         drop(_2) -> [return: bb1, unwind unreachable];
       }
   }
   

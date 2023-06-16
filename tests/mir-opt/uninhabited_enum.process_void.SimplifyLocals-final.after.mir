@@ -1,15 +1,15 @@
 // MIR for `process_void` after SimplifyLocals-final
 
 fn process_void(_1: *const Void) -> () {
-    debug input => _1;                   // in scope 0 at $DIR/uninhabited_enum.rs:+0:21: +0:26
-    let mut _0: ();                      // return place in scope 0 at $DIR/uninhabited_enum.rs:+0:41: +0:41
+    debug input => _1;
+    let mut _0: ();
     scope 1 {
-        debug _input => _1;              // in scope 1 at $DIR/uninhabited_enum.rs:+1:8: +1:14
+        debug _input => _1;
     }
     scope 2 {
     }
 
     bb0: {
-        return;                          // scope 0 at $DIR/uninhabited_enum.rs:+4:2: +4:2
+        return;
     }
 }

@@ -2,138 +2,114 @@
 + // MIR for `main` after UninhabitedEnumBranching
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/uninhabited_enum_branching2.rs:+0:11: +0:11
-      let _1: Plop;                        // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:9: +1:13
-      let mut _2: Test1;                   // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:38: +1:46
-      let _3: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+3:5: +8:6
-      let mut _4: &Test1;                  // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+3:11: +3:22
-      let mut _5: isize;                   // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+4:9: +4:20
-      let _6: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+5:24: +5:34
-      let _7: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+6:21: +6:24
-      let _8: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+7:21: +7:24
-      let _9: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+10:5: +15:6
-      let mut _10: isize;                  // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+11:9: +11:20
-      let _11: &str;                       // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+12:24: +12:34
-      let _12: &str;                       // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+13:21: +13:24
-      let _13: &str;                       // in scope 0 at $DIR/uninhabited_enum_branching2.rs:+14:21: +14:24
+      let mut _0: ();
+      let _1: Plop;
+      let mut _2: Test1;
+      let _3: &str;
+      let mut _4: &Test1;
+      let mut _5: isize;
+      let _6: &str;
+      let _7: &str;
+      let _8: &str;
+      let _9: &str;
+      let mut _10: isize;
+      let _11: &str;
+      let _12: &str;
+      let _13: &str;
       scope 1 {
-          debug plop => _1;                // in scope 1 at $DIR/uninhabited_enum_branching2.rs:+1:9: +1:13
+          debug plop => _1;
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:9: +1:13
-          StorageLive(_2);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:38: +1:46
-          _2 = Test1::C;                   // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:38: +1:46
-          _1 = Plop { xx: const 51_u32, test1: move _2 }; // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:16: +1:48
-          StorageDead(_2);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:+1:47: +1:48
-          StorageLive(_3);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:5: +8:6
-          StorageLive(_4);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:11: +3:22
-          _4 = &(_1.1: Test1);             // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:11: +3:22
-          _5 = discriminant((*_4));        // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:11: +3:22
--         switchInt(move _5) -> [0: bb3, 1: bb4, 2: bb5, 3: bb1, otherwise: bb2]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:5: +3:22
-+         switchInt(move _5) -> [2: bb5, 3: bb1, otherwise: bb2]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:5: +3:22
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Test1::C;
+          _1 = Plop { xx: const 51_u32, test1: move _2 };
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = &(_1.1: Test1);
+          _5 = discriminant((*_4));
+-         switchInt(move _5) -> [0: bb3, 1: bb4, 2: bb5, 3: bb1, otherwise: bb2];
++         switchInt(move _5) -> [2: bb5, 3: bb1, otherwise: bb2];
       }
   
       bb1: {
-          StorageLive(_8);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+7:21: +7:24
-          _8 = const "D";                  // scope 1 at $DIR/uninhabited_enum_branching2.rs:+7:21: +7:24
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:25:21: 25:24
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          _3 = &(*_8);                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+7:21: +7:24
-          StorageDead(_8);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+7:23: +7:24
-          goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+7:23: +7:24
+          StorageLive(_8);
+          _8 = const "D";
+          _3 = &(*_8);
+          StorageDead(_8);
+          goto -> bb6;
       }
   
       bb2: {
-          unreachable;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+3:11: +3:22
+          unreachable;
       }
   
       bb3: {
-          _3 = const "A(Empty)";           // scope 1 at $DIR/uninhabited_enum_branching2.rs:+4:24: +4:34
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:22:24: 22:34
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+4:24: +4:34
+          _3 = const "A(Empty)";
+          goto -> bb6;
       }
   
       bb4: {
-          StorageLive(_6);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+5:24: +5:34
-          _6 = const "B(Empty)";           // scope 1 at $DIR/uninhabited_enum_branching2.rs:+5:24: +5:34
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:23:24: 23:34
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          _3 = &(*_6);                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+5:24: +5:34
-          StorageDead(_6);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+5:33: +5:34
-          goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+5:33: +5:34
+          StorageLive(_6);
+          _6 = const "B(Empty)";
+          _3 = &(*_6);
+          StorageDead(_6);
+          goto -> bb6;
       }
   
       bb5: {
-          StorageLive(_7);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+6:21: +6:24
-          _7 = const "C";                  // scope 1 at $DIR/uninhabited_enum_branching2.rs:+6:21: +6:24
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:24:21: 24:24
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          _3 = &(*_7);                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+6:21: +6:24
-          StorageDead(_7);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+6:23: +6:24
-          goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:+6:23: +6:24
+          StorageLive(_7);
+          _7 = const "C";
+          _3 = &(*_7);
+          StorageDead(_7);
+          goto -> bb6;
       }
   
       bb6: {
-          StorageDead(_4);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+8:6: +8:7
-          StorageDead(_3);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+8:6: +8:7
-          StorageLive(_9);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+10:5: +15:6
-          _10 = discriminant((_1.1: Test1)); // scope 1 at $DIR/uninhabited_enum_branching2.rs:+10:11: +10:21
--         switchInt(move _10) -> [0: bb8, 1: bb9, 2: bb10, 3: bb7, otherwise: bb2]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:+10:5: +10:21
-+         switchInt(move _10) -> [2: bb10, 3: bb7, otherwise: bb2]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:+10:5: +10:21
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_9);
+          _10 = discriminant((_1.1: Test1));
+-         switchInt(move _10) -> [0: bb8, 1: bb9, 2: bb10, 3: bb7, otherwise: bb2];
++         switchInt(move _10) -> [2: bb10, 3: bb7, otherwise: bb2];
       }
   
       bb7: {
-          StorageLive(_13);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:+14:21: +14:24
-          _13 = const "D";                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+14:21: +14:24
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:32:21: 32:24
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          _9 = &(*_13);                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:+14:21: +14:24
-          StorageDead(_13);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:+14:23: +14:24
-          goto -> bb11;                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:+14:23: +14:24
+          StorageLive(_13);
+          _13 = const "D";
+          _9 = &(*_13);
+          StorageDead(_13);
+          goto -> bb11;
       }
   
       bb8: {
-          _9 = const "A(Empty)";           // scope 1 at $DIR/uninhabited_enum_branching2.rs:+11:24: +11:34
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:29:24: 29:34
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          goto -> bb11;                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:+11:24: +11:34
+          _9 = const "A(Empty)";
+          goto -> bb11;
       }
   
       bb9: {
-          StorageLive(_11);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:+12:24: +12:34
-          _11 = const "B(Empty)";          // scope 1 at $DIR/uninhabited_enum_branching2.rs:+12:24: +12:34
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:30:24: 30:34
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          _9 = &(*_11);                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:+12:24: +12:34
-          StorageDead(_11);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:+12:33: +12:34
-          goto -> bb11;                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:+12:33: +12:34
+          StorageLive(_11);
+          _11 = const "B(Empty)";
+          _9 = &(*_11);
+          StorageDead(_11);
+          goto -> bb11;
       }
   
       bb10: {
-          StorageLive(_12);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:+13:21: +13:24
-          _12 = const "C";                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+13:21: +13:24
-                                           // mir::Constant
-                                           // + span: $DIR/uninhabited_enum_branching2.rs:31:21: 31:24
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          _9 = &(*_12);                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:+13:21: +13:24
-          StorageDead(_12);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:+13:23: +13:24
-          goto -> bb11;                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:+13:23: +13:24
+          StorageLive(_12);
+          _12 = const "C";
+          _9 = &(*_12);
+          StorageDead(_12);
+          goto -> bb11;
       }
   
       bb11: {
-          StorageDead(_9);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:+15:6: +15:7
-          _0 = const ();                   // scope 0 at $DIR/uninhabited_enum_branching2.rs:+0:11: +16:2
-          StorageDead(_1);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:+16:1: +16:2
-          return;                          // scope 0 at $DIR/uninhabited_enum_branching2.rs:+16:2: +16:2
+          StorageDead(_9);
+          _0 = const ();
+          StorageDead(_1);
+          return;
       }
   }
   

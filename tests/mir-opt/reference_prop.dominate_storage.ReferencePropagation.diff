@@ -2,37 +2,34 @@
 + // MIR for `dominate_storage` after ReferencePropagation
   
   fn dominate_storage() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/reference_prop.rs:+0:23: +0:23
-      let mut _1: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _2: &i32;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _3: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _4: bool;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _5: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-      let mut _6: bool;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _2: &i32;
+      let mut _3: i32;
+      let mut _4: bool;
+      let mut _5: i32;
+      let mut _6: bool;
   
       bb0: {
-          goto -> bb1;                     // scope 0 at $DIR/reference_prop.rs:+8:11: +8:20
+          goto -> bb1;
       }
   
       bb1: {
-          _1 = const 5_i32;                // scope 0 at $DIR/reference_prop.rs:+10:13: +10:18
-          _2 = &_1;                        // scope 0 at $DIR/reference_prop.rs:+11:13: +11:19
-          goto -> bb2;                     // scope 0 at $DIR/reference_prop.rs:+12:13: +12:22
+          _1 = const 5_i32;
+          _2 = &_1;
+          goto -> bb2;
       }
   
       bb2: {
-          _5 = (*_2);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          _0 = opaque::<i32>(_5) -> bb3;   // scope 0 at $DIR/reference_prop.rs:+16:13: +16:38
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:455:28: 455:34
-                                           // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
+          _5 = (*_2);
+          _0 = opaque::<i32>(_5) -> bb3;
       }
   
       bb3: {
-          StorageDead(_1);                 // scope 0 at $DIR/reference_prop.rs:+19:13: +19:27
-          StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+20:13: +20:27
-          _6 = const true;                 // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          switchInt(_6) -> [0: bb3, otherwise: bb1]; // scope 0 at $DIR/reference_prop.rs:+22:13: +22:47
+          StorageDead(_1);
+          StorageLive(_1);
+          _6 = const true;
+          switchInt(_6) -> [0: bb3, otherwise: bb1];
       }
   }
   

@@ -1,17 +1,17 @@
 // MIR for `assert_nonzero` after built
 
 fn assert_nonzero(_1: i32) -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/terminators.rs:+0:27: +0:27
+    let mut _0: ();
 
     bb0: {
-        switchInt(_1) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/terminators.rs:+3:13: +6:14
+        switchInt(_1) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        unreachable;                     // scope 0 at $DIR/terminators.rs:+10:13: +10:26
+        unreachable;
     }
 
     bb2: {
-        return;                          // scope 0 at $DIR/terminators.rs:+14:13: +14:21
+        return;
     }
 }
