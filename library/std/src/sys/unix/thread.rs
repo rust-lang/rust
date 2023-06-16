@@ -344,6 +344,29 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                 }
             }
 
+            #[cfg(target_os = "netbsd")]
+            {
+                unsafe {
+                    let set = libc::_cpuset_create();
+                    if !set.is_null() {
+                        let mut count: usize = 0;
+                        if libc::pthread_getaffinity_np(libc::pthread_self(), libc::_cpuset_size(set), set) == 0 {
+                            for i in 0..u64::MAX {
+                                match libc::_cpuset_isset(i, set) {
+                                    -1 => break,
+                                    0 => continue,
+                                    _ => count = count + 1,
+                                }
+                            }
+                        }
+                        libc::_cpuset_destroy(set);
+                        if let Some(count) = NonZeroUsize::new(count) {
+                            return Ok(count);
+                        }
+                    }
+                }
+            }
+
             let mut cpus: libc::c_uint = 0;
             let mut cpus_size = crate::mem::size_of_val(&cpus);
 
