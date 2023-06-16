@@ -561,6 +561,42 @@ impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
     }
 }
 
+/// TODO: doc
+#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
+#[rustc_pass_by_value]
+pub struct Clause<'tcx>(Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>);
+
+impl<'tcx> Clause<'tcx> {
+    pub fn as_predicate(self) -> Predicate<'tcx> {
+        Predicate(self.0)
+    }
+
+    pub fn kind(self) -> Binder<'tcx, ClauseKind<'tcx>> {
+        self.0.internee.map_bound(|kind| match kind {
+            PredicateKind::Clause(clause) => clause,
+            _ => unreachable!(),
+        })
+    }
+
+    pub fn as_trait_clause(self) -> Option<Binder<'tcx, TraitPredicate<'tcx>>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::Trait(trait_clause) = clause.skip_binder() {
+            Some(clause.rebind(trait_clause))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_projection_clause(self) -> Option<Binder<'tcx, ProjectionPredicate<'tcx>>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::Projection(projection_clause) = clause.skip_binder() {
+            Some(clause.rebind(projection_clause))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 /// A clause is something that can appear in where bounds or be inferred
@@ -590,24 +626,6 @@ pub enum ClauseKind<'tcx> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(ty::Const<'tcx>),
-}
-
-impl<'tcx> Binder<'tcx, ClauseKind<'tcx>> {
-    pub fn as_trait_clause(self) -> Option<Binder<'tcx, TraitPredicate<'tcx>>> {
-        if let ty::ClauseKind::Trait(trait_clause) = self.skip_binder() {
-            Some(self.rebind(trait_clause))
-        } else {
-            None
-        }
-    }
-
-    pub fn as_projection_clause(self) -> Option<Binder<'tcx, ProjectionPredicate<'tcx>>> {
-        if let ty::ClauseKind::Projection(projection_clause) = self.skip_binder() {
-            Some(self.rebind(projection_clause))
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1229,14 +1247,11 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Binder<'tcx, ClauseKind<'tcx>>> for TraitRef<'tcx> {
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitRef<'tcx> {
     #[inline(always)]
-    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Binder<'tcx, ClauseKind<'tcx>> {
-        Binder::dummy(ClauseKind::Trait(TraitPredicate {
-            trait_ref: self,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Positive,
-        }))
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        Clause(p.0)
     }
 }
 
@@ -1248,9 +1263,9 @@ impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, TraitRef<'tcx>> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Binder<'tcx, ClauseKind<'tcx>>> for Binder<'tcx, TraitRef<'tcx>> {
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for Binder<'tcx, TraitRef<'tcx>> {
     #[inline(always)]
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Binder<'tcx, ClauseKind<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
         let pred: PolyTraitPredicate<'tcx> = self.to_predicate(tcx);
         pred.to_predicate(tcx)
     }
@@ -1285,9 +1300,10 @@ impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Binder<'tcx, ClauseKind<'tcx>>> for PolyTraitPredicate<'tcx> {
-    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Binder<'tcx, ClauseKind<'tcx>> {
-        self.map_bound(|p| ClauseKind::Trait(p))
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyTraitPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        Clause(p.0)
     }
 }
 
@@ -1309,9 +1325,10 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Binder<'tcx, ClauseKind<'tcx>>> for PolyProjectionPredicate<'tcx> {
-    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Binder<'tcx, ClauseKind<'tcx>> {
-        self.map_bound(|p| ClauseKind::Projection(p))
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyProjectionPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        Clause(p.0)
     }
 }
 
@@ -1385,18 +1402,10 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
-    pub fn as_clause(self) -> Option<Binder<'tcx, ClauseKind<'tcx>>> {
-        let predicate = self.kind();
-        match predicate.skip_binder() {
-            PredicateKind::Clause(clause) => Some(predicate.rebind(clause)),
-            PredicateKind::AliasRelate(..)
-            | PredicateKind::Subtype(..)
-            | PredicateKind::Coerce(..)
-            | PredicateKind::ObjectSafe(..)
-            | PredicateKind::ClosureKind(..)
-            | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+    pub fn as_clause(self) -> Option<Clause<'tcx>> {
+        match self.kind().skip_binder() {
+            PredicateKind::Clause(..) => Some(Clause(self.0)),
+            _ => None,
         }
     }
 }

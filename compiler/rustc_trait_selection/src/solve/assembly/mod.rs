@@ -105,7 +105,7 @@ pub(super) trait GoalKind<'tcx>:
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::ClauseKind<'tcx>>,
+        assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx>;
 
@@ -115,7 +115,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::ClauseKind<'tcx>>,
+        assumption: ty::Clause<'tcx>,
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
@@ -131,7 +131,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_alias_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::ClauseKind<'tcx>>,
+        assumption: ty::Clause<'tcx>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             ecx.validate_alias_bound_self_from_param_env(goal)
@@ -144,7 +144,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::ClauseKind<'tcx>>,
+        assumption: ty::Clause<'tcx>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             let tcx = ecx.tcx();
