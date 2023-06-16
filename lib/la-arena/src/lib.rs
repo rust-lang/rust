@@ -451,6 +451,12 @@ impl<T> Arena<T> {
     }
 }
 
+impl<T> AsMut<[T]> for Arena<T> {
+    fn as_mut(&mut self) -> &mut [T] {
+        self.data.as_mut()
+    }
+}
+
 impl<T> Default for Arena<T> {
     fn default() -> Arena<T> {
         Arena { data: Vec::new() }

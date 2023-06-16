@@ -3,7 +3,7 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
-use std::{iter, mem};
+use std::{cmp::Ordering, iter, mem};
 
 use base_db::{CrateId, Dependency, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
@@ -1928,9 +1928,13 @@ impl ModCollector<'_, '_> {
         let modules = &mut def_map.modules;
         let res = modules.alloc(ModuleData::new(origin, vis));
         modules[res].parent = Some(self.module_id);
-        for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
-            for &mac in &mac {
-                modules[res].scope.define_legacy_macro(name.clone(), mac);
+
+        if let Some((target, source)) = Self::borrow_modules(modules.as_mut(), res, self.module_id)
+        {
+            for (name, macs) in source.scope.legacy_macros() {
+                for &mac in macs {
+                    target.scope.define_legacy_macro(name.clone(), mac);
+                }
             }
         }
         modules[self.module_id].children.insert(name.clone(), res);
@@ -2226,12 +2230,38 @@ impl ModCollector<'_, '_> {
     }
 
     fn import_all_legacy_macros(&mut self, module_id: LocalModuleId) {
-        let macros = self.def_collector.def_map[module_id].scope.collect_legacy_macros();
-        for (name, macs) in macros {
+        let Some((source, target)) = Self::borrow_modules(self.def_collector.def_map.modules.as_mut(), module_id, self.module_id) else {
+            return
+        };
+
+        for (name, macs) in source.scope.legacy_macros() {
             macs.last().map(|&mac| {
-                self.def_collector.define_legacy_macro(self.module_id, name.clone(), mac)
+                target.scope.define_legacy_macro(name.clone(), mac);
             });
         }
+    }
+
+    /// Mutably borrow two modules at once, retu
+    fn borrow_modules(
+        modules: &mut [ModuleData],
+        a: LocalModuleId,
+        b: LocalModuleId,
+    ) -> Option<(&mut ModuleData, &mut ModuleData)> {
+        let a = a.into_raw().into_u32() as usize;
+        let b = b.into_raw().into_u32() as usize;
+
+        let (a, b) = match a.cmp(&b) {
+            Ordering::Equal => return None,
+            Ordering::Less => {
+                let (prefix, b) = modules.split_at_mut(b);
+                (&mut prefix[a], &mut b[0])
+            }
+            Ordering::Greater => {
+                let (prefix, a) = modules.split_at_mut(a);
+                (&mut a[0], &mut prefix[b])
+            }
+        };
+        Some((a, b))
     }
 
     fn is_cfg_enabled(&self, cfg: &CfgExpr) -> bool {
