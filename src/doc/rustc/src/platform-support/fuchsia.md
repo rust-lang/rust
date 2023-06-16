@@ -693,7 +693,7 @@ test environment with:
 
 ```sh
 src/ci/docker/scripts/fuchsia-test-runner.py start                            \
-    --rust ${RUST_SRC_PATH}/build                                             \
+    --rust-build ${RUST_SRC_PATH}/build                                       \
     --sdk ${SDK_PATH}                                                         \
     --target {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}                 \
 ```
@@ -939,3 +939,4 @@ attach and load any relevant debug symbols.
 [gdb]: https://www.sourceware.org/gdb/
 [the zxdb documentation]: https://fuchsia.dev/fuchsia-src/development/debugger
 [fdio]: https://cs.opensource.google/fuchsia/fuchsia/+/main:sdk/lib/fdio/
+--
