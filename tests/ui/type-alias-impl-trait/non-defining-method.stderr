@@ -1,4 +1,4 @@
-error: non-defining opaque type use in defining scope
+error[E0792]: non-defining opaque type use in defining scope
   --> $DIR/non-defining-method.rs:16:17
    |
 LL |     fn foo() -> Self::Bar<u32> {}
@@ -12,3 +12,4 @@ LL |     type Bar<T> = impl Sized;
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0792`.
