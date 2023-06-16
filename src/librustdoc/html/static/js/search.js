@@ -33,6 +33,7 @@ const itemTypes = [
     "attr",
     "derive",
     "traitalias",
+    "generic",
 ];
 
 const longItemTypes = [
@@ -67,6 +68,7 @@ const longItemTypes = [
 // used for special search precedence
 const TY_PRIMITIVE = itemTypes.indexOf("primitive");
 const TY_KEYWORD = itemTypes.indexOf("keyword");
+const TY_GENERIC = itemTypes.indexOf("generic");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 function hasOwnPropertyRustdoc(obj, property) {
@@ -974,6 +976,8 @@ function initSearch(rawSearchIndex) {
             literalSearch: false,
             error: null,
             correction: null,
+            proposeCorrectionFrom: null,
+            proposeCorrectionTo: null,
         };
     }
 
@@ -1014,64 +1018,10 @@ function initSearch(rawSearchIndex) {
     /**
      * Parses the query.
      *
-     * The supported syntax by this parser is as follow:
+     * The supported syntax by this parser is given in the rustdoc book chapter
+     * /src/doc/rustdoc/src/read-documentation/search.md
      *
-     * ident = *(ALPHA / DIGIT / "_")
-     * path = ident *(DOUBLE-COLON/{WS} ident) [!]
-     * slice = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
-     * arg = [type-filter *WS COLON *WS] (path [generics] / slice)
-     * type-sep = *WS COMMA *(COMMA)
-     * nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep)
-     * generics = OPEN-ANGLE-BRACKET [ nonempty-arg-list ] *(type-sep)
-     *            CLOSE-ANGLE-BRACKET
-     * return-args = RETURN-ARROW *(type-sep) nonempty-arg-list
-     *
-     * exact-search = [type-filter *WS COLON] [ RETURN-ARROW ] *WS QUOTE ident QUOTE [ generics ]
-     * type-search = [ nonempty-arg-list ] [ return-args ]
-     *
-     * query = *WS (exact-search / type-search) *WS
-     *
-     * type-filter = (
-     *     "mod" /
-     *     "externcrate" /
-     *     "import" /
-     *     "struct" /
-     *     "enum" /
-     *     "fn" /
-     *     "type" /
-     *     "static" /
-     *     "trait" /
-     *     "impl" /
-     *     "tymethod" /
-     *     "method" /
-     *     "structfield" /
-     *     "variant" /
-     *     "macro" /
-     *     "primitive" /
-     *     "associatedtype" /
-     *     "constant" /
-     *     "associatedconstant" /
-     *     "union" /
-     *     "foreigntype" /
-     *     "keyword" /
-     *     "existential" /
-     *     "attr" /
-     *     "derive" /
-     *     "traitalias")
-     *
-     * OPEN-ANGLE-BRACKET = "<"
-     * CLOSE-ANGLE-BRACKET = ">"
-     * OPEN-SQUARE-BRACKET = "["
-     * CLOSE-SQUARE-BRACKET = "]"
-     * COLON = ":"
-     * DOUBLE-COLON = "::"
-     * QUOTE = %x22
-     * COMMA = ","
-     * RETURN-ARROW = "->"
-     *
-     * ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
-     * DIGIT = %x30-39
-     * WS = %x09 / " "
+     * When adding new things to the parser, add them there, too!
      *
      * @param  {string} val     - The user query
      *
@@ -1348,24 +1298,28 @@ function initSearch(rawSearchIndex) {
          * This function checks generics in search query `queryElem` can all be found in the
          * search index (`fnType`),
          *
-         * @param {FunctionType} fnType     - The object to check.
-         * @param {QueryElement} queryElem  - The element from the parsed query.
+         * @param {FunctionType} fnType             - The object to check.
+         * @param {QueryElement} queryElem          - The element from the parsed query.
+         * @param {[FunctionType]} whereClause      - Trait bounds for generic items.
+         * @param {Map<number,number>|null} mgensIn - Map functions generics to query generics.
          *
          * @return {boolean} - Returns true if a match, false otherwise.
          */
-        function checkGenerics(fnType, queryElem) {
-            return unifyFunctionTypes(fnType.generics, queryElem.generics);
+        function checkGenerics(fnType, queryElem, whereClause, mgensIn) {
+            return unifyFunctionTypes(fnType.generics, queryElem.generics, whereClause, mgensIn);
         }
         /**
          * This function checks if a list of search query `queryElems` can all be found in the
          * search index (`fnTypes`).
          *
-         * @param {Array<FunctionType>} fnTypes    - The objects to check.
-         * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
+         * @param {Array<FunctionType>} fnTypes     - The objects to check.
+         * @param {Array<QueryElement>} queryElems  - The elements from the parsed query.
+         * @param {[FunctionType]} whereClause      - Trait bounds for generic items.
+         * @param {Map<number,number>|null} mgensIn - Map function generics to query generics.
          *
          * @return {boolean} - Returns true if a match, false otherwise.
          */
-        function unifyFunctionTypes(fnTypes, queryElems) {
+        function unifyFunctionTypes(fnTypes, queryElems, whereClause, mgensIn) {
             // This search engine implements order-agnostic unification. There
             // should be no missing duplicates (generics have "bag semantics"),
             // and the row is allowed to have extras.
@@ -1379,13 +1333,15 @@ function initSearch(rawSearchIndex) {
              * @type Map<integer, QueryElement[]>
              */
             const queryElemSet = new Map();
+            const mgens = new Map(mgensIn);
             const addQueryElemToQueryElemSet = queryElem => {
                 let currentQueryElemList;
-                if (queryElemSet.has(queryElem.id)) {
-                    currentQueryElemList = queryElemSet.get(queryElem.id);
+                const qid = queryElem.id;
+                if (queryElemSet.has(qid)) {
+                    currentQueryElemList = queryElemSet.get(qid);
                 } else {
                     currentQueryElemList = [];
-                    queryElemSet.set(queryElem.id, currentQueryElemList);
+                    queryElemSet.set(qid, currentQueryElemList);
                 }
                 currentQueryElemList.push(queryElem);
             };
@@ -1396,44 +1352,98 @@ function initSearch(rawSearchIndex) {
              * @type Map<integer, FunctionType[]>
              */
             const fnTypeSet = new Map();
-            const addFnTypeToFnTypeSet = fnType => {
-                // Pure generic, or an item that's not matched by any query elems.
-                // Try [unboxing] it.
-                //
-                // [unboxing]:
-                // http://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
-                const queryContainsArrayOrSliceElem = queryElemSet.has(typeNameIdOfArrayOrSlice);
-                if (fnType.id === null || !(
-                    queryElemSet.has(fnType.id) ||
-                    (fnType.id === typeNameIdOfSlice && queryContainsArrayOrSliceElem) ||
-                    (fnType.id === typeNameIdOfArray && queryContainsArrayOrSliceElem)
-                )) {
+            /**
+             * If `fnType` is a concrete type with generics, replace it with its generics.
+             *
+             * If `fnType` is a generic type parameter, replace it with any traits that it's
+             * constrained by. This converts `T where T: Trait` into the same representation
+             * that's directly used by return-position `impl Trait` and by `dyn Trait` in
+             * all positions, so you can directly write `-> Trait` and get all three.
+             *
+             * This seems to correspond to two transforms described in
+             * http://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
+             * One of them is actual unboxing (turning `Maybe a` into `a`), while the other is
+             * equivalent to converting a type parameter into an existential, which Hoogle doesn't
+             * seem to actually do? I notice that these two searches produce the same result:
+             * https://hoogle.haskell.org/?hoogle=Eq+-%3E+Set+Eq+-%3E+Set+Eq
+             * https://hoogle.haskell.org/?hoogle=Ord+-%3E+Set+Ord+-%3E+Set+Ord
+             *
+             * Haskell is a bit of a foreign language to me. I just want to be able to look up
+             * Option combinators without having to actually remember their (mostly arbitrary)
+             * names, and Haskell claims to already have that problem solved...
+             *
+             * @type Map<integer, FunctionType[]>
+             */
+            const unbox = function unbox(fnType) {
+                if (fnType.id < 0) {
+                    const genid = (-fnType.id) - 1;
+                    if (whereClause && whereClause[genid]) {
+                        for (const trait of whereClause[genid]) {
+                            addFnTypeToFnTypeSet(trait);
+                        }
+                    }
+                    mgens.set(fnType.id, 0);
+                } else {
                     for (const innerFnType of fnType.generics) {
                         addFnTypeToFnTypeSet(innerFnType);
                     }
+                }
+            };
+            /**
+             * @param {FunctionType} fnType
+             */
+            const addFnTypeToFnTypeSet = function addFnTypeToFnTypeSet(fnType) {
+                const queryContainsArrayOrSliceElem = queryElemSet.has(typeNameIdOfArrayOrSlice);
+                // qsid is an index into the `queryElemSet`, while `fnType.id` is an index into
+                // the `fnTypeSet`. These are the same, except for generics, where they get mapped.
+                // If qsid = 0, it means the generic type parameter has undergone instance
+                // substitution, and
+                let qsid = fnType.id;
+                if (fnType.id < 0) {
+                    if (mgens.has(fnType.id)) {
+                        qsid = mgens.get(fnType.id);
+                    } else {
+                        qsid = null;
+                        searching: for (const qid of queryElemSet.keys()) {
+                            if (qid < 0) {
+                                for (const qidMapped of mgens.values()) {
+                                    if (qid === qidMapped) {
+                                        continue searching;
+                                    }
+                                }
+                                mgens.set(fnType.id, qid);
+                                qsid = qid;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (qsid === null || !(
+                    queryElemSet.has(qsid) ||
+                    (qsid === typeNameIdOfSlice && queryContainsArrayOrSliceElem) ||
+                    (qsid === typeNameIdOfArray && queryContainsArrayOrSliceElem)
+                )) {
+                    unbox(fnType);
                     return;
                 }
-                let currentQueryElemList = queryElemSet.get(fnType.id) || [];
+                let currentQueryElemList = queryElemSet.get(qsid) || [];
                 let matchIdx = currentQueryElemList.findIndex(queryElem => {
                     return typePassesFilter(queryElem.typeFilter, fnType.ty) &&
-                        checkGenerics(fnType, queryElem);
+                        checkGenerics(fnType, queryElem, whereClause, mgens);
                 });
                 if (matchIdx === -1 &&
-                    (fnType.id === typeNameIdOfSlice || fnType.id === typeNameIdOfArray) &&
+                    (qsid === typeNameIdOfSlice || qsid === typeNameIdOfArray) &&
                     queryContainsArrayOrSliceElem
                 ) {
                     currentQueryElemList = queryElemSet.get(typeNameIdOfArrayOrSlice) || [];
                     matchIdx = currentQueryElemList.findIndex(queryElem => {
                         return typePassesFilter(queryElem.typeFilter, fnType.ty) &&
-                            checkGenerics(fnType, queryElem);
+                            checkGenerics(fnType, queryElem, whereClause, mgens);
                     });
                 }
                 // None of the query elems match the function type.
-                // Try [unboxing] it.
                 if (matchIdx === -1) {
-                    for (const innerFnType of fnType.generics) {
-                        addFnTypeToFnTypeSet(innerFnType);
-                    }
+                    unbox(fnType);
                     return;
                 }
                 let currentFnTypeList;
@@ -1488,7 +1498,9 @@ function initSearch(rawSearchIndex) {
                             continue;
                         }
                     }
-                    if (queryElem.generics.length === 0 || checkGenerics(fnType, queryElem)) {
+                    if (queryElem.generics.length === 0
+                        || checkGenerics(fnType, queryElem, whereClause, mgens)
+                    ) {
                         currentFnTypeList.splice(i, 1);
                         const result = doHandleQueryElemList(currentFnTypeList, queryElemList);
                         if (result) {
@@ -1499,15 +1511,32 @@ function initSearch(rawSearchIndex) {
                 }
                 return false;
             };
+            /**
+             * @param {number} id
+             * @param {[QueryElement]} queryElemList
+             */
             const handleQueryElemList = (id, queryElemList) => {
-                if (!fnTypeSet.has(id)) {
-                    if (id === typeNameIdOfArrayOrSlice) {
+                let fsid = id;
+                if (fsid < 0) {
+                    fsid = null;
+                    if (!mgens) {
+                        return false;
+                    }
+                    for (const [fid, qsid] of mgens) {
+                        if (id === qsid) {
+                            fsid = fid;
+                            break;
+                        }
+                    }
+                }
+                if (fsid === null || !fnTypeSet.has(fsid)) {
+                    if (fsid === typeNameIdOfArrayOrSlice) {
                         return handleQueryElemList(typeNameIdOfSlice, queryElemList) ||
                             handleQueryElemList(typeNameIdOfArray, queryElemList);
                     }
                     return false;
                 }
-                const currentFnTypeList = fnTypeSet.get(id);
+                const currentFnTypeList = fnTypeSet.get(fsid);
                 if (currentFnTypeList.length < queryElemList.length) {
                     // It's not possible for all the query elems to find a match.
                     return false;
@@ -1518,14 +1547,14 @@ function initSearch(rawSearchIndex) {
                     // Any items that weren't used for it can be unboxed, and might form
                     // part of the solution for another item.
                     for (const innerFnType of currentFnTypeList) {
-                        addFnTypeToFnTypeSet(innerFnType);
+                        unbox(innerFnType);
                     }
-                    fnTypeSet.delete(id);
+                    fnTypeSet.delete(fsid);
                 }
                 return result;
             };
-            let queryElemSetSize = -1;
-            while (queryElemSetSize !== queryElemSet.size) {
+            let queryElemSetSize = Number.MAX_VALUE;
+            while (queryElemSetSize > queryElemSet.size) {
                 queryElemSetSize = queryElemSet.size;
                 for (const [id, queryElemList] of queryElemSet) {
                     if (handleQueryElemList(id, queryElemList)) {
@@ -1533,7 +1562,14 @@ function initSearch(rawSearchIndex) {
                     }
                 }
             }
-            return queryElemSetSize === 0;
+            if (queryElemSetSize === 0) {
+                for (const [fid, qid] of mgens) {
+                    mgensIn.set(fid, qid);
+                }
+                return true;
+            } else {
+                return false;
+            }
         }
 
         /**
@@ -1541,13 +1577,14 @@ function initSearch(rawSearchIndex) {
           * generics (if any).
           *
           * @param {Array<FunctionType>} list
-          * @param {QueryElement} elem    - The element from the parsed query.
+          * @param {QueryElement} elem          - The element from the parsed query.
+          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
           *
           * @return {boolean} - Returns true if found, false otherwise.
           */
-        function checkIfInList(list, elem) {
+        function checkIfInList(list, elem, whereClause) {
             for (const entry of list) {
-                if (checkType(entry, elem)) {
+                if (checkType(entry, elem, whereClause)) {
                     return true;
                 }
             }
@@ -1559,14 +1596,26 @@ function initSearch(rawSearchIndex) {
           * generics (if any).
           *
           * @param {Row} row
-          * @param {QueryElement} elem      - The element from the parsed query.
+          * @param {QueryElement} elem          - The element from the parsed query.
+          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
           *
           * @return {boolean} - Returns true if the type matches, false otherwise.
           */
-        function checkType(row, elem) {
+        function checkType(row, elem, whereClause) {
             if (row.id === null) {
                 // This is a pure "generic" search, no need to run other checks.
-                return row.generics.length > 0 ? checkIfInList(row.generics, elem) : false;
+                return row.generics.length > 0
+                    ? checkIfInList(row.generics, elem, whereClause)
+                    : false;
+            }
+
+            if (row.id < 0 && elem.id >= 0) {
+                const gid = (-row.id) - 1;
+                return checkIfInList(whereClause[gid], elem, whereClause);
+            }
+
+            if (row.id < 0 && elem.id < 0) {
+                return true;
             }
 
             const matchesExact = row.id === elem.id;
@@ -1576,7 +1625,7 @@ function initSearch(rawSearchIndex) {
             if ((matchesExact || matchesArrayOrSlice) &&
                 typePassesFilter(elem.typeFilter, row.ty)) {
                 if (elem.generics.length > 0) {
-                    return checkGenerics(row, elem);
+                    return checkGenerics(row, elem, whereClause, new Map());
                 }
                 return true;
             }
@@ -1584,7 +1633,7 @@ function initSearch(rawSearchIndex) {
             // If the current item does not match, try [unboxing] the generic.
             // [unboxing]:
             //   https://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
-            return checkIfInList(row.generics, elem);
+            return checkIfInList(row.generics, elem, whereClause);
         }
 
         function checkPath(contains, ty, maxEditDistance) {
@@ -1785,13 +1834,15 @@ function initSearch(rawSearchIndex) {
             const fullId = row.id;
             const searchWord = searchWords[pos];
 
-            const in_args = row.type && row.type.inputs && checkIfInList(row.type.inputs, elem);
+            const in_args = row.type && row.type.inputs
+                && checkIfInList(row.type.inputs, elem, row.type.where_clause);
             if (in_args) {
                 // path_dist is 0 because no parent path information is currently stored
                 // in the search index
                 addIntoResults(results_in_args, fullId, pos, -1, 0, 0, maxEditDistance);
             }
-            const returned = row.type && row.type.output && checkIfInList(row.type.output, elem);
+            const returned = row.type && row.type.output
+                && checkIfInList(row.type.output, elem, row.type.where_clause);
             if (returned) {
                 addIntoResults(results_returned, fullId, pos, -1, 0, 0, maxEditDistance);
             }
@@ -1853,10 +1904,24 @@ function initSearch(rawSearchIndex) {
             }
 
             // If the result is too "bad", we return false and it ends this search.
-            if (!unifyFunctionTypes(row.type.inputs, parsedQuery.elems)) {
+            let mgens;
+            if (row.type.where_clause && row.type.where_clause.length > 0) {
+                mgens = new Map();
+            }
+            if (!unifyFunctionTypes(
+                row.type.inputs,
+                parsedQuery.elems,
+                row.type.where_clause,
+                mgens
+            )) {
                 return;
             }
-            if (!unifyFunctionTypes(row.type.output, parsedQuery.returned)) {
+            if (!unifyFunctionTypes(
+                row.type.output,
+                parsedQuery.returned,
+                row.type.where_clause,
+                mgens
+            )) {
                 return;
             }
 
@@ -1874,6 +1939,11 @@ function initSearch(rawSearchIndex) {
                 queryLen += elem.name.length;
             }
             const maxEditDistance = Math.floor(queryLen / 3);
+
+            /**
+             * @type {Map<string, integer>}
+             */
+            const genericSymbols = new Map();
 
             /**
              * Convert names to ids in parsed query elements.
@@ -1910,6 +1980,46 @@ function initSearch(rawSearchIndex) {
                     }
                     elem.id = match;
                 }
+                if ((elem.id === null && parsedQuery.foundElems > 1 && elem.typeFilter === -1)
+                    || elem.typeFilter === TY_GENERIC) {
+                    if (genericSymbols.has(elem.name)) {
+                        elem.id = genericSymbols.get(elem.name);
+                    } else {
+                        elem.id = -(genericSymbols.size + 1);
+                        genericSymbols.set(elem.name, elem.id);
+                    }
+                    if (elem.typeFilter === -1 && elem.name.length >= 3) {
+                        // Silly heuristic to catch if the user probably meant
+                        // to not write a generic parameter. We don't use it,
+                        // just bring it up.
+                        const maxPartDistance = Math.floor(elem.name.length / 3);
+                        let matchDist = maxPartDistance + 1;
+                        let matchName = "";
+                        for (const name of typeNameIdMap.keys()) {
+                            const dist = editDistance(name, elem.name, maxPartDistance);
+                            if (dist <= matchDist && dist <= maxPartDistance) {
+                                if (dist === matchDist && matchName > name) {
+                                    continue;
+                                }
+                                matchDist = dist;
+                                matchName = name;
+                            }
+                        }
+                        if (matchName !== "") {
+                            parsedQuery.proposeCorrectionFrom = elem.name;
+                            parsedQuery.proposeCorrectionTo = matchName;
+                        }
+                    }
+                    elem.typeFilter = TY_GENERIC;
+                }
+                if (elem.generics.length > 0 && elem.typeFilter === TY_GENERIC) {
+                    // Rust does not have HKT
+                    parsedQuery.error = [
+                        "Generic type parameter ",
+                        elem.name,
+                        " does not accept generic parameters",
+                    ];
+                }
                 for (const elem2 of elem.generics) {
                     convertNameToId(elem2);
                 }
@@ -1943,8 +2053,11 @@ function initSearch(rawSearchIndex) {
                     elem = parsedQuery.returned[0];
                     for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         row = searchIndex[i];
-                        in_returned = row.type &&
-                            unifyFunctionTypes(row.type.output, parsedQuery.returned);
+                        in_returned = row.type && unifyFunctionTypes(
+                            row.type.output,
+                            parsedQuery.returned,
+                            row.type.where_clause, new Map()
+                        );
                         if (in_returned) {
                             addIntoResults(
                                 results_others,
@@ -2295,6 +2408,13 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 "Showing results for closest type name " +
                 `"${results.query.correction}" instead.</h3>`;
         }
+        if (results.query.proposeCorrectionFrom !== null) {
+            const orig = results.query.proposeCorrectionFrom;
+            const targ = results.query.proposeCorrectionTo;
+            output += "<h3 class=\"search-corrections\">" +
+                `Type "${orig}" not found and used as generic parameter. ` +
+                `Consider searching for "${targ}" instead.</h3>`;
+        }
 
         const resultsElem = document.createElement("div");
         resultsElem.id = "results";
@@ -2396,37 +2516,54 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * @return {Array<FunctionSearchType>}
      */
     function buildItemSearchTypeAll(types, lowercasePaths) {
+        return types.map(type => buildItemSearchType(type, lowercasePaths));
+    }
+
+    /**
+     * Converts a single type.
+     *
+     * @param {RawFunctionType} type
+     */
+    function buildItemSearchType(type, lowercasePaths) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
-        return types.map(type => {
-            let pathIndex, generics;
-            if (typeof type === "number") {
-                pathIndex = type;
-                generics = [];
-            } else {
-                pathIndex = type[PATH_INDEX_DATA];
-                generics = buildItemSearchTypeAll(
-                    type[GENERICS_DATA],
-                    lowercasePaths
-                );
-            }
-            // `0` is used as a sentinel because it's fewer bytes than `null`
-            if (pathIndex === 0) {
-                return {
-                    id: null,
-                    ty: null,
-                    path: null,
-                    generics: generics,
-                };
-            }
-            const item = lowercasePaths[pathIndex - 1];
+        let pathIndex, generics;
+        if (typeof type === "number") {
+            pathIndex = type;
+            generics = [];
+        } else {
+            pathIndex = type[PATH_INDEX_DATA];
+            generics = buildItemSearchTypeAll(
+                type[GENERICS_DATA],
+                lowercasePaths
+            );
+        }
+        if (pathIndex < 0) {
+            // types less than 0 are generic parameters
+            // the actual names of generic parameters aren't stored, since they aren't API
             return {
-                id: buildTypeMapIndex(item.name),
-                ty: item.ty,
-                path: item.path,
-                generics: generics,
+                id: pathIndex,
+                ty: TY_GENERIC,
+                path: null,
+                generics,
             };
-        });
+        }
+        if (pathIndex === 0) {
+            // `0` is used as a sentinel because it's fewer bytes than `null`
+            return {
+                id: null,
+                ty: null,
+                path: null,
+                generics,
+            };
+        }
+        const item = lowercasePaths[pathIndex - 1];
+        return {
+            id: buildTypeMapIndex(item.name),
+            ty: item.ty,
+            path: item.path,
+            generics,
+        };
     }
 
     /**
@@ -2454,23 +2591,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         let inputs, output;
         if (typeof functionSearchType[INPUTS_DATA] === "number") {
-            const pathIndex = functionSearchType[INPUTS_DATA];
-            if (pathIndex === 0) {
-                inputs = [{
-                    id: null,
-                    ty: null,
-                    path: null,
-                    generics: [],
-                }];
-            } else {
-                const item = lowercasePaths[pathIndex - 1];
-                inputs = [{
-                    id: buildTypeMapIndex(item.name),
-                    ty: item.ty,
-                    path: item.path,
-                    generics: [],
-                }];
-            }
+            inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
         } else {
             inputs = buildItemSearchTypeAll(
                 functionSearchType[INPUTS_DATA],
@@ -2479,23 +2600,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         if (functionSearchType.length > 1) {
             if (typeof functionSearchType[OUTPUT_DATA] === "number") {
-                const pathIndex = functionSearchType[OUTPUT_DATA];
-                if (pathIndex === 0) {
-                    output = [{
-                        id: null,
-                        ty: null,
-                        path: null,
-                        generics: [],
-                    }];
-                } else {
-                    const item = lowercasePaths[pathIndex - 1];
-                    output = [{
-                        id: buildTypeMapIndex(item.name),
-                        ty: item.ty,
-                        path: item.path,
-                        generics: [],
-                    }];
-                }
+                output = [buildItemSearchType(functionSearchType[OUTPUT_DATA], lowercasePaths)];
             } else {
                 output = buildItemSearchTypeAll(
                     functionSearchType[OUTPUT_DATA],
@@ -2505,8 +2610,15 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         } else {
             output = [];
         }
+        const where_clause = [];
+        const l = functionSearchType.length;
+        for (let i = 2; i < l; ++i) {
+            where_clause.push(typeof functionSearchType[i] === "number"
+                ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
+                : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
+        }
         return {
-            inputs, output,
+            inputs, output, where_clause,
         };
     }
 

@@ -101,7 +101,7 @@ pub(crate) struct IndexItem {
     pub(crate) path: String,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
-    pub(crate) parent_idx: Option<usize>,
+    pub(crate) parent_idx: Option<isize>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
     pub(crate) deprecation: Option<Deprecation>,
@@ -122,7 +122,10 @@ impl Serialize for RenderType {
         let id = match &self.id {
             // 0 is a sentinel, everything else is one-indexed
             None => 0,
-            Some(RenderTypeId::Index(idx)) => idx + 1,
+            // concrete type
+            Some(RenderTypeId::Index(idx)) if *idx >= 0 => idx + 1,
+            // generic type parameter
+            Some(RenderTypeId::Index(idx)) => *idx,
             _ => panic!("must convert render types to indexes before serializing"),
         };
         if let Some(generics) = &self.generics {
@@ -140,7 +143,7 @@ impl Serialize for RenderType {
 pub(crate) enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
-    Index(usize),
+    Index(isize),
 }
 
 /// Full type of functions/methods in the search index.
@@ -148,6 +151,7 @@ pub(crate) enum RenderTypeId {
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
+    where_clause: Vec<Vec<RenderType>>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -170,9 +174,16 @@ impl Serialize for IndexItemFunctionType {
                 _ => seq.serialize_element(&self.inputs)?,
             }
             match &self.output[..] {
-                [] => {}
+                [] if self.where_clause.is_empty() => {}
                 [one] if one.generics.is_none() => seq.serialize_element(one)?,
                 _ => seq.serialize_element(&self.output)?,
+            }
+            for constraint in &self.where_clause {
+                if let [one] = &constraint[..] && one.generics.is_none() {
+                    seq.serialize_element(one)?;
+                } else {
+                    seq.serialize_element(constraint)?;
+                }
             }
             seq.end()
         }
