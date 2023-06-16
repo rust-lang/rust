@@ -1,0 +1,31 @@
+error: calling `.parse()` without trimming the trailing newline character
+  --> $DIR/read_line_without_trim.rs:14:25
+   |
+LL |     let _x: i32 = input.parse().unwrap();
+   |                   ----- ^^^^^^^
+   |                   |
+   |                   help: try: `input.trim_end()`
+   |
+note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause `.parse()` to fail
+  --> $DIR/read_line_without_trim.rs:13:5
+   |
+LL |     std::io::stdin().read_line(&mut input).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::read-line-without-trim` implied by `-D warnings`
+
+error: calling `.parse()` without trimming the trailing newline character
+  --> $DIR/read_line_without_trim.rs:18:20
+   |
+LL |     let _x = input.parse::<i32>().unwrap();
+   |              ----- ^^^^^^^^^^^^^^
+   |              |
+   |              help: try: `input.trim_end()`
+   |
+note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause `.parse()` to fail
+  --> $DIR/read_line_without_trim.rs:17:5
+   |
+LL |     std::io::stdin().read_line(&mut input).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
