@@ -2278,11 +2278,39 @@ fn test_copy_within_panics_src_out_of_bounds() {
 fn test_is_sorted() {
     let empty: [i32; 0] = [];
 
+    // Tests on integers
     assert!([1, 2, 2, 9].is_sorted());
     assert!(![1, 3, 2].is_sorted());
     assert!([0].is_sorted());
+    assert!([0, 0].is_sorted());
     assert!(empty.is_sorted());
+
+    // Tests on floats
+    assert!([1.0f32, 2.0, 2.0, 9.0].is_sorted());
+    assert!(![1.0f32, 3.0f32, 2.0f32].is_sorted());
+    assert!([0.0f32].is_sorted());
+    assert!([0.0f32, 0.0f32].is_sorted());
+    // Test cases with NaNs
+    assert!([f32::NAN].is_sorted());
+    assert!(![f32::NAN, f32::NAN].is_sorted());
     assert!(![0.0, 1.0, f32::NAN].is_sorted());
+    // Tests from <https://github.com/rust-lang/rust/pull/55045#discussion_r229689884>
+    assert!(![f32::NAN, f32::NAN, f32::NAN].is_sorted());
+    assert!(![1.0, f32::NAN, 2.0].is_sorted());
+    assert!(![2.0, f32::NAN, 1.0].is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 7.0].is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 0.0].is_sorted());
+    assert!(![-f32::NAN, -1.0, 0.0, 1.0, f32::NAN].is_sorted());
+    assert!(![f32::NAN, -f32::NAN, -1.0, 0.0, 1.0].is_sorted());
+    assert!(![1.0, f32::NAN, -f32::NAN, -1.0, 0.0].is_sorted());
+    assert!(![0.0, 1.0, f32::NAN, -f32::NAN, -1.0].is_sorted());
+    assert!(![-1.0, 0.0, 1.0, f32::NAN, -f32::NAN].is_sorted());
+
+    // Tests for is_sorted_by
+    assert!(![6, 2, 8, 5, 1, -60, 1337].is_sorted());
+    assert!([6, 2, 8, 5, 1, -60, 1337].is_sorted_by(|_, _| Some(Ordering::Less)));
+
+    // Tests for is_sorted_by_key
     assert!([-2, -1, 0, 3].is_sorted());
     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].is_sorted());
