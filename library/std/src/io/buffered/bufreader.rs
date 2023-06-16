@@ -47,9 +47,9 @@ use buffer::Buffer;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct BufReader<R> {
-    inner: R,
+pub struct BufReader<R: ?Sized> {
     buf: Buffer,
+    inner: R,
 }
 
 impl<R: Read> BufReader<R> {
@@ -95,7 +95,7 @@ impl<R: Read> BufReader<R> {
     }
 }
 
-impl<R> BufReader<R> {
+impl<R: ?Sized> BufReader<R> {
     /// Gets a reference to the underlying reader.
     ///
     /// It is inadvisable to directly read from the underlying reader.
@@ -213,7 +213,10 @@ impl<R> BufReader<R> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_inner(self) -> R {
+    pub fn into_inner(self) -> R
+    where
+        R: Sized,
+    {
         self.inner
     }
 
@@ -226,13 +229,13 @@ impl<R> BufReader<R> {
 
 // This is only used by a test which asserts that the initialization-tracking is correct.
 #[cfg(test)]
-impl<R> BufReader<R> {
+impl<R: ?Sized> BufReader<R> {
     pub fn initialized(&self) -> usize {
         self.buf.initialized()
     }
 }
 
-impl<R: Seek> BufReader<R> {
+impl<R: ?Sized + Seek> BufReader<R> {
     /// Seeks relative to the current position. If the new position lies within the buffer,
     /// the buffer will not be flushed, allowing for more efficient seeks.
     /// This method does not return the location of the underlying reader, so the caller
@@ -257,7 +260,7 @@ impl<R: Seek> BufReader<R> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<R: Read> Read for BufReader<R> {
+impl<R: ?Sized + Read> Read for BufReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         // If we don't have any buffered data and we're doing a massive read
         // (larger than our internal buffer), bypass our internal buffer
@@ -371,7 +374,7 @@ impl<R: Read> Read for BufReader<R> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<R: Read> BufRead for BufReader<R> {
+impl<R: ?Sized + Read> BufRead for BufReader<R> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         self.buf.fill_buf(&mut self.inner)
     }
@@ -384,11 +387,11 @@ impl<R: Read> BufRead for BufReader<R> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<R> fmt::Debug for BufReader<R>
 where
-    R: fmt::Debug,
+    R: ?Sized + fmt::Debug,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("BufReader")
-            .field("reader", &self.inner)
+            .field("reader", &&self.inner)
             .field(
                 "buffer",
                 &format_args!("{}/{}", self.buf.filled() - self.buf.pos(), self.capacity()),
@@ -398,7 +401,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<R: Seek> Seek for BufReader<R> {
+impl<R: ?Sized + Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
     /// The position used for seeking with <code>[SeekFrom::Current]\(_)</code> is the
@@ -491,7 +494,7 @@ impl<R: Seek> Seek for BufReader<R> {
     }
 }
 
-impl<T> SizeHint for BufReader<T> {
+impl<T: ?Sized> SizeHint for BufReader<T> {
     #[inline]
     fn lower_bound(&self) -> usize {
         SizeHint::lower_bound(self.get_ref()) + self.buffer().len()

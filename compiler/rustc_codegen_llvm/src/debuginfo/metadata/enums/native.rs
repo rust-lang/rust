@@ -412,13 +412,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             enum_type_and_layout.size.bits(),
             enum_type_and_layout.align.abi.bits() as u32,
             Size::ZERO.bits(),
-            discr_value.opt_single_val().map(|value| {
-                // NOTE(eddyb) do *NOT* remove this assert, until
-                // we pass the full 128-bit value to LLVM, otherwise
-                // truncation will be silent and remain undetected.
-                assert_eq!(value as u64 as u128, value);
-                cx.const_u64(value as u64)
-            }),
+            discr_value.opt_single_val().map(|value| cx.const_u128(value)),
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
         )

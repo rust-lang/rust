@@ -466,7 +466,7 @@ impl<T: CopyRead> CopyRead for Take<T> {
     }
 }
 
-impl<T: CopyRead> CopyRead for BufReader<T> {
+impl<T: ?Sized + CopyRead> CopyRead for BufReader<T> {
     fn drain_to<W: Write>(&mut self, writer: &mut W, outer_limit: u64) -> Result<u64> {
         let buf = self.buffer();
         let buf = &buf[0..min(buf.len(), outer_limit.try_into().unwrap_or(usize::MAX))];
@@ -495,7 +495,7 @@ impl<T: CopyRead> CopyRead for BufReader<T> {
     }
 }
 
-impl<T: CopyWrite> CopyWrite for BufWriter<T> {
+impl<T: ?Sized + CopyWrite> CopyWrite for BufWriter<T> {
     fn properties(&self) -> CopyParams {
         self.get_ref().properties()
     }

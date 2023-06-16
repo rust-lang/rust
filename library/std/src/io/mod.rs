@@ -2754,7 +2754,7 @@ trait SizeHint {
     }
 }
 
-impl<T> SizeHint for T {
+impl<T: ?Sized> SizeHint for T {
     #[inline]
     default fn lower_bound(&self) -> usize {
         0
