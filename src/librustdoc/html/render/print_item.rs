@@ -1591,7 +1591,7 @@ fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::
         );
     });
 
-    write!(w, "{}{}", buffer.into_inner(), document(cx, it, None, HeadingOffset::H2)).unwrap();
+    write!(w, "{}{}", buffer, document(cx, it, None, HeadingOffset::H2)).unwrap();
 
     write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
         .unwrap();
