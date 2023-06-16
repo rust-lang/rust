@@ -175,10 +175,9 @@ where
         debug_dump(tcx, "MERGE", &codegen_units, unique_inlined_stats);
     }
 
-    // In the next step, we use the inlining map to determine which additional
-    // monomorphizations have to go into each codegen unit. These additional
-    // monomorphizations can be drop-glue, functions from external crates, and
-    // local functions the definition of which is marked with `#[inline]`.
+    // Use the usage map to put additional mono items in each codegen unit:
+    // drop-glue, functions from external crates, and local functions the
+    // definition of which is marked with `#[inline]`.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
         place_inlined_mono_items(cx, &mut codegen_units);
@@ -190,8 +189,8 @@ where
         debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
     }
 
-    // Next we try to make as many symbols "internal" as possible, so LLVM has
-    // more freedom to optimize.
+    // Make as many symbols "internal" as possible, so LLVM has more freedom to
+    // optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(cx, &mut codegen_units, internalization_candidates);
