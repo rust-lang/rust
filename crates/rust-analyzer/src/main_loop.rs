@@ -11,6 +11,7 @@ use flycheck::FlycheckHandle;
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
+use stdx::thread::ThreadIntent;
 use triomphe::Arc;
 use vfs::FileId;
 
@@ -282,6 +283,7 @@ impl GlobalState {
                 }
             }
         }
+        let event_handling_duration = loop_start.elapsed();
 
         let state_changed = self.process_changes();
         let memdocs_added_or_removed = self.mem_docs.take_changes();
@@ -392,9 +394,9 @@ impl GlobalState {
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
-            tracing::warn!("overly long loop turn took {loop_duration:?}: {event_dbg_msg}");
+            tracing::warn!("overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}");
             self.poke_rust_analyzer_developer(format!(
-                "overly long loop turn took {loop_duration:?}: {event_dbg_msg}"
+                "overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}"
             ));
         }
         Ok(())
@@ -404,7 +406,7 @@ impl GlobalState {
         tracing::debug!(%cause, "will prime caches");
         let num_worker_threads = self.config.prime_caches_num_threads();
 
-        self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
+        self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
             let analysis = self.snapshot().analysis;
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
@@ -761,18 +763,28 @@ impl GlobalState {
         use lsp_types::notification as notifs;
 
         NotificationDispatcher { not: Some(not), global_state: self }
-            .on::<notifs::Cancel>(handlers::handle_cancel)?
-            .on::<notifs::WorkDoneProgressCancel>(handlers::handle_work_done_progress_cancel)?
-            .on::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
-            .on::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
-            .on::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
-            .on::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
-            .on::<notifs::DidChangeConfiguration>(handlers::handle_did_change_configuration)?
-            .on::<notifs::DidChangeWorkspaceFolders>(handlers::handle_did_change_workspace_folders)?
-            .on::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
-            .on::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
-            .on::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
-            .on::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
+            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
+            .on_sync_mut::<notifs::WorkDoneProgressCancel>(
+                handlers::handle_work_done_progress_cancel,
+            )?
+            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
+            .on_sync_mut::<notifs::DidChangeTextDocument>(
+                handlers::handle_did_change_text_document,
+            )?
+            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
+            .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+            .on_sync_mut::<notifs::DidChangeConfiguration>(
+                handlers::handle_did_change_configuration,
+            )?
+            .on_sync_mut::<notifs::DidChangeWorkspaceFolders>(
+                handlers::handle_did_change_workspace_folders,
+            )?
+            .on_sync_mut::<notifs::DidChangeWatchedFiles>(
+                handlers::handle_did_change_watched_files,
+            )?
+            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
+            .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
+            .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
             .finish();
         Ok(())
     }
@@ -800,7 +812,7 @@ impl GlobalState {
 
         // Diagnostics are triggered by the user typing
         // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(stdx::thread::ThreadIntent::LatencySensitive, move || {
+        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, move || {
             let _p = profile::span("publish_diagnostics");
             let _ctx = stdx::panic_context::enter("publish_diagnostics".to_owned());
             let diagnostics = subscriptions
