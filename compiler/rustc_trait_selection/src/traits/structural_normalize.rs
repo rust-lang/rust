@@ -22,7 +22,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            while let ty::Alias(ty::Projection, projection_ty) = *ty.kind() {
+            while let ty::Alias(ty::Projection, alias) = *ty.kind() {
                 let new_infer_ty = self.infcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::NormalizeProjectionType,
                     span: self.cause.span,
@@ -31,10 +31,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
                     self.infcx.tcx,
                     self.cause.clone(),
                     self.param_env,
-                    ty::Binder::dummy(ty::ProjectionPredicate {
-                        projection_ty,
-                        term: new_infer_ty.into(),
-                    }),
+                    ty::NormalizesTo { alias, term: new_infer_ty.into() },
                 );
                 if self.infcx.predicate_may_hold(&obligation) {
                     fulfill_cx.register_predicate_obligation(self.infcx, obligation);

@@ -165,6 +165,12 @@ impl<'tcx> fmt::Debug for ty::ProjectionPredicate<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::NormalizesTo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
+    }
+}
+
 impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.kind())
@@ -204,9 +210,7 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
-            ty::PredicateKind::NormalizesTo(ty::ProjectionPredicate { projection_ty, term }) => {
-                write!(f, "NormalizesTo({projection_ty:?}, {term:?})")
-            }
+            ty::PredicateKind::NormalizesTo(predicate) => predicate.fmt(f),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => {
                 write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")
             }

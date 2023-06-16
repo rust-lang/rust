@@ -288,8 +288,8 @@ impl FlagComputation {
                 self.add_ty(ty);
             }
             ty::PredicateKind::Ambiguous => {}
-            ty::PredicateKind::NormalizesTo(ty::ProjectionPredicate { projection_ty, term }) => {
-                self.add_alias_ty(projection_ty);
+            ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) => {
+                self.add_alias_ty(alias);
                 self.add_term(term);
             }
             ty::PredicateKind::AliasRelate(t1, t2, _direction) => {

@@ -123,7 +123,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         direction: ty::AliasRelationDirection,
         invert: Invert,
     ) -> Result<(), NoSolution> {
-        let other = match direction {
+        let term = match direction {
             // This is purely an optimization.
             ty::AliasRelationDirection::Equate => other,
 
@@ -137,11 +137,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 fresh
             }
         };
-        self.add_goal(Goal::new(
-            self.tcx(),
-            param_env,
-            ty::Binder::dummy(ty::ProjectionPredicate { projection_ty: alias, term: other }),
-        ));
+        self.add_goal(Goal::new(self.tcx(), param_env, ty::NormalizesTo { alias, term }));
 
         Ok(())
     }

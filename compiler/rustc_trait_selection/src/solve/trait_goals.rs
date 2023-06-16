@@ -702,12 +702,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ecx.add_goals(
                 constituent_tys(ecx, goal.predicate.self_ty())?
                     .into_iter()
-                    .map(|ty| {
-                        goal.with(
-                            ecx.tcx(),
-                            ty::Binder::dummy(goal.predicate.with_self_ty(ecx.tcx(), ty)),
-                        )
-                    })
+                    .map(|ty| goal.with(ecx.tcx(), goal.predicate.with_self_ty(ecx.tcx(), ty)))
                     .collect::<Vec<_>>(),
             );
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

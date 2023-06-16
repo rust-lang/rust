@@ -87,9 +87,7 @@ pub(super) enum CandidateSource {
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
-pub(super) trait GoalKind<'tcx>:
-    TypeFoldable<TyCtxt<'tcx>> + Copy + Eq + std::fmt::Display
-{
+pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
     fn self_ty(self) -> Ty<'tcx>;
 
     fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx>;
@@ -112,6 +110,9 @@ pub(super) trait GoalKind<'tcx>:
     // Consider a clause, which consists of a "assumption" and some "requirements",
     // to satisfy a goal. If the requirements hold, then attempt to satisfy our
     // goal by equating it with the assumption.
+    //
+    // FIXME: change this function to take an actual `Clause` as assumption instead
+    // of a predicate.
     fn consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -332,7 +333,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else {
+        let &ty::Alias(_, alias) = goal.predicate.self_ty().kind() else {
             return
         };
 
@@ -346,13 +347,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 },
                 |ecx| {
                     let normalized_ty = ecx.next_ty_infer();
-                    let normalizes_to_goal = goal.with(
-                        tcx,
-                        ty::Binder::dummy(ty::ProjectionPredicate {
-                            projection_ty,
-                            term: normalized_ty.into(),
-                        }),
-                    );
+                    let normalizes_to_goal =
+                        goal.with(tcx, ty::NormalizesTo { alias, term: normalized_ty.into() });
                     ecx.add_goal(normalizes_to_goal);
                     let _ = ecx.try_evaluate_added_goals().inspect_err(|_| {
                         debug!("self type normalization failed");

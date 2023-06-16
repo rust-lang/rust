@@ -2836,6 +2836,10 @@ define_print_and_forward_display! {
         p!(print(self.term))
     }
 
+    ty::NormalizesTo<'tcx> {
+        p!("`", print(self.alias), "` normalizes to `", print(self.term), "`")
+    }
+
     ty::Term<'tcx> {
       match self.unpack() {
         ty::TermKind::Ty(ty) => p!(print(ty)),
@@ -2896,9 +2900,7 @@ define_print_and_forward_display! {
                 p!("the type `", print(ty), "` is found in the environment")
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
-            ty::PredicateKind::NormalizesTo(ty::ProjectionPredicate { projection_ty, term }) => {
-                p!("`", print(projection_ty), "` normalizes to `", print(term), "`")
-            }
+            ty::PredicateKind::NormalizesTo(predicate) => p!(print(predicate)),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
         }
     }

@@ -662,7 +662,7 @@ pub enum PredicateKind<'tcx> {
     /// `NormalizesTo(<T as Trait>::Assoc, ?x)` results in `NoSolution`.
     ///
     /// Only used in the new solver.
-    NormalizesTo(ProjectionPredicate<'tcx>),
+    NormalizesTo(NormalizesTo<'tcx>),
 
     /// Separate from `Clause::Projection` which is used for normalization in new solver.
     /// This predicate requires two terms to be equal to eachother.
@@ -1184,6 +1184,33 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     }
 }
 
+/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
+/// proven by actually normalizing `alias`.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct NormalizesTo<'tcx> {
+    pub alias: AliasTy<'tcx>,
+    pub term: Term<'tcx>,
+}
+
+impl<'tcx> NormalizesTo<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.alias.self_ty()
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> NormalizesTo<'tcx> {
+        Self { alias: self.alias.with_self_ty(tcx, self_ty), ..self }
+    }
+
+    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.alias.trait_def_id(tcx)
+    }
+
+    pub fn def_id(self) -> DefId {
+        self.alias.def_id
+    }
+}
+
 pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
@@ -1306,6 +1333,12 @@ impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for ProjectionPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(self).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::Projection(p))).to_predicate(tcx)
@@ -1321,6 +1354,18 @@ impl<'tcx> ToPredicate<'tcx, Binder<'tcx, Clause<'tcx>>> for PolyProjectionPredi
 impl<'tcx> ToPredicate<'tcx> for TraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         PredicateKind::Clause(Clause::Trait(self)).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for NormalizesTo<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::NormalizesTo(self).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for ty::Binder<'tcx, NormalizesTo<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        self.map_bound(|p| PredicateKind::NormalizesTo(p)).to_predicate(tcx)
     }
 }
 
@@ -1395,7 +1440,8 @@ impl<'tcx> Predicate<'tcx> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::Clause(clause) => Some(predicate.rebind(clause)),
-            PredicateKind::AliasRelate(..)
+            PredicateKind::NormalizesTo(..)
+            | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::WellFormed(..)
