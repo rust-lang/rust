@@ -1717,11 +1717,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
         };
 
         let eligible = match &impl_source {
-            super::ImplSource::Closure(_)
-            | super::ImplSource::Generator(_)
-            | super::ImplSource::Future(_)
-            | super::ImplSource::FnPointer(_)
-            | super::ImplSource::TraitAlias(_) => true,
+            super::ImplSource::TraitAlias(_) => true,
             super::ImplSource::UserDefined(impl_data) => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
@@ -1779,7 +1775,11 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
                 let lang_items = selcx.tcx().lang_items();
-                if lang_items.discriminant_kind_trait() == Some(poly_trait_ref.def_id()) {
+                if [lang_items.gen_trait(), lang_items.future_trait()].contains(&Some(poly_trait_ref.def_id()))
+                    || selcx.tcx().fn_trait_kind_from_def_id(poly_trait_ref.def_id()).is_some()
+                {
+                    true
+                } else if lang_items.discriminant_kind_trait() == Some(poly_trait_ref.def_id()) {
                     match self_ty.kind() {
                         ty::Bool
                         | ty::Char
@@ -1990,11 +1990,23 @@ fn confirm_select_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     match impl_source {
         super::ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
-        super::ImplSource::Generator(data) => confirm_generator_candidate(selcx, obligation, data),
-        super::ImplSource::Future(data) => confirm_future_candidate(selcx, obligation, data),
-        super::ImplSource::Closure(data) => confirm_closure_candidate(selcx, obligation, data),
-        super::ImplSource::FnPointer(data) => confirm_fn_pointer_candidate(selcx, obligation, data),
-        super::ImplSource::Builtin(data) => confirm_builtin_candidate(selcx, obligation, data),
+        super::ImplSource::Builtin(data) => {
+            let trait_def_id = obligation.predicate.trait_def_id(selcx.tcx());
+            let lang_items = selcx.tcx().lang_items();
+            if lang_items.gen_trait() == Some(trait_def_id) {
+                confirm_generator_candidate(selcx, obligation, data)
+            } else if lang_items.future_trait() == Some(trait_def_id) {
+                confirm_future_candidate(selcx, obligation, data)
+            } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
+                if obligation.predicate.self_ty().is_closure() {
+                    confirm_closure_candidate(selcx, obligation, data)
+                } else {
+                    confirm_fn_pointer_candidate(selcx, obligation, data)
+                }
+            } else {
+                confirm_builtin_candidate(selcx, obligation, data)
+            }
+        }
         super::ImplSource::Object(_)
         | super::ImplSource::Param(..)
         | super::ImplSource::TraitUpcasting(_)

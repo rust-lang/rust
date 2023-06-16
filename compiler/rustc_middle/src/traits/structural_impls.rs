@@ -9,21 +9,13 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
         match *self {
             super::ImplSource::UserDefined(ref v) => write!(f, "{:?}", v),
 
-            super::ImplSource::Closure(ref d) => write!(f, "{:?}", d),
-
-            super::ImplSource::Generator(ref d) => write!(f, "{:?}", d),
-
-            super::ImplSource::Future(ref d) => write!(f, "{:?}", d),
-
-            super::ImplSource::FnPointer(ref d) => write!(f, "({:?})", d),
+            super::ImplSource::Builtin(ref d) => write!(f, "{:?}", d),
 
             super::ImplSource::Object(ref d) => write!(f, "{:?}", d),
 
             super::ImplSource::Param(ref n, ct) => {
                 write!(f, "ImplSourceParamData({:?}, {:?})", n, ct)
             }
-
-            super::ImplSource::Builtin(ref d) => write!(f, "{:?}", d),
 
             super::ImplSource::TraitAlias(ref d) => write!(f, "{:?}", d),
 

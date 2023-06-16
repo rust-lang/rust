@@ -85,22 +85,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ClosureCandidate { .. } => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
-                ImplSource::Closure(vtable_closure)
+                ImplSource::Builtin(vtable_closure)
             }
 
             GeneratorCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
-                ImplSource::Generator(vtable_generator)
+                ImplSource::Builtin(vtable_generator)
             }
 
             FutureCandidate => {
                 let vtable_future = self.confirm_future_candidate(obligation)?;
-                ImplSource::Future(vtable_future)
+                ImplSource::Builtin(vtable_future)
             }
 
             FnPointerCandidate { is_const } => {
                 let data = self.confirm_fn_pointer_candidate(obligation, is_const)?;
-                ImplSource::FnPointer(data)
+                ImplSource::Builtin(data)
             }
 
             TraitAliasCandidate => {
