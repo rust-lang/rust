@@ -205,8 +205,6 @@ pub enum CheckInAllocMsg {
     MemoryAccessTest,
     /// We are doing pointer arithmetic.
     PointerArithmeticTest,
-    /// We are doing pointer offset_from.
-    OffsetFromTest,
     /// None of the above -- generic/unspecific inbounds test.
     InboundsTest,
 }

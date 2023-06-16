@@ -247,8 +247,6 @@ const_eval_nullary_intrinsic_fail =
 
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
-
-const_eval_offset_from_test = out-of-bounds `offset_from`
 const_eval_offset_from_underflow =
     `{$name}` called when first pointer is too far before second
 
