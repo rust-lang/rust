@@ -114,6 +114,12 @@ trait DefIdVisitor<'tcx> {
     ) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_predicates(predicates)
     }
+    fn visit_clauses(
+        &mut self,
+        predicates: &[(ty::Clause<'tcx>, Span)],
+    ) -> ControlFlow<Self::BreakTy> {
+        self.skeleton().visit_clauses(predicates)
+    }
 }
 
 struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
@@ -204,6 +210,10 @@ where
     ) -> ControlFlow<V::BreakTy> {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
         predicates.iter().try_for_each(|&(predicate, _span)| self.visit_predicate(predicate))
+    }
+
+    fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> ControlFlow<V::BreakTy> {
+        clauses.iter().try_for_each(|&(clause, _span)| self.visit_predicate(clause.as_predicate()))
     }
 }
 
@@ -307,10 +317,7 @@ where
                     // through the trait list (default type visitor doesn't visit those traits).
                     // All traits in the list are considered the "primary" part of the type
                     // and are visited by shallow visitors.
-                    self.visit_predicates(ty::GenericPredicates {
-                        parent: None,
-                        predicates: tcx.explicit_item_bounds(def_id).skip_binder(),
-                    })?;
+                    self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder())?;
                 }
             }
             // These types don't have their own def-ids (but may have subcomponents
@@ -1814,10 +1821,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn bounds(&mut self) -> &mut Self {
         self.in_primary_interface = false;
-        self.visit_predicates(ty::GenericPredicates {
-            parent: None,
-            predicates: self.tcx.explicit_item_bounds(self.item_def_id).skip_binder(),
-        });
+        self.visit_clauses(self.tcx.explicit_item_bounds(self.item_def_id).skip_binder());
         self
     }
 

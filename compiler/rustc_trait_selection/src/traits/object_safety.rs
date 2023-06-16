@@ -271,7 +271,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Type)
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id).subst_identity_iter_copied())
-        .filter_map(|pred_span| predicate_references_self(tcx, pred_span))
+        .filter_map(|(clause, span)| predicate_references_self(tcx, (clause.as_predicate(), span)))
         .collect()
 }
 

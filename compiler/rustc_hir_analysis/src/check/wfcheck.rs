@@ -1086,7 +1086,7 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
             wfcx.infcx,
             wfcx.param_env,
             wfcx.body_def_id,
-            normalized_bound,
+            normalized_bound.as_predicate(),
             bound_span,
         )
     });
@@ -1562,7 +1562,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                     self.wfcx.infcx,
                     self.wfcx.param_env,
                     self.wfcx.body_def_id,
-                    bound,
+                    bound.as_predicate(),
                     bound_span,
                 ));
                 // Set the debruijn index back to innermost here, since we already eagerly

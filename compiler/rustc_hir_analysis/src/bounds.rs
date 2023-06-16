@@ -78,4 +78,8 @@ impl<'tcx> Bounds<'tcx> {
     pub fn predicates(&self) -> impl Iterator<Item = (Binder<'tcx, ty::Clause<'tcx>>, Span)> + '_ {
         self.predicates.iter().cloned()
     }
+
+    pub fn clauses(&self) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> + '_ {
+        self.predicates.iter().cloned().map(|(pred, span)| (pred.as_clause().unwrap(), span))
+    }
 }
