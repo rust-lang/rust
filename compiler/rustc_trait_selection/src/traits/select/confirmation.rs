@@ -27,12 +27,11 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
-    ImplSourceConstDestructData, ImplSourceFnPointerData, ImplSourceFutureData,
-    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourceTraitAliasData,
-    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, Obligation,
-    ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection, SelectionError,
-    TraitNotObjectSafe, TraitObligation, Unimplemented,
+    ImplSourceAutoImplData, ImplSourceClosureData, ImplSourceConstDestructData,
+    ImplSourceFnPointerData, ImplSourceFutureData, ImplSourceGeneratorData, ImplSourceObjectData,
+    ImplSourceTraitAliasData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
+    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
+    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -114,7 +113,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                ImplSource::Param(Vec::new(), ty::BoundConstness::NotConst)
+                ImplSource::Builtin(Vec::new())
             }
 
             BuiltinUnsizeCandidate => {
@@ -244,7 +243,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         has_nested: bool,
-    ) -> ImplSourceBuiltinData<PredicateObligation<'tcx>> {
+    ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
 
         let lang_items = self.tcx().lang_items();
@@ -277,14 +276,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligations);
 
-        ImplSourceBuiltinData { nested: obligations }
+        obligations
     }
 
     #[instrument(level = "debug", skip(self))]
     fn confirm_transmutability_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         use rustc_transmute::{Answer, Condition};
         #[instrument(level = "debug", skip(tcx, obligation, predicate))]
         fn flatten_answer_tree<'tcx>(
@@ -369,7 +368,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         debug!(?fully_flattened);
-        Ok(ImplSourceBuiltinData { nested: fully_flattened })
+        Ok(fully_flattened)
     }
 
     /// This handles the case where an `auto trait Foo` impl is being used.
@@ -912,8 +911,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         idx: usize,
-    ) -> Result<ImplSourceTraitUpcastingData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
-    {
+    ) -> Result<ImplSourceTraitUpcastingData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 
         // `assemble_candidates_for_unsizing` should ensure there are no late-bound
@@ -1010,13 +1008,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let vtable_vptr_slot =
             prepare_vtable_segments(tcx, source_trait_ref, vtable_segment_callback).unwrap();
 
-        Ok(ImplSourceTraitUpcastingData { upcast_trait_ref, vtable_vptr_slot, nested })
+        Ok(ImplSourceTraitUpcastingData { vtable_vptr_slot, nested })
     }
 
     fn confirm_builtin_unsize_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 
         // `assemble_candidates_for_unsizing` should ensure there are no late-bound
@@ -1217,7 +1215,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("source: {source}, target: {target}"),
         };
 
-        Ok(ImplSourceBuiltinData { nested })
+        Ok(nested)
     }
 
     fn confirm_const_destruct_candidate(

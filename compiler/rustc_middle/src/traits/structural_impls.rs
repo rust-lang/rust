@@ -76,18 +76,12 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceClosureData<'tcx, N> 
     }
 }
 
-impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceBuiltinData<N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ImplSourceBuiltinData(nested={:?})", self.nested)
-    }
-}
-
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<'tcx, N> {
+impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ImplSourceTraitUpcastingData(upcast={:?}, vtable_vptr_slot={:?}, nested={:?})",
-            self.upcast_trait_ref, self.vtable_vptr_slot, self.nested
+            "ImplSourceTraitUpcastingData(vtable_vptr_slot={:?}, nested={:?})",
+            self.vtable_vptr_slot, self.nested
         )
     }
 }

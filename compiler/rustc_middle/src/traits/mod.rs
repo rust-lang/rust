@@ -662,10 +662,10 @@ pub enum ImplSource<'tcx, N> {
     Object(ImplSourceObjectData<'tcx, N>),
 
     /// Successful resolution for a builtin trait.
-    Builtin(ImplSourceBuiltinData<N>),
+    Builtin(Vec<N>),
 
     /// ImplSource for trait upcasting coercion
-    TraitUpcasting(ImplSourceTraitUpcastingData<'tcx, N>),
+    TraitUpcasting(ImplSourceTraitUpcastingData<N>),
 
     /// ImplSource automatically generated for a closure. The `DefId` is the ID
     /// of the closure expression. This is an `ImplSource::UserDefined` in spirit, but the
@@ -692,8 +692,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
-            ImplSource::Param(n, _) => n,
-            ImplSource::Builtin(i) => i.nested,
+            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
             ImplSource::AutoImpl(d) => d.nested,
             ImplSource::Closure(c) => c.nested,
             ImplSource::Generator(c) => c.nested,
@@ -709,8 +708,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n, _) => n,
-            ImplSource::Builtin(i) => &i.nested,
+            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
             ImplSource::AutoImpl(d) => &d.nested,
             ImplSource::Closure(c) => &c.nested,
             ImplSource::Generator(c) => &c.nested,
@@ -726,8 +724,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
-            ImplSource::Param(n, _) => n,
-            ImplSource::Builtin(i) => &mut i.nested,
+            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
             ImplSource::AutoImpl(d) => &mut d.nested,
             ImplSource::Closure(c) => &mut c.nested,
             ImplSource::Generator(c) => &mut c.nested,
@@ -751,9 +748,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 nested: i.nested.into_iter().map(f).collect(),
             }),
             ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
-            ImplSource::Builtin(i) => ImplSource::Builtin(ImplSourceBuiltinData {
-                nested: i.nested.into_iter().map(f).collect(),
-            }),
+            ImplSource::Builtin(n) => ImplSource::Builtin(n.into_iter().map(f).collect()),
             ImplSource::Object(o) => ImplSource::Object(ImplSourceObjectData {
                 upcast_trait_ref: o.upcast_trait_ref,
                 vtable_base: o.vtable_base,
@@ -789,7 +784,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             }),
             ImplSource::TraitUpcasting(d) => {
                 ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData {
-                    upcast_trait_ref: d.upcast_trait_ref,
                     vtable_vptr_slot: d.vtable_vptr_slot,
                     nested: d.nested.into_iter().map(f).collect(),
                 })
@@ -860,22 +854,13 @@ pub struct ImplSourceAutoImplData<N> {
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub struct ImplSourceTraitUpcastingData<'tcx, N> {
-    /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
-    pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
-
+pub struct ImplSourceTraitUpcastingData<N> {
     /// The vtable is formed by concatenating together the method lists of
     /// the base object trait and all supertraits, pointers to supertrait vtable will
     /// be provided when necessary; this is the position of `upcast_trait_ref`'s vtable
     /// within that vtable.
     pub vtable_vptr_slot: Option<usize>,
 
-    pub nested: Vec<N>,
-}
-
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct ImplSourceBuiltinData<N> {
     pub nested: Vec<N>,
 }
 
