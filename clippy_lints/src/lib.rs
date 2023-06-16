@@ -497,24 +497,23 @@ pub(crate) struct LintInfo {
 
 pub fn explain(name: &str) {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
-    match declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
-        Some(info) => {
-            println!("{}", info.explanation);
-            // Check if the lint has configuration
-            let mdconf = get_configuration_metadata();
-            if let Some(config_vec_positions) = mdconf
-                .iter()
-                .find_all(|cconf| cconf.lints.contains(&info.lint.name_lower()[8..].to_owned()))
-            {
-                // If it has, print it
-                println!("### Configuration for {}:\n", info.lint.name_lower());
-                for position in config_vec_positions {
-                    let conf = &mdconf[position];
-                    println!("  - {}: {} (default: {})", conf.name, conf.doc, conf.default);
-                }
+    if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
+        println!("{}", info.explanation);
+        // Check if the lint has configuration
+        let mdconf = get_configuration_metadata();
+        if let Some(config_vec_positions) = mdconf
+            .iter()
+            .find_all(|cconf| cconf.lints.contains(&info.lint.name_lower()[8..].to_owned()))
+        {
+            // If it has, print it
+            println!("### Configuration for {}:\n", info.lint.name_lower());
+            for position in config_vec_positions {
+                let conf = &mdconf[position];
+                println!("  - {}: {} (default: {})", conf.name, conf.doc, conf.default);
             }
-        },
-        None => println!("unknown lint: {name}"),
+        }
+    } else {
+        println!("unknown lint: {name}");
     }
 }
 
