@@ -2724,6 +2724,32 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let msg = format!("required by this bound in `{short_item_name}`");
                     multispan.push_span_label(span, msg);
                     err.span_note(multispan, descr);
+                    if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder()
+                        && let ty::ClauseKind::Trait(trait_pred) = clause
+                    {
+                        let def_id = trait_pred.def_id();
+                        let visible_item = if let Some(local) = def_id.as_local() {
+                            // Check for local traits being reachable.
+                            let vis = &self.tcx.resolutions(()).effective_visibilities;
+                            // Account for non-`pub` traits in the root of the local crate.
+                            let is_locally_reachable = self.tcx.parent(def_id).is_crate_root();
+                            vis.is_reachable(local) || is_locally_reachable
+                        } else {
+                            // Check for foreign traits being reachable.
+                            self.tcx.visible_parent_map(()).get(&def_id).is_some()
+                        };
+                        if let DefKind::Trait = tcx.def_kind(item_def_id) && !visible_item {
+                            // FIXME(estebank): extend this to search for all the types that do
+                            // implement this trait and list them.
+                            err.note(format!(
+                                "`{short_item_name}` is a \"sealed trait\", because to implement \
+                                 it you also need to implelement `{}`, which is not accessible; \
+                                 this is usually done to force you to use one of the provided \
+                                 types that already implement it",
+                                with_no_trimmed_paths!(tcx.def_path_str(def_id)),
+                            ));
+                        }
+                    }
                 } else {
                     err.span_note(tcx.def_span(item_def_id), descr);
                 }
