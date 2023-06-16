@@ -27,7 +27,6 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceClosureData, ImplSourceFnPointerData, ImplSourceFutureData, ImplSourceGeneratorData,
     ImplSourceObjectData, ImplSourceTraitAliasData, ImplSourceTraitUpcastingData,
     ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
     OutputTypeParameterMismatch, PredicateObligation, Selection, SelectionError,
@@ -664,8 +663,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         is_const: bool,
-    ) -> Result<ImplSourceFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
-    {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
         let tcx = self.tcx();
@@ -717,7 +715,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tr = ty::TraitRef::from_lang_item(self.tcx(), LangItem::Sized, cause.span, [output_ty]);
         nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
-        Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
+        Ok(nested)
     }
 
     fn confirm_trait_alias_candidate(
@@ -749,8 +747,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_generator_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<ImplSourceGeneratorData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
-    {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
@@ -783,13 +780,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
         debug!(?trait_ref, ?nested, "generator candidate obligations");
 
-        Ok(ImplSourceGeneratorData { generator_def_id, substs, nested })
+        Ok(nested)
     }
 
     fn confirm_future_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
@@ -813,14 +810,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
         debug!(?trait_ref, ?nested, "future candidate obligations");
 
-        Ok(ImplSourceFutureData { generator_def_id, substs, nested })
+        Ok(nested)
     }
 
     #[instrument(skip(self), level = "debug")]
     fn confirm_closure_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Result<ImplSourceClosureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let kind = self
             .tcx()
             .fn_trait_kind_from_def_id(obligation.predicate.def_id())
@@ -847,7 +844,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ));
         }
 
-        Ok(ImplSourceClosureData { closure_def_id, substs, nested })
+        Ok(nested)
     }
 
     /// In the case of closure types and fn pointers,

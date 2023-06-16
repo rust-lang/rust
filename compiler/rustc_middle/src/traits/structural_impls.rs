@@ -42,36 +42,6 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceUserDefinedData<'tcx,
     }
 }
 
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceGeneratorData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "ImplSourceGeneratorData(generator_def_id={:?}, substs={:?}, nested={:?})",
-            self.generator_def_id, self.substs, self.nested
-        )
-    }
-}
-
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceFutureData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "ImplSourceFutureData(generator_def_id={:?}, substs={:?}, nested={:?})",
-            self.generator_def_id, self.substs, self.nested
-        )
-    }
-}
-
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceClosureData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "ImplSourceClosureData(closure_def_id={:?}, substs={:?}, nested={:?})",
-            self.closure_def_id, self.substs, self.nested
-        )
-    }
-}
-
 impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -89,12 +59,6 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceObjectData<N> {
             "ImplSourceObjectData(upcast={:?}, vtable_base={}, nested={:?})",
             self.upcast_trait_def_id, self.vtable_base, self.nested
         )
-    }
-}
-
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceFnPointerData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ImplSourceFnPointerData(fn_ty={:?}, nested={:?})", self.fn_ty, self.nested)
     }
 }
 

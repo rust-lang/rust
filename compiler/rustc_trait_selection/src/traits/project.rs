@@ -3,6 +3,7 @@
 use super::specialization_graph;
 use super::translate_substs;
 use super::util;
+use super::ImplSourceUserDefinedData;
 use super::MismatchedProjectionTypes;
 use super::Obligation;
 use super::ObligationCause;
@@ -10,10 +11,6 @@ use super::PredicateObligation;
 use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
-use super::{
-    ImplSourceClosureData, ImplSourceFnPointerData, ImplSourceFutureData, ImplSourceGeneratorData,
-    ImplSourceUserDefinedData,
-};
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
 use crate::errors::InherentProjectionNormalizationOverflow;
@@ -2015,9 +2012,14 @@ fn confirm_select_candidate<'cx, 'tcx>(
 fn confirm_generator_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    impl_source: ImplSourceGeneratorData<'tcx, PredicateObligation<'tcx>>,
+    nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = impl_source.substs.as_generator().poly_sig();
+    let ty::Generator(_, substs, _) =
+        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
+    else {
+        unreachable!()
+    };
+    let gen_sig = substs.as_generator().poly_sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -2055,16 +2057,21 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     });
 
     confirm_param_env_candidate(selcx, obligation, predicate, false)
-        .with_addl_obligations(impl_source.nested)
+        .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
 
 fn confirm_future_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    impl_source: ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>,
+    nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = impl_source.substs.as_generator().poly_sig();
+    let ty::Generator(_, substs, _) =
+        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
+    else {
+        unreachable!()
+    };
+    let gen_sig = substs.as_generator().poly_sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -2094,7 +2101,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
     });
 
     confirm_param_env_candidate(selcx, obligation, predicate, false)
-        .with_addl_obligations(impl_source.nested)
+        .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
 
@@ -2155,9 +2162,9 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    fn_pointer_impl_source: ImplSourceFnPointerData<'tcx, PredicateObligation<'tcx>>,
+    nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let fn_type = selcx.infcx.shallow_resolve(fn_pointer_impl_source.fn_ty);
+    let fn_type = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
     let sig = fn_type.fn_sig(selcx.tcx());
     let Normalized { value: sig, obligations } = normalize_with_depth(
         selcx,
@@ -2168,16 +2175,21 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
     );
 
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
-        .with_addl_obligations(fn_pointer_impl_source.nested)
+        .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
 
 fn confirm_closure_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    impl_source: ImplSourceClosureData<'tcx, PredicateObligation<'tcx>>,
+    nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let closure_sig = impl_source.substs.as_closure().sig();
+    let ty::Closure(_, substs) =
+        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
+    else {
+        unreachable!()
+    };
+    let closure_sig = substs.as_closure().sig();
     let Normalized { value: closure_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -2189,7 +2201,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     debug!(?obligation, ?closure_sig, ?obligations, "confirm_closure_candidate");
 
     confirm_callable_candidate(selcx, obligation, closure_sig, util::TupleArgumentsFlag::No)
-        .with_addl_obligations(impl_source.nested)
+        .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
 }
 
