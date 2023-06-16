@@ -19,7 +19,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, Binder, Clause, ExistentialPredicate, List, PredicateKind, Ty};
+use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
@@ -697,7 +697,7 @@ fn matches_preds<'tcx>(
             ObligationCause::dummy(),
             cx.param_env,
             cx.tcx
-                .mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Projection(
+                .mk_predicate(Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(
                     p.with_self_ty(cx.tcx, ty),
                 )))),
         )),

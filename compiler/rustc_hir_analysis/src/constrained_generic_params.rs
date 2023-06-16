@@ -187,7 +187,7 @@ pub fn setup_constraining_predicates<'tcx>(
         for j in i..predicates.len() {
             // Note that we don't have to care about binders here,
             // as the impl trait ref never contains any late-bound regions.
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) =
                 predicates[j].0.kind().skip_binder()
             {
                 // Special case: watch out for some kind of sneaky attempt

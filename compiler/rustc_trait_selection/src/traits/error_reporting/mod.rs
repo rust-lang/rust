@@ -678,7 +678,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let mut trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
@@ -1021,8 +1021,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span_bug!(span, "coerce requirement gave wrong error: `{:?}`", predicate)
                     }
 
-                    ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-                    | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
+                    | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..)) => {
                         span_bug!(
                             span,
                             "outlives clauses should not error outside borrowck. obligation: `{:?}`",
@@ -1030,7 +1030,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         )
                     }
 
-                    ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
                         span_bug!(
                             span,
                             "projection clauses should be implied from elsewhere. obligation: `{:?}`",
@@ -1048,7 +1048,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.report_closure_error(&obligation, closure_def_id, found_kind, kind)
                     }
 
-                    ty::PredicateKind::Clause(ty::Clause::WellFormed(ty)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
                         match self.tcx.sess.opts.unstable_opts.trait_solver {
                             TraitSolver::Classic => {
                                 // WF predicates cannot themselves make
@@ -1069,7 +1069,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
                     }
 
-                    ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..)) => {
                         // Errors for `ConstEvaluatable` predicates show up as
                         // `SelectionError::ConstEvalFailure`,
                         // not `Unimplemented`.
@@ -1103,7 +1103,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "AliasRelate predicate should never be the predicate cause of a SelectionError"
                     ),
 
-                    ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                         let mut diag = self.tcx.sess.struct_span_err(
                             span,
                             format!("the constant `{}` is not of type `{}`", ct, ty),
@@ -1494,8 +1494,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let bound_error = error.kind();
         let (cond, error) = match (cond.kind().skip_binder(), bound_error.skip_binder()) {
             (
-                ty::PredicateKind::Clause(ty::Clause::Trait(..)),
-                ty::PredicateKind::Clause(ty::Clause::Trait(error)),
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..)),
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(error)),
             ) => (cond, bound_error.rebind(error)),
             _ => {
                 // FIXME: make this work in other cases too.
@@ -1505,7 +1505,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         for pred in super::elaborate(self.tcx, std::iter::once(cond)) {
             let bound_predicate = pred.kind();
-            if let ty::PredicateKind::Clause(ty::Clause::Trait(implication)) =
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(implication)) =
                 bound_predicate.skip_binder()
             {
                 let error = error.to_poly_trait_ref();
@@ -1603,7 +1603,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // this can fail if the problem was higher-ranked, in which
             // cause I have no idea for a good error message.
             let bound_predicate = predicate.kind();
-            let (values, err) = if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+            let (values, err) = if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) =
                 bound_predicate.skip_binder()
             {
                 let data = self.instantiate_binder_with_fresh_vars(
@@ -1686,7 +1686,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
 
             let secondary_span = (|| {
-                let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) =
+                let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
                     predicate.kind().skip_binder()
                 else {
                     return None;
@@ -2199,7 +2199,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let bound_predicate = predicate.kind();
         let mut err = match bound_predicate.skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                 let trait_ref = bound_predicate.rebind(data.trait_ref);
                 debug!(?trait_ref);
 
@@ -2415,7 +2415,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err
             }
 
-            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if arg.references_error()
@@ -2453,7 +2453,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     true,
                 )
             }
-            ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                 if predicate.references_error() || self.tainted_by_errors().is_some() {
                     return;
                 }
@@ -2487,7 +2487,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(data)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(data)) => {
                 if predicate.references_error() || self.tainted_by_errors().is_some() {
                     return;
                 }
@@ -2701,7 +2701,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = obligation.predicate.kind().skip_binder() else { return; };
+        let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) = obligation.predicate.kind().skip_binder() else { return; };
         let (ObligationCauseCode::BindingObligation(item_def_id, span)
         | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..))
             = *obligation.cause.code().peel_derives() else { return; };
@@ -3325,7 +3325,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
                 let ty::ConstKind::Unevaluated(uv) = ct.kind() else {
                     bug!("const evaluatable failed for non-unevaluated const `{ct:?}`");
                 };

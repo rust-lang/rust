@@ -108,7 +108,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
             // learn anything new from those.
             if obligation.predicate.has_non_region_infer() {
                 match obligation.predicate.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
                     | ty::PredicateKind::AliasRelate(..) => {
                         ocx.register_obligation(obligation.clone());
                     }
@@ -121,33 +121,33 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 Some(pred) => pred,
             };
             match pred {
-                ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
                 // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
                 // if we ever support that
-                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::ObjectSafe(..)
-                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
 
                 // We need to search through *all* WellFormed predicates
-                ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                     wf_args.push(arg);
                 }
 
                 // We need to register region relationships
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
                     r_a,
                     r_b,
                 ))) => outlives_bounds.push(ty::OutlivesPredicate(r_a.into(), r_b)),
 
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
                     ty_a,
                     r_b,
                 ))) => outlives_bounds.push(ty::OutlivesPredicate(ty_a.into(), r_b)),

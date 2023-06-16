@@ -171,16 +171,16 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::Clause<'tcx> {
+impl<'tcx> fmt::Debug for ty::ClauseKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::Clause::ConstArgHasType(ct, ty) => write!(f, "ConstArgHasType({ct:?}, {ty:?})"),
-            ty::Clause::Trait(ref a) => a.fmt(f),
-            ty::Clause::RegionOutlives(ref pair) => pair.fmt(f),
-            ty::Clause::TypeOutlives(ref pair) => pair.fmt(f),
-            ty::Clause::Projection(ref pair) => pair.fmt(f),
-            ty::Clause::WellFormed(ref data) => write!(f, "WellFormed({:?})", data),
-            ty::Clause::ConstEvaluatable(ct) => {
+            ty::ClauseKind::ConstArgHasType(ct, ty) => write!(f, "ConstArgHasType({ct:?}, {ty:?})"),
+            ty::ClauseKind::Trait(ref a) => a.fmt(f),
+            ty::ClauseKind::RegionOutlives(ref pair) => pair.fmt(f),
+            ty::ClauseKind::TypeOutlives(ref pair) => pair.fmt(f),
+            ty::ClauseKind::Projection(ref pair) => pair.fmt(f),
+            ty::ClauseKind::WellFormed(ref data) => write!(f, "WellFormed({:?})", data),
+            ty::ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
         }

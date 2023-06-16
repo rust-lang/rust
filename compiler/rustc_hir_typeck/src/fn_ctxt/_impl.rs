@@ -483,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx,
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(arg))),
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg))),
         ));
     }
 
@@ -647,7 +647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
             move |obligation| match &obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Projection(data))
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data))
                     if self.self_type_matches_expected_vid(
                         data.projection_ty.self_ty(),
                         ty_var_root,
@@ -655,23 +655,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     Some(obligation)
                 }
-                ty::PredicateKind::Clause(ty::Clause::Trait(data))
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data))
                     if self.self_type_matches_expected_vid(data.self_ty(), ty_var_root) =>
                 {
                     Some(obligation)
                 }
 
-                ty::PredicateKind::Clause(ty::Clause::Trait(..))
-                | ty::PredicateKind::Clause(ty::Clause::Projection(..))
-                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-                | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
-                | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 // N.B., this predicate is created by breaking down a
                 // `ClosureType: FnFoo()` predicate, where
@@ -692,7 +692,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sized_did = self.tcx.lang_items().sized_trait();
         self.obligations_for_self_ty(self_ty).any(|obligation| {
             match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                     Some(data.def_id()) == sized_did
                 }
                 _ => false,
