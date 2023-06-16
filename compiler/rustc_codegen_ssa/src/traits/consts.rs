@@ -15,6 +15,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     fn const_i32(&self, i: i32) -> Self::Value;
     fn const_u32(&self, i: u32) -> Self::Value;
     fn const_u64(&self, i: u64) -> Self::Value;
+    fn const_u128(&self, i: u128) -> Self::Value;
     fn const_usize(&self, i: u64) -> Self::Value;
     fn const_u8(&self, i: u8) -> Self::Value;
     fn const_real(&self, t: Self::Type, val: f64) -> Self::Value;

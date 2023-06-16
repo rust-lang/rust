@@ -168,6 +168,10 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.type_i64(), i)
     }
 
+    fn const_u128(&self, i: u128) -> &'ll Value {
+        self.const_uint_big(self.type_i128(), i)
+    }
+
     fn const_usize(&self, i: u64) -> &'ll Value {
         let bit_size = self.data_layout().pointer_size.bits();
         if bit_size < 64 {

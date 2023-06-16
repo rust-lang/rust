@@ -108,6 +108,10 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.type_u64(), i)
     }
 
+    fn const_u128(&self, i: u128) -> RValue<'gcc> {
+        self.const_uint_big(self.type_u128(), i)
+    }
+
     fn const_usize(&self, i: u64) -> RValue<'gcc> {
         let bit_size = self.data_layout().pointer_size.bits();
         if bit_size < 64 {
@@ -254,7 +258,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // SIMD builtins require a constant value.
         self.bitcast_if_needed(value, typ)
     }
-    
+
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         self.context.new_array_access(None, base_addr, self.const_usize(offset.bytes())).get_address(None)
     }
