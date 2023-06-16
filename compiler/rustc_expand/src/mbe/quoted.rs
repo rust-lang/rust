@@ -9,7 +9,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::symbol::{kw, sym, Ident};
 
 use rustc_span::edition::Edition;
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::Span;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
@@ -72,7 +72,7 @@ pub(super) fn parse(
                                             // `SyntaxContext::root()` from a foreign crate will
                                             // have the edition of that crate (which we manually
                                             // retrieve via the `edition` parameter).
-                                            if span.ctxt() == SyntaxContext::root() {
+                                            if span.ctxt().is_root() {
                                                 edition
                                             } else {
                                                 span.edition()
