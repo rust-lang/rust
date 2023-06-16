@@ -518,19 +518,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // The result is "true" if the obligation *may* hold and "false" if
     // we can be sure it does not.
 
-    /// Evaluates whether the obligation `obligation` can be satisfied (by any means).
-    pub fn predicate_may_hold_fatal(&mut self, obligation: &PredicateObligation<'tcx>) -> bool {
-        debug!(?obligation, "predicate_may_hold_fatal");
-
-        // This fatal query is a stopgap that should only be used in standard mode,
-        // where we do not expect overflow to be propagated.
-        assert!(self.query_mode == TraitQueryMode::Standard);
-
-        self.evaluate_root_obligation(obligation)
-            .expect("Overflow should be caught earlier in standard query mode")
-            .may_apply()
-    }
-
     /// Evaluates whether the obligation `obligation` can be satisfied
     /// and returns an `EvaluationResult`. This is meant for the
     /// *initial* call.
