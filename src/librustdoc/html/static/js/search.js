@@ -2046,6 +2046,20 @@ function initSearch(rawSearchIndex) {
         if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true")
         ) {
+            // Needed to force re-execution of JS when coming back to a page. Let's take this
+            // scenario as example:
+            //
+            // 1. You have the "Directly go to item in search if there is only one result" option
+            //    enabled.
+            // 2. You make a search which results only one result, leading you automatically to
+            //    this result.
+            // 3. You go back to previous page.
+            //
+            // Now, without the call below, the JS will not be re-executed and the previous state
+            // will be used, starting search again since the search input is not empty, leading you
+            // back to the previous page again.
+            window.onunload = () => {};
+            searchState.removeQueryParameters();
             const elem = document.createElement("a");
             elem.href = results.others[0].href;
             removeClass(elem, "active");
@@ -2182,7 +2196,6 @@ function initSearch(rawSearchIndex) {
         if (e) {
             e.preventDefault();
         }
-
         const query = parseQuery(searchState.input.value.trim());
         let filterCrates = getFilterCrates();
 
