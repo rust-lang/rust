@@ -6,7 +6,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
     interpret::{
-        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar,
+        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic,
+        Provenance, Scalar,
     },
     BinOp, NonDivergingIntrinsic,
 };
@@ -313,7 +314,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                         (Err(a), Err(b)) => {
                             // Neither pointer points to an allocation.
-                            // If these are inequal or null, this *will* fail the deref check below.
                             (a, b)
                         }
                         (Err(_), _) | (_, Err(_)) => {
@@ -332,12 +332,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                     name = intrinsic_name,
                                 );
                             }
-                            // Use these offsets for distance calculation.
-                            (a_offset.bytes(), b_offset.bytes())
+                            if M::Provenance::OFFSET_IS_ADDR {
+                                // Use the absolute address for an accurate overflow check.
+                                (a.addr().bytes(), b.addr().bytes())
+                            } else {
+                                // Use the relative offsets. We can't know where the "edge of the
+                                // address space" is so we can't do a fully accurate overflow check.
+                                // We basically put that edge at the beginning of the allocation.
+                                (a_offset.bytes(), b_offset.bytes())
+                            }
                         }
                     };
 
-                // Compute distance.
+                // Compute distance. The overflow check is special because there is an extra requirement that
+                // the pointers be no more than `isize::MAX` apart.
                 let dist = {
                     // Addresses are unsigned, so this is a `usize` computation. We have to do the
                     // overflow check separately anyway.
@@ -380,16 +388,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         dist
                     }
                 };
-
-                // Check that the range between them is dereferenceable ("in-bounds or one past the
-                // end of the same allocation"). This is like the check in ptr_offset_inbounds.
-                let min_ptr = if dist >= 0 { b } else { a };
-                self.check_ptr_access_align(
-                    min_ptr,
-                    Size::from_bytes(dist.unsigned_abs()),
-                    Align::ONE,
-                    CheckInAllocMsg::OffsetFromTest,
-                )?;
 
                 // Perform division by size to compute return value.
                 let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {

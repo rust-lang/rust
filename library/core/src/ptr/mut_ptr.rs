@@ -786,11 +786,8 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and other pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
-    ///
-    /// * Both pointers must be *derived from* a pointer to the same object.
-    ///   (See below for an example.)
+    /// * Both pointers must be *derived from* a pointer to the same [allocated object],
+    ///   or they must both be "invalid" pointers not derived from any object.
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
@@ -815,6 +812,12 @@ impl<T: ?Sized> *mut T {
     /// mapped files *may* be too large to handle with this function.
     /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
     /// such large allocations either.)
+    ///
+    /// The requirement for pointers to be derived from the same allocated object is primarily
+    /// equired for `const`-compatibility: at compile-time, pointers into *different* allocated
+    /// object do not have a known distance to each other. However, the requirement also exists at
+    /// runtime, and may be exploited by optimizations. You can use `(self as usize).sub(origin as
+    /// usize) / mem::size_of::<T>()` to avoid this requirement.
     ///
     /// [`add`]: #method.add
     /// [allocated object]: crate::ptr#allocated-object
