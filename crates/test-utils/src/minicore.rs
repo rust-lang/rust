@@ -42,6 +42,7 @@
 //!     panic: fmt
 //!     phantom_data:
 //!     pin:
+//!     pointee:
 //!     range:
 //!     result:
 //!     send: sized
@@ -368,6 +369,14 @@ pub mod ptr {
         *dst = src;
     }
     // endregion:drop
+
+    // region:pointee
+    #[lang = "pointee_trait"]
+    pub trait Pointee {
+        #[lang = "metadata_type"]
+        type Metadata;
+    }
+    // endregion:pointee
 }
 
 pub mod ops {

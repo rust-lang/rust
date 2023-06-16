@@ -3497,6 +3497,22 @@ fn func() {
     );
 }
 
+#[test]
+fn pointee_trait() {
+    check_types(
+        r#"
+//- minicore: pointee
+use core::ptr::Pointee;
+fn func() {
+    let x: <u8 as Pointee>::Metadata;
+      //^ ()
+    let x: <[u8] as Pointee>::Metadata;
+      //^ usize
+}
+    "#,
+    );
+}
+
 // FIXME
 #[test]
 fn castable_to() {

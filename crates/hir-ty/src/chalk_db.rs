@@ -592,6 +592,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Unpin => WellKnownTrait::Unpin,
         LangItem::Unsize => WellKnownTrait::Unsize,
         LangItem::Tuple => WellKnownTrait::Tuple,
+        LangItem::PointeeTrait => WellKnownTrait::Pointee,
         _ => return None,
     })
 }
@@ -612,6 +613,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Tuple => LangItem::Tuple,
         WellKnownTrait::Unpin => LangItem::Unpin,
         WellKnownTrait::Unsize => LangItem::Unsize,
+        WellKnownTrait::Pointee => LangItem::PointeeTrait,
     }
 }
 
