@@ -27,14 +27,14 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
         for (predicate, _) in predicates.predicates {
             match predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(
-                    ty::Clause::RegionOutlives(_)
-                    | ty::Clause::TypeOutlives(_)
-                    | ty::Clause::Projection(_)
-                    | ty::Clause::Trait(..)
-                    | ty::Clause::ConstArgHasType(..),
+                    ty::ClauseKind::RegionOutlives(_)
+                    | ty::ClauseKind::TypeOutlives(_)
+                    | ty::ClauseKind::Projection(_)
+                    | ty::ClauseKind::Trait(..)
+                    | ty::ClauseKind::ConstArgHasType(..),
                 )
-                | ty::PredicateKind::Clause(ty::Clause::WellFormed(_))
-                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
                 ty::PredicateKind::AliasRelate(..) => panic!("alias relate predicate on function: {predicate:#?}"),
