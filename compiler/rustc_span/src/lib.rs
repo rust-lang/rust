@@ -826,9 +826,9 @@ impl Span {
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
         if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::root() {
+            if span_data.ctxt.is_root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::root() {
+            } else if end_data.ctxt.is_root() {
                 return self;
             }
             // Both spans fall within a macro.
@@ -837,7 +837,7 @@ impl Span {
         Span::new(
             cmp::min(span_data.lo, end_data.lo),
             cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            if span_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
             if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
     }
@@ -855,7 +855,7 @@ impl Span {
         Span::new(
             span.hi,
             end.lo,
-            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
+            if end.ctxt.is_root() { end.ctxt } else { span.ctxt },
             if span.parent == end.parent { span.parent } else { None },
         )
     }
@@ -879,9 +879,9 @@ impl Span {
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
         if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::root() {
+            if span_data.ctxt.is_root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::root() {
+            } else if end_data.ctxt.is_root() {
                 return self;
             }
             // Both spans fall within a macro.
@@ -890,7 +890,7 @@ impl Span {
         Span::new(
             span_data.lo,
             end_data.lo,
-            if end_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            if end_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
             if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
     }
