@@ -945,8 +945,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (clause, span) in bounds.predicates() {
-            let pred: ty::Predicate<'tcx> = clause.to_predicate(tcx);
+        for (clause, span) in bounds.clauses() {
+            let pred: ty::Predicate<'tcx> = clause.as_predicate();
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::PredicateKind::Clause(clause) => match clause {

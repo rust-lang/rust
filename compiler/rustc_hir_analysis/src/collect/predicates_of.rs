@@ -126,8 +126,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.extend(
             icx.astconv()
                 .compute_bounds(tcx.types.self_param, self_bounds, OnlySelfBounds(false))
-                .predicates()
-                .map(|(clause, span)| (clause.to_predicate(tcx), span)),
+                .clauses()
+                .map(|(clause, span)| (clause.as_predicate(), span)),
         );
     }
 
@@ -176,9 +176,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     param.span,
                 );
                 trace!(?bounds);
-                predicates.extend(
-                    bounds.predicates().map(|(clause, span)| (clause.to_predicate(tcx), span)),
-                );
+                predicates
+                    .extend(bounds.clauses().map(|(clause, span)| (clause.as_predicate(), span)));
                 trace!(?predicates);
             }
             GenericParamKind::Const { .. } => {
@@ -237,9 +236,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     bound_vars,
                     OnlySelfBounds(false),
                 );
-                predicates.extend(
-                    bounds.predicates().map(|(clause, span)| (clause.to_predicate(tcx), span)),
-                );
+                predicates
+                    .extend(bounds.clauses().map(|(clause, span)| (clause.as_predicate(), span)));
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
@@ -669,8 +667,8 @@ pub(super) fn implied_predicates_with_filter(
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds = &*tcx.arena.alloc_from_iter(
         superbounds
-            .predicates()
-            .map(|(clause, span)| (clause.to_predicate(tcx), span))
+            .clauses()
+            .map(|(clause, span)| (clause.as_predicate(), span))
             .chain(where_bounds_that_match),
     );
     debug!(?implied_bounds);
@@ -831,7 +829,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        bounds.predicates().map(|(clause, span)| (clause.to_predicate(self.tcx), span)).collect()
+        bounds.clauses().map(|(clause, span)| (clause.as_predicate(), span)).collect()
     }
 
     #[instrument(level = "trace", skip(self))]
