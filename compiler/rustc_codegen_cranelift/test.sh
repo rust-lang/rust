@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec ./y.rs test "$@"
+exec ./y.sh test "$@"

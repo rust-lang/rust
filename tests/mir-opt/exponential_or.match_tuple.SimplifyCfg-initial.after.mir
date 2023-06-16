@@ -1,83 +1,83 @@
 // MIR for `match_tuple` after SimplifyCfg-initial
 
 fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
-    debug x => _1;                       // in scope 0 at $DIR/exponential_or.rs:+0:16: +0:17
-    let mut _0: u32;                     // return place in scope 0 at $DIR/exponential_or.rs:+0:53: +0:56
-    let mut _2: isize;                   // in scope 0 at $DIR/exponential_or.rs:+2:37: +2:48
-    let mut _3: bool;                    // in scope 0 at $DIR/exponential_or.rs:+2:70: +2:77
-    let mut _4: bool;                    // in scope 0 at $DIR/exponential_or.rs:+2:70: +2:77
-    let mut _5: bool;                    // in scope 0 at $DIR/exponential_or.rs:+2:62: +2:67
-    let mut _6: bool;                    // in scope 0 at $DIR/exponential_or.rs:+2:62: +2:67
-    let _7: u32;                         // in scope 0 at $DIR/exponential_or.rs:+2:10: +2:11
-    let _8: u32;                         // in scope 0 at $DIR/exponential_or.rs:+2:57: +2:58
-    let mut _9: u32;                     // in scope 0 at $DIR/exponential_or.rs:+2:83: +2:84
-    let mut _10: u32;                    // in scope 0 at $DIR/exponential_or.rs:+2:87: +2:88
+    debug x => _1;
+    let mut _0: u32;
+    let mut _2: isize;
+    let mut _3: bool;
+    let mut _4: bool;
+    let mut _5: bool;
+    let mut _6: bool;
+    let _7: u32;
+    let _8: u32;
+    let mut _9: u32;
+    let mut _10: u32;
     scope 1 {
-        debug y => _7;                   // in scope 1 at $DIR/exponential_or.rs:+2:10: +2:11
-        debug z => _8;                   // in scope 1 at $DIR/exponential_or.rs:+2:57: +2:58
+        debug y => _7;
+        debug z => _8;
     }
 
     bb0: {
-        FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/exponential_or.rs:+1:11: +1:12
-        switchInt((_1.0: u32)) -> [1: bb2, 4: bb2, otherwise: bb1]; // scope 0 at $DIR/exponential_or.rs:+2:15: +2:20
+        FakeRead(ForMatchedPlace(None), _1);
+        switchInt((_1.0: u32)) -> [1: bb2, 4: bb2, otherwise: bb1];
     }
 
     bb1: {
-        _0 = const 0_u32;                // scope 0 at $DIR/exponential_or.rs:+3:14: +3:15
-        goto -> bb10;                    // scope 0 at $DIR/exponential_or.rs:+3:14: +3:15
+        _0 = const 0_u32;
+        goto -> bb10;
     }
 
     bb2: {
-        _2 = discriminant((_1.2: std::option::Option<i32>)); // scope 0 at $DIR/exponential_or.rs:+2:37: +2:55
-        switchInt(move _2) -> [0: bb4, 1: bb3, otherwise: bb1]; // scope 0 at $DIR/exponential_or.rs:+2:37: +2:55
+        _2 = discriminant((_1.2: std::option::Option<i32>));
+        switchInt(move _2) -> [0: bb4, 1: bb3, otherwise: bb1];
     }
 
     bb3: {
-        switchInt((((_1.2: std::option::Option<i32>) as Some).0: i32)) -> [1: bb4, 8: bb4, otherwise: bb1]; // scope 0 at $DIR/exponential_or.rs:+2:37: +2:55
+        switchInt((((_1.2: std::option::Option<i32>) as Some).0: i32)) -> [1: bb4, 8: bb4, otherwise: bb1];
     }
 
     bb4: {
-        _5 = Le(const 6_u32, (_1.3: u32)); // scope 0 at $DIR/exponential_or.rs:+2:62: +2:67
-        switchInt(move _5) -> [0: bb6, otherwise: bb5]; // scope 0 at $DIR/exponential_or.rs:+2:62: +2:67
+        _5 = Le(const 6_u32, (_1.3: u32));
+        switchInt(move _5) -> [0: bb6, otherwise: bb5];
     }
 
     bb5: {
-        _6 = Le((_1.3: u32), const 9_u32); // scope 0 at $DIR/exponential_or.rs:+2:62: +2:67
-        switchInt(move _6) -> [0: bb6, otherwise: bb8]; // scope 0 at $DIR/exponential_or.rs:+2:62: +2:67
+        _6 = Le((_1.3: u32), const 9_u32);
+        switchInt(move _6) -> [0: bb6, otherwise: bb8];
     }
 
     bb6: {
-        _3 = Le(const 13_u32, (_1.3: u32)); // scope 0 at $DIR/exponential_or.rs:+2:70: +2:77
-        switchInt(move _3) -> [0: bb1, otherwise: bb7]; // scope 0 at $DIR/exponential_or.rs:+2:70: +2:77
+        _3 = Le(const 13_u32, (_1.3: u32));
+        switchInt(move _3) -> [0: bb1, otherwise: bb7];
     }
 
     bb7: {
-        _4 = Le((_1.3: u32), const 16_u32); // scope 0 at $DIR/exponential_or.rs:+2:70: +2:77
-        switchInt(move _4) -> [0: bb1, otherwise: bb8]; // scope 0 at $DIR/exponential_or.rs:+2:70: +2:77
+        _4 = Le((_1.3: u32), const 16_u32);
+        switchInt(move _4) -> [0: bb1, otherwise: bb8];
     }
 
     bb8: {
-        falseEdge -> [real: bb9, imaginary: bb1]; // scope 0 at $DIR/exponential_or.rs:+2:9: +2:79
+        falseEdge -> [real: bb9, imaginary: bb1];
     }
 
     bb9: {
-        StorageLive(_7);                 // scope 0 at $DIR/exponential_or.rs:+2:10: +2:11
-        _7 = (_1.0: u32);                // scope 0 at $DIR/exponential_or.rs:+2:10: +2:11
-        StorageLive(_8);                 // scope 0 at $DIR/exponential_or.rs:+2:57: +2:58
-        _8 = (_1.3: u32);                // scope 0 at $DIR/exponential_or.rs:+2:57: +2:58
-        StorageLive(_9);                 // scope 1 at $DIR/exponential_or.rs:+2:83: +2:84
-        _9 = _7;                         // scope 1 at $DIR/exponential_or.rs:+2:83: +2:84
-        StorageLive(_10);                // scope 1 at $DIR/exponential_or.rs:+2:87: +2:88
-        _10 = _8;                        // scope 1 at $DIR/exponential_or.rs:+2:87: +2:88
-        _0 = BitXor(move _9, move _10);  // scope 1 at $DIR/exponential_or.rs:+2:83: +2:88
-        StorageDead(_10);                // scope 1 at $DIR/exponential_or.rs:+2:87: +2:88
-        StorageDead(_9);                 // scope 1 at $DIR/exponential_or.rs:+2:87: +2:88
-        StorageDead(_8);                 // scope 0 at $DIR/exponential_or.rs:+2:87: +2:88
-        StorageDead(_7);                 // scope 0 at $DIR/exponential_or.rs:+2:87: +2:88
-        goto -> bb10;                    // scope 0 at $DIR/exponential_or.rs:+2:87: +2:88
+        StorageLive(_7);
+        _7 = (_1.0: u32);
+        StorageLive(_8);
+        _8 = (_1.3: u32);
+        StorageLive(_9);
+        _9 = _7;
+        StorageLive(_10);
+        _10 = _8;
+        _0 = BitXor(move _9, move _10);
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        goto -> bb10;
     }
 
     bb10: {
-        return;                          // scope 0 at $DIR/exponential_or.rs:+5:2: +5:2
+        return;
     }
 }

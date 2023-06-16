@@ -95,7 +95,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     // used generic parameters is a bug of evaluation, so checking for it
                     // here does feel somewhat sensible.
                     if !self.features().generic_const_exprs && ct.substs.has_non_region_param() {
-                        assert!(matches!(self.def_kind(ct.def), DefKind::AnonConst));
+                        assert!(matches!(
+                            self.def_kind(ct.def),
+                            DefKind::InlineConst | DefKind::AnonConst
+                        ));
                         let mir_body = self.mir_for_ctfe(ct.def);
                         if mir_body.is_polymorphic {
                             let Some(local_def_id) = ct.def.as_local() else { return };

@@ -1,11 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command};
+use std::process::Command;
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_version, get_toolchain_name};
-use super::utils::{remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler};
-use super::SysrootKind;
+use super::rustc_info::get_file_name;
+use super::utils::{
+    maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
+};
+use super::{CodegenBackend, SysrootKind};
 
 static DIST_DIR: RelPath = RelPath::DIST;
 static BIN_DIR: RelPath = RelPath::DIST.join("bin");
@@ -15,8 +17,9 @@ pub(crate) fn build_sysroot(
     dirs: &Dirs,
     channel: &str,
     sysroot_kind: SysrootKind,
-    cg_clif_dylib_src: &Path,
+    cg_clif_dylib_src: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
+    rustup_toolchain_name: Option<&str>,
     target_triple: String,
 ) -> Compiler {
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
@@ -27,32 +30,52 @@ pub(crate) fn build_sysroot(
 
     let is_native = bootstrap_host_compiler.triple == target_triple;
 
-    // Copy the backend
-    let cg_clif_dylib_path = if cfg!(windows) {
-        // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
-        // binaries.
-        BIN_DIR
-    } else {
-        LIB_DIR
-    }
-    .to_path(dirs)
-    .join(cg_clif_dylib_src.file_name().unwrap());
-    try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
+    let cg_clif_dylib_path = match cg_clif_dylib_src {
+        CodegenBackend::Local(src_path) => {
+            // Copy the backend
+            let cg_clif_dylib_path = if cfg!(windows) {
+                // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
+                // binaries.
+                BIN_DIR
+            } else {
+                LIB_DIR
+            }
+            .to_path(dirs)
+            .join(src_path.file_name().unwrap());
+            try_hard_link(src_path, &cg_clif_dylib_path);
+            CodegenBackend::Local(cg_clif_dylib_path)
+        }
+        CodegenBackend::Builtin(name) => CodegenBackend::Builtin(name.clone()),
+    };
 
     // Build and copy rustc and cargo wrappers
-    let wrapper_base_name = get_file_name("____", "bin");
-    let toolchain_name = get_toolchain_name();
+    let wrapper_base_name = get_file_name(&bootstrap_host_compiler.rustc, "____", "bin");
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
         let wrapper_name = wrapper_base_name.replace("____", wrapper);
 
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         let wrapper_path = DIST_DIR.to_path(dirs).join(&wrapper_name);
         build_cargo_wrapper_cmd
-            .env("TOOLCHAIN_NAME", toolchain_name.clone())
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");
+        if let Some(rustup_toolchain_name) = &rustup_toolchain_name {
+            build_cargo_wrapper_cmd
+                .env("TOOLCHAIN_NAME", rustup_toolchain_name)
+                .env_remove("CARGO")
+                .env_remove("RUSTC")
+                .env_remove("RUSTDOC");
+        } else {
+            build_cargo_wrapper_cmd
+                .env_remove("TOOLCHAIN_NAME")
+                .env("CARGO", &bootstrap_host_compiler.cargo)
+                .env("RUSTC", &bootstrap_host_compiler.rustc)
+                .env("RUSTDOC", &bootstrap_host_compiler.rustdoc);
+        }
+        if let CodegenBackend::Builtin(name) = cg_clif_dylib_src {
+            build_cargo_wrapper_cmd.env("BUILTIN_BACKEND", name);
+        }
         spawn_and_wait(build_cargo_wrapper_cmd);
         try_hard_link(wrapper_path, BIN_DIR.to_path(dirs).join(wrapper_name));
     }
@@ -134,12 +157,9 @@ impl SysrootTarget {
     }
 }
 
-pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
-pub(crate) static BUILD_SYSROOT: RelPath = RelPath::DOWNLOAD.join("sysroot");
-pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = BUILD_SYSROOT.join("rustc_version");
-pub(crate) static SYSROOT_SRC: RelPath = BUILD_SYSROOT.join("sysroot_src");
+pub(crate) static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
 pub(crate) static STANDARD_LIBRARY: CargoProject =
-    CargoProject::new(&BUILD_SYSROOT, "build_sysroot");
+    CargoProject::new(&STDLIB_SRC.join("library/sysroot"), "stdlib_target");
 pub(crate) static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
 
 #[must_use]
@@ -147,7 +167,7 @@ fn build_sysroot_for_triple(
     dirs: &Dirs,
     channel: &str,
     compiler: Compiler,
-    cg_clif_dylib_path: &Path,
+    cg_clif_dylib_path: &CodegenBackend,
     sysroot_kind: SysrootKind,
 ) -> SysrootTarget {
     match sysroot_kind {
@@ -155,7 +175,7 @@ fn build_sysroot_for_triple(
             .unwrap_or(SysrootTarget { triple: compiler.triple, libs: vec![] }),
         SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
         SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(dirs, channel, compiler, &cg_clif_dylib_path)
+            build_clif_sysroot_for_triple(dirs, channel, compiler, cg_clif_dylib_path)
         }
     }
 }
@@ -199,26 +219,8 @@ fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
     channel: &str,
     mut compiler: Compiler,
-    cg_clif_dylib_path: &Path,
+    cg_clif_dylib_path: &CodegenBackend,
 ) -> SysrootTarget {
-    match fs::read_to_string(SYSROOT_RUSTC_VERSION.to_path(dirs)) {
-        Err(e) => {
-            eprintln!("Failed to get rustc version for patched sysroot source: {}", e);
-            eprintln!("Hint: Try `./y.rs prepare` to patch the sysroot source");
-            process::exit(1);
-        }
-        Ok(source_version) => {
-            let rustc_version = get_rustc_version(&compiler.rustc);
-            if source_version != rustc_version {
-                eprintln!("The patched sysroot source is outdated");
-                eprintln!("Source version: {}", source_version.trim());
-                eprintln!("Rustc version:  {}", rustc_version.trim());
-                eprintln!("Hint: Try `./y.rs prepare` to update the patched sysroot source");
-                process::exit(1);
-            }
-        }
-    }
-
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     if let Some(rtstartup_target_libs) = build_rtstartup(dirs, &compiler) {
@@ -237,19 +239,28 @@ fn build_clif_sysroot_for_triple(
 
     // Build sysroot
     let mut rustflags = " -Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
-    rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
+    match cg_clif_dylib_path {
+        CodegenBackend::Local(path) => {
+            rustflags.push_str(&format!(" -Zcodegen-backend={}", path.to_str().unwrap()));
+        }
+        CodegenBackend::Builtin(name) => {
+            rustflags.push_str(&format!(" -Zcodegen-backend={name}"));
+        }
+    };
     // Necessary for MinGW to find rsbegin.o and rsend.o
     rustflags
-        .push_str(&format!(" --sysroot={}", RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap()));
+        .push_str(&format!(" --sysroot {}", RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap()));
     if channel == "release" {
         rustflags.push_str(" -Zmir-opt-level=3");
     }
     compiler.rustflags += &rustflags;
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
+    maybe_incremental(&mut build_cmd);
     if channel == "release" {
         build_cmd.arg("--release");
     }
-    build_cmd.arg("--locked");
+    build_cmd.arg("--features").arg("compiler-builtins-no-asm backtrace panic-unwind");
+    build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");
@@ -272,13 +283,17 @@ fn build_clif_sysroot_for_triple(
 }
 
 fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
+    if !super::config::get_bool("keep_sysroot") {
+        super::prepare::prepare_stdlib(dirs, &compiler.rustc);
+    }
+
     if !compiler.triple.ends_with("windows-gnu") {
         return None;
     }
 
     RTSTARTUP_SYSROOT.ensure_fresh(dirs);
 
-    let rtstartup_src = SYSROOT_SRC.to_path(dirs).join("library").join("rtstartup");
+    let rtstartup_src = STDLIB_SRC.to_path(dirs).join("library").join("rtstartup");
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     for file in ["rsbegin", "rsend"] {

@@ -1,10 +1,10 @@
 // MIR for `Test::X` after built
 
 fn Test::X(_1: usize) -> Test {
-    let mut _0: Test;                    // return place in scope 0 at $DIR/unusual_item_types.rs:+0:5: +0:6
+    let mut _0: Test;
 
     bb0: {
-        _0 = Test::X(move _1);           // scope 0 at $DIR/unusual_item_types.rs:+0:5: +0:6
-        return;                          // scope 0 at $DIR/unusual_item_types.rs:+0:5: +0:6
+        _0 = Test::X(move _1);
+        return;
     }
 }

@@ -2,20 +2,20 @@
 + // MIR for `assert_zero` after InstSimplify
   
   fn assert_zero(_1: u8) -> u8 {
-      let mut _0: u8;                      // return place in scope 0 at $DIR/instsimplify_duplicate_switch_targets.rs:+0:37: +0:39
+      let mut _0: u8;
   
       bb0: {
--         switchInt(_1) -> [0: bb2, 1: bb1, otherwise: bb1]; // scope 0 at $DIR/instsimplify_duplicate_switch_targets.rs:+3:13: +7:14
-+         switchInt(_1) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/instsimplify_duplicate_switch_targets.rs:+3:13: +7:14
+-         switchInt(_1) -> [0: bb2, 1: bb1, otherwise: bb1];
++         switchInt(_1) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
-          unreachable;                     // scope 0 at $DIR/instsimplify_duplicate_switch_targets.rs:+10:13: +10:26
+          unreachable;
       }
   
       bb2: {
-          _0 = _1;                         // scope 0 at $DIR/instsimplify_duplicate_switch_targets.rs:+13:13: +13:20
-          return;                          // scope 0 at $DIR/instsimplify_duplicate_switch_targets.rs:+14:13: +14:21
+          _0 = _1;
+          return;
       }
   }
   

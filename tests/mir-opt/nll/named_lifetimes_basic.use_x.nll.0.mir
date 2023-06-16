@@ -34,14 +34,14 @@
 | '?8: '?3 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:12:66: 12:67) ($DIR/named_lifetimes_basic.rs:12:66: 12:67 (#0)
 |
 fn use_x(_1: &'?5 mut i32, _2: &'?6 u32, _3: &'?7 u32, _4: &'?8 u32) -> bool {
-    debug w => _1;                       // in scope 0 at $DIR/named_lifetimes_basic.rs:+0:26: +0:27
-    debug x => _2;                       // in scope 0 at $DIR/named_lifetimes_basic.rs:+0:42: +0:43
-    debug y => _3;                       // in scope 0 at $DIR/named_lifetimes_basic.rs:+0:54: +0:55
-    debug z => _4;                       // in scope 0 at $DIR/named_lifetimes_basic.rs:+0:66: +0:67
-    let mut _0: bool;                    // return place in scope 0 at $DIR/named_lifetimes_basic.rs:+0:81: +0:85
+    debug w => _1;
+    debug x => _2;
+    debug y => _3;
+    debug z => _4;
+    let mut _0: bool;
 
     bb0: {
-        _0 = const ConstValue(Scalar(0x01): bool); // bb0[0]: scope 0 at $DIR/named_lifetimes_basic.rs:+0:88: +0:92
-        return;                          // bb0[1]: scope 0 at $DIR/named_lifetimes_basic.rs:+0:94: +0:94
+        _0 = const ConstValue(Scalar(0x01): bool);
+        return;
     }
 }

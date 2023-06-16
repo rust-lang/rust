@@ -19,7 +19,7 @@ jobs:
     - name: Rustfmt
       run: |
         cargo fmt --check
-        rustfmt --check build_system/mod.rs
+        rustfmt --check build_system/main.rs
         rustfmt --check example/*
 
 
@@ -91,22 +91,52 @@ jobs:
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
 
     - name: Prepare dependencies
-      run: ./y.rs prepare
-
-    - name: Build without unstable features
-      env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      # This is the config rust-lang/rust uses for builds
-      run: ./y.rs build --no-unstable-features
+      run: ./y.sh prepare
 
     - name: Build
-      run: ./y.rs build --sysroot none
+      run: ./y.sh build --sysroot none
 
     - name: Test
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: ./y.rs test
+      run: ./y.sh test
 
+    - name: Install LLVM standard library
+      run: rustup target add ${{ matrix.env.TARGET_TRIPLE }}
+
+    # This is roughly config rust-lang/rust uses for testing
+    - name: Test with LLVM sysroot
+      # Skip native x86_64-pc-windows-gnu. It is way too slow and cross-compiled
+      # x86_64-pc-windows-gnu covers at least part of the tests.
+      if: matrix.os != 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      run: ./y.sh test --sysroot llvm --no-unstable-features
+
+
+  # This job doesn't use cg_clif in any way. It checks that all cg_clif tests work with cg_llvm too.
+  test_llvm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
+
+    - name: Disable JIT tests
+      run: |
+        sed -i 's/jit./#jit./' config.txt
+
+    - name: Test
+      env:
+        TARGET_TRIPLE: x86_64-unknown-linux-gnu
+      run: ./y.rs test --use-backend llvm
 
   bench:
     runs-on: ubuntu-latest
@@ -135,13 +165,13 @@ jobs:
       run: cargo install hyperfine || true
 
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Build
-      run: CI_OPT=1 ./y.rs build --sysroot none
+      run: CI_OPT=1 ./y.sh build --sysroot none
 
     - name: Benchmark
-      run: CI_OPT=1 ./y.rs bench
+      run: CI_OPT=1 ./y.sh bench
 
 
   dist:
@@ -194,13 +224,13 @@ jobs:
         sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
 
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Build backend
-      run: CI_OPT=1 ./y.rs build --sysroot none
+      run: CI_OPT=1 ./y.sh build --sysroot none
 
     - name: Build sysroot
-      run: CI_OPT=1 ./y.rs build
+      run: CI_OPT=1 ./y.sh build
 
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz dist

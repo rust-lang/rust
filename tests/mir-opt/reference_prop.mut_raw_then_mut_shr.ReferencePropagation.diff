@@ -2,30 +2,30 @@
 + // MIR for `mut_raw_then_mut_shr` after ReferencePropagation
   
   fn mut_raw_then_mut_shr() -> (i32, i32) {
-      let mut _0: (i32, i32);              // return place in scope 0 at $DIR/reference_prop.rs:+0:30: +0:40
-      let mut _1: i32;                     // in scope 0 at $DIR/reference_prop.rs:+1:9: +1:14
-      let mut _4: *mut i32;                // in scope 0 at $DIR/reference_prop.rs:+3:16: +3:36
-      let mut _5: &mut i32;                // in scope 0 at $DIR/reference_prop.rs:+3:16: +3:26
-      let _8: ();                          // in scope 0 at $DIR/reference_prop.rs:+7:5: +7:26
-      let mut _9: i32;                     // in scope 0 at $DIR/reference_prop.rs:+8:6: +8:7
-      let mut _10: i32;                    // in scope 0 at $DIR/reference_prop.rs:+8:9: +8:10
+      let mut _0: (i32, i32);
+      let mut _1: i32;
+      let mut _4: *mut i32;
+      let mut _5: &mut i32;
+      let _8: ();
+      let mut _9: i32;
+      let mut _10: i32;
       scope 1 {
-          debug x => _1;                   // in scope 1 at $DIR/reference_prop.rs:+1:9: +1:14
-          let _2: &mut i32;                // in scope 1 at $DIR/reference_prop.rs:+2:9: +2:13
+          debug x => _1;
+          let _2: &mut i32;
           scope 2 {
--             debug xref => _2;            // in scope 2 at $DIR/reference_prop.rs:+2:9: +2:13
-+             debug xref => &_1;           // in scope 2 at $DIR/reference_prop.rs:+2:9: +2:13
-              let _3: *mut i32;            // in scope 2 at $DIR/reference_prop.rs:+3:9: +3:13
+-             debug xref => _2;
++             debug xref => &_1;
+              let _3: *mut i32;
               scope 3 {
--                 debug xraw => _3;        // in scope 3 at $DIR/reference_prop.rs:+3:9: +3:13
-+                 debug xraw => &_1;       // in scope 3 at $DIR/reference_prop.rs:+3:9: +3:13
-                  let _6: &i32;            // in scope 3 at $DIR/reference_prop.rs:+4:9: +4:13
+-                 debug xraw => _3;
++                 debug xraw => &_1;
+                  let _6: &i32;
                   scope 4 {
--                     debug xshr => _6;    // in scope 4 at $DIR/reference_prop.rs:+4:9: +4:13
-+                     debug xshr => &_1;   // in scope 4 at $DIR/reference_prop.rs:+4:9: +4:13
-                      let _7: i32;         // in scope 4 at $DIR/reference_prop.rs:+6:9: +6:10
+-                     debug xshr => _6;
++                     debug xshr => &_1;
+                      let _7: i32;
                       scope 5 {
-                          debug a => _7;   // in scope 5 at $DIR/reference_prop.rs:+6:9: +6:10
+                          debug a => _7;
                           scope 6 {
                           }
                       }
@@ -35,41 +35,41 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+1:9: +1:14
-          _1 = const 2_i32;                // scope 0 at $DIR/reference_prop.rs:+1:17: +1:18
--         StorageLive(_2);                 // scope 1 at $DIR/reference_prop.rs:+2:9: +2:13
--         _2 = &mut _1;                    // scope 1 at $DIR/reference_prop.rs:+2:16: +2:22
--         StorageLive(_3);                 // scope 2 at $DIR/reference_prop.rs:+3:9: +3:13
--         StorageLive(_4);                 // scope 2 at $DIR/reference_prop.rs:+3:16: +3:36
--         StorageLive(_5);                 // scope 2 at $DIR/reference_prop.rs:+3:16: +3:26
--         _5 = &mut (*_2);                 // scope 2 at $DIR/reference_prop.rs:+3:16: +3:26
--         _4 = &raw mut (*_5);             // scope 2 at $DIR/reference_prop.rs:+3:16: +3:26
--         _3 = _4;                         // scope 2 at $DIR/reference_prop.rs:+3:16: +3:36
--         StorageDead(_5);                 // scope 2 at $DIR/reference_prop.rs:+3:36: +3:37
--         StorageDead(_4);                 // scope 2 at $DIR/reference_prop.rs:+3:36: +3:37
--         StorageLive(_6);                 // scope 3 at $DIR/reference_prop.rs:+4:9: +4:13
--         _6 = &(*_2);                     // scope 3 at $DIR/reference_prop.rs:+4:16: +4:22
-          StorageLive(_7);                 // scope 4 at $DIR/reference_prop.rs:+6:9: +6:10
--         _7 = (*_6);                      // scope 4 at $DIR/reference_prop.rs:+6:13: +6:18
--         StorageLive(_8);                 // scope 5 at $DIR/reference_prop.rs:+7:5: +7:26
--         (*_3) = const 4_i32;             // scope 6 at $DIR/reference_prop.rs:+7:14: +7:23
--         _8 = const ();                   // scope 6 at $DIR/reference_prop.rs:+7:5: +7:26
--         StorageDead(_8);                 // scope 5 at $DIR/reference_prop.rs:+7:25: +7:26
-+         _7 = _1;                         // scope 4 at $DIR/reference_prop.rs:+6:13: +6:18
-+         _1 = const 4_i32;                // scope 6 at $DIR/reference_prop.rs:+7:14: +7:23
-          StorageLive(_9);                 // scope 5 at $DIR/reference_prop.rs:+8:6: +8:7
-          _9 = _7;                         // scope 5 at $DIR/reference_prop.rs:+8:6: +8:7
-          StorageLive(_10);                // scope 5 at $DIR/reference_prop.rs:+8:9: +8:10
-          _10 = _1;                        // scope 5 at $DIR/reference_prop.rs:+8:9: +8:10
-          _0 = (move _9, move _10);        // scope 5 at $DIR/reference_prop.rs:+8:5: +8:11
-          StorageDead(_10);                // scope 5 at $DIR/reference_prop.rs:+8:10: +8:11
-          StorageDead(_9);                 // scope 5 at $DIR/reference_prop.rs:+8:10: +8:11
-          StorageDead(_7);                 // scope 4 at $DIR/reference_prop.rs:+9:1: +9:2
--         StorageDead(_6);                 // scope 3 at $DIR/reference_prop.rs:+9:1: +9:2
--         StorageDead(_3);                 // scope 2 at $DIR/reference_prop.rs:+9:1: +9:2
--         StorageDead(_2);                 // scope 1 at $DIR/reference_prop.rs:+9:1: +9:2
-          StorageDead(_1);                 // scope 0 at $DIR/reference_prop.rs:+9:1: +9:2
-          return;                          // scope 0 at $DIR/reference_prop.rs:+9:2: +9:2
+          StorageLive(_1);
+          _1 = const 2_i32;
+-         StorageLive(_2);
+-         _2 = &mut _1;
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         _5 = &mut (*_2);
+-         _4 = &raw mut (*_5);
+-         _3 = _4;
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         StorageLive(_6);
+-         _6 = &(*_2);
+          StorageLive(_7);
+-         _7 = (*_6);
+-         StorageLive(_8);
+-         (*_3) = const 4_i32;
+-         _8 = const ();
+-         StorageDead(_8);
++         _7 = _1;
++         _1 = const 4_i32;
+          StorageLive(_9);
+          _9 = _7;
+          StorageLive(_10);
+          _10 = _1;
+          _0 = (move _9, move _10);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_7);
+-         StorageDead(_6);
+-         StorageDead(_3);
+-         StorageDead(_2);
+          StorageDead(_1);
+          return;
       }
   }
   

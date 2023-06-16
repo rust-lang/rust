@@ -1,10 +1,10 @@
 // MIR for `raw_pointer` after built
 
 fn raw_pointer(_1: *const i32) -> *const i32 {
-    let mut _0: *const i32;              // return place in scope 0 at $DIR/references.rs:+0:38: +0:48
+    let mut _0: *const i32;
 
     bb0: {
-        _0 = &raw const (*_1);           // scope 0 at $DIR/references.rs:+4:9: +4:27
-        return;                          // scope 0 at $DIR/references.rs:+5:9: +5:17
+        _0 = &raw const (*_1);
+        return;
     }
 }

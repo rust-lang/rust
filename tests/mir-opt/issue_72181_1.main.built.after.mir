@@ -5,53 +5,47 @@
 | 1: user_ty: Canonical { value: Ty(Void), max_universe: U0, variables: [] }, span: $DIR/issue_72181_1.rs:16:12: 16:16, inferred_ty: Void
 |
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/issue_72181_1.rs:+0:11: +0:11
-    let mut _1: !;                       // in scope 0 at $DIR/issue_72181_1.rs:+0:11: +6:2
-    let _2: Void as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/issue_72181_1.rs:+1:9: +1:10
-    let mut _3: ();                      // in scope 0 at $DIR/issue_72181_1.rs:+2:41: +2:43
-    let _4: !;                           // in scope 0 at $DIR/issue_72181_1.rs:+5:5: +5:9
-    let mut _5: Void;                    // in scope 0 at $DIR/issue_72181_1.rs:+5:7: +5:8
+    let mut _0: ();
+    let mut _1: !;
+    let _2: Void as UserTypeProjection { base: UserType(0), projs: [] };
+    let mut _3: ();
+    let _4: !;
+    let mut _5: Void;
     scope 1 {
-        debug v => _2;                   // in scope 1 at $DIR/issue_72181_1.rs:+1:9: +1:10
+        debug v => _2;
     }
     scope 2 {
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/issue_72181_1.rs:+1:9: +1:10
-        StorageLive(_3);                 // scope 2 at $DIR/issue_72181_1.rs:+2:41: +2:43
-        _3 = ();                         // scope 2 at $DIR/issue_72181_1.rs:+2:41: +2:43
-        _2 = transmute::<(), Void>(move _3) -> bb4; // scope 2 at $DIR/issue_72181_1.rs:+2:9: +2:44
-                                         // mir::Constant
-                                         // + span: $DIR/issue_72181_1.rs:17:9: 17:40
-                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(()) -> Void {transmute::<(), Void>}, val: Value(<ZST>) }
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = ();
+        _2 = transmute::<(), Void>(move _3) -> bb4;
     }
 
     bb1: {
-        StorageDead(_3);                 // scope 2 at $DIR/issue_72181_1.rs:+2:43: +2:44
-        FakeRead(ForLet(None), _2);      // scope 0 at $DIR/issue_72181_1.rs:+1:9: +1:10
-        AscribeUserType(_2, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/issue_72181_1.rs:+1:12: +1:16
-        StorageLive(_4);                 // scope 1 at $DIR/issue_72181_1.rs:+5:5: +5:9
-        StorageLive(_5);                 // scope 1 at $DIR/issue_72181_1.rs:+5:7: +5:8
-        _5 = move _2;                    // scope 1 at $DIR/issue_72181_1.rs:+5:7: +5:8
-        _4 = f(move _5) -> bb4;          // scope 1 at $DIR/issue_72181_1.rs:+5:5: +5:9
-                                         // mir::Constant
-                                         // + span: $DIR/issue_72181_1.rs:20:5: 20:6
-                                         // + literal: Const { ty: fn(Void) -> ! {f}, val: Value(<ZST>) }
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        AscribeUserType(_2, o, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = move _2;
+        _4 = f(move _5) -> bb4;
     }
 
     bb2: {
-        StorageDead(_5);                 // scope 1 at $DIR/issue_72181_1.rs:+5:8: +5:9
-        StorageDead(_4);                 // scope 1 at $DIR/issue_72181_1.rs:+5:9: +5:10
-        StorageDead(_2);                 // scope 0 at $DIR/issue_72181_1.rs:+6:1: +6:2
-        unreachable;                     // scope 0 at $DIR/issue_72181_1.rs:+0:11: +6:2
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_2);
+        unreachable;
     }
 
     bb3: {
-        return;                          // scope 0 at $DIR/issue_72181_1.rs:+6:2: +6:2
+        return;
     }
 
     bb4 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue_72181_1.rs:+0:1: +6:2
+        resume;
     }
 }

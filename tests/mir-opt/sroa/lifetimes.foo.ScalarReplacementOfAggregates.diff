@@ -2,213 +2,191 @@
 + // MIR for `foo` after ScalarReplacementOfAggregates
   
   fn foo() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/lifetimes.rs:+0:18: +0:18
-      let _1: Foo<T>;                      // in scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
-      let mut _2: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>; // in scope 0 at $DIR/lifetimes.rs:+2:12: +2:31
-      let mut _3: std::boxed::Box<dyn std::fmt::Display>; // in scope 0 at $DIR/lifetimes.rs:+2:15: +2:30
-      let mut _4: std::boxed::Box<u32>;    // in scope 0 at $DIR/lifetimes.rs:+2:15: +2:30
-      let mut _7: isize;                   // in scope 0 at $DIR/lifetimes.rs:+9:12: +9:17
-      let _9: ();                          // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let _10: ();                         // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let mut _11: std::fmt::Arguments<'_>; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let mut _12: &[&str];                // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
-      let mut _13: &[&str; 3];             // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
-      let _14: &[&str; 3];                 // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
-      let _15: [&str; 3];                  // in scope 0 at $DIR/lifetimes.rs:+10:19: +10:28
-      let mut _16: &[core::fmt::rt::Argument<'_>]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let mut _17: &[core::fmt::rt::Argument<'_>; 2]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let _18: &[core::fmt::rt::Argument<'_>; 2]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let _19: [core::fmt::rt::Argument<'_>; 2]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
-      let mut _20: core::fmt::rt::Argument<'_>; // in scope 0 at $DIR/lifetimes.rs:+10:20: +10:23
-      let mut _21: &std::boxed::Box<dyn std::fmt::Display>; // in scope 0 at $DIR/lifetimes.rs:+10:20: +10:23
-      let _22: &std::boxed::Box<dyn std::fmt::Display>; // in scope 0 at $DIR/lifetimes.rs:+10:20: +10:23
-      let mut _23: core::fmt::rt::Argument<'_>; // in scope 0 at $DIR/lifetimes.rs:+10:24: +10:27
-      let mut _24: &u32;                   // in scope 0 at $DIR/lifetimes.rs:+10:24: +10:27
-      let _25: &u32;                       // in scope 0 at $DIR/lifetimes.rs:+10:24: +10:27
-      let mut _27: bool;                   // in scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-      let mut _28: isize;                  // in scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-      let mut _29: isize;                  // in scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-      let mut _30: isize;                  // in scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-+     let _31: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>; // in scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
-+     let _32: u32;                        // in scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
+      let mut _0: ();
+      let _1: Foo<T>;
+      let mut _2: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
+      let mut _3: std::boxed::Box<dyn std::fmt::Display>;
+      let mut _4: std::boxed::Box<u32>;
+      let mut _7: isize;
+      let _9: ();
+      let _10: ();
+      let mut _11: std::fmt::Arguments<'_>;
+      let mut _12: &[&str];
+      let mut _13: &[&str; 3];
+      let _14: &[&str; 3];
+      let _15: [&str; 3];
+      let mut _16: &[core::fmt::rt::Argument<'_>];
+      let mut _17: &[core::fmt::rt::Argument<'_>; 2];
+      let _18: &[core::fmt::rt::Argument<'_>; 2];
+      let _19: [core::fmt::rt::Argument<'_>; 2];
+      let mut _20: core::fmt::rt::Argument<'_>;
+      let mut _21: &std::boxed::Box<dyn std::fmt::Display>;
+      let _22: &std::boxed::Box<dyn std::fmt::Display>;
+      let mut _23: core::fmt::rt::Argument<'_>;
+      let mut _24: &u32;
+      let _25: &u32;
+      let mut _27: bool;
+      let mut _28: isize;
+      let mut _29: isize;
+      let mut _30: isize;
++     let _31: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
++     let _32: u32;
       scope 1 {
--         debug foo => _1;                 // in scope 1 at $DIR/lifetimes.rs:+1:9: +1:12
-+         debug foo => Foo<T>{ .0 => _31, .1 => _32, }; // in scope 1 at $DIR/lifetimes.rs:+1:9: +1:12
-          let _5: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>; // in scope 1 at $DIR/lifetimes.rs:+6:9: +6:10
+-         debug foo => _1;
++         debug foo => Foo<T>{ .0 => _31, .1 => _32, };
+          let _5: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
           scope 2 {
-              debug x => _5;               // in scope 2 at $DIR/lifetimes.rs:+6:9: +6:10
-              let _6: u32;                 // in scope 2 at $DIR/lifetimes.rs:+7:9: +7:10
+              debug x => _5;
+              let _6: u32;
               scope 3 {
-                  debug y => _6;           // in scope 3 at $DIR/lifetimes.rs:+7:9: +7:10
+                  debug y => _6;
                   scope 4 {
-                      debug x => _8;       // in scope 4 at $DIR/lifetimes.rs:+9:15: +9:16
-                      let _8: std::boxed::Box<dyn std::fmt::Display>; // in scope 4 at $DIR/lifetimes.rs:+9:15: +9:16
-                      let mut _26: &[&str; 3]; // in scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
+                      debug x => _8;
+                      let _8: std::boxed::Box<dyn std::fmt::Display>;
+                      let mut _26: &[&str; 3];
                   }
               }
           }
       }
   
       bb0: {
-          _27 = const false;               // scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
--         StorageLive(_1);                 // scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
-+         StorageLive(_31);                // scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
-+         StorageLive(_32);                // scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
-+         nop;                             // scope 0 at $DIR/lifetimes.rs:+1:9: +1:12
-          StorageLive(_2);                 // scope 0 at $DIR/lifetimes.rs:+2:12: +2:31
-          StorageLive(_3);                 // scope 0 at $DIR/lifetimes.rs:+2:15: +2:30
-          StorageLive(_4);                 // scope 0 at $DIR/lifetimes.rs:+2:15: +2:30
-          _4 = Box::<u32>::new(const 5_u32) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lifetimes.rs:+2:15: +2:30
-                                           // mir::Constant
-                                           // + span: $DIR/lifetimes.rs:19:15: 19:23
-                                           // + user_ty: UserType(1)
-                                           // + literal: Const { ty: fn(u32) -> Box<u32> {Box::<u32>::new}, val: Value(<ZST>) }
+          _27 = const false;
+-         StorageLive(_1);
++         StorageLive(_31);
++         StorageLive(_32);
++         nop;
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = Box::<u32>::new(const 5_u32) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-          _3 = move _4 as std::boxed::Box<dyn std::fmt::Display> (Pointer(Unsize)); // scope 0 at $DIR/lifetimes.rs:+2:15: +2:30
-          StorageDead(_4);                 // scope 0 at $DIR/lifetimes.rs:+2:29: +2:30
-          _2 = Result::<Box<dyn std::fmt::Display>, <T as Err>::Err>::Ok(move _3); // scope 0 at $DIR/lifetimes.rs:+2:12: +2:31
-          StorageDead(_3);                 // scope 0 at $DIR/lifetimes.rs:+2:30: +2:31
--         _1 = Foo::<T> { x: move _2, y: const 7_u32 }; // scope 0 at $DIR/lifetimes.rs:+1:23: +4:6
-+         _31 = move _2;                   // scope 0 at $DIR/lifetimes.rs:+1:23: +4:6
-+         _32 = const 7_u32;               // scope 0 at $DIR/lifetimes.rs:+1:23: +4:6
-+         nop;                             // scope 0 at $DIR/lifetimes.rs:+1:23: +4:6
-          StorageDead(_2);                 // scope 0 at $DIR/lifetimes.rs:+4:5: +4:6
-          StorageLive(_5);                 // scope 1 at $DIR/lifetimes.rs:+6:9: +6:10
-          _27 = const true;                // scope 1 at $DIR/lifetimes.rs:+6:13: +6:18
--         _5 = move (_1.0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>); // scope 1 at $DIR/lifetimes.rs:+6:13: +6:18
-+         _5 = move _31;                   // scope 1 at $DIR/lifetimes.rs:+6:13: +6:18
-          StorageLive(_6);                 // scope 2 at $DIR/lifetimes.rs:+7:9: +7:10
--         _6 = (_1.1: u32);                // scope 2 at $DIR/lifetimes.rs:+7:13: +7:18
-+         _6 = _32;                        // scope 2 at $DIR/lifetimes.rs:+7:13: +7:18
-          _7 = discriminant(_5);           // scope 4 at $DIR/lifetimes.rs:+9:12: +9:17
-          switchInt(move _7) -> [0: bb2, otherwise: bb7]; // scope 4 at $DIR/lifetimes.rs:+9:12: +9:17
+          _3 = move _4 as std::boxed::Box<dyn std::fmt::Display> (Pointer(Unsize));
+          StorageDead(_4);
+          _2 = Result::<Box<dyn std::fmt::Display>, <T as Err>::Err>::Ok(move _3);
+          StorageDead(_3);
+-         _1 = Foo::<T> { x: move _2, y: const 7_u32 };
++         _31 = move _2;
++         _32 = const 7_u32;
++         nop;
+          StorageDead(_2);
+          StorageLive(_5);
+          _27 = const true;
+-         _5 = move (_1.0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>);
++         _5 = move _31;
+          StorageLive(_6);
+-         _6 = (_1.1: u32);
++         _6 = _32;
+          _7 = discriminant(_5);
+          switchInt(move _7) -> [0: bb2, otherwise: bb7];
       }
   
       bb2: {
-          StorageLive(_8);                 // scope 4 at $DIR/lifetimes.rs:+9:15: +9:16
-          _27 = const false;               // scope 4 at $DIR/lifetimes.rs:+9:15: +9:16
-          _8 = move ((_5 as Ok).0: std::boxed::Box<dyn std::fmt::Display>); // scope 4 at $DIR/lifetimes.rs:+9:15: +9:16
-          StorageLive(_9);                 // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_10);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_11);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_12);                // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          StorageLive(_13);                // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          StorageLive(_14);                // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          _26 = const _;                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-                                           // mir::Constant
-                                           // + span: $DIR/lifetimes.rs:27:19: 27:28
-                                           // + literal: Const { ty: &[&str; 3], val: Unevaluated(foo, [T], Some(promoted[0])) }
-          _14 = &(*_26);                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          _13 = &(*_14);                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          _12 = move _13 as &[&str] (Pointer(Unsize)); // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
-          StorageDead(_13);                // scope 4 at $DIR/lifetimes.rs:+10:27: +10:28
-          StorageLive(_16);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_17);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_18);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_19);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_20);                // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
-          StorageLive(_21);                // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
-          StorageLive(_22);                // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
-          _22 = &_8;                       // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
-          _21 = &(*_22);                   // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
-          _20 = core::fmt::rt::Argument::<'_>::new_display::<Box<dyn std::fmt::Display>>(move _21) -> [return: bb3, unwind unreachable]; // scope 4 at $DIR/lifetimes.rs:+10:20: +10:23
-                                           // mir::Constant
-                                           // + span: $DIR/lifetimes.rs:27:20: 27:23
-                                           // + user_ty: UserType(4)
-                                           // + literal: Const { ty: for<'b> fn(&'b Box<dyn std::fmt::Display>) -> core::fmt::rt::Argument<'b> {core::fmt::rt::Argument::<'_>::new_display::<Box<dyn std::fmt::Display>>}, val: Value(<ZST>) }
+          StorageLive(_8);
+          _27 = const false;
+          _8 = move ((_5 as Ok).0: std::boxed::Box<dyn std::fmt::Display>);
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+          _26 = const _;
+          _14 = &(*_26);
+          _13 = &(*_14);
+          _12 = move _13 as &[&str] (Pointer(Unsize));
+          StorageDead(_13);
+          StorageLive(_16);
+          StorageLive(_17);
+          StorageLive(_18);
+          StorageLive(_19);
+          StorageLive(_20);
+          StorageLive(_21);
+          StorageLive(_22);
+          _22 = &_8;
+          _21 = &(*_22);
+          _20 = core::fmt::rt::Argument::<'_>::new_display::<Box<dyn std::fmt::Display>>(move _21) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
-          StorageDead(_21);                // scope 4 at $DIR/lifetimes.rs:+10:22: +10:23
-          StorageLive(_23);                // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
-          StorageLive(_24);                // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
-          StorageLive(_25);                // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
-          _25 = &_6;                       // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
-          _24 = &(*_25);                   // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
-          _23 = core::fmt::rt::Argument::<'_>::new_display::<u32>(move _24) -> [return: bb4, unwind unreachable]; // scope 4 at $DIR/lifetimes.rs:+10:24: +10:27
-                                           // mir::Constant
-                                           // + span: $DIR/lifetimes.rs:27:24: 27:27
-                                           // + user_ty: UserType(5)
-                                           // + literal: Const { ty: for<'b> fn(&'b u32) -> core::fmt::rt::Argument<'b> {core::fmt::rt::Argument::<'_>::new_display::<u32>}, val: Value(<ZST>) }
+          StorageDead(_21);
+          StorageLive(_23);
+          StorageLive(_24);
+          StorageLive(_25);
+          _25 = &_6;
+          _24 = &(*_25);
+          _23 = core::fmt::rt::Argument::<'_>::new_display::<u32>(move _24) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
-          StorageDead(_24);                // scope 4 at $DIR/lifetimes.rs:+10:26: +10:27
-          _19 = [move _20, move _23];      // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_23);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_20);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _18 = &_19;                      // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _17 = &(*_18);                   // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _16 = move _17 as &[core::fmt::rt::Argument<'_>] (Pointer(Unsize)); // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_17);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _11 = Arguments::<'_>::new_v1(move _12, move _16) -> [return: bb5, unwind unreachable]; // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-                                           // mir::Constant
-                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
-                                           // + user_ty: UserType(3)
-                                           // + literal: Const { ty: fn(&[&'static str], &[core::fmt::rt::Argument<'_>]) -> Arguments<'_> {Arguments::<'_>::new_v1}, val: Value(<ZST>) }
+          StorageDead(_24);
+          _19 = [move _20, move _23];
+          StorageDead(_23);
+          StorageDead(_20);
+          _18 = &_19;
+          _17 = &(*_18);
+          _16 = move _17 as &[core::fmt::rt::Argument<'_>] (Pointer(Unsize));
+          StorageDead(_17);
+          _11 = Arguments::<'_>::new_v1(move _12, move _16) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
-          StorageDead(_16);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_12);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _10 = _eprint(move _11) -> [return: bb6, unwind unreachable]; // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-                                           // mir::Constant
-                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
-                                           // + literal: Const { ty: for<'a> fn(Arguments<'a>) {_eprint}, val: Value(<ZST>) }
+          StorageDead(_16);
+          StorageDead(_12);
+          _10 = _eprint(move _11) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
-          StorageDead(_11);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_25);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_22);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_19);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_18);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_14);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_10);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _9 = const ();                   // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageDead(_9);                 // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _0 = const ();                   // scope 4 at $DIR/lifetimes.rs:+9:22: +11:6
-          drop(_8) -> [return: bb8, unwind unreachable]; // scope 3 at $DIR/lifetimes.rs:+11:5: +11:6
+          StorageDead(_11);
+          StorageDead(_25);
+          StorageDead(_22);
+          StorageDead(_19);
+          StorageDead(_18);
+          StorageDead(_14);
+          StorageDead(_10);
+          _9 = const ();
+          StorageDead(_9);
+          _0 = const ();
+          drop(_8) -> [return: bb8, unwind unreachable];
       }
   
       bb7: {
-          _0 = const ();                   // scope 3 at $DIR/lifetimes.rs:+11:6: +11:6
-          goto -> bb9;                     // scope 3 at $DIR/lifetimes.rs:+9:5: +11:6
+          _0 = const ();
+          goto -> bb9;
       }
   
       bb8: {
-          StorageDead(_8);                 // scope 3 at $DIR/lifetimes.rs:+11:5: +11:6
-          goto -> bb9;                     // scope 3 at $DIR/lifetimes.rs:+9:5: +11:6
+          StorageDead(_8);
+          goto -> bb9;
       }
   
       bb9: {
-          StorageDead(_6);                 // scope 2 at $DIR/lifetimes.rs:+12:1: +12:2
-          _28 = discriminant(_5);          // scope 1 at $DIR/lifetimes.rs:+12:1: +12:2
-          switchInt(move _28) -> [0: bb11, otherwise: bb13]; // scope 1 at $DIR/lifetimes.rs:+12:1: +12:2
+          StorageDead(_6);
+          _28 = discriminant(_5);
+          switchInt(move _28) -> [0: bb11, otherwise: bb13];
       }
   
       bb10: {
-          _27 = const false;               // scope 1 at $DIR/lifetimes.rs:+12:1: +12:2
-          StorageDead(_5);                 // scope 1 at $DIR/lifetimes.rs:+12:1: +12:2
--         StorageDead(_1);                 // scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-+         StorageDead(_31);                // scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-+         StorageDead(_32);                // scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-+         nop;                             // scope 0 at $DIR/lifetimes.rs:+12:1: +12:2
-          return;                          // scope 0 at $DIR/lifetimes.rs:+12:2: +12:2
+          _27 = const false;
+          StorageDead(_5);
+-         StorageDead(_1);
++         StorageDead(_31);
++         StorageDead(_32);
++         nop;
+          return;
       }
   
       bb11: {
-          switchInt(_27) -> [0: bb10, otherwise: bb12]; // scope 1 at $DIR/lifetimes.rs:+12:1: +12:2
+          switchInt(_27) -> [0: bb10, otherwise: bb12];
       }
   
       bb12: {
-          drop(((_5 as Ok).0: std::boxed::Box<dyn std::fmt::Display>)) -> [return: bb10, unwind unreachable]; // scope 1 at $DIR/lifetimes.rs:+12:1: +12:2
+          drop(((_5 as Ok).0: std::boxed::Box<dyn std::fmt::Display>)) -> [return: bb10, unwind unreachable];
       }
   
       bb13: {
-          drop(_5) -> [return: bb10, unwind unreachable]; // scope 1 at $DIR/lifetimes.rs:+12:1: +12:2
+          drop(_5) -> [return: bb10, unwind unreachable];
       }
   }
   

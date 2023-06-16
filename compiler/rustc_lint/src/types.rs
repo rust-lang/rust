@@ -3,9 +3,10 @@ use crate::{
     lints::{
         AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
         InvalidAtomicOrderingDiag, InvalidNanComparisons, InvalidNanComparisonsSuggestion,
-        OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSub,
-        OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
-        RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange, VariantSizeDifferencesDiag,
+        OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
+        OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
+        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange,
+        VariantSizeDifferencesDiag,
     },
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -297,10 +298,50 @@ fn report_bin_hex_error(
             }
         },
     );
+    let sign_bit_sub = (!negative)
+        .then(|| {
+            let ty::Int(int_ty) = cx.typeck_results().node_type(expr.hir_id).kind() else {
+                return None;
+            };
+
+            let Some(bit_width) = int_ty.bit_width() else {
+                return None; // isize case
+            };
+
+            // Skip if sign bit is not set
+            if (val & (1 << (bit_width - 1))) == 0 {
+                return None;
+            }
+
+            let lit_no_suffix =
+                if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
+                    repr_str.split_at(pos).0
+                } else {
+                    &repr_str
+                };
+
+            Some(OverflowingBinHexSignBitSub {
+                span: expr.span,
+                lit_no_suffix,
+                negative_val: actually.clone(),
+                int_ty: int_ty.name_str(),
+                uint_ty: int_ty.to_unsigned().name_str(),
+            })
+        })
+        .flatten();
+
     cx.emit_spanned_lint(
         OVERFLOWING_LITERALS,
         expr.span,
-        OverflowingBinHex { ty: t, lit: repr_str.clone(), dec: val, actually, sign, sub },
+        OverflowingBinHex {
+            ty: t,
+            lit: repr_str.clone(),
+            dec: val,
+            actually,
+            sign,
+            sub,
+            sign_bit_sub,
+        },
     )
 }
 

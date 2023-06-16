@@ -1,70 +1,70 @@
 // MIR for `new` after PreCodegen
 
 fn new(_1: Result<T, E>) -> Result<T, E> {
-    debug x => _1;                       // in scope 0 at $DIR/try_identity.rs:+0:14: +0:15
-    let mut _0: std::result::Result<T, E>; // return place in scope 0 at $DIR/try_identity.rs:+0:34: +0:46
-    let mut _2: isize;                   // in scope 0 at $DIR/try_identity.rs:+4:17: +4:22
-    let _3: T;                           // in scope 0 at $DIR/try_identity.rs:+4:20: +4:21
-    let mut _4: std::ops::ControlFlow<E, T>; // in scope 0 at $DIR/try_identity.rs:+2:15: +7:10
-    let _5: E;                           // in scope 0 at $DIR/try_identity.rs:+5:21: +5:22
-    let mut _6: isize;                   // in scope 0 at $DIR/try_identity.rs:+8:13: +8:37
-    let _7: T;                           // in scope 0 at $DIR/try_identity.rs:+8:35: +8:36
-    let _8: E;                           // in scope 0 at $DIR/try_identity.rs:+9:32: +9:33
+    debug x => _1;
+    let mut _0: std::result::Result<T, E>;
+    let mut _2: isize;
+    let _3: T;
+    let mut _4: std::ops::ControlFlow<E, T>;
+    let _5: E;
+    let mut _6: isize;
+    let _7: T;
+    let _8: E;
     scope 1 {
-        debug v => _3;                   // in scope 1 at $DIR/try_identity.rs:+4:20: +4:21
+        debug v => _3;
     }
     scope 2 {
-        debug e => _5;                   // in scope 2 at $DIR/try_identity.rs:+5:21: +5:22
+        debug e => _5;
     }
     scope 3 {
-        debug v => _7;                   // in scope 3 at $DIR/try_identity.rs:+8:35: +8:36
+        debug v => _7;
     }
     scope 4 {
-        debug e => _8;                   // in scope 4 at $DIR/try_identity.rs:+9:32: +9:33
+        debug e => _8;
     }
 
     bb0: {
-        StorageLive(_4);                 // scope 0 at $DIR/try_identity.rs:+2:15: +7:10
-        _2 = discriminant(_1);           // scope 0 at $DIR/try_identity.rs:+3:19: +3:20
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb7]; // scope 0 at $DIR/try_identity.rs:+3:13: +3:20
+        StorageLive(_4);
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb7];
     }
 
     bb1: {
-        _3 = move ((_1 as Ok).0: T);     // scope 0 at $DIR/try_identity.rs:+4:20: +4:21
-        _4 = ControlFlow::<E, T>::Continue(move _3); // scope 1 at $DIR/try_identity.rs:+4:26: +4:50
-        goto -> bb3;                     // scope 0 at $DIR/try_identity.rs:+4:49: +4:50
+        _3 = move ((_1 as Ok).0: T);
+        _4 = ControlFlow::<E, T>::Continue(move _3);
+        goto -> bb3;
     }
 
     bb2: {
-        _5 = move ((_1 as Err).0: E);    // scope 0 at $DIR/try_identity.rs:+5:21: +5:22
-        _4 = ControlFlow::<E, T>::Break(move _5); // scope 2 at $DIR/try_identity.rs:+5:27: +5:48
-        goto -> bb3;                     // scope 0 at $DIR/try_identity.rs:+5:47: +5:48
+        _5 = move ((_1 as Err).0: E);
+        _4 = ControlFlow::<E, T>::Break(move _5);
+        goto -> bb3;
     }
 
     bb3: {
-        _6 = discriminant(_4);           // scope 0 at $DIR/try_identity.rs:+2:15: +7:10
-        switchInt(move _6) -> [0: bb4, 1: bb5, otherwise: bb7]; // scope 0 at $DIR/try_identity.rs:+2:9: +7:10
+        _6 = discriminant(_4);
+        switchInt(move _6) -> [0: bb4, 1: bb5, otherwise: bb7];
     }
 
     bb4: {
-        _7 = move ((_4 as Continue).0: T); // scope 0 at $DIR/try_identity.rs:+8:35: +8:36
-        _0 = Result::<T, E>::Ok(move _7); // scope 0 at $DIR/try_identity.rs:+1:5: +11:6
-        StorageDead(_4);                 // scope 0 at $DIR/try_identity.rs:+12:1: +12:2
-        goto -> bb6;                     // scope 0 at $DIR/try_identity.rs:+12:1: +12:2
+        _7 = move ((_4 as Continue).0: T);
+        _0 = Result::<T, E>::Ok(move _7);
+        StorageDead(_4);
+        goto -> bb6;
     }
 
     bb5: {
-        _8 = move ((_4 as Break).0: E);  // scope 0 at $DIR/try_identity.rs:+9:32: +9:33
-        _0 = Result::<T, E>::Err(move _8); // scope 4 at $DIR/try_identity.rs:+9:45: +9:51
-        StorageDead(_4);                 // scope 0 at $DIR/try_identity.rs:+12:1: +12:2
-        goto -> bb6;                     // scope 0 at $DIR/try_identity.rs:+12:1: +12:2
+        _8 = move ((_4 as Break).0: E);
+        _0 = Result::<T, E>::Err(move _8);
+        StorageDead(_4);
+        goto -> bb6;
     }
 
     bb6: {
-        return;                          // scope 0 at $DIR/try_identity.rs:+12:2: +12:2
+        return;
     }
 
     bb7: {
-        unreachable;                     // scope 0 at $DIR/try_identity.rs:+3:19: +3:20
+        unreachable;
     }
 }

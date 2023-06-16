@@ -2,174 +2,162 @@
 + // MIR for `debuginfo` after ReferencePropagation
   
   fn debuginfo() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/reference_prop.rs:+0:16: +0:16
-      let _1: &mut u8;                     // in scope 0 at $DIR/reference_prop.rs:+3:9: +3:19
-      let mut _2: u8;                      // in scope 0 at $DIR/reference_prop.rs:+3:27: +3:31
-      let _4: debuginfo::T;                // in scope 0 at $DIR/reference_prop.rs:+4:18: +4:22
-      let _6: ();                          // in scope 0 at $DIR/reference_prop.rs:+9:5: +12:6
-      let mut _7: std::option::Option<i32>; // in scope 0 at $DIR/reference_prop.rs:+9:11: +9:18
-      let mut _8: isize;                   // in scope 0 at $DIR/reference_prop.rs:+10:9: +10:13
-      let _10: ();                         // in scope 0 at $DIR/reference_prop.rs:+16:5: +17:6
-      let mut _11: &[i32];                 // in scope 0 at $DIR/reference_prop.rs:+16:82: +16:94
-      let _12: &[i32];                     // in scope 0 at $DIR/reference_prop.rs:+16:83: +16:94
-      let mut _13: &[i32; 10];             // in scope 0 at $DIR/reference_prop.rs:+16:83: +16:90
-      let _14: [i32; 10];                  // in scope 0 at $DIR/reference_prop.rs:+16:83: +16:90
-      let mut _15: std::ops::RangeFull;    // in scope 0 at $DIR/reference_prop.rs:+16:91: +16:93
-      let mut _16: usize;                  // in scope 0 at $DIR/reference_prop.rs:+16:12: +16:79
-      let mut _17: usize;                  // in scope 0 at $DIR/reference_prop.rs:+16:12: +16:79
-      let mut _18: bool;                   // in scope 0 at $DIR/reference_prop.rs:+16:12: +16:79
-      let _23: &&mut u8;                   // in scope 0 at $DIR/reference_prop.rs:+19:28: +19:40
-      let _24: &mut u8;                    // in scope 0 at $DIR/reference_prop.rs:+19:29: +19:40
-      let mut _25: debuginfo::T;           // in scope 0 at $DIR/reference_prop.rs:+19:34: +19:38
+      let mut _0: ();
+      let _1: &mut u8;
+      let mut _2: u8;
+      let _4: debuginfo::T;
+      let _6: ();
+      let mut _7: std::option::Option<i32>;
+      let mut _8: isize;
+      let _10: ();
+      let mut _11: &[i32];
+      let _12: &[i32];
+      let mut _13: &[i32; 10];
+      let _14: [i32; 10];
+      let mut _15: std::ops::RangeFull;
+      let mut _16: usize;
+      let mut _17: usize;
+      let mut _18: bool;
+      let _23: &&mut u8;
+      let _24: &mut u8;
+      let mut _25: debuginfo::T;
       scope 1 {
--         debug ref_mut_u8 => _1;          // in scope 1 at $DIR/reference_prop.rs:+3:9: +3:19
-+         debug ref_mut_u8 => &_2;         // in scope 1 at $DIR/reference_prop.rs:+3:9: +3:19
-          let _3: &u8;                     // in scope 1 at $DIR/reference_prop.rs:+4:9: +4:14
-          let mut _28: &debuginfo::T;      // in scope 1 at $DIR/reference_prop.rs:+4:17: +4:24
+-         debug ref_mut_u8 => _1;
++         debug ref_mut_u8 => &_2;
+          let _3: &u8;
+          let mut _28: &debuginfo::T;
           scope 2 {
--             debug field => _3;           // in scope 2 at $DIR/reference_prop.rs:+4:9: +4:14
-+             debug field => &((*_28).0: u8); // in scope 2 at $DIR/reference_prop.rs:+4:9: +4:14
-              let _5: &u8;                 // in scope 2 at $DIR/reference_prop.rs:+7:9: +7:17
+-             debug field => _3;
++             debug field => &((*_28).0: u8);
+              let _5: &u8;
               scope 3 {
--                 debug reborrow => _5;    // in scope 3 at $DIR/reference_prop.rs:+7:9: +7:17
-+                 debug reborrow => &_2;   // in scope 3 at $DIR/reference_prop.rs:+7:9: +7:17
-                  let _9: &i32;            // in scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
-                  let _22: &&&mut u8;      // in scope 3 at $DIR/reference_prop.rs:+19:9: +19:24
-                  let mut _27: &std::option::Option<i32>; // in scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
+-                 debug reborrow => _5;
++                 debug reborrow => &_2;
+                  let _9: &i32;
+                  let _22: &&&mut u8;
+                  let mut _27: &std::option::Option<i32>;
                   scope 4 {
--                     debug variant_field => _9; // in scope 4 at $DIR/reference_prop.rs:+11:14: +11:31
-+                     debug variant_field => &(((*_27) as Some).0: i32); // in scope 4 at $DIR/reference_prop.rs:+11:14: +11:31
+-                     debug variant_field => _9;
++                     debug variant_field => &(((*_27) as Some).0: i32);
                   }
                   scope 5 {
--                     debug constant_index => _19; // in scope 5 at $DIR/reference_prop.rs:+16:16: +16:34
-+                     debug constant_index => &(*_11)[1 of 3]; // in scope 5 at $DIR/reference_prop.rs:+16:16: +16:34
-                      debug subslice => _20; // in scope 5 at $DIR/reference_prop.rs:+16:36: +16:44
-                      debug constant_index_from_end => _21; // in scope 5 at $DIR/reference_prop.rs:+16:51: +16:78
-                      let _19: &i32;       // in scope 5 at $DIR/reference_prop.rs:+16:16: +16:34
-                      let _20: &[i32];     // in scope 5 at $DIR/reference_prop.rs:+16:36: +16:44
-                      let _21: &i32;       // in scope 5 at $DIR/reference_prop.rs:+16:51: +16:78
-                      let mut _26: &[i32; 10]; // in scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
+-                     debug constant_index => _19;
++                     debug constant_index => &(*_11)[1 of 3];
+                      debug subslice => _20;
+                      debug constant_index_from_end => _21;
+                      let _19: &i32;
+                      let _20: &[i32];
+                      let _21: &i32;
+                      let mut _26: &[i32; 10];
                   }
                   scope 6 {
--                     debug multiple_borrow => _22; // in scope 6 at $DIR/reference_prop.rs:+19:9: +19:24
-+                     debug multiple_borrow => &&&(_25.0: u8); // in scope 6 at $DIR/reference_prop.rs:+19:9: +19:24
+-                     debug multiple_borrow => _22;
++                     debug multiple_borrow => &&&(_25.0: u8);
                   }
               }
           }
       }
   
       bb0: {
--         StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+3:9: +3:19
-          StorageLive(_2);                 // scope 0 at $DIR/reference_prop.rs:+3:27: +3:31
-          _2 = const 5_u8;                 // scope 0 at $DIR/reference_prop.rs:+3:27: +3:31
--         _1 = &mut _2;                    // scope 0 at $DIR/reference_prop.rs:+3:22: +3:31
--         StorageLive(_3);                 // scope 1 at $DIR/reference_prop.rs:+4:9: +4:14
-          _28 = const _;                   // scope 1 at $DIR/reference_prop.rs:+4:17: +4:24
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:535:17: 535:24
-                                           // + literal: Const { ty: &T, val: Unevaluated(debuginfo, [], Some(promoted[2])) }
--         _3 = &((*_28).0: u8);            // scope 1 at $DIR/reference_prop.rs:+4:17: +4:24
--         StorageLive(_5);                 // scope 2 at $DIR/reference_prop.rs:+7:9: +7:17
--         _5 = &(*_1);                     // scope 2 at $DIR/reference_prop.rs:+7:20: +7:32
--         StorageLive(_6);                 // scope 3 at $DIR/reference_prop.rs:+9:5: +12:6
-          StorageLive(_7);                 // scope 3 at $DIR/reference_prop.rs:+9:11: +9:18
-          _7 = Option::<i32>::Some(const 0_i32); // scope 3 at $DIR/reference_prop.rs:+9:11: +9:18
-          _8 = discriminant(_7);           // scope 3 at $DIR/reference_prop.rs:+9:11: +9:18
-          switchInt(move _8) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 3 at $DIR/reference_prop.rs:+9:5: +9:18
+-         StorageLive(_1);
+          StorageLive(_2);
+          _2 = const 5_u8;
+-         _1 = &mut _2;
+-         StorageLive(_3);
+          _28 = const _;
+-         _3 = &((*_28).0: u8);
+-         StorageLive(_5);
+-         _5 = &(*_1);
+-         StorageLive(_6);
+          StorageLive(_7);
+          _7 = Option::<i32>::Some(const 0_i32);
+          _8 = discriminant(_7);
+          switchInt(move _8) -> [0: bb3, 1: bb1, otherwise: bb2];
       }
   
       bb1: {
--         StorageLive(_9);                 // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
-          _27 = const _;                   // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:542:14: 542:31
-                                           // + literal: Const { ty: &Option<i32>, val: Unevaluated(debuginfo, [], Some(promoted[1])) }
--         _9 = &(((*_27) as Some).0: i32); // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
--         _6 = const ();                   // scope 4 at $DIR/reference_prop.rs:+11:36: +11:38
--         StorageDead(_9);                 // scope 3 at $DIR/reference_prop.rs:+11:37: +11:38
-          goto -> bb4;                     // scope 3 at $DIR/reference_prop.rs:+11:37: +11:38
+-         StorageLive(_9);
+          _27 = const _;
+-         _9 = &(((*_27) as Some).0: i32);
+-         _6 = const ();
+-         StorageDead(_9);
+          goto -> bb4;
       }
   
       bb2: {
-          unreachable;                     // scope 3 at $DIR/reference_prop.rs:+9:11: +9:18
+          unreachable;
       }
   
       bb3: {
--         _6 = const ();                   // scope 3 at $DIR/reference_prop.rs:+10:17: +10:19
-          goto -> bb4;                     // scope 3 at $DIR/reference_prop.rs:+10:17: +10:19
+-         _6 = const ();
+          goto -> bb4;
       }
   
       bb4: {
-          StorageDead(_7);                 // scope 3 at $DIR/reference_prop.rs:+12:5: +12:6
--         StorageDead(_6);                 // scope 3 at $DIR/reference_prop.rs:+12:5: +12:6
--         StorageLive(_10);                // scope 3 at $DIR/reference_prop.rs:+16:5: +17:6
-          StorageLive(_11);                // scope 5 at $DIR/reference_prop.rs:+16:82: +16:94
-          StorageLive(_12);                // scope 5 at $DIR/reference_prop.rs:+16:83: +16:94
-          StorageLive(_13);                // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
-          _26 = const _;                   // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:547:83: 547:90
-                                           // + literal: Const { ty: &[i32; 10], val: Unevaluated(debuginfo, [], Some(promoted[0])) }
-          _13 = &(*_26);                   // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
-          StorageLive(_15);                // scope 5 at $DIR/reference_prop.rs:+16:91: +16:93
-          _15 = RangeFull;                 // scope 5 at $DIR/reference_prop.rs:+16:91: +16:93
-          _12 = <[i32; 10] as Index<RangeFull>>::index(move _13, move _15) -> bb5; // scope 5 at $DIR/reference_prop.rs:+16:83: +16:94
-                                           // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:547:83: 547:94
-                                           // + literal: Const { ty: for<'a> fn(&'a [i32; 10], RangeFull) -> &'a <[i32; 10] as Index<RangeFull>>::Output {<[i32; 10] as Index<RangeFull>>::index}, val: Value(<ZST>) }
+          StorageDead(_7);
+-         StorageDead(_6);
+-         StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          StorageLive(_13);
+          _26 = const _;
+          _13 = &(*_26);
+          StorageLive(_15);
+          _15 = RangeFull;
+          _12 = <[i32; 10] as Index<RangeFull>>::index(move _13, move _15) -> bb5;
       }
   
       bb5: {
-          StorageDead(_15);                // scope 5 at $DIR/reference_prop.rs:+16:93: +16:94
-          StorageDead(_13);                // scope 5 at $DIR/reference_prop.rs:+16:93: +16:94
-          _11 = &(*_12);                   // scope 5 at $DIR/reference_prop.rs:+16:82: +16:94
-          _16 = Len((*_11));               // scope 5 at $DIR/reference_prop.rs:+16:12: +16:79
-          _17 = const 3_usize;             // scope 5 at $DIR/reference_prop.rs:+16:12: +16:79
-          _18 = Ge(move _16, move _17);    // scope 5 at $DIR/reference_prop.rs:+16:12: +16:79
-          switchInt(move _18) -> [0: bb7, otherwise: bb6]; // scope 5 at $DIR/reference_prop.rs:+16:12: +16:79
+          StorageDead(_15);
+          StorageDead(_13);
+          _11 = &(*_12);
+          _16 = Len((*_11));
+          _17 = const 3_usize;
+          _18 = Ge(move _16, move _17);
+          switchInt(move _18) -> [0: bb7, otherwise: bb6];
       }
   
       bb6: {
--         StorageLive(_19);                // scope 5 at $DIR/reference_prop.rs:+16:16: +16:34
--         _19 = &(*_11)[1 of 3];           // scope 5 at $DIR/reference_prop.rs:+16:16: +16:34
-          StorageLive(_20);                // scope 5 at $DIR/reference_prop.rs:+16:36: +16:44
-          _20 = &(*_11)[2:-1];             // scope 5 at $DIR/reference_prop.rs:+16:36: +16:44
-          StorageLive(_21);                // scope 5 at $DIR/reference_prop.rs:+16:51: +16:78
-          _21 = &(*_11)[-1 of 3];          // scope 5 at $DIR/reference_prop.rs:+16:51: +16:78
--         _10 = const ();                  // scope 5 at $DIR/reference_prop.rs:+16:95: +17:6
-          StorageDead(_21);                // scope 3 at $DIR/reference_prop.rs:+17:5: +17:6
-          StorageDead(_20);                // scope 3 at $DIR/reference_prop.rs:+17:5: +17:6
--         StorageDead(_19);                // scope 3 at $DIR/reference_prop.rs:+17:5: +17:6
-          goto -> bb8;                     // scope 3 at $DIR/reference_prop.rs:+16:5: +17:6
+-         StorageLive(_19);
+-         _19 = &(*_11)[1 of 3];
+          StorageLive(_20);
+          _20 = &(*_11)[2:-1];
+          StorageLive(_21);
+          _21 = &(*_11)[-1 of 3];
+-         _10 = const ();
+          StorageDead(_21);
+          StorageDead(_20);
+-         StorageDead(_19);
+          goto -> bb8;
       }
   
       bb7: {
--         _10 = const ();                  // scope 3 at $DIR/reference_prop.rs:+17:6: +17:6
-          goto -> bb8;                     // scope 3 at $DIR/reference_prop.rs:+16:5: +17:6
+-         _10 = const ();
+          goto -> bb8;
       }
   
       bb8: {
-          StorageDead(_12);                // scope 3 at $DIR/reference_prop.rs:+17:5: +17:6
-          StorageDead(_11);                // scope 3 at $DIR/reference_prop.rs:+17:5: +17:6
--         StorageDead(_10);                // scope 3 at $DIR/reference_prop.rs:+17:5: +17:6
--         StorageLive(_22);                // scope 3 at $DIR/reference_prop.rs:+19:9: +19:24
--         StorageLive(_23);                // scope 3 at $DIR/reference_prop.rs:+19:28: +19:40
--         StorageLive(_24);                // scope 3 at $DIR/reference_prop.rs:+19:29: +19:40
-          StorageLive(_25);                // scope 3 at $DIR/reference_prop.rs:+19:34: +19:38
-          _25 = T(const 6_u8);             // scope 3 at $DIR/reference_prop.rs:+19:34: +19:38
--         _24 = &mut (_25.0: u8);          // scope 3 at $DIR/reference_prop.rs:+19:29: +19:40
--         _23 = &_24;                      // scope 3 at $DIR/reference_prop.rs:+19:28: +19:40
--         _22 = &_23;                      // scope 3 at $DIR/reference_prop.rs:+19:27: +19:40
-          _0 = const ();                   // scope 0 at $DIR/reference_prop.rs:+0:16: +20:2
-          StorageDead(_25);                // scope 3 at $DIR/reference_prop.rs:+20:1: +20:2
--         StorageDead(_24);                // scope 3 at $DIR/reference_prop.rs:+20:1: +20:2
--         StorageDead(_23);                // scope 3 at $DIR/reference_prop.rs:+20:1: +20:2
--         StorageDead(_22);                // scope 3 at $DIR/reference_prop.rs:+20:1: +20:2
--         StorageDead(_5);                 // scope 2 at $DIR/reference_prop.rs:+20:1: +20:2
--         StorageDead(_3);                 // scope 1 at $DIR/reference_prop.rs:+20:1: +20:2
-          StorageDead(_2);                 // scope 0 at $DIR/reference_prop.rs:+20:1: +20:2
--         StorageDead(_1);                 // scope 0 at $DIR/reference_prop.rs:+20:1: +20:2
-          return;                          // scope 0 at $DIR/reference_prop.rs:+20:2: +20:2
+          StorageDead(_12);
+          StorageDead(_11);
+-         StorageDead(_10);
+-         StorageLive(_22);
+-         StorageLive(_23);
+-         StorageLive(_24);
+          StorageLive(_25);
+          _25 = T(const 6_u8);
+-         _24 = &mut (_25.0: u8);
+-         _23 = &_24;
+-         _22 = &_23;
+          _0 = const ();
+          StorageDead(_25);
+-         StorageDead(_24);
+-         StorageDead(_23);
+-         StorageDead(_22);
+-         StorageDead(_5);
+-         StorageDead(_3);
+          StorageDead(_2);
+-         StorageDead(_1);
+          return;
       }
   }
   

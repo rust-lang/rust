@@ -250,6 +250,13 @@ changelog-seen = 2
 # target when running tests, otherwise this can be omitted.
 #nodejs = "node"
 
+# The npm executable to use. Note that this is used for rustdoc-gui tests,
+# otherwise this can be omitted.
+#
+# Under Windows this should be `npm.cmd` or path to it (verified on nodejs v18.06), or
+# error will be emitted.
+#npm = "npm"
+
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 #

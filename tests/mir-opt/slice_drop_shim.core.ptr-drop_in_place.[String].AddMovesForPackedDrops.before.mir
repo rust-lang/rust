@@ -1,55 +1,55 @@
 // MIR for `std::ptr::drop_in_place` before AddMovesForPackedDrops
 
 fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
-    let mut _0: ();                      // return place in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _2: usize;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _3: usize;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _4: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _5: bool;                    // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _6: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _7: bool;                    // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+    let mut _0: ();
+    let mut _2: usize;
+    let mut _3: usize;
+    let mut _4: *mut std::string::String;
+    let mut _5: bool;
+    let mut _6: *mut std::string::String;
+    let mut _7: bool;
 
     bb0: {
-        goto -> bb8;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        goto -> bb8;
     }
 
     bb1: {
-        return;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        return;
     }
 
     bb2 (cleanup): {
-        resume;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        resume;
     }
 
     bb3 (cleanup): {
-        _4 = &raw mut (*_1)[_3];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        _3 = Add(move _3, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        drop((*_4)) -> [return: bb4, unwind terminate]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        _4 = &raw mut (*_1)[_3];
+        _3 = Add(move _3, const 1_usize);
+        drop((*_4)) -> [return: bb4, unwind terminate];
     }
 
     bb4 (cleanup): {
-        _5 = Eq(_3, _2);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        switchInt(move _5) -> [0: bb3, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        _5 = Eq(_3, _2);
+        switchInt(move _5) -> [0: bb3, otherwise: bb2];
     }
 
     bb5: {
-        _6 = &raw mut (*_1)[_3];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        _3 = Add(move _3, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        drop((*_6)) -> [return: bb6, unwind: bb4]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        _6 = &raw mut (*_1)[_3];
+        _3 = Add(move _3, const 1_usize);
+        drop((*_6)) -> [return: bb6, unwind: bb4];
     }
 
     bb6: {
-        _7 = Eq(_3, _2);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        switchInt(move _7) -> [0: bb5, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        _7 = Eq(_3, _2);
+        switchInt(move _7) -> [0: bb5, otherwise: bb1];
     }
 
     bb7: {
-        _2 = Len((*_1));                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        _3 = const 0_usize;              // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        goto -> bb6;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        _2 = Len((*_1));
+        _3 = const 0_usize;
+        goto -> bb6;
     }
 
     bb8: {
-        goto -> bb7;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        goto -> bb7;
     }
 }

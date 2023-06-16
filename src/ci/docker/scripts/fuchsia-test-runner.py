@@ -171,7 +171,6 @@ class TestEnvironment:
     def home_dir(self):
         return os.path.join(self.tmp_dir(), "user-home")
 
-
     def start_ffx_isolation(self):
         # Most of this is translated directly from ffx's isolate library
         os.mkdir(self.ffx_isolate_dir())
@@ -424,7 +423,7 @@ class TestEnvironment:
         )
 
         # Create lockfiles
-        open(self.pm_lockfile_path(), 'a').close()
+        open(self.pm_lockfile_path(), "a").close()
 
         # Write to file
         self.write_to_file()
@@ -458,6 +457,7 @@ class TestEnvironment:
         ],
         use: [
             {{ storage: "data", path: "/data" }},
+            {{ storage: "tmp", path: "/tmp" }},
             {{ protocol: [ "fuchsia.process.Launcher" ] }},
             {{ protocol: [ "fuchsia.posix.socket.Provider" ] }}
         ],
@@ -571,6 +571,9 @@ class TestEnvironment:
                 if os.getenv("RUST_BACKTRACE") == None:
                     env_vars += f'\n            "RUST_BACKTRACE=0",'
 
+                # Use /tmp as the test temporary directory
+                env_vars += f'\n            "RUST_TEST_TMPDIR=/tmp",'
+
                 cml.write(
                     self.CML_TEMPLATE.format(env_vars=env_vars, exe_name=exe_name)
                 )
@@ -642,7 +645,7 @@ class TestEnvironment:
             log("Publishing package to repo...")
 
             # Publish package to repo
-            with open(self.pm_lockfile_path(), 'w') as pm_lockfile:
+            with open(self.pm_lockfile_path(), "w") as pm_lockfile:
                 fcntl.lockf(pm_lockfile.fileno(), fcntl.LOCK_EX)
                 subprocess.check_call(
                     [
@@ -1045,9 +1048,7 @@ def main():
     )
     debug_parser.set_defaults(func=debug)
 
-    syslog_parser = subparsers.add_parser(
-        "syslog", help="prints the device syslog"
-    )
+    syslog_parser = subparsers.add_parser("syslog", help="prints the device syslog")
     syslog_parser.set_defaults(func=syslog)
 
     args = parser.parse_args()

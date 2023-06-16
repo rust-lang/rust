@@ -102,7 +102,7 @@ mod prelude {
     pub(crate) use cranelift_codegen::isa::{self, CallConv};
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
-    pub(crate) use cranelift_module::{self, DataContext, FuncId, Linkage, Module};
+    pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{codegen_operand, codegen_place};

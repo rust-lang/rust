@@ -57,17 +57,11 @@ tidy:
 prepare:
 	$(Q)$(BOOTSTRAP) build --stage 2 nonexistent/path/to/trigger/cargo/metadata
 
-TESTS_IN_2 := \
-	tests/ui \
-	src/tools/linkchecker
-
 ## MSVC native builders
 
-# these intentionally don't use `$(BOOTSTRAP)` so we can test the shebang on Windows
-ci-subset-1:
-	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TESTS_IN_2:%=--exclude %)
-ci-subset-2:
-	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TESTS_IN_2)
+# this intentionally doesn't use `$(BOOTSTRAP)` so we can test the shebang on Windows
+ci-msvc:
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2
 
 ## MingW native builders
 

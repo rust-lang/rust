@@ -2,34 +2,34 @@
 + // MIR for `f` after DataflowConstProp
   
   fn f() -> usize {
-      let mut _0: usize;                   // return place in scope 0 at $DIR/issue_81605.rs:+0:11: +0:16
-      let mut _1: usize;                   // in scope 0 at $DIR/issue_81605.rs:+1:9: +1:33
-      let mut _2: bool;                    // in scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
+      let mut _0: usize;
+      let mut _1: usize;
+      let mut _2: bool;
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/issue_81605.rs:+1:9: +1:33
-          StorageLive(_2);                 // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
-          _2 = const true;                 // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
--         switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
-+         switchInt(const true) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = const true;
+-         switchInt(move _2) -> [0: bb2, otherwise: bb1];
++         switchInt(const true) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
-          _1 = const 1_usize;              // scope 0 at $DIR/issue_81605.rs:+1:19: +1:20
-          goto -> bb3;                     // scope 0 at $DIR/issue_81605.rs:+1:9: +1:33
+          _1 = const 1_usize;
+          goto -> bb3;
       }
   
       bb2: {
-          _1 = const 2_usize;              // scope 0 at $DIR/issue_81605.rs:+1:30: +1:31
-          goto -> bb3;                     // scope 0 at $DIR/issue_81605.rs:+1:9: +1:33
+          _1 = const 2_usize;
+          goto -> bb3;
       }
   
       bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/issue_81605.rs:+1:32: +1:33
--         _0 = Add(const 1_usize, move _1); // scope 0 at $DIR/issue_81605.rs:+1:5: +1:33
-+         _0 = const 2_usize;              // scope 0 at $DIR/issue_81605.rs:+1:5: +1:33
-          StorageDead(_1);                 // scope 0 at $DIR/issue_81605.rs:+1:32: +1:33
-          return;                          // scope 0 at $DIR/issue_81605.rs:+2:2: +2:2
+          StorageDead(_2);
+-         _0 = Add(const 1_usize, move _1);
++         _0 = const 2_usize;
+          StorageDead(_1);
+          return;
       }
   }
   
