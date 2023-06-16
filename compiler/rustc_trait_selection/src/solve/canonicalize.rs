@@ -208,8 +208,25 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
         t
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let r = self.infcx.shallow_resolve(r);
+    fn fold_region(&mut self, mut r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match self.canonicalize_mode {
+            CanonicalizeMode::Input => {
+                // Don't resolve infer vars in input, since it affects
+                // caching and may cause trait selection bugs which rely
+                // on regions to be equal.
+            }
+            CanonicalizeMode::Response { .. } => {
+                if let ty::ReVar(vid) = *r {
+                    r = self
+                        .infcx
+                        .inner
+                        .borrow_mut()
+                        .unwrap_region_constraints()
+                        .opportunistic_resolve_var(self.infcx.tcx, vid);
+                }
+            }
+        }
+
         let kind = match *r {
             ty::ReLateBound(..) => return r,
 

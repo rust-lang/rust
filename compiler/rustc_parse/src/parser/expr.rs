@@ -2023,17 +2023,14 @@ impl<'a> Parser<'a> {
         let recovered = self.recover_after_dot();
         let token = recovered.as_ref().unwrap_or(&self.token);
         match token::Lit::from_token(token) {
-            Some(token_lit) => {
-                match MetaItemLit::from_token_lit(token_lit, token.span) {
+            Some(lit) => {
+                match MetaItemLit::from_token_lit(lit, token.span) {
                     Ok(lit) => {
                         self.bump();
                         Some(lit)
                     }
                     Err(err) => {
-                        let span = token.span;
-                        let token::Literal(lit) = token.kind else {
-                            unreachable!();
-                        };
+                        let span = token.uninterpolated_span();
                         self.bump();
                         report_lit_error(&self.sess, err, lit, span);
                         // Pack possible quotes and prefixes from the original literal into

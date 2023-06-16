@@ -82,15 +82,40 @@ impl CanonicalVarValues<'_> {
     }
 
     pub fn is_identity_modulo_regions(&self) -> bool {
-        self.var_values.iter().enumerate().all(|(bv, arg)| match arg.unpack() {
-            ty::GenericArgKind::Lifetime(_) => true,
-            ty::GenericArgKind::Type(ty) => {
-                matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
+        let mut var = ty::BoundVar::from_u32(0);
+        for arg in self.var_values {
+            match arg.unpack() {
+                ty::GenericArgKind::Lifetime(r) => {
+                    if let ty::ReLateBound(ty::INNERMOST, br) = *r
+                        && var == br.var
+                    {
+                        var = var + 1;
+                    } else {
+                        // It's ok if this region var isn't unique
+                    }
+                },
+                ty::GenericArgKind::Type(ty) => {
+                    if let ty::Bound(ty::INNERMOST, bt) = *ty.kind()
+                        && var == bt.var
+                    {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
+                ty::GenericArgKind::Const(ct) => {
+                    if let ty::ConstKind::Bound(ty::INNERMOST, bc) = ct.kind()
+                        && var == bc
+                    {
+                        var = var + 1;
+                    } else {
+                        return false;
+                    }
+                }
             }
-            ty::GenericArgKind::Const(ct) => {
-                matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.as_usize() == bv)
-            }
-        })
+        }
+
+        true
     }
 }
 
