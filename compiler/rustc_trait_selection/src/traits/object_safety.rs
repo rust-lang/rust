@@ -101,7 +101,7 @@ pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::A
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self: Sized` bound cannot be called.
-    if generics_require_sized_self(tcx, method.def_id) {
+    if tcx.generics_require_sized_self(method.def_id) {
         return false;
     }
 
@@ -331,7 +331,7 @@ fn super_predicates_have_non_lifetime_binders(
 }
 
 fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
-    generics_require_sized_self(tcx, trait_def_id)
+    tcx.generics_require_sized_self(trait_def_id)
 }
 
 fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
@@ -364,7 +364,7 @@ fn object_safety_violation_for_assoc_item(
 ) -> Option<ObjectSafetyViolation> {
     // Any item that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
-    if generics_require_sized_self(tcx, item.def_id) {
+    if tcx.generics_require_sized_self(item.def_id) {
         return None;
     }
 
