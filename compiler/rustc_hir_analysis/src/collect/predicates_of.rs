@@ -190,7 +190,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let ct = tcx.mk_const(param_const, ct_ty);
 
                 let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
-                    ty::Clause::ConstArgHasType(ct, ct_ty),
+                    ty::ClauseKind::ConstArgHasType(ct, ct_ty),
                 ))
                 .to_predicate(tcx);
                 predicates.insert((predicate, param.span));
@@ -222,7 +222,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     } else {
                         let span = bound_pred.bounded_ty.span;
                         let predicate = ty::Binder::bind_with_vars(
-                            ty::PredicateKind::Clause(ty::Clause::WellFormed(ty.into())),
+                            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty.into())),
                             bound_vars,
                         );
                         predicates.insert((predicate.to_predicate(tcx), span));
@@ -252,7 +252,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                         _ => bug!(),
                     };
                     let pred = ty::Binder::dummy(ty::PredicateKind::Clause(
-                        ty::Clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)),
+                        ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)),
                     ))
                     .to_predicate(icx.tcx);
 
@@ -320,14 +320,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 },
             );
             predicates.push((
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
                     ty::OutlivesPredicate(orig_region, dup_region),
                 )))
                 .to_predicate(icx.tcx),
                 duplicate.span,
             ));
             predicates.push((
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
                     ty::OutlivesPredicate(dup_region, orig_region),
                 )))
                 .to_predicate(icx.tcx),
@@ -358,8 +358,10 @@ fn const_evaluatable_predicates_of(
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
                 let span = self.tcx.def_span(c.def_id);
                 self.preds.insert((
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)))
-                        .to_predicate(self.tcx),
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(
+                        ct,
+                    )))
+                    .to_predicate(self.tcx),
                     span,
                 ));
             }
@@ -449,11 +451,13 @@ pub(super) fn explicit_predicates_of<'tcx>(
             .iter()
             .copied()
             .filter(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(tr)) => !is_assoc_item_ty(tr.self_ty()),
-                ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => {
+                    !is_assoc_item_ty(tr.self_ty())
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) => {
                     !is_assoc_item_ty(proj.projection_ty.self_ty())
                 }
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(outlives)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
                     !is_assoc_item_ty(outlives.0)
                 }
                 _ => true,
@@ -496,7 +500,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
                     .predicates
                     .into_iter()
                     .filter(|(pred, _)| {
-                        if let ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, _)) =
+                        if let ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) =
                             pred.kind().skip_binder()
                         {
                             match ct.kind() {
@@ -677,7 +681,7 @@ pub(super) fn implied_predicates_with_filter(
     if matches!(filter, PredicateFilter::SelfOnly) {
         for &(pred, span) in implied_bounds {
             debug!("superbound: {:?}", pred);
-            if let ty::PredicateKind::Clause(ty::Clause::Trait(bound)) = pred.kind().skip_binder()
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(bound)) = pred.kind().skip_binder()
                 && bound.polarity == ty::ImplPolarity::Positive
             {
                 tcx.at(span).super_predicates_of(bound.def_id());
@@ -774,7 +778,9 @@ pub(super) fn type_param_predicates(
         )
         .into_iter()
         .filter(|(predicate, _)| match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => data.self_ty().is_param(index),
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                data.self_ty().is_param(index)
+            }
             _ => false,
         }),
     );

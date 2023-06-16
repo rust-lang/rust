@@ -24,7 +24,7 @@ use rustc_span::Span;
 /// include the self type (e.g., `trait_bounds`) but in others we do not
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
-    pub predicates: Vec<(Binder<'tcx, ty::Clause<'tcx>>, Span)>,
+    pub predicates: Vec<(Binder<'tcx, ty::ClauseKind<'tcx>>, Span)>,
 }
 
 impl<'tcx> Bounds<'tcx> {
@@ -34,7 +34,7 @@ impl<'tcx> Bounds<'tcx> {
         region: ty::PolyTypeOutlivesPredicate<'tcx>,
         span: Span,
     ) {
-        self.predicates.push((region.map_bound(|p| ty::Clause::TypeOutlives(p)), span));
+        self.predicates.push((region.map_bound(|p| ty::ClauseKind::TypeOutlives(p)), span));
     }
 
     pub fn push_trait_bound(
@@ -47,7 +47,7 @@ impl<'tcx> Bounds<'tcx> {
     ) {
         self.predicates.push((
             trait_ref.map_bound(|trait_ref| {
-                ty::Clause::Trait(ty::TraitPredicate { trait_ref, constness, polarity })
+                ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, constness, polarity })
             }),
             span,
         ));
@@ -59,7 +59,7 @@ impl<'tcx> Bounds<'tcx> {
         projection: ty::PolyProjectionPredicate<'tcx>,
         span: Span,
     ) {
-        self.predicates.push((projection.map_bound(|proj| ty::Clause::Projection(proj)), span));
+        self.predicates.push((projection.map_bound(|proj| ty::ClauseKind::Projection(proj)), span));
     }
 
     pub fn push_sized(&mut self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) {
@@ -69,13 +69,17 @@ impl<'tcx> Bounds<'tcx> {
         self.predicates.insert(
             0,
             (
-                ty::Binder::dummy(ty::Clause::Trait(trait_ref.without_const().to_predicate(tcx))),
+                ty::Binder::dummy(ty::ClauseKind::Trait(
+                    trait_ref.without_const().to_predicate(tcx),
+                )),
                 span,
             ),
         );
     }
 
-    pub fn predicates(&self) -> impl Iterator<Item = (Binder<'tcx, ty::Clause<'tcx>>, Span)> + '_ {
+    pub fn predicates(
+        &self,
+    ) -> impl Iterator<Item = (Binder<'tcx, ty::ClauseKind<'tcx>>, Span)> + '_ {
         self.predicates.iter().cloned()
     }
 }

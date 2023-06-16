@@ -1564,7 +1564,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let future_trait = self.require_lang_item(LangItem::Future, None);
 
         self.explicit_item_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
-            let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() else {
+            let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) = predicate.kind().skip_binder() else {
                 return false;
             };
             trait_predicate.trait_ref.def_id == future_trait
@@ -1587,7 +1587,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let generic_predicates = self.super_predicates_of(trait_did);
 
             for (predicate, _) in generic_predicates.predicates {
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(data)) =
+                if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) =
                     predicate.kind().skip_binder()
                 {
                     if set.insert(data.def_id()) {

@@ -343,7 +343,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let format_pred = |pred: ty::Predicate<'tcx>| {
             let bound_predicate = pred.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     let pred = bound_predicate.rebind(pred);
                     // `<Foo as Iterator>::Item = String`.
                     let projection_ty = pred.skip_binder().projection_ty;
@@ -364,7 +364,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                     Some((obligation, projection_ty.self_ty()))
                 }
-                ty::PredicateKind::Clause(ty::Clause::Trait(poly_trait_ref)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_ref)) => {
                     let p = poly_trait_ref.trait_ref;
                     let self_ty = p.self_ty();
                     let path = p.print_only_trait_path();
