@@ -57,7 +57,9 @@ pub fn main() {
     if let Some(pos) = env::args().position(|a| a == "--explain") {
         if let Some(mut lint) = env::args().nth(pos + 1) {
             lint.make_ascii_lowercase();
-            clippy_lints::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"));
+            process::exit(clippy_lints::explain(
+                &lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"),
+            ));
         } else {
             show_help();
         }

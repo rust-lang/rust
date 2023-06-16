@@ -495,7 +495,7 @@ pub(crate) struct LintInfo {
     explanation: &'static str,
 }
 
-pub fn explain(name: &str) {
+pub fn explain(name: &str) -> i32 {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
         println!("{}", info.explanation);
@@ -512,8 +512,10 @@ pub fn explain(name: &str) {
                 println!("  - {}: {} (default: {})", conf.name, conf.doc, conf.default);
             }
         }
+        0
     } else {
         println!("unknown lint: {name}");
+        1
     }
 }
 
