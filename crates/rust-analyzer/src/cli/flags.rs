@@ -66,8 +66,6 @@ xflags::xflags! {
             optional --memory-usage
             /// Print the total length of all source and macro files (whitespace is not counted).
             optional --source-stats
-            /// Only type check, skip lowering to mir
-            optional --skip-mir-stats
 
             /// Only analyze items matching this path.
             optional -o, --only path: String
@@ -80,8 +78,14 @@ xflags::xflags! {
             optional --disable-build-scripts
             /// Don't use expand proc macros.
             optional --disable-proc-macros
-            /// Only resolve names, don't run type inference.
+            /// Skip type inference.
             optional --skip-inference
+            /// Skip lowering to mir
+            optional --skip-mir-stats
+            /// Skip data layout calculation
+            optional --skip-data-layout
+            /// Skip const evaluation
+            optional --skip-const-eval
         }
 
         cmd diagnostics {
@@ -176,13 +180,15 @@ pub struct AnalysisStats {
     pub parallel: bool,
     pub memory_usage: bool,
     pub source_stats: bool,
+    pub skip_inference: bool,
     pub skip_mir_stats: bool,
+    pub skip_data_layout: bool,
+    pub skip_const_eval: bool,
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
-    pub skip_inference: bool,
 }
 
 #[derive(Debug)]
