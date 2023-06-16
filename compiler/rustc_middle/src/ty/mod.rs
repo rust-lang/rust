@@ -586,6 +586,24 @@ pub enum Clause<'tcx> {
     ConstArgHasType(Const<'tcx>, Ty<'tcx>),
 }
 
+impl<'tcx> Binder<'tcx, Clause<'tcx>> {
+    pub fn as_trait_clause(self) -> Option<Binder<'tcx, TraitPredicate<'tcx>>> {
+        if let ty::Clause::Trait(trait_clause) = self.skip_binder() {
+            Some(self.rebind(trait_clause))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_projection_clause(self) -> Option<Binder<'tcx, ProjectionPredicate<'tcx>>> {
+        if let ty::Clause::Projection(projection_clause) = self.skip_binder() {
+            Some(self.rebind(projection_clause))
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum PredicateKind<'tcx> {
@@ -1203,9 +1221,28 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx, Binder<'tcx, Clause<'tcx>>> for TraitRef<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Binder<'tcx, Clause<'tcx>> {
+        Binder::dummy(Clause::Trait(TraitPredicate {
+            trait_ref: self,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Positive,
+        }))
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, TraitRef<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        let pred: PolyTraitPredicate<'tcx> = self.to_predicate(tcx);
+        pred.to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, Binder<'tcx, Clause<'tcx>>> for Binder<'tcx, TraitRef<'tcx>> {
+    #[inline(always)]
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Binder<'tcx, Clause<'tcx>> {
         let pred: PolyTraitPredicate<'tcx> = self.to_predicate(tcx);
         pred.to_predicate(tcx)
     }
@@ -1240,6 +1277,12 @@ impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx, Binder<'tcx, Clause<'tcx>>> for PolyTraitPredicate<'tcx> {
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Binder<'tcx, Clause<'tcx>> {
+        self.map_bound(|p| Clause::Trait(p))
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::RegionOutlives(p))).to_predicate(tcx)
@@ -1255,6 +1298,12 @@ impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::Projection(p))).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, Binder<'tcx, Clause<'tcx>>> for PolyProjectionPredicate<'tcx> {
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Binder<'tcx, Clause<'tcx>> {
+        self.map_bound(|p| Clause::Projection(p))
     }
 }
 
@@ -1318,6 +1367,23 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..)
+            | PredicateKind::Ambiguous
+            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+        }
+    }
+
+    pub fn as_clause(self) -> Option<Binder<'tcx, Clause<'tcx>>> {
+        let predicate = self.kind();
+        match predicate.skip_binder() {
+            PredicateKind::Clause(clause) => Some(predicate.rebind(clause)),
+            PredicateKind::AliasRelate(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::Coerce(..)
             | PredicateKind::WellFormed(..)
             | PredicateKind::ObjectSafe(..)
             | PredicateKind::ClosureKind(..)
