@@ -611,13 +611,6 @@ pub struct RustcStdInternalSymbol {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_const_trait)]
-pub struct ConstTrait {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_link_ordinal)]
 pub struct LinkOrdinal {
     #[primary_span]

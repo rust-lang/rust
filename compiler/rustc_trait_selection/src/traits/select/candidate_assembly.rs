@@ -554,6 +554,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "assemble_candidates_from_object_ty",
         );
 
+        if !self.tcx().trait_def(obligation.predicate.def_id()).implement_via_object {
+            return;
+        }
+
         self.infcx.probe(|_snapshot| {
             if obligation.has_non_region_late_bound() {
                 return;
