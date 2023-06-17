@@ -409,8 +409,15 @@ where
         self.drop_ladder(fields, succ, unwind).0
     }
 
+    /// Drops the T contained in a `Box<T>` if it has not been moved out of
     #[instrument(level = "debug", ret)]
-    fn open_drop_for_box(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
+    fn open_drop_for_box_contents(
+        &mut self,
+        adt: ty::AdtDef<'tcx>,
+        substs: SubstsRef<'tcx>,
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> BasicBlock {
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
         let unique_ty = adt.non_enum_variant().fields[FieldIdx::new(0)].ty(self.tcx(), substs);
@@ -425,11 +432,7 @@ where
 
         let interior_path = self.elaborator.deref_subpath(self.path);
 
-        let succ = self.box_free_block(adt, substs, self.succ, self.unwind);
-        let unwind_succ =
-            self.unwind.map(|unwind| self.box_free_block(adt, substs, unwind, Unwind::InCleanup));
-
-        self.drop_subpath(interior, interior_path, succ, unwind_succ)
+        self.drop_subpath(interior, interior_path, succ, unwind)
     }
 
     #[instrument(level = "debug", ret)]
@@ -453,7 +456,15 @@ where
             self.open_drop_for_adt_contents(adt, substs)
         };
 
-        if adt.has_dtor(self.tcx()) {
+        if adt.is_box() {
+            // we need to drop the inside of the box before running the destructor
+            let succ = self.destructor_call_block(contents_drop);
+            let unwind = contents_drop
+                .1
+                .map(|unwind| self.destructor_call_block((unwind, Unwind::InCleanup)));
+
+            self.open_drop_for_box_contents(adt, substs, succ, unwind)
+        } else if adt.has_dtor(self.tcx()) {
             self.destructor_call_block(contents_drop)
         } else {
             contents_drop.0
@@ -650,7 +661,13 @@ where
             }),
             is_cleanup: unwind.is_cleanup(),
         };
-        self.elaborator.patch().new_block(result)
+
+        let destructor_block = self.elaborator.patch().new_block(result);
+
+        let block_start = Location { block: destructor_block, statement_index: 0 };
+        self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
+
+        self.drop_flag_test_block(destructor_block, succ, unwind)
     }
 
     /// Create a loop that drops an array:
@@ -851,13 +868,7 @@ where
                 self.open_drop_for_tuple(&tys)
             }
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
-            ty::Adt(def, substs) => {
-                if def.is_box() {
-                    self.open_drop_for_box(*def, substs)
-                } else {
-                    self.open_drop_for_adt(*def, substs)
-                }
-            }
+            ty::Adt(def, substs) => self.open_drop_for_adt(*def, substs),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_eval_target_usize(self.tcx(), self.elaborator.param_env());
@@ -903,65 +914,6 @@ where
         let blk = self.drop_block(self.succ, self.unwind);
         self.elaborate_drop(blk);
         blk
-    }
-
-    /// Creates a block that frees the backing memory of a `Box` if its drop is required (either
-    /// statically or by checking its drop flag).
-    ///
-    /// The contained value will not be dropped.
-    fn box_free_block(
-        &mut self,
-        adt: ty::AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
-        target: BasicBlock,
-        unwind: Unwind,
-    ) -> BasicBlock {
-        let block = self.unelaborated_free_block(adt, substs, target, unwind);
-        self.drop_flag_test_block(block, target, unwind)
-    }
-
-    /// Creates a block that frees the backing memory of a `Box` (without dropping the contained
-    /// value).
-    fn unelaborated_free_block(
-        &mut self,
-        adt: ty::AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
-        target: BasicBlock,
-        unwind: Unwind,
-    ) -> BasicBlock {
-        let tcx = self.tcx();
-        let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
-        let free_func = tcx.require_lang_item(LangItem::BoxFree, Some(self.source_info.span));
-        let args = adt
-            .variant(FIRST_VARIANT)
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                let field = FieldIdx::new(i);
-                let field_ty = f.ty(tcx, substs);
-                Operand::Move(tcx.mk_place_field(self.place, field, field_ty))
-            })
-            .collect();
-
-        let call = TerminatorKind::Call {
-            func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
-            args,
-            destination: unit_temp,
-            target: Some(target),
-            unwind: if unwind.is_cleanup() {
-                UnwindAction::Terminate
-            } else {
-                UnwindAction::Continue
-            },
-            from_hir_call: false,
-            fn_span: self.source_info.span,
-        }; // FIXME(#43234)
-        let free_block = self.new_block(unwind, call);
-
-        let block_start = Location { block: free_block, statement_index: 0 };
-        self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
-        free_block
     }
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {

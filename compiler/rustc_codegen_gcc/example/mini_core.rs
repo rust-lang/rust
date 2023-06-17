@@ -490,7 +490,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> fo
 
 impl<T: ?Sized, A: Allocator> Drop for Box<T, A> {
     fn drop(&mut self) {
-        // drop is currently performed by compiler.
+        // inner value is dropped by compiler
+        libc::free(self.pointer.0 as *mut u8);
     }
 }
 
@@ -505,11 +506,6 @@ impl<T: ?Sized, A: Allocator> Deref for Box<T, A> {
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     libc::malloc(size)
-}
-
-#[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, _alloc: ()) {
-    libc::free(ptr.pointer.0 as *mut u8);
 }
 
 #[lang = "drop"]

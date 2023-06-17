@@ -432,7 +432,6 @@ symbols! {
         bool,
         borrowck_graphviz_format,
         borrowck_graphviz_postflow,
-        box_free,
         box_new,
         box_patterns,
         box_syntax,
