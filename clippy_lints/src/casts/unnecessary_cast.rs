@@ -254,13 +254,20 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 // function's declaration snippet is exactly equal to the `Ty`. That way, we can
                 // see whether it's a type alias.
                 //
-                // Will this work for more complex types? Probably not!
+                // FIXME: This won't work if the type is given an alias through `use`, should we
+                // consider this a type alias as well?
                 if !snippet
                     .split("->")
                     .skip(1)
                     .map(|s| {
                         s.trim() == cast_from.to_string()
-                            || s.split("where").any(|ty| ty.trim() == cast_from.to_string())
+                            || s.trim().contains(&format!("::{cast_from}"))
+                            || s.split("where").any(|ty| {
+                                ty.trim() == cast_from.to_string()
+                                    || ty.trim() == cast_from.to_string()
+                                    // Fully qualified path, or something silly like `::u32`
+                                    || s.trim().contains(&format!("::{cast_from}"))
+                            })
                     })
                     .any(|a| a)
                 {
