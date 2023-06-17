@@ -1,0 +1,30 @@
+- // MIR for `mutated_discriminant` before SimplifyStaticSwitch
++ // MIR for `mutated_discriminant` after SimplifyStaticSwitch
+  
+  fn mutated_discriminant(_1: isize) -> bool {
+      let mut _0: bool;
+      let mut _2: Foo;
+      let mut _3: isize;
+  
+      bb0: {
+          _2 = Foo::A;
+          goto -> bb1;
+      }
+  
+      bb1: {
+          _3 = discriminant(_2);
+          _3 = _1;
+          switchInt(_3) -> [0: bb2, otherwise: bb3];
+      }
+  
+      bb2: {
+          _0 = const true;
+          return;
+      }
+  
+      bb3: {
+          _0 = const false;
+          return;
+      }
+  }
+  

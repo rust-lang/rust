@@ -101,6 +101,7 @@ mod check_alignment;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
+mod simplify_static_switch;
 mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
@@ -561,6 +562,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
             &ref_prop::ReferencePropagation,
+            // Remove switches on a statically known discriminant, which can happen as a result of inlining.
+            &simplify_static_switch::SimplifyStaticSwitch,
             // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
             // destroy the SSA property. It should still happen before const-propagation, so the
             // latter pass will leverage the created opportunities.

@@ -1,0 +1,73 @@
+- // MIR for `opt_as_ref_unchecked` before SimplifyStaticSwitch
++ // MIR for `opt_as_ref_unchecked` after SimplifyStaticSwitch
+  
+  fn opt_as_ref_unchecked(_1: &Option<T>) -> &T {
+      debug opt => _1;
+      let mut _0: &T;
+      let _2: std::option::Option<&T>;
+      let mut _3: isize;
+      let _4: &T;
+      let mut _5: &T;
+      let mut _6: isize;
+      let mut _8: !;
+      scope 1 {
+          debug opt => _2;
+          let _7: &T;
+          scope 3 {
+              debug val => _7;
+          }
+          scope 4 {
+          }
+      }
+      scope 2 {
+          debug val => _4;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _3 = discriminant((*_1));
+          switchInt(move _3) -> [0: bb1, 1: bb3, otherwise: bb2];
+      }
+  
+      bb1: {
+          _2 = Option::<&T>::None;
+          goto -> bb4;
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+          StorageLive(_4);
+          _4 = &(((*_1) as Some).0: T);
+          StorageLive(_5);
+          _5 = _4;
+          _2 = Option::<&T>::Some(move _5);
+          StorageDead(_5);
+          StorageDead(_4);
+-         goto -> bb4;
++         goto -> bb5;
+      }
+  
+      bb4: {
+-         _6 = discriminant(_2);
+-         switchInt(move _6) -> [0: bb5, 1: bb6, otherwise: bb2];
+-     }
+- 
+-     bb5: {
+          StorageLive(_8);
+          _8 = unreachable_unchecked();
+      }
+  
+-     bb6: {
++     bb5: {
+          StorageLive(_7);
+          _7 = ((_2 as Some).0: &T);
+          _0 = &(*_7);
+          StorageDead(_7);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

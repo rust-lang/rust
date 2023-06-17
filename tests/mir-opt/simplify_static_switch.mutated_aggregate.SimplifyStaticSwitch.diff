@@ -1,0 +1,62 @@
+- // MIR for `mutated_aggregate` before SimplifyStaticSwitch
++ // MIR for `mutated_aggregate` after SimplifyStaticSwitch
+  
+  fn mutated_aggregate(_1: bool, _2: Foo) -> bool {
+      debug cond => _1;
+      debug bar => _2;
+      let mut _0: bool;
+      let mut _3: Foo;
+      let mut _4: bool;
+      let mut _5: Foo;
+      let mut _6: isize;
+      scope 1 {
+          debug foo => _3;
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = _1;
+          switchInt(move _4) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _3 = Foo::A;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _3 = Foo::B;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_4);
+          StorageLive(_5);
+          _5 = move _2;
+          _3 = move _5;
+          StorageDead(_5);
+          _6 = discriminant(_3);
+          switchInt(move _6) -> [0: bb5, 1: bb6, 2: bb6, otherwise: bb4];
+      }
+  
+      bb4: {
+          unreachable;
+      }
+  
+      bb5: {
+          _0 = const true;
+          goto -> bb7;
+      }
+  
+      bb6: {
+          _0 = const false;
+          goto -> bb7;
+      }
+  
+      bb7: {
+          StorageDead(_3);
+          return;
+      }
+  }
+  

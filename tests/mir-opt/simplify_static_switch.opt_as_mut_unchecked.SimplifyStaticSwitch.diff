@@ -1,0 +1,83 @@
+- // MIR for `opt_as_mut_unchecked` before SimplifyStaticSwitch
++ // MIR for `opt_as_mut_unchecked` after SimplifyStaticSwitch
+  
+  fn opt_as_mut_unchecked(_1: &mut Option<T>) -> &mut T {
+      debug opt => _1;
+      let mut _0: &mut T;
+      let mut _2: &mut T;
+      let _3: std::option::Option<&mut T>;
+      let mut _4: isize;
+      let _5: &mut T;
+      let mut _6: &mut T;
+      let mut _7: &mut T;
+      let mut _8: isize;
+      let mut _10: !;
+      scope 1 {
+          debug opt => _3;
+          let _9: &mut T;
+          scope 3 {
+              debug val => _9;
+          }
+          scope 4 {
+          }
+      }
+      scope 2 {
+          debug val => _5;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _4 = discriminant((*_1));
+          switchInt(move _4) -> [0: bb1, 1: bb3, otherwise: bb2];
+      }
+  
+      bb1: {
+          _3 = Option::<&mut T>::None;
++         StorageLive(_7);
+          goto -> bb4;
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+          StorageLive(_5);
+          _5 = &mut (((*_1) as Some).0: T);
+          StorageLive(_6);
+          _6 = move _5;
+          _3 = Option::<&mut T>::Some(move _6);
+          StorageDead(_6);
+          StorageDead(_5);
+-         goto -> bb4;
+-     }
+- 
+-     bb4: {
+          StorageLive(_7);
+-         _8 = discriminant(_3);
+-         switchInt(move _8) -> [0: bb5, 1: bb6, otherwise: bb2];
++         goto -> bb5;
+      }
+  
+-     bb5: {
++     bb4: {
+          StorageLive(_10);
+          _10 = unreachable_unchecked();
+      }
+  
+-     bb6: {
++     bb5: {
+          StorageLive(_9);
+          _9 = move ((_3 as Some).0: &mut T);
+          _7 = &mut (*_9);
+          StorageDead(_9);
+          _2 = &mut (*_7);
+          StorageDead(_3);
+          _0 = &mut (*_2);
+          StorageDead(_7);
+          StorageDead(_2);
+          return;
+      }
+  }
+  
