@@ -1,7 +1,6 @@
 use crate::raw::Bucket;
 use crate::raw::{Allocator, Global, RawIter, RawIterRange, RawTable};
 use crate::scopeguard::guard;
-use alloc::alloc::dealloc;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
@@ -97,9 +96,9 @@ impl<T: Send, A: Allocator + Clone + Send> ParallelIterator for RawIntoParIter<T
     {
         let iter = unsafe { self.table.iter().iter };
         let _guard = guard(self.table.into_allocation(), |alloc| {
-            if let Some((ptr, layout)) = *alloc {
+            if let Some((ptr, layout, ref alloc)) = *alloc {
                 unsafe {
-                    dealloc(ptr.as_ptr(), layout);
+                    alloc.deallocate(ptr, layout);
                 }
             }
         });

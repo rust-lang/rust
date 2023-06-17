@@ -1482,20 +1482,18 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     pub unsafe fn into_iter_from(self, iter: RawIter<T>) -> RawIntoIter<T, A> {
         debug_assert_eq!(iter.len(), self.len());
 
-        let alloc = self.table.alloc.clone();
         let allocation = self.into_allocation();
         RawIntoIter {
             iter,
             allocation,
             marker: PhantomData,
-            alloc,
         }
     }
 
     /// Converts the table into a raw allocation. The contents of the table
     /// should be dropped using a `RawIter` before freeing the allocation.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub(crate) fn into_allocation(self) -> Option<(NonNull<u8>, Layout)> {
+    pub(crate) fn into_allocation(self) -> Option<(NonNull<u8>, Layout, A)> {
         let alloc = if self.table.is_empty_singleton() {
             None
         } else {
@@ -1508,6 +1506,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             Some((
                 unsafe { NonNull::new_unchecked(self.table.ctrl.as_ptr().sub(ctrl_offset)) },
                 layout,
+                unsafe { ptr::read(&self.table.alloc) },
             ))
         };
         mem::forget(self);
@@ -3069,9 +3068,8 @@ impl<T> FusedIterator for RawIter<T> {}
 /// Iterator which consumes a table and returns elements.
 pub struct RawIntoIter<T, A: Allocator + Clone = Global> {
     iter: RawIter<T>,
-    allocation: Option<(NonNull<u8>, Layout)>,
+    allocation: Option<(NonNull<u8>, Layout, A)>,
     marker: PhantomData<T>,
-    alloc: A,
 }
 
 impl<T, A: Allocator + Clone> RawIntoIter<T, A> {
@@ -3103,8 +3101,8 @@ unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawIntoIter<T, A> {
             self.iter.drop_elements();
 
             // Free the table
-            if let Some((ptr, layout)) = self.allocation {
-                self.alloc.deallocate(ptr, layout);
+            if let Some((ptr, layout, ref alloc)) = self.allocation {
+                alloc.deallocate(ptr, layout);
             }
         }
     }
@@ -3118,8 +3116,8 @@ impl<T, A: Allocator + Clone> Drop for RawIntoIter<T, A> {
             self.iter.drop_elements();
 
             // Free the table
-            if let Some((ptr, layout)) = self.allocation {
-                self.alloc.deallocate(ptr, layout);
+            if let Some((ptr, layout, ref alloc)) = self.allocation {
+                alloc.deallocate(ptr, layout);
             }
         }
     }
