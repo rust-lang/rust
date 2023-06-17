@@ -397,7 +397,7 @@ macro_rules! impl_Exp {
                 } else {
                     let off = exponent << 1;
                     // SAFETY: 1 + 2 <= 3
-                    unsafe { ptr::copy_nonoverlapping(lut_ptr.add(off), exp_buf[1].as_mut_ptr(), 2); }
+                    unsafe { ptr::copy_nonoverlapping(lut_ptr.add(off), exp_buf.as_mut_ptr().into_inner().add(1), 2); }
                     3
                 };
                 // SAFETY: max(2, 3) <= 3
@@ -605,7 +605,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
         // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
         // remaining since it has length 39
         unsafe {
-            ptr::write_bytes(buf[target].as_mut_ptr(), b'0', curr - target);
+            ptr::write_bytes(buf.as_mut_ptr().add(target), b'0', curr - target);
         }
         curr = target;
 
@@ -617,7 +617,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
             // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
             // There can only be at most 1 digit remaining.
             unsafe {
-                ptr::write_bytes(buf[target].as_mut_ptr(), b'0', curr - target);
+                ptr::write_bytes(buf.as_mut_ptr().add(target), b'0', curr - target);
             }
             curr = target - 1;
             buf[curr].write((n as u8) + b'0');
@@ -628,7 +628,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
     // UTF-8 since `DEC_DIGITS_LUT` is
     let buf_slice = unsafe {
         str::from_utf8_unchecked(slice::from_raw_parts(
-            buf.get_unchecked_mut(curr).as_mut_ptr(),
+            buf.as_mut_ptr().add(curr).into_inner(),
             buf.len() - curr,
         ))
     };
