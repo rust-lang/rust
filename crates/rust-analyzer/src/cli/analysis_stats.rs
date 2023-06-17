@@ -105,7 +105,7 @@ impl flags::AnalysisStats {
         }
         for krate in krates {
             let module = krate.root_module(db);
-            let file_id = module.definition_source(db).file_id;
+            let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
             let source_root = db.file_source_root(file_id);
             let source_root = db.source_root(source_root);

@@ -60,7 +60,7 @@ mod tests;
 use std::{cmp::Ord, ops::Deref};
 
 use base_db::{CrateId, Edition, FileId, ProcMacroKind};
-use hir_expand::{name::Name, InFile, MacroCallId, MacroDefId};
+use hir_expand::{name::Name, HirFileId, InFile, MacroCallId, MacroDefId};
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
@@ -624,6 +624,17 @@ impl ModuleData {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         self.origin.definition_source(db)
+    }
+
+    /// Same as [`definition_source`] but only returns the file id to prevent parsing the ASt.
+    pub fn definition_source_file_id(&self) -> HirFileId {
+        match self.origin {
+            ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
+                definition.into()
+            }
+            ModuleOrigin::Inline { definition, .. } => definition.file_id,
+            ModuleOrigin::BlockExpr { block } => block.file_id,
+        }
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
