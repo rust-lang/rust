@@ -145,7 +145,7 @@ impl MirPhase {
             }
             "analysis" => Self::Analysis(AnalysisPhase::parse(phase)),
             "runtime" => Self::Runtime(RuntimePhase::parse(phase)),
-            _ => panic!("Unknown MIR dialect {}", dialect),
+            _ => bug!("Unknown MIR dialect: '{}'", dialect),
         }
     }
 }
@@ -159,7 +159,7 @@ impl AnalysisPhase {
         match &*phase.to_ascii_lowercase() {
             "initial" => Self::Initial,
             "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
-            _ => panic!("Unknown analysis phase {}", phase),
+            _ => bug!("Unknown analysis phase: '{}'", phase),
         }
     }
 }
@@ -174,7 +174,7 @@ impl RuntimePhase {
             "initial" => Self::Initial,
             "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
             "optimized" => Self::Optimized,
-            _ => panic!("Unknown runtime phase {}", phase),
+            _ => bug!("Unknown runtime phase: '{}'", phase),
         }
     }
 }
