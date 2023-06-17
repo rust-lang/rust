@@ -290,7 +290,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                     b'$' => Dollar,
                     b'?' => Question,
                     b'\'' => SingleQuote,
-                    _ => unreachable!(),
+                    _ => unreachable!("{ch} not expected in Punct"),
                 };
                 smallvec![if joint {
                     tokenstream::TokenTree::token_joint(kind, span)
