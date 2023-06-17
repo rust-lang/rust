@@ -8,18 +8,20 @@ use std::{
 
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    AssocItem, Crate, Function, HasCrate, HasSource, HirDisplay, ModuleDef,
+    Adt, AssocItem, Crate, DefWithBody, HasCrate, HasSource, HirDisplay, ModuleDef, Name,
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
     hir::{ExprId, PatId},
-    FunctionId,
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
-use ide::{Analysis, AnalysisHost, LineCol, RootDatabase};
-use ide_db::base_db::{
-    salsa::{self, debug::DebugQueryTable, ParallelDatabase},
-    SourceDatabase, SourceDatabaseExt,
+use ide::{LineCol, RootDatabase};
+use ide_db::{
+    base_db::{
+        salsa::{self, debug::DebugQueryTable, ParallelDatabase},
+        SourceDatabase, SourceDatabaseExt,
+    },
+    LineIndexDatabase,
 };
 use itertools::Itertools;
 use oorandom::Rand32;
@@ -120,7 +122,7 @@ impl flags::AnalysisStats {
 
         eprint!("  crates: {num_crates}");
         let mut num_decls = 0;
-        let mut funcs = Vec::new();
+        let mut bodies = Vec::new();
         let mut adts = Vec::new();
         let mut consts = Vec::new();
         while let Some(module) = visit_queue.pop() {
@@ -130,40 +132,66 @@ impl flags::AnalysisStats {
                 for decl in module.declarations(db) {
                     num_decls += 1;
                     match decl {
-                        ModuleDef::Function(f) => funcs.push(f),
-                        ModuleDef::Adt(a) => adts.push(a),
-                        ModuleDef::Const(c) => consts.push(c),
+                        ModuleDef::Function(f) => bodies.push(DefWithBody::from(f)),
+                        ModuleDef::Adt(a) => {
+                            if let Adt::Enum(e) = a {
+                                for v in e.variants(db) {
+                                    bodies.push(DefWithBody::from(v));
+                                }
+                            }
+                            adts.push(a)
+                        }
+                        ModuleDef::Const(c) => {
+                            bodies.push(DefWithBody::from(c));
+                            consts.push(c)
+                        }
+                        ModuleDef::Static(s) => bodies.push(DefWithBody::from(s)),
                         _ => (),
-                    }
+                    };
                 }
 
                 for impl_def in module.impl_defs(db) {
                     for item in impl_def.items(db) {
                         num_decls += 1;
-                        if let AssocItem::Function(f) = item {
-                            funcs.push(f);
+                        match item {
+                            AssocItem::Function(f) => bodies.push(DefWithBody::from(f)),
+                            AssocItem::Const(c) => {
+                                bodies.push(DefWithBody::from(c));
+                                consts.push(c);
+                            }
+                            _ => (),
                         }
                     }
                 }
             }
         }
-        eprintln!(", mods: {}, decls: {num_decls}, fns: {}", visited_modules.len(), funcs.len());
+        eprintln!(
+            ", mods: {}, decls: {num_decls}, bodies: {}",
+            visited_modules.len(),
+            bodies.len()
+        );
         eprintln!("{:<20} {}", "Item Collection:", analysis_sw.elapsed());
 
         if self.randomize {
-            shuffle(&mut rng, &mut funcs);
+            shuffle(&mut rng, &mut bodies);
         }
 
         if !self.skip_inference {
-            self.run_inference(&host, db, &vfs, &funcs, verbosity);
+            // FIXME: Consider running inference on all body kinds?
+            self.run_inference(db, &vfs, &bodies, verbosity);
         }
 
         if !self.skip_mir_stats {
-            self.run_mir_lowering(db, &funcs, verbosity);
+            self.run_mir_lowering(db, &bodies, verbosity);
         }
 
-        self.run_data_layout(db, &adts, verbosity);
-        self.run_const_eval(db, &consts, verbosity);
+        if !self.skip_data_layout {
+            self.run_data_layout(db, &adts, verbosity);
+        }
+
+        if !self.skip_const_eval {
+            self.run_const_eval(db, &consts, verbosity);
+        }
 
         let total_span = analysis_sw.elapsed();
         eprintln!("{:<20} {total_span}", "Total:");
@@ -260,22 +288,22 @@ impl flags::AnalysisStats {
         report_metric("failed const evals", fail, "#");
     }
 
-    fn run_mir_lowering(&self, db: &RootDatabase, funcs: &[Function], verbosity: Verbosity) {
+    fn run_mir_lowering(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
         let mut sw = self.stop_watch();
-        let all = funcs.len() as u64;
+        let all = bodies.len() as u64;
         let mut fail = 0;
-        for f in funcs {
-            let Err(e) = db.mir_body(FunctionId::from(*f).into()) else {
+        for &body in bodies {
+            let Err(e) = db.mir_body(body.into()) else {
                 continue;
             };
             if verbosity.is_spammy() {
-                let full_name = f
+                let full_name = body
                     .module(db)
                     .path_to_root(db)
                     .into_iter()
                     .rev()
                     .filter_map(|it| it.name(db))
-                    .chain(Some(f.name(db)))
+                    .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db).to_string())
                     .join("::");
                 println!("Mir body for {full_name} failed due {e:?}");
@@ -289,27 +317,25 @@ impl flags::AnalysisStats {
 
     fn run_inference(
         &self,
-        host: &AnalysisHost,
         db: &RootDatabase,
         vfs: &Vfs,
-        funcs: &[Function],
+        bodies: &[DefWithBody],
         verbosity: Verbosity,
     ) {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
-            _ => ProgressReport::new(funcs.len() as u64),
+            _ => ProgressReport::new(bodies.len() as u64),
         };
 
         if self.parallel {
             let mut inference_sw = self.stop_watch();
             let snap = Snap(db.snapshot());
-            funcs
+            bodies
                 .par_iter()
-                .map_with(snap, |snap, &f| {
-                    let f_id = FunctionId::from(f);
-                    snap.0.body(f_id.into());
-                    snap.0.infer(f_id.into());
+                .map_with(snap, |snap, &body| {
+                    snap.0.body(body.into());
+                    snap.0.infer(body.into());
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -325,36 +351,44 @@ impl flags::AnalysisStats {
         let mut num_pats_unknown = 0;
         let mut num_pats_partially_unknown = 0;
         let mut num_pat_type_mismatches = 0;
-        let analysis = host.analysis();
-        for f in funcs.iter().copied() {
-            let name = f.name(db);
-            let module = f.module(db);
-            let full_name = module
-                .krate()
-                .display_name(db)
-                .map(|x| x.canonical_name().to_string())
-                .into_iter()
-                .chain(
-                    module
-                        .path_to_root(db)
-                        .into_iter()
-                        .filter_map(|it| it.name(db))
-                        .rev()
-                        .chain(Some(f.name(db)))
-                        .map(|it| it.display(db).to_string()),
-                )
-                .join("::");
+        for &body_id in bodies {
+            let name = body_id.name(db).unwrap_or_else(Name::missing);
+            let module = body_id.module(db);
+            let full_name = || {
+                module
+                    .krate()
+                    .display_name(db)
+                    .map(|it| it.canonical_name().to_string())
+                    .into_iter()
+                    .chain(
+                        module
+                            .path_to_root(db)
+                            .into_iter()
+                            .filter_map(|it| it.name(db))
+                            .rev()
+                            .chain(Some(name.clone()))
+                            .map(|it| it.display(db).to_string()),
+                    )
+                    .join("::")
+            };
             if let Some(only_name) = self.only.as_deref() {
-                if name.display(db).to_string() != only_name && full_name != only_name {
+                if name.display(db).to_string() != only_name && full_name() != only_name {
                     continue;
                 }
             }
-            let mut msg = format!("processing: {full_name}");
+            let mut msg = format!("processing: {}", full_name());
             if verbosity.is_verbose() {
-                if let Some(src) = f.source(db) {
+                let source = match body_id {
+                    DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::InTypeConst(_) => unimplemented!(),
+                };
+                if let Some(src) = source {
                     let original_file = src.file_id.original_file(db);
                     let path = vfs.file_path(original_file);
-                    let syntax_range = src.value.syntax().text_range();
+                    let syntax_range = src.value.text_range();
                     format_to!(msg, " ({} {:?})", path, syntax_range);
                 }
             }
@@ -362,9 +396,8 @@ impl flags::AnalysisStats {
                 bar.println(msg.to_string());
             }
             bar.set_message(&msg);
-            let f_id = FunctionId::from(f);
-            let (body, sm) = db.body_with_source_map(f_id.into());
-            let inference_result = db.infer(f_id.into());
+            let (body, sm) = db.body_with_source_map(body_id.into());
+            let inference_result = db.infer(body_id.into());
 
             // region:expressions
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
@@ -375,9 +408,7 @@ impl flags::AnalysisStats {
                 let unknown_or_partial = if ty.is_unknown() {
                     num_exprs_unknown += 1;
                     if verbosity.is_spammy() {
-                        if let Some((path, start, end)) =
-                            expr_syntax_range(db, &analysis, vfs, &sm, expr_id)
-                        {
+                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm, expr_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Unknown type",
                                 path,
@@ -401,9 +432,7 @@ impl flags::AnalysisStats {
                 };
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single expression
-                    if let Some((_, start, end)) =
-                        expr_syntax_range(db, &analysis, vfs, &sm, expr_id)
-                    {
+                    if let Some((_, start, end)) = expr_syntax_range(db, vfs, &sm, expr_id) {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
@@ -419,16 +448,14 @@ impl flags::AnalysisStats {
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
-                        location_csv_expr(db, &analysis, vfs, &sm, expr_id),
+                        location_csv_expr(db, vfs, &sm, expr_id),
                         ty.display(db)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                     num_expr_type_mismatches += 1;
                     if verbosity.is_verbose() {
-                        if let Some((path, start, end)) =
-                            expr_syntax_range(db, &analysis, vfs, &sm, expr_id)
-                        {
+                        if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm, expr_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
                                 path,
@@ -451,7 +478,7 @@ impl flags::AnalysisStats {
                     if self.output == Some(OutputFormat::Csv) {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
-                            location_csv_expr(db, &analysis, vfs, &sm, expr_id),
+                            location_csv_expr(db, vfs, &sm, expr_id),
                             mismatch.expected.display(db),
                             mismatch.actual.display(db)
                         );
@@ -461,7 +488,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} exprs, {} unknown, {} partial",
-                    full_name,
+                    full_name(),
                     num_exprs - previous_exprs,
                     num_exprs_unknown - previous_unknown,
                     num_exprs_partially_unknown - previous_partially_unknown
@@ -478,9 +505,7 @@ impl flags::AnalysisStats {
                 let unknown_or_partial = if ty.is_unknown() {
                     num_pats_unknown += 1;
                     if verbosity.is_spammy() {
-                        if let Some((path, start, end)) =
-                            pat_syntax_range(db, &analysis, vfs, &sm, pat_id)
-                        {
+                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm, pat_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Unknown type",
                                 path,
@@ -504,8 +529,7 @@ impl flags::AnalysisStats {
                 };
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single pattern
-                    if let Some((_, start, end)) = pat_syntax_range(db, &analysis, vfs, &sm, pat_id)
-                    {
+                    if let Some((_, start, end)) = pat_syntax_range(db, vfs, &sm, pat_id) {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
@@ -521,16 +545,14 @@ impl flags::AnalysisStats {
                 if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
                     println!(
                         r#"{},type,"{}""#,
-                        location_csv_pat(db, &analysis, vfs, &sm, pat_id),
+                        location_csv_pat(db, vfs, &sm, pat_id),
                         ty.display(db)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat_id) {
                     num_pat_type_mismatches += 1;
                     if verbosity.is_verbose() {
-                        if let Some((path, start, end)) =
-                            pat_syntax_range(db, &analysis, vfs, &sm, pat_id)
-                        {
+                        if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm, pat_id) {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
                                 path,
@@ -553,7 +575,7 @@ impl flags::AnalysisStats {
                     if self.output == Some(OutputFormat::Csv) {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
-                            location_csv_pat(db, &analysis, vfs, &sm, pat_id),
+                            location_csv_pat(db, vfs, &sm, pat_id),
                             mismatch.expected.display(db),
                             mismatch.actual.display(db)
                         );
@@ -563,7 +585,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} pats, {} unknown, {} partial",
-                    full_name,
+                    full_name(),
                     num_pats - previous_pats,
                     num_pats_unknown - previous_unknown,
                     num_pats_partially_unknown - previous_partially_unknown
@@ -605,13 +627,7 @@ impl flags::AnalysisStats {
     }
 }
 
-fn location_csv_expr(
-    db: &RootDatabase,
-    analysis: &Analysis,
-    vfs: &Vfs,
-    sm: &BodySourceMap,
-    expr_id: ExprId,
-) -> String {
+fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: ExprId) -> String {
     let src = match sm.expr_syntax(expr_id) {
         Ok(s) => s,
         Err(SyntheticSyntax) => return "synthetic,,".to_string(),
@@ -620,20 +636,14 @@ fn location_csv_expr(
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range(db);
     let path = vfs.file_path(original_range.file_id);
-    let line_index = analysis.file_line_index(original_range.file_id).unwrap();
+    let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
     format!("{path},{}:{},{}:{}", start.line + 1, start.col, end.line + 1, end.col)
 }
 
-fn location_csv_pat(
-    db: &RootDatabase,
-    analysis: &Analysis,
-    vfs: &Vfs,
-    sm: &BodySourceMap,
-    pat_id: PatId,
-) -> String {
+fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: PatId) -> String {
     let src = match sm.pat_syntax(pat_id) {
         Ok(s) => s,
         Err(SyntheticSyntax) => return "synthetic,,".to_string(),
@@ -644,7 +654,7 @@ fn location_csv_pat(
     });
     let original_range = node.as_ref().original_file_range(db);
     let path = vfs.file_path(original_range.file_id);
-    let line_index = analysis.file_line_index(original_range.file_id).unwrap();
+    let line_index = db.line_index(original_range.file_id);
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -653,7 +663,6 @@ fn location_csv_pat(
 
 fn expr_syntax_range(
     db: &RootDatabase,
-    analysis: &Analysis,
     vfs: &Vfs,
     sm: &BodySourceMap,
     expr_id: ExprId,
@@ -664,7 +673,7 @@ fn expr_syntax_range(
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range(db);
         let path = vfs.file_path(original_range.file_id);
-        let line_index = analysis.file_line_index(original_range.file_id).unwrap();
+        let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -675,7 +684,6 @@ fn expr_syntax_range(
 }
 fn pat_syntax_range(
     db: &RootDatabase,
-    analysis: &Analysis,
     vfs: &Vfs,
     sm: &BodySourceMap,
     pat_id: PatId,
@@ -691,7 +699,7 @@ fn pat_syntax_range(
         });
         let original_range = node.as_ref().original_file_range(db);
         let path = vfs.file_path(original_range.file_id);
-        let line_index = analysis.file_line_index(original_range.file_id).unwrap();
+        let line_index = db.line_index(original_range.file_id);
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
