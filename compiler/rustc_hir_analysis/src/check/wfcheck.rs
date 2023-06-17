@@ -498,7 +498,7 @@ fn augment_param_env<'tcx>(
         return param_env;
     }
 
-    let bounds = tcx.mk_predicates_from_iter(
+    let bounds = tcx.mk_clauses_from_iter(
         param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()),
     );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this

@@ -2864,6 +2864,11 @@ define_print_and_forward_display! {
         p!(print(binder))
     }
 
+    ty::Clause<'tcx> {
+        let binder = self.as_predicate().kind();
+        p!(print(binder))
+    }
+
     ty::PredicateKind<'tcx> {
         match *self {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(ref data)) => {
