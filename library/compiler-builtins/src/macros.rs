@@ -33,7 +33,7 @@ macro_rules! public_test_dep {
 ///
 /// This macro is structured to be invoked with a bunch of functions that looks
 /// like:
-///
+/// ```ignore
 ///     intrinsics! {
 ///         pub extern "C" fn foo(a: i32) -> u32 {
 ///             // ...
@@ -44,6 +44,7 @@ macro_rules! public_test_dep {
 ///             // ...
 ///         }
 ///     }
+/// ```
 ///
 /// Each function is defined in a manner that looks like a normal Rust function.
 /// The macro then accepts a few nonstandard attributes that can decorate

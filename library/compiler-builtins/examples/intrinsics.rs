@@ -4,6 +4,7 @@
 // to link due to the missing intrinsic (symbol).
 
 #![allow(unused_features)]
+#![allow(stable_features)] // bench_black_box feature is stable, leaving for backcompat
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
 #![feature(bench_black_box)]
