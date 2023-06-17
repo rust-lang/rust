@@ -187,16 +187,14 @@ jobs:
     - name: Extract Binaries
       run: |
         DIR=$CARGO_TARGET_DIR/debug
-        rm $DIR/deps/integration-*.d
-        mv $DIR/deps/integration-* $DIR/integration
+        find $DIR/deps/integration-* -executable ! -type d | xargs -I {} mv {} $DIR/integration
         find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
-        rm -rf $CARGO_TARGET_DIR/release
 
     - name: Upload Binaries
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
-        name: target
-        path: target
+        name: binaries
+        path: target/debug
 
   integration:
     needs: integration_build
@@ -206,16 +204,13 @@ jobs:
       matrix:
         integration:
         - 'rust-lang/cargo'
-        # FIXME: re-enable once fmt_macros is renamed in RLS
-        # - 'rust-lang/rls'
         - 'rust-lang/chalk'
         - 'rust-lang/rustfmt'
         - 'Marwes/combine'
         - 'Geal/nom'
         - 'rust-lang/stdarch'
         - 'serde-rs/serde'
-        # FIXME: chrono currently cannot be compiled with `--all-targets`
-        # - 'chronotope/chrono'
+        - 'chronotope/chrono'
         - 'hyperium/hyper'
         - 'rust-random/rand'
         - 'rust-lang/futures-rs'
@@ -239,10 +234,10 @@ jobs:
 
     # Download
     - name: Download target dir
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v3
       with:
-        name: target
-        path: target
+        name: binaries
+        path: target/debug
 
     - name: Make Binaries Executable
       run: chmod +x $CARGO_TARGET_DIR/debug/*
