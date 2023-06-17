@@ -3,17 +3,42 @@
   
   fn main() -> () {
       let mut _0: ();
-      let _1: ();
-      let mut _2: ((), u8, u8);
+      let mut _5: ();
+      let mut _6: u8;
+      let mut _7: u8;
+      scope 1 (inlined encode) {
+          debug this => ((), u8, u8){ .0 => _5, .1 => _6, .2 => _7, };
+          let mut _1: bool;
+          let mut _2: bool;
+          let mut _3: u8;
+          let mut _4: !;
+      }
   
       bb0: {
+          StorageLive(_5);
+          StorageLive(_6);
+          _5 = const ();
+          _6 = const 0_u8;
+          _7 = const 0_u8;
+          StorageLive(_1);
           StorageLive(_2);
-          _2 = (const (), const 0_u8, const 0_u8);
-          _1 = encode(move _2) -> bb1;
+-         _2 = Eq(_7, const 0_u8);
+-         _1 = Not(move _2);
++         _2 = const true;
++         _1 = const false;
+          StorageDead(_2);
+-         switchInt(move _1) -> [0: bb2, otherwise: bb1];
++         switchInt(const false) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
-          StorageDead(_2);
+          _4 = core::panicking::panic(const "assertion failed: this.2 == 0");
+      }
+  
+      bb2: {
+          StorageDead(_1);
+          StorageDead(_5);
+          StorageDead(_6);
           return;
       }
   }

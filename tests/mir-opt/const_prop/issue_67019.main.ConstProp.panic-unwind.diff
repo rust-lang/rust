@@ -3,22 +3,38 @@
   
   fn main() -> () {
       let mut _0: ();
-      let _1: ();
-      let mut _2: ((u8, u8),);
-      let mut _3: (u8, u8);
+      let mut _5: u8;
+      let mut _6: u8;
+      let mut _7: u8;
+      let mut _8: u8;
+      scope 1 (inlined test) {
+          debug this => ((u8, u8),){ .0.0 => _7, .0.1 => _8, };
+          let mut _1: bool;
+          let mut _2: bool;
+          let mut _3: u8;
+          let mut _4: !;
+      }
   
       bb0: {
+          _7 = const 1_u8;
+          _8 = const 2_u8;
+          StorageLive(_1);
           StorageLive(_2);
-          StorageLive(_3);
--         _3 = (const 1_u8, const 2_u8);
-+         _3 = const (1_u8, 2_u8);
-          _2 = (move _3,);
-          StorageDead(_3);
-          _1 = test(move _2) -> bb1;
+-         _2 = Eq(_7, const 1_u8);
+-         _1 = Not(move _2);
++         _2 = const true;
++         _1 = const false;
+          StorageDead(_2);
+-         switchInt(move _1) -> [0: bb2, otherwise: bb1];
++         switchInt(const false) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
-          StorageDead(_2);
+          _4 = core::panicking::panic(const "assertion failed: (this.0).0 == 1");
+      }
+  
+      bb2: {
+          StorageDead(_1);
           return;
       }
   }

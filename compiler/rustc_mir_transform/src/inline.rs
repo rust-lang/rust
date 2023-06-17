@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
@@ -87,12 +88,19 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+
+    let is_exported = tcx.is_constructor(def_id.into())
+        || tcx.generics_of(def_id).requires_monomorphization(tcx)
+        || codegen_fn_attrs.requests_inline();
+
     let mut this = Inliner {
         tcx,
         param_env,
-        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
+        codegen_fn_attrs,
         history: Vec::new(),
         changed: false,
+        is_exported,
     };
     let blocks = START_BLOCK..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
@@ -112,6 +120,7 @@ struct Inliner<'tcx> {
     history: Vec<DefId>,
     /// Indicates that the caller body has been modified.
     changed: bool,
+    is_exported: bool,
 }
 
 impl<'tcx> Inliner<'tcx> {
@@ -190,7 +199,9 @@ impl<'tcx> Inliner<'tcx> {
 
         self.check_mir_is_available(caller_body, &callsite.callee)?;
         let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
-        self.check_mir_is_exportable(&callsite.callee, callee_attrs, callee_body)?;
+        if self.is_exported {
+            self.check_mir_is_exportable(&callsite.callee, callee_attrs, callee_body)?;
+        }
         self.check_mir_body(callsite, callee_body, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
@@ -382,15 +393,19 @@ impl<'tcx> Inliner<'tcx> {
             return Ok(());
         }
 
-        // So now we are trying to inline a function from another crate which is not inline and is
-        // not a generic. This might work. But if this pulls in a symbol from the other crater, we
-        // will fail to link.
-        // So this is our heuritic for handling this:
+        // The general situation we need to avoid is this:
+        // * We inline a non-exported function into an exported function
+        // * The non-exported function pulls a symbol previously determined to be internal into an
+        // exported function
+        // * Later, we inline the exported function (which is now not exportable) into another crate
+        // * Linker error (or ICE)
+        //
+        // So this is our heuristic for preventing that:
         // If this function has any calls in it, that might reference an internal symbol.
         // If this function contains a pointer constant, that might be a reference to an internal
         // static.
         // So if either of those conditions are met, we cannot inline this.
-        if !contains_pointer_constant(callee_body) {
+        if !contains_pointer_constant(self.tcx, callee_body) {
             debug!("Has no pointer constants, must be exportable");
             return Ok(());
         }
@@ -1184,17 +1199,18 @@ fn try_instance_mir<'tcx>(
     }
 }
 
-fn contains_pointer_constant(body: &Body<'_>) -> bool {
-    let mut finder = ConstFinder { found: false };
+fn contains_pointer_constant<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
+    let mut finder = ConstFinder { tcx, found: false };
     finder.visit_body(body);
     finder.found
 }
 
-struct ConstFinder {
+struct ConstFinder<'tcx> {
+    tcx: TyCtxt<'tcx>,
     found: bool,
 }
 
-impl Visitor<'_> for ConstFinder {
+impl<'tcx> Visitor<'_> for ConstFinder<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'_>, location: Location) {
         debug!("Visiting constant: {:?}", constant.literal);
         if let ConstantKind::Unevaluated(..) = constant.literal {
@@ -1203,16 +1219,13 @@ impl Visitor<'_> for ConstFinder {
         }
 
         if let ConstantKind::Val(val, ty) = constant.literal {
-            ty::tls::with(|tcx| {
-                let val = tcx.lift(val).unwrap();
-                if let ConstValue::Scalar(Scalar::Ptr(ptr, _size)) = val {
-                    if let Some(GlobalAlloc::Static(_)) =
-                        tcx.try_get_global_alloc(ptr.into_parts().0)
-                    {
-                        self.found = true;
-                    }
+            if let ConstValue::Scalar(Scalar::Ptr(ptr, _size)) = val {
+                if let Some(GlobalAlloc::Static(_)) =
+                    self.tcx.try_get_global_alloc(ptr.into_parts().0)
+                {
+                    self.found = true;
                 }
-            });
+            }
 
             if ty.is_fn() {
                 self.found = true;
