@@ -1214,6 +1214,13 @@ impl<'tcx> ToPredicate<'tcx> for Clause<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, Clause<'tcx>> {
+    #[inline(always)]
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        tcx.mk_predicate(self.map_bound(|clause| ty::PredicateKind::Clause(clause)))
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {

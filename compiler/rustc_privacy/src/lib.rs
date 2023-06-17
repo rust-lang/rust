@@ -1270,13 +1270,13 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
             );
 
             for (pred, _) in bounds.predicates() {
-                match pred.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                match pred.skip_binder() {
+                    ty::Clause::Trait(trait_predicate) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
                             return;
                         }
                     }
-                    ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) => {
+                    ty::Clause::Projection(proj_predicate) => {
                         let term = self.visit(proj_predicate.term);
                         if term.is_break()
                             || self.visit_projection_ty(proj_predicate.projection_ty).is_break()
