@@ -43,3 +43,10 @@ macro_rules! issue_10421 {
         b = a;
     };
 }
+
+#[macro_export]
+macro_rules! macro_with_panic {
+    () => {
+        panic!()
+    };
+}
