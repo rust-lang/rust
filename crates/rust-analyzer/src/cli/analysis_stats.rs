@@ -29,7 +29,6 @@ use profile::{Bytes, StopWatch};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
-use stdx::format_to;
 use syntax::{AstNode, SyntaxNode};
 use vfs::{AbsPathBuf, Vfs, VfsPath};
 
@@ -241,8 +240,10 @@ impl flags::AnalysisStats {
                 continue;
             }
             all += 1;
-            let Err(e) = db.layout_of_adt(hir_def::AdtId::from(a).into(), Substitution::empty(Interner), a.krate(db).into()) else {
-                continue;
+            let Err(e)
+                = db.layout_of_adt(hir_def::AdtId::from(a).into(), Substitution::empty(Interner), a.krate(db).into())
+            else {
+                continue
             };
             if verbosity.is_spammy() {
                 let full_name = a
@@ -363,7 +364,7 @@ impl flags::AnalysisStats {
         for &body_id in bodies {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
-            let full_name = || {
+            let full_name = move || {
                 module
                     .krate()
                     .display_name(db)
@@ -375,7 +376,7 @@ impl flags::AnalysisStats {
                             .into_iter()
                             .filter_map(|it| it.name(db))
                             .rev()
-                            .chain(Some(name.clone()))
+                            .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
                             .map(|it| it.display(db).to_string()),
                     )
                     .join("::")
@@ -385,26 +386,31 @@ impl flags::AnalysisStats {
                     continue;
                 }
             }
-            let mut msg = format!("processing: {}", full_name());
-            if verbosity.is_verbose() {
-                let source = match body_id {
-                    DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::InTypeConst(_) => unimplemented!(),
-                };
-                if let Some(src) = source {
-                    let original_file = src.file_id.original_file(db);
-                    let path = vfs.file_path(original_file);
-                    let syntax_range = src.value.text_range();
-                    format_to!(msg, " ({} {:?})", path, syntax_range);
+            let msg = move || {
+                if verbosity.is_verbose() {
+                    let source = match body_id {
+                        DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::InTypeConst(_) => unimplemented!(),
+                    };
+                    if let Some(src) = source {
+                        let original_file = src.file_id.original_file(db);
+                        let path = vfs.file_path(original_file);
+                        let syntax_range = src.value.text_range();
+                        format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
+                    } else {
+                        format!("processing: {}", full_name())
+                    }
+                } else {
+                    format!("processing: {}", full_name())
                 }
-            }
+            };
             if verbosity.is_spammy() {
-                bar.println(msg.to_string());
+                bar.println(msg());
             }
-            bar.set_message(&msg);
+            bar.set_message(msg);
             let (body, sm) = db.body_with_source_map(body_id.into());
             let inference_result = db.infer(body_id.into());
 
@@ -641,16 +647,15 @@ impl flags::AnalysisStats {
     ) {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
-            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ if self.output.is_some() => ProgressReport::hidden(),
             _ => ProgressReport::new(bodies.len() as u64),
         };
 
         let mut sw = self.stop_watch();
         bar.tick();
         for &body_id in bodies {
-            let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
-            let full_name = || {
+            let full_name = move || {
                 module
                     .krate()
                     .display_name(db)
@@ -662,38 +667,45 @@ impl flags::AnalysisStats {
                             .into_iter()
                             .filter_map(|it| it.name(db))
                             .rev()
-                            .chain(Some(name.clone()))
+                            .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
                             .map(|it| it.display(db).to_string()),
                     )
                     .join("::")
             };
             if let Some(only_name) = self.only.as_deref() {
-                if name.display(db).to_string() != only_name && full_name() != only_name {
+                if body_id.name(db).unwrap_or_else(Name::missing).display(db).to_string()
+                    != only_name
+                    && full_name() != only_name
+                {
                     continue;
                 }
             }
-            let mut msg = format!("processing: {}", full_name());
-            if verbosity.is_verbose() {
-                let source = match body_id {
-                    DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
-                    DefWithBody::InTypeConst(_) => unimplemented!(),
-                };
-                if let Some(src) = source {
-                    let original_file = src.file_id.original_file(db);
-                    let path = vfs.file_path(original_file);
-                    let syntax_range = src.value.text_range();
-                    format_to!(msg, " ({} {:?})", path, syntax_range);
+            let msg = move || {
+                if verbosity.is_verbose() {
+                    let source = match body_id {
+                        DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
+                        DefWithBody::InTypeConst(_) => unimplemented!(),
+                    };
+                    if let Some(src) = source {
+                        let original_file = src.file_id.original_file(db);
+                        let path = vfs.file_path(original_file);
+                        let syntax_range = src.value.text_range();
+                        format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
+                    } else {
+                        format!("processing: {}", full_name())
+                    }
+                } else {
+                    format!("processing: {}", full_name())
                 }
-            }
+            };
             if verbosity.is_spammy() {
-                bar.println(msg.to_string());
+                bar.println(msg());
             }
-            bar.set_message(&msg);
-            let (body, sm) = db.body_with_source_map(body_id.into());
-            // endregion:patterns
+            bar.set_message(msg);
+            db.body_with_source_map(body_id.into());
             bar.inc(1);
         }
 
