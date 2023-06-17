@@ -1072,6 +1072,9 @@ function preLoadCss(cssUrl) {
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
 
         const infos = [
+            "For a full list of all search features, take a look <a \
+            href='https://doc.rust-lang.org/stable/rustdoc/how-to-read-rustdoc.html\
+            #the-search-interface'>here</a>.",
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
