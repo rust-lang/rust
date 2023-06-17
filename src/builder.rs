@@ -181,6 +181,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             })
             .collect();
 
+        debug_assert_eq!(casted_args.len(), args.len());
+
         Cow::Owned(casted_args)
     }
 
@@ -207,7 +209,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let func_name = format!("{:?}", func_ptr);
 
-        let casted_args: Vec<_> = param_types
+        let mut casted_args: Vec<_> = param_types
             .into_iter()
             .zip(args.iter())
             .enumerate()
@@ -236,6 +238,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 }
             })
             .collect();
+
+        // NOTE: to take into account variadic functions.
+        for i in casted_args.len()..args.len() {
+            casted_args.push(args[i]);
+        }
 
         Cow::Owned(casted_args)
     }
