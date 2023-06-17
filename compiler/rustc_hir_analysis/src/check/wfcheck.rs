@@ -217,10 +217,10 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
             check_item_fn(tcx, def_id, item.ident, item.span, sig.decl);
         }
         hir::ItemKind::Static(ty, ..) => {
-            check_item_type(tcx, def_id, ty.span, false);
+            check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid);
         }
         hir::ItemKind::Const(ty, ..) => {
-            check_item_type(tcx, def_id, ty.span, false);
+            check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid);
         }
         hir::ItemKind::Struct(_, ast_generics) => {
             check_type_defn(tcx, item, false);
@@ -242,6 +242,12 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         }
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => {}
+        hir::ItemKind::TyAlias(hir_ty, ..) => {
+            if tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
+                // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
+                check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
+            }
+        }
         _ => {}
     }
 }
@@ -258,7 +264,9 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
         hir::ForeignItemKind::Fn(decl, ..) => {
             check_item_fn(tcx, def_id, item.ident, item.span, decl)
         }
-        hir::ForeignItemKind::Static(ty, ..) => check_item_type(tcx, def_id, ty.span, true),
+        hir::ForeignItemKind::Static(ty, ..) => {
+            check_item_type(tcx, def_id, ty.span, UnsizedHandling::AllowIfForeignTail)
+        }
         hir::ForeignItemKind::Type => (),
     }
 }
@@ -1100,20 +1108,32 @@ fn check_item_fn(
     })
 }
 
-fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_foreign_ty: bool) {
+enum UnsizedHandling {
+    Forbid,
+    Allow,
+    AllowIfForeignTail,
+}
+
+fn check_item_type(
+    tcx: TyCtxt<'_>,
+    item_id: LocalDefId,
+    ty_span: Span,
+    unsized_handling: UnsizedHandling,
+) {
     debug!("check_item_type: {:?}", item_id);
 
     enter_wf_checking_ctxt(tcx, ty_span, item_id, |wfcx| {
         let ty = tcx.type_of(item_id).subst_identity();
         let item_ty = wfcx.normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
 
-        let mut forbid_unsized = true;
-        if allow_foreign_ty {
-            let tail = tcx.struct_tail_erasing_lifetimes(item_ty, wfcx.param_env);
-            if let ty::Foreign(_) = tail.kind() {
-                forbid_unsized = false;
+        let forbid_unsized = match unsized_handling {
+            UnsizedHandling::Forbid => true,
+            UnsizedHandling::Allow => false,
+            UnsizedHandling::AllowIfForeignTail => {
+                let tail = tcx.struct_tail_erasing_lifetimes(item_ty, wfcx.param_env);
+                !matches!(tail.kind(), ty::Foreign(_))
             }
-        }
+        };
 
         wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {

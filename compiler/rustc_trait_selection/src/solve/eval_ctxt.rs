@@ -263,7 +263,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
             let new_canonical_response =
                 EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
-            if !new_canonical_response.value.var_values.is_identity() {
+            // We only check for modulo regions as we convert all regions in
+            // the input to new existentials, even if they're expected to be
+            // `'static` or a placeholder region.
+            if !new_canonical_response.value.var_values.is_identity_modulo_regions() {
                 bug!(
                     "unstable result: re-canonicalized goal={canonical_goal:#?} \
                     first_response={canonical_response:#?} \

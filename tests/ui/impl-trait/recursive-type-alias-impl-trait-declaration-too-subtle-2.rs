@@ -1,5 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
+// check-pass
+
 type Foo = impl PartialEq<(Foo, i32)>;
 
 struct Bar;
@@ -11,7 +13,6 @@ impl PartialEq<(Foo, i32)> for Bar {
 }
 
 fn foo() -> Foo {
-    //~^ ERROR can't compare `Bar` with `(Bar, i32)`
     Bar
 }
 

@@ -242,6 +242,9 @@ where
                     }
                 }
             }
+            ty::Alias(ty::Weak, alias) => {
+                self.def_id_visitor.visit_def_id(alias.def_id, "type alias", &ty);
+            }
             ty::Alias(ty::Projection, proj) => {
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to

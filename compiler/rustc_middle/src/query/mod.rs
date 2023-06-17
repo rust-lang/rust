@@ -1904,6 +1904,16 @@ rustc_queries! {
     }
 
     /// Do not call this query directly: invoke `normalize` instead.
+    query normalize_weak_ty(
+        goal: CanonicalProjectionGoal<'tcx>
+    ) -> Result<
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
+        NoSolution,
+    > {
+        desc { "normalizing `{}`", goal.value.value }
+    }
+
+    /// Do not call this query directly: invoke `normalize` instead.
     query normalize_inherent_projection_ty(
         goal: CanonicalProjectionGoal<'tcx>
     ) -> Result<

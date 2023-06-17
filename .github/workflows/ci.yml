@@ -38,6 +38,7 @@ jobs:
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
@@ -143,6 +144,17 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
         if: success() && !env.SKIP_JOB
+      - name: create github artifacts
+        run: src/ci/scripts/create-doc-artifacts.sh
+        if: success() && !env.SKIP_JOB
+      - name: upload artifacts to github
+        uses: actions/upload-artifact@v3
+        with:
+          name: "${{ env.DOC_ARTIFACT_NAME }}"
+          path: obj/artifacts/doc
+          if-no-files-found: ignore
+          retention-days: 5
+        if: success() && !env.SKIP_JOB
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
@@ -156,6 +168,7 @@ jobs:
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -557,6 +570,17 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
         if: success() && !env.SKIP_JOB
+      - name: create github artifacts
+        run: src/ci/scripts/create-doc-artifacts.sh
+        if: success() && !env.SKIP_JOB
+      - name: upload artifacts to github
+        uses: actions/upload-artifact@v3
+        with:
+          name: "${{ env.DOC_ARTIFACT_NAME }}"
+          path: obj/artifacts/doc
+          if-no-files-found: ignore
+          retention-days: 5
+        if: success() && !env.SKIP_JOB
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
@@ -571,6 +595,7 @@ jobs:
       DIST_TRY_BUILD: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -671,6 +696,17 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
+        if: success() && !env.SKIP_JOB
+      - name: create github artifacts
+        run: src/ci/scripts/create-doc-artifacts.sh
+        if: success() && !env.SKIP_JOB
+      - name: upload artifacts to github
+        uses: actions/upload-artifact@v3
+        with:
+          name: "${{ env.DOC_ARTIFACT_NAME }}"
+          path: obj/artifacts/doc
+          if-no-files-found: ignore
+          retention-days: 5
         if: success() && !env.SKIP_JOB
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh

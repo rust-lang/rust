@@ -82,10 +82,4 @@ fn msrv_1_41() {
     }
 }
 
-type Opaque = impl Sized;
-struct IntoOpaque;
-impl Into<Opaque> for IntoOpaque {
-    fn into(self) -> Opaque {}
-}
-
 fn main() {}

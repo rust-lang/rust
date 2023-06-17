@@ -479,11 +479,12 @@ impl<'tcx> Inliner<'tcx> {
         // Abort if type validation found anything fishy.
         checker.validation?;
 
+        // N.B. We still apply our cost threshold to #[inline(always)] functions.
+        // That attribute is often applied to very large functions that exceed LLVM's (very
+        // generous) inlining threshold. Such functions are very poor MIR inlining candidates.
+        // Always inlining #[inline(always)] functions in MIR, on net, slows down the compiler.
         let cost = checker.cost;
-        if let InlineAttr::Always = callee_attrs.inline {
-            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
-            Ok(())
-        } else if cost <= threshold {
+        if cost <= threshold {
             debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
             Ok(())
         } else {

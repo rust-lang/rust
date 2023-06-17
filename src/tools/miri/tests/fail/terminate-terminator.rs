@@ -1,4 +1,4 @@
-//@compile-flags: -Zmir-opt-level=3
+//@compile-flags: -Zmir-opt-level=3 -Zinline-mir-hint-threshold=1000
 // Enable MIR inlining to ensure that `TerminatorKind::Terminate` is generated
 // instead of just `UnwindAction::Terminate`.
 

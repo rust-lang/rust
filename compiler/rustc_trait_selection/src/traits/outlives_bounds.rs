@@ -9,7 +9,7 @@ use rustc_span::def_id::LocalDefId;
 
 pub use rustc_middle::traits::query::OutlivesBound;
 
-type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
+pub type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub trait InferCtxtExt<'a, 'tcx> {
     fn implied_outlives_bounds(
         &self,

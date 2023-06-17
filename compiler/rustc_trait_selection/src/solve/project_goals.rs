@@ -57,6 +57,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
             DefKind::AnonConst => self.normalize_anon_const(goal),
             DefKind::OpaqueTy => self.normalize_opaque_type(goal),
+            DefKind::TyAlias => self.normalize_weak_type(goal),
             kind => bug!("unknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
         }
     }
@@ -105,15 +106,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
+        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred()
-            && poly_projection_pred.projection_def_id() == goal.predicate.def_id()
+        if let Some(projection_pred) = assumption.as_projection_clause()
+            && projection_pred.projection_def_id() == goal.predicate.def_id()
         {
             ecx.probe(|ecx| {
                 let assumption_projection_pred =
-                    ecx.instantiate_binder_with_infer(poly_projection_pred);
+                    ecx.instantiate_binder_with_infer(projection_pred);
                 ecx.eq(
                     goal.param_env,
                     goal.predicate.projection_ty,

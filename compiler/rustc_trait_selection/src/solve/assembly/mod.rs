@@ -105,7 +105,7 @@ pub(super) trait GoalKind<'tcx>:
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
+        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx>;
 
@@ -115,7 +115,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
+        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
@@ -131,7 +131,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_alias_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
+        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             ecx.validate_alias_bound_self_from_param_env(goal)
@@ -144,7 +144,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
+        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             let tcx = ecx.tcx();
@@ -467,11 +467,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
-            match G::consider_implied_clause(self, goal, assumption, []) {
-                Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
+            if let Some(clause) = assumption.as_clause() {
+                match G::consider_implied_clause(self, goal, clause, []) {
+                    Ok(result) => {
+                        candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
+                    }
+                    Err(NoSolution) => (),
                 }
-                Err(NoSolution) => (),
             }
         }
     }
@@ -508,20 +510,23 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Alias(ty::Inherent, _)
+            | ty::Alias(ty::Weak, _)
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
-            // Excluding IATs here as they don't have meaningful item bounds.
+            // Excluding IATs and type aliases here as they don't have meaningful item bounds.
             ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
         };
 
         for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
-            match G::consider_alias_bound_candidate(self, goal, assumption) {
-                Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
+            if let Some(clause) = assumption.as_clause() {
+                match G::consider_alias_bound_candidate(self, goal, clause) {
+                    Ok(result) => {
+                        candidates.push(Candidate { source: CandidateSource::AliasBound, result })
+                    }
+                    Err(NoSolution) => (),
                 }
-                Err(NoSolution) => (),
             }
         }
     }
@@ -675,18 +680,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // projection predicates that we reach by elaborating the principal trait ref,
             // since that'll cause ambiguity.
             //
-            // We can remove this when we have implemented intersections in responses.
+            // We can remove this when we have implemented lifetime intersections in responses.
             if assumption.to_opt_poly_projection_pred().is_some()
                 && !own_bounds.contains(&assumption)
             {
                 continue;
             }
 
-            match G::consider_object_bound_candidate(self, goal, assumption) {
-                Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
+            if let Some(clause) = assumption.as_clause() {
+                match G::consider_object_bound_candidate(self, goal, clause) {
+                    Ok(result) => {
+                        candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
+                    }
+                    Err(NoSolution) => (),
                 }
-                Err(NoSolution) => (),
             }
         }
     }

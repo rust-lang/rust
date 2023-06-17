@@ -391,13 +391,13 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
 /// Relates `a` and `b` structurally, calling the relation for all nested values.
 /// Any semantic equality, e.g. of projections, and inference variables have to be
 /// handled by the caller.
+#[instrument(level = "trace", skip(relation), ret)]
 pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
 ) -> RelateResult<'tcx, Ty<'tcx>> {
     let tcx = relation.tcx();
-    debug!("structurally_relate_tys: a={:?} b={:?}", a, b);
     match (a.kind(), b.kind()) {
         (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
             // The caller should handle these cases!

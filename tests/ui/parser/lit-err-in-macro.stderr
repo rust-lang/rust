@@ -1,0 +1,8 @@
+error: suffixes on string literals are invalid
+  --> $DIR/lit-err-in-macro.rs:7:4
+   |
+LL | f!("Foo"__);
+   |    ^^^^^^^ invalid suffix `__`
+
+error: aborting due to previous error
+
