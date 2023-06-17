@@ -15,8 +15,9 @@ const ANNOTATION_LEFT_BRACKET: char = '\u{298a}'; // Unicode `Z NOTATION RIGHT B
 const ANNOTATION_RIGHT_BRACKET: char = '\u{2989}'; // Unicode `Z NOTATION LEFT BINDING BRACKET`
 const NEW_LINE_SPAN: &str = "</span>\n<span class=\"line\">";
 const HEADER: &str = r#"<!DOCTYPE html>
-<html>
-<head>"#;
+<html lang="en">
+<head>
+<meta charset="utf-8">"#;
 const START_BODY: &str = r#"</head>
 <body>"#;
 const FOOTER: &str = r#"</body>
