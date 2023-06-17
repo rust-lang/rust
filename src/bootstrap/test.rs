@@ -1766,7 +1766,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         //
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
-        if target.contains("msvc") {
+        if !builder.config.dry_run() && target.contains("msvc") {
             for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
