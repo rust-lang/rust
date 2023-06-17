@@ -176,8 +176,11 @@ impl flags::AnalysisStats {
             shuffle(&mut rng, &mut bodies);
         }
 
+        if !self.skip_lowering {
+            self.run_body_lowering(db, &vfs, &bodies, verbosity);
+        }
+
         if !self.skip_inference {
-            // FIXME: Consider running inference on all body kinds?
             self.run_inference(db, &vfs, &bodies, verbosity);
         }
 
@@ -255,9 +258,11 @@ impl flags::AnalysisStats {
             }
             fail += 1;
         }
-        eprintln!("{:<20} {}", "Data layouts:", sw.elapsed());
+        let data_layout_time = sw.elapsed();
+        eprintln!("{:<20} {}", "Data layouts:", data_layout_time);
         eprintln!("Failed data layouts: {fail} ({}%)", percentage(fail, all));
         report_metric("failed data layouts", fail, "#");
+        report_metric("data layout time", data_layout_time.time.as_millis() as u64, "ms");
     }
 
     fn run_const_eval(&self, db: &RootDatabase, consts: &[hir::Const], verbosity: Verbosity) {
@@ -283,9 +288,11 @@ impl flags::AnalysisStats {
             }
             fail += 1;
         }
-        eprintln!("{:<20} {}", "Const evaluation:", sw.elapsed());
+        let const_eval_time = sw.elapsed();
+        eprintln!("{:<20} {}", "Const evaluation:", const_eval_time);
         eprintln!("Failed const evals: {fail} ({}%)", percentage(fail, all));
         report_metric("failed const evals", fail, "#");
+        report_metric("const eval time", const_eval_time.time.as_millis() as u64, "ms");
     }
 
     fn run_mir_lowering(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
@@ -310,9 +317,11 @@ impl flags::AnalysisStats {
             }
             fail += 1;
         }
-        eprintln!("{:<20} {}", "MIR lowering:", sw.elapsed());
+        let mir_lowering_time = sw.elapsed();
+        eprintln!("{:<20} {}", "MIR lowering:", mir_lowering_time);
         eprintln!("Mir failed bodies: {fail} ({}%)", percentage(fail, all));
         report_metric("mir failed bodies", fail, "#");
+        report_metric("mir lowering time", mir_lowering_time.time.as_millis() as u64, "ms");
     }
 
     fn run_inference(
@@ -596,6 +605,7 @@ impl flags::AnalysisStats {
         }
 
         bar.finish_and_clear();
+        let inference_time = inference_sw.elapsed();
         eprintln!(
             "  exprs: {}, ??ty: {} ({}%), ?ty: {} ({}%), !ty: {}",
             num_exprs,
@@ -614,12 +624,83 @@ impl flags::AnalysisStats {
             percentage(num_pats_partially_unknown, num_pats),
             num_pat_type_mismatches
         );
+        eprintln!("{:<20} {}", "Inference:", inference_time);
         report_metric("unknown type", num_exprs_unknown, "#");
         report_metric("type mismatches", num_expr_type_mismatches, "#");
         report_metric("pattern unknown type", num_pats_unknown, "#");
         report_metric("pattern type mismatches", num_pat_type_mismatches, "#");
+        report_metric("inference time", inference_time.time.as_millis() as u64, "ms");
+    }
 
-        eprintln!("{:<20} {}", "Inference:", inference_sw.elapsed());
+    fn run_body_lowering(
+        &self,
+        db: &RootDatabase,
+        vfs: &Vfs,
+        bodies: &[DefWithBody],
+        verbosity: Verbosity,
+    ) {
+        let mut bar = match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(bodies.len() as u64),
+        };
+
+        let mut sw = self.stop_watch();
+        bar.tick();
+        for &body_id in bodies {
+            let name = body_id.name(db).unwrap_or_else(Name::missing);
+            let module = body_id.module(db);
+            let full_name = || {
+                module
+                    .krate()
+                    .display_name(db)
+                    .map(|it| it.canonical_name().to_string())
+                    .into_iter()
+                    .chain(
+                        module
+                            .path_to_root(db)
+                            .into_iter()
+                            .filter_map(|it| it.name(db))
+                            .rev()
+                            .chain(Some(name.clone()))
+                            .map(|it| it.display(db).to_string()),
+                    )
+                    .join("::")
+            };
+            if let Some(only_name) = self.only.as_deref() {
+                if name.display(db).to_string() != only_name && full_name() != only_name {
+                    continue;
+                }
+            }
+            let mut msg = format!("processing: {}", full_name());
+            if verbosity.is_verbose() {
+                let source = match body_id {
+                    DefWithBody::Function(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::Static(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::Const(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::Variant(it) => it.source(db).map(|it| it.syntax().cloned()),
+                    DefWithBody::InTypeConst(_) => unimplemented!(),
+                };
+                if let Some(src) = source {
+                    let original_file = src.file_id.original_file(db);
+                    let path = vfs.file_path(original_file);
+                    let syntax_range = src.value.text_range();
+                    format_to!(msg, " ({} {:?})", path, syntax_range);
+                }
+            }
+            if verbosity.is_spammy() {
+                bar.println(msg.to_string());
+            }
+            bar.set_message(&msg);
+            let (body, sm) = db.body_with_source_map(body_id.into());
+            // endregion:patterns
+            bar.inc(1);
+        }
+
+        bar.finish_and_clear();
+        let body_lowering_time = sw.elapsed();
+        eprintln!("{:<20} {}", "Body lowering:", body_lowering_time);
+        report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
     }
 
     fn stop_watch(&self) -> StopWatch {
