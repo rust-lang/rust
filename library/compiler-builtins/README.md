@@ -59,8 +59,8 @@ features = ["c"]
 5. Once the PR passes our extensive [testing infrastructure][4], we'll merge it!
 6. Celebrate :tada:
 
-[1]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/test/builtins/Unit
-[2]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/lib/builtins
+[1]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/test/builtins/Unit
+[2]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/lib/builtins
 [3]: https://github.com/rust-lang/compiler-builtins/blob/0ba07e49264a54cb5bbd4856fcea083bb3fbec15/build.rs#L180-L265
 [4]: https://travis-ci.org/rust-lang/compiler-builtins
 
