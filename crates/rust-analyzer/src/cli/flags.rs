@@ -78,6 +78,8 @@ xflags::xflags! {
             optional --disable-build-scripts
             /// Don't use expand proc macros.
             optional --disable-proc-macros
+            /// Skip body lowering.
+            optional --skip-lowering
             /// Skip type inference.
             optional --skip-inference
             /// Skip lowering to mir
@@ -180,6 +182,7 @@ pub struct AnalysisStats {
     pub parallel: bool,
     pub memory_usage: bool,
     pub source_stats: bool,
+    pub skip_lowering: bool,
     pub skip_inference: bool,
     pub skip_mir_stats: bool,
     pub skip_data_layout: bool,
