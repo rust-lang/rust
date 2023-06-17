@@ -20,6 +20,11 @@ LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
    |
    = note: expected signature `fn(&a::Bar, &(a::Bar, i32)) -> _`
               found signature `fn(&a::Bar, &(a::Foo, i32)) -> _`
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:10:9
+   |
+LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unconstrained opaque type
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:18:16

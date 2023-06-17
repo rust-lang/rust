@@ -31,6 +31,7 @@ use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ImplSourceBuiltinData;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
@@ -620,6 +621,30 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     "AssocTypeNormalizer: normalized type"
                 );
                 normalized_ty
+            }
+            ty::Weak => {
+                let infcx = self.selcx.infcx;
+                self.obligations.extend(
+                    infcx
+                        .tcx
+                        .predicates_of(data.def_id)
+                        .instantiate_own(infcx.tcx, data.substs)
+                        .map(|(mut predicate, span)| {
+                            if data.has_escaping_bound_vars() {
+                                (predicate, ..) = BoundVarReplacer::replace_bound_vars(
+                                    infcx,
+                                    &mut self.universes,
+                                    predicate,
+                                );
+                            }
+                            let mut cause = self.cause.clone();
+                            cause.map_code(|code| {
+                                ObligationCauseCode::TypeAlias(code, span, data.def_id)
+                            });
+                            Obligation::new(infcx.tcx, cause, self.param_env, predicate)
+                        }),
+                );
+                infcx.tcx.type_of(data.def_id).subst(infcx.tcx, data.substs).fold_with(self)
             }
 
             ty::Inherent if !data.has_escaping_bound_vars() => {
@@ -1545,7 +1570,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     // Check whether the self-type is itself a projection.
     // If so, extract what we know from the trait and try to come up with a good answer.
     let bounds = match *obligation.predicate.self_ty().kind() {
-        // Excluding IATs here as they don't have meaningful item bounds.
+        // Excluding IATs and type aliases here as they don't have meaningful item bounds.
         ty::Alias(ty::Projection | ty::Opaque, ref data) => {
             tcx.item_bounds(data.def_id).subst(tcx, data.substs)
         }

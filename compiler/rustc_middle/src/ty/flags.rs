@@ -178,7 +178,7 @@ impl FlagComputation {
 
             &ty::Alias(kind, data) => {
                 self.add_flags(match kind {
-                    ty::Projection => TypeFlags::HAS_TY_PROJECTION,
+                    ty::Weak | ty::Projection => TypeFlags::HAS_TY_PROJECTION,
                     ty::Inherent => TypeFlags::HAS_TY_INHERENT,
                     ty::Opaque => TypeFlags::HAS_TY_OPAQUE,
                 });

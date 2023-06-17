@@ -2052,6 +2052,11 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }))
         }
 
+        ty::Alias(ty::Weak, data) => {
+            let ty = cx.tcx.type_of(data.def_id).subst(cx.tcx, data.substs);
+            clean_middle_ty(bound_ty.rebind(ty), cx, None, None)
+        }
+
         ty::Param(ref p) => {
             if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
                 ImplTrait(bounds)

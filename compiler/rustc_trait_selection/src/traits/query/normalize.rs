@@ -257,7 +257,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
 
             ty::Opaque => ty.try_super_fold_with(self)?,
 
-            ty::Projection | ty::Inherent => {
+            ty::Projection | ty::Inherent | ty::Weak => {
                 // See note in `rustc_trait_selection::traits::project`
 
                 let infcx = self.infcx;
@@ -282,6 +282,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 let result = match kind {
                     ty::Projection => tcx.normalize_projection_ty(c_data),
+                    ty::Weak => tcx.normalize_weak_ty(c_data),
                     ty::Inherent => tcx.normalize_inherent_projection_ty(c_data),
                     _ => unreachable!(),
                 }?;

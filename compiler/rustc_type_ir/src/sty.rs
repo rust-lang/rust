@@ -36,9 +36,17 @@ pub enum DynKind {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum AliasKind {
+    /// A projection `<Type as Trait>::AssocType`.
+    /// Can get normalized away if monomorphic enough.
     Projection,
     Inherent,
+    /// An opaque type (usually from `impl Trait` in type aliases or function return types)
+    /// Can only be normalized away in RevealAll mode
     Opaque,
+    /// A type alias that actually checks its trait bounds.
+    /// Currently only used if the type alias references opaque types.
+    /// Can always be normalized away.
+    Weak,
 }
 
 /// Defines the kinds of types used by the type system.

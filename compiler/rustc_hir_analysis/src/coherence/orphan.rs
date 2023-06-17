@@ -200,35 +200,32 @@ fn do_orphan_check_impl<'tcx>(
                 NonlocalImpl::DisallowOther,
             ),
 
-            // trait Id { type This: ?Sized; }
-            // impl<T: ?Sized> Id for T {
-            //     type This = T;
-            // }
-            // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
-            ty::Alias(AliasKind::Projection, _) => (
-                LocalImpl::Disallow { problematic_kind: "associated type" },
-                NonlocalImpl::DisallowOther,
-            ),
-
-            // ```
-            // struct S<T>(T);
-            // impl<T: ?Sized> S<T> {
-            //     type This = T;
-            // }
-            // impl<T: ?Sized> AutoTrait for S<T>::This {}
-            // ```
-            // FIXME(inherent_associated_types): The example code above currently leads to a cycle
-            ty::Alias(AliasKind::Inherent, _) => (
-                LocalImpl::Disallow { problematic_kind: "associated type" },
-                NonlocalImpl::DisallowOther,
-            ),
-
-            // type Opaque = impl Trait;
-            // impl AutoTrait for Opaque {}
-            ty::Alias(AliasKind::Opaque, _) => (
-                LocalImpl::Disallow { problematic_kind: "opaque type" },
-                NonlocalImpl::DisallowOther,
-            ),
+            ty::Alias(kind, _) => {
+                let problematic_kind = match kind {
+                    // trait Id { type This: ?Sized; }
+                    // impl<T: ?Sized> Id for T {
+                    //     type This = T;
+                    // }
+                    // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
+                    AliasKind::Projection => "associated type",
+                    // type Foo = (impl Sized, bool)
+                    // impl AutoTrait for Foo {}
+                    AliasKind::Weak => "type alias",
+                    // type Opaque = impl Trait;
+                    // impl AutoTrait for Opaque {}
+                    AliasKind::Opaque => "opaque type",
+                    // ```
+                    // struct S<T>(T);
+                    // impl<T: ?Sized> S<T> {
+                    //     type This = T;
+                    // }
+                    // impl<T: ?Sized> AutoTrait for S<T>::This {}
+                    // ```
+                    // FIXME(inherent_associated_types): The example code above currently leads to a cycle
+                    AliasKind::Inherent => "associated type",
+                };
+                (LocalImpl::Disallow { problematic_kind }, NonlocalImpl::DisallowOther)
+            }
 
             ty::Bool
             | ty::Char

@@ -32,4 +32,10 @@ impl Into<u8> for ContainsVal {
     }
 }
 
+type Opaque = impl Sized;
+struct IntoOpaque;
+impl Into<Opaque> for IntoOpaque {
+    fn into(self) -> Opaque {}
+}
+
 fn main() {}
