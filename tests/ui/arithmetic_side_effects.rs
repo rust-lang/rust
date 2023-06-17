@@ -466,4 +466,19 @@ pub fn issue_10767() {
     &3.5_f32 + &1.3_f32;
 }
 
+pub fn issue_10792() {
+    struct One {
+        a: u32,
+    }
+    struct Two {
+        b: u32,
+        c: u64,
+    }
+    const ONE: One = One { a: 1 };
+    const TWO: Two = Two { b: 2, c: 3 };
+    let _ = 10 / ONE.a;
+    let _ = 10 / TWO.b;
+    let _ = 10 / TWO.c;
+}
+
 fn main() {}
