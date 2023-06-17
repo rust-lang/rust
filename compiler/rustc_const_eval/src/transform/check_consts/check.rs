@@ -781,8 +781,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             );
                             return;
                         }
-                        Ok(Some(ImplSource::Closure(data))) => {
-                            if !tcx.is_const_fn_raw(data.closure_def_id) {
+                        // Closure: Fn{Once|Mut}
+                        Ok(Some(ImplSource::Builtin(_)))
+                            if poly_trait_pred.self_ty().skip_binder().is_closure()
+                                && tcx.fn_trait_kind_from_def_id(trait_id).is_some() =>
+                        {
+                            let ty::Closure(closure_def_id, substs) =
+                                *poly_trait_pred.self_ty().no_bound_vars().unwrap().kind()
+                            else {
+                                unreachable!()
+                            };
+                            if !tcx.is_const_fn_raw(closure_def_id) {
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,
