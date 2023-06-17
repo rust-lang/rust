@@ -6653,6 +6653,12 @@ mod test_map {
     use super::Entry::{Occupied, Vacant};
     use super::EntryRef;
     use super::{HashMap, RawEntryMut};
+    use alloc::string::ToString;
+    use alloc::sync::Arc;
+    use allocator_api2::alloc::{AllocError, Allocator, Global};
+    use core::alloc::Layout;
+    use core::ptr::NonNull;
+    use core::sync::atomic::{AtomicBool, Ordering};
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::borrow::ToOwned;
     use std::cell::RefCell;
@@ -8502,5 +8508,61 @@ mod test_map {
             },
         );
         let _map2 = map1.clone();
+    }
+
+    #[test]
+    fn test_hashmap_into_iter_bug() {
+        let dropped: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+
+        {
+            struct MyAllocInner {
+                drop_flag: Arc<AtomicBool>,
+            }
+
+            #[derive(Clone)]
+            struct MyAlloc {
+                _inner: Arc<MyAllocInner>,
+            }
+
+            impl Drop for MyAllocInner {
+                fn drop(&mut self) {
+                    println!("MyAlloc freed.");
+                    self.drop_flag.store(true, Ordering::SeqCst);
+                }
+            }
+
+            unsafe impl Allocator for MyAlloc {
+                fn allocate(
+                    &self,
+                    layout: Layout,
+                ) -> std::result::Result<NonNull<[u8]>, AllocError> {
+                    let g = Global;
+                    g.allocate(layout)
+                }
+
+                unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+                    let g = Global;
+                    g.deallocate(ptr, layout)
+                }
+            }
+
+            let mut map = crate::HashMap::with_capacity_in(
+                10,
+                MyAlloc {
+                    _inner: Arc::new(MyAllocInner {
+                        drop_flag: dropped.clone(),
+                    }),
+                },
+            );
+            for i in 0..10 {
+                map.entry(i).or_insert_with(|| "i".to_string());
+            }
+
+            for (k, v) in map {
+                println!("{}, {}", k, v);
+            }
+        }
+
+        assert!(dropped.load(Ordering::SeqCst));
     }
 }
