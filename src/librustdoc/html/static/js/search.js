@@ -2071,6 +2071,20 @@ function initSearch(rawSearchIndex) {
         if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true")
         ) {
+            // Needed to force re-execution of JS when coming back to a page. Let's take this
+            // scenario as example:
+            //
+            // 1. You have the "Directly go to item in search if there is only one result" option
+            //    enabled.
+            // 2. You make a search which results only one result, leading you automatically to
+            //    this result.
+            // 3. You go back to previous page.
+            //
+            // Now, without the call below, the JS will not be re-executed and the previous state
+            // will be used, starting search again since the search input is not empty, leading you
+            // back to the previous page again.
+            window.onunload = () => {};
+            searchState.removeQueryParameters();
             const elem = document.createElement("a");
             elem.href = results.others[0].href;
             removeClass(elem, "active");
@@ -2185,6 +2199,18 @@ function initSearch(rawSearchIndex) {
         printTab(currentTab);
     }
 
+    function updateSearchHistory(url) {
+        if (!browserSupportsHistoryApi()) {
+            return;
+        }
+        const params = searchState.getQueryStringParams();
+        if (!history.state && !params.search) {
+            history.pushState(null, "", url);
+        } else {
+            history.replaceState(null, "", url);
+        }
+    }
+
     /**
      * Perform a search based on the current state of the search input element
      * and display the results.
@@ -2195,7 +2221,6 @@ function initSearch(rawSearchIndex) {
         if (e) {
             e.preventDefault();
         }
-
         const query = parseQuery(searchState.input.value.trim());
         let filterCrates = getFilterCrates();
 
@@ -2221,15 +2246,7 @@ function initSearch(rawSearchIndex) {
 
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.
-        if (browserSupportsHistoryApi()) {
-            const newURL = buildUrl(query.original, filterCrates);
-
-            if (!history.state && !params.search) {
-                history.pushState(null, "", newURL);
-            } else {
-                history.replaceState(null, "", newURL);
-            }
-        }
+        updateSearchHistory(buildUrl(query.original, filterCrates));
 
         showResults(
             execQuery(query, searchWords, filterCrates, window.currentCrate),
@@ -2695,13 +2712,8 @@ function initSearch(rawSearchIndex) {
     function updateCrate(ev) {
         if (ev.target.value === "all crates") {
             // If we don't remove it from the URL, it'll be picked up again by the search.
-            const params = searchState.getQueryStringParams();
             const query = searchState.input.value.trim();
-            if (!history.state && !params.search) {
-                history.pushState(null, "", buildUrl(query, null));
-            } else {
-                history.replaceState(null, "", buildUrl(query, null));
-            }
+            updateSearchHistory(buildUrl(query, null));
         }
         // In case you "cut" the entry from the search input, then change the crate filter
         // before paste back the previous search, you get the old search results without

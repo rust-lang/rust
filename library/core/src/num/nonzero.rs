@@ -348,7 +348,7 @@ macro_rules! nonzero_unsigned_operations {
                 }
 
                 /// Adds an unsigned integer to a non-zero value.
-                #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
+                #[doc = concat!("Return [`", stringify!($Ty), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
                 ///
@@ -579,7 +579,7 @@ macro_rules! nonzero_signed_operations {
 
                 /// Checked absolute value.
                 /// Checks for overflow and returns [`None`] if
-                #[doc = concat!("`self == ", stringify!($Int), "::MIN`.")]
+                #[doc = concat!("`self == ", stringify!($Ty), "::MIN`.")]
                 /// The result cannot be zero.
                 ///
                 /// # Example
@@ -800,7 +800,8 @@ macro_rules! nonzero_signed_operations {
                     self.get().is_negative()
                 }
 
-                /// Checked negation. Computes `-self`, returning `None` if `self == i32::MIN`.
+                /// Checked negation. Computes `-self`,
+                #[doc = concat!("returning `None` if `self == ", stringify!($Ty), "::MIN`.")]
                 ///
                 /// # Example
                 ///
@@ -859,8 +860,10 @@ macro_rules! nonzero_signed_operations {
                     ((unsafe { $Ty::new_unchecked(result) }), overflow)
                 }
 
-                /// Saturating negation. Computes `-self`, returning `MAX` if
-                /// `self == i32::MIN` instead of overflowing.
+                /// Saturating negation. Computes `-self`,
+                #[doc = concat!("returning [`", stringify!($Ty), "::MAX`]")]
+                #[doc = concat!("if `self == ", stringify!($Ty), "::MIN`")]
+                /// instead of overflowing.
                 ///
                 /// # Example
                 ///
@@ -993,7 +996,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                 }
 
                 /// Multiplies two non-zero integers together.
-                #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
+                #[doc = concat!("Return [`", stringify!($Ty), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
                 ///
@@ -1102,11 +1105,11 @@ macro_rules! nonzero_unsigned_signed_operations {
                 #[doc = sign_dependent_expr!{
                     $signedness ?
                     if signed {
-                        concat!("Return [`", stringify!($Int), "::MIN`] ",
-                                    "or [`", stringify!($Int), "::MAX`] on overflow.")
+                        concat!("Return [`", stringify!($Ty), "::MIN`] ",
+                                    "or [`", stringify!($Ty), "::MAX`] on overflow.")
                     }
                     if unsigned {
-                        concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")
+                        concat!("Return [`", stringify!($Ty), "::MAX`] on overflow.")
                     }
                 }]
                 ///

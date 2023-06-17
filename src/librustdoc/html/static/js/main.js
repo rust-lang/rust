@@ -277,13 +277,17 @@ function preLoadCss(cssUrl) {
             searchState.mouseMovedAfterSearch = false;
             document.title = searchState.title;
         },
-        hideResults: () => {
-            switchDisplayedElement(null);
+        removeQueryParameters: () => {
+            // We change the document title.
             document.title = searchState.titleBeforeSearch;
-            // We also remove the query parameter from the URL.
             if (browserSupportsHistoryApi()) {
                 history.replaceState(null, "", getNakedUrl() + window.location.hash);
             }
+        },
+        hideResults: () => {
+            switchDisplayedElement(null);
+            // We also remove the query parameter from the URL.
+            searchState.removeQueryParameters();
         },
         getQueryStringParams: () => {
             const params = {};
