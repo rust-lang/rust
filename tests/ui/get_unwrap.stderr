@@ -187,5 +187,47 @@ LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    |
    = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
 
-error: aborting due to 26 previous errors
+error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
+  --> $DIR/get_unwrap.rs:77:20
+   |
+LL |     let _x: &i32 = f.get(1 + 2).unwrap();
+   |                    ^^^^^^^^^^^^^^^^^^^^^ help: try this: `&f[1 + 2]`
+
+error: used `unwrap()` on an `Option` value
+  --> $DIR/get_unwrap.rs:77:20
+   |
+LL |     let _x: &i32 = f.get(1 + 2).unwrap();
+   |                    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
+  --> $DIR/get_unwrap.rs:80:14
+   |
+LL |     let _x = f.get(1 + 2).unwrap().to_string();
+   |              ^^^^^^^^^^^^^^^^^^^^^ help: try this: `f[1 + 2]`
+
+error: used `unwrap()` on an `Option` value
+  --> $DIR/get_unwrap.rs:80:14
+   |
+LL |     let _x = f.get(1 + 2).unwrap().to_string();
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
+  --> $DIR/get_unwrap.rs:83:14
+   |
+LL |     let _x = f.get(1 + 2).unwrap().abs();
+   |              ^^^^^^^^^^^^^^^^^^^^^ help: try this: `f[1 + 2]`
+
+error: used `unwrap()` on an `Option` value
+  --> $DIR/get_unwrap.rs:83:14
+   |
+LL |     let _x = f.get(1 + 2).unwrap().abs();
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
+
+error: aborting due to 32 previous errors
 

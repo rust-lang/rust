@@ -69,4 +69,17 @@ fn main() {
         let _ = some_vec.get(0..1).unwrap().to_vec();
         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
     }
+    issue9909();
+}
+fn issue9909() {
+    let f = &[1, 2, 3];
+
+    let _x: &i32 = f.get(1 + 2).unwrap();
+    // ^ include a borrow in the suggestion, even if the argument is not just a numeric literal
+
+    let _x = f.get(1 + 2).unwrap().to_string();
+    // ^ don't include a borrow here
+
+    let _x = f.get(1 + 2).unwrap().abs();
+    // ^ don't include a borrow here
 }
