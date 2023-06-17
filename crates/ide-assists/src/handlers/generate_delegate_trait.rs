@@ -294,7 +294,7 @@ fn generate_impl(
             };
 
             let target = ctx.sema.scope(strukt.strukt.syntax()).unwrap();
-            let source = ctx.sema.scope_for_def(delegee.0);
+            let source = ctx.sema.scope(source.syntax()).unwrap();
 
             let transform =
                 PathTransform::trait_impl(&target, &source, delegee.0, delegate.clone());
@@ -342,7 +342,7 @@ fn generate_impl(
                 });
 
             let target = ctx.sema.scope(strukt.strukt.syntax()).unwrap();
-            let source = ctx.sema.scope_for_def(delegee.0);
+            let source = ctx.sema.scope(source.syntax()).unwrap();
 
             let transform =
                 PathTransform::trait_impl(&target, &source, delegee.0, delegate.clone());
