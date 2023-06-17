@@ -1,9 +1,9 @@
-//! This is an incomplete implementation of mmap/mremap/munmap which is restricted in order to be
+//! This is an incomplete implementation of mmap/munmap which is restricted in order to be
 //! implementable on top of the existing memory system. The point of these function as-written is
 //! to allow memory allocators written entirely in Rust to be executed by Miri. This implementation
 //! does not support other uses of mmap such as file mappings.
 //!
-//! mmap/mremap/munmap behave a lot like alloc/realloc/dealloc, and for simple use they are exactly
+//! mmap/munmap behave a lot like alloc/dealloc, and for simple use they are exactly
 //! equivalent. That is the only part we support: no MAP_FIXED or MAP_SHARED or anything
 //! else that goes beyond a basic allocation API.
 
@@ -23,23 +23,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        // We do not support MAP_FIXED, so the addr argument is always ignored
-        let addr = this.read_pointer(addr)?;
+        // We do not support MAP_FIXED, so the addr argument is always ignored (except for the MacOS hack)
+        let addr = this.read_target_usize(addr)?;
         let length = this.read_target_usize(length)?;
         let prot = this.read_scalar(prot)?.to_i32()?;
         let flags = this.read_scalar(flags)?.to_i32()?;
         let fd = this.read_scalar(fd)?.to_i32()?;
-        let offset = this.read_scalar(offset)?.to_target_usize(this)?;
+        let offset = this.read_target_usize(offset)?;
 
         let map_private = this.eval_libc_i32("MAP_PRIVATE");
         let map_anonymous = this.eval_libc_i32("MAP_ANONYMOUS");
         let map_shared = this.eval_libc_i32("MAP_SHARED");
         let map_fixed = this.eval_libc_i32("MAP_FIXED");
 
-        // This is a horrible hack, but on macos  the guard page mechanism uses mmap
+        // This is a horrible hack, but on MacOS the guard page mechanism uses mmap
         // in a way we do not support. We just give it the return value it expects.
         if this.frame_in_std() && this.tcx.sess.target.os == "macos" && (flags & map_fixed) != 0 {
-            return Ok(Scalar::from_maybe_pointer(addr, this));
+            return Ok(Scalar::from_maybe_pointer(Pointer::from_addr_invalid(addr), this));
         }
 
         let prot_read = this.eval_libc_i32("PROT_READ");
@@ -106,65 +106,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(Scalar::from_pointer(ptr, this))
     }
 
-    fn mremap(
-        &mut self,
-        old_address: &OpTy<'tcx, Provenance>,
-        old_size: &OpTy<'tcx, Provenance>,
-        new_size: &OpTy<'tcx, Provenance>,
-        flags: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_mut();
-
-        let old_address = this.read_scalar(old_address)?.to_target_usize(this)?;
-        let old_size = this.read_scalar(old_size)?.to_target_usize(this)?;
-        let new_size = this.read_scalar(new_size)?.to_target_usize(this)?;
-        let flags = this.read_scalar(flags)?.to_i32()?;
-
-        // old_address must be a multiple of the page size
-        #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
-        if old_address % this.machine.page_size != 0 || new_size == 0 {
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
-            return Ok(this.eval_libc("MAP_FAILED"));
-        }
-
-        if flags & this.eval_libc_i32("MREMAP_FIXED") != 0 {
-            throw_unsup_format!("Miri does not support mremap wth MREMAP_FIXED");
-        }
-
-        if flags & this.eval_libc_i32("MREMAP_DONTUNMAP") != 0 {
-            throw_unsup_format!("Miri does not support mremap wth MREMAP_DONTUNMAP");
-        }
-
-        if flags & this.eval_libc_i32("MREMAP_MAYMOVE") == 0 {
-            // We only support MREMAP_MAYMOVE, so not passing the flag is just a failure
-            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
-            return Ok(Scalar::from_maybe_pointer(Pointer::null(), this));
-        }
-
-        let old_address = Machine::ptr_from_addr_cast(this, old_address)?;
-        let align = this.machine.page_align();
-        let ptr = this.reallocate_ptr(
-            old_address,
-            Some((Size::from_bytes(old_size), align)),
-            Size::from_bytes(new_size),
-            align,
-            MiriMemoryKind::Mmap.into(),
-        )?;
-        if let Some(increase) = new_size.checked_sub(old_size) {
-            // We just allocated this, the access is definitely in-bounds and fits into our address space.
-            // mmap guarantees new mappings are zero-init.
-            this.write_bytes_ptr(
-                ptr.offset(Size::from_bytes(old_size), this).unwrap().into(),
-                std::iter::repeat(0u8).take(usize::try_from(increase).unwrap()),
-            )
-            .unwrap();
-        }
-        // Memory mappings are always exposed
-        Machine::expose_ptr(this, ptr)?;
-
-        Ok(Scalar::from_pointer(ptr, this))
-    }
-
     fn munmap(
         &mut self,
         addr: &OpTy<'tcx, Provenance>,
@@ -172,8 +113,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let addr = this.read_scalar(addr)?.to_target_usize(this)?;
-        let length = this.read_scalar(length)?.to_target_usize(this)?;
+        let addr = this.read_target_usize(addr)?;
+        let length = this.read_target_usize(length)?;
 
         // addr must be a multiple of the page size
         #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
@@ -193,6 +134,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("Miri only supports munmap on memory allocated directly by mmap");
         };
 
+        // Elsewhere in this function we are careful to check what we can and throw an unsupported
+        // error instead of Undefined Behavior when use of this function falls outside of the
+        // narrow scope we support. We deliberately do not check the MemoryKind of this allocation,
+        // because we want to report UB on attempting to unmap memory that Rust "understands", such
+        // the stack, heap, or statics.
         let (_kind, alloc) = this.memory.alloc_map().get(alloc_id).unwrap();
         if offset != Size::ZERO || alloc.len() as u64 != length {
             throw_unsup_format!(
@@ -202,20 +148,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let len = Size::from_bytes(alloc.len() as u64);
         this.deallocate_ptr(
-            Pointer::new(Some(Provenance::Wildcard), Size::from_bytes(addr)),
+            ptr.into(),
             Some((len, this.machine.page_align())),
             MemoryKind::Machine(MiriMemoryKind::Mmap),
         )?;
 
         Ok(Scalar::from_i32(0))
-    }
-}
-
-trait RangeExt {
-    fn overlaps(&self, other: &Self) -> bool;
-}
-impl RangeExt for std::ops::Range<Size> {
-    fn overlaps(&self, other: &Self) -> bool {
-        self.start.max(other.start) <= self.end.min(other.end)
     }
 }
