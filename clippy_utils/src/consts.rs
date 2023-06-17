@@ -396,7 +396,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             },
             ExprKind::Index(arr, index) => self.index(arr, index),
             ExprKind::AddrOf(_, _, inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
-            ExprKind::Field(ref local_expr, ref field) => {
+            ExprKind::Field(local_expr, ref field) => {
                 let result = self.expr(local_expr);
                 if let Some(Constant::Adt(constant)) = &self.expr(local_expr)
                     && let ty::Adt(adt_def, _) = constant.ty().kind()
