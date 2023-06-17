@@ -1,4 +1,4 @@
-// only-x86_64
+// needs-asm-support
 
 #![feature(asm_const)]
 
@@ -38,6 +38,9 @@ fn main() {
         //~^ ERROR expected one of
         asm!("{}", options(), const foo);
         //~^ ERROR attempt to use a non-constant value in a constant
+
+        // test that asm!'s clobber_abi doesn't accept non-string literals
+        // see also https://github.com/rust-lang/rust/issues/112635
         asm!("", clobber_abi());
         //~^ ERROR at least one abi must be provided
         asm!("", clobber_abi(foo));
@@ -46,6 +49,25 @@ fn main() {
         //~^ ERROR expected one of `)` or `,`, found `foo`
         asm!("", clobber_abi("C", foo));
         //~^ ERROR expected string literal
+        asm!("", clobber_abi(1));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi(()));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi(uwu));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi({}));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi(loop {}));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi(if));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi(do));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi(<));
+        //~^ ERROR expected string literal
+        asm!("", clobber_abi(.));
+        //~^ ERROR expected string literal
+
         asm!("{}", clobber_abi("C"), const foo);
         //~^ ERROR attempt to use a non-constant value in a constant
         asm!("", options(), clobber_abi("C"));
@@ -56,15 +78,7 @@ fn main() {
         //~^^ ERROR argument never used
         //~^^^ ERROR attempt to use a non-constant value in a constant
         //~^^^^ ERROR attempt to use a non-constant value in a constant
-        asm!("", a = in("eax") foo);
-        //~^ ERROR explicit register arguments cannot have names
-        asm!("{a}", in("eax") foo, a = const bar);
-        //~^ ERROR attempt to use a non-constant value in a constant
-        asm!("{a}", in("eax") foo, a = const bar);
-        //~^ ERROR attempt to use a non-constant value in a constant
-        asm!("{1}", in("eax") foo, const bar);
-        //~^ ERROR positional arguments cannot follow named arguments or explicit register arguments
-        //~^^ ERROR attempt to use a non-constant value in a constant
+
         asm!("", options(), "");
         //~^ ERROR expected one of
         asm!("{}", in(reg) foo, "{}", out(reg) foo);
