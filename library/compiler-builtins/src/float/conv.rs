@@ -3,7 +3,7 @@
 /// These are hand-optimized bit twiddling code,
 /// which unfortunately isn't the easiest kind of code to read.
 ///
-/// The algorithm is explained here: https://blog.m-ou.se/floats/
+/// The algorithm is explained here: <https://blog.m-ou.se/floats/>
 mod int_to_float {
     pub fn u32_to_f32_bits(i: u32) -> u32 {
         if i == 0 {
