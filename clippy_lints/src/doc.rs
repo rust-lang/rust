@@ -909,7 +909,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
             if is_panic(self.cx, macro_call.def_id)
                 || matches!(
                     self.cx.tcx.item_name(macro_call.def_id).as_str(),
-                    "assert" | "assert_eq" | "assert_ne" | "todo"
+                    "assert" | "assert_eq" | "assert_ne"
                 )
             {
                 self.panic_span = Some(macro_call.span);
