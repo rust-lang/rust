@@ -137,7 +137,7 @@ impl Field {
 
         if let Some(tp) = type_param {
             for tb in tp.trait_bounds(db) {
-                impls.push(Delegee::Bound(BoundCase { 0: tb }));
+                impls.push(Delegee::Bound(BoundCase(tb)));
             }
         };
 
@@ -145,12 +145,10 @@ impl Field {
             match imp.trait_(db) {
                 Some(tr) => {
                     if tr.is_visible_from(db, module) {
-                        impls.push(Delegee::Impls(ImplCase { 0: tr, 1: imp }))
+                        impls.push(Delegee::Impls(ImplCase(tr, imp)))
                     }
                 }
-                None => {
-                    continue;
-                }
+                None => (),
             }
         }
 
@@ -171,32 +169,19 @@ enum Delegee {
 struct BoundCase(hir::Trait);
 struct ImplCase(hir::Trait, hir::Impl);
 
-/// When we list traits we can implement for the enclosing struct
-/// we use the absolute path of a trait. This trait consists of a single
-/// method that produces this path.
-trait Signatured {
-    fn signature(&self, db: &dyn HirDatabase) -> String;
-}
-
-impl Signatured for Delegee {
+impl Delegee {
     fn signature(&self, db: &dyn HirDatabase) -> String {
         let mut s = String::new();
-        let trait_: hir::Trait;
 
-        match self {
-            Delegee::Bound(b) => trait_ = b.0,
-            Delegee::Impls(i) => trait_ = i.0,
-        };
+        let (Delegee::Bound(BoundCase(it)) | Delegee::Impls(ImplCase(it, _))) = self;
 
-        for m in trait_.module(db).path_to_root(db).iter().rev() {
+        for m in it.module(db).path_to_root(db).iter().rev() {
             if let Some(name) = m.name(db) {
                 s.push_str(&format!("{}::", name.to_smol_str()));
-            } else {
-                continue;
             }
         }
 
-        s.push_str(&trait_.name(db).to_smol_str());
+        s.push_str(&it.name(db).to_smol_str());
         s
     }
 }
@@ -231,7 +216,7 @@ impl Struct {
             let delegate = generate_impl(ctx, self, &field.ty, &field.name, delegee);
 
             acc.add_group(
-                &GroupLabel("Generate delegate traits...".to_owned()),
+                &GroupLabel("Delegate trait impl for field...".to_owned()),
                 AssistId("generate_delegate_trait", ide_db::assists::AssistKind::Generate),
                 format!("Generate delegate impl `{}` for `{}`", signature, field.name),
                 field.range,
