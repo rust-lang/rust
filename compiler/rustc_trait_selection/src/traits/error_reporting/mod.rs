@@ -1048,7 +1048,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.report_closure_error(&obligation, closure_def_id, found_kind, kind)
                     }
 
-                    ty::PredicateKind::WellFormed(ty) => {
+                    ty::PredicateKind::Clause(ty::Clause::WellFormed(ty)) => {
                         match self.tcx.sess.opts.unstable_opts.trait_solver {
                             TraitSolver::Classic => {
                                 // WF predicates cannot themselves make
@@ -1069,7 +1069,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
                     }
 
-                    ty::PredicateKind::ConstEvaluatable(..) => {
+                    ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..)) => {
                         // Errors for `ConstEvaluatable` predicates show up as
                         // `SelectionError::ConstEvalFailure`,
                         // not `Unimplemented`.
@@ -2415,7 +2415,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err
             }
 
-            ty::PredicateKind::WellFormed(arg) => {
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if arg.references_error()
@@ -2487,7 +2487,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::ConstEvaluatable(data) => {
+            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(data)) => {
                 if predicate.references_error() || self.tainted_by_errors().is_some() {
                     return;
                 }
@@ -3325,7 +3325,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::ConstEvaluatable(ct) => {
+            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)) => {
                 let ty::ConstKind::Unevaluated(uv) = ct.kind() else {
                     bug!("const evaluatable failed for non-unevaluated const `{ct:?}`");
                 };

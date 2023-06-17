@@ -439,7 +439,8 @@ fn check_opaque_meets_bounds<'tcx>(
     // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
     // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
     // hidden type is well formed even without those bounds.
-    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_ty.into()));
+    let predicate =
+        ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(hidden_ty.into())));
     ocx.register_obligation(Obligation::new(tcx, misc_cause, param_env, predicate));
 
     // Check that all obligations are satisfied by the implementation's

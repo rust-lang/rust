@@ -696,7 +696,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 // Don't point out the span of `WellFormed` predicates.
-                if !matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) {
+                if !matches!(
+                    p.kind().skip_binder(),
+                    ty::PredicateKind::Clause(ty::Clause::Projection(..) | ty::Clause::Trait(..))
+                ) {
                     continue;
                 };
 
