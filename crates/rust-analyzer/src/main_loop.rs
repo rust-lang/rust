@@ -23,10 +23,9 @@ use crate::{
     lsp_ext,
     lsp_utils::{notification_is, Progress},
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
-    Result,
 };
 
-pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
+pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
     tracing::info!("initial config: {:#?}", config);
 
     // Windows scheduler implements priority boosts: if thread waits for an
@@ -109,7 +108,7 @@ impl fmt::Debug for Event {
 }
 
 impl GlobalState {
-    fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
+    fn run(mut self, inbox: Receiver<lsp_server::Message>) -> anyhow::Result<()> {
         self.update_status_or_notify();
 
         if self.config.did_save_text_document_dynamic_registration() {
@@ -134,7 +133,7 @@ impl GlobalState {
             self.handle_event(event)?;
         }
 
-        Err("client exited without proper shutdown sequence".into())
+        anyhow::bail!("client exited without proper shutdown sequence")
     }
 
     fn register_did_save_capability(&mut self) {
@@ -191,7 +190,7 @@ impl GlobalState {
         }
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
@@ -758,7 +757,7 @@ impl GlobalState {
     }
 
     /// Handles an incoming notification.
-    fn on_notification(&mut self, not: Notification) -> Result<()> {
+    fn on_notification(&mut self, not: Notification) -> anyhow::Result<()> {
         use crate::handlers::notification as handlers;
         use lsp_types::notification as notifs;
 

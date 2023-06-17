@@ -30,7 +30,6 @@ use crate::{
     reload::{self, SourceRootConfig},
     task_pool::TaskPool,
     to_proto::url_from_abs_path,
-    Result,
 };
 
 // Enforces drop order
@@ -422,7 +421,7 @@ impl Drop for GlobalState {
 }
 
 impl GlobalStateSnapshot {
-    pub(crate) fn url_to_file_id(&self, url: &Url) -> Result<FileId> {
+    pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<FileId> {
         url_to_file_id(&self.vfs.read().0, url)
     }
 
@@ -481,8 +480,8 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
     url_from_abs_path(path)
 }
 
-pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> Result<FileId> {
+pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<FileId> {
     let path = from_proto::vfs_path(url)?;
-    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {path}"))?;
+    let res = vfs.file_id(&path).ok_or_else(|| anyhow::format_err!("file not found: {path}"))?;
     Ok(res)
 }
