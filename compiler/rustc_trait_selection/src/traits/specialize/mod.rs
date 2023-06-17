@@ -515,19 +515,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             }
 
             if ty::BoundConstness::ConstIfConst == poly_trait_ref.skip_binder().constness {
-                let new_trait_pred = poly_trait_ref.map_bound(|mut trait_pred| {
-                    trait_pred.constness = ty::BoundConstness::NotConst;
-                    trait_pred
-                });
-
-                // TODO: stinky
-                p = tcx
-                    .mk_predicate(
-                        new_trait_pred
-                            .map_bound(|p| ty::PredicateKind::Clause(ty::ClauseKind::Trait(p))),
-                    )
-                    .as_clause()
-                    .unwrap()
+                p = p.without_const(tcx);
             }
         }
         pretty_predicates.push(p.to_string());

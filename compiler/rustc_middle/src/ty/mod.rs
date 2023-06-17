@@ -561,6 +561,12 @@ impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
+    }
+}
+
 /// TODO: doc
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
@@ -1262,6 +1268,13 @@ impl<'tcx> ToPredicate<'tcx> for ClauseKind<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for ClauseKind<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        Clause(tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::Clause(self))).0)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, ClauseKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
@@ -1291,6 +1304,14 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
 }
 
 impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitRef<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        Clause(p.0)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitPredicate<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
         let p: Predicate<'tcx> = self.to_predicate(tcx);

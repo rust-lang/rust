@@ -255,7 +255,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
         for predicate in param_env.caller_bounds() {
-            fresh_preds.insert(self.clean_pred(infcx, predicate));
+            // TODO: thonk...
+            fresh_preds.insert(self.clean_pred(infcx, predicate.as_predicate()));
         }
 
         let mut select = SelectionContext::new(&infcx);
@@ -270,8 +271,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             polarity: ty::ImplPolarity::Positive,
         }));
 
-        let computed_preds = param_env.caller_bounds().iter();
-        let mut user_computed_preds: FxIndexSet<_> = user_env.caller_bounds().iter().collect();
+        // TODO: thonk
+        let computed_preds = param_env.caller_bounds().iter().map(|c| c.as_predicate());
+        let mut user_computed_preds: FxIndexSet<_> =
+            user_env.caller_bounds().iter().map(|c| c.as_predicate()).collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -349,14 +352,16 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let normalized_preds =
                 elaborate(tcx, computed_preds.clone().chain(user_computed_preds.iter().cloned()));
             new_env = ty::ParamEnv::new(
-                tcx.mk_clauses_from_iter(normalized_preds),
+                tcx.mk_clauses_from_iter(normalized_preds.map(|p| p.as_clause().unwrap())),
                 param_env.reveal(),
                 param_env.constness(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
-            tcx.mk_clauses_from_iter(user_computed_preds.into_iter()),
+            tcx.mk_clauses_from_iter(
+                user_computed_preds.into_iter().map(|p| p.as_clause().unwrap()),
+            ),
             user_env.reveal(),
             user_env.constness(),
         );

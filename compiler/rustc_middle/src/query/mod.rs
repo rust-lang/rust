@@ -2018,10 +2018,10 @@ rustc_queries! {
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
-    query type_op_normalize_predicate(
-        goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>
+    query type_op_normalize_clause(
+        goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::Clause<'tcx>>
     ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>,
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Clause<'tcx>>>,
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal.value.value.value }

@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, EarlyBinder, PredicateKind, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
@@ -74,7 +74,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let param_env = self.tcx.param_env(def_id);
         let bounds = param_env.caller_bounds();
         for bound in bounds {
-            if let Some(bound_ty) = self.is_pointer_trait(&bound.kind().skip_binder()) {
+            if let Some(bound_ty) = self.is_pointer_trait(bound) {
                 // Get the argument types as they appear in the function signature.
                 let arg_defs = self.tcx.fn_sig(def_id).subst_identity().skip_binder().inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
@@ -104,8 +104,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     }
 
     /// If the given predicate is the trait `fmt::Pointer`, returns the bound parameter type.
-    fn is_pointer_trait(&self, bound: &PredicateKind<'tcx>) -> Option<Ty<'tcx>> {
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) = bound {
+    fn is_pointer_trait(&self, bound: ty::Clause<'tcx>) -> Option<Ty<'tcx>> {
+        if let ty::ClauseKind::Trait(predicate) = bound.kind().skip_binder() {
             self.tcx
                 .is_diagnostic_item(sym::Pointer, predicate.def_id())
                 .then(|| predicate.trait_ref.self_ty())

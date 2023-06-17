@@ -25,16 +25,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let generics = self.tcx.generics_of(def_id);
         let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                pred.trait_ref.substs.to_vec()
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
-                pred.projection_ty.substs.to_vec()
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(arg, ty)) => {
+            ty::ClauseKind::Trait(pred) => pred.trait_ref.substs.to_vec(),
+            ty::ClauseKind::Projection(pred) => pred.projection_ty.substs.to_vec(),
+            ty::ClauseKind::ConstArgHasType(arg, ty) => {
                 vec![ty.into(), arg.into()]
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(e)) => vec![e.into()],
+            ty::ClauseKind::ConstEvaluatable(e) => vec![e.into()],
             _ => return false,
         };
 
@@ -512,11 +508,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This shouldn't happen, but since this is only a diagnostic improvement, avoid breaking things.
             return Err(expr);
         }
-        let relevant_broken_predicate: ty::PredicateKind<'tcx> =
-            impl_predicates.predicates[impl_predicate_index].0.kind().skip_binder();
 
-        match relevant_broken_predicate {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(broken_trait)) => {
+        match impl_predicates.predicates[impl_predicate_index].0.kind().skip_binder() {
+            ty::ClauseKind::Trait(broken_trait) => {
                 // ...
                 self.blame_specific_part_of_expr_corresponding_to_generic_param(
                     broken_trait.trait_ref.self_ty().into(),

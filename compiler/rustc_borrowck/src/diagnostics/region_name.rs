@@ -928,7 +928,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
     fn any_param_predicate_mentions(
         &self,
-        predicates: &[ty::Predicate<'tcx>],
+        predicates: &[ty::Clause<'tcx>],
         ty: Ty<'tcx>,
         region: ty::EarlyBoundRegion,
     ) -> bool {
@@ -939,8 +939,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             {
                 predicates.iter().any(|pred| {
                     match pred.kind().skip_binder() {
-                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) if data.self_ty() == ty => {}
-                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) if data.projection_ty.self_ty() == ty => {}
+                        ty::ClauseKind::Trait(data) if data.self_ty() == ty => {}
+                        ty::ClauseKind::Projection(data) if data.projection_ty.self_ty() == ty => {}
                         _ => return false,
                     }
                     tcx.any_free_region_meets(pred, |r| {
