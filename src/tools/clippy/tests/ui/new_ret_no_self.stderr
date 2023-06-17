@@ -92,21 +92,5 @@ LL | |             unimplemented!()
 LL | |         }
    | |_________^
 
-error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:410:9
-   |
-LL | /         pub fn new() -> impl PartialOrd {
-LL | |             0i32
-LL | |         }
-   | |_________^
-
-error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:421:9
-   |
-LL | /         pub fn new() -> X {
-LL | |             0i32
-LL | |         }
-   | |_________^
-
-error: aborting due to 14 previous errors
+error: aborting due to 12 previous errors
 

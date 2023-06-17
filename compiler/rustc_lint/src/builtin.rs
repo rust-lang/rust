@@ -1465,8 +1465,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else {
             return
         };
-        if let hir::TyKind::OpaqueDef(..) = ty.kind {
-            // Bounds are respected for `type X = impl Trait`
+        if cx.tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
+            // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
             return;
         }
         if cx.tcx.type_of(item.owner_id).skip_binder().has_inherent_projections() {

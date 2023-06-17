@@ -29,6 +29,7 @@ mod opaques;
 mod project_goals;
 mod search_graph;
 mod trait_goals;
+mod weak_types;
 
 pub use eval_ctxt::{EvalCtxt, InferCtxtEvalExt};
 pub use fulfill::FulfillmentCtxt;

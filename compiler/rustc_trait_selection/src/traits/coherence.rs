@@ -292,7 +292,12 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
             Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate)
         })
         .chain(obligations)
-        .find(|o| !selcx.predicate_may_hold_fatal(o));
+        .find(|o| {
+            selcx.evaluate_root_obligation(o).map_or(
+                false, // Overflow has occurred, and treat the obligation as possibly holding.
+                |result| !result.may_apply(),
+            )
+        });
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -690,7 +695,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
             | ty::RawPtr(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Alias(ty::Projection | ty::Inherent, ..) => self.found_non_local_ty(ty),
+            | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..) => {
+                self.found_non_local_ty(ty)
+            }
 
             ty::Param(..) => self.found_param_ty(ty),
 

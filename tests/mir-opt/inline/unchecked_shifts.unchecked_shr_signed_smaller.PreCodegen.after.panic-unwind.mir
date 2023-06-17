@@ -4,121 +4,12 @@ fn unchecked_shr_signed_smaller(_1: i16, _2: u32) -> i16 {
     debug a => _1;
     debug b => _2;
     let mut _0: i16;
-    scope 1 (inlined core::num::<impl i16>::unchecked_shr) {
-        debug self => _1;
-        debug rhs => _2;
-        let mut _11: i16;
-        scope 2 {
-            scope 3 (inlined core::num::<impl i16>::unchecked_shr::conv) {
-                debug x => _2;
-                let mut _6: std::result::Result<i16, std::num::TryFromIntError>;
-                let mut _9: std::option::Option<i16>;
-                scope 4 {
-                    scope 5 (inlined <u32 as TryInto<i16>>::try_into) {
-                        debug self => _2;
-                        scope 6 (inlined convert::num::<impl TryFrom<u32> for i16>::try_from) {
-                            debug u => _2;
-                            let mut _3: u32;
-                            let mut _4: bool;
-                            let mut _5: i16;
-                        }
-                    }
-                    scope 7 (inlined Result::<i16, TryFromIntError>::ok) {
-                        debug self => _6;
-                        let mut _7: isize;
-                        let _8: i16;
-                        scope 8 {
-                            debug x => _8;
-                        }
-                    }
-                    scope 9 (inlined #[track_caller] Option::<i16>::unwrap_unchecked) {
-                        debug self => _9;
-                        let mut _10: isize;
-                        let mut _12: &std::option::Option<i16>;
-                        scope 10 {
-                            debug val => _11;
-                        }
-                        scope 11 {
-                            scope 13 (inlined unreachable_unchecked) {
-                                scope 14 {
-                                    scope 15 (inlined unreachable_unchecked::runtime) {
-                                    }
-                                }
-                            }
-                        }
-                        scope 12 (inlined Option::<i16>::is_some) {
-                            debug self => _12;
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     bb0: {
-        StorageLive(_11);
-        StorageLive(_9);
-        StorageLive(_6);
-        StorageLive(_4);
-        StorageLive(_3);
-        _3 = const 32767_u32;
-        _4 = Gt(_2, move _3);
-        StorageDead(_3);
-        switchInt(move _4) -> [0: bb1, otherwise: bb2];
+        _0 = core::num::<impl i16>::unchecked_shr(_1, _2) -> bb1;
     }
 
     bb1: {
-        StorageLive(_5);
-        _5 = _2 as i16 (IntToInt);
-        _6 = Result::<i16, TryFromIntError>::Ok(move _5);
-        StorageDead(_5);
-        goto -> bb3;
-    }
-
-    bb2: {
-        _6 = Result::<i16, TryFromIntError>::Err(const TryFromIntError(()));
-        goto -> bb3;
-    }
-
-    bb3: {
-        StorageDead(_4);
-        StorageLive(_8);
-        _7 = discriminant(_6);
-        switchInt(move _7) -> [0: bb4, 1: bb5, otherwise: bb9];
-    }
-
-    bb4: {
-        _8 = move ((_6 as Ok).0: i16);
-        _9 = Option::<i16>::Some(move _8);
-        goto -> bb6;
-    }
-
-    bb5: {
-        _9 = Option::<i16>::None;
-        goto -> bb6;
-    }
-
-    bb6: {
-        StorageDead(_8);
-        StorageDead(_6);
-        StorageLive(_12);
-        _10 = discriminant(_9);
-        switchInt(move _10) -> [1: bb7, otherwise: bb9];
-    }
-
-    bb7: {
-        _11 = move ((_9 as Some).0: i16);
-        StorageDead(_12);
-        StorageDead(_9);
-        _0 = unchecked_shr::<i16>(_1, move _11) -> [return: bb8, unwind unreachable];
-    }
-
-    bb8: {
-        StorageDead(_11);
         return;
-    }
-
-    bb9: {
-        unreachable;
     }
 }

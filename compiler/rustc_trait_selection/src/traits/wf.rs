@@ -731,6 +731,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     }
                 }
 
+                ty::Alias(ty::Weak, ty::AliasTy { def_id, substs, .. }) => {
+                    let obligations = self.nominal_obligations(def_id, substs);
+                    self.out.extend(obligations);
+                }
+
                 ty::Dynamic(data, r, _) => {
                     // WfObject
                     //

@@ -2375,6 +2375,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ty::AliasKind::Projection | ty::AliasKind::Inherent => {
                     format!("the associated type `{}`", p)
                 }
+                ty::AliasKind::Weak => format!("the type alias `{}`", p),
                 ty::AliasKind::Opaque => format!("the opaque type `{}`", p),
             },
         };

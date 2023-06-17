@@ -2012,6 +2012,7 @@ impl<'tcx> TyCtxt<'tcx> {
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
                 | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
+                | (ty::Weak, DefKind::TyAlias)
         );
         self.mk_ty_from_kind(Alias(kind, alias_ty))
     }

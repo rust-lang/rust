@@ -14,7 +14,7 @@ assert-attribute: (
     "//a[@class='result-import']",
     {"href": "../test_docs/index.html#reexport.TheStdReexport"},
 )
-assert-text: ("//a[@class='result-import']", "test_docs::TheStdReexport")
+assert-text: ("a.result-import .result-name", "re-export test_docs::TheStdReexport")
 click: "//a[@class='result-import']"
 // We check that it has the background modified thanks to the focus.
 wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "#494a3d"})
@@ -25,8 +25,8 @@ press-key: 'Enter'
 write: (".search-input", "AliasForTheStdReexport")
 wait-for: "//a[@class='result-import']"
 assert-text: (
-    "//a[@class='result-import']",
-    "AliasForTheStdReexport - see test_docs::TheStdReexport",
+    "a.result-import .result-name",
+    "AliasForTheStdReexport - see re-export test_docs::TheStdReexport",
 )
 // Same thing again, we click on it to ensure the background is once again set as expected.
 click: "//a[@class='result-import']"

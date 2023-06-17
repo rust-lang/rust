@@ -189,6 +189,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn errors_reported_since_creation(&self) -> bool {
         self.tcx.sess.err_count() > self.err_count_on_creation
     }
+
+    pub fn next_root_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
+        self.tcx.mk_ty_var(self.next_ty_var_id_in_universe(origin, ty::UniverseIndex::ROOT))
+    }
 }
 
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {

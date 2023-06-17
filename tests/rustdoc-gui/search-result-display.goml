@@ -7,11 +7,11 @@ press-key: 'Enter'
 wait-for: "#crate-search"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
-assert-css: (".search-results div.desc", {"width": "310px"})
+assert-size: (".search-results div.desc", {"width": 310})
 set-window-size: (600, 100)
 // As counter-intuitive as it may seem, in this width, the width is "100%", which is why
 // when computed it's larger.
-assert-css: (".search-results div.desc", {"width": "566px"})
+assert-size: (".search-results div.desc", {"width": 566})
 
 // The result set is all on one line.
 assert-css: (".search-results .result-name > span", {"display": "inline"})

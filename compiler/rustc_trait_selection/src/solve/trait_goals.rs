@@ -81,17 +81,17 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
+        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
-            && poly_trait_pred.def_id() == goal.predicate.def_id()
-            && poly_trait_pred.polarity() == goal.predicate.polarity
+        if let Some(trait_clause) = assumption.as_trait_clause()
+            && trait_clause.def_id() == goal.predicate.def_id()
+            && trait_clause.polarity() == goal.predicate.polarity
         {
             // FIXME: Constness
             ecx.probe(|ecx| {
                 let assumption_trait_pred =
-                    ecx.instantiate_binder_with_infer(poly_trait_pred);
+                    ecx.instantiate_binder_with_infer(trait_clause);
                 ecx.eq(
                     goal.param_env,
                     goal.predicate.trait_ref,
@@ -618,7 +618,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Alias(ty::Projection | ty::Inherent, ..)
+            | ty::Alias(ty::Projection | ty::Weak | ty::Inherent, ..)
             | ty::Placeholder(..) => Some(Err(NoSolution)),
 
             ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),
