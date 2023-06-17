@@ -681,12 +681,9 @@ local Rust source checkout:
 cd ${RUST_SRC_PATH}
 ```
 
-To run the Rust test suite on an emulated Fuchsia device, you must install the
-Rust compiler locally. See "[Targeting Fuchsia with a compiler built from source](#targeting-fuchsia-with-a-compiler-built-from-source)"
-for the steps to build locally.
-
-You'll also need to download a copy of the Fuchsia SDK. The current minimum
-supported SDK version is [10.20221207.2.89][minimum_supported_sdk_version].
+To run the Rust test suite on an emulated Fuchsia device, you'll also need to
+download a copy of the Fuchsia SDK. The current minimum supported SDK version is
+[10.20221207.2.89][minimum_supported_sdk_version].
 
 [minimum_supported_sdk_version]: https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core/linux-amd64/+/version:10.20221207.2.89
 
@@ -695,13 +692,13 @@ Fuchsia's test runner interacts with the Fuchsia emulator and is located at
 test environment with:
 
 ```sh
-src/ci/docker/scripts/fuchsia-test-runner.py start
-    --rust ${RUST_SRC_PATH}/install
-    --sdk ${SDK_PATH}
-    --target {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}
+src/ci/docker/scripts/fuchsia-test-runner.py start                            \
+    --rust-build ${RUST_SRC_PATH}/build                                       \
+    --sdk ${SDK_PATH}                                                         \
+    --target {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}                 \
 ```
 
-Where `${RUST_SRC_PATH}/install` is the `prefix` set in `config.toml` and
+Where `${RUST_SRC_PATH}/build` is the `build-dir` set in `config.toml` and
 `${SDK_PATH}` is the path to the downloaded and unzipped SDK.
 
 Once our environment is started, we can run our tests using `x.py` as usual. The
