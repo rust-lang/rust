@@ -136,12 +136,22 @@ pub fn small_array_alignment(x: [i8; 4]) -> [i8; 4] {
     x
 }
 
-// CHECK-LABEL: small_struct_alignment
+// CHECK-LABEL: i32 @small_struct_alignment(i32 %0)
 // The struct is loaded as i32, but its alignment is lower, go with 1 byte to avoid target
 // dependent alignment
 #[no_mangle]
 pub fn small_struct_alignment(x: Bytes) -> Bytes {
-    // CHECK: [[VAR:%[0-9]+]] = load i32, ptr %{{.*}}, align 1
+    // CHECK: [[RETP:%.+]] = alloca %Bytes, align 1
+    // CHECK: [[ALIGNED:%.+]] = alloca i32, align 4
+    // CHECK: %x = alloca %Bytes, align 1
+
+    // CHECK: store i32 %0, ptr [[ALIGNED]], align 4
+    // CHECK: call void @llvm.memcpy{{.+}}(ptr align 1 %x, ptr align 4 %1, i64 4, i1 false)
+
+    // CHECK: [[TEMP:%[0-9]+]] = load i32, ptr %x, align 1
+    // CHECK: store i32 [[TEMP]], ptr [[RETP]], align 1
+
+    // CHECK: [[VAR:%[0-9]+]] = load i32, ptr [[RETP]], align 1
     // CHECK: ret i32 [[VAR]]
     x
 }

@@ -1,14 +1,17 @@
 // Test that llvm generates `memcpy` for moving a value
 // inside a function and moving an argument.
 
+#[derive(Default, Debug)]
+struct RatherLargeType(usize, isize, usize, isize, usize, isize);
+
 struct Foo {
-    x: Vec<i32>,
+    x: RatherLargeType,
 }
 
 #[inline(never)]
 #[no_mangle]
 // CHECK: memcpy
-fn interior(x: Vec<i32>) -> Vec<i32> {
+fn interior(x: RatherLargeType) -> RatherLargeType {
     let Foo { x } = Foo { x: x };
     x
 }
@@ -16,14 +19,14 @@ fn interior(x: Vec<i32>) -> Vec<i32> {
 #[inline(never)]
 #[no_mangle]
 // CHECK: memcpy
-fn exterior(x: Vec<i32>) -> Vec<i32> {
+fn exterior(x: RatherLargeType) -> RatherLargeType {
     x
 }
 
 fn main() {
-    let x = interior(Vec::new());
+    let x = interior(RatherLargeType::default());
     println!("{:?}", x);
 
-    let x = exterior(Vec::new());
+    let x = exterior(RatherLargeType::default());
     println!("{:?}", x);
 }

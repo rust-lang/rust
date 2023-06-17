@@ -407,7 +407,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         // arrays but don't count as aggregate types
         if let FieldsShape::Array { count, .. } = self.layout.fields()
             && let element = self.field(cx, 0)
-            && element.ty.is_integral()
+            && element.ty.is_primitive()
         {
             // `cx.type_ix(bits)` is tempting here, but while that works great
             // for things that *stay* as memory-to-memory copies, it also ends
@@ -418,8 +418,36 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             return Some(cx.type_vector(ety, *count));
         }
 
-        // FIXME: The above only handled integer arrays; surely more things
-        // would also be possible. Be careful about provenance, though!
-        None
+        // Ensure the type isn't too complex nor otherwise ineligible
+        is_scalar_copy_reasonable(4, self.ty, cx)?;
+
+        // Otherwise we can load/store it via a long-enough integer type
+        Some(cx.type_ix(self.layout.size().bits()))
+    }
+}
+
+fn is_scalar_copy_reasonable<'a, 'tcx>(
+    max_fields: u32,
+    t: Ty<'tcx>,
+    cx: &CodegenCx<'a, 'tcx>,
+) -> Option<u32> {
+    if t.is_any_ptr() || t.is_primitive() {
+        return max_fields.checked_sub(1);
+    }
+
+    match t.kind() {
+        ty::Tuple(field_tys) => field_tys
+            .into_iter()
+            .try_fold(max_fields, |mf, tt| is_scalar_copy_reasonable(mf, tt, cx)),
+        // Unions are magic and can carry anything, regardless of their field
+        // types, so force them to always go through `memcpy`.
+        ty::Adt(adt_def, _) if adt_def.is_union() => None,
+        // If there could be multiple variants, just use `memcpy` for now.
+        ty::Adt(adt_def, _) if adt_def.variants().len() != 1 => None,
+        ty::Adt(adt_def, substs) => adt_def.all_fields().try_fold(max_fields, |mf, field_def| {
+            let field_ty = field_def.ty(cx.tcx, substs);
+            is_scalar_copy_reasonable(mf, field_ty, cx)
+        }),
+        _ => None,
     }
 }
