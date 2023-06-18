@@ -14,7 +14,6 @@
 
 use rustc_hir as hir;
 use rustc_middle::mir;
-use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::InternalSubsts;
@@ -53,9 +52,8 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
-        let mut rpo = traversal::reverse_postorder(body);
         let ccx = ConstCx::new(tcx, body);
-        let (mut temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
+        let (mut temps, all_candidates) = collect_temps_and_candidates(&ccx);
 
         let promotable_candidates = validate_candidates(&ccx, &mut temps, &all_candidates);
 
@@ -166,14 +164,13 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
 pub fn collect_temps_and_candidates<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
-    rpo: &mut ReversePostorderIter<'_, 'tcx>,
 ) -> (IndexVec<Local, TempState>, Vec<Candidate>) {
     let mut collector = Collector {
         temps: IndexVec::from_elem(TempState::Undefined, &ccx.body.local_decls),
         candidates: vec![],
         ccx,
     };
-    for (bb, data) in rpo {
+    for (bb, data) in traversal::reverse_postorder(ccx.body) {
         collector.visit_basic_block_data(bb, data);
     }
     (collector.temps, collector.candidates)
