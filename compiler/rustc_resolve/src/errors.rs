@@ -613,3 +613,12 @@ pub(crate) struct ImportsCannotReferTo<'a> {
     pub(crate) span: Span,
     pub(crate) what: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_find_ident_in_this_scope)]
+pub(crate) struct CannotFindIdentInThisScope<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) expected: &'a str,
+    pub(crate) ident: Ident,
+}

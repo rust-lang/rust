@@ -268,3 +268,6 @@ resolve_change_import_binding =
 
 resolve_imports_cannot_refer_to =
     imports cannot refer to {$what}
+
+resolve_cannot_find_ident_in_this_scope =
+    cannot find {$expected} `{$ident}` in this scope
