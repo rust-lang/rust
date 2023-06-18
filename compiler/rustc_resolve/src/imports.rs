@@ -304,21 +304,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let res = binding.res();
         self.check_reserved_macro_name(key.ident, res);
         self.set_binding_parent_module(binding, module);
-        self.update_resolution(module, key, |this, resolution| {
-            if let Some(old_binding) = resolution.binding {
-                if res == Res::Err && old_binding.res() != Res::Err {
-                    // Do not override real bindings with `Res::Err`s from error recovery.
-                    return Ok(());
-                }
+
+        let mut resolution = self.resolution(module, key).borrow_mut();
+        let old_binding = resolution.binding();
+        let mut t = Ok(());
+        if let Some(old_binding) = resolution.binding {
+            if res == Res::Err && old_binding.res() != Res::Err {
+                // Do not override real bindings with `Res::Err`s from error recovery.
+            } else {
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
                         if res != old_binding.res() {
-                            resolution.binding = Some(this.ambiguity(
+                            resolution.binding = Some(self.ambiguity(
                                 AmbiguityKind::GlobVsGlob,
                                 old_binding,
                                 binding,
                             ));
-                        } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
+                        } else if !old_binding.vis.is_at_least(binding.vis, self.tcx) {
                             // We are glob-importing the same item but with greater visibility.
                             resolution.binding = Some(binding);
                         }
@@ -330,7 +332,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             && key.ns == MacroNS
                             && nonglob_binding.expansion != LocalExpnId::ROOT
                         {
-                            resolution.binding = Some(this.ambiguity(
+                            resolution.binding = Some(self.ambiguity(
                                 AmbiguityKind::GlobVsExpanded,
                                 nonglob_binding,
                                 glob_binding,
@@ -342,12 +344,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         if let Some(old_binding) = resolution.shadowed_glob {
                             assert!(old_binding.is_glob_import());
                             if glob_binding.res() != old_binding.res() {
-                                resolution.shadowed_glob = Some(this.ambiguity(
+                                resolution.shadowed_glob = Some(self.ambiguity(
                                     AmbiguityKind::GlobVsGlob,
                                     old_binding,
                                     glob_binding,
                                 ));
-                            } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
+                            } else if !old_binding.vis.is_at_least(binding.vis, self.tcx) {
                                 resolution.shadowed_glob = Some(glob_binding);
                             }
                         } else {
@@ -355,52 +357,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     }
                     (false, false) => {
-                        return Err(old_binding);
+                        t = Err(old_binding);
                     }
                 }
-            } else {
-                resolution.binding = Some(binding);
             }
+        } else {
+            resolution.binding = Some(binding);
+        };
 
-            Ok(())
-        })
-    }
-
-    fn ambiguity(
-        &self,
-        kind: AmbiguityKind,
-        primary_binding: &'a NameBinding<'a>,
-        secondary_binding: &'a NameBinding<'a>,
-    ) -> &'a NameBinding<'a> {
-        self.arenas.alloc_name_binding(NameBinding {
-            ambiguity: Some((secondary_binding, kind)),
-            ..primary_binding.clone()
-        })
-    }
-
-    // Use `f` to mutate the resolution of the name in the module.
-    // If the resolution becomes a success, define it in the module's glob importers.
-    fn update_resolution<T, F>(&mut self, module: Module<'a>, key: BindingKey, f: F) -> T
-    where
-        F: FnOnce(&mut Resolver<'a, 'tcx>, &mut NameResolution<'a>) -> T,
-    {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
-        let (binding, t) = {
-            let resolution = &mut *self.resolution(module, key).borrow_mut();
-            let old_binding = resolution.binding();
-
-            let t = f(self, resolution);
-
-            match resolution.binding() {
-                _ if old_binding.is_some() => return t,
-                None => return t,
-                Some(binding) => match old_binding {
-                    Some(old_binding) if ptr::eq(old_binding, binding) => return t,
-                    _ => (binding, t),
-                },
-            }
+        let (binding, t) = match resolution.binding() {
+            _ if old_binding.is_some() => return t,
+            None => return t,
+            Some(binding) => match old_binding {
+                Some(old_binding) if ptr::eq(old_binding, binding) => return t,
+                _ => (binding, t),
+            },
         };
+
+        drop(resolution);
 
         // Define `binding` in `module`s glob importers.
         for import in module.glob_importers.borrow_mut().iter() {
@@ -418,6 +394,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         t
+    }
+
+    fn ambiguity(
+        &self,
+        kind: AmbiguityKind,
+        primary_binding: &'a NameBinding<'a>,
+        secondary_binding: &'a NameBinding<'a>,
+    ) -> &'a NameBinding<'a> {
+        self.arenas.alloc_name_binding(NameBinding {
+            ambiguity: Some((secondary_binding, kind)),
+            ..primary_binding.clone()
+        })
     }
 
     // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed
@@ -769,9 +757,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 .emit();
                         }
                         let key = BindingKey::new(target, ns);
-                        this.update_resolution(parent, key, |_, resolution| {
-                            resolution.single_imports.remove(&Interned::new_unchecked(import));
-                        });
+                        let mut resolution = this.resolution(parent, key).borrow_mut();
+                        resolution.single_imports.remove(&Interned::new_unchecked(import));
                     }
                 }
             }
