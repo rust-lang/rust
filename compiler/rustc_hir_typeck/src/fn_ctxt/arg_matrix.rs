@@ -1,7 +1,7 @@
-use std::cmp;
-
+use core::cmp::Ordering;
 use rustc_index::IndexVec;
 use rustc_middle::ty::error::TypeError;
+use std::cmp;
 
 rustc_index::newtype_index! {
     #[debug_format = "ExpectedIdx({})"]
@@ -177,7 +177,7 @@ impl<'tcx> ArgMatrix<'tcx> {
                 // If an argument is unsatisfied, and the input in its position is useless
                 // then the most likely explanation is that we just got the types wrong
                 (true, true, true, true) => return Some(Issue::Invalid(i)),
-                // Otherwise, if an input is useless, then indicate that this is an extra argument
+                // Otherwise, if an input is useless then indicate that this is an extra input
                 (true, _, true, _) => return Some(Issue::Extra(i)),
                 // Otherwise, if an argument is unsatisfiable, indicate that it's missing
                 (_, true, _, true) => return Some(Issue::Missing(i)),
@@ -376,6 +376,13 @@ impl<'tcx> ArgMatrix<'tcx> {
             };
         }
 
+        // sort errors with same type by the order they appear in the source
+        // so that suggestion will be handled properly, see #112507
+        errors.sort_by(|a, b| match (a, b) {
+            (Error::Missing(i), Error::Missing(j)) => i.cmp(j),
+            (Error::Extra(i), Error::Extra(j)) => i.cmp(j),
+            _ => Ordering::Equal,
+        });
         return (errors, matched_inputs);
     }
 }
