@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Into<T>` for type `Foo`
+  --> $DIR/coherence-treats-tait-ambig.rs:10:1
+   |
+LL | impl Into<T> for Foo {
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T, U> Into<U> for T
+             where U: From<T>;
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.
