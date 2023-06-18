@@ -1455,6 +1455,8 @@ supported_targets! {
     ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
     ("hexagon-unknown-none-elf", hexagon_unknown_none_elf),
 
+    ("v810-unknown-vb", v810_unknown_vb),
+
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
 

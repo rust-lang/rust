@@ -1,0 +1,26 @@
+{
+    "arch": "v810",
+    "cpu": "vb",
+    "crt-static-respected": true,
+    "data-layout": "e-p:32:16-i32:32",
+    "dynamic-linking": false,
+    "env": "vb",
+    "has-rpath": false,
+    "has-thread-local": false,
+    "is-builtin": false,
+    "llvm-target": "v810-unknown-vb",
+    "max-atomic-width": 32,
+    "os": "none",
+    "position-independent-executables": false,
+    "relro-level": "full",
+    "supported-split-debuginfo": [
+      "packed",
+      "unpacked",
+      "off"
+    ],
+    "target-endian": "little",
+    "target-family": [
+      "vb"
+    ],
+    "target-pointer-width": "32"
+  }
