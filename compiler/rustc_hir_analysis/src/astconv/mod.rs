@@ -31,9 +31,10 @@ use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::DynKind;
 use rustc_middle::ty::GenericParamDefKind;
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -944,7 +945,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (pred, span) in bounds.predicates() {
+        for (clause, span) in bounds.predicates() {
+            let pred: ty::Predicate<'tcx> = clause.to_predicate(tcx);
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::PredicateKind::Clause(clause) => match clause {
