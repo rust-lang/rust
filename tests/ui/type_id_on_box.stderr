@@ -1,5 +1,5 @@
 error: calling `.type_id()` on a `Box<dyn Any>`
-  --> $DIR/type_id_on_box.rs:13:13
+  --> $DIR/type_id_on_box.rs:26:13
    |
 LL |     let _ = any_box.type_id();
    |             -------^^^^^^^^^^
@@ -11,9 +11,9 @@ LL |     let _ = any_box.type_id();
    = note: `-D clippy::type-id-on-box` implied by `-D warnings`
 
 error: calling `.type_id()` on a `Box<dyn Any>`
-  --> $DIR/type_id_on_box.rs:17:13
+  --> $DIR/type_id_on_box.rs:30:13
    |
-LL |     let _ = any_box.type_id(); // 2 derefs are needed here
+LL |     let _ = any_box.type_id(); // 2 derefs are needed here to get to the `dyn Any`
    |             -------^^^^^^^^^^
    |             |
    |             help: consider dereferencing first: `(**any_box)`
@@ -21,5 +21,16 @@ LL |     let _ = any_box.type_id(); // 2 derefs are needed here
    = note: this returns the type id of the literal type `Box<dyn Any>` instead of the type id of the boxed value, which is most likely not what you want
    = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
 
-error: aborting due to 2 previous errors
+error: calling `.type_id()` on a `Box<dyn Any>`
+  --> $DIR/type_id_on_box.rs:36:13
+   |
+LL |     let _ = b.type_id();
+   |             -^^^^^^^^^^
+   |             |
+   |             help: consider dereferencing first: `(*b)`
+   |
+   = note: this returns the type id of the literal type `Box<dyn Any>` instead of the type id of the boxed value, which is most likely not what you want
+   = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
+
+error: aborting due to 3 previous errors
 
