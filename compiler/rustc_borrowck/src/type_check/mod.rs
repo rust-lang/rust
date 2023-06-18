@@ -1419,9 +1419,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 //
                 // See #91068 for an example.
                 self.prove_predicates(
-                    sig.inputs_and_output
-                        .iter()
-                        .map(|ty| ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into()))),
+                    sig.inputs_and_output.iter().map(|ty| {
+                        ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(
+                            ty.into(),
+                        )))
+                    }),
                     term_location.to_locations(),
                     ConstraintCategory::Boring,
                 );
@@ -1850,7 +1852,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 let array_ty = rvalue.ty(body.local_decls(), tcx);
                 self.prove_predicate(
-                    ty::PredicateKind::WellFormed(array_ty.into()),
+                    ty::PredicateKind::Clause(ty::Clause::WellFormed(array_ty.into())),
                     Locations::Single(location),
                     ConstraintCategory::Boring,
                 );

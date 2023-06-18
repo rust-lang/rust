@@ -826,14 +826,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 // we start out with a `ParamEnv` with no inference variables,
                 // and these don't correspond to adding any new bounds to
                 // the `ParamEnv`.
-                ty::PredicateKind::WellFormed(..)
+                ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
                 | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::Coerce(..) => {}
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("predicate should only exist in the environment: {bound_predicate:?}")
