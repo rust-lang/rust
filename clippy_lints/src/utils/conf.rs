@@ -542,6 +542,10 @@ define_Conf! {
     ///
     /// Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
     (accept_comment_above_statement: bool = false),
+        /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
+    ///
+    /// Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
+    (accept_comment_above_attributes: bool = false),
 }
 
 /// Search for the configuration file.

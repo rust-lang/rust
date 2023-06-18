@@ -705,3 +705,13 @@ Whether to accept a safety comment to be placed above the statement containing t
 * [`undocumented_unsafe_blocks`](https://rust-lang.github.io/rust-clippy/master/index.html#undocumented_unsafe_blocks)
 
 
+## `accept-comment-above-attributes`
+Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
+
+**Default Value:** `false` (`bool`)
+
+---
+**Affected lints:**
+* [`undocumented_unsafe_blocks`](https://rust-lang.github.io/rust-clippy/master/index.html#undocumented_unsafe_blocks)
+
+
