@@ -47,6 +47,17 @@ fn connect_error() {
 }
 
 #[test]
+fn connect_timeout_to_unreachable_address() {
+    let now = Instant::now();
+    match TcpStream::connect_timeout(&format!("1.1.1.1:9999").parse().unwrap(), Duration::MAX) {
+        Ok(..) => panic!("connected to an unreachable address, this is impossible"),
+        Err(e) => assert_eq!(e.kind(), ErrorKind::TimedOut),
+    }
+
+    assert!(now.elapsed() > Duration::from_secs(20));
+}
+
+#[test]
 fn connect_timeout_error() {
     let socket_addr = next_test_ip4();
     let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
