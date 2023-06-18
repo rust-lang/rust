@@ -81,7 +81,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.tcx(),
             cause,
             param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)),
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(arg))),
         ));
     }
 }
@@ -1032,9 +1032,9 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                     tcx,
                     cause,
                     wfcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(
                         ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
-                    )),
+                    ))),
                 ));
             }
         }
@@ -1876,7 +1876,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             // We lower empty bounds like `Vec<dyn Copy>:` as
             // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
             // regular WF checking
-            if let ty::PredicateKind::WellFormed(..) = pred.kind().skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::WellFormed(..)) = pred.kind().skip_binder()
+            {
                 continue;
             }
             // Match the existing behavior.

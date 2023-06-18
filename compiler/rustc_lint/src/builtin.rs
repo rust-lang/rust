@@ -1610,13 +1610,13 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Clause(Clause::Projection(..)) |
                     AliasRelate(..) |
                     // Ignore bounds that a user can't type
-                    WellFormed(..) |
+                    Clause(Clause::WellFormed(..)) |
+                    // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
+                    Clause(Clause::ConstEvaluatable(..)) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |
                     Coerce(..) |
-                    // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
-                    ConstEvaluatable(..) |
                     ConstEquate(..) |
                     Ambiguous |
                     TypeWellFormedFromEnv(..) => continue,
