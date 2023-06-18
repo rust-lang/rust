@@ -1692,7 +1692,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 destination,
                 target: Some(_),
                 unwind: _,
-                from_hir_call: _,
+                call_source: _,
                 fn_span: _,
             } => {
                 self.check_assigned_place(*destination, |this| {

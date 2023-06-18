@@ -500,7 +500,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 destination: dest,
                 target: Some(next),
                 unwind: UnwindAction::Cleanup(cleanup),
-                from_hir_call: true,
+                call_source: CallSource::Normal,
                 fn_span: self.span,
             },
             false,
@@ -789,7 +789,7 @@ fn build_call_shim<'tcx>(
             } else {
                 UnwindAction::Continue
             },
-            from_hir_call: true,
+            call_source: CallSource::Misc,
             fn_span: span,
         },
         false,

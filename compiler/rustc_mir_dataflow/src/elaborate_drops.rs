@@ -654,7 +654,7 @@ where
                     destination: unit_temp,
                     target: Some(succ),
                     unwind: unwind.into_action(),
-                    from_hir_call: true,
+                    call_source: CallSource::Misc,
                     fn_span: self.source_info.span,
                 },
                 source_info: self.source_info,
