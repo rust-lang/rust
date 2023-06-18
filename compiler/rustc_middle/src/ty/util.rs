@@ -738,38 +738,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
     }
 
-    /// Returns names of captured upvars for closures and generators.
-    ///
-    /// Here are some examples:
-    ///  - `name__field1__field2` when the upvar is captured by value.
-    ///  - `_ref__name__field` when the upvar is captured by reference.
-    ///
-    /// For generators this only contains upvars that are shared by all states.
-    pub fn closure_saved_names_of_captured_variables(
-        self,
-        def_id: DefId,
-    ) -> SmallVec<[String; 16]> {
-        let body = self.optimized_mir(def_id);
-
-        body.var_debug_info
-            .iter()
-            .filter_map(|var| {
-                let is_ref = match var.value {
-                    mir::VarDebugInfoContents::Place(place)
-                        if place.local == mir::Local::new(1) =>
-                    {
-                        // The projection is either `[.., Field, Deref]` or `[.., Field]`. It
-                        // implies whether the variable is captured by value or by reference.
-                        matches!(place.projection.last().unwrap(), mir::ProjectionElem::Deref)
-                    }
-                    _ => return None,
-                };
-                let prefix = if is_ref { "_ref__" } else { "" };
-                Some(prefix.to_owned() + var.name.as_str())
-            })
-            .collect()
-    }
-
     // FIXME(eddyb) maybe precompute this? Right now it's computed once
     // per generator monomorphization, but it doesn't depend on substs.
     pub fn generator_layout_and_saved_local_names(

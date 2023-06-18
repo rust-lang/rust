@@ -959,7 +959,7 @@ fn variant_info_for_generator<'tcx>(
             upvars_size = upvars_size.max(offset + field_layout.size);
             FieldInfo {
                 kind: FieldKind::Upvar,
-                name: Symbol::intern(&name),
+                name: *name,
                 offset: offset.bytes(),
                 size: field_layout.size.bytes(),
                 align: field_layout.align.abi.bytes(),

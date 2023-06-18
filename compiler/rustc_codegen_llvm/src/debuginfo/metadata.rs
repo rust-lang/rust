@@ -1031,7 +1031,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
             build_field_di_node(
                 cx,
                 closure_or_generator_di_node,
-                capture_name,
+                capture_name.as_str(),
                 cx.size_and_align_of(up_var_ty),
                 layout.fields.offset(index),
                 DIFlags::FlagZero,

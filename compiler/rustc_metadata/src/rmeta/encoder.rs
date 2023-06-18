@@ -1520,6 +1520,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
+                record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
+                    <- tcx.closure_saved_names_of_captured_variables(def_id));
 
                 if tcx.sess.opts.unstable_opts.drop_tracking_mir
                     && let DefKind::Generator = self.tcx.def_kind(def_id)
