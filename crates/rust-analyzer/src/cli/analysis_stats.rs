@@ -165,9 +165,11 @@ impl flags::AnalysisStats {
             }
         }
         eprintln!(
-            ", mods: {}, decls: {num_decls}, bodies: {}",
+            ", mods: {}, decls: {num_decls}, bodies: {}, adts: {}, consts: {}",
             visited_modules.len(),
-            bodies.len()
+            bodies.len(),
+            adts.len(),
+            consts.len(),
         );
         eprintln!("{:<20} {}", "Item Collection:", analysis_sw.elapsed());
 

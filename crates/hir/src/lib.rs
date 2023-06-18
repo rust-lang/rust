@@ -2800,6 +2800,22 @@ impl Local {
     /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = x;`
     pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
         let (body, source_map) = db.body_with_source_map(self.parent);
+        self.sources_(db, &body, &source_map).collect()
+    }
+
+    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = x;`
+    pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
+        let (body, source_map) = db.body_with_source_map(self.parent);
+        let src = self.sources_(db, &body, &source_map).next().unwrap();
+        src
+    }
+
+    fn sources_<'a>(
+        self,
+        db: &'a dyn HirDatabase,
+        body: &'a hir_def::body::Body,
+        source_map: &'a hir_def::body::BodySourceMap,
+    ) -> impl Iterator<Item = LocalSource> + 'a {
         body[self.binding_id]
             .definitions
             .iter()
@@ -2812,14 +2828,7 @@ impl Local {
                     Either::Right(it) => Either::Right(it.to_node(&root)),
                 })
             })
-            .map(|source| LocalSource { local: self, source })
-            .collect()
-    }
-
-    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = x;`
-    pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
-        let all_sources = self.sources(db);
-        all_sources.into_iter().next().unwrap()
+            .map(move |source| LocalSource { local: self, source })
     }
 }
 
