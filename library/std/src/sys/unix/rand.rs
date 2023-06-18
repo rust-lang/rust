@@ -143,22 +143,23 @@ mod imp {
 mod imp {
     use crate::fs::File;
     use crate::io::Read;
-    use crate::sys::os::errno;
     use crate::sys::weak::weak;
-    use libc::{c_int, c_void, size_t};
+    use libc::{c_void, size_t};
 
-    fn getentropy_fill_bytes(v: &mut [u8]) -> bool {
-        weak!(fn getentropy(*mut c_void, size_t) -> c_int);
+    // CCRandomGenerateBytes is available since macOs 10.10
+    // and is recommended over getentropy
+    // getentropy is not authorized on the App's Store
+    // openssl did the jump since few years now :
+    // https://github.com/openssl/openssl/blob/f52aec35260627c37f114352843dc0bc22311a17/providers/implementations/rands/seeding/rand_unix.c#L368
+    fn ccrandom_fill_bytes(v: &mut [u8]) -> bool {
+        weak!(fn CCRandomGenerateBytes(*mut c_void, size_t) -> libc::CCRNGStatus);
 
-        getentropy
+        CCRandomGenerateBytes
             .get()
             .map(|f| {
-                // getentropy(2) permits a maximum buffer size of 256 bytes
-                for s in v.chunks_mut(256) {
-                    let ret = unsafe { f(s.as_mut_ptr() as *mut c_void, s.len()) };
-                    if ret == -1 {
-                        panic!("unexpected getentropy error: {}", errno());
-                    }
+                let ret = unsafe { f(v.as_mut_ptr() as *mut c_void, v.len()) };
+                if ret != libc::kCCSuccess {
+                    panic!("unexpected CCRandomGenerateBytes error: {}", ret);
                 }
                 true
             })
@@ -166,7 +167,7 @@ mod imp {
     }
 
     pub fn fill_bytes(v: &mut [u8]) {
-        if getentropy_fill_bytes(v) {
+        if ccrandom_fill_bytes(v) {
             return;
         }
 

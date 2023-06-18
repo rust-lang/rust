@@ -8,6 +8,7 @@ use helpers::check_arg_count;
 #[derive(Debug, Copy, Clone)]
 #[allow(non_camel_case_types)]
 pub enum Dlsym {
+    CCRandomGenerateBytes,
     getentropy,
 }
 
@@ -16,6 +17,7 @@ impl Dlsym {
     // should become a NULL pointer (pretend it does not exist).
     pub fn from_str<'tcx>(name: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         Ok(match name {
+            "CCRandomGenerateBytes" => Some(Dlsym::CCRandomGenerateBytes),
             "getentropy" => Some(Dlsym::getentropy),
             _ => throw_unsup_format!("unsupported macOS dlsym: {}", name),
         })
@@ -36,7 +38,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         assert!(this.tcx.sess.target.os == "macos");
 
         match dlsym {
-            Dlsym::getentropy => {
+            Dlsym::CCRandomGenerateBytes|Dlsym::getentropy => {
                 let [ptr, len] = check_arg_count(args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
