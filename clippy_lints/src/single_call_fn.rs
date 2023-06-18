@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::is_from_proc_macro;
+use clippy_utils::{is_from_proc_macro, is_in_test_function};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -12,7 +12,7 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for functions that are only used once.
+    /// Checks for functions that are only used once. Does not lint tests.
     ///
     /// ### Why is this bad?
     /// It's usually not, splitting a function into multiple parts often improves readability and in
@@ -73,6 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for SingleCallFn {
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id)
             || in_external_macro(cx.sess(), span)
             || is_from_proc_macro(cx, &(&kind, body, cx.tcx.local_def_id_to_hir_id(def_id), span))
+            || is_in_test_function(cx.tcx, body.value.hir_id)
         {
             return;
         }

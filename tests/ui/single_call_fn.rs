@@ -1,4 +1,5 @@
 //@aux-build:proc_macros.rs
+//@compile-flags: --test
 #![allow(clippy::redundant_closure_call, unused)]
 #![warn(clippy::single_call_fn)]
 #![no_main]
@@ -63,4 +64,12 @@ fn b() {
 fn e() {
     b();
     b();
+}
+
+#[test]
+fn k() {}
+
+#[test]
+fn l() {
+    k();
 }
