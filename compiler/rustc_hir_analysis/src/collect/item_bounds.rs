@@ -3,7 +3,6 @@ use crate::astconv::{AstConv, OnlySelfBounds};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;

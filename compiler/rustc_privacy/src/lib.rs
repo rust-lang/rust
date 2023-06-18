@@ -1259,8 +1259,8 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.tcx.types.never,
             );
 
-            for (pred, _) in bounds.predicates() {
-                match pred.skip_binder() {
+            for (pred, _) in bounds.clauses() {
+                match pred.kind().skip_binder() {
                     ty::ClauseKind::Trait(trait_predicate) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
                             return;
