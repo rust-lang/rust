@@ -586,3 +586,22 @@ pub(crate) enum ParamKindInEnumDiscriminant {
     #[note(resolve_lifetime_param_in_enum_discriminant)]
     Lifetime,
 }
+
+#[derive(Subdiagnostic)]
+#[label(resolve_change_import_binding)]
+pub(crate) struct ChangeImportBinding {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_change_import_binding,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ChangeImportBindingSuggestion {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) suggestion: String,
+}

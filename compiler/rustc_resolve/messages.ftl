@@ -262,3 +262,6 @@ resolve_variable_bound_with_different_mode =
     variable `{$variable_name}` is bound inconsistently across alternatives separated by `|`
     .label = bound in different ways
     .first_binding_span = first binding
+
+resolve_change_import_binding =
+    you can use `as` to change the binding name of the import
