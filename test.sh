@@ -209,12 +209,9 @@ function setup_rustc() {
     cd rust
     git fetch
     git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
-    git am ../0001-Allow-overwriting-the-sysroot-compile-flag-via-rustc.patch
     export RUSTFLAGS=
 
     rm config.toml || true
-
-    my_toolchain_dir=$HOME/.rustup/toolchains/codegen_gcc_ui_tests-$rust_toolchain-$TARGET_TRIPLE
 
     cat > config.toml <<EOF
 changelog-seen = 2
@@ -223,12 +220,9 @@ changelog-seen = 2
 codegen-backends = []
 deny-warnings = false
 
-# FIXME: it works with the original rustc and cargo.
 [build]
-#cargo = "$my_toolchain_dir/bin/cargo"
 cargo = "$(rustup which cargo)"
 local-rebuild = true
-#rustc = "$my_toolchain_dir/bin/rustc"
 rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
 
 [target.x86_64-unknown-linux-gnu]
@@ -394,7 +388,6 @@ function test_rustc() {
     fi
 
     echo "[TEST] rustc test suite"
-    # FIXME: the problem seems like an ABI incompatibility between cg_gcc sysroot and cg_llvm.
     COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui --rustc-args "$RUSTC_ARGS"
 }
 

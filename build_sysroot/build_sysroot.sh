@@ -28,12 +28,3 @@ fi
 # Copy files to sysroot
 mkdir -p sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
 cp -r target/$TARGET_TRIPLE/$sysroot_channel/deps/* sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
-
-# Since we can't override the sysroot for the UI tests anymore, we create a new toolchain and manually overwrite the sysroot directory.
-# TODO: to remove.
-#rust_toolchain=$(cat ../rust-toolchain | grep channel | sed 's/channel = "\(.*\)"/\1/')
-#my_toolchain_dir=$HOME/.rustup/toolchains/codegen_gcc_ui_tests-$rust_toolchain-$TARGET_TRIPLE
-#rm -rf $my_toolchain_dir
-#cp -r $HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE $my_toolchain_dir
-#rm -rf $my_toolchain_dir/lib/rustlib/$TARGET_TRIPLE/
-#cp -r ../build_sysroot/sysroot/* $my_toolchain_dir
