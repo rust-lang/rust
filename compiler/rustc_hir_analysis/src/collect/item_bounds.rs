@@ -3,6 +3,7 @@ use crate::astconv::{AstConv, OnlySelfBounds};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
@@ -44,7 +45,12 @@ fn associated_type_bounds<'tcx>(
         }
     });
 
-    let all_bounds = tcx.arena.alloc_from_iter(bounds.predicates().chain(bounds_from_parent));
+    let all_bounds = tcx.arena.alloc_from_iter(
+        bounds
+            .predicates()
+            .map(|(clause, span)| (clause.to_predicate(tcx), span))
+            .chain(bounds_from_parent),
+    );
     debug!(
         "associated_type_bounds({}) = {:?}",
         tcx.def_path_str(assoc_item_def_id.to_def_id()),
@@ -72,7 +78,9 @@ fn opaque_type_bounds<'tcx>(
         icx.astconv().add_implicitly_sized(&mut bounds, item_ty, ast_bounds, None, span);
         debug!(?bounds);
 
-        tcx.arena.alloc_from_iter(bounds.predicates())
+        tcx.arena.alloc_from_iter(
+            bounds.predicates().map(|(clause, span)| (clause.to_predicate(tcx), span)),
+        )
     })
 }
 
