@@ -271,3 +271,16 @@ resolve_imports_cannot_refer_to =
 
 resolve_cannot_find_ident_in_this_scope =
     cannot find {$expected} `{$ident}` in this scope
+
+resolve_explicit_unsafe_traits =
+    unsafe traits like `{$ident}` should be implemented explicitly
+
+resolve_added_macro_use =
+    have you added the `#[macro_use]` on the module/import?
+
+resolve_consider_adding_a_derive =
+    consider adding a derive
+    .suggestion = FIXME
+
+resolve_consider_adding_a_derive_enum =
+    consider adding `#[derive(Default)]` to this enum

@@ -30,7 +30,10 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::ThinVec;
 
-use crate::errors::{ChangeImportBinding, ChangeImportBindingSuggestion};
+use crate::errors::{
+    AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
+    ConsiderAddingADeriveEnum, ExplicitUnsafeTraits,
+};
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
@@ -1377,12 +1380,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         );
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
-            let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
-            err.span_note(ident.span, msg);
+            err.subdiagnostic(ExplicitUnsafeTraits { span: ident.span, ident });
             return;
         }
         if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
-            err.help("have you added the `#[macro_use]` on the module/import?");
+            err.subdiagnostic(AddedMacroUse);
             return;
         }
         if ident.name == kw::Default
@@ -1392,12 +1394,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let source_map = self.tcx.sess.source_map();
             let head_span = source_map.guess_head_span(span);
             if let Ok(head) = source_map.span_to_snippet(head_span) {
-                err.span_suggestion(head_span, "consider adding a derive", format!("#[derive(Default)]\n{head}"), Applicability::MaybeIncorrect);
+                err.subdiagnostic(ConsiderAddingADerive {
+                    span: head_span,
+                    suggestion: format!("#[derive(Default)]\n{head}")
+                });
             } else {
-                err.span_help(
-                    head_span,
-                    "consider adding `#[derive(Default)]` to this enum",
-                );
+                err.subdiagnostic(ConsiderAddingADeriveEnum { span: head_span });
             }
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {

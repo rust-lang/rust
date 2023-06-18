@@ -622,3 +622,34 @@ pub(crate) struct CannotFindIdentInThisScope<'a> {
     pub(crate) expected: &'a str,
     pub(crate) ident: Ident,
 }
+
+#[derive(Subdiagnostic)]
+#[note(resolve_explicit_unsafe_traits)]
+pub(crate) struct ExplicitUnsafeTraits {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_added_macro_use)]
+pub(crate) struct AddedMacroUse;
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_consider_adding_a_derive,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ConsiderAddingADerive {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) suggestion: String,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_consider_adding_a_derive_enum)]
+pub(crate) struct ConsiderAddingADeriveEnum {
+    #[primary_span]
+    pub(crate) span: Span,
+}
