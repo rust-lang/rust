@@ -456,6 +456,11 @@ impl ty::EarlyBoundRegion {
     }
 }
 
+/// A statement that can be proven by a trait solver. This includes things that may
+/// show up in where clauses, such as trait predicates and projection predicates,
+/// and also things that are emitted as part of type checking such as `ObjectSafe`
+/// predicate which is emitted when a type is coerced to a trait object.
+///
 /// Use this rather than `PredicateKind`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
@@ -561,7 +566,9 @@ impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
     }
 }
 
-/// TODO: doc
+/// A subset of predicates which can be assumed by the trait solver. They show up in
+/// an item's where clauses, hence the name `Clause`, and may either be user-written
+/// (such as traits) or may be inserted during lowering.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Clause<'tcx>(Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>);
@@ -1409,6 +1416,7 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
+    /// Matches a `PredicateKind::Clause` and turns it into a `Clause`, otherwise returns `None`.
     pub fn as_clause(self) -> Option<Clause<'tcx>> {
         match self.kind().skip_binder() {
             PredicateKind::Clause(..) => Some(self.expect_clause()),
@@ -1416,6 +1424,8 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
+    /// Turns a predicate into a clause without checking that it is a `PredicateKind::Clause`
+    /// first. This will ICE when methods are called on `Clause`.
     pub fn expect_clause(self) -> Clause<'tcx> {
         match self.kind().skip_binder() {
             PredicateKind::Clause(..) => Clause(self.0),
