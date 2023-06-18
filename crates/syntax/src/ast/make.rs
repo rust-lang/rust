@@ -447,6 +447,21 @@ pub fn block_expr(
     ast_from_text(&format!("fn f() {buf}"))
 }
 
+pub fn async_move_block_expr(
+    stmts: impl IntoIterator<Item = ast::Stmt>,
+    tail_expr: Option<ast::Expr>,
+) -> ast::BlockExpr {
+    let mut buf = "async move {\n".to_string();
+    for stmt in stmts.into_iter() {
+        format_to!(buf, "    {stmt}\n");
+    }
+    if let Some(tail_expr) = tail_expr {
+        format_to!(buf, "    {tail_expr}\n");
+    }
+    buf += "}";
+    ast_from_text(&format!("const _: () = {buf};"))
+}
+
 pub fn tail_only_block_expr(tail_expr: ast::Expr) -> ast::BlockExpr {
     ast_from_text(&format!("fn f() {{ {tail_expr} }}"))
 }
