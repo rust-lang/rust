@@ -37,6 +37,9 @@ pub struct Body {
     pub pats: Arena<Pat>,
     pub bindings: Arena<Binding>,
     pub labels: Arena<Label>,
+    /// Id of the closure/generator that owns the corresponding binding. If a binding is owned by the
+    /// top level expression, it will not be listed in here.
+    pub binding_owners: FxHashMap<BindingId, ExprId>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).
@@ -206,14 +209,24 @@ impl Body {
     }
 
     fn shrink_to_fit(&mut self) {
-        let Self { _c: _, body_expr: _, block_scopes, exprs, labels, params, pats, bindings } =
-            self;
+        let Self {
+            _c: _,
+            body_expr: _,
+            block_scopes,
+            exprs,
+            labels,
+            params,
+            pats,
+            bindings,
+            binding_owners,
+        } = self;
         block_scopes.shrink_to_fit();
         exprs.shrink_to_fit();
         labels.shrink_to_fit();
         params.shrink_to_fit();
         pats.shrink_to_fit();
         bindings.shrink_to_fit();
+        binding_owners.shrink_to_fit();
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
@@ -257,6 +270,17 @@ impl Body {
         f(pat_id);
         self.walk_pats_shallow(pat_id, |p| self.walk_pats(p, f));
     }
+
+    pub fn is_binding_upvar(&self, binding: BindingId, relative_to: ExprId) -> bool {
+        match self.binding_owners.get(&binding) {
+            Some(x) => {
+                // We assign expression ids in a way that outer closures will receive
+                // a lower id
+                x.into_raw() < relative_to.into_raw()
+            }
+            None => true,
+        }
+    }
 }
 
 impl Default for Body {
@@ -269,6 +293,7 @@ impl Default for Body {
             labels: Default::default(),
             params: Default::default(),
             block_scopes: Default::default(),
+            binding_owners: Default::default(),
             _c: Default::default(),
         }
     }
