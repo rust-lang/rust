@@ -188,7 +188,7 @@ impl ExprCollector<'_> {
                 param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
             {
                 let ptr = AstPtr::new(&self_param);
-                let binding_id = self.alloc_binding(
+                let binding_id: la_arena::Idx<Binding> = self.alloc_binding(
                     name![self],
                     BindingAnnotation::new(
                         self_param.mut_token().is_some() && self_param.amp_token().is_none(),
@@ -745,16 +745,14 @@ impl ExprCollector<'_> {
     /// }
     /// ```
     fn collect_for_loop(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::ForExpr) -> ExprId {
-        let (into_iter_fn, iter_next_fn, option_some, option_none) = 'if_chain: {
-            if let Some(into_iter_fn) = LangItem::IntoIterIntoIter.path(self.db, self.krate) {
-                if let Some(iter_next_fn) = LangItem::IteratorNext.path(self.db, self.krate) {
-                    if let Some(option_some) = LangItem::OptionSome.path(self.db, self.krate) {
-                        if let Some(option_none) = LangItem::OptionNone.path(self.db, self.krate) {
-                            break 'if_chain (into_iter_fn, iter_next_fn, option_some, option_none);
-                        }
-                    }
-                }
-            }
+        let Some((into_iter_fn, iter_next_fn, option_some, option_none)) = (|| {
+            Some((
+                LangItem::IntoIterIntoIter.path(self.db, self.krate)?,
+                LangItem::IteratorNext.path(self.db, self.krate)?,
+                LangItem::OptionSome.path(self.db, self.krate)?,
+                LangItem::OptionNone.path(self.db, self.krate)?,
+            ))
+        })() else {
             // Some of the needed lang items are missing, so we can't desugar
             return self.alloc_expr(Expr::Missing, syntax_ptr);
         };
@@ -787,8 +785,8 @@ impl ExprCollector<'_> {
             }),
         };
         let iter_name = Name::generate_new_name();
-        let iter_binding = self.alloc_binding(iter_name.clone(), BindingAnnotation::Mutable);
-        let iter_expr = self.alloc_expr(Expr::Path(Path::from(iter_name)), syntax_ptr.clone());
+        let iter_expr =
+            self.alloc_expr(Expr::Path(Path::from(iter_name.clone())), syntax_ptr.clone());
         let iter_expr_mut = self.alloc_expr(
             Expr::Ref { expr: iter_expr, rawness: Rawness::Ref, mutability: Mutability::Mut },
             syntax_ptr.clone(),
@@ -808,7 +806,9 @@ impl ExprCollector<'_> {
         );
         let loop_outer =
             self.alloc_expr(Expr::Loop { body: loop_inner, label }, syntax_ptr.clone());
+        let iter_binding = self.alloc_binding(iter_name, BindingAnnotation::Mutable);
         let iter_pat = self.alloc_pat_desugared(Pat::Bind { id: iter_binding, subpat: None });
+        self.add_definition_to_binding(iter_binding, iter_pat);
         self.alloc_expr(
             Expr::Match {
                 expr: iterator,
@@ -830,18 +830,14 @@ impl ExprCollector<'_> {
     /// }
     /// ```
     fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
-        let (try_branch, cf_continue, cf_break, try_from_residual) = 'if_chain: {
-            if let Some(try_branch) = LangItem::TryTraitBranch.path(self.db, self.krate) {
-                if let Some(cf_continue) = LangItem::ControlFlowContinue.path(self.db, self.krate) {
-                    if let Some(cf_break) = LangItem::ControlFlowBreak.path(self.db, self.krate) {
-                        if let Some(try_from_residual) =
-                            LangItem::TryTraitFromResidual.path(self.db, self.krate)
-                        {
-                            break 'if_chain (try_branch, cf_continue, cf_break, try_from_residual);
-                        }
-                    }
-                }
-            }
+        let Some((try_branch, cf_continue, cf_break, try_from_residual)) = (|| {
+            Some((
+                LangItem::TryTraitBranch.path(self.db, self.krate)?,
+                LangItem::ControlFlowContinue.path(self.db, self.krate)?,
+                LangItem::ControlFlowBreak.path(self.db, self.krate)?,
+                LangItem::TryTraitFromResidual.path(self.db, self.krate)?,
+            ))
+        })() else {
             // Some of the needed lang items are missing, so we can't desugar
             return self.alloc_expr(Expr::Missing, syntax_ptr);
         };
