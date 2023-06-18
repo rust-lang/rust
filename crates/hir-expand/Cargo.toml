@@ -18,9 +18,7 @@ either = "1.7.0"
 rustc-hash = "1.1.0"
 la-arena.workspace = true
 itertools = "0.10.5"
-hashbrown = { version = "0.12.1", features = [
-    "inline-more",
-], default-features = false }
+hashbrown.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
 
