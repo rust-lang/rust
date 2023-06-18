@@ -310,7 +310,7 @@ fn predicate_references_self<'tcx>(
 
         ty::PredicateKind::AliasRelate(..) => bug!("`AliasRelate` not allowed as assumption"),
 
-        ty::PredicateKind::WellFormed(..)
+        ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
         | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
@@ -318,7 +318,7 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
         // FIXME(generic_const_exprs): this can mention `Self`
-        | ty::PredicateKind::ConstEvaluatable(..)
+        | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
@@ -361,11 +361,11 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-        | ty::PredicateKind::WellFormed(..)
+        | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
-        | ty::PredicateKind::ConstEvaluatable(..)
+        | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Ambiguous

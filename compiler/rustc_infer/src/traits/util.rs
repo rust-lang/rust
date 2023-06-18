@@ -227,7 +227,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 debug!(?data, ?obligations, "super_predicates");
                 self.extend_deduped(obligations);
             }
-            ty::PredicateKind::WellFormed(..) => {
+            ty::PredicateKind::Clause(ty::Clause::WellFormed(..)) => {
                 // Currently, we do not elaborate WF predicates,
                 // although we easily could.
             }
@@ -249,7 +249,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
             ty::PredicateKind::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
-            ty::PredicateKind::ConstEvaluatable(..) => {
+            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..)) => {
                 // Currently, we do not elaborate const-evaluatable
                 // predicates.
             }

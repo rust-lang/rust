@@ -160,11 +160,11 @@ pub fn predicate_obligations<'tcx>(
             wf.compute(ct.into());
             wf.compute(ty.into());
         }
-        ty::PredicateKind::WellFormed(arg) => {
+        ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
             wf.compute(arg);
         }
 
-        ty::PredicateKind::ConstEvaluatable(ct) => {
+        ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)) => {
             wf.compute(ct.into());
         }
 
@@ -386,7 +386,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         cause,
                         depth,
                         param_env,
-                        ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)),
+                        ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(arg))),
                     )
                 }),
         );
@@ -478,7 +478,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         cause.clone(),
                         depth,
                         param_env,
-                        ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)),
+                        ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(arg))),
                     )
                 }),
         );
@@ -521,8 +521,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 let obligations = self.nominal_obligations(uv.def, uv.substs);
                                 self.out.extend(obligations);
 
-                                let predicate =
-                                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct));
+                                let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                                    ty::Clause::ConstEvaluatable(ct),
+                                ));
                                 let cause = self.cause(traits::WellFormed(None));
                                 self.out.push(traits::Obligation::with_depth(
                                     self.tcx(),
@@ -541,7 +542,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 cause,
                                 self.recursion_depth,
                                 self.param_env,
-                                ty::Binder::dummy(ty::PredicateKind::WellFormed(ct.into())),
+                                ty::Binder::dummy(ty::PredicateKind::Clause(
+                                    ty::Clause::WellFormed(ct.into()),
+                                )),
                             ));
                         }
                         ty::ConstKind::Expr(_) => {
@@ -552,8 +555,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             // the future we may allow directly lowering to `ConstKind::Expr` in which case
                             // we would not be proving bounds we should.
 
-                            let predicate =
-                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct));
+                            let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                                ty::Clause::ConstEvaluatable(ct),
+                            ));
                             let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(
                                 self.tcx(),
@@ -784,7 +788,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         cause,
                         self.recursion_depth,
                         param_env,
-                        ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into())),
+                        ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(
+                            ty.into(),
+                        ))),
                     ));
                 }
             }
@@ -969,11 +975,11 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::AliasRelate(..)
