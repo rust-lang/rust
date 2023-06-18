@@ -1,8 +1,9 @@
 name: CI
 on:
   pull_request:
+  merge_group:
   push:
-    branches: ["master", "staging", "trying"]
+    branches: ["master"]
 
 env:
   CARGO_INCREMENTAL: 0
@@ -14,7 +15,6 @@ env:
 
 jobs:
   test:
-    name: Rust
     runs-on: ubuntu-latest
 
     steps:
