@@ -11,7 +11,6 @@ use hir_expand::{
     AstId, ExpandError, InFile,
 };
 use intern::Interned;
-use la_arena::Arena;
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -60,10 +59,11 @@ pub(super) fn lower(
         source_map: BodySourceMap::default(),
         ast_id_map: db.ast_id_map(expander.current_file_id),
         body: Body {
-            exprs: Arena::default(),
-            pats: Arena::default(),
-            bindings: Arena::default(),
-            labels: Arena::default(),
+            exprs: Default::default(),
+            pats: Default::default(),
+            bindings: Default::default(),
+            binding_owners: Default::default(),
+            labels: Default::default(),
             params: Vec::new(),
             body_expr: dummy_expr_id(),
             block_scopes: Vec::new(),
@@ -1540,13 +1540,16 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_binding(&mut self, name: Name, mode: BindingAnnotation) -> BindingId {
-        self.body.bindings.alloc(Binding {
+        let binding = self.body.bindings.alloc(Binding {
             name,
             mode,
             definitions: SmallVec::new(),
-            owner: self.current_binding_owner,
             problems: None,
-        })
+        });
+        if let Some(owner) = self.current_binding_owner {
+            self.body.binding_owners.insert(binding, owner);
+        }
+        binding
     }
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
