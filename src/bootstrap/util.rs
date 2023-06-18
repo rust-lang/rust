@@ -159,8 +159,6 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
 pub enum CiEnv {
     /// Not a CI environment.
     None,
-    /// The Azure Pipelines environment, for Linux (including Docker), Windows, and macOS builds.
-    AzurePipelines,
     /// The GitHub Actions environment, for Linux (including Docker), Windows and macOS builds.
     GitHubActions,
 }

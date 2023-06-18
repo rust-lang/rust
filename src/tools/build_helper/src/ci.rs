@@ -4,8 +4,6 @@ use std::process::Command;
 pub enum CiEnv {
     /// Not a CI environment.
     None,
-    /// The Azure Pipelines environment, for Linux (including Docker), Windows, and macOS builds.
-    AzurePipelines,
     /// The GitHub Actions environment, for Linux (including Docker), Windows and macOS builds.
     GitHubActions,
 }
@@ -13,9 +11,7 @@ pub enum CiEnv {
 impl CiEnv {
     /// Obtains the current CI environment.
     pub fn current() -> CiEnv {
-        if std::env::var("TF_BUILD").map_or(false, |e| e == "True") {
-            CiEnv::AzurePipelines
-        } else if std::env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
+        if std::env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
             CiEnv::GitHubActions
         } else {
             CiEnv::None

@@ -359,6 +359,15 @@ impl<'tcx> ConstToPat<'tcx> {
                     def.non_enum_variant().fields.iter().map(|field| field.ty(self.tcx(), substs)),
                 ))?,
             },
+            ty::Slice(elem_ty) => PatKind::Slice {
+                prefix: cv
+                    .unwrap_branch()
+                    .iter()
+                    .map(|val| self.recur(*val, *elem_ty, false))
+                    .collect::<Result<_, _>>()?,
+                slice: None,
+                suffix: Box::new([]),
+            },
             ty::Array(elem_ty, _) => PatKind::Array {
                 prefix: cv
                     .unwrap_branch()
@@ -372,58 +381,6 @@ impl<'tcx> ConstToPat<'tcx> {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
                 ty::Str => PatKind::Constant { value: mir::ConstantKind::Ty(tcx.mk_const(cv, ty)) },
-                // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
-                // matching against references, you can only use byte string literals.
-                // The typechecker has a special case for byte string literals, by treating them
-                // as slices. This means we turn `&[T; N]` constants into slice patterns, which
-                // has no negative effects on pattern matching, even if we're actually matching on
-                // arrays.
-                ty::Array(elem_ty, _) if !self.treat_byte_string_as_slice => {
-                    let old = self.behind_reference.replace(true);
-                    // References have the same valtree representation as their pointee.
-                    let array = cv;
-                    let val = PatKind::Deref {
-                        subpattern: Box::new(Pat {
-                            kind: PatKind::Array {
-                                prefix: array.unwrap_branch()
-                                    .iter()
-                                    .map(|val| self.recur(*val, elem_ty, false))
-                                    .collect::<Result<_, _>>()?,
-                                slice: None,
-                                suffix: Box::new([]),
-                            },
-                            span,
-                            ty: tcx.mk_slice(elem_ty),
-                        }),
-                    };
-                    self.behind_reference.set(old);
-                    val
-                }
-                ty::Array(elem_ty, _) |
-                // Cannot merge this with the catch all branch below, because the `const_deref`
-                // changes the type from slice to array, we need to keep the original type in the
-                // pattern.
-                ty::Slice(elem_ty) => {
-                    let old = self.behind_reference.replace(true);
-                    // References have the same valtree representation as their pointee.
-                    let array = cv;
-                    let val = PatKind::Deref {
-                        subpattern: Box::new(Pat {
-                            kind: PatKind::Slice {
-                                prefix: array.unwrap_branch()
-                                    .iter()
-                                    .map(|val| self.recur(*val, elem_ty, false))
-                                    .collect::<Result<_, _>>()?,
-                                slice: None,
-                                suffix: Box::new([]),
-                            },
-                            span,
-                            ty: tcx.mk_slice(elem_ty),
-                        }),
-                    };
-                    self.behind_reference.set(old);
-                    val
-                }
                 // Backwards compatibility hack: support references to non-structural types,
                 // but hard error if we aren't behind a double reference. We could just use
                 // the fallback code path below, but that would allow *more* of this fishy
@@ -431,11 +388,9 @@ impl<'tcx> ConstToPat<'tcx> {
                 // instead of a hard error.
                 ty::Adt(_, _) if !self.type_marked_structural(*pointee_ty) => {
                     if self.behind_reference.get() {
-                        if !self.saw_const_match_error.get()
-                            && !self.saw_const_match_lint.get()
-                        {
-                           self.saw_const_match_lint.set(true);
-                           tcx.emit_spanned_lint(
+                        if !self.saw_const_match_error.get() && !self.saw_const_match_lint.get() {
+                            self.saw_const_match_lint.set(true);
+                            tcx.emit_spanned_lint(
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
                                 span,
@@ -456,7 +411,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
                 // deref pattern.
                 _ => {
-                    if !pointee_ty.is_sized(tcx, param_env) {
+                    if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
                         tcx.sess.emit_err(err);
 
@@ -464,8 +419,20 @@ impl<'tcx> ConstToPat<'tcx> {
                         PatKind::Wild
                     } else {
                         let old = self.behind_reference.replace(true);
+                        // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
+                        // matching against references, you can only use byte string literals.
+                        // The typechecker has a special case for byte string literals, by treating them
+                        // as slices. This means we turn `&[T; N]` constants into slice patterns, which
+                        // has no negative effects on pattern matching, even if we're actually matching on
+                        // arrays.
+                        let pointee_ty = match *pointee_ty.kind() {
+                            ty::Array(elem_ty, _) if self.treat_byte_string_as_slice => {
+                                tcx.mk_slice(elem_ty)
+                            }
+                            _ => *pointee_ty,
+                        };
                         // References have the same valtree representation as their pointee.
-                        let subpattern = self.recur(cv, *pointee_ty, false)?;
+                        let subpattern = self.recur(cv, pointee_ty, false)?;
                         self.behind_reference.set(old);
                         PatKind::Deref { subpattern }
                     }

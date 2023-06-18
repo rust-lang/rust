@@ -370,13 +370,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Fudge the receiver, so we can do new inference on it.
                     let possible_rcvr_ty = possible_rcvr_ty.fold_with(&mut fudger);
                     let method = self
-                        .lookup_method(
+                        .lookup_method_for_diagnostic(
                             possible_rcvr_ty,
                             segment,
                             DUMMY_SP,
                             call_expr,
                             binding,
-                            args,
                         )
                         .ok()?;
                     // Unify the method signature with our incompatible arg, to
@@ -435,14 +434,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(rcvr_ty) = self.node_ty_opt(rcvr.hir_id) else { continue; };
                 let rcvr_ty = rcvr_ty.fold_with(&mut fudger);
                 let Ok(method) =
-                    self.lookup_method(rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr, args)
+                    self.lookup_method_for_diagnostic(rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr)
                 else {
                     continue;
                 };
 
                 let ideal_rcvr_ty = rcvr_ty.fold_with(&mut fudger);
                 let ideal_method = self
-                    .lookup_method(ideal_rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr, args)
+                    .lookup_method_for_diagnostic(ideal_rcvr_ty, segment, DUMMY_SP, parent_expr, rcvr)
                     .ok()
                     .and_then(|method| {
                         let _ = self.at(&ObligationCause::dummy(), self.param_env)
