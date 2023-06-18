@@ -219,37 +219,12 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 /// - returns basic blocks in a postorder,
 /// - traverses the `BasicBlocks` CFG cache's reverse postorder backwards, and does not cache the
 ///   postorder itself.
-pub fn postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> PostorderIter<'a, 'tcx> {
-    let blocks = body.basic_blocks.reverse_postorder();
-    let len = blocks.len();
-    PostorderIter { body, blocks, idx: len }
-}
-
-#[derive(Clone)]
-pub struct PostorderIter<'a, 'tcx> {
+pub fn postorder<'a, 'tcx>(
     body: &'a Body<'tcx>,
-    blocks: &'a [BasicBlock],
-    idx: usize,
+) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
+{
+    reverse_postorder(body).rev()
 }
-
-impl<'a, 'tcx> Iterator for PostorderIter<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
-
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        if self.idx == 0 {
-            return None;
-        }
-        self.idx -= 1;
-
-        self.blocks.get(self.idx).map(|&bb| (bb, &self.body[bb]))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.idx, Some(self.idx))
-    }
-}
-
-impl<'a, 'tcx> ExactSizeIterator for PostorderIter<'a, 'tcx> {}
 
 /// Reverse postorder traversal of a graph
 ///
@@ -332,6 +307,7 @@ pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
 /// - makes use of the `BasicBlocks` CFG cache's reverse postorder.
 pub fn reverse_postorder<'a, 'tcx>(
     body: &'a Body<'tcx>,
-) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator {
+) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
+{
     body.basic_blocks.reverse_postorder().iter().map(|&bb| (bb, &body.basic_blocks[bb]))
 }
