@@ -605,3 +605,11 @@ pub(crate) struct ChangeImportBindingSuggestion {
     pub(crate) span: Span,
     pub(crate) suggestion: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(resolve_imports_cannot_refer_to)]
+pub(crate) struct ImportsCannotReferTo<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) what: &'a str,
+}

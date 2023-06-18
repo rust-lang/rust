@@ -265,3 +265,6 @@ resolve_variable_bound_with_different_mode =
 
 resolve_change_import_binding =
     you can use `as` to change the binding name of the import
+
+resolve_imports_cannot_refer_to =
+    imports cannot refer to {$what}
