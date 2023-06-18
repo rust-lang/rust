@@ -401,6 +401,72 @@ impl<'x, 'y, T, V, U: Default> Trait<'x, 'y, T, V, U> for () {
     }
 
     #[test]
+    fn test_const_substitution() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+struct Bar<const: N: bool> {
+    bar: [i32, N]
+}
+
+trait Foo<const N: usize, T> {
+    fn get_n_sq(&self, arg: &T) -> usize { N * N }
+    fn get_array(&self, arg: Bar<N>) -> [i32; N] { [1; N] }
+}
+
+struct S<T> {
+    wrapped: T
+}
+
+impl<const X: usize, Y, Z> Foo<X, Z> for S<Y> {
+    $0
+}"#,
+            r#"
+struct Bar<const: N: bool> {
+    bar: [i32, N]
+}
+
+trait Foo<const N: usize, T> {
+    fn get_n_sq(&self, arg: &T) -> usize { N * N }
+    fn get_array(&self, arg: Bar<N>) -> [i32; N] { [1; N] }
+}
+
+struct S<T> {
+    wrapped: T
+}
+
+impl<const X: usize, Y, Z> Foo<X, Z> for S<Y> {
+    $0fn get_n_sq(&self, arg: &Z) -> usize { X * X }
+
+    fn get_array(&self, arg: Bar<X>) -> [i32; X] { [1; X] }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_const_substitution_2() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+trait Foo<const N: usize, const M: usize, T> {
+    fn get_sum(&self, arg: &T) -> usize { N + M }
+}
+
+impl<X> Foo<42, {20 + 22}, X> for () {
+    $0
+}"#,
+            r#"
+trait Foo<const N: usize, const M: usize, T> {
+    fn get_sum(&self, arg: &T) -> usize { N + M }
+}
+
+impl<X> Foo<42, {20 + 22}, X> for () {
+    $0fn get_sum(&self, arg: &X) -> usize { 42 + {20 + 22} }
+}"#,
+        )
+    }
+
+    #[test]
     fn test_cursor_after_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
@@ -779,6 +845,115 @@ impl Foo<T> for S<T> {
     }
 }"#,
         )
+    }
+
+    #[test]
+    fn test_qualify_generic_default_parameter() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub struct S;
+    pub trait Foo<T = S> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S { $0 }"#,
+            r#"
+mod m {
+    pub struct S;
+    pub trait Foo<T = S> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S {
+    fn bar(&self, other: &m::S) {
+        ${0:todo!()}
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_qualify_generic_default_parameter_2() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = Wrapper<S, bool>> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S { $0 }"#,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = Wrapper<S, bool>> {
+        fn bar(&self, other: &T);
+    }
+}
+
+struct S;
+impl m::Foo for S {
+    fn bar(&self, other: &m::Wrapper<m::S, bool>) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_qualify_generic_default_parameter_3() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = S, V = Wrapper<T, S>> {
+        fn bar(&self, other: &V);
+    }
+}
+
+struct S;
+impl m::Foo for S { $0 }"#,
+            r#"
+mod m {
+    pub struct Wrapper<T, V> {
+        one: T,
+        another: V
+    };
+    pub struct S;
+    pub trait Foo<T = S, V = Wrapper<T, S>> {
+        fn bar(&self, other: &V);
+    }
+}
+
+struct S;
+impl m::Foo for S {
+    fn bar(&self, other: &m::Wrapper<m::S, m::S>) {
+        ${0:todo!()}
+    }
+}"#,
+        );
     }
 
     #[test]

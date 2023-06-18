@@ -958,7 +958,6 @@ fn main() {
         );
     }
 
-    // FIXME: const generics aren't being substituted, this is blocked on better support for them
     #[test]
     fn inline_substitutes_generics() {
         check_assist(
@@ -982,7 +981,7 @@ fn foo<T, const N: usize>() {
 fn bar<U, const M: usize>() {}
 
 fn main() {
-    bar::<usize, N>();
+    bar::<usize, {0}>();
 }
 "#,
         );
