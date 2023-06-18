@@ -1374,7 +1374,7 @@ impl Clone for BorrowRef<'_> {
         debug_assert!(is_reading(borrow));
         // Prevent the borrow counter from overflowing into
         // a writing borrow.
-        assert!(borrow != isize::MAX);
+        assert!(borrow != BorrowFlag::MAX);
         self.borrow.set(borrow + 1);
         BorrowRef { borrow: self.borrow }
     }
