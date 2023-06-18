@@ -273,6 +273,37 @@
 //! Hello, `     123` has 3 right-aligned characters
 //! ```
 //!
+//! For the floating-point type, it employs the
+//! [roundTiesToEven](https://en.m.wikipedia.org/wiki/Rounding#Rounding_half_to_even) convention:
+//!
+//! ```
+//! println!("{:.0}", 12.5f64); // 12
+//! println!("{:.0}", 12.3f64); // 12
+//! println!("{:.0}", 11.6f64); // 12
+//! println!("{:.0}", 11.5f64); // 12
+//! println!("{:.0}", 11.4f64); // 11
+//! println!("{:.0}", 10.5f64); // 10
+//! println!("{:.0}", 9.5f64);  // 10
+//! println!("{:.0}", 8.5f64);  // 8
+//! println!("{:.0}", 7.5f64);  // 8
+//! println!("{:.0}", -7.5f64); // -8
+//! println!("{:.0}", -8.5f64); // -8
+//! println!("{:.0}", -9.5f64); // -10
+//! println!("{:.0}", -10.5f64);// -10
+//! println!("{:.0}", -11.4f64);// -11
+//! println!("{:.0}", -11.5f64);// -12
+//! println!("{:.0}", -11.6f64);// -12
+//! println!("{:.0}", -12.5f64);// -12
+//! println!("{:.0}", -12.6f64);// -13
+//!
+//! println!("{:.1}", 3.33f64); // 3.3
+//! println!("{:.1}", -3.33f64);// -3.3
+//! println!("{:.1}", -3.55f64);// -3.5
+//! println!("{:.1}", 4.54f64); // 4.5
+//! println!("{:.1}", 4.55f64); // 4.5
+//! println!("{:.1}", 4.56f64); // 4.6
+//! ```
+//!
 //! ## Localization
 //!
 //! In some programming languages, the behavior of string formatting functions
