@@ -222,7 +222,7 @@ impl<R: ?Sized> BufReader<R> {
 
     /// Invalidates all data in the internal buffer.
     #[inline]
-    fn discard_buffer(&mut self) {
+    pub(in crate::io) fn discard_buffer(&mut self) {
         self.buf.discard_buffer()
     }
 }

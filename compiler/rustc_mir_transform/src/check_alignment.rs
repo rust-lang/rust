@@ -9,7 +9,6 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{Ty, TyCtxt, TypeAndMut};
 use rustc_session::Session;
-use rustc_target::spec::PanicStrategy;
 
 pub struct CheckAlignment;
 
@@ -241,11 +240,10 @@ fn insert_alignment_check<'tcx>(
                 required: Operand::Copy(alignment),
                 found: Operand::Copy(addr),
             }),
-            unwind: if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
-                UnwindAction::Terminate
-            } else {
-                UnwindAction::Unreachable
-            },
+            // The panic symbol that this calls is #[rustc_nounwind]. We never want to insert an
+            // unwind into unsafe code, because unwinding could make a failing UB check turn into
+            // much worse UB when we start unwinding.
+            unwind: UnwindAction::Unreachable,
         },
     });
 }
