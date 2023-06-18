@@ -309,12 +309,13 @@ fn merge_codegen_units<'tcx>(
     let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
+    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
     // Having multiple CGUs can drastically speed up compilation. But for
     // non-incremental builds, tiny CGUs slow down compilation *and* result in
     // worse generated code. So we don't allow CGUs smaller than this (unless
     // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
     // common in larger programs, so this isn't all that large.
-    const NON_INCR_MIN_CGU_SIZE: usize = 1000;
+    //const NON_INCR_MIN_CGU_SIZE: usize = 1000;
 
     // Repeatedly merge the two smallest codegen units as long as:
     // - we have more CGUs than the upper limit, or
@@ -326,35 +327,38 @@ fn merge_codegen_units<'tcx>(
     // the `compiler_builtins` crate sets `codegen-units = 10000` and it's
     // critical they aren't merged. Also, some tests use explicit small values
     // and likewise won't work if small CGUs are merged.
-    while codegen_units.len() > cx.tcx.sess.codegen_units().as_usize()
+
+    if codegen_units.len() > cx.tcx.sess.codegen_units().as_usize()
         || (cx.tcx.sess.opts.incremental.is_none()
             && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
-            && codegen_units.len() > 1
-            && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE))
+            && codegen_units.len() > 1)
     {
         // Sort small cgus to the back.
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+        let fallback_cgu_name = fallback_cgu_name(cgu_name_builder);
+        let mut merged_subsets: Vec<CodegenUnit<'_>> =
+            vec![CodegenUnit::new(fallback_cgu_name); cx.tcx.sess.codegen_units().as_usize()];
 
-        let mut smallest = codegen_units.pop().unwrap();
-        let second_smallest = codegen_units.last_mut().unwrap();
-
-        // Move the mono-items from `smallest` to `second_smallest`
-        second_smallest.modify_size_estimate(smallest.size_estimate());
-        second_smallest.items_mut().extend(smallest.items_mut().drain());
-
-        // Record that `second_smallest` now contains all the stuff that was
-        // in `smallest` before.
-        let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
-        cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
-
-        debug!(
-            "CodegenUnit {} merged into CodegenUnit {}",
-            smallest.name(),
-            second_smallest.name()
-        );
+        for cgu in codegen_units.iter_mut() {
+            let min = merged_subsets
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, cgu)| cgu.size_estimate())
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            let min_cgu = &mut merged_subsets[min];
+            if min_cgu.name() == fallback_cgu_name {
+                *min_cgu = std::mem::replace(cgu, CodegenUnit::new(fallback_cgu_name));
+            } else {
+                min_cgu.modify_size_estimate(cgu.size_estimate());
+                min_cgu.items_mut().extend(cgu.items_mut().drain());
+                let mut consumed_cgu_names = cgu_contents.remove(&cgu.name()).unwrap();
+                cgu_contents.get_mut(&min_cgu.name()).unwrap().append(&mut consumed_cgu_names);
+                debug!("CodegenUnit {} merged into CodegenUnit {}", cgu.name(), min_cgu.name());
+            }
+        }
+        *codegen_units = merged_subsets;
     }
-
-    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
 
     if cx.tcx.sess.opts.incremental.is_some() {
         // If we are doing incremental compilation, we want CGU names to
