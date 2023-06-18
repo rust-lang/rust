@@ -801,7 +801,7 @@ impl Step for Clippy {
         cargo.arg("-p").arg("clippy_dev");
         // clippy_dev gets confused if it can't find `clippy/Cargo.toml`
         cargo.current_dir(&builder.src.join("src").join("tools").join("clippy"));
-        if builder.config.rust_optimize {
+        if builder.config.rust_optimize.is_release() {
             cargo.env("PROFILE", "release");
         } else {
             cargo.env("PROFILE", "debug");
