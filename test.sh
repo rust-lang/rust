@@ -357,7 +357,6 @@ function test_rustc() {
 
     RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
 
-
     if [ $# -eq 0 ]; then
         # No argument supplied to the function. Doing nothing.
         echo "No argument provided. Keeping all UI tests"
@@ -388,7 +387,7 @@ function test_rustc() {
     fi
 
     echo "[TEST] rustc test suite"
-    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui --rustc-args "$RUSTC_ARGS"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS"
 }
 
 function test_failing_rustc() {
