@@ -67,7 +67,8 @@ fn relate_mir_and_user_ty<'tcx>(
     ocx.eq(&cause, param_env, mir_ty, user_ty)?;
 
     // FIXME(#104764): We should check well-formedness before normalization.
-    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(user_ty.into()));
+    let predicate =
+        ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(user_ty.into())));
     ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
     Ok(())
 }
@@ -119,7 +120,9 @@ fn relate_mir_and_user_substs<'tcx>(
         let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
-        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(impl_self_ty.into()));
+        let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(
+            impl_self_ty.into(),
+        )));
         ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, predicate));
     }
 
@@ -134,7 +137,7 @@ fn relate_mir_and_user_substs<'tcx>(
     // them?  This would only be relevant if some input
     // type were ill-formed but did not appear in `ty`,
     // which...could happen with normalization...
-    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into()));
+    let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(ty.into())));
     ocx.register_obligation(Obligation::new(tcx, cause, param_env, predicate));
     Ok(())
 }

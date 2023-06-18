@@ -319,14 +319,14 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::ObjectSafe(trait_def_id) => {
                     self.compute_object_safe_goal(trait_def_id)
                 }
-                ty::PredicateKind::WellFormed(arg) => {
+                ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
                     self.compute_well_formed_goal(Goal { param_env, predicate: arg })
                 }
                 ty::PredicateKind::Ambiguous => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
                 // FIXME: implement this predicate :)
-                ty::PredicateKind::ConstEvaluatable(_) => {
+                ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(_)) => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 ty::PredicateKind::ConstEquate(_, _) => {

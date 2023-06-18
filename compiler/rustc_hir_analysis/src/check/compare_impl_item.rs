@@ -321,7 +321,9 @@ fn compare_method_predicate_entailment<'tcx>(
             infcx.tcx,
             ObligationCause::dummy(),
             param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(unnormalized_impl_fty.into())),
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(
+                unnormalized_impl_fty.into(),
+            ))),
         ));
     }
 
