@@ -44,7 +44,8 @@ const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
     ("i686-pc-windows-msvc", "x86_64-pc-windows-msvc"),
     ("i686-pc-windows-gnu", "x86_64-pc-windows-gnu"),
     ("i686-apple-darwin", "x86_64-apple-darwin"),
-    ("i686-apple-darwin", "aarch64-apple-darwin"),
+    // ARM Macs don't have a corresponding 32-bit target that they can (easily)
+    // build for, so there is no entry for "aarch64-apple-darwin" here.
 ];
 
 fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
