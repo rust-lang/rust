@@ -750,13 +750,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     pub(super) fn add_item_bounds_for_hidden_type(
         &mut self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
+        opaque_def_id: DefId,
+        opaque_substs: ty::SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
     ) {
         let mut obligations = Vec::new();
         self.infcx.add_item_bounds_for_hidden_type(
-            opaque_type_key,
+            opaque_def_id,
+            opaque_substs,
             ObligationCause::dummy(),
             param_env,
             hidden_ty,
@@ -786,7 +788,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     ecx.eq(param_env, a, b)?;
                 }
                 ecx.eq(param_env, candidate_ty, ty)?;
-                ecx.add_item_bounds_for_hidden_type(candidate_key, param_env, candidate_ty);
+                ecx.add_item_bounds_for_hidden_type(
+                    candidate_key.def_id.to_def_id(),
+                    candidate_key.substs,
+                    param_env,
+                    candidate_ty,
+                );
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }));
         }
