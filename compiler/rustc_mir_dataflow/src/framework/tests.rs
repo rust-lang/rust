@@ -40,7 +40,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
             unwind: mir::UnwindAction::Continue,
-            from_hir_call: false,
+            call_source: mir::CallSource::Misc,
             fn_span: DUMMY_SP,
         },
     );
@@ -54,7 +54,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
             unwind: mir::UnwindAction::Continue,
-            from_hir_call: false,
+            call_source: mir::CallSource::Misc,
             fn_span: DUMMY_SP,
         },
     );

@@ -210,6 +210,9 @@ const_eval_long_running =
     .label = the const evaluator is currently interpreting this expression
     .help = the constant being evaluated
 
+const_eval_match_eq_non_const = cannot match on `{$ty}` in {const_eval_const_context}s
+    .note = `{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es
+
 const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
 
 const_eval_memory_access_test = memory access failed

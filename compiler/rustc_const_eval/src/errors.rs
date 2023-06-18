@@ -271,6 +271,18 @@ pub struct RawBytesNote {
     pub bytes: String,
 }
 
+// FIXME(fee1-dead) do not use stringly typed `ConstContext`
+
+#[derive(Diagnostic)]
+#[diag(const_eval_match_eq_non_const, code = "E0015")]
+#[note]
+pub struct NonConstMatchEq<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub kind: ConstContext,
+}
+
 #[derive(Diagnostic)]
 #[diag(const_eval_for_loop_into_iter_non_const, code = "E0015")]
 pub struct NonConstForLoopIntoIter<'tcx> {

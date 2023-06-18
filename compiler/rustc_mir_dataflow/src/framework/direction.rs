@@ -502,15 +502,7 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            Call {
-                unwind,
-                destination,
-                target,
-                func: _,
-                args: _,
-                from_hir_call: _,
-                fn_span: _,
-            } => {
+            Call { unwind, destination, target, func: _, args: _, call_source: _, fn_span: _ } => {
                 if let UnwindAction::Cleanup(unwind) = unwind {
                     propagate(unwind, exit_state);
                 }

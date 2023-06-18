@@ -140,7 +140,7 @@ impl<'tcx> MockBlocks<'tcx> {
                 destination: self.dummy_place.clone(),
                 target: Some(TEMP_BLOCK),
                 unwind: UnwindAction::Continue,
-                from_hir_call: false,
+                call_source: CallSource::Misc,
                 fn_span: DUMMY_SP,
             },
         )
