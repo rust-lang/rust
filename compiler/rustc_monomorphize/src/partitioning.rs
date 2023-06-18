@@ -336,10 +336,12 @@ fn merge_codegen_units<'tcx>(
         // Sort small cgus to the back.
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         let fallback_cgu_name = fallback_cgu_name(cgu_name_builder);
+        let mut default = CodegenUnit::new(fallback_cgu_name);
+        default.create_size_estimate(cx.tcx);
         let mut merged_subsets: Vec<CodegenUnit<'_>> =
-            vec![CodegenUnit::new(fallback_cgu_name); cx.tcx.sess.codegen_units().as_usize()];
+            vec![default; cx.tcx.sess.codegen_units().as_usize()];
 
-        for cgu in codegen_units.iter_mut() {
+        codegen_units.iter_mut().for_each(|cgu| {
             let min = merged_subsets
                 .iter()
                 .enumerate()
@@ -347,8 +349,9 @@ fn merge_codegen_units<'tcx>(
                 .map(|(i, _)| i)
                 .unwrap_or(0);
             let min_cgu = &mut merged_subsets[min];
-            if min_cgu.name() == fallback_cgu_name {
+            if !min_cgu.was_merged() {
                 *min_cgu = std::mem::replace(cgu, CodegenUnit::new(fallback_cgu_name));
+                min_cgu.make_merged();
             } else {
                 min_cgu.modify_size_estimate(cgu.size_estimate());
                 min_cgu.items_mut().extend(cgu.items_mut().drain());
@@ -356,7 +359,7 @@ fn merge_codegen_units<'tcx>(
                 cgu_contents.get_mut(&min_cgu.name()).unwrap().append(&mut consumed_cgu_names);
                 debug!("CodegenUnit {} merged into CodegenUnit {}", cgu.name(), min_cgu.name());
             }
-        }
+        });
         *codegen_units = merged_subsets;
     }
 

@@ -223,7 +223,7 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
     /// name be unique amongst **all** crates. Therefore, it should
@@ -236,6 +236,7 @@ pub struct CodegenUnit<'tcx> {
     /// True if this is CGU is used to hold code coverage information for dead code,
     /// false otherwise.
     is_code_coverage_dead_code_cgu: bool,
+    was_merged: bool,
 }
 
 /// Specifies the linkage type for a `MonoItem`.
@@ -272,6 +273,7 @@ impl<'tcx> CodegenUnit<'tcx> {
             size_estimate: None,
             primary: false,
             is_code_coverage_dead_code_cgu: false,
+            was_merged: false,
         }
     }
 
@@ -289,6 +291,14 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn make_primary(&mut self) {
         self.primary = true;
+    }
+
+    pub fn was_merged(&self) -> bool {
+        self.was_merged
+    }
+
+    pub fn make_merged(&mut self) {
+        self.was_merged = true;
     }
 
     /// The order of these items is non-determinstic.
@@ -411,6 +421,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
             size_estimate: _,
             primary: _,
             is_code_coverage_dead_code_cgu,
+            was_merged: _,
         } = *self;
 
         name.hash_stable(hcx, hasher);
