@@ -626,6 +626,13 @@ impl<'a> Parser<'a> {
 
         // fill character
         if let Some(&(_, c)) = self.cur.peek() {
+            // The following case should be compiled successfully.
+            // ```
+            // format!("foo {:}<", 2);
+            // ```
+            if c == '}' {
+                return spec;
+            }
             if let Some((_, '>' | '<' | '^')) = self.cur.clone().nth(1) {
                 spec.fill = Some(c);
                 self.cur.next();
