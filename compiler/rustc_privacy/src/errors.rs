@@ -73,7 +73,7 @@ pub struct InPublicInterface<'a> {
     pub descr: DiagnosticArgFromDisplay<'a>,
     #[label(privacy_visibility_label)]
     pub vis_span: Span,
-    #[suggestion(code="", applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub suggestion: Span,
 }
 
