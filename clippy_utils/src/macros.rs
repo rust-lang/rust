@@ -9,7 +9,7 @@ use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::LateContext;
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
-use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Span, Symbol};
+use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};
 use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -415,8 +415,18 @@ pub fn find_format_arg_expr<'hir, 'ast>(
     start: &'hir Expr<'hir>,
     target: &'ast FormatArgument,
 ) -> Result<&'hir rustc_hir::Expr<'hir>, &'ast rustc_ast::Expr> {
+    let SpanData {
+        lo,
+        hi,
+        ctxt,
+        parent: _,
+    } = target.expr.span.data();
+
     for_each_expr(start, |expr| {
-        if expr.span == target.expr.span {
+        // When incremental compilation is enabled spans gain a parent during AST to HIR lowering,
+        // since we're comparing an AST span to a HIR one we need to ignore the parent field
+        let data = expr.span.data();
+        if data.lo == lo && data.hi == hi && data.ctxt == ctxt {
             ControlFlow::Break(expr)
         } else {
             ControlFlow::Continue(())
