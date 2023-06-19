@@ -173,7 +173,7 @@ impl<'tcx> Elaboratable<'tcx> for (ty::Clause<'tcx>, Span) {
     }
 
     fn child(&self, predicate: ty::Predicate<'tcx>) -> Self {
-        (predicate.as_clause().unwrap(), self.1)
+        (predicate.expect_clause(), self.1)
     }
 
     fn child_with_derived_cause(
@@ -183,7 +183,7 @@ impl<'tcx> Elaboratable<'tcx> for (ty::Clause<'tcx>, Span) {
         _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
         _index: usize,
     ) -> Self {
-        (predicate.as_clause().unwrap(), self.1)
+        (predicate.expect_clause(), self.1)
     }
 }
 
@@ -193,7 +193,7 @@ impl<'tcx> Elaboratable<'tcx> for ty::Clause<'tcx> {
     }
 
     fn child(&self, predicate: ty::Predicate<'tcx>) -> Self {
-        predicate.as_clause().unwrap()
+        predicate.expect_clause()
     }
 
     fn child_with_derived_cause(
@@ -203,7 +203,7 @@ impl<'tcx> Elaboratable<'tcx> for ty::Clause<'tcx> {
         _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
         _index: usize,
     ) -> Self {
-        predicate.as_clause().unwrap()
+        predicate.expect_clause()
     }
 }
 

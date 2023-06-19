@@ -47,7 +47,7 @@ fn associated_type_bounds<'tcx>(
             }
             _ => false,
         })
-        .map(|(pred, span)| (pred.as_clause().unwrap(), span));
+        .map(|(pred, span)| (pred.expect_clause(), span));
 
     let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
     debug!(

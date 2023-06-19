@@ -250,7 +250,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Predicate<'tcx> 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Clause<'tcx> {
     fn decode(decoder: &mut D) -> ty::Clause<'tcx> {
         let pred: ty::Predicate<'tcx> = Decodable::decode(decoder);
-        pred.as_clause().unwrap()
+        pred.expect_clause()
     }
 }
 

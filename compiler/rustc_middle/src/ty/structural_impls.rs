@@ -666,10 +666,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(folder
-            .try_fold_predicate(self.as_predicate())?
-            .as_clause()
-            .expect("no sensible folder would do this"))
+        Ok(folder.try_fold_predicate(self.as_predicate())?.expect_clause())
     }
 }
 
