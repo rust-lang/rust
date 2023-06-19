@@ -700,6 +700,13 @@ impl UdpSocket {
         self.0.poll_send(cx, buf)
     }
 
+    /// Polls to writability
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_send_ready(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_send_ready(cx)
+    }
+
     /// Receives a single datagram message on the socket from the remote address to
     /// which it is connected. On success, returns the number of bytes read.
     ///
@@ -733,6 +740,13 @@ impl UdpSocket {
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
     pub fn poll_recv(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_recv(cx, buf)
+    }
+
+    /// Polls to readability
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_recv_ready(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_recv_ready(cx)
     }
 
     /// Receives single datagram on the socket from the remote address to which it is

@@ -199,6 +199,14 @@ impl Socket
             })
         })        
     }
+
+    pub fn poll_accept_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        super::asyncify(cx, |waker_id| {
+            unsafe {
+                wasi::sock_accept_ready_poll(self.fd(), waker_id.into())
+            }
+        })        
+    }
     
     pub fn accept_timeout(&self, timeout: Duration) -> io::Result<Socket> {
         self.set_nonblocking(true)?;
@@ -313,12 +321,26 @@ impl Socket
         })        
     }
 
+    pub fn poll_recv_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        super::asyncify(cx, |waker_id| {
+            unsafe {
+                Ok(
+                    wasi::sock_recv_ready_poll(self.fd(), waker_id.into()).map(|a| a as usize)?
+                )
+            }
+        })
+    }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.recv(buf)
     }
 
     pub fn poll_read(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
         self.poll_recv(cx, buf)
+    }
+
+    pub fn poll_read_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        self.poll_recv_ready(cx)
     }
 
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -466,6 +488,16 @@ impl Socket
         self.poll_send_with_flags(cx, &data, 0)
     }
 
+    pub fn poll_send_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        super::asyncify(cx, |waker_id| {
+            unsafe {
+                Ok(
+                    wasi::sock_send_ready_poll(self.fd(), waker_id.into()).map(|a| a as usize)?
+                )
+            }
+        })
+    }
+
     pub fn send_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.send_with_flags(bufs, 0)
     }
@@ -485,6 +517,10 @@ impl Socket
 
     pub fn poll_write(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
         self.poll_send(cx, buf)
+    }
+
+    pub fn poll_write_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        self.poll_send_ready(cx)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -1088,6 +1124,10 @@ impl TcpStream {
         self.inner.poll_recv(cx, buf)
     }
 
+    pub fn poll_read_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        self.inner.poll_recv_ready(cx)
+    }
+
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.recv_vectored(bufs)
     }
@@ -1106,6 +1146,10 @@ impl TcpStream {
 
     pub fn poll_write(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
         self.inner.poll_write(cx, buf)
+    }
+
+    pub fn poll_write_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        self.inner.poll_write_ready(cx)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -1244,6 +1288,11 @@ impl TcpListener {
                     addr
                 )
             })
+    }
+
+    pub fn poll_accept_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        self.inner
+            .poll_accept_ready(cx)
     }
     
     pub fn accept_timeout(&self, timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
@@ -1471,6 +1520,10 @@ impl UdpSocket {
         self.inner.poll_recv(cx, buf)
     }
 
+    pub fn poll_recv_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        self.inner.poll_recv_ready(cx)
+    }
+
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.peek(buf)
     }
@@ -1485,6 +1538,10 @@ impl UdpSocket {
 
     pub fn poll_send(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
         self.inner.poll_send(cx, buf)
+    }
+
+    pub fn poll_send_ready(&self, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+        self.inner.poll_send_ready(cx)
     }
 
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {

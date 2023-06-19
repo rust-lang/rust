@@ -645,6 +645,13 @@ impl TcpStream {
         self.0.poll_read(cx, buf)
     }
 
+    /// Polls for readability of the stream
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_read_ready(&mut self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_read_ready(cx)
+    }
+
     /// Polls for new vector of data on the stream
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
@@ -678,6 +685,13 @@ impl TcpStream {
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
     pub fn poll_write(&mut self, cx: &mut crate::task::Context<'_>, buf: &[u8]) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_write(cx, buf)
+    }
+
+    /// Polls for writeability to the stream
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_write_ready(&mut self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_write_ready(cx)
     }
 
     /// Polls for writing data to the stream
@@ -859,6 +873,14 @@ impl TcpListener {
         self.0
             .poll_accept(cx)
             .map_ok(|(a, b)| (TcpStream(a), b))
+    }
+
+    /// Polls for number of connections waiting to be accepted
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_accept_ready(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
+        self.0
+            .poll_accept_ready(cx)
     }
     
     /// Accept a new incoming connection from this listener (or times out).
