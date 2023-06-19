@@ -768,16 +768,18 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
                 return;
             };
 
-            // As described at the top of the file, we do not go near things that have their address
-            // taken.
+            // As described at the top of the file, we do not go near things that have
+            // their address taken.
             if self.borrowed.contains(src) || self.borrowed.contains(dest) {
                 return;
             }
 
-            // As described at the top of this file, we do not touch locals which have different types.
+            // As described at the top of this file, we do not touch locals which have
+            // different types.
             let src_ty = self.body.local_decls()[src].ty;
             let dest_ty = self.body.local_decls()[dest].ty;
             if src_ty != dest_ty {
+                // FIXME(#112651): This can be removed afterwards. Also update the module description.
                 trace!("skipped `{src:?} = {dest:?}` due to subtyping: {src_ty} != {dest_ty}");
                 return;
             }
