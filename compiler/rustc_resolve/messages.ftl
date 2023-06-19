@@ -5,6 +5,9 @@ resolve_add_as_non_derive =
     add as non-Derive macro
     `#[{$macro_path}]`
 
+resolve_added_macro_use =
+    have you added the `#[macro_use]` on the module/import?
+
 resolve_ampersand_used_without_explicit_lifetime_name =
     `&` without an explicit lifetime name cannot be used here
     .note = explicit lifetime name needed here
@@ -45,8 +48,17 @@ resolve_cannot_capture_dynamic_environment_in_fn_item =
     can't capture dynamic environment in a fn item
     .help = use the `|| {"{"} ... {"}"}` closure form instead
 
+resolve_cannot_find_ident_in_this_scope =
+    cannot find {$expected} `{$ident}` in this scope
+
 resolve_cannot_use_self_type_here =
     can't use `Self` here
+
+resolve_change_import_binding =
+    you can use `as` to change the binding name of the import
+
+resolve_consider_adding_a_derive =
+    consider adding a derive
 
 resolve_const_not_member_of_trait =
     const `{$const_}` is not a member of trait `{$trait_}`
@@ -74,6 +86,9 @@ resolve_expected_found =
     expected module, found {$res} `{$path_str}`
     .label = not a module
 
+resolve_explicit_unsafe_traits =
+    unsafe traits like `{$ident}` should be implemented explicitly
+
 resolve_forward_declared_generic_param =
     generic parameters with a default cannot use forward declared identifiers
     .label = defaulted generic parameters cannot be forward declared
@@ -95,6 +110,9 @@ resolve_ident_bound_more_than_once_in_same_pattern =
     .label = used in a pattern more than once
 
 resolve_imported_crate = `$crate` may not be imported
+
+resolve_imports_cannot_refer_to =
+    imports cannot refer to {$what}
 
 resolve_indeterminate =
     cannot determine resolution for the visibility
