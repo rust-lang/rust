@@ -34,7 +34,7 @@ LL | |         .cloned()
 LL | |         .collect();
    | |         -^^^^^^^ method cannot be called due to unsatisfied trait bounds
    | |_________|
-   | 
+   |
   --> $SRC_DIR/core/src/iter/adapters/take_while.rs:LL:COL
    |
    = note: doesn't satisfy `<_ as Iterator>::Item = &_`
@@ -42,7 +42,6 @@ LL | |         .collect();
    |
    = note: doesn't satisfy `_: Iterator`
    |
-   = note: the full type name has been written to '$TEST_BUILD_DIR/typeck/issue-31173/issue-31173.long-type-1298596514340768542.txt'
    = note: the following trait bounds were not satisfied:
            `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:7:21: 7:25]> as Iterator>::Item = &_`
            which is required by `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:7:21: 7:25]>>: Iterator`
