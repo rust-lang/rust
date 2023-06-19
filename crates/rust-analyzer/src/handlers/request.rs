@@ -43,10 +43,10 @@ use crate::{
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
     lsp_utils::{all_edits_are_disjoint, invalid_params_error},
-    to_proto, LspError, Result,
+    to_proto, LspError,
 };
 
-pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<()> {
+pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     // FIXME: use `Arc::from_iter` when it becomes available
     state.proc_macro_clients = Arc::from(Vec::new());
     state.proc_macro_changed = false;
@@ -55,7 +55,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
     Ok(())
 }
 
-pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> Result<()> {
+pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     // FIXME: use `Arc::from_iter` when it becomes available
     state.proc_macro_clients = Arc::from(Vec::new());
     state.proc_macro_changed = false;
@@ -67,7 +67,7 @@ pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> Resu
 pub(crate) fn handle_analyzer_status(
     snap: GlobalStateSnapshot,
     params: lsp_ext::AnalyzerStatusParams,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let _p = profile::span("handle_analyzer_status");
 
     let mut buf = String::new();
@@ -112,7 +112,7 @@ pub(crate) fn handle_analyzer_status(
     Ok(buf)
 }
 
-pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> Result<String> {
+pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Result<String> {
     let _p = profile::span("handle_memory_usage");
     let mem = state.analysis_host.per_query_memory_usage();
 
@@ -125,7 +125,7 @@ pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> Result<Stri
     Ok(out)
 }
 
-pub(crate) fn handle_shuffle_crate_graph(state: &mut GlobalState, _: ()) -> Result<()> {
+pub(crate) fn handle_shuffle_crate_graph(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     state.analysis_host.shuffle_crate_graph();
     Ok(())
 }
@@ -133,7 +133,7 @@ pub(crate) fn handle_shuffle_crate_graph(state: &mut GlobalState, _: ()) -> Resu
 pub(crate) fn handle_syntax_tree(
     snap: GlobalStateSnapshot,
     params: lsp_ext::SyntaxTreeParams,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let _p = profile::span("handle_syntax_tree");
     let id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(id)?;
@@ -145,7 +145,7 @@ pub(crate) fn handle_syntax_tree(
 pub(crate) fn handle_view_hir(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let _p = profile::span("handle_view_hir");
     let position = from_proto::file_position(&snap, params)?;
     let res = snap.analysis.view_hir(position)?;
@@ -155,7 +155,7 @@ pub(crate) fn handle_view_hir(
 pub(crate) fn handle_view_mir(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let _p = profile::span("handle_view_mir");
     let position = from_proto::file_position(&snap, params)?;
     let res = snap.analysis.view_mir(position)?;
@@ -165,7 +165,7 @@ pub(crate) fn handle_view_mir(
 pub(crate) fn handle_interpret_function(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let _p = profile::span("handle_interpret_function");
     let position = from_proto::file_position(&snap, params)?;
     let res = snap.analysis.interpret_function(position)?;
@@ -175,7 +175,7 @@ pub(crate) fn handle_interpret_function(
 pub(crate) fn handle_view_file_text(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentIdentifier,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let file_id = from_proto::file_id(&snap, &params.uri)?;
     Ok(snap.analysis.file_text(file_id)?.to_string())
 }
@@ -183,7 +183,7 @@ pub(crate) fn handle_view_file_text(
 pub(crate) fn handle_view_item_tree(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ViewItemTreeParams,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let _p = profile::span("handle_view_item_tree");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let res = snap.analysis.view_item_tree(file_id)?;
@@ -193,16 +193,16 @@ pub(crate) fn handle_view_item_tree(
 pub(crate) fn handle_view_crate_graph(
     snap: GlobalStateSnapshot,
     params: ViewCrateGraphParams,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let _p = profile::span("handle_view_crate_graph");
-    let dot = snap.analysis.view_crate_graph(params.full)??;
+    let dot = snap.analysis.view_crate_graph(params.full)?.map_err(anyhow::Error::msg)?;
     Ok(dot)
 }
 
 pub(crate) fn handle_expand_macro(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ExpandMacroParams,
-) -> Result<Option<lsp_ext::ExpandedMacro>> {
+) -> anyhow::Result<Option<lsp_ext::ExpandedMacro>> {
     let _p = profile::span("handle_expand_macro");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
@@ -215,11 +215,11 @@ pub(crate) fn handle_expand_macro(
 pub(crate) fn handle_selection_range(
     snap: GlobalStateSnapshot,
     params: lsp_types::SelectionRangeParams,
-) -> Result<Option<Vec<lsp_types::SelectionRange>>> {
+) -> anyhow::Result<Option<Vec<lsp_types::SelectionRange>>> {
     let _p = profile::span("handle_selection_range");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let res: Result<Vec<lsp_types::SelectionRange>> = params
+    let res: anyhow::Result<Vec<lsp_types::SelectionRange>> = params
         .positions
         .into_iter()
         .map(|position| {
@@ -258,7 +258,7 @@ pub(crate) fn handle_selection_range(
 pub(crate) fn handle_matching_brace(
     snap: GlobalStateSnapshot,
     params: lsp_ext::MatchingBraceParams,
-) -> Result<Vec<Position>> {
+) -> anyhow::Result<Vec<Position>> {
     let _p = profile::span("handle_matching_brace");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
@@ -281,7 +281,7 @@ pub(crate) fn handle_matching_brace(
 pub(crate) fn handle_join_lines(
     snap: GlobalStateSnapshot,
     params: lsp_ext::JoinLinesParams,
-) -> Result<Vec<lsp_types::TextEdit>> {
+) -> anyhow::Result<Vec<lsp_types::TextEdit>> {
     let _p = profile::span("handle_join_lines");
 
     let config = snap.config.join_lines();
@@ -306,7 +306,7 @@ pub(crate) fn handle_join_lines(
 pub(crate) fn handle_on_enter(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
+) -> anyhow::Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
     let _p = profile::span("handle_on_enter");
     let position = from_proto::file_position(&snap, params)?;
     let edit = match snap.analysis.on_enter(position)? {
@@ -321,7 +321,7 @@ pub(crate) fn handle_on_enter(
 pub(crate) fn handle_on_type_formatting(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentOnTypeFormattingParams,
-) -> Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
+) -> anyhow::Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
     let _p = profile::span("handle_on_type_formatting");
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     let line_index = snap.file_line_index(position.file_id)?;
@@ -361,7 +361,7 @@ pub(crate) fn handle_on_type_formatting(
 pub(crate) fn handle_document_symbol(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentSymbolParams,
-) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
+) -> anyhow::Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _p = profile::span("handle_document_symbol");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
@@ -450,7 +450,7 @@ pub(crate) fn handle_document_symbol(
 pub(crate) fn handle_workspace_symbol(
     snap: GlobalStateSnapshot,
     params: WorkspaceSymbolParams,
-) -> Result<Option<Vec<SymbolInformation>>> {
+) -> anyhow::Result<Option<Vec<SymbolInformation>>> {
     let _p = profile::span("handle_workspace_symbol");
 
     let config = snap.config.workspace_symbol();
@@ -513,7 +513,10 @@ pub(crate) fn handle_workspace_symbol(
         (all_symbols, libs)
     }
 
-    fn exec_query(snap: &GlobalStateSnapshot, query: Query) -> Result<Vec<SymbolInformation>> {
+    fn exec_query(
+        snap: &GlobalStateSnapshot,
+        query: Query,
+    ) -> anyhow::Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
         for nav in snap.analysis.symbol_search(query)? {
             let container_name = nav.container_name.as_ref().map(|v| v.to_string());
@@ -542,7 +545,7 @@ pub(crate) fn handle_workspace_symbol(
 pub(crate) fn handle_will_rename_files(
     snap: GlobalStateSnapshot,
     params: lsp_types::RenameFilesParams,
-) -> Result<Option<lsp_types::WorkspaceEdit>> {
+) -> anyhow::Result<Option<lsp_types::WorkspaceEdit>> {
     let _p = profile::span("handle_will_rename_files");
 
     let source_changes: Vec<SourceChange> = params
@@ -604,7 +607,7 @@ pub(crate) fn handle_will_rename_files(
 pub(crate) fn handle_goto_definition(
     snap: GlobalStateSnapshot,
     params: lsp_types::GotoDefinitionParams,
-) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+) -> anyhow::Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile::span("handle_goto_definition");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let nav_info = match snap.analysis.goto_definition(position)? {
@@ -619,7 +622,7 @@ pub(crate) fn handle_goto_definition(
 pub(crate) fn handle_goto_declaration(
     snap: GlobalStateSnapshot,
     params: lsp_types::request::GotoDeclarationParams,
-) -> Result<Option<lsp_types::request::GotoDeclarationResponse>> {
+) -> anyhow::Result<Option<lsp_types::request::GotoDeclarationResponse>> {
     let _p = profile::span("handle_goto_declaration");
     let position = from_proto::file_position(&snap, params.text_document_position_params.clone())?;
     let nav_info = match snap.analysis.goto_declaration(position)? {
@@ -634,7 +637,7 @@ pub(crate) fn handle_goto_declaration(
 pub(crate) fn handle_goto_implementation(
     snap: GlobalStateSnapshot,
     params: lsp_types::request::GotoImplementationParams,
-) -> Result<Option<lsp_types::request::GotoImplementationResponse>> {
+) -> anyhow::Result<Option<lsp_types::request::GotoImplementationResponse>> {
     let _p = profile::span("handle_goto_implementation");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let nav_info = match snap.analysis.goto_implementation(position)? {
@@ -649,7 +652,7 @@ pub(crate) fn handle_goto_implementation(
 pub(crate) fn handle_goto_type_definition(
     snap: GlobalStateSnapshot,
     params: lsp_types::request::GotoTypeDefinitionParams,
-) -> Result<Option<lsp_types::request::GotoTypeDefinitionResponse>> {
+) -> anyhow::Result<Option<lsp_types::request::GotoTypeDefinitionResponse>> {
     let _p = profile::span("handle_goto_type_definition");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let nav_info = match snap.analysis.goto_type_definition(position)? {
@@ -664,7 +667,7 @@ pub(crate) fn handle_goto_type_definition(
 pub(crate) fn handle_parent_module(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+) -> anyhow::Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile::span("handle_parent_module");
     if let Ok(file_path) = &params.text_document.uri.to_file_path() {
         if file_path.file_name().unwrap_or_default() == "Cargo.toml" {
@@ -731,7 +734,7 @@ pub(crate) fn handle_parent_module(
 pub(crate) fn handle_runnables(
     snap: GlobalStateSnapshot,
     params: lsp_ext::RunnablesParams,
-) -> Result<Vec<lsp_ext::Runnable>> {
+) -> anyhow::Result<Vec<lsp_ext::Runnable>> {
     let _p = profile::span("handle_runnables");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
@@ -826,7 +829,7 @@ fn should_skip_for_offset(runnable: &Runnable, offset: Option<TextSize>) -> bool
 pub(crate) fn handle_related_tests(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Vec<lsp_ext::TestInfo>> {
+) -> anyhow::Result<Vec<lsp_ext::TestInfo>> {
     let _p = profile::span("handle_related_tests");
     let position = from_proto::file_position(&snap, params)?;
 
@@ -844,7 +847,7 @@ pub(crate) fn handle_related_tests(
 pub(crate) fn handle_completion(
     snap: GlobalStateSnapshot,
     params: lsp_types::CompletionParams,
-) -> Result<Option<lsp_types::CompletionResponse>> {
+) -> anyhow::Result<Option<lsp_types::CompletionResponse>> {
     let _p = profile::span("handle_completion");
     let text_document_position = params.text_document_position.clone();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
@@ -872,7 +875,7 @@ pub(crate) fn handle_completion(
 pub(crate) fn handle_completion_resolve(
     snap: GlobalStateSnapshot,
     mut original_completion: CompletionItem,
-) -> Result<CompletionItem> {
+) -> anyhow::Result<CompletionItem> {
     let _p = profile::span("handle_completion_resolve");
 
     if !all_edits_are_disjoint(&original_completion, &[]) {
@@ -928,7 +931,7 @@ pub(crate) fn handle_completion_resolve(
 pub(crate) fn handle_folding_range(
     snap: GlobalStateSnapshot,
     params: FoldingRangeParams,
-) -> Result<Option<Vec<FoldingRange>>> {
+) -> anyhow::Result<Option<Vec<FoldingRange>>> {
     let _p = profile::span("handle_folding_range");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let folds = snap.analysis.folding_ranges(file_id)?;
@@ -945,7 +948,7 @@ pub(crate) fn handle_folding_range(
 pub(crate) fn handle_signature_help(
     snap: GlobalStateSnapshot,
     params: lsp_types::SignatureHelpParams,
-) -> Result<Option<lsp_types::SignatureHelp>> {
+) -> anyhow::Result<Option<lsp_types::SignatureHelp>> {
     let _p = profile::span("handle_signature_help");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let help = match snap.analysis.signature_help(position)? {
@@ -960,7 +963,7 @@ pub(crate) fn handle_signature_help(
 pub(crate) fn handle_hover(
     snap: GlobalStateSnapshot,
     params: lsp_ext::HoverParams,
-) -> Result<Option<lsp_ext::Hover>> {
+) -> anyhow::Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
     let range = match params.position {
         PositionOrRange::Position(position) => Range::new(position, position),
@@ -997,7 +1000,7 @@ pub(crate) fn handle_hover(
 pub(crate) fn handle_prepare_rename(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<Option<PrepareRenameResponse>> {
+) -> anyhow::Result<Option<PrepareRenameResponse>> {
     let _p = profile::span("handle_prepare_rename");
     let position = from_proto::file_position(&snap, params)?;
 
@@ -1011,7 +1014,7 @@ pub(crate) fn handle_prepare_rename(
 pub(crate) fn handle_rename(
     snap: GlobalStateSnapshot,
     params: RenameParams,
-) -> Result<Option<WorkspaceEdit>> {
+) -> anyhow::Result<Option<WorkspaceEdit>> {
     let _p = profile::span("handle_rename");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
@@ -1034,7 +1037,7 @@ pub(crate) fn handle_rename(
 pub(crate) fn handle_references(
     snap: GlobalStateSnapshot,
     params: lsp_types::ReferenceParams,
-) -> Result<Option<Vec<Location>>> {
+) -> anyhow::Result<Option<Vec<Location>>> {
     let _p = profile::span("handle_references");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
@@ -1077,7 +1080,7 @@ pub(crate) fn handle_references(
 pub(crate) fn handle_formatting(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentFormattingParams,
-) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+) -> anyhow::Result<Option<Vec<lsp_types::TextEdit>>> {
     let _p = profile::span("handle_formatting");
 
     run_rustfmt(&snap, params.text_document, None)
@@ -1086,7 +1089,7 @@ pub(crate) fn handle_formatting(
 pub(crate) fn handle_range_formatting(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentRangeFormattingParams,
-) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+) -> anyhow::Result<Option<Vec<lsp_types::TextEdit>>> {
     let _p = profile::span("handle_range_formatting");
 
     run_rustfmt(&snap, params.text_document, Some(params.range))
@@ -1095,7 +1098,7 @@ pub(crate) fn handle_range_formatting(
 pub(crate) fn handle_code_action(
     snap: GlobalStateSnapshot,
     params: lsp_types::CodeActionParams,
-) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
+) -> anyhow::Result<Option<Vec<lsp_ext::CodeAction>>> {
     let _p = profile::span("handle_code_action");
 
     if !snap.config.code_action_literals() {
@@ -1158,7 +1161,7 @@ pub(crate) fn handle_code_action(
 pub(crate) fn handle_code_action_resolve(
     snap: GlobalStateSnapshot,
     mut code_action: lsp_ext::CodeAction,
-) -> Result<lsp_ext::CodeAction> {
+) -> anyhow::Result<lsp_ext::CodeAction> {
     let _p = profile::span("handle_code_action_resolve");
     let params = match code_action.data.take() {
         Some(it) => it,
@@ -1219,7 +1222,7 @@ pub(crate) fn handle_code_action_resolve(
     Ok(code_action)
 }
 
-fn parse_action_id(action_id: &str) -> Result<(usize, SingleResolve), String> {
+fn parse_action_id(action_id: &str) -> anyhow::Result<(usize, SingleResolve), String> {
     let id_parts = action_id.split(':').collect::<Vec<_>>();
     match id_parts.as_slice() {
         [assist_id_string, assist_kind_string, index_string] => {
@@ -1237,7 +1240,7 @@ fn parse_action_id(action_id: &str) -> Result<(usize, SingleResolve), String> {
 pub(crate) fn handle_code_lens(
     snap: GlobalStateSnapshot,
     params: lsp_types::CodeLensParams,
-) -> Result<Option<Vec<CodeLens>>> {
+) -> anyhow::Result<Option<Vec<CodeLens>>> {
     let _p = profile::span("handle_code_lens");
 
     let lens_config = snap.config.lens();
@@ -1280,7 +1283,7 @@ pub(crate) fn handle_code_lens(
 pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
-) -> Result<CodeLens> {
+) -> anyhow::Result<CodeLens> {
     let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else { return Ok(code_lens) };
     let annotation = snap.analysis.resolve_annotation(annotation)?;
 
@@ -1301,7 +1304,7 @@ pub(crate) fn handle_code_lens_resolve(
 pub(crate) fn handle_document_highlight(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentHighlightParams,
-) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
+) -> anyhow::Result<Option<Vec<lsp_types::DocumentHighlight>>> {
     let _p = profile::span("handle_document_highlight");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let line_index = snap.file_line_index(position.file_id)?;
@@ -1323,7 +1326,7 @@ pub(crate) fn handle_document_highlight(
 pub(crate) fn handle_ssr(
     snap: GlobalStateSnapshot,
     params: lsp_ext::SsrParams,
-) -> Result<lsp_types::WorkspaceEdit> {
+) -> anyhow::Result<lsp_types::WorkspaceEdit> {
     let _p = profile::span("handle_ssr");
     let selections = params
         .selections
@@ -1343,7 +1346,7 @@ pub(crate) fn handle_ssr(
 pub(crate) fn handle_inlay_hints(
     snap: GlobalStateSnapshot,
     params: InlayHintParams,
-) -> Result<Option<Vec<InlayHint>>> {
+) -> anyhow::Result<Option<Vec<InlayHint>>> {
     let _p = profile::span("handle_inlay_hints");
     let document_uri = &params.text_document.uri;
     let FileRange { file_id, range } = from_proto::file_range(
@@ -1365,7 +1368,7 @@ pub(crate) fn handle_inlay_hints(
 pub(crate) fn handle_inlay_hints_resolve(
     _snap: GlobalStateSnapshot,
     hint: InlayHint,
-) -> Result<InlayHint> {
+) -> anyhow::Result<InlayHint> {
     let _p = profile::span("handle_inlay_hints_resolve");
     Ok(hint)
 }
@@ -1373,7 +1376,7 @@ pub(crate) fn handle_inlay_hints_resolve(
 pub(crate) fn handle_call_hierarchy_prepare(
     snap: GlobalStateSnapshot,
     params: CallHierarchyPrepareParams,
-) -> Result<Option<Vec<CallHierarchyItem>>> {
+) -> anyhow::Result<Option<Vec<CallHierarchyItem>>> {
     let _p = profile::span("handle_call_hierarchy_prepare");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
 
@@ -1395,7 +1398,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
 pub(crate) fn handle_call_hierarchy_incoming(
     snap: GlobalStateSnapshot,
     params: CallHierarchyIncomingCallsParams,
-) -> Result<Option<Vec<CallHierarchyIncomingCall>>> {
+) -> anyhow::Result<Option<Vec<CallHierarchyIncomingCall>>> {
     let _p = profile::span("handle_call_hierarchy_incoming");
     let item = params.item;
 
@@ -1430,7 +1433,7 @@ pub(crate) fn handle_call_hierarchy_incoming(
 pub(crate) fn handle_call_hierarchy_outgoing(
     snap: GlobalStateSnapshot,
     params: CallHierarchyOutgoingCallsParams,
-) -> Result<Option<Vec<CallHierarchyOutgoingCall>>> {
+) -> anyhow::Result<Option<Vec<CallHierarchyOutgoingCall>>> {
     let _p = profile::span("handle_call_hierarchy_outgoing");
     let item = params.item;
 
@@ -1465,7 +1468,7 @@ pub(crate) fn handle_call_hierarchy_outgoing(
 pub(crate) fn handle_semantic_tokens_full(
     snap: GlobalStateSnapshot,
     params: SemanticTokensParams,
-) -> Result<Option<SemanticTokensResult>> {
+) -> anyhow::Result<Option<SemanticTokensResult>> {
     let _p = profile::span("handle_semantic_tokens_full");
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
@@ -1495,7 +1498,7 @@ pub(crate) fn handle_semantic_tokens_full(
 pub(crate) fn handle_semantic_tokens_full_delta(
     snap: GlobalStateSnapshot,
     params: SemanticTokensDeltaParams,
-) -> Result<Option<SemanticTokensFullDeltaResult>> {
+) -> anyhow::Result<Option<SemanticTokensFullDeltaResult>> {
     let _p = profile::span("handle_semantic_tokens_full_delta");
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
@@ -1535,7 +1538,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
 pub(crate) fn handle_semantic_tokens_range(
     snap: GlobalStateSnapshot,
     params: SemanticTokensRangeParams,
-) -> Result<Option<SemanticTokensRangeResult>> {
+) -> anyhow::Result<Option<SemanticTokensRangeResult>> {
     let _p = profile::span("handle_semantic_tokens_range");
 
     let frange = from_proto::file_range(&snap, params.text_document, params.range)?;
@@ -1561,7 +1564,7 @@ pub(crate) fn handle_semantic_tokens_range(
 pub(crate) fn handle_open_docs(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
-) -> Result<ExternalDocsResponse> {
+) -> anyhow::Result<ExternalDocsResponse> {
     let _p = profile::span("handle_open_docs");
     let position = from_proto::file_position(&snap, params)?;
 
@@ -1600,7 +1603,7 @@ pub(crate) fn handle_open_docs(
 pub(crate) fn handle_open_cargo_toml(
     snap: GlobalStateSnapshot,
     params: lsp_ext::OpenCargoTomlParams,
-) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+) -> anyhow::Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile::span("handle_open_cargo_toml");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
 
@@ -1618,7 +1621,7 @@ pub(crate) fn handle_open_cargo_toml(
 pub(crate) fn handle_move_item(
     snap: GlobalStateSnapshot,
     params: lsp_ext::MoveItemParams,
-) -> Result<Vec<lsp_ext::SnippetTextEdit>> {
+) -> anyhow::Result<Vec<lsp_ext::SnippetTextEdit>> {
     let _p = profile::span("handle_move_item");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let range = from_proto::file_range(&snap, params.text_document, params.range)?;
@@ -1792,7 +1795,7 @@ fn run_rustfmt(
     snap: &GlobalStateSnapshot,
     text_document: TextDocumentIdentifier,
     range: Option<lsp_types::Range>,
-) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+) -> anyhow::Result<Option<Vec<lsp_types::TextEdit>>> {
     let file_id = from_proto::file_id(snap, &text_document.uri)?;
     let file = snap.analysis.file_text(file_id)?;
 
@@ -1942,7 +1945,7 @@ fn run_rustfmt(
 pub(crate) fn fetch_dependency_list(
     state: GlobalStateSnapshot,
     _params: FetchDependencyListParams,
-) -> Result<FetchDependencyListResult> {
+) -> anyhow::Result<FetchDependencyListResult> {
     let crates = state.analysis.fetch_crates()?;
     let crate_infos = crates
         .into_iter()
