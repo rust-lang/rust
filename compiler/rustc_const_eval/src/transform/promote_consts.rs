@@ -569,13 +569,18 @@ impl<'tcx> Validator<'_, 'tcx> {
                     | BinOp::Gt
                     | BinOp::Offset
                     | BinOp::Add
+                    | BinOp::AddUnchecked
                     | BinOp::Sub
+                    | BinOp::SubUnchecked
                     | BinOp::Mul
+                    | BinOp::MulUnchecked
                     | BinOp::BitXor
                     | BinOp::BitAnd
                     | BinOp::BitOr
                     | BinOp::Shl
-                    | BinOp::Shr => {}
+                    | BinOp::ShlUnchecked
+                    | BinOp::Shr
+                    | BinOp::ShrUnchecked => {}
                 }
 
                 self.validate_operand(lhs)?;

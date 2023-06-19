@@ -3,9 +3,12 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_span::symbol::sym;
 use rustc_target::abi::Abi;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
+
+use crate::fluent_generated as fluent;
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
@@ -139,8 +142,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, (Scalar<M::Provenance>, bool, Ty<'tcx>)> {
         use rustc_middle::mir::BinOp::*;
 
+        let throw_ub_on_overflow = match bin_op {
+            AddUnchecked => Some(sym::unchecked_add),
+            SubUnchecked => Some(sym::unchecked_sub),
+            MulUnchecked => Some(sym::unchecked_mul),
+            ShlUnchecked => Some(sym::unchecked_shl),
+            ShrUnchecked => Some(sym::unchecked_shr),
+            _ => None,
+        };
+
         // Shift ops can have an RHS with a different numeric type.
-        if bin_op == Shl || bin_op == Shr {
+        if matches!(bin_op, Shl | ShlUnchecked | Shr | ShrUnchecked) {
             let size = u128::from(left_layout.size.bits());
             // Even if `r` is signed, we treat it as if it was unsigned (i.e., we use its
             // zero-extended form). This matches the codegen backend:
@@ -155,6 +167,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // integers are maximally 128bits wide, so negative shifts *always* overflow and we have
             // consistent results for the same value represented at different bit widths.
             assert!(size <= 128);
+            let original_r = r;
             let overflow = r >= size;
             // The shift offset is implicitly masked to the type size, to make sure this operation
             // is always defined. This is the one MIR operator that does *not* directly map to a
@@ -166,19 +179,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let result = if left_layout.abi.is_signed() {
                 let l = self.sign_extend(l, left_layout) as i128;
                 let result = match bin_op {
-                    Shl => l.checked_shl(r).unwrap(),
-                    Shr => l.checked_shr(r).unwrap(),
+                    Shl | ShlUnchecked => l.checked_shl(r).unwrap(),
+                    Shr | ShrUnchecked => l.checked_shr(r).unwrap(),
                     _ => bug!(),
                 };
                 result as u128
             } else {
                 match bin_op {
-                    Shl => l.checked_shl(r).unwrap(),
-                    Shr => l.checked_shr(r).unwrap(),
+                    Shl | ShlUnchecked => l.checked_shl(r).unwrap(),
+                    Shr | ShrUnchecked => l.checked_shr(r).unwrap(),
                     _ => bug!(),
                 }
             };
             let truncated = self.truncate(result, left_layout);
+
+            if overflow && let Some(intrinsic_name) = throw_ub_on_overflow {
+                throw_ub_custom!(
+                    fluent::const_eval_overflow_shift,
+                    val = original_r,
+                    name = intrinsic_name
+                );
+            }
+
             return Ok((Scalar::from_uint(truncated, left_layout.size), overflow, left_layout.ty));
         }
 
@@ -216,9 +238,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Rem if r == 0 => throw_ub!(RemainderByZero),
                 Div => Some(i128::overflowing_div),
                 Rem => Some(i128::overflowing_rem),
-                Add => Some(i128::overflowing_add),
-                Sub => Some(i128::overflowing_sub),
-                Mul => Some(i128::overflowing_mul),
+                Add | AddUnchecked => Some(i128::overflowing_add),
+                Sub | SubUnchecked => Some(i128::overflowing_sub),
+                Mul | MulUnchecked => Some(i128::overflowing_mul),
                 _ => None,
             };
             if let Some(op) = op {
@@ -242,11 +264,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // If that truncation loses any information, we have an overflow.
                 let result = result as u128;
                 let truncated = self.truncate(result, left_layout);
-                return Ok((
-                    Scalar::from_uint(truncated, size),
-                    oflo || self.sign_extend(truncated, left_layout) != result,
-                    left_layout.ty,
-                ));
+                let overflow = oflo || self.sign_extend(truncated, left_layout) != result;
+                if overflow && let Some(intrinsic_name) = throw_ub_on_overflow {
+                    throw_ub_custom!(fluent::const_eval_overflow, name = intrinsic_name);
+                }
+                return Ok((Scalar::from_uint(truncated, size), overflow, left_layout.ty));
             }
         }
 
@@ -263,12 +285,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitAnd => (Scalar::from_uint(l & r, size), left_layout.ty),
             BitXor => (Scalar::from_uint(l ^ r, size), left_layout.ty),
 
-            Add | Sub | Mul | Rem | Div => {
+            Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Rem | Div => {
                 assert!(!left_layout.abi.is_signed());
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
-                    Add => u128::overflowing_add,
-                    Sub => u128::overflowing_sub,
-                    Mul => u128::overflowing_mul,
+                    Add | AddUnchecked => u128::overflowing_add,
+                    Sub | SubUnchecked => u128::overflowing_sub,
+                    Mul | MulUnchecked => u128::overflowing_mul,
                     Div if r == 0 => throw_ub!(DivisionByZero),
                     Rem if r == 0 => throw_ub!(RemainderByZero),
                     Div => u128::overflowing_div,
@@ -279,11 +301,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Truncate to target type.
                 // If that truncation loses any information, we have an overflow.
                 let truncated = self.truncate(result, left_layout);
-                return Ok((
-                    Scalar::from_uint(truncated, size),
-                    oflo || truncated != result,
-                    left_layout.ty,
-                ));
+                let overflow = oflo || truncated != result;
+                if overflow && let Some(intrinsic_name) = throw_ub_on_overflow {
+                    throw_ub_custom!(fluent::const_eval_overflow, name = intrinsic_name);
+                }
+                return Ok((Scalar::from_uint(truncated, size), overflow, left_layout.ty));
             }
 
             _ => span_bug!(

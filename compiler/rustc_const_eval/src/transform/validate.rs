@@ -498,8 +498,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         macro_rules! check_kinds {
-            ($t:expr, $text:literal, $($patterns:tt)*) => {
-                if !matches!(($t).kind(), $($patterns)*) {
+            ($t:expr, $text:literal, $typat:pat) => {
+                if !matches!(($t).kind(), $typat) {
                     self.fail(location, format!($text, $t));
                 }
             };
@@ -527,6 +527,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
                 let b = vals.1.ty(&self.body.local_decls, self.tcx);
+                if crate::util::binop_right_homogeneous(*op) {
+                    if let Eq | Lt | Le | Ne | Ge | Gt = op {
+                        // The function pointer types can have lifetimes
+                        if !self.mir_assign_valid_types(a, b) {
+                            self.fail(
+                                location,
+                                format!("Cannot {op:?} compare incompatible types {a:?} and {b:?}"),
+                            );
+                        }
+                    } else if a != b {
+                        self.fail(
+                            location,
+                            format!(
+                                "Cannot perform binary op {op:?} on unequal types {a:?} and {b:?}"
+                            ),
+                        );
+                    }
+                }
+
                 match op {
                     Offset => {
                         check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
@@ -538,7 +557,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
-                                "Cannot compare type {:?}",
+                                "Cannot {op:?} compare type {:?}",
                                 ty::Bool
                                     | ty::Char
                                     | ty::Int(..)
@@ -548,19 +567,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     | ty::FnPtr(..)
                             )
                         }
-                        // The function pointer types can have lifetimes
-                        if !self.mir_assign_valid_types(a, b) {
-                            self.fail(
-                                location,
-                                format!("Cannot compare unequal types {:?} and {:?}", a, b),
-                            );
-                        }
                     }
-                    Shl | Shr => {
+                    AddUnchecked | SubUnchecked | MulUnchecked | Shl | ShlUnchecked | Shr
+                    | ShrUnchecked => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
-                                "Cannot shift non-integer type {:?}",
+                                "Cannot {op:?} non-integer type {:?}",
                                 ty::Uint(..) | ty::Int(..)
                             )
                         }
@@ -569,36 +582,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
-                                "Cannot perform bitwise op on type {:?}",
+                                "Cannot perform bitwise op {op:?} on type {:?}",
                                 ty::Uint(..) | ty::Int(..) | ty::Bool
                             )
-                        }
-                        if a != b {
-                            self.fail(
-                                location,
-                                format!(
-                                    "Cannot perform bitwise op on unequal types {:?} and {:?}",
-                                    a, b
-                                ),
-                            );
                         }
                     }
                     Add | Sub | Mul | Div | Rem => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
-                                "Cannot perform arithmetic on type {:?}",
+                                "Cannot perform arithmetic {op:?} on type {:?}",
                                 ty::Uint(..) | ty::Int(..) | ty::Float(..)
                             )
-                        }
-                        if a != b {
-                            self.fail(
-                                location,
-                                format!(
-                                    "Cannot perform arithmetic on unequal types {:?} and {:?}",
-                                    a, b
-                                ),
-                            );
                         }
                     }
                 }

@@ -234,37 +234,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let r = self.read_immediate(&args[1])?;
                 self.exact_div(&l, &r, dest)?;
             }
-            sym::unchecked_shl
-            | sym::unchecked_shr
-            | sym::unchecked_add
-            | sym::unchecked_sub
-            | sym::unchecked_mul => {
-                let l = self.read_immediate(&args[0])?;
-                let r = self.read_immediate(&args[1])?;
-                let bin_op = match intrinsic_name {
-                    sym::unchecked_shl => BinOp::Shl,
-                    sym::unchecked_shr => BinOp::Shr,
-                    sym::unchecked_add => BinOp::Add,
-                    sym::unchecked_sub => BinOp::Sub,
-                    sym::unchecked_mul => BinOp::Mul,
-                    _ => bug!(),
-                };
-                let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, &l, &r)?;
-                if overflowed {
-                    let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val = r.to_scalar().to_bits(layout.size)?;
-                    if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
-                        throw_ub_custom!(
-                            fluent::const_eval_overflow_shift,
-                            val = r_val,
-                            name = intrinsic_name
-                        );
-                    } else {
-                        throw_ub_custom!(fluent::const_eval_overflow, name = intrinsic_name);
-                    }
-                }
-                self.write_scalar(val, dest)?;
-            }
             sym::rotate_left | sym::rotate_right => {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))

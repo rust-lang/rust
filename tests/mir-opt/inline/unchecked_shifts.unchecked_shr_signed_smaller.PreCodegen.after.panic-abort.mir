@@ -24,10 +24,7 @@ fn unchecked_shr_signed_smaller(_1: i16, _2: u32) -> i16 {
         assume(move _4);
         StorageDead(_4);
         _5 = _2 as i16 (IntToInt);
-        _0 = unchecked_shr::<i16>(_1, move _5) -> [return: bb1, unwind unreachable];
-    }
-
-    bb1: {
+        _0 = ShrUnchecked(_1, move _5);
         StorageDead(_5);
         return;
     }

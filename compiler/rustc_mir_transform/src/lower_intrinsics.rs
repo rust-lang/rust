@@ -85,8 +85,13 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     sym::wrapping_add
                     | sym::wrapping_sub
                     | sym::wrapping_mul
+                    | sym::unchecked_add
+                    | sym::unchecked_sub
+                    | sym::unchecked_mul
                     | sym::unchecked_div
-                    | sym::unchecked_rem => {
+                    | sym::unchecked_rem
+                    | sym::unchecked_shl
+                    | sym::unchecked_shr => {
                         let target = target.unwrap();
                         let lhs;
                         let rhs;
@@ -99,8 +104,13 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             sym::wrapping_add => BinOp::Add,
                             sym::wrapping_sub => BinOp::Sub,
                             sym::wrapping_mul => BinOp::Mul,
+                            sym::unchecked_add => BinOp::AddUnchecked,
+                            sym::unchecked_sub => BinOp::SubUnchecked,
+                            sym::unchecked_mul => BinOp::MulUnchecked,
                             sym::unchecked_div => BinOp::Div,
                             sym::unchecked_rem => BinOp::Rem,
+                            sym::unchecked_shl => BinOp::ShlUnchecked,
+                            sym::unchecked_shr => BinOp::ShrUnchecked,
                             _ => bug!("unexpected intrinsic"),
                         };
                         block.statements.push(Statement {

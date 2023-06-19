@@ -15,10 +15,7 @@ fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
     bb0: {
         StorageLive(_3);
         _3 = _2 as i64 (IntToInt);
-        _0 = unchecked_shr::<i64>(_1, move _3) -> [return: bb1, unwind unreachable];
-    }
-
-    bb1: {
+        _0 = ShrUnchecked(_1, move _3);
         StorageDead(_3);
         return;
     }
