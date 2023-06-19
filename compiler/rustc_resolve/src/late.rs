@@ -2247,9 +2247,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let report_error = |this: &Self, ns| {
                 if this.should_report_errs() {
                     let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-
-                    let err = ImportsCannotReferTo { span: ident.span, what };
-                    this.r.tcx.sess.create_err(err).emit();
+                    this.r
+                        .tcx
+                        .sess
+                        .create_err(ImportsCannotReferTo { span: ident.span, what })
+                        .emit();
                 }
             };
 
