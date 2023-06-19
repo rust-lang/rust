@@ -63,7 +63,6 @@ pub struct InPublicInterfaceTraits<'a> {
 
 // Duplicate of `InPublicInterfaceTraits` but with a different error code, shares the same slug.
 #[derive(Diagnostic)]
-#[help]
 #[diag(privacy_in_public_interface, code = "E0446")]
 pub struct InPublicInterface<'a> {
     #[primary_span]
@@ -74,6 +73,8 @@ pub struct InPublicInterface<'a> {
     pub descr: DiagnosticArgFromDisplay<'a>,
     #[label(privacy_visibility_label)]
     pub vis_span: Span,
+    #[suggestion(code="", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]

@@ -34,7 +34,10 @@ error[E0446]: private type `PrivTy` in public interface
   --> $DIR/where-priv-type.rs:43:1
    |
 LL | struct PrivTy;
-   | ------------- `PrivTy` declared as private
+   | -------------
+   | |
+   | `PrivTy` declared as private
+   | help: consider adding `pub` in front of it
 ...
 LL | impl S
    | ^^^^^^ can't leak private type
@@ -59,7 +62,10 @@ LL |     type AssocTy = Const<{ my_const_fn(U) }>;
    |     ^^^^^^^^^^^^ can't leak private type
 ...
 LL | const fn my_const_fn(val: u8) -> u8 {
-   | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+   | -----------------------------------
+   | |
+   | `fn(u8) -> u8 {my_const_fn}` declared as private
+   | help: consider adding `pub` in front of it
 
 error: aborting due to 2 previous errors; 4 warnings emitted
 

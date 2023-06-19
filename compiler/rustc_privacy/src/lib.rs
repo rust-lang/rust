@@ -1655,7 +1655,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     }
                     if found_pub_static {
                         intravisit::walk_generics(self, &impl_.generics)
-                    }
+                    } 
                 }
                 return;
             }
@@ -1846,6 +1846,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         kind,
                         descr: descr.into(),
                         vis_span,
+                        suggestion: vis_span,
                     });
                 }
             } else {

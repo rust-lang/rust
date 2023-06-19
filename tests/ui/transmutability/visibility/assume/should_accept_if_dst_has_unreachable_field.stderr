@@ -2,7 +2,10 @@ error[E0446]: private type `dst::Zst` in public interface
   --> $DIR/should_accept_if_dst_has_unreachable_field.rs:32:9
    |
 LL |     #[repr(C)] pub(self) struct Zst; // <- unreachable type
-   |                -------------------- `dst::Zst` declared as private
+   |                --------------------
+   |                |
+   |                `dst::Zst` declared as private
+   |                help: consider adding `pub` in front of it
 ...
 LL |         pub(in super) field: Zst,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
