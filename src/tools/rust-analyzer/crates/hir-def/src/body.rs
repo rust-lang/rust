@@ -37,6 +37,9 @@ pub struct Body {
     pub pats: Arena<Pat>,
     pub bindings: Arena<Binding>,
     pub labels: Arena<Label>,
+    /// Id of the closure/generator that owns the corresponding binding. If a binding is owned by the
+    /// top level expression, it will not be listed in here.
+    pub binding_owners: FxHashMap<BindingId, ExprId>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).
@@ -118,7 +121,8 @@ impl Body {
         let _p = profile::span("body_with_source_map_query");
         let mut params = None;
 
-        let (file_id, module, body, is_async_fn) = {
+        let mut is_async_fn = false;
+        let InFile { file_id, value: body } = {
             match def {
                 DefWithBodyId::FunctionId(f) => {
                     let data = db.function_data(f);
@@ -138,31 +142,27 @@ impl Body {
                             }),
                         )
                     });
-                    (
-                        src.file_id,
-                        f.module(db),
-                        src.value.body().map(ast::Expr::from),
-                        data.has_async_kw(),
-                    )
+                    is_async_fn = data.has_async_kw();
+                    src.map(|it| it.body().map(ast::Expr::from))
                 }
                 DefWithBodyId::ConstId(c) => {
                     let c = c.lookup(db);
                     let src = c.source(db);
-                    (src.file_id, c.module(db), src.value.body(), false)
+                    src.map(|it| it.body())
                 }
                 DefWithBodyId::StaticId(s) => {
                     let s = s.lookup(db);
                     let src = s.source(db);
-                    (src.file_id, s.module(db), src.value.body(), false)
+                    src.map(|it| it.body())
                 }
                 DefWithBodyId::VariantId(v) => {
-                    let e = v.parent.lookup(db);
                     let src = v.parent.child_source(db);
-                    let variant = &src.value[v.local_id];
-                    (src.file_id, e.container, variant.expr(), false)
+                    src.map(|it| it[v.local_id].expr())
                 }
+                DefWithBodyId::InTypeConstId(c) => c.lookup(db).id.map(|_| c.source(db).expr()),
             }
         };
+        let module = def.module(db);
         let expander = Expander::new(db, file_id, module);
         let (mut body, source_map) =
             Body::new(db, def, expander, params, body, module.krate, is_async_fn);
@@ -209,14 +209,24 @@ impl Body {
     }
 
     fn shrink_to_fit(&mut self) {
-        let Self { _c: _, body_expr: _, block_scopes, exprs, labels, params, pats, bindings } =
-            self;
+        let Self {
+            _c: _,
+            body_expr: _,
+            block_scopes,
+            exprs,
+            labels,
+            params,
+            pats,
+            bindings,
+            binding_owners,
+        } = self;
         block_scopes.shrink_to_fit();
         exprs.shrink_to_fit();
         labels.shrink_to_fit();
         params.shrink_to_fit();
         pats.shrink_to_fit();
         bindings.shrink_to_fit();
+        binding_owners.shrink_to_fit();
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
@@ -260,6 +270,17 @@ impl Body {
         f(pat_id);
         self.walk_pats_shallow(pat_id, |p| self.walk_pats(p, f));
     }
+
+    pub fn is_binding_upvar(&self, binding: BindingId, relative_to: ExprId) -> bool {
+        match self.binding_owners.get(&binding) {
+            Some(x) => {
+                // We assign expression ids in a way that outer closures will receive
+                // a lower id
+                x.into_raw() < relative_to.into_raw()
+            }
+            None => true,
+        }
+    }
 }
 
 impl Default for Body {
@@ -272,6 +293,7 @@ impl Default for Body {
             labels: Default::default(),
             params: Default::default(),
             block_scopes: Default::default(),
+            binding_owners: Default::default(),
             _c: Default::default(),
         }
     }

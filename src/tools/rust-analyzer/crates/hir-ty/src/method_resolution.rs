@@ -570,7 +570,7 @@ impl ReceiverAdjustments {
                         .intern(Interner);
                     }
                 }
-                never!("unsize_array with non-reference-to-array {:?}", ty);
+                // FIXME: report diagnostic if array unsizing happens without indirection.
                 ty
             };
             adjust.push(Adjustment {

@@ -4423,6 +4423,29 @@ const FOO$0: Option<&i32> = Some(2).as_ref();
 }
 
 #[test]
+fn hover_const_eval_dyn_trait() {
+    check(
+        r#"
+//- minicore: fmt, coerce_unsized, builtin_impls
+use core::fmt::Debug;
+
+const FOO$0: &dyn Debug = &2i32;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &dyn Debug = &2
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval_slice() {
     check(
         r#"
@@ -4499,6 +4522,26 @@ const FOO$0: Tree = {
 
             ```rust
             const FOO: Tree = Tree(&[Tree(&[Tree(&[]), Tree(&[Tree(&[])])]), Tree(&[Tree(&[]), Tree(&[Tree(&[])])])])
+            ```
+        "#]],
+    );
+    // FIXME: Show the data of unsized structs
+    check(
+        r#"
+//- minicore: slice, index, coerce_unsized, transmute
+#[repr(transparent)]
+struct S<T: ?Sized>(T);
+const FOO$0: &S<[u8]> = core::mem::transmute::<&[u8], _>(&[1, 2, 3]);
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &S<[u8]> = &S
             ```
         "#]],
     );

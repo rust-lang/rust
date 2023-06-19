@@ -97,7 +97,7 @@ impl server::TokenStream for RustAnalyzer {
         match tree {
             bridge::TokenTree::Group(group) => {
                 let group = Group {
-                    delimiter: delim_to_internal(group.delimiter),
+                    delimiter: delim_to_internal(group.delimiter, group.span),
                     token_trees: match group.stream {
                         Some(stream) => stream.into_iter().collect(),
                         None => Vec::new(),
@@ -221,14 +221,14 @@ impl server::TokenStream for RustAnalyzer {
     }
 }
 
-fn delim_to_internal(d: proc_macro::Delimiter) -> tt::Delimiter {
+fn delim_to_internal(d: proc_macro::Delimiter, span: bridge::DelimSpan<Span>) -> tt::Delimiter {
     let kind = match d {
         proc_macro::Delimiter::Parenthesis => tt::DelimiterKind::Parenthesis,
         proc_macro::Delimiter::Brace => tt::DelimiterKind::Brace,
         proc_macro::Delimiter::Bracket => tt::DelimiterKind::Bracket,
         proc_macro::Delimiter::None => tt::DelimiterKind::Invisible,
     };
-    tt::Delimiter { open: tt::TokenId::unspecified(), close: tt::TokenId::unspecified(), kind }
+    tt::Delimiter { open: span.open, close: span.close, kind }
 }
 
 fn delim_to_external(d: tt::Delimiter) -> proc_macro::Delimiter {

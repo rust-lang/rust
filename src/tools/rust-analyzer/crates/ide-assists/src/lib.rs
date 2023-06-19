@@ -161,6 +161,7 @@ mod handlers {
     mod generate_delegate_methods;
     mod add_return_type;
     mod inline_call;
+    mod inline_const_as_literal;
     mod inline_local_variable;
     mod inline_macro;
     mod inline_type_alias;
@@ -265,6 +266,7 @@ mod handlers {
             generate_new::generate_new,
             inline_call::inline_call,
             inline_call::inline_into_callers,
+            inline_const_as_literal::inline_const_as_literal,
             inline_local_variable::inline_local_variable,
             inline_type_alias::inline_type_alias,
             inline_type_alias::inline_type_alias_uses,

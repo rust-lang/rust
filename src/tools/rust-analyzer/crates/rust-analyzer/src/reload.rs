@@ -27,6 +27,7 @@ use ide_db::{
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{PackageRoot, ProjectWorkspace, WorkspaceBuildScripts};
+use rustc_hash::FxHashSet;
 use stdx::{format_to, thread::ThreadIntent};
 use syntax::SmolStr;
 use triomphe::Arc;
@@ -46,7 +47,7 @@ use ::tt::token_id as tt;
 pub(crate) enum ProjectWorkspaceProgress {
     Begin,
     Report(String),
-    End(Vec<anyhow::Result<ProjectWorkspace>>),
+    End(Vec<anyhow::Result<ProjectWorkspace>>, bool),
 }
 
 #[derive(Debug)]
@@ -85,7 +86,7 @@ impl GlobalState {
             );
         }
         if self.config.linked_projects() != old_config.linked_projects() {
-            self.fetch_workspaces_queue.request_op("linked projects changed".to_string(), ())
+            self.fetch_workspaces_queue.request_op("linked projects changed".to_string(), false)
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -110,7 +111,7 @@ impl GlobalState {
 
         if self.proc_macro_changed {
             status.health = lsp_ext::Health::Warning;
-            message.push_str("Proc-macros have changed and need to be rebuild.\n\n");
+            message.push_str("Proc-macros have changed and need to be rebuilt.\n\n");
         }
         if let Err(_) = self.fetch_build_data_error() {
             status.health = lsp_ext::Health::Warning;
@@ -182,7 +183,7 @@ impl GlobalState {
         status
     }
 
-    pub(crate) fn fetch_workspaces(&mut self, cause: Cause) {
+    pub(crate) fn fetch_workspaces(&mut self, cause: Cause, force_crate_graph_reload: bool) {
         tracing::info!(%cause, "will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
@@ -250,7 +251,10 @@ impl GlobalState {
 
                 tracing::info!("did fetch workspaces {:?}", workspaces);
                 sender
-                    .send(Task::FetchWorkspace(ProjectWorkspaceProgress::End(workspaces)))
+                    .send(Task::FetchWorkspace(ProjectWorkspaceProgress::End(
+                        workspaces,
+                        force_crate_graph_reload,
+                    )))
                     .unwrap();
             }
         });
@@ -336,15 +340,19 @@ impl GlobalState {
         let _p = profile::span("GlobalState::switch_workspaces");
         tracing::info!(%cause, "will switch workspaces");
 
+        let Some((workspaces, force_reload_crate_graph)) = self.fetch_workspaces_queue.last_op_result() else { return; };
+
         if let Err(_) = self.fetch_workspace_error() {
             if !self.workspaces.is_empty() {
+                if *force_reload_crate_graph {
+                    self.recreate_crate_graph(cause);
+                }
                 // It only makes sense to switch to a partially broken workspace
                 // if we don't have any workspace at all yet.
                 return;
             }
         }
 
-        let Some(workspaces) = self.fetch_workspaces_queue.last_op_result() else { return; };
         let workspaces =
             workspaces.iter().filter_map(|res| res.as_ref().ok().cloned()).collect::<Vec<_>>();
 
@@ -373,6 +381,9 @@ impl GlobalState {
                 self.workspaces = Arc::new(workspaces);
             } else {
                 tracing::info!("build scripts do not match the version of the active workspace");
+                if *force_reload_crate_graph {
+                    self.recreate_crate_graph(cause);
+                }
                 // Current build scripts do not match the version of the active
                 // workspace, so there's nothing for us to update.
                 return;
@@ -467,13 +478,24 @@ impl GlobalState {
         });
         self.source_root_config = project_folders.source_root_config;
 
+        self.recreate_crate_graph(cause);
+
+        tracing::info!("did switch workspaces");
+    }
+
+    fn recreate_crate_graph(&mut self, cause: String) {
         // Create crate graph from all the workspaces
-        let (crate_graph, proc_macro_paths) = {
+        let (crate_graph, proc_macro_paths, crate_graph_file_dependencies) = {
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
+            // crate graph construction relies on these paths, record them so when one of them gets
+            // deleted or created we trigger a reconstruction of the crate graph
+            let mut crate_graph_file_dependencies = FxHashSet::default();
+
             let mut load = |path: &AbsPath| {
                 let _p = profile::span("switch_workspaces::load");
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
+                crate_graph_file_dependencies.insert(vfs_path.clone());
                 match vfs.file_id(&vfs_path) {
                     Some(file_id) => Some(file_id),
                     None => {
@@ -494,26 +516,25 @@ impl GlobalState {
                 crate_graph.extend(other, &mut crate_proc_macros);
                 proc_macros.push(crate_proc_macros);
             }
-            (crate_graph, proc_macros)
+            (crate_graph, proc_macros, crate_graph_file_dependencies)
         };
-        let mut change = Change::new();
 
         if self.config.expand_proc_macros() {
             self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
         }
+        let mut change = Change::new();
         change.set_crate_graph(crate_graph);
         self.analysis_host.apply_change(change);
+        self.crate_graph_file_dependencies = crate_graph_file_dependencies;
         self.process_changes();
 
         self.reload_flycheck();
-
-        tracing::info!("did switch workspaces");
     }
 
     pub(super) fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        let Some(last_op_result) = self.fetch_workspaces_queue.last_op_result() else { return Ok(()) };
+        let Some((last_op_result, _)) = self.fetch_workspaces_queue.last_op_result() else { return Ok(()) };
         if last_op_result.is_empty() {
             stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
         } else {

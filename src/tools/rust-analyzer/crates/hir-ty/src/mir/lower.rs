@@ -1853,7 +1853,7 @@ pub fn mir_body_for_closure_query(
         .result
         .binding_locals
         .into_iter()
-        .filter(|x| ctx.body[x.0].owner == Some(expr))
+        .filter(|it| ctx.body.binding_owners.get(&it.0).copied() == Some(expr))
         .collect();
     if let Some(err) = err {
         return Err(MirLowerError::UnresolvedUpvar(err));
@@ -1876,6 +1876,7 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
         DefWithBodyId::VariantId(it) => {
             db.enum_data(it.parent).variants[it.local_id].name.display(db.upcast()).to_string()
         }
+        DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
     });
     let body = db.body(def);
     let infer = db.infer(def);
@@ -1908,10 +1909,11 @@ pub fn lower_to_mir(
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: ctx.expr_ty_after_adjustments(root_expr) });
     let binding_picker = |b: BindingId| {
+        let owner = ctx.body.binding_owners.get(&b).copied();
         if root_expr == body.body_expr {
-            body[b].owner.is_none()
+            owner.is_none()
         } else {
-            body[b].owner == Some(root_expr)
+            owner == Some(root_expr)
         }
     };
     // 1 to param_len is for params

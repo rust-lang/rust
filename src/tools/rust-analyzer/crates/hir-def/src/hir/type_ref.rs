@@ -118,7 +118,7 @@ pub enum TypeRef {
     Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
     // FIXME: for full const generics, the latter element (length) here is going to have to be an
     // expression that is further lowered later in hir_ty.
-    Array(Box<TypeRef>, ConstRefOrPath),
+    Array(Box<TypeRef>, ConstRef),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
     Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/, bool /*is_unsafe*/),
@@ -186,11 +186,7 @@ impl TypeRef {
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
             ast::Type::ArrayType(inner) => {
-                // FIXME: This is a hack. We should probably reuse the machinery of
-                // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
-                // `hir_ty` level, which would allow knowing the type of:
-                // let v: [u8; 2 + 2] = [0u8; 4];
-                let len = ConstRefOrPath::from_expr_opt(inner.expr());
+                let len = ConstRef::from_const_arg(ctx, inner.const_arg());
                 TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
             }
             ast::Type::SliceType(inner) => {
@@ -380,73 +376,84 @@ impl TypeBound {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConstRefOrPath {
-    Scalar(ConstRef),
+pub enum ConstRef {
+    Scalar(LiteralConstRef),
     Path(Name),
+    Complex(AstId<ast::ConstArg>),
 }
 
-impl ConstRefOrPath {
-    pub(crate) fn from_expr_opt(expr: Option<ast::Expr>) -> Self {
-        match expr {
-            Some(x) => Self::from_expr(x),
-            None => Self::Scalar(ConstRef::Unknown),
+impl ConstRef {
+    pub(crate) fn from_const_arg(lower_ctx: &LowerCtx<'_>, arg: Option<ast::ConstArg>) -> Self {
+        if let Some(arg) = arg {
+            let ast_id = lower_ctx.ast_id(&arg);
+            if let Some(expr) = arg.expr() {
+                return Self::from_expr(expr, ast_id);
+            }
         }
+        Self::Scalar(LiteralConstRef::Unknown)
     }
 
     pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {
-        struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRefOrPath);
+        struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRef);
         impl fmt::Display for Display<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self.1 {
-                    ConstRefOrPath::Scalar(s) => s.fmt(f),
-                    ConstRefOrPath::Path(n) => n.display(self.0).fmt(f),
+                    ConstRef::Scalar(s) => s.fmt(f),
+                    ConstRef::Path(n) => n.display(self.0).fmt(f),
+                    ConstRef::Complex(_) => f.write_str("{const}"),
                 }
             }
         }
         Display(db, self)
     }
 
-    // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
-    // parse stage.
-    fn from_expr(expr: ast::Expr) -> Self {
-        match expr {
-            ast::Expr::PathExpr(p) => {
-                match p.path().and_then(|x| x.segment()).and_then(|x| x.name_ref()) {
-                    Some(x) => Self::Path(x.as_name()),
-                    None => Self::Scalar(ConstRef::Unknown),
+    // We special case literals and single identifiers, to speed up things.
+    fn from_expr(expr: ast::Expr, ast_id: Option<AstId<ast::ConstArg>>) -> Self {
+        fn is_path_ident(p: &ast::PathExpr) -> bool {
+            let Some(path) = p.path() else {
+                return false;
+            };
+            if path.coloncolon_token().is_some() {
+                return false;
+            }
+            if let Some(s) = path.segment() {
+                if s.coloncolon_token().is_some() || s.generic_arg_list().is_some() {
+                    return false;
                 }
             }
-            ast::Expr::PrefixExpr(prefix_expr) => match prefix_expr.op_kind() {
-                Some(ast::UnaryOp::Neg) => {
-                    let unsigned = Self::from_expr_opt(prefix_expr.expr());
-                    // Add sign
-                    match unsigned {
-                        Self::Scalar(ConstRef::UInt(num)) => {
-                            Self::Scalar(ConstRef::Int(-(num as i128)))
-                        }
-                        other => other,
-                    }
+            true
+        }
+        match expr {
+            ast::Expr::PathExpr(p) if is_path_ident(&p) => {
+                match p.path().and_then(|x| x.segment()).and_then(|x| x.name_ref()) {
+                    Some(x) => Self::Path(x.as_name()),
+                    None => Self::Scalar(LiteralConstRef::Unknown),
                 }
-                _ => Self::from_expr_opt(prefix_expr.expr()),
-            },
+            }
             ast::Expr::Literal(literal) => Self::Scalar(match literal.kind() {
                 ast::LiteralKind::IntNumber(num) => {
-                    num.value().map(ConstRef::UInt).unwrap_or(ConstRef::Unknown)
+                    num.value().map(LiteralConstRef::UInt).unwrap_or(LiteralConstRef::Unknown)
                 }
                 ast::LiteralKind::Char(c) => {
-                    c.value().map(ConstRef::Char).unwrap_or(ConstRef::Unknown)
+                    c.value().map(LiteralConstRef::Char).unwrap_or(LiteralConstRef::Unknown)
                 }
-                ast::LiteralKind::Bool(f) => ConstRef::Bool(f),
-                _ => ConstRef::Unknown,
+                ast::LiteralKind::Bool(f) => LiteralConstRef::Bool(f),
+                _ => LiteralConstRef::Unknown,
             }),
-            _ => Self::Scalar(ConstRef::Unknown),
+            _ => {
+                if let Some(ast_id) = ast_id {
+                    Self::Complex(ast_id)
+                } else {
+                    Self::Scalar(LiteralConstRef::Unknown)
+                }
+            }
         }
     }
 }
 
-/// A concrete constant value
+/// A literal constant value
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConstRef {
+pub enum LiteralConstRef {
     Int(i128),
     UInt(u128),
     Bool(bool),
@@ -460,18 +467,20 @@ pub enum ConstRef {
     Unknown,
 }
 
-impl ConstRef {
+impl LiteralConstRef {
     pub fn builtin_type(&self) -> BuiltinType {
         match self {
-            ConstRef::UInt(_) | ConstRef::Unknown => BuiltinType::Uint(BuiltinUint::U128),
-            ConstRef::Int(_) => BuiltinType::Int(BuiltinInt::I128),
-            ConstRef::Char(_) => BuiltinType::Char,
-            ConstRef::Bool(_) => BuiltinType::Bool,
+            LiteralConstRef::UInt(_) | LiteralConstRef::Unknown => {
+                BuiltinType::Uint(BuiltinUint::U128)
+            }
+            LiteralConstRef::Int(_) => BuiltinType::Int(BuiltinInt::I128),
+            LiteralConstRef::Char(_) => BuiltinType::Char,
+            LiteralConstRef::Bool(_) => BuiltinType::Bool,
         }
     }
 }
 
-impl From<Literal> for ConstRef {
+impl From<Literal> for LiteralConstRef {
     fn from(literal: Literal) -> Self {
         match literal {
             Literal::Char(c) => Self::Char(c),
@@ -483,14 +492,14 @@ impl From<Literal> for ConstRef {
     }
 }
 
-impl std::fmt::Display for ConstRef {
+impl std::fmt::Display for LiteralConstRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            ConstRef::Int(num) => num.fmt(f),
-            ConstRef::UInt(num) => num.fmt(f),
-            ConstRef::Bool(flag) => flag.fmt(f),
-            ConstRef::Char(c) => write!(f, "'{c}'"),
-            ConstRef::Unknown => f.write_char('_'),
+            LiteralConstRef::Int(num) => num.fmt(f),
+            LiteralConstRef::UInt(num) => num.fmt(f),
+            LiteralConstRef::Bool(flag) => flag.fmt(f),
+            LiteralConstRef::Char(c) => write!(f, "'{c}'"),
+            LiteralConstRef::Unknown => f.write_char('_'),
         }
     }
 }

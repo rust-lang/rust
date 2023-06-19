@@ -1829,6 +1829,38 @@ impl Foo for u8 {
 }
 
 #[test]
+fn const_eval_in_function_signature() {
+    check_types(
+        r#"
+const fn foo() -> usize {
+    5
+}
+
+fn f() -> [u8; foo()] {
+    loop {}
+}
+
+fn main() {
+    let t = f();
+      //^ [u8; 5]
+}"#,
+    );
+    check_types(
+        r#"
+//- minicore: default, builtin_impls
+fn f() -> [u8; Default::default()] {
+    loop {}
+}
+
+fn main() {
+    let t = f();
+      //^ [u8; 0]
+}
+    "#,
+    );
+}
+
+#[test]
 fn shadowing_primitive_with_inner_items() {
     check_types(
         r#"
@@ -3460,6 +3492,22 @@ fn func() {
         break 0;
         break (break 0);
     };
+}
+    "#,
+    );
+}
+
+#[test]
+fn pointee_trait() {
+    check_types(
+        r#"
+//- minicore: pointee
+use core::ptr::Pointee;
+fn func() {
+    let x: <u8 as Pointee>::Metadata;
+      //^ ()
+    let x: <[u8] as Pointee>::Metadata;
+      //^ usize
 }
     "#,
     );

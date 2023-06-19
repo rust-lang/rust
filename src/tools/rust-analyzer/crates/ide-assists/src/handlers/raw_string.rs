@@ -158,9 +158,8 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
-
     use super::*;
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn make_raw_string_target() {

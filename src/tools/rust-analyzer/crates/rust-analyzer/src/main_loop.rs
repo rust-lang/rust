@@ -11,6 +11,7 @@ use flycheck::FlycheckHandle;
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
+use stdx::thread::ThreadIntent;
 use triomphe::Arc;
 use vfs::FileId;
 
@@ -115,9 +116,11 @@ impl GlobalState {
             self.register_did_save_capability();
         }
 
-        self.fetch_workspaces_queue.request_op("startup".to_string(), ());
-        if let Some((cause, ())) = self.fetch_workspaces_queue.should_start_op() {
-            self.fetch_workspaces(cause);
+        self.fetch_workspaces_queue.request_op("startup".to_string(), false);
+        if let Some((cause, force_crate_graph_reload)) =
+            self.fetch_workspaces_queue.should_start_op()
+        {
+            self.fetch_workspaces(cause, force_crate_graph_reload);
         }
 
         while let Some(event) = self.next_event(&inbox) {
@@ -175,6 +178,9 @@ impl GlobalState {
                 msg.ok().map(Event::Lsp),
 
             recv(self.task_pool.receiver) -> task =>
+                Some(Event::Task(task.unwrap())),
+
+            recv(self.fmt_pool.receiver) -> task =>
                 Some(Event::Task(task.unwrap())),
 
             recv(self.loader.receiver) -> task =>
@@ -277,6 +283,7 @@ impl GlobalState {
                 }
             }
         }
+        let event_handling_duration = loop_start.elapsed();
 
         let state_changed = self.process_changes();
         let memdocs_added_or_removed = self.mem_docs.take_changes();
@@ -364,8 +371,10 @@ impl GlobalState {
         }
 
         if self.config.cargo_autoreload() {
-            if let Some((cause, ())) = self.fetch_workspaces_queue.should_start_op() {
-                self.fetch_workspaces(cause);
+            if let Some((cause, force_crate_graph_reload)) =
+                self.fetch_workspaces_queue.should_start_op()
+            {
+                self.fetch_workspaces(cause, force_crate_graph_reload);
             }
         }
 
@@ -385,9 +394,9 @@ impl GlobalState {
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
-            tracing::warn!("overly long loop turn took {loop_duration:?}: {event_dbg_msg}");
+            tracing::warn!("overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}");
             self.poke_rust_analyzer_developer(format!(
-                "overly long loop turn took {loop_duration:?}: {event_dbg_msg}"
+                "overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}"
             ));
         }
         Ok(())
@@ -397,7 +406,7 @@ impl GlobalState {
         tracing::debug!(%cause, "will prime caches");
         let num_worker_threads = self.config.prime_caches_num_threads();
 
-        self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
+        self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
             let analysis = self.snapshot().analysis;
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
@@ -468,8 +477,9 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
                     ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
-                    ProjectWorkspaceProgress::End(workspaces) => {
-                        self.fetch_workspaces_queue.op_completed(Some(workspaces));
+                    ProjectWorkspaceProgress::End(workspaces, force_reload_crate_graph) => {
+                        self.fetch_workspaces_queue
+                            .op_completed(Some((workspaces, force_reload_crate_graph)));
                         if let Err(e) = self.fetch_workspace_error() {
                             tracing::error!("FetchWorkspaceError:\n{e}");
                         }
@@ -546,7 +556,6 @@ impl GlobalState {
                 self.vfs_progress_n_total = n_total;
                 self.vfs_progress_n_done = n_done;
 
-                // if n_total != 0 {
                 let state = if n_done == 0 {
                     Progress::Begin
                 } else if n_done < n_total {
@@ -562,7 +571,6 @@ impl GlobalState {
                     Some(Progress::fraction(n_done, n_total)),
                     None,
                 );
-                // }
             }
         }
     }
@@ -678,6 +686,12 @@ impl GlobalState {
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
             .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
             .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
+            // Formatting should be done immediately as the editor might wait on it, but we can't
+            // put it on the main thread as we do not want the main thread to block on rustfmt.
+            // So we have an extra thread just for formatting requests to make sure it gets handled
+            // as fast as possible.
+            .on_fmt_thread::<lsp_types::request::Formatting>(handlers::handle_formatting)
+            .on_fmt_thread::<lsp_types::request::RangeFormatting>(handlers::handle_range_formatting)
             // We can’t run latency-sensitive request handlers which do semantic
             // analysis on the main thread because that would block other
             // requests. Instead, we run these request handlers on higher priority
@@ -694,14 +708,6 @@ impl GlobalState {
             )
             .on_latency_sensitive::<lsp_types::request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
-            )
-            // Formatting is not caused by the user typing,
-            // but it does qualify as latency-sensitive
-            // because a delay before formatting is applied
-            // can be confusing for the user.
-            .on_latency_sensitive::<lsp_types::request::Formatting>(handlers::handle_formatting)
-            .on_latency_sensitive::<lsp_types::request::RangeFormatting>(
-                handlers::handle_range_formatting,
             )
             // All other request handlers
             .on::<lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
@@ -757,18 +763,28 @@ impl GlobalState {
         use lsp_types::notification as notifs;
 
         NotificationDispatcher { not: Some(not), global_state: self }
-            .on::<notifs::Cancel>(handlers::handle_cancel)?
-            .on::<notifs::WorkDoneProgressCancel>(handlers::handle_work_done_progress_cancel)?
-            .on::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
-            .on::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
-            .on::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
-            .on::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
-            .on::<notifs::DidChangeConfiguration>(handlers::handle_did_change_configuration)?
-            .on::<notifs::DidChangeWorkspaceFolders>(handlers::handle_did_change_workspace_folders)?
-            .on::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)?
-            .on::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
-            .on::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
-            .on::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
+            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
+            .on_sync_mut::<notifs::WorkDoneProgressCancel>(
+                handlers::handle_work_done_progress_cancel,
+            )?
+            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
+            .on_sync_mut::<notifs::DidChangeTextDocument>(
+                handlers::handle_did_change_text_document,
+            )?
+            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
+            .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+            .on_sync_mut::<notifs::DidChangeConfiguration>(
+                handlers::handle_did_change_configuration,
+            )?
+            .on_sync_mut::<notifs::DidChangeWorkspaceFolders>(
+                handlers::handle_did_change_workspace_folders,
+            )?
+            .on_sync_mut::<notifs::DidChangeWatchedFiles>(
+                handlers::handle_did_change_watched_files,
+            )?
+            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
+            .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
+            .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
             .finish();
         Ok(())
     }
@@ -796,7 +812,7 @@ impl GlobalState {
 
         // Diagnostics are triggered by the user typing
         // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(stdx::thread::ThreadIntent::LatencySensitive, move || {
+        self.task_pool.handle.spawn(ThreadIntent::LatencySensitive, move || {
             let _p = profile::span("publish_diagnostics");
             let _ctx = stdx::panic_context::enter("publish_diagnostics".to_owned());
             let diagnostics = subscriptions

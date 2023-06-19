@@ -387,6 +387,10 @@ impl MiniCore {
             }
         }
 
+        if !active_regions.is_empty() {
+            panic!("unclosed regions: {:?} Add an `endregion` comment", active_regions);
+        }
+
         for flag in &self.valid_flags {
             if !seen_regions.iter().any(|it| it == flag) {
                 panic!("unused minicore flag: {flag:?}");

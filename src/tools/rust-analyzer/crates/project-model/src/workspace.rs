@@ -1403,6 +1403,12 @@ fn handle_hack_cargo_workspace(
             .unwrap();
         crate_graph.remove_and_replace(fake, original).unwrap();
     }
+    for (_, c) in crate_graph.iter_mut() {
+        if c.origin.is_local() {
+            // LangCrateOrigin::Other is good enough for a hack.
+            c.origin = CrateOrigin::Lang(LangCrateOrigin::Other);
+        }
+    }
     sysroot
         .crates()
         .filter_map(|krate| {
