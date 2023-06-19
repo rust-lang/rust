@@ -1352,6 +1352,8 @@ options! {
     // - src/doc/unstable-book/src/compiler-flags
 
     // tidy-alphabetical-start
+    absolute_file_paths: bool = (false, parse_bool, [UNTRACKED],
+        "use absolute file paths in diagnostics, not relative paths (default: no)"),
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (comma separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],

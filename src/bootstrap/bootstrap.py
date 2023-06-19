@@ -474,6 +474,7 @@ class RustBuild(object):
         self.verbose = False
         self.git_version = None
         self.nix_deps_dir = None
+        self.local_rebuild = False
         self._should_fix_bins_and_dylibs = None
 
     def download_toolchain(self):
@@ -894,6 +895,10 @@ class RustBuild(object):
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
+        # Make sure that rust-analyzer can map error diagnostics to the file.
+        # cfg(bootstrap)
+        if self.local_rebuild:
+            env["RUSTFLAGS"] += " -Zabsolute-file-paths"
         if warnings == "default":
             deny_warnings = self.get_toml("deny-warnings", "rust") != "false"
         else:
@@ -1053,6 +1058,17 @@ def bootstrap(args):
 
     if not os.path.exists(build.build_dir):
         os.makedirs(build.build_dir)
+
+    build.local_rebuild = build.get_toml("local_rebuild", "build")
+    if build.local_rebuild is None and not build.rustc().startswith(build.bin_root()):
+        with open(os.path.join(build.rust_root, "src", "version")) as f:
+            expected_version = f.read().split(".")[:2]
+        output = require([build.rustc(), "--version"]).decode(sys.getdefaultencoding())
+        actual_version = output.split(" ")[1].split(".")[:2]
+        if expected_version == actual_version:
+            if build.verbose:
+                print("auto-detected local-rebuild {}".format(actual_version))
+            build.local_rebuild = True
 
     # Fetch/build the bootstrap
     build.download_toolchain()

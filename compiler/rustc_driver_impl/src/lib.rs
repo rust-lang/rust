@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(absolute_path)]
 #![feature(lazy_cell)]
 #![feature(decl_macro)]
 #![recursion_limit = "256"]
@@ -303,7 +304,11 @@ fn run_compiler(
         registry: diagnostics_registry(),
     };
 
-    match make_input(config.opts.error_format, &matches.free) {
+    match make_input(
+        config.opts.error_format,
+        &matches.free,
+        config.opts.unstable_opts.absolute_file_paths,
+    ) {
         Err(reported) => return Err(reported),
         Ok(Some(input)) => {
             config.input = input;
@@ -476,6 +481,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileNa
 fn make_input(
     error_format: ErrorOutputType,
     free_matches: &[String],
+    absolute_file_paths: bool,
 ) -> Result<Option<Input>, ErrorGuaranteed> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0];
@@ -503,7 +509,19 @@ fn make_input(
                 Ok(Some(Input::Str { name: FileName::anon_source_code(&src), input: src }))
             }
         } else {
-            Ok(Some(Input::File(PathBuf::from(ifile))))
+            let mut path = PathBuf::from(ifile);
+            if absolute_file_paths {
+                match std::path::absolute(path) {
+                    Ok(p) => path = p,
+                    Err(e) => {
+                        return Err(early_error_no_abort(
+                            error_format,
+                            format!("failed to convert {ifile} to an absolute path: {e}"),
+                        ));
+                    }
+                }
+            }
+            Ok(Some(Input::File(path)))
         }
     } else {
         Ok(None)

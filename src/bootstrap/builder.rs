@@ -1392,6 +1392,11 @@ impl<'a> Builder<'a> {
         // cargo would implicitly add it, it was discover that sometimes bootstrap only use
         // `rustflags` without `cargo` making it required.
         rustflags.arg("-Zunstable-options");
+        // Make ctrl+click, etc. work with workspaces other than the root workspace.
+        // cfg(bootstrap)
+        if stage > 0 {
+            rustflags.arg("-Zabsolute-file-paths");
+        }
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if *restricted_mode == None || *restricted_mode == Some(mode) {
                 // Creating a string of the values by concatenating each value:
