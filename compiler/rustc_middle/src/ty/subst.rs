@@ -538,19 +538,21 @@ impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx
 /// [`subst_identity`](EarlyBinder::subst_identity) or [`skip_binder`](EarlyBinder::skip_binder).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
-pub struct EarlyBinder<T>(T);
+pub struct EarlyBinder<T> {
+    value: T,
+}
 
 /// For early binders, you should first call `subst` before using any visitors.
 impl<'tcx, T> !TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 
 impl<T> EarlyBinder<T> {
-    pub fn bind(inner: T) -> EarlyBinder<T> {
-        EarlyBinder(inner)
+    pub fn bind(value: T) -> EarlyBinder<T> {
+        EarlyBinder { value }
     }
 
     pub fn as_ref(&self) -> EarlyBinder<&T> {
-        EarlyBinder(&self.0)
+        EarlyBinder { value: &self.value }
     }
 
     pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<U>
@@ -564,20 +566,20 @@ impl<T> EarlyBinder<T> {
     where
         F: FnOnce(T) -> U,
     {
-        let value = f(self.0);
-        EarlyBinder(value)
+        let value = f(self.value);
+        EarlyBinder { value }
     }
 
     pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
     {
-        let value = f(self.0)?;
-        Ok(EarlyBinder(value))
+        let value = f(self.value)?;
+        Ok(EarlyBinder { value })
     }
 
     pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
-        EarlyBinder(value)
+        EarlyBinder { value }
     }
 
     /// Skips the binder and returns the "bound" value.
@@ -592,19 +594,20 @@ impl<T> EarlyBinder<T> {
     /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
     /// the analogous operation on [`super::Binder`].
     pub fn skip_binder(self) -> T {
-        self.0
+        self.value
     }
 }
 
 impl<T> EarlyBinder<Option<T>> {
     pub fn transpose(self) -> Option<EarlyBinder<T>> {
-        self.0.map(|v| EarlyBinder(v))
+        self.value.map(|value| EarlyBinder { value })
     }
 }
 
 impl<T, U> EarlyBinder<(T, U)> {
     pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
-        (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
+        let EarlyBinder { value: (lhs, rhs) } = self;
+        (EarlyBinder { value: lhs }, EarlyBinder { value: rhs })
     }
 }
 
@@ -617,13 +620,13 @@ where
         tcx: TyCtxt<'tcx>,
         substs: &'s [GenericArg<'tcx>],
     ) -> SubstIter<'s, 'tcx, I> {
-        SubstIter { it: self.0.into_iter(), tcx, substs }
+        SubstIter { it: self.value.into_iter(), tcx, substs }
     }
 
     /// Similar to [`subst_identity`](EarlyBinder::subst_identity),
     /// but on an iterator of `TypeFoldable` values.
     pub fn subst_identity_iter(self) -> I::IntoIter {
-        self.0.into_iter()
+        self.value.into_iter()
     }
 }
 
@@ -640,7 +643,7 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Some(EarlyBinder(self.it.next()?).subst(self.tcx, self.substs))
+        Some(EarlyBinder { value: self.it.next()? }.subst(self.tcx, self.substs))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -654,7 +657,7 @@ where
     I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        Some(EarlyBinder(self.it.next_back()?).subst(self.tcx, self.substs))
+        Some(EarlyBinder { value: self.it.next_back()? }.subst(self.tcx, self.substs))
     }
 }
 
@@ -675,13 +678,13 @@ where
         tcx: TyCtxt<'tcx>,
         substs: &'s [GenericArg<'tcx>],
     ) -> SubstIterCopied<'s, 'tcx, I> {
-        SubstIterCopied { it: self.0.into_iter(), tcx, substs }
+        SubstIterCopied { it: self.value.into_iter(), tcx, substs }
     }
 
     /// Similar to [`subst_identity`](EarlyBinder::subst_identity),
     /// but on an iterator of values that deref to a `TypeFoldable`.
     pub fn subst_identity_iter_copied(self) -> impl Iterator<Item = <I::Item as Deref>::Target> {
-        self.0.into_iter().map(|v| *v)
+        self.value.into_iter().map(|v| *v)
     }
 }
 
@@ -699,7 +702,7 @@ where
     type Item = <I::Item as Deref>::Target;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Some(EarlyBinder(*self.it.next()?).subst(self.tcx, self.substs))
+        self.it.next().map(|value| EarlyBinder { value: *value }.subst(self.tcx, self.substs))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -714,7 +717,7 @@ where
     <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        Some(EarlyBinder(*self.it.next_back()?).subst(self.tcx, self.substs))
+        self.it.next_back().map(|value| EarlyBinder { value: *value }.subst(self.tcx, self.substs))
     }
 }
 
@@ -732,7 +735,7 @@ pub struct EarlyBinderIter<T> {
 
 impl<T: IntoIterator> EarlyBinder<T> {
     pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
-        EarlyBinderIter { t: self.0.into_iter() }
+        EarlyBinderIter { t: self.value.into_iter() }
     }
 }
 
@@ -740,7 +743,7 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
     type Item = EarlyBinder<T::Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.t.next().map(|i| EarlyBinder(i))
+        self.t.next().map(|value| EarlyBinder { value })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -751,7 +754,7 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
 impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
-        self.0.fold_with(&mut folder)
+        self.value.fold_with(&mut folder)
     }
 
     /// Makes the identity substitution `T0 => T0, ..., TN => TN`.
@@ -763,12 +766,12 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
     /// - Inside of the body of `foo`, we treat `T` as a placeholder by calling
     /// `subst_identity` to discharge the `EarlyBinder`.
     pub fn subst_identity(self) -> T {
-        self.0
+        self.value
     }
 
     /// Returns the inner value, but only if it contains no bound vars.
     pub fn no_bound_vars(self) -> Option<T> {
-        if !self.0.has_param() { Some(self.0) } else { None }
+        if !self.value.has_param() { Some(self.value) } else { None }
     }
 }
 
