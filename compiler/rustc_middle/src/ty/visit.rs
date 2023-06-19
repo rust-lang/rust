@@ -1,4 +1,5 @@
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -344,7 +345,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
             _ => (),
         };
 
-        t.super_visit_with(self)
+        ensure_sufficient_stack(|| t.super_visit_with(self))
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {

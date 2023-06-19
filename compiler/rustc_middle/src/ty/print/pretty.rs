@@ -9,6 +9,7 @@ use crate::ty::{GenericArg, GenericArgKind};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
@@ -1915,7 +1916,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         if self.type_length_limit.value_within_limit(self.printed_type_count) {
             self.printed_type_count += 1;
-            self.pretty_print_type(ty)
+            ensure_sufficient_stack(|| self.pretty_print_type(ty))
         } else {
             self.truncated = true;
             write!(self, "...")?;
@@ -2558,7 +2559,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 let not_previously_inserted = self.type_collector.insert(ty);
                 if not_previously_inserted {
-                    ty.super_visit_with(self)
+                    ensure_sufficient_stack(|| ty.super_visit_with(self))
                 } else {
                     ControlFlow::Continue(())
                 }
