@@ -36,7 +36,7 @@ use once_cell::sync::OnceCell;
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{
-    exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
+    absolute, exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
 };
 
 mod bolt;
@@ -426,8 +426,9 @@ impl Build {
         }
 
         let mut build = Build {
-            initial_rustc: config.initial_rustc.clone(),
-            initial_cargo: config.initial_cargo.clone(),
+            // Use absolute paths for these to allow setting them to e.g. build/host/stage1
+            initial_rustc: absolute(&config.initial_rustc),
+            initial_cargo: absolute(&config.initial_cargo),
             initial_lld,
             initial_libdir,
             initial_sysroot: initial_sysroot.into(),
