@@ -166,14 +166,15 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
+#[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
 
-    panic!(
+    panic_nounwind_fmt(format_args!(
         "misaligned pointer dereference: address must be a multiple of {required:#x} but is {found:#x}"
-    )
+    ))
 }
 
 /// Panic because we cannot unwind out of a function.

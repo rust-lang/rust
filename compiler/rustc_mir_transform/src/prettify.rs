@@ -24,7 +24,7 @@ impl<'tcx> MirPass<'tcx> for ReorderBasicBlocks {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let rpo: IndexVec<BasicBlock, BasicBlock> =
-            body.basic_blocks.postorder().iter().copied().rev().collect();
+            body.basic_blocks.reverse_postorder().iter().copied().collect();
         if rpo.iter().is_sorted() {
             return;
         }

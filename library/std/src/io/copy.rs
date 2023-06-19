@@ -1,5 +1,8 @@
-use super::{BorrowedBuf, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BorrowedBuf, BufReader, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
 use crate::mem::MaybeUninit;
+
+#[cfg(test)]
+mod tests;
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -71,32 +74,113 @@ where
     R: Read,
     W: Write,
 {
-    BufferedCopySpec::copy_to(reader, writer)
+    let read_buf = BufferedReaderSpec::buffer_size(reader);
+    let write_buf = BufferedWriterSpec::buffer_size(writer);
+
+    if read_buf >= DEFAULT_BUF_SIZE && read_buf >= write_buf {
+        return BufferedReaderSpec::copy_to(reader, writer);
+    }
+
+    BufferedWriterSpec::copy_from(writer, reader)
+}
+
+/// Specialization of the read-write loop that reuses the internal
+/// buffer of a BufReader. If there's no buffer then the writer side
+/// should be used intead.
+trait BufferedReaderSpec {
+    fn buffer_size(&self) -> usize;
+
+    fn copy_to(&mut self, to: &mut (impl Write + ?Sized)) -> Result<u64>;
+}
+
+impl<T> BufferedReaderSpec for T
+where
+    Self: Read,
+    T: ?Sized,
+{
+    #[inline]
+    default fn buffer_size(&self) -> usize {
+        0
+    }
+
+    default fn copy_to(&mut self, _to: &mut (impl Write + ?Sized)) -> Result<u64> {
+        unimplemented!("only called from specializations");
+    }
+}
+
+impl<I> BufferedReaderSpec for BufReader<I>
+where
+    Self: Read,
+    I: ?Sized,
+{
+    fn buffer_size(&self) -> usize {
+        self.capacity()
+    }
+
+    fn copy_to(&mut self, to: &mut (impl Write + ?Sized)) -> Result<u64> {
+        let mut len = 0;
+
+        loop {
+            // Hack: this relies on `impl Read for BufReader` always calling fill_buf
+            // if the buffer is empty, even for empty slices.
+            // It can't be called directly here since specialization prevents us
+            // from adding I: Read
+            match self.read(&mut []) {
+                Ok(_) => {}
+                Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            }
+            let buf = self.buffer();
+            if self.buffer().len() == 0 {
+                return Ok(len);
+            }
+
+            // In case the writer side is a BufWriter then its write_all
+            // implements an optimization that passes through large
+            // buffers to the underlying writer. That code path is #[cold]
+            // but we're still avoiding redundant memcopies when doing
+            // a copy between buffered inputs and outputs.
+            to.write_all(buf)?;
+            len += buf.len() as u64;
+            self.discard_buffer();
+        }
+    }
 }
 
 /// Specialization of the read-write loop that either uses a stack buffer
 /// or reuses the internal buffer of a BufWriter
-trait BufferedCopySpec: Write {
-    fn copy_to<R: Read + ?Sized>(reader: &mut R, writer: &mut Self) -> Result<u64>;
+trait BufferedWriterSpec: Write {
+    fn buffer_size(&self) -> usize;
+
+    fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64>;
 }
 
-impl<W: Write + ?Sized> BufferedCopySpec for W {
-    default fn copy_to<R: Read + ?Sized>(reader: &mut R, writer: &mut Self) -> Result<u64> {
-        stack_buffer_copy(reader, writer)
+impl<W: Write + ?Sized> BufferedWriterSpec for W {
+    #[inline]
+    default fn buffer_size(&self) -> usize {
+        0
+    }
+
+    default fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
+        stack_buffer_copy(reader, self)
     }
 }
 
-impl<I: ?Sized + Write> BufferedCopySpec for BufWriter<I> {
-    fn copy_to<R: Read + ?Sized>(reader: &mut R, writer: &mut Self) -> Result<u64> {
-        if writer.capacity() < DEFAULT_BUF_SIZE {
-            return stack_buffer_copy(reader, writer);
+impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
+    fn buffer_size(&self) -> usize {
+        self.capacity()
+    }
+
+    fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
+        if self.capacity() < DEFAULT_BUF_SIZE {
+            return stack_buffer_copy(reader, self);
         }
 
         let mut len = 0;
         let mut init = 0;
 
         loop {
-            let buf = writer.buffer_mut();
+            let buf = self.buffer_mut();
             let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
 
             unsafe {
@@ -127,7 +211,7 @@ impl<I: ?Sized + Write> BufferedCopySpec for BufWriter<I> {
                     Err(e) => return Err(e),
                 }
             } else {
-                writer.flush_buf()?;
+                self.flush_buf()?;
                 init = 0;
             }
         }

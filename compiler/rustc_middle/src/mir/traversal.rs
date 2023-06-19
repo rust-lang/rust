@@ -188,10 +188,6 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     }
 }
 
-pub fn postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Postorder<'a, 'tcx> {
-    Postorder::new(&body.basic_blocks, START_BLOCK)
-}
-
 impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
@@ -217,6 +213,17 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 
         (lower, Some(upper))
     }
+}
+
+/// Creates an iterator over the `Body`'s basic blocks, that:
+/// - returns basic blocks in a postorder,
+/// - traverses the `BasicBlocks` CFG cache's reverse postorder backwards, and does not cache the
+///   postorder itself.
+pub fn postorder<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
+{
+    reverse_postorder(body).rev()
 }
 
 /// Reverse postorder traversal of a graph
@@ -295,34 +302,12 @@ pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
     iter.visited
 }
 
-#[derive(Clone)]
-pub struct ReversePostorderIter<'a, 'tcx> {
+/// Creates an iterator over the `Body`'s basic blocks, that:
+/// - returns basic blocks in a reverse postorder,
+/// - makes use of the `BasicBlocks` CFG cache's reverse postorder.
+pub fn reverse_postorder<'a, 'tcx>(
     body: &'a Body<'tcx>,
-    blocks: &'a [BasicBlock],
-    idx: usize,
-}
-
-impl<'a, 'tcx> Iterator for ReversePostorderIter<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
-
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        if self.idx == 0 {
-            return None;
-        }
-        self.idx -= 1;
-
-        self.blocks.get(self.idx).map(|&bb| (bb, &self.body[bb]))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.idx, Some(self.idx))
-    }
-}
-
-impl<'a, 'tcx> ExactSizeIterator for ReversePostorderIter<'a, 'tcx> {}
-
-pub fn reverse_postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> ReversePostorderIter<'a, 'tcx> {
-    let blocks = body.basic_blocks.postorder();
-    let len = blocks.len();
-    ReversePostorderIter { body, blocks, idx: len }
+) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
+{
+    body.basic_blocks.reverse_postorder().iter().map(|&bb| (bb, &body.basic_blocks[bb]))
 }

@@ -2,6 +2,7 @@
 //! `ty` form from the HIR.
 
 use rustc_hir::LangItem;
+use rustc_middle::ty::Binder;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -23,52 +24,58 @@ use rustc_span::Span;
 /// include the self type (e.g., `trait_bounds`) but in others we do not
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
-    pub predicates: Vec<(ty::Predicate<'tcx>, Span)>,
+    pub predicates: Vec<(Binder<'tcx, ty::Clause<'tcx>>, Span)>,
 }
 
 impl<'tcx> Bounds<'tcx> {
     pub fn push_region_bound(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxt<'tcx>,
         region: ty::PolyTypeOutlivesPredicate<'tcx>,
         span: Span,
     ) {
-        self.predicates.push((region.to_predicate(tcx), span));
+        self.predicates.push((region.map_bound(|p| ty::Clause::TypeOutlives(p)), span));
     }
 
     pub fn push_trait_bound(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxt<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         span: Span,
         constness: ty::BoundConstness,
         polarity: ty::ImplPolarity,
     ) {
         self.predicates.push((
-            trait_ref
-                .map_bound(|trait_ref| ty::TraitPredicate { trait_ref, constness, polarity })
-                .to_predicate(tcx),
+            trait_ref.map_bound(|trait_ref| {
+                ty::Clause::Trait(ty::TraitPredicate { trait_ref, constness, polarity })
+            }),
             span,
         ));
     }
 
     pub fn push_projection_bound(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxt<'tcx>,
         projection: ty::PolyProjectionPredicate<'tcx>,
         span: Span,
     ) {
-        self.predicates.push((projection.to_predicate(tcx), span));
+        self.predicates.push((projection.map_bound(|proj| ty::Clause::Projection(proj)), span));
     }
 
     pub fn push_sized(&mut self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) {
         let sized_def_id = tcx.require_lang_item(LangItem::Sized, Some(span));
         let trait_ref = ty::TraitRef::new(tcx, sized_def_id, [ty]);
         // Preferable to put this obligation first, since we report better errors for sized ambiguity.
-        self.predicates.insert(0, (trait_ref.without_const().to_predicate(tcx), span));
+        self.predicates.insert(
+            0,
+            (
+                ty::Binder::dummy(ty::Clause::Trait(trait_ref.without_const().to_predicate(tcx))),
+                span,
+            ),
+        );
     }
 
-    pub fn predicates(&self) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> + '_ {
+    pub fn predicates(&self) -> impl Iterator<Item = (Binder<'tcx, ty::Clause<'tcx>>, Span)> + '_ {
         self.predicates.iter().cloned()
     }
 }

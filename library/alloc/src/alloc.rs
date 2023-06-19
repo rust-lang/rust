@@ -4,8 +4,10 @@
 
 #[cfg(not(test))]
 use core::intrinsics;
+#[cfg(all(bootstrap, not(test)))]
 use core::intrinsics::{min_align_of_val, size_of_val};
 
+#[cfg(all(bootstrap, not(test)))]
 use core::ptr::Unique;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
@@ -335,14 +337,15 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     }
 }
 
-#[cfg_attr(not(test), lang = "box_free")]
+#[cfg(all(bootstrap, not(test)))]
+#[lang = "box_free"]
 #[inline]
 // This signature has to be the same as `Box`, otherwise an ICE will happen.
 // When an additional parameter to `Box` is added (like `A: Allocator`), this has to be added here as
 // well.
 // For example if `Box` is changed to  `struct Box<T: ?Sized, A: Allocator>(Unique<T>, A)`,
 // this function has to be changed to `fn box_free<T: ?Sized, A: Allocator>(Unique<T>, A)` as well.
-pub(crate) unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A) {
+unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A) {
     unsafe {
         let size = size_of_val(ptr.as_ref());
         let align = min_align_of_val(ptr.as_ref());

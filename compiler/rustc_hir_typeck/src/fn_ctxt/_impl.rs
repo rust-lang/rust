@@ -483,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx,
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)),
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(arg))),
         ));
     }
 
@@ -668,10 +668,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
                 | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
-                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 // N.B., this predicate is created by breaking down a
                 // `ClosureType: FnFoo()` predicate, where
