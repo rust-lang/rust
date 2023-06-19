@@ -1,6 +1,7 @@
 // aux-build:private-inferred-type.rs
 
 #![allow(warnings)]
+#![allow(private_interfaces)]
 
 extern crate private_inferred_type as ext;
 

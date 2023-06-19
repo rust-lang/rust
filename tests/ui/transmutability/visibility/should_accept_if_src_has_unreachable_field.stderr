@@ -1,12 +1,15 @@
-error[E0446]: private type `src::Zst` in public interface
-  --> $DIR/should_accept_if_src_has_unreachable_field.rs:22:9
+warning: type `src::Zst` is more private than the item `Src::field`
+  --> $DIR/should_accept_if_src_has_unreachable_field.rs:24:9
+   |
+LL |         pub(in super) field: Zst,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ field `Src::field` is reachable at visibility `pub(crate)`
+   |
+note: but type `src::Zst` is only usable at visibility `pub(self)`
+  --> $DIR/should_accept_if_src_has_unreachable_field.rs:21:16
    |
 LL |     #[repr(C)] pub(self) struct Zst; // <- unreachable type
-   |                -------------------- `src::Zst` declared as private
-...
-LL |         pub(in super) field: Zst,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+   |                ^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
 
-error: aborting due to previous error
+warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0446`.

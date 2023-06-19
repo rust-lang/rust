@@ -1,5 +1,5 @@
 #![feature(decl_macro)]
-#![allow(private_in_public)]
+#![allow(private_interfaces)]
 
 mod m {
     fn priv_fn() {}

@@ -3,8 +3,7 @@ struct SemiPriv;
 mod m1 {
     struct Priv;
     impl ::SemiPriv {
-        pub fn f(_: Priv) {} //~ WARN private type `m1::Priv` in public interface
-        //~^ WARNING hard error
+        pub fn f(_: Priv) {} //~ WARN type `m1::Priv` is more private than the item `m1::<impl SemiPriv>::f`
     }
 
     impl Priv {

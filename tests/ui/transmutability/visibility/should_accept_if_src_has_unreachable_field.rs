@@ -1,3 +1,5 @@
+// check-pass
+
 //! The presence of an unreachable field in the source type (e.g., a public
 //! field with a private type does not affect transmutability. (This rule is
 //! distinct from type privacy, which still may forbid naming such types.)
@@ -19,7 +21,7 @@ mod src {
     #[repr(C)] pub(self) struct Zst; // <- unreachable type
 
     #[repr(C)] pub(in super) struct Src {
-        pub(in super) field: Zst, //~ ERROR private type
+        pub(in super) field: Zst, //~ WARNING type `src::Zst` is more private than the item `Src::field`
     }
 }
 

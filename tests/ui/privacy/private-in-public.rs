@@ -1,3 +1,5 @@
+// check-pass
+
 // Private types and traits are not allowed in public interfaces.
 // This test also ensures that the checks are performed even inside private modules.
 
@@ -10,16 +12,16 @@ mod types {
         type Alias;
     }
 
-    pub const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
-    pub static S: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
-    pub fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
-    pub fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
-    pub struct S1(pub Priv); //~ ERROR private type `types::Priv` in public interface
-    pub struct S2 { pub field: Priv } //~ ERROR private type `types::Priv` in public interface
+    pub const C: Priv = Priv; //~ WARNING type `types::Priv` is more private than the item `C`
+    pub static S: Priv = Priv; //~ WARNING type `types::Priv` is more private than the item `S`
+    pub fn f1(arg: Priv) {} //~ WARNING `types::Priv` is more private than the item `types::f1`
+    pub fn f2() -> Priv { panic!() } //~ WARNING type `types::Priv` is more private than the item `types::f2`
+    pub struct S1(pub Priv); //~ WARNING type `types::Priv` is more private than the item `types::S1::0`
+    pub struct S2 { pub field: Priv } //~ WARNING `types::Priv` is more private than the item `S2::field`
     impl Pub {
-        pub const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
-        pub fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
-        pub fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
+        pub const C: Priv = Priv; //~ WARNING type `types::Priv` is more private than the item `types::Pub::C`
+        pub fn f1(arg: Priv) {} //~ WARNING type `types::Priv` is more private than the item `types::Pub::f1`
+        pub fn f2() -> Priv { panic!() } //~ WARNING type `types::Priv` is more private than the item `types::Pub::f2`
     }
 }
 
@@ -28,11 +30,11 @@ mod traits {
     pub struct Pub<T>(T);
     pub trait PubTr {}
 
-    pub enum E<T: PrivTr> { V(T) } //~ ERROR private trait `traits::PrivTr` in public interface
-    pub fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
-    pub struct S1<T: PrivTr>(T); //~ ERROR private trait `traits::PrivTr` in public interface
-    impl<T: PrivTr> Pub<T> { //~ ERROR private trait `traits::PrivTr` in public interface
-        pub fn f<U: PrivTr>(arg: U) {} //~ ERROR private trait `traits::PrivTr` in public interface
+    pub enum E<T: PrivTr> { V(T) } //~ WARNING trait `traits::PrivTr` is more private than the item `traits::E`
+    pub fn f<T: PrivTr>(arg: T) {} //~ WARNING trait `traits::PrivTr` is more private than the item `traits::f`
+    pub struct S1<T: PrivTr>(T); //~ WARNING trait `traits::PrivTr` is more private than the item `traits::S1`
+    impl<T: PrivTr> Pub<T> { //~ WARNING trait `traits::PrivTr` is more private than the item `traits::Pub<T>`
+        pub fn f<U: PrivTr>(arg: U) {} //~ WARNING trait `traits::PrivTr` is more private than the item `traits::Pub::<T>::f`
     }
 }
 
@@ -42,15 +44,15 @@ mod traits_where {
     pub trait PubTr {}
 
     pub enum E<T> where T: PrivTr { V(T) }
-    //~^ ERROR private trait `traits_where::PrivTr` in public interface
+    //~^ WARNING trait `traits_where::PrivTr` is more private than the item `traits_where::E`
     pub fn f<T>(arg: T) where T: PrivTr {}
-    //~^ ERROR private trait `traits_where::PrivTr` in public interface
+    //~^ WARNING trait `traits_where::PrivTr` is more private than the item `traits_where::f`
     pub struct S1<T>(T) where T: PrivTr;
-    //~^ ERROR private trait `traits_where::PrivTr` in public interface
+    //~^ WARNING trait `traits_where::PrivTr` is more private than the item `traits_where::S1`
     impl<T> Pub<T> where T: PrivTr {
-    //~^ ERROR private trait `traits_where::PrivTr` in public interface
+    //~^ WARNING trait `traits_where::PrivTr` is more private than the item `traits_where::Pub<T>`
         pub fn f<U>(arg: U) where U: PrivTr {}
-        //~^ ERROR private trait `traits_where::PrivTr` in public interface
+        //~^ WARNING trait `traits_where::PrivTr` is more private than the item `traits_where::Pub::<T>::f`
     }
 }
 
@@ -60,10 +62,10 @@ mod generics {
     trait PrivTr<T> {}
     pub trait PubTr<T> {}
 
-    pub fn f1(arg: [Priv; 1]) {} //~ ERROR private type `generics::Priv` in public interface
-    pub fn f2(arg: Pub<Priv>) {} //~ ERROR private type `generics::Priv` in public interface
+    pub fn f1(arg: [Priv; 1]) {} //~ WARNING type `generics::Priv` is more private than the item `generics::f1`
+    pub fn f2(arg: Pub<Priv>) {} //~ WARNING type `generics::Priv` is more private than the item `generics::f2`
     pub fn f3(arg: Priv<Pub>) {}
-    //~^ ERROR private type `generics::Priv<generics::Pub>` in public interface
+    //~^ WARNING type `generics::Priv<generics::Pub>` is more private than the item `generics::f3`
 }
 
 mod impls {
@@ -77,7 +79,7 @@ mod impls {
     }
 
     impl Pub {
-        pub fn f(arg: Priv) {} //~ ERROR private type `impls::Priv` in public interface
+        pub fn f(arg: Priv) {} //~ WARNING type `impls::Priv` is more private than the item `impls::Pub::f`
     }
 }
 
@@ -102,11 +104,11 @@ mod aliases_pub {
 
     // This should be OK, but associated type aliases are not substituted yet
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ ERROR private trait `aliases_pub::PrivTr` in public interface
-    //~| ERROR private type `aliases_pub::Priv` in public interface
+    //~^ WARNING trait `aliases_pub::PrivTr` is more private than the item `aliases_pub::f3`
+    //~| WARNING type `aliases_pub::Priv` is more private than the item `aliases_pub::f3`
 
     impl PrivUseAlias {
-        pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` in public interface
+        pub fn f(arg: Priv) {}
     }
 }
 
@@ -128,11 +130,11 @@ mod aliases_priv {
     }
     impl PrivTr for Priv {}
 
-    pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type `Priv1` in public interface
-    pub fn f2(arg: PrivAlias) {} //~ ERROR private type `Priv2` in public interface
+    pub fn f1(arg: PrivUseAlias) {} //~ WARNING type `Priv1` is more private than the item `aliases_priv::f1`
+    pub fn f2(arg: PrivAlias) {} //~ WARNING type `Priv2` is more private than the item `aliases_priv::f2`
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ ERROR private trait `aliases_priv::PrivTr` in public interface
-    //~| ERROR private type `aliases_priv::Priv` in public interface
+    //~^ WARNING trait `aliases_priv::PrivTr` is more private than the item `aliases_priv::f3`
+    //~| WARNING type `aliases_priv::Priv` is more private than the item `aliases_priv::f3`
 }
 
 mod aliases_params {
@@ -141,8 +143,8 @@ mod aliases_params {
     type Result<T> = ::std::result::Result<T, Priv>;
 
     pub fn f2(arg: PrivAliasGeneric) {}
-    //~^ ERROR private type `aliases_params::Priv` in public interface
-    pub fn f3(arg: Result<u8>) {} //~ ERROR private type `aliases_params::Priv` in public interface
+    //~^ WARNING type `aliases_params::Priv` is more private than the item `aliases_params::f2`
+    pub fn f3(arg: Result<u8>) {} //~ WARNING type `aliases_params::Priv` is more private than the item `aliases_params::f3`
 }
 
 fn main() {}
