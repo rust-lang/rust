@@ -237,4 +237,18 @@ mod issue8634 {
             },
         }
     }
+
+    fn block_comment(x: Result<i32, SomeError>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(_) => {
+                /*
+                let's make sure that this also
+                does not lint block comments.
+                */
+            },
+        }
+    }
 }
