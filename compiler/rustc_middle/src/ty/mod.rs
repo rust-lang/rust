@@ -602,6 +602,24 @@ impl<'tcx> Clause<'tcx> {
             None
         }
     }
+
+    pub fn as_type_outlives_clause(self) -> Option<Binder<'tcx, TypeOutlivesPredicate<'tcx>>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::TypeOutlives(o) = clause.skip_binder() {
+            Some(clause.rebind(o))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_region_outlives_clause(self) -> Option<Binder<'tcx, RegionOutlivesPredicate<'tcx>>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::RegionOutlives(o) = clause.skip_binder() {
+            Some(clause.rebind(o))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1243,7 +1261,14 @@ impl<'tcx> ToPredicate<'tcx> for ClauseKind<'tcx> {
 impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, ClauseKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        tcx.mk_predicate(self.map_bound(|clause| ty::PredicateKind::Clause(clause)))
+        tcx.mk_predicate(self.map_bound(ty::PredicateKind::Clause))
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for Clause<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        self.as_predicate()
     }
 }
 

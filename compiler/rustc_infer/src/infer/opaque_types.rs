@@ -649,9 +649,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 ct_op: |ct| ct,
             });
 
-            if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) =
-                predicate.kind().skip_binder()
-            {
+            if let ty::ClauseKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.term.references_error() {
                     // No point on adding any obligations since there's a type error involved.
                     obligations.clear();

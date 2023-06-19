@@ -522,13 +522,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
-            if let Some(clause) = assumption.as_clause() {
-                match G::consider_alias_bound_candidate(self, goal, clause) {
-                    Ok(result) => {
-                        candidates.push(Candidate { source: CandidateSource::AliasBound, result })
-                    }
-                    Err(NoSolution) => (),
+            match G::consider_alias_bound_candidate(self, goal, assumption) {
+                Ok(result) => {
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
+                Err(NoSolution) => (),
             }
         }
     }

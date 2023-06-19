@@ -170,7 +170,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let candidate_predicate = tcx.item_bounds(def_id).map_bound(|i| i[idx]).subst(tcx, substs);
         let candidate = candidate_predicate
-            .to_opt_poly_trait_pred()
+            .as_trait_clause()
             .expect("projection candidate is not a trait predicate")
             .map_bound(|t| t.trait_ref);
         let mut obligations = Vec::new();
@@ -631,7 +631,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let assoc_ty_substs = tcx.mk_substs(&substs);
                         let bound =
                             bound.map_bound(|b| b.kind().skip_binder()).subst(tcx, assoc_ty_substs);
-                        tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
+                        ty::Binder::bind_with_vars(bound, bound_vars).to_predicate(tcx)
                     };
                 let normalized_bound = normalize_with_depth_to(
                     self,

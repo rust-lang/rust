@@ -409,9 +409,7 @@ fn fn_sig_suggestion<'tcx>(
         output = if let ty::Alias(_, alias_ty) = *output.kind() {
             tcx.explicit_item_bounds(alias_ty.def_id)
                 .subst_iter_copied(tcx, alias_ty.substs)
-                .find_map(|(bound, _)| {
-                    bound.to_opt_poly_projection_pred()?.no_bound_vars()?.term.ty()
-                })
+                .find_map(|(bound, _)| bound.as_projection_clause()?.no_bound_vars()?.term.ty())
                 .unwrap_or_else(|| {
                     span_bug!(
                         ident.span,
