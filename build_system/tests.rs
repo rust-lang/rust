@@ -21,6 +21,7 @@ struct TestCase {
 enum TestCaseCmd {
     Custom { func: &'static dyn Fn(&TestRunner<'_>) },
     BuildLib { source: &'static str, crate_types: &'static str },
+    BuildBin { source: &'static str },
     BuildBinAndRun { source: &'static str, args: &'static [&'static str] },
     JitBin { source: &'static str, args: &'static str },
 }
@@ -37,6 +38,10 @@ impl TestCase {
         crate_types: &'static str,
     ) -> Self {
         Self { config, cmd: TestCaseCmd::BuildLib { source, crate_types } }
+    }
+
+    const fn build_bin(config: &'static str, source: &'static str) -> Self {
+        Self { config, cmd: TestCaseCmd::BuildBin { source } }
     }
 
     const fn build_bin_and_run(
@@ -92,6 +97,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.float-minmax-pass", "example/float-minmax-pass.rs", &[]),
     TestCase::build_bin_and_run("aot.mod_bench", "example/mod_bench.rs", &[]),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
+    TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
 ];
 
 // FIXME(rust-random/rand#1293): Newer rand versions fail to test on Windows. Update once this is
@@ -403,6 +409,13 @@ impl<'a> TestRunner<'a> {
                             "--cfg",
                             "no_unstable_features",
                         ]);
+                    }
+                }
+                TestCaseCmd::BuildBin { source } => {
+                    if self.use_unstable_features {
+                        self.run_rustc([source]);
+                    } else {
+                        self.run_rustc([source, "--cfg", "no_unstable_features"]);
                     }
                 }
                 TestCaseCmd::BuildBinAndRun { source, args } => {

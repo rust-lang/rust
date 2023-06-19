@@ -2,6 +2,8 @@
 
 use crate::prelude::*;
 
+use rustc_middle::ty::FnSig;
+
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
 
@@ -815,11 +817,42 @@ pub(crate) fn assert_assignable<'tcx>(
                 ParamEnv::reveal_all(),
                 from_ty.fn_sig(fx.tcx),
             );
+            let FnSig {
+                inputs_and_output: types_from,
+                c_variadic: c_variadic_from,
+                unsafety: unsafety_from,
+                abi: abi_from,
+            } = from_sig;
             let to_sig = fx
                 .tcx
                 .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_ty.fn_sig(fx.tcx));
+            let FnSig {
+                inputs_and_output: types_to,
+                c_variadic: c_variadic_to,
+                unsafety: unsafety_to,
+                abi: abi_to,
+            } = to_sig;
+            let mut types_from = types_from.iter();
+            let mut types_to = types_to.iter();
+            loop {
+                match (types_from.next(), types_to.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => break,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
             assert_eq!(
-                from_sig, to_sig,
+                c_variadic_from, c_variadic_to,
+                "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                from_sig, to_sig, fx,
+            );
+            assert_eq!(
+                unsafety_from, unsafety_to,
+                "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                from_sig, to_sig, fx,
+            );
+            assert_eq!(
+                abi_from, abi_to,
                 "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
                 from_sig, to_sig, fx,
             );

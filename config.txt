@@ -41,6 +41,7 @@ aot.track-caller-attribute
 aot.float-minmax-pass
 aot.mod_bench
 aot.issue-72793
+aot.issue-59326
 
 testsuite.extended_sysroot
 test.rust-random/rand
