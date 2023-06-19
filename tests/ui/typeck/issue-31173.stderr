@@ -34,7 +34,7 @@ LL | |         .cloned()
 LL | |         .collect();
    | |         -^^^^^^^ method cannot be called due to unsatisfied trait bounds
    | |_________|
-   |
+   | 
   --> $SRC_DIR/core/src/iter/adapters/take_while.rs:LL:COL
    |
    = note: doesn't satisfy `<_ as Iterator>::Item = &_`
