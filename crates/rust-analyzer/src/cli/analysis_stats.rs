@@ -37,7 +37,7 @@ use crate::cli::{
     load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice},
     print_memory_usage,
     progress_report::ProgressReport,
-    report_metric, Result, Verbosity,
+    report_metric, Verbosity,
 };
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
@@ -49,7 +49,7 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
 }
 
 impl flags::AnalysisStats {
-    pub fn run(self, verbosity: Verbosity) -> Result<()> {
+    pub fn run(self, verbosity: Verbosity) -> anyhow::Result<()> {
         let mut rng = {
             let seed = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
             Rand32::new(seed)

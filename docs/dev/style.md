@@ -869,6 +869,19 @@ type   -> ty
 
 **Rationale:** consistency.
 
+## Error Handling Trivia
+
+Use `anyhow::Result` rather than just `Result`.
+
+**Rationale:** makes it immediately clear what result that is.
+
+Use `anyhow::format_err!` rather than `anyhow::anyhow`.
+
+**Rationale:** consistent, boring, avoids stuttering.
+
+There's no specific guidance on the formatting of error messages, see [anyhow/#209](https://github.com/dtolnay/anyhow/issues/209).
+Do not end error and context messages with `.` though. 
+
 ## Early Returns
 
 Do use early returns

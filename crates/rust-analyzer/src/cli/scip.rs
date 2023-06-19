@@ -22,11 +22,10 @@ use std::env;
 use crate::cli::{
     flags,
     load_cargo::{load_workspace, LoadCargoConfig},
-    Result,
 };
 
 impl flags::Scip {
-    pub fn run(self) -> Result<()> {
+    pub fn run(self) -> anyhow::Result<()> {
         eprintln!("Generating SCIP start...");
         let now = Instant::now();
         let mut cargo_config = CargoConfig::default();
@@ -65,7 +64,7 @@ impl flags::Scip {
                 path.normalize()
                     .as_os_str()
                     .to_str()
-                    .ok_or(anyhow::anyhow!("Unable to normalize project_root path"))?
+                    .ok_or(anyhow::format_err!("Unable to normalize project_root path"))?
             ),
             text_document_encoding: scip_types::TextEncoding::UTF8.into(),
             special_fields: Default::default(),
@@ -168,7 +167,7 @@ impl flags::Scip {
 
         let out_path = self.output.unwrap_or_else(|| PathBuf::from(r"index.scip"));
         scip::write_message_to_file(out_path, index)
-            .map_err(|err| anyhow::anyhow!("Failed to write scip to file: {}", err))?;
+            .map_err(|err| anyhow::format_err!("Failed to write scip to file: {}", err))?;
 
         eprintln!("Generating SCIP finished {:?}", now.elapsed());
         Ok(())

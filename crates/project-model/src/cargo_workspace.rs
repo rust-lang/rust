@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::str::from_utf8;
 use std::{ops, process::Command};
 
-use anyhow::{Context, Result};
+use anyhow::Context;
 use base_db::Edition;
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
@@ -236,7 +236,7 @@ impl CargoWorkspace {
         current_dir: &AbsPath,
         config: &CargoConfig,
         progress: &dyn Fn(String),
-    ) -> Result<cargo_metadata::Metadata> {
+    ) -> anyhow::Result<cargo_metadata::Metadata> {
         let targets = find_list_of_build_targets(config, cargo_toml);
 
         let mut meta = MetadataCommand::new();

@@ -2,7 +2,6 @@
 //! for incorporating changes.
 use std::path::Path;
 
-use anyhow::{anyhow, Result};
 use crossbeam_channel::{unbounded, Receiver};
 use ide::{AnalysisHost, Change};
 use ide_db::{
@@ -38,7 +37,7 @@ pub fn load_workspace_at(
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
-) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
     let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
@@ -60,7 +59,7 @@ pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,
     load_config: &LoadCargoConfig,
-) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -76,7 +75,7 @@ pub fn load_workspace(
         ProcMacroServerChoice::Explicit(path) => {
             ProcMacroServer::spawn(path.clone()).map_err(Into::into)
         }
-        ProcMacroServerChoice::None => Err(anyhow!("proc macro server disabled")),
+        ProcMacroServerChoice::None => Err(anyhow::format_err!("proc macro server disabled")),
     };
 
     let (crate_graph, proc_macros) = ws.to_crate_graph(

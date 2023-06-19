@@ -15,7 +15,6 @@ mod progress_report;
 
 use std::io::Read;
 
-use anyhow::Result;
 use ide::AnalysisHost;
 use vfs::Vfs;
 
@@ -36,7 +35,7 @@ impl Verbosity {
     }
 }
 
-fn read_stdin() -> Result<String> {
+fn read_stdin() -> anyhow::Result<String> {
     let mut buff = String::new();
     std::io::stdin().read_to_string(&mut buff)?;
     Ok(buff)

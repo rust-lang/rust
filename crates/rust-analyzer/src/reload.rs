@@ -307,7 +307,7 @@ impl GlobalState {
                         res.map_or_else(
                             |_| Err("proc macro crate is missing dylib".to_owned()),
                             |(crate_name, path)| {
-                                progress(path.display().to_string());
+                                progress(path.to_string());
                                 client.as_ref().map_err(Clone::clone).and_then(|client| {
                                     load_proc_macro(
                                         client,
@@ -407,9 +407,9 @@ impl GlobalState {
                     .flat_map(|root| {
                         root.include.into_iter().flat_map(|it| {
                             [
-                                format!("{}/**/*.rs", it.display()),
-                                format!("{}/**/Cargo.toml", it.display()),
-                                format!("{}/**/Cargo.lock", it.display()),
+                                format!("{it}/**/*.rs"),
+                                format!("{it}/**/Cargo.toml"),
+                                format!("{it}/**/Cargo.lock"),
                             ]
                         })
                     })
@@ -447,17 +447,13 @@ impl GlobalState {
                                 None => ws.find_sysroot_proc_macro_srv()?,
                             };
 
-                            tracing::info!("Using proc-macro server at {}", path.display(),);
+                            tracing::info!("Using proc-macro server at {path}");
                             ProcMacroServer::spawn(path.clone()).map_err(|err| {
                                 tracing::error!(
-                                    "Failed to run proc-macro server from path {}, error: {:?}",
-                                    path.display(),
-                                    err
+                                    "Failed to run proc-macro server from path {path}, error: {err:?}",
                                 );
-                                anyhow::anyhow!(
-                                    "Failed to run proc-macro server from path {}, error: {:?}",
-                                    path.display(),
-                                    err
+                                anyhow::format_err!(
+                                    "Failed to run proc-macro server from path {path}, error: {err:?}",
                                 )
                             })
                         })
@@ -787,14 +783,13 @@ pub(crate) fn load_proc_macro(
     return match res {
         Ok(proc_macros) => {
             tracing::info!(
-                "Loaded proc-macros for {}: {:?}",
-                path.display(),
+                "Loaded proc-macros for {path}: {:?}",
                 proc_macros.iter().map(|it| it.name.clone()).collect::<Vec<_>>()
             );
             Ok(proc_macros)
         }
         Err(e) => {
-            tracing::warn!("proc-macro loading for {} failed: {e}", path.display());
+            tracing::warn!("proc-macro loading for {path} failed: {e}");
             Err(e)
         }
     };
