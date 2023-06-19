@@ -36,13 +36,6 @@ pub(crate) fn mir_built(
     tcx.alloc_steal_mir(mir_build(tcx, def))
 }
 
-/// Returns names of captured upvars for closures and generators.
-///
-/// Here are some examples:
-///  - `name__field1__field2` when the upvar is captured by value.
-///  - `_ref__name__field` when the upvar is captured by reference.
-///
-/// For generators this only contains upvars that are shared by all states.
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
