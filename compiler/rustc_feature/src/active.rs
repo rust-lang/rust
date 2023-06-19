@@ -440,6 +440,8 @@ declare_features! (
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
+    /// Allow to have type alias types for inter-crate use.
+    (active, lazy_type_alias, "CURRENT_RUSTC_VERSION", Some(112792), None),
     /// Allows `if/while p && let q = r && ...` chains.
     (active, let_chains, "1.37.0", Some(53667), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
