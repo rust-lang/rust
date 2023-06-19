@@ -534,7 +534,9 @@ impl GlobalState {
     pub(super) fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        let Some((last_op_result, _)) = self.fetch_workspaces_queue.last_op_result() else { return Ok(()) };
+        let Some((last_op_result, _)) = self.fetch_workspaces_queue.last_op_result() else {
+            return Ok(())
+        };
         if last_op_result.is_empty() {
             stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
         } else {

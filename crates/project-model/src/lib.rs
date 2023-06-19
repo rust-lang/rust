@@ -31,6 +31,7 @@ pub mod target_data_layout;
 mod tests;
 
 use std::{
+    fmt,
     fs::{self, read_dir, ReadDir},
     io,
     process::Command,
@@ -142,6 +143,16 @@ impl ProjectManifest {
             .collect::<Vec<_>>();
         res.sort();
         res
+    }
+}
+
+impl fmt::Display for ProjectManifest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProjectManifest::ProjectJson(it) | ProjectManifest::CargoToml(it) => {
+                fmt::Display::fmt(&it, f)
+            }
+        }
     }
 }
 
