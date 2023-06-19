@@ -152,6 +152,15 @@ impl ProjectWorkspace {
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Result<ProjectWorkspace> {
+        ProjectWorkspace::load_inner(&manifest, config, progress)
+            .with_context(|| format!("Failed to load the project at {manifest}"))
+    }
+
+    fn load_inner(
+        manifest: &ProjectManifest,
+        config: &CargoConfig,
+        progress: &dyn Fn(String),
+    ) -> Result<ProjectWorkspace> {
         let version = |current_dir, cmd_path, prefix: &str| {
             let cargo_version = utf8_stdout({
                 let mut cmd = Command::new(cmd_path);
