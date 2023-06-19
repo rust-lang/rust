@@ -103,6 +103,8 @@ pub struct GlobalStateInner {
     pub tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
     pub retag_fields: RetagFields,
+    /// Whether `core::ptr::Unique` gets special (`Box`-like) handling.
+    pub unique_is_unique: bool,
 }
 
 impl VisitTags for GlobalStateInner {
@@ -170,6 +172,7 @@ impl GlobalStateInner {
         tracked_pointer_tags: FxHashSet<BorTag>,
         tracked_call_ids: FxHashSet<CallId>,
         retag_fields: RetagFields,
+        unique_is_unique: bool,
     ) -> Self {
         GlobalStateInner {
             borrow_tracker_method,
@@ -180,6 +183,7 @@ impl GlobalStateInner {
             tracked_pointer_tags,
             tracked_call_ids,
             retag_fields,
+            unique_is_unique,
         }
     }
 
@@ -244,6 +248,7 @@ impl BorrowTrackerMethod {
             config.tracked_pointer_tags.clone(),
             config.tracked_call_ids.clone(),
             config.retag_fields,
+            config.unique_is_unique,
         ))
     }
 }

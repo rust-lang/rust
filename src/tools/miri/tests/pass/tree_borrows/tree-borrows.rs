@@ -1,4 +1,6 @@
+//@revisions: default uniq
 //@compile-flags: -Zmiri-tree-borrows
+//@[uniq]compile-flags: -Zmiri-unique-is-unique
 #![feature(allocator_api)]
 
 use std::mem;

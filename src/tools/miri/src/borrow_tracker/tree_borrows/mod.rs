@@ -11,6 +11,7 @@ use rustc_middle::{
         Ty,
     },
 };
+use rustc_span::def_id::DefId;
 
 use crate::*;
 
@@ -381,8 +382,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         place: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
-        let mut visitor = RetagVisitor { ecx: this, kind, retag_fields };
+        let options = this.machine.borrow_tracker.as_mut().unwrap().get_mut();
+        let retag_fields = options.retag_fields;
+        let unique_did =
+            options.unique_is_unique.then(|| this.tcx.lang_items().ptr_unique()).flatten();
+        let mut visitor = RetagVisitor { ecx: this, kind, retag_fields, unique_did };
         return visitor.visit_value(place);
 
         // The actual visitor.
@@ -390,6 +394,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ecx: &'ecx mut MiriInterpCx<'mir, 'tcx>,
             kind: RetagKind,
             retag_fields: RetagFields,
+            unique_did: Option<DefId>,
         }
         impl<'ecx, 'mir, 'tcx> RetagVisitor<'ecx, 'mir, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
@@ -414,6 +419,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 self.ecx
             }
 
+            /// Regardless of how `Unique` is handled, Boxes are always reborrowed.
+            /// When `Unique` is also reborrowed, then it behaves exactly like `Box`
+            /// except for the fact that `Box` has a non-zero-sized reborrow.
             fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 let new_perm = NewPermission::from_unique_ty(
                     place.layout.ty,
@@ -452,6 +460,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         // even if field retagging is not enabled. *shrug*)
                         self.walk_value(place)?;
                     }
+                    ty::Adt(adt, _) if self.unique_did == Some(adt.did()) => {
+                        let place = inner_ptr_of_unique(self.ecx, place)?;
+                        let new_perm = NewPermission::from_unique_ty(
+                            place.layout.ty,
+                            self.kind,
+                            self.ecx,
+                            /* zero_size */ true,
+                        );
+                        self.retag_ptr_inplace(&place, new_perm)?;
+                    }
                     _ => {
                         // Not a reference/pointer/box. Only recurse if configured appropriately.
                         let recurse = match self.retag_fields {
@@ -468,7 +486,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         }
                     }
                 }
-
                 Ok(())
             }
         }
@@ -563,4 +580,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
         tree_borrows.give_pointer_debug_name(tag, nth_parent, name)
     }
+}
+
+/// Takes a place for a `Unique` and turns it into a place with the inner raw pointer.
+/// I.e. input is what you get from the visitor upon encountering an `adt` that is `Unique`,
+/// and output can be used by `retag_ptr_inplace`.
+fn inner_ptr_of_unique<'tcx>(
+    ecx: &mut MiriInterpCx<'_, 'tcx>,
+    place: &PlaceTy<'tcx, Provenance>,
+) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
+    // Follows the same layout as `interpret/visitor.rs:walk_value` for `Box` in
+    // `rustc_const_eval`, just with one fewer layer.
+    // Here we have a `Unique(NonNull(*mut), PhantomData)`
+    assert_eq!(place.layout.fields.count(), 2, "Unique must have exactly 2 fields");
+    let (nonnull, phantom) = (ecx.place_field(place, 0)?, ecx.place_field(place, 1)?);
+    assert!(
+        phantom.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_phantom_data()),
+        "2nd field of `Unique` should be `PhantomData` but is `{:?}`",
+        phantom.layout.ty,
+    );
+    // Now down to `NonNull(*mut)`
+    assert_eq!(nonnull.layout.fields.count(), 1, "NonNull must have exactly 1 field");
+    let ptr = ecx.place_field(&nonnull, 0)?;
+    // Finally a plain `*mut`
+    Ok(ptr)
 }
