@@ -91,14 +91,14 @@ impl EarlyLintPass for ModStyle {
         // `{ foo => path/to/foo.rs, .. }
         let mut file_map = FxHashMap::default();
         for file in files.iter() {
-            if let FileName::Real(name) = &file.name && let Some(lp) = name.local_path() {
-                if file.cnum != LOCAL_CRATE {
-                    // [#8887](https://github.com/rust-lang/rust-clippy/issues/8887)
-                    // Only check files in the current crate.
-                    // Fix false positive that crate dependency in workspace sub directory
-                    // is checked unintentionally.
-                    continue;
-                }
+            if let FileName::Real(name) = &file.name
+                && let Some(lp) = name.local_path()
+                && file.cnum == LOCAL_CRATE
+            {
+                // [#8887](https://github.com/rust-lang/rust-clippy/issues/8887)
+                // Only check files in the current crate.
+                // Fix false positive that crate dependency in workspace sub directory
+                // is checked unintentionally.
                 let path = if lp.is_relative() {
                     lp
                 } else if let Ok(relative) = lp.strip_prefix(trim_to_src) {
