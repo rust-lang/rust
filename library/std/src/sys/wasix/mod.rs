@@ -63,6 +63,9 @@ pub mod stack_overflow;
 mod common;
 pub use common::*;
 
+mod waker;
+use waker::*;
+
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     use std_io::ErrorKind::*;
     if errno > u16::MAX as i32 || errno < 0 {
