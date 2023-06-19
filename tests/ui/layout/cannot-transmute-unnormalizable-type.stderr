@@ -11,7 +11,7 @@ LL |         std::mem::transmute::<Option<()>, Option<&Other>>(None);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `Option<()>` (8 bits)
-   = note: target type: `Option<&Other>` (unable to determine layout for `<() as Trait>::RefTarget` because `<() as Trait>::RefTarget` cannot be normalized)
+   = note: target type: `Option<&Other>` (unable to determine layout for `Other` because `<() as Trait>::RefTarget` cannot be normalized)
 
 error: aborting due to 2 previous errors
 

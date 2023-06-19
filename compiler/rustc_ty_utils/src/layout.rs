@@ -154,9 +154,19 @@ fn naive_layout_of_uncached<'tcx>(
         ty::Never => NaiveLayout::EMPTY,
 
         // Potentially-wide pointers.
-        ty::Ref(_, _, _) | ty::RawPtr(_) => {
-            // TODO(reference_niches): handle wide pointers
-            scalar(Pointer(AddressSpace::DATA))
+        ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+            let data_ptr = scalar(Pointer(AddressSpace::DATA));
+
+            if let Some(metadata) = ptr_metadata_scalar(cx, pointee)? {
+                // Effectively a (ptr, meta) tuple.
+                data_ptr
+                    .concat(&scalar(metadata.primitive()), cx)
+                    .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?
+                    .pad_to_align()
+            } else {
+                // No metadata, this is a thin pointer.
+                data_ptr
+            }
         }
 
         ty::Dynamic(_, _, ty::DynStar) => {
@@ -165,10 +175,15 @@ fn naive_layout_of_uncached<'tcx>(
         }
 
         // Arrays and slices.
-        ty::Array(element, _count) => {
+        ty::Array(element, count) => {
+            let count = compute_array_count(cx, count)
+                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
             let element = cx.naive_layout_of(element)?;
             NaiveLayout {
-                min_size: Size::ZERO, // TODO(reference_niches): proper array size
+                min_size: element
+                    .min_size
+                    .checked_mul(count, cx)
+                    .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?,
                 min_align: element.min_align,
             }
         }
@@ -311,72 +326,13 @@ fn layout_of_uncached<'tcx>(
                 data_ptr.valid_range_mut().start = 1;
             }
 
-            let pointee = tcx.normalize_erasing_regions(param_env, pointee);
-            if pointee.is_sized(tcx, param_env) {
-                return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
-            }
-
-            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
-                // Projection eagerly bails out when the pointee references errors,
-                // fall back to structurally deducing metadata.
-                && !pointee.references_error()
-            {
-                let pointee_metadata = Ty::new_projection(tcx,metadata_def_id, [pointee]);
-                let metadata_ty = match tcx.try_normalize_erasing_regions(
-                    param_env,
-                    pointee_metadata,
-                ) {
-                    Ok(metadata_ty) => metadata_ty,
-                    Err(mut err) => {
-                        // Usually `<Ty as Pointee>::Metadata` can't be normalized because
-                        // its struct tail cannot be normalized either, so try to get a
-                        // more descriptive layout error here, which will lead to less confusing
-                        // diagnostics.
-                        match tcx.try_normalize_erasing_regions(
-                            param_env,
-                            tcx.struct_tail_without_normalization(pointee),
-                        ) {
-                            Ok(_) => {},
-                            Err(better_err) => {
-                                err = better_err;
-                            }
-                        }
-                        return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
-                    },
-                };
-
-                let metadata_layout = cx.layout_of(metadata_ty)?;
-                // If the metadata is a 1-zst, then the pointer is thin.
-                if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
-                    return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
-                }
-
-                let Abi::Scalar(metadata) = metadata_layout.abi else {
-                    return Err(error(cx, LayoutError::Unknown(pointee)));
-                };
-
-                metadata
+            if let Some(metadata) = ptr_metadata_scalar(cx, pointee)? {
+                // Effectively a (ptr, meta) tuple.
+                tcx.mk_layout(cx.scalar_pair(data_ptr, metadata))
             } else {
-                let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-
-                match unsized_part.kind() {
-                    ty::Foreign(..) => {
-                        return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
-                    }
-                    ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
-                    ty::Dynamic(..) => {
-                        let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
-                        vtable.valid_range_mut().start = 1;
-                        vtable
-                    }
-                    _ => {
-                        return Err(error(cx, LayoutError::Unknown(pointee)));
-                    }
-                }
-            };
-
-            // Effectively a (ptr, meta) tuple.
-            tcx.mk_layout(cx.scalar_pair(data_ptr, metadata))
+                // No metadata, this is a thin pointer.
+                tcx.mk_layout(LayoutS::scalar(cx, data_ptr))
+            }
         }
 
         ty::Dynamic(_, _, ty::DynStar) => {
@@ -388,16 +344,8 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Arrays and slices.
-        ty::Array(element, mut count) => {
-            if count.has_projections() {
-                count = tcx.normalize_erasing_regions(param_env, count);
-                if count.has_projections() {
-                    return Err(error(cx, LayoutError::Unknown(ty)));
-                }
-            }
-
-            let count = count
-                .try_eval_target_usize(tcx, param_env)
+        ty::Array(element, count) => {
+            let count = compute_array_count(cx, count)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
             let element = cx.layout_of(element)?;
             let size = element
@@ -731,6 +679,93 @@ fn layout_of_uncached<'tcx>(
             unreachable!("already rejected by `naive_layout_of`");
         }
     })
+}
+
+fn compute_array_count<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    mut count: ty::Const<'tcx>,
+) -> Option<u64> {
+    let LayoutCx { tcx, param_env } = *cx;
+    if count.has_projections() {
+        count = tcx.normalize_erasing_regions(param_env, count);
+        if count.has_projections() {
+            return None;
+        }
+    }
+
+    count.try_eval_target_usize(tcx, param_env)
+}
+
+fn ptr_metadata_scalar<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    pointee: Ty<'tcx>,
+) -> Result<Option<Scalar>, &'tcx LayoutError<'tcx>> {
+    let dl = cx.data_layout();
+    let scalar_unit = |value: Primitive| {
+        let size = value.size(dl);
+        assert!(size.bits() <= 128);
+        Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
+    };
+
+    let LayoutCx { tcx, param_env } = *cx;
+
+    let pointee = tcx.normalize_erasing_regions(param_env, pointee);
+    if pointee.is_sized(tcx, param_env) {
+        return Ok(None);
+    }
+
+    if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
+        // Projection eagerly bails out when the pointee references errors,
+        // fall back to structurally deducing metadata.
+        && !pointee.references_error()
+    {
+        let pointee_metadata = Ty::new_projection(tcx,metadata_def_id, [pointee]);
+        let metadata_ty = match tcx.try_normalize_erasing_regions(
+            param_env,
+            pointee_metadata,
+        ) {
+            Ok(metadata_ty) => metadata_ty,
+            Err(mut err) => {
+                // Usually `<Ty as Pointee>::Metadata` can't be normalized because
+                // its struct tail cannot be normalized either, so try to get a
+                // more descriptive layout error here, which will lead to less confusing
+                // diagnostics.
+                match tcx.try_normalize_erasing_regions(
+                    param_env,
+                    tcx.struct_tail_without_normalization(pointee),
+                ) {
+                    Ok(_) => {},
+                    Err(better_err) => {
+                        err = better_err;
+                    }
+                }
+                return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
+            },
+        };
+
+        let metadata_layout = cx.layout_of(metadata_ty)?;
+
+        if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
+            Ok(None) // If the metadata is a 1-zst, then the pointer is thin.
+        } else if let Abi::Scalar(metadata) = metadata_layout.abi {
+            Ok(Some(metadata))
+        } else {
+            Err(error(cx, LayoutError::Unknown(pointee)))
+        }
+    } else {
+        let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+
+        match unsized_part.kind() {
+            ty::Foreign(..) => Ok(None),
+            ty::Slice(_) | ty::Str => Ok(Some(scalar_unit(Int(dl.ptr_sized_integer(), false)))),
+            ty::Dynamic(..) => {
+                let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
+                vtable.valid_range_mut().start = 1;
+                Ok(Some(vtable))
+            }
+            _ => Err(error(cx, LayoutError::Unknown(pointee))),
+        }
+    }
 }
 
 /// Overlap eligibility and variant assignment for each GeneratorSavedLocal.
