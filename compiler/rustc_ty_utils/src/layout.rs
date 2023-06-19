@@ -5,7 +5,8 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
+    IntegerExt, LayoutCx, LayoutError, LayoutOf, NaiveLayout, TyAndLayout, TyAndNaiveLayout,
+    MAX_SIMD_LANES,
 };
 use rustc_middle::ty::{
     self, AdtDef, EarlyBinder, GenericArgsRef, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
@@ -24,14 +25,14 @@ use crate::errors::{
 use crate::layout_sanity_check::sanity_check_layout;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { layout_of, ..*providers };
+    *providers = Providers { layout_of, naive_layout_of, ..*providers };
 }
 
 #[instrument(skip(tcx, query), level = "debug")]
-fn layout_of<'tcx>(
+fn naive_layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+) -> Result<TyAndNaiveLayout<'tcx>, &'tcx LayoutError<'tcx>> {
     let (param_env, ty) = query.into_parts();
     debug!(?ty);
 
@@ -53,16 +54,43 @@ fn layout_of<'tcx>(
 
     if ty != unnormalized_ty {
         // Ensure this layout is also cached for the normalized type.
+        return tcx.naive_layout_of(param_env.and(ty));
+    }
+
+    let cx = LayoutCx { tcx, param_env };
+    let layout = naive_layout_of_uncached(&cx, ty)?;
+    Ok(TyAndNaiveLayout { ty, layout })
+}
+
+#[instrument(skip(tcx, query), level = "debug")]
+fn layout_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+    let (param_env, unnormalized_ty) = query.into_parts();
+    let param_env = param_env.with_reveal_all_normalized(tcx);
+    // `naive_layout_of` takes care of normalizing the type.
+    let naive = tcx.naive_layout_of(query)?;
+    let ty = naive.ty;
+
+    if ty != unnormalized_ty {
+        // Ensure this layout is also cached for the normalized type.
         return tcx.layout_of(param_env.and(ty));
     }
 
     let cx = LayoutCx { tcx, param_env };
-
     let layout = layout_of_uncached(&cx, ty)?;
+
+    if !naive.is_underestimate_of(layout) {
+        bug!(
+            "the estimated naive layout is bigger than the actual layout:\n{:#?}\n{:#?}",
+            naive,
+            layout,
+        );
+    }
+
     let layout = TyAndLayout { ty, layout };
-
     record_layout_for_printing(&cx, layout);
-
     sanity_check_layout(&cx, &layout);
 
     Ok(layout)
@@ -73,6 +101,132 @@ fn error<'tcx>(
     err: LayoutError<'tcx>,
 ) -> &'tcx LayoutError<'tcx> {
     cx.tcx.arena.alloc(err)
+}
+
+fn naive_layout_of_uncached<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    ty: Ty<'tcx>,
+) -> Result<NaiveLayout, &'tcx LayoutError<'tcx>> {
+    let tcx = cx.tcx;
+    let dl = cx.data_layout();
+
+    let scalar =
+        |value: Primitive| NaiveLayout { min_size: value.size(dl), min_align: value.align(dl).abi };
+
+    let univariant = |fields: &mut dyn Iterator<Item = Ty<'tcx>>,
+                      repr: &ReprOptions|
+     -> Result<NaiveLayout, &'tcx LayoutError<'tcx>> {
+        // For simplicity, ignore inter-field padding; this may underestimate the size.
+        // FIXME(reference_niches): Be smarter and implement something closer to the real layout logic.
+        let mut layout = NaiveLayout::EMPTY;
+        for field in fields {
+            let field = cx.naive_layout_of(field)?;
+            layout = layout
+                .concat(&field, cx)
+                .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
+        }
+
+        if let Some(align) = repr.align {
+            layout.min_align = std::cmp::max(layout.min_align, align);
+        }
+        if let Some(pack) = repr.pack {
+            layout.min_align = std::cmp::min(layout.min_align, pack);
+        }
+
+        Ok(layout.pad_to_align())
+    };
+
+    debug_assert!(!ty.has_non_region_infer());
+
+    Ok(match *ty.kind() {
+        // Basic scalars
+        ty::Bool => scalar(Int(I8, false)),
+        ty::Char => scalar(Int(I32, false)),
+        ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
+        ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
+        ty::Float(fty) => scalar(match fty {
+            ty::FloatTy::F32 => F32,
+            ty::FloatTy::F64 => F64,
+        }),
+        ty::FnPtr(_) => scalar(Pointer(dl.instruction_address_space)),
+
+        // The never type.
+        ty::Never => NaiveLayout::EMPTY,
+
+        // Potentially-wide pointers.
+        ty::Ref(_, _, _) | ty::RawPtr(_) => {
+            // TODO(reference_niches): handle wide pointers
+            scalar(Pointer(AddressSpace::DATA))
+        }
+
+        ty::Dynamic(_, _, ty::DynStar) => {
+            let ptr = scalar(Pointer(AddressSpace::DATA));
+            ptr.concat(&ptr, cx).ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?
+        }
+
+        // Arrays and slices.
+        ty::Array(element, _count) => {
+            let element = cx.naive_layout_of(element)?;
+            NaiveLayout {
+                min_size: Size::ZERO, // TODO(reference_niches): proper array size
+                min_align: element.min_align,
+            }
+        }
+        ty::Slice(element) => {
+            NaiveLayout { min_size: Size::ZERO, min_align: cx.naive_layout_of(element)?.min_align }
+        }
+        ty::Str => NaiveLayout::EMPTY,
+
+        // Odd unit types.
+        ty::FnDef(..) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => NaiveLayout::EMPTY,
+
+        // FIXME(reference_niches): try to actually compute a reasonable layout estimate,
+        // without duplicating too much code from `generator_layout`.
+        ty::Generator(..) => NaiveLayout::EMPTY,
+
+        ty::Closure(_, ref substs) => {
+            univariant(&mut substs.as_closure().upvar_tys(), &ReprOptions::default())?
+        }
+
+        ty::Tuple(tys) => univariant(&mut tys.iter(), &ReprOptions::default())?,
+
+        ty::Adt(def, substs) if def.is_union() => {
+            let repr = def.repr();
+            let only_variant = &def.variants()[FIRST_VARIANT];
+            only_variant.fields.iter().try_fold(NaiveLayout::EMPTY, |layout, f| {
+                let mut fields = std::iter::once(f.ty(tcx, substs));
+                univariant(&mut fields, &repr).map(|l| layout.union(&l))
+            })?
+        }
+
+        ty::Adt(def, substs) => {
+            // For simplicity, assume that any discriminant field (if it exists)
+            // gets niched inside one of the variants; this will underestimate the size
+            // (and sometimes alignment) of enums.
+            // FIXME(reference_niches): Be smarter and actually take into accoount the discriminant.
+            let repr = def.repr();
+            def.variants().iter().try_fold(NaiveLayout::EMPTY, |layout, v| {
+                let mut fields = v.fields.iter().map(|f| f.ty(tcx, substs));
+                let vlayout = univariant(&mut fields, &repr)?;
+                Ok(layout.union(&vlayout))
+            })?
+        }
+
+        // Types with no meaningful known layout.
+        ty::Alias(..) => {
+            // NOTE(eddyb) `layout_of` query should've normalized these away,
+            // if that was possible, so there's no reason to try again here.
+            return Err(error(cx, LayoutError::Unknown(ty)));
+        }
+
+        ty::Bound(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Infer(_) => {
+            bug!("Layout::compute: unexpected type `{}`", ty)
+        }
+
+        ty::Placeholder(..) | ty::Param(_) | ty::Error(_) => {
+            return Err(error(cx, LayoutError::Unknown(ty)));
+        }
+    })
 }
 
 fn univariant_uninterned<'tcx>(
@@ -146,6 +300,14 @@ fn layout_of_uncached<'tcx>(
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
             let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
             if !ty.is_unsafe_ptr() {
+                match cx.naive_layout_of(pointee) {
+                    // TODO(reference_niches): actually use the naive layout to set
+                    // reference niches; the query is still kept to for testing purposes.
+                    Ok(_) => (),
+                    // This can happen when computing the `SizeSkeleton` of a generic type.
+                    Err(LayoutError::Unknown(_)) => (),
+                    Err(err) => return Err(err),
+                }
                 data_ptr.valid_range_mut().start = 1;
             }
 
@@ -558,18 +720,15 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
-        ty::Alias(..) => {
-            // NOTE(eddyb) `layout_of` query should've normalized these away,
-            // if that was possible, so there's no reason to try again here.
-            return Err(error(cx, LayoutError::Unknown(ty)));
-        }
-
-        ty::Bound(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Infer(_) => {
-            bug!("Layout::compute: unexpected type `{}`", ty)
-        }
-
-        ty::Placeholder(..) | ty::Param(_) | ty::Error(_) => {
-            return Err(error(cx, LayoutError::Unknown(ty)));
+        ty::Alias(..)
+        | ty::Bound(..)
+        | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
+        | ty::Infer(_)
+        | ty::Placeholder(..)
+        | ty::Param(_)
+        | ty::Error(_) => {
+            unreachable!("already rejected by `naive_layout_of`");
         }
     })
 }

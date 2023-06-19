@@ -1,4 +1,4 @@
-//~ ERROR overflow evaluating the requirement `&mut Self: DispatchFromDyn<&mut RustaceansAreAwesome>
+//~ ERROR queries overflow the depth limit!
 //~| HELP consider increasing the recursion limit
 // build-fail
 

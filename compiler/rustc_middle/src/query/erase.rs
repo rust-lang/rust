@@ -111,6 +111,11 @@ impl EraseType
     >()];
 }
 
+impl EraseType for Result<ty::layout::TyAndNaiveLayout<'_>, &ty::layout::LayoutError<'_>> {
+    type Result =
+        [u8; size_of::<Result<ty::layout::TyAndNaiveLayout<'_>, &ty::layout::LayoutError<'_>>>()];
+}
+
 impl EraseType for Result<ty::Const<'_>, mir::interpret::LitToConstError> {
     type Result = [u8; size_of::<Result<ty::Const<'static>, mir::interpret::LitToConstError>>()];
 }

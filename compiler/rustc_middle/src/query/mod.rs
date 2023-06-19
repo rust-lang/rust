@@ -1394,6 +1394,17 @@ rustc_queries! {
         desc { "computing layout of `{}`", key.value }
     }
 
+    /// Computes the naive layout estimate of a type. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
+    ///
+    /// Unlike `layout_of`, this doesn't recurse behind reference types.
+    query naive_layout_of(
+        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Result<ty::layout::TyAndNaiveLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
+        depth_limit
+        desc { "computing layout (naive) of `{}`", key.value }
+    }
+
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
     /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`

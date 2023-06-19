@@ -1,5 +1,5 @@
 //@error-in-other-file: a cycle occurred during layout computation
-//~^ ERROR: cycle detected when computing layout of
+//~^ ERROR: cycle detected when computing layout (naive) of
 
 use std::mem;
 

@@ -621,6 +621,61 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
 
 pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct TyAndNaiveLayout<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub layout: NaiveLayout,
+}
+
+impl std::ops::Deref for TyAndNaiveLayout<'_> {
+    type Target = NaiveLayout;
+    fn deref(&self) -> &Self::Target {
+        &self.layout
+    }
+}
+
+impl std::ops::DerefMut for TyAndNaiveLayout<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.layout
+    }
+}
+
+/// A naive underestimation of the layout of a type.
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct NaiveLayout {
+    pub min_size: Size,
+    pub min_align: Align,
+}
+
+impl NaiveLayout {
+    pub const EMPTY: Self = Self { min_size: Size::ZERO, min_align: Align::ONE };
+
+    pub fn is_underestimate_of(&self, layout: Layout<'_>) -> bool {
+        self.min_size <= layout.size() && self.min_align <= layout.align().abi
+    }
+
+    #[must_use]
+    pub fn pad_to_align(self) -> Self {
+        Self { min_size: self.min_size.align_to(self.min_align), min_align: self.min_align }
+    }
+
+    #[must_use]
+    pub fn concat<C: HasDataLayout>(&self, other: &Self, cx: &C) -> Option<Self> {
+        Some(Self {
+            min_size: self.min_size.checked_add(other.min_size, cx)?,
+            min_align: std::cmp::max(self.min_align, other.min_align),
+        })
+    }
+
+    #[must_use]
+    pub fn union(&self, other: &Self) -> Self {
+        Self {
+            min_size: std::cmp::max(self.min_size, other.min_size),
+            min_align: std::cmp::max(self.min_align, other.min_align),
+        }
+    }
+}
+
 /// Trait for contexts that want to be able to compute layouts of types.
 /// This automatically gives access to `LayoutOf`, through a blanket `impl`.
 pub trait LayoutOfHelpers<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
@@ -672,6 +727,18 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
             tcx.layout_of(self.param_env().and(ty))
                 .map_err(|err| self.handle_layout_err(*err, span, ty)),
         )
+    }
+
+    /// Computes the naive layout estimate of a type. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
+    ///
+    /// Unlike `layout_of`, this doesn't recurse behind reference types.
+    #[inline]
+    fn naive_layout_of(
+        &self,
+        ty: Ty<'tcx>,
+    ) -> Result<TyAndNaiveLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        self.tcx().naive_layout_of(self.param_env().and(ty))
     }
 }
 
