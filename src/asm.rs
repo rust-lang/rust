@@ -518,7 +518,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 OperandValue::Immediate(op.tmp_var.to_rvalue()).store(self, place);
             }
         }
-
     }
 }
 

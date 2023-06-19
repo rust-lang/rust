@@ -29,10 +29,10 @@ git config user.name || git config user.name "None"
 
 git commit -m "Initial commit" -q
 for file in $(ls ../../patches/ | grep -v patcha); do
-echo "[GIT] apply" $file
-git apply ../../patches/$file
-git add -A
-git commit --no-gpg-sign -m "Patch $file"
+    echo "[GIT] apply" $file
+    git apply ../../patches/$file
+    git add -A
+    git commit --no-gpg-sign -m "Patch $file"
 done
 popd
 
