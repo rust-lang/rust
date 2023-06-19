@@ -148,6 +148,7 @@ v("qemu-aarch64-rootfs", "target.aarch64-unknown-linux-gnu.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
 v("qemu-riscv64-rootfs", "target.riscv64gc-unknown-linux-gnu.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
+v("llvm-targets", "llvm.targets", "LLVM targets to build")
 v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
