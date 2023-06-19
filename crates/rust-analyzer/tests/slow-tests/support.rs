@@ -78,7 +78,10 @@ impl<'a> Project<'a> {
         INIT.call_once(|| {
             tracing_subscriber::fmt()
                 .with_test_writer()
-                .with_env_filter(tracing_subscriber::EnvFilter::from_env("RA_LOG"))
+                // FIXME: I am not smart enough to figure out how to use this with
+                // `tracing_subscriber::filter::Targets`.
+                //
+                // .with_env_filter(tracing_subscriber::EnvFilter::from_env("RA_LOG"))
                 .init();
             profile::init_from(crate::PROFILE);
         });
