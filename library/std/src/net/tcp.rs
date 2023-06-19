@@ -641,21 +641,21 @@ impl TcpStream {
     /// Polls for new data on the stream
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
-    pub fn poll_read(&mut self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_read(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_read(cx, buf)
     }
 
     /// Polls for readability of the stream
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
-    pub fn poll_read_ready(&mut self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_read_ready(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_read_ready(cx)
     }
 
     /// Polls for new vector of data on the stream
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
-    pub fn poll_read_vectored(&mut self, cx: &mut crate::task::Context<'_>, bufs: &mut [IoSliceMut<'_>]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_read_vectored(&self, cx: &mut crate::task::Context<'_>, bufs: &mut [IoSliceMut<'_>]) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_read_vectored(cx, bufs)
     }
 }
@@ -683,21 +683,21 @@ impl TcpStream {
     /// Polls for writing data to the stream
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
-    pub fn poll_write(&mut self, cx: &mut crate::task::Context<'_>, buf: &[u8]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_write(&self, cx: &mut crate::task::Context<'_>, buf: &[u8]) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_write(cx, buf)
     }
 
     /// Polls for writeability to the stream
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
-    pub fn poll_write_ready(&mut self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_write_ready(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_write_ready(cx)
     }
 
     /// Polls for writing data to the stream
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
-    pub fn poll_write_vectored(&mut self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_write_vectored(&self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>]) -> crate::task::Poll<io::Result<usize>> {
         self.0.poll_write_vectored(cx, bufs)
     }
 }
