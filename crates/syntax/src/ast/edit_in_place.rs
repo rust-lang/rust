@@ -676,12 +676,6 @@ fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
     }
 }
 
-impl ast::StmtList {
-    pub fn push_front(&self, statement: ast::Stmt) {
-        ted::insert(Position::after(self.l_curly_token().unwrap()), statement.syntax());
-    }
-}
-
 impl ast::VariantList {
     pub fn add_variant(&self, variant: ast::Variant) {
         let (indent, position) = match self.variants().last() {
