@@ -26,29 +26,53 @@ pub extern "C" fn _waker_drop(waker: u64) {
     drop(waker);
 }
 
-fn _waker_register(cx: &mut crate::task::Context<'_>) -> u64 {
+fn _waker_register(cx: &mut crate::task::Context<'_>) -> RawWasiWakerRef {
     let waker = Box::new(RawWasiWaker {
         inner: cx.waker().clone()
     });
     let waker = Box::into_raw(waker) as *mut RawWasiWaker;
     let waker = waker as usize;
-    waker as u64
+    (waker as u64).into()
+}
+
+pub(crate) struct RawWasiWakerRef {
+    id: Option<u64>,
+}
+impl From<u64>
+for RawWasiWakerRef {
+    fn from(val: u64) -> Self {
+        Self {
+            id: Some(val)
+        }
+    }
+}
+impl Drop
+for RawWasiWakerRef {
+    fn drop(&mut self) {
+        if let Some(id) = self.id.take() {
+            _waker_drop(id);
+        }
+    }
+}
+impl Into<u64>
+for RawWasiWakerRef {
+    fn into(mut self) -> u64 {
+        self.id.take().unwrap()
+    }
 }
 
 pub(crate) fn asyncify<T, F>(cx: &mut Context<'_>, funct: F) -> Poll<io::Result<T>>
-where F: FnOnce(u64) -> Result<T, Errno> {
+where F: FnOnce(RawWasiWakerRef) -> Result<T, Errno> {
     let waker_id = _waker_register(cx);
     let ret = funct(waker_id);
     match ret {
         Ok(ret) => {
-            _waker_drop(waker_id);
             Poll::Ready(Ok(ret))
         },
         Err(wasi::ERRNO_PENDING) => {
             Poll::Pending
         },
         Err(err) => {
-            _waker_drop(waker_id);
             Poll::Ready(Err(super::err2io(err)))
         }
     }

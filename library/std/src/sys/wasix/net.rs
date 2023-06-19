@@ -188,7 +188,7 @@ impl Socket
     pub fn poll_accept(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<Socket>> {
         super::asyncify(cx, |waker_id| {
             let (fd, addr) = unsafe {
-                wasi::sock_accept_poll(self.fd(), 0, waker_id)?
+                wasi::sock_accept_poll(self.fd(), 0, waker_id.into())?
             };
             let addr = conv_addr_port(addr);
             Ok(Socket {
@@ -290,7 +290,7 @@ impl Socket
     ) -> crate::task::Poll<io::Result<(usize, wasi::Roflags)>> {
         super::asyncify(cx, |waker_id| {
             let (amt, flags) = unsafe {
-                wasi::sock_recv_poll(self.fd(), super::fd::iovec(ri_data), ri_flags, waker_id)?
+                wasi::sock_recv_poll(self.fd(), super::fd::iovec(ri_data), ri_flags, waker_id.into())?
             };
             Ok((amt as usize, flags))
         })
@@ -306,7 +306,7 @@ impl Socket
         super::asyncify(cx, |waker_id| {
             let mut ri_data = [ IoSliceMut::new(buf) ];
             let (amt, _) = unsafe {
-                wasi::sock_recv_poll(self.fd(), super::fd::iovec(&mut ri_data), 0, waker_id)?
+                wasi::sock_recv_poll(self.fd(), super::fd::iovec(&mut ri_data), 0, waker_id.into())?
             };
             Ok(amt as usize)
         })        
@@ -330,7 +330,7 @@ impl Socket
         super::asyncify(cx, |waker_id| {
             let mut ri_data = [ IoSliceMut::new(buf) ];
             let (amt, _) = unsafe {
-                wasi::sock_recv_poll(self.fd(), super::fd::iovec(&mut ri_data), MSG_PEEK as u16, waker_id)?
+                wasi::sock_recv_poll(self.fd(), super::fd::iovec(&mut ri_data), MSG_PEEK as u16, waker_id.into())?
             };
             Ok(amt as usize)
         })        
@@ -357,7 +357,7 @@ impl Socket
     pub fn poll_recv_vectored(&self, cx: &mut crate::task::Context<'_>, ri_data: &mut [IoSliceMut<'_>]) -> crate::task::Poll<io::Result<usize>> {
         super::asyncify(cx, |waker_id| {
             let (amt, _) = unsafe {
-                wasi::sock_recv_poll(self.fd(), super::fd::iovec(ri_data), 0, waker_id)?
+                wasi::sock_recv_poll(self.fd(), super::fd::iovec(ri_data), 0, waker_id.into())?
             };
             Ok(amt as usize)
         })
@@ -391,7 +391,7 @@ impl Socket
     ) -> crate::task::Poll<io::Result<(usize, wasi::Roflags, SocketAddr)>> {
         super::asyncify(cx, |waker_id| {
             let ret = unsafe {
-                wasi::sock_recv_from_poll(self.fd(), super::fd::iovec(ri_data), ri_flags, waker_id)?
+                wasi::sock_recv_from_poll(self.fd(), super::fd::iovec(ri_data), ri_flags, waker_id.into())?
             };
             Ok((
                 ret.0 as usize,
@@ -449,7 +449,7 @@ impl Socket
         super::asyncify(cx, |waker_id| {
             unsafe {
                 Ok(
-                    wasi::sock_send_poll(self.fd(), super::fd::ciovec(si_data), si_flags, waker_id).map(|a| a as usize)?
+                    wasi::sock_send_poll(self.fd(), super::fd::ciovec(si_data), si_flags, waker_id.into()).map(|a| a as usize)?
                 )
             }
         })
@@ -522,7 +522,7 @@ impl Socket
             let addr = to_wasi_addr_port(addr);
             Ok(
                 unsafe {
-                    wasi::sock_send_to_poll(self.fd(), super::fd::ciovec(si_data), si_flags, &addr, waker_id)?
+                    wasi::sock_send_to_poll(self.fd(), super::fd::ciovec(si_data), si_flags, &addr, waker_id.into())?
                 }
             )
         })
