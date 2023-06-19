@@ -1065,7 +1065,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         )?;
 
                         ocx.infcx.add_item_bounds_for_hidden_type(
-                            opaque_type_key,
+                            opaque_type_key.def_id.to_def_id(),
+                            opaque_type_key.substs,
                             cause,
                             param_env,
                             hidden_ty.ty,
