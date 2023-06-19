@@ -1132,27 +1132,24 @@ export function linkToCommand(_: Ctx): Cmd {
 
 export function viewMemoryLayout(ctx: CtxInit): Cmd {
     return async () => {
-
         const editor = vscode.window.activeTextEditor;
         if (!editor) return "";
         const client = ctx.client;
 
         const position = editor.selection.active;
         const expanded = await client.sendRequest(ra.viewRecursiveMemoryLayout, {
-            textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
-                editor.document
-            ),
+            textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             position,
         });
 
         // if (expanded == null) return "Not available";
 
-
         const document = vscode.window.createWebviewPanel(
             "memory_layout",
             "[Memory Layout]",
             vscode.ViewColumn.Two,
-            { enableScripts: true, });
+            { enableScripts: true }
+        );
 
         document.webview.html = `<!DOCTYPE html>
 <html lang="en">
@@ -1407,7 +1404,7 @@ locate()
 
 })()
 </script>
-</html>`
+</html>`;
 
         ctx.pushExtCleanup(document);
     };

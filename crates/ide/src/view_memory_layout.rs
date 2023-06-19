@@ -145,26 +145,28 @@ pub(crate) fn view_memory_layout(
         }
     }
 
-    ty.layout(db).map(|layout| {
-        let item_name = match def {
-            Definition::Local(l) => l.name(db).as_str().unwrap().to_owned(),
-            _ => "[ROOT]".to_owned(),
-        };
+    ty.layout(db)
+        .map(|layout| {
+            let item_name = match def {
+                Definition::Local(l) => l.name(db).as_str().unwrap().to_owned(),
+                _ => "[ROOT]".to_owned(),
+            };
 
-        let typename = ty.display(db).to_string();
+            let typename = ty.display(db).to_string();
 
-        let mut nodes = vec![MemoryLayoutNode {
-            item_name,
-            typename: typename.clone(),
-            size: layout.size(),
-            offset: 0,
-            alignment: layout.align(),
-            parent_idx: -1,
-            children_start: -1,
-            children_len: 0,
-        }];
-        read_layout(&mut nodes, db, &ty, &layout, 0);
+            let mut nodes = vec![MemoryLayoutNode {
+                item_name,
+                typename: typename.clone(),
+                size: layout.size(),
+                offset: 0,
+                alignment: layout.align(),
+                parent_idx: -1,
+                children_start: -1,
+                children_len: 0,
+            }];
+            read_layout(&mut nodes, db, &ty, &layout, 0);
 
-        RecursiveMemoryLayout { nodes }
-    })
+            RecursiveMemoryLayout { nodes }
+        })
+        .ok()
 }
