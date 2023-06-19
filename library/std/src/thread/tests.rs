@@ -159,10 +159,10 @@ where
     let (tx, rx) = channel();
 
     let x: Box<_> = Box::new(1);
-    let x_in_parent = (&*x) as *const i32 as usize;
+    let x_in_parent = &*x as *const i32 as usize;
 
     spawnfn(Box::new(move || {
-        let x_in_child = (&*x) as *const i32 as usize;
+        let x_in_child = &*x as *const i32 as usize;
         tx.send(x_in_child).unwrap();
     }));
 
