@@ -361,7 +361,7 @@ fn format_args_expand_general(
                         quote!(::core::fmt::Display::fmt)
                     }
                 };
-                arg_tts.push(quote! { ::core::fmt::Argument::new(&(#arg_tree), #formatter), });
+                arg_tts.push(quote! { ::core::fmt::ArgumentV1::new(&(#arg_tree), #formatter), });
             }
             '}' => {
                 if format_iter.peek() == Some(&'}') {
