@@ -1133,7 +1133,7 @@ export function linkToCommand(_: Ctx): Cmd {
 export function viewMemoryLayout(ctx: CtxInit): Cmd {
     return async () => {
         const editor = vscode.window.activeTextEditor;
-        if (!editor) return "";
+        if (!editor) return;
         const client = ctx.client;
 
         const position = editor.selection.active;
