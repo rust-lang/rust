@@ -162,6 +162,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value with layout.abi of scalar
+    #[track_caller]
     pub(crate) fn load_scalar(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> Value {
         let layout = self.1;
         match self.0 {
@@ -184,6 +185,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value pair with layout.abi of scalar pair
+    #[track_caller]
     pub(crate) fn load_scalar_pair(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> (Value, Value) {
         let layout = self.1;
         match self.0 {
@@ -609,30 +611,38 @@ impl<'tcx> CPlace<'tcx> {
 
                 let mut flags = MemFlags::new();
                 flags.set_notrap();
-                match from.layout().abi {
-                    Abi::Scalar(_) => {
-                        let val = from.load_scalar(fx);
-                        to_ptr.store(fx, val, flags);
-                        return;
-                    }
-                    Abi::ScalarPair(a_scalar, b_scalar) => {
-                        let (value, extra) = from.load_scalar_pair(fx);
-                        let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                        to_ptr.store(fx, value, flags);
-                        to_ptr.offset(fx, b_offset).store(fx, extra, flags);
-                        return;
-                    }
-                    _ => {}
-                }
 
                 match from.0 {
                     CValueInner::ByVal(val) => {
                         to_ptr.store(fx, val, flags);
                     }
-                    CValueInner::ByValPair(_, _) => {
-                        bug!("Non ScalarPair abi {:?} for ByValPair CValue", dst_layout.abi);
-                    }
+                    CValueInner::ByValPair(val1, val2) => match from.layout().abi {
+                        Abi::ScalarPair(a_scalar, b_scalar) => {
+                            let b_offset =
+                                scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                            to_ptr.store(fx, val1, flags);
+                            to_ptr.offset(fx, b_offset).store(fx, val2, flags);
+                        }
+                        _ => bug!("Non ScalarPair abi {:?} for ByValPair CValue", dst_layout.abi),
+                    },
                     CValueInner::ByRef(from_ptr, None) => {
+                        match from.layout().abi {
+                            Abi::Scalar(_) => {
+                                let val = from.load_scalar(fx);
+                                to_ptr.store(fx, val, flags);
+                                return;
+                            }
+                            Abi::ScalarPair(a_scalar, b_scalar) => {
+                                let b_offset =
+                                    scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                                let (val1, val2) = from.load_scalar_pair(fx);
+                                to_ptr.store(fx, val1, flags);
+                                to_ptr.offset(fx, b_offset).store(fx, val2, flags);
+                                return;
+                            }
+                            _ => {}
+                        }
+
                         let from_addr = from_ptr.get_addr(fx);
                         let to_addr = to_ptr.get_addr(fx);
                         let src_layout = from.1;
