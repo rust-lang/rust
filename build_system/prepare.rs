@@ -27,6 +27,7 @@ pub(crate) fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
         STDLIB_SRC.to_path(dirs).join("Cargo.toml"),
         r#"
 [workspace]
+resolver = "1"
 members = ["./library/sysroot"]
 
 [patch.crates-io]
