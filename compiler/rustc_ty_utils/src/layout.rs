@@ -156,7 +156,22 @@ fn layout_of_uncached<'tcx>(
                     pointee_metadata,
                 ) {
                     Ok(metadata_ty) => metadata_ty,
-                    Err(err) => return Err(LayoutError::NormalizationFailure(pointee, err)),
+                    Err(mut err) => {
+                        // Usually `<Ty as Pointee>::Metadata` can't be normalized because
+                        // its struct tail cannot be normalized either, so try to get a
+                        // more descriptive layout error here, which will lead to less confusing
+                        // diagnostics.
+                        match tcx.try_normalize_erasing_regions(
+                            param_env,
+                            tcx.struct_tail_without_normalization(pointee),
+                        ) {
+                            Ok(_) => {},
+                            Err(better_err) => {
+                                err = better_err;
+                            }
+                        }
+                        return Err(LayoutError::NormalizationFailure(pointee, err));
+                    },
                 };
 
                 let metadata_layout = cx.layout_of(metadata_ty)?;
