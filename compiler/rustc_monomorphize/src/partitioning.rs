@@ -315,7 +315,7 @@ fn merge_codegen_units<'tcx>(
     // worse generated code. So we don't allow CGUs smaller than this (unless
     // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
     // common in larger programs, so this isn't all that large.
-    //const NON_INCR_MIN_CGU_SIZE: usize = 1000;
+    const NON_INCR_MIN_CGU_SIZE: usize = 1000;
 
     // Repeatedly merge the two smallest codegen units as long as:
     // - we have more CGUs than the upper limit, or
@@ -333,13 +333,30 @@ fn merge_codegen_units<'tcx>(
             && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
             && codegen_units.len() > 1)
     {
-        // Sort small cgus to the back.
+        while codegen_units.len() > 1
+            && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE)
+        {
+            // Sort small cgus to the back.
+            codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+
+            let Some((mut smallest, second_smallest)) = codegen_units.pop().zip(codegen_units.last_mut()) else { break; };
+
+            // Move the mono-items from `smallest` to `second_smallest`
+            second_smallest.modify_size_estimate(smallest.size_estimate());
+            second_smallest.items_mut().extend(smallest.items_mut().drain());
+
+            // Record that `second_smallest` now contains all the stuff that was
+            // in `smallest` before.
+            let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
+            cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
+        }
+
         codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         let fallback_cgu_name = fallback_cgu_name(cgu_name_builder);
         let mut default = CodegenUnit::new(fallback_cgu_name);
         default.create_size_estimate(cx.tcx);
         let mut merged_subsets: Vec<CodegenUnit<'_>> =
-            vec![default; cx.tcx.sess.codegen_units().as_usize()];
+            vec![default; cx.tcx.sess.codegen_units().as_usize().min(codegen_units.len())];
 
         codegen_units.iter_mut().for_each(|cgu| {
             let min = merged_subsets
