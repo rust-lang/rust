@@ -217,7 +217,9 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
         | DefKind::Closure
-        | DefKind::Generator => &[],
+        | DefKind::Generator => {
+            span_bug!(tcx.def_span(item), "{kind:?} is type checked as part of its parent")
+        }
     }
 }
 
