@@ -454,12 +454,33 @@ fn instance_def_size_estimate<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance_def: ty::InstanceDef<'tcx>,
 ) -> usize {
+    use rustc_middle::mir::StatementKind;
     use ty::InstanceDef;
-
     match instance_def {
         InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
             let mir = tcx.instance_mir(instance_def);
-            mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
+            mir.basic_blocks
+                .iter()
+                .map(|bb| {
+                    bb.statements
+                        .iter()
+                        .filter(|s| {
+                            // do not count non-codegen statement
+                            !matches!(
+                                s.kind,
+                                StatementKind::Deinit(..)
+                                    | StatementKind::FakeRead(..)
+                                    | StatementKind::Retag { .. }
+                                    | StatementKind::AscribeUserType(..)
+                                    | StatementKind::ConstEvalCounter
+                                    | StatementKind::PlaceMention(..)
+                                    | StatementKind::Nop
+                            )
+                        })
+                        .count()
+                        + 1
+                })
+                .sum()
         }
         // Estimate the size of other compiler-generated shims to be 1.
         _ => 1,
