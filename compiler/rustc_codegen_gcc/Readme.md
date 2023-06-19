@@ -193,7 +193,7 @@ Using git-subtree with `rustc` requires a patched git to make it work.
 The PR that is needed is [here](https://github.com/gitgitgadget/git/pull/493).
 Use the following instructions to install it:
 
-```
+```bash
 git clone git@github.com:tqc/git.git
 cd git
 git checkout tqc/subtree
@@ -203,6 +203,21 @@ cd contrib/subtree
 make
 cp git-subtree ~/bin
 ```
+
+Then, do a sync with this command:
+
+```bash
+PATH="$HOME/bin:$PATH" ~/bin/git-subtree push -P compiler/rustc_codegen_gcc/ ../rustc_codegen_gcc/ sync_branch_name
+cd ../rustc_codegen_gcc
+git checkout master
+git pull
+git checkout sync_branch_name
+git merge master
+```
+
+TODO: write a script that does the above.
+
+https://rust-lang.zulipchat.com/#narrow/stream/301329-t-devtools/topic/subtree.20madness/near/258877725
 
 ### How to use [mem-trace](https://github.com/antoyo/mem-trace)
 

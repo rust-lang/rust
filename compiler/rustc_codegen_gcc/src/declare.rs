@@ -132,7 +132,7 @@ fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*ll
 pub fn mangle_name(name: &str) -> String {
     name.replace(|char: char| {
         if !char.is_alphanumeric() && char != '_' {
-            debug_assert!("$.".contains(char), "Unsupported char in function name: {}", char);
+            debug_assert!("$.*".contains(char), "Unsupported char in function name {}: {}", name, char);
             true
         }
         else {
