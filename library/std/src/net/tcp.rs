@@ -415,6 +415,13 @@ impl TcpStream {
         self.0.peek(buf)
     }
 
+    /// Polls for new data without actually reading it
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_peek(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_peek(cx, buf)
+    }
+
     /// Sets the value of the `SO_LINGER` option on this socket.
     ///
     /// This value controls how the socket is closed when data remains
@@ -628,6 +635,23 @@ impl Read for TcpStream {
         self.0.is_read_vectored()
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl TcpStream {
+    /// Polls for new data on the stream
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_read(&mut self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_read(cx, buf)
+    }
+
+    /// Polls for new vector of data on the stream
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_read_vectored(&mut self, cx: &mut crate::task::Context<'_>, bufs: &mut [IoSliceMut<'_>]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_read_vectored(cx, bufs)
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -645,6 +669,22 @@ impl Write for TcpStream {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl TcpStream {
+    /// Polls for writing data to the stream
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_write(&mut self, cx: &mut crate::task::Context<'_>, buf: &[u8]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_write(cx, buf)
+    }
+
+    /// Polls for writing data to the stream
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_write_vectored(&mut self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_write_vectored(cx, bufs)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -812,6 +852,15 @@ impl TcpListener {
         self.0.accept().map(|(a, b)| (TcpStream(a), b))
     }
 
+    /// Polls for a new incoming connection from this listener.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_accept(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<(TcpStream, SocketAddr)>> {
+        self.0
+            .poll_accept(cx)
+            .map_ok(|(a, b)| (TcpStream(a), b))
+    }
+    
     /// Accept a new incoming connection from this listener (or times out).
     ///
     /// Unlike other methods on `TcpStream`, this does not correspond to a

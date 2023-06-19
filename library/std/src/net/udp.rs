@@ -118,6 +118,13 @@ impl UdpSocket {
         self.0.recv_from(buf)
     }
 
+    /// Polls for new data
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_recv_from(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<(usize, SocketAddr)>> {
+        self.0.poll_recv_from(cx, buf)
+    }
+
     /// Receives a single datagram message on the socket, without removing it from the
     /// queue. On success, returns the number of bytes read and the origin.
     ///
@@ -145,6 +152,13 @@ impl UdpSocket {
     #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.0.peek_from(buf)
+    }
+
+    /// Polls for new data without actually reading it
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_peek_from(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<(usize, SocketAddr)>> {
+        self.0.poll_peek_from(cx, buf)
     }
 
     /// Sends data on the socket to the given address. On success, returns the
@@ -177,6 +191,18 @@ impl UdpSocket {
             Some(addr) => self.0.send_to(buf, &addr),
             None => {
                 Err(io::const_io_error!(ErrorKind::InvalidInput, "no addresses to send data to"))
+            }
+        }
+    }
+
+    /// Polls to send data to an address
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_send_to<A: ToSocketAddrs>(&self, cx: &mut crate::task::Context<'_>, buf: &[u8], addr: A) -> crate::task::Poll<io::Result<usize>> {
+        match addr.to_socket_addrs()?.next() {
+            Some(addr) => self.0.poll_send_to(cx, buf, &addr),
+            None => {
+                crate::task::Poll::Ready(Err(io::const_io_error!(ErrorKind::InvalidInput, "no addresses to send data to")))
             }
         }
     }
@@ -667,6 +693,13 @@ impl UdpSocket {
         self.0.send(buf)
     }
 
+    /// Polls to send data
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_send(&self, cx: &mut crate::task::Context<'_>, buf: &[u8]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_send(cx, buf)
+    }
+
     /// Receives a single datagram message on the socket from the remote address to
     /// which it is connected. On success, returns the number of bytes read.
     ///
@@ -693,6 +726,13 @@ impl UdpSocket {
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.recv(buf)
+    }
+
+    /// Polls to receive data
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_recv(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_recv(cx, buf)
     }
 
     /// Receives single datagram on the socket from the remote address to which it is
@@ -733,6 +773,13 @@ impl UdpSocket {
     #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.peek(buf)
+    }
+
+    /// Polls to receive data without removing it
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+    pub fn poll_peek(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+        self.0.poll_peek(cx, buf)
     }
 
     /// Moves this UDP socket into or out of nonblocking mode.

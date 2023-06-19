@@ -8,7 +8,7 @@ use wasi::x::Errno;
 pub extern "C" fn _waker_wake(waker: u64) {
     let waker = waker as usize;
     let waker = unsafe {
-        let waker = waker as *mut RawWasiWaker;
+        let waker = waker as *mut RawWaker;
         Box::from_raw(waker)
     };
     waker.wake();
@@ -20,26 +20,26 @@ pub extern "C" fn _waker_wake(waker: u64) {
 pub extern "C" fn _waker_drop(waker: u64) {
     let waker = waker as usize;
     let waker = unsafe {
-        let waker = waker as *mut RawWasiWaker;
+        let waker = waker as *mut RawWaker;
         Box::from_raw(waker)
     };
     drop(waker);
 }
 
-fn _waker_register(cx: &mut crate::task::Context<'_>) -> RawWasiWakerRef {
-    let waker = Box::new(RawWasiWaker {
+pub fn waker_register(cx: &mut crate::task::Context<'_>) -> RawWakerRef {
+    let waker = Box::new(RawWaker {
         inner: cx.waker().clone()
     });
-    let waker = Box::into_raw(waker) as *mut RawWasiWaker;
+    let waker = Box::into_raw(waker) as *mut RawWaker;
     let waker = waker as usize;
     (waker as u64).into()
 }
 
-pub(crate) struct RawWasiWakerRef {
+pub struct RawWakerRef {
     id: Option<u64>,
 }
 impl From<u64>
-for RawWasiWakerRef {
+for RawWakerRef {
     fn from(val: u64) -> Self {
         Self {
             id: Some(val)
@@ -47,7 +47,7 @@ for RawWasiWakerRef {
     }
 }
 impl Drop
-for RawWasiWakerRef {
+for RawWakerRef {
     fn drop(&mut self) {
         if let Some(id) = self.id.take() {
             _waker_drop(id);
@@ -55,15 +55,15 @@ for RawWasiWakerRef {
     }
 }
 impl Into<u64>
-for RawWasiWakerRef {
+for RawWakerRef {
     fn into(mut self) -> u64 {
         self.id.take().unwrap()
     }
 }
 
 pub(crate) fn asyncify<T, F>(cx: &mut Context<'_>, funct: F) -> Poll<io::Result<T>>
-where F: FnOnce(RawWasiWakerRef) -> Result<T, Errno> {
-    let waker_id = _waker_register(cx);
+where F: FnOnce(RawWakerRef) -> Result<T, Errno> {
+    let waker_id = waker_register(cx);
     let ret = funct(waker_id);
     match ret {
         Ok(ret) => {
@@ -78,11 +78,11 @@ where F: FnOnce(RawWasiWakerRef) -> Result<T, Errno> {
     }
 }
 
-struct RawWasiWaker {
+struct RawWaker {
     inner: Waker,
 }
 
-impl RawWasiWaker {
+impl RawWaker {
     pub fn wake(self) {
         self.inner.wake();
     }

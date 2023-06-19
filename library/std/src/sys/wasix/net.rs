@@ -8,6 +8,7 @@ use crate::collections::VecDeque;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
+use crate::task::{Poll, Context};
 
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::sync::{Arc, Mutex};
@@ -185,7 +186,7 @@ impl Socket
         })
     }
 
-    pub fn poll_accept(&self, cx: &mut crate::task::Context<'_>) -> crate::task::Poll<io::Result<Socket>> {
+    pub fn poll_accept(&self, cx: &mut Context<'_>) -> Poll<io::Result<Socket>> {
         super::asyncify(cx, |waker_id| {
             let (fd, addr) = unsafe {
                 wasi::sock_accept_poll(self.fd(), 0, waker_id.into())?
@@ -284,10 +285,10 @@ impl Socket
 
     fn poll_recv_with_flags(
         &self,
-        cx: &mut crate::task::Context<'_>,
+        cx: &mut Context<'_>,
         ri_data: &mut [IoSliceMut<'_>],
         ri_flags: wasi::Riflags,
-    ) -> crate::task::Poll<io::Result<(usize, wasi::Roflags)>> {
+    ) -> Poll<io::Result<(usize, wasi::Roflags)>> {
         super::asyncify(cx, |waker_id| {
             let (amt, flags) = unsafe {
                 wasi::sock_recv_poll(self.fd(), super::fd::iovec(ri_data), ri_flags, waker_id.into())?
@@ -302,7 +303,7 @@ impl Socket
         Ok(ret.0)
     }
 
-    pub fn poll_recv(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_recv(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
         super::asyncify(cx, |waker_id| {
             let mut ri_data = [ IoSliceMut::new(buf) ];
             let (amt, _) = unsafe {
@@ -316,7 +317,7 @@ impl Socket
         self.recv(buf)
     }
 
-    pub fn poll_read(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_read(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
         self.poll_recv(cx, buf)
     }
 
@@ -326,7 +327,7 @@ impl Socket
         Ok(ret.0)
     }
 
-    pub fn poll_peek(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_peek(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
         super::asyncify(cx, |waker_id| {
             let mut ri_data = [ IoSliceMut::new(buf) ];
             let (amt, _) = unsafe {
@@ -340,7 +341,7 @@ impl Socket
         self.recv_vectored(bufs)
     }
 
-    pub fn poll_read_vectored(&self, cx: &mut crate::task::Context<'_>, bufs: &mut [IoSliceMut<'_>]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_read_vectored(&self, cx: &mut Context<'_>, bufs: &mut [IoSliceMut<'_>]) -> Poll<io::Result<usize>> {
         self.poll_recv_vectored(cx, bufs)
     }
 
@@ -354,7 +355,7 @@ impl Socket
         Ok(ret.0)
     }
 
-    pub fn poll_recv_vectored(&self, cx: &mut crate::task::Context<'_>, ri_data: &mut [IoSliceMut<'_>]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_recv_vectored(&self, cx: &mut Context<'_>, ri_data: &mut [IoSliceMut<'_>]) -> Poll<io::Result<usize>> {
         super::asyncify(cx, |waker_id| {
             let (amt, _) = unsafe {
                 wasi::sock_recv_poll(self.fd(), super::fd::iovec(ri_data), 0, waker_id.into())?
@@ -385,10 +386,10 @@ impl Socket
 
     fn poll_recv_from_with_flags(
         &self,
-        cx: &mut crate::task::Context<'_>,
+        cx: &mut Context<'_>,
         ri_data: &mut [IoSliceMut<'_>],
         ri_flags: wasi::Riflags,
-    ) -> crate::task::Poll<io::Result<(usize, wasi::Roflags, SocketAddr)>> {
+    ) -> Poll<io::Result<(usize, wasi::Roflags, SocketAddr)>> {
         super::asyncify(cx, |waker_id| {
             let ret = unsafe {
                 wasi::sock_recv_from_poll(self.fd(), super::fd::iovec(ri_data), ri_flags, waker_id.into())?
@@ -407,7 +408,7 @@ impl Socket
         Ok((ret.0, ret.2))
     }
 
-    pub fn poll_recv_from(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<(usize, SocketAddr)>> {
+    pub fn poll_recv_from(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<(usize, SocketAddr)>> {
         let mut data = [ IoSliceMut::new(buf) ];
         self.poll_recv_from_with_flags(cx, &mut data, 0)
             .map_ok(|ret| (ret.0, ret.2))
@@ -424,7 +425,7 @@ impl Socket
         Ok((ret.0, ret.2))
     }
 
-    pub fn poll_peek_from(&self, cx: &mut crate::task::Context<'_>, buf: &mut [u8]) -> crate::task::Poll<io::Result<(usize, SocketAddr)>> {
+    pub fn poll_peek_from(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<(usize, SocketAddr)>> {
         let mut data = [ IoSliceMut::new(buf) ];
         self.poll_recv_from_with_flags(cx, &mut data, MSG_PEEK as u16)
             .map_ok(|ret| (ret.0, ret.2))
@@ -442,10 +443,10 @@ impl Socket
 
     fn poll_send_with_flags(
         &self,
-        cx: &mut crate::task::Context<'_>,
+        cx: &mut Context<'_>,
         si_data: &[IoSlice<'_>],
         si_flags: wasi::Siflags
-    ) -> crate::task::Poll<io::Result<usize>> {
+    ) -> Poll<io::Result<usize>> {
         super::asyncify(cx, |waker_id| {
             unsafe {
                 Ok(
@@ -460,7 +461,7 @@ impl Socket
         self.send_with_flags(&data, 0)
     }
 
-    pub fn poll_send(&self, cx: &mut crate::task::Context<'_>, buf: &[u8]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_send(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
         let data = [ IoSlice::new(buf) ];
         self.poll_send_with_flags(cx, &data, 0)
     }
@@ -469,7 +470,7 @@ impl Socket
         self.send_with_flags(bufs, 0)
     }
 
-    pub fn poll_send_vectored(&self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_send_vectored(&self, cx: &mut Context<'_>, bufs: &[IoSlice<'_>]) -> Poll<io::Result<usize>> {
         self.poll_send_with_flags(cx, bufs, 0)
     }
 
@@ -482,7 +483,7 @@ impl Socket
         self.send(buf)
     }
 
-    pub fn poll_write(&self, cx: &mut crate::task::Context<'_>, buf: &[u8]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_write(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
         self.poll_send(cx, buf)
     }
 
@@ -490,7 +491,7 @@ impl Socket
         self.send_vectored(bufs)
     }
 
-    pub fn poll_write_vectored(&self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>]) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_write_vectored(&self, cx: &mut Context<'_>, bufs: &[IoSlice<'_>]) -> Poll<io::Result<usize>> {
         self.poll_send_vectored(cx, bufs)
     }
 
@@ -513,11 +514,11 @@ impl Socket
 
     fn poll_send_to_with_flags(
         &self,
-        cx: &mut crate::task::Context<'_>,
+        cx: &mut Context<'_>,
         si_data: &[IoSlice<'_>],
         si_flags: wasi::Siflags,
         addr: SocketAddr
-    ) -> crate::task::Poll<io::Result<usize>> {
+    ) -> Poll<io::Result<usize>> {
         super::asyncify(cx, |waker_id| {
             let addr = to_wasi_addr_port(addr);
             Ok(
@@ -533,7 +534,7 @@ impl Socket
         self.send_to_with_flags(&data, 0, addr)
     }
 
-    pub fn poll_send_to(&self, cx: &mut crate::task::Context<'_>, buf: &[u8], addr: SocketAddr) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_send_to(&self, cx: &mut Context<'_>, buf: &[u8], addr: SocketAddr) -> Poll<io::Result<usize>> {
         let data = [ IoSlice::new(buf) ];
         self.poll_send_to_with_flags(cx, &data, 0, addr)
     }
@@ -542,7 +543,7 @@ impl Socket
         self.send_to_with_flags(bufs, 0, addr)
     }
 
-    pub fn poll_send_to_vectored(&self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>], addr: SocketAddr) -> crate::task::Poll<io::Result<usize>> {
+    pub fn poll_send_to_vectored(&self, cx: &mut Context<'_>, bufs: &[IoSlice<'_>], addr: SocketAddr) -> Poll<io::Result<usize>> {
         self.poll_send_to_with_flags(cx, bufs, 0, addr)
     }
 
@@ -1075,12 +1076,24 @@ impl TcpStream {
         self.inner.peek(buf)
     }
 
+    pub fn poll_peek(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+        self.inner.poll_peek(cx, buf)
+    }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.recv(buf)
     }
 
+    pub fn poll_read(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+        self.inner.poll_recv(cx, buf)
+    }
+
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.recv_vectored(bufs)
+    }
+
+    pub fn poll_read_vectored(&self, cx: &mut Context<'_>, bufs: &mut [IoSliceMut<'_>]) -> Poll<io::Result<usize>> {
+        self.inner.poll_read_vectored(cx, bufs)
     }
 
     pub fn is_read_vectored(&self) -> bool {
@@ -1091,8 +1104,16 @@ impl TcpStream {
         self.inner.send(buf)
     }
 
+    pub fn poll_write(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+        self.inner.poll_write(cx, buf)
+    }
+
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.send_vectored(bufs)
+    }
+
+    pub fn poll_write_vectored(&self, cx: &mut Context<'_>, bufs: &[IoSlice<'_>]) -> Poll<io::Result<usize>> {
+        self.inner.poll_send_vectored(cx, bufs)
     }
 
     pub fn is_write_vectored(&self) -> bool {
@@ -1211,6 +1232,20 @@ impl TcpListener {
         )
     }
 
+    pub fn poll_accept(&self, cx: &mut Context<'_>) -> Poll<io::Result<(TcpStream, SocketAddr)>> {
+        self.inner
+            .poll_accept(cx)
+            .map_ok(|socket| {
+                let addr = socket.peer_addr().unwrap();
+                (
+                    TcpStream {
+                        inner: socket
+                    },
+                    addr
+                )
+            })
+    }
+    
     pub fn accept_timeout(&self, timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
         let socket = self.inner.accept_timeout(timeout)?;
         let addr = socket.socket_addr()?;
@@ -1316,12 +1351,27 @@ impl UdpSocket {
         self.inner.recv_from(buf)
     }
 
+    pub fn poll_recv_from(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<(usize, SocketAddr)>> {
+        self.inner
+            .poll_recv_from(cx, buf)
+    }
+
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.inner.peek_from(buf)
     }
 
+    pub fn poll_peek_from(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<(usize, SocketAddr)>> {
+        self.inner
+            .poll_peek_from(cx, buf)
+    }
+
     pub fn send_to(&self, buf: &[u8], addr: &SocketAddr) -> io::Result<usize> {
         self.inner.send_to(buf, *addr)
+    }
+
+    pub fn poll_send_to(&self, cx: &mut Context<'_>, buf: &[u8], addr: &SocketAddr) -> Poll<io::Result<usize>> {
+        self.inner
+            .poll_send_to(cx, buf, *addr)
     }
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
@@ -1417,12 +1467,24 @@ impl UdpSocket {
         self.inner.recv(buf)
     }
 
+    pub fn poll_recv(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+        self.inner.poll_recv(cx, buf)
+    }
+
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.peek(buf)
     }
 
+    pub fn poll_peek(&self, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+        self.inner.poll_peek(cx, buf)
+    }
+
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.inner.send(buf)
+    }
+
+    pub fn poll_send(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+        self.inner.poll_send(cx, buf)
     }
 
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {

@@ -64,7 +64,7 @@ mod common;
 pub use common::*;
 
 mod waker;
-use waker::*;
+pub use waker::*;
 
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     use std_io::ErrorKind::*;
