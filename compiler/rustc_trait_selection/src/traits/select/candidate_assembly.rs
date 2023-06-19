@@ -417,17 +417,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Fast path to avoid evaluating an obligation that trivially holds.
                 // There may be more bounds, but these are checked by the regular path.
                 ty::FnPtr(..) => return false,
+
                 // These may potentially implement `FnPtr`
                 ty::Placeholder(..)
                 | ty::Dynamic(_, _, _)
                 | ty::Alias(_, _)
                 | ty::Infer(_)
-                | ty::Param(..) => {}
+                | ty::Param(..)
+                | ty::Bound(_, _) => {}
 
-                ty::Bound(_, _) => span_bug!(
-                    obligation.cause.span(),
-                    "cannot have escaping bound var in self type of {obligation:#?}"
-                ),
                 // These can't possibly implement `FnPtr` as they are concrete types
                 // and not `FnPtr`
                 ty::Bool
