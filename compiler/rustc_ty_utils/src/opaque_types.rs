@@ -168,14 +168,17 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         DefKind::Fn | DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
             let mut collector = OpaqueTypeCollector::new(tcx, item);
             match kind {
+                // Walk over the signature of the function-like to find the opaques.
                 DefKind::AssocFn | DefKind::Fn => {
                     let ty_sig = tcx.fn_sig(item).subst_identity();
                     let hir_sig = tcx.hir().get_by_def_id(item).fn_sig().unwrap();
+                    // Walk over the inputs and outputs manually in order to get good spans for them.
                     collector.visit_spanned(hir_sig.decl.output.span(), ty_sig.output());
                     for (hir, ty) in hir_sig.decl.inputs.iter().zip(ty_sig.inputs().iter()) {
                         collector.visit_spanned(hir.span, ty.map_bound(|x| *x));
                     }
                 }
+                // Walk over the type of the item to find opaques.
                 DefKind::AssocTy | DefKind::AssocConst => {
                     let span = match tcx.hir().get_by_def_id(item).ty() {
                         Some(ty) => ty.span,
