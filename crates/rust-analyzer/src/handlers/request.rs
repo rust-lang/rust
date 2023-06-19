@@ -1689,6 +1689,34 @@ pub(crate) fn handle_move_item(
     }
 }
 
+pub(crate) fn handle_view_recursive_memory_layout(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::ViewRecursiveMemoryLayoutParams,
+) -> Result<Option<lsp_ext::RecursiveMemoryLayout>> {
+    let _p = profile::span("view_recursive_memory_layout");
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let line_index = snap.file_line_index(file_id)?;
+    let offset = from_proto::offset(&line_index, params.position)?;
+
+    let res = snap.analysis.get_recursive_memory_layout(FilePosition { file_id, offset })?;
+    Ok(res.map(|it| lsp_ext::RecursiveMemoryLayout {
+        nodes: it
+            .nodes
+            .iter()
+            .map(|n| lsp_ext::MemoryLayoutNode {
+                item_name: n.item_name.clone(),
+                typename: n.typename.clone(),
+                size: n.size,
+                offset: n.offset,
+                alignment: n.alignment,
+                parent_idx: n.parent_idx,
+                children_start: n.children_start,
+                children_len: n.children_len,
+            })
+            .collect(),
+    }))
+}
+
 fn to_command_link(command: lsp_types::Command, tooltip: String) -> lsp_ext::CommandLink {
     lsp_ext::CommandLink { tooltip: Some(tooltip), command }
 }

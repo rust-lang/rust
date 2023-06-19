@@ -1129,3 +1129,286 @@ export function linkToCommand(_: Ctx): Cmd {
         }
     };
 }
+
+export function viewMemoryLayout(ctx: CtxInit): Cmd {
+    return async () => {
+
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return "";
+        const client = ctx.client;
+
+        const position = editor.selection.active;
+        const expanded = await client.sendRequest(ra.viewRecursiveMemoryLayout, {
+            textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
+                editor.document
+            ),
+            position,
+        });
+
+        // if (expanded == null) return "Not available";
+
+
+        const document = vscode.window.createWebviewPanel(
+            "memory_layout",
+            "[Memory Layout]",
+            vscode.ViewColumn.Two,
+            { enableScripts: true, });
+
+        document.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>   
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            min-height: 100%;
+            height: 100vh;
+            padding: 32px;
+            position: relative;
+            display: block;
+
+            background-color: var(--vscode-editor-background);
+            font-family: var(--vscode-editor-font-family);
+            font-size: var(--vscode-editor-font-size);
+            color: var(--vscode-editor-foreground);
+        }
+
+        .container {
+            position: relative;
+        }
+
+        .trans {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .grid {
+            height: 100%;
+            position: relative;
+            color: var(--vscode-commandCenter-activeBorder);
+            pointer-events: none;
+        }
+
+        .grid-line {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background-color: var(--vscode-commandCenter-activeBorder);
+        }
+
+        #tooltip {
+            position: fixed;
+            display: none;
+            z-index: 1;
+            pointer-events: none;
+            padding: 4px 8px;
+            z-index: 2;
+
+            color: var(--vscode-editorHoverWidget-foreground);
+            background-color: var(--vscode-editorHoverWidget-background);
+            border: 1px solid var(--vscode-editorHoverWidget-border);
+        }
+
+        #tooltip b {
+            color: var(--vscode-editorInlayHint-typeForeground);
+        }
+
+        #tooltip ul {
+            margin-left: 0;
+            padding-left: 20px;
+        }
+
+        table {
+            position: absolute;
+            transform: rotateZ(90deg) rotateX(180deg);
+            transform-origin: top left;
+            border-collapse: collapse;
+            table-layout: fixed;
+            left: 48px;
+            top: 0;
+            max-height: calc(100vw - 64px - 48px);
+            z-index: 1;
+        }
+
+        td {
+            border: 1px solid var(--vscode-focusBorder);
+            writing-mode: vertical-rl;
+            text-orientation: sideways-right;
+
+            height: 80px;
+        }
+
+        td p {
+            height: calc(100% - 16px);
+            width: calc(100% - 8px);
+            margin: 8px 4px;
+            display: inline-block;
+            transform: rotateY(180deg);
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        td p * {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            display: inline-block;
+            height: 100%;
+        }
+
+        td p b {
+            color: var(--vscode-editorInlayHint-typeForeground);
+        }
+
+        td:hover {
+            background-color: var(--vscode-editor-hoverHighlightBackground);
+        }
+
+        td:empty {
+            visibility: hidden;
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="tooltip"></div>
+</body>
+<script>(function() {
+
+const data = ${JSON.stringify(expanded)}
+
+if (!(data && data.nodes.length)) {
+    document.body.innerText = "Not Available"
+    return
+}
+
+data.nodes.map(n => {
+    n.typename = n.typename.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', ' & quot; ').replaceAll("'", '&#039;')
+    return n
+})
+
+let height = window.innerHeight - 64
+
+addEventListener("resize", e => {
+    const new_height = window.innerHeight - 64
+    height = new_height
+    container.classList.remove("trans")
+    table.classList.remove("trans")
+    locate()
+    setTimeout(() => { // give delay to redraw, annoying but needed
+        container.classList.add("trans")
+        table.classList.add("trans")
+    }, 0)
+})
+
+const container = document.createElement("div")
+container.classList.add("container")
+container.classList.add("trans")
+document.body.appendChild(container)
+
+const tooltip = document.getElementById("tooltip")
+
+let y = 0
+let zoom = 1.0
+
+const table = document.createElement("table")
+table.classList.add("trans")
+container.appendChild(table)
+const rows = []
+
+function node_t(idx, depth, offset) {
+    if (!rows[depth]) {
+        rows[depth] = { el: document.createElement("tr"), offset: 0 }
+    }
+
+    if (rows[depth].offset < offset) {
+        const pad = document.createElement("td")
+        pad.colSpan = offset - rows[depth].offset
+        rows[depth].el.appendChild(pad)
+        rows[depth].offset += offset - rows[depth].offset
+    }
+
+    const td = document.createElement("td")
+    td.innerHTML = '<p><span>' + data.nodes[idx].itemName + ':</span> <b>' + data.nodes[idx].typename + '</b></p>'
+
+    td.colSpan = data.nodes[idx].size
+
+    td.addEventListener("mouseover", e => {
+        const node = data.nodes[idx]
+        tooltip.innerHTML = node.itemName + ": <b>" + node.typename + "</b><br/>"
+            + "<ul>"
+            + "<li>size = " + node.size + "</li>"
+            + "<li>align = " + node.alignment + "</li>"
+            + "<li>field offset = " + node.offset + "</li>"
+            + "</ul>"
+            + "<i>double click to focus</i>"
+
+        tooltip.style.display = "block"
+    })
+    td.addEventListener("mouseleave", _ => tooltip.style.display = "none")
+    const total_offset = rows[depth].offset
+    td.addEventListener("dblclick", e => {
+        const node = data.nodes[idx]
+        zoom = data.nodes[0].size / node.size
+        y = -(total_offset) / data.nodes[0].size * zoom
+        x = 0
+        locate()
+    })
+
+    rows[depth].el.appendChild(td)
+    rows[depth].offset += data.nodes[idx].size
+
+
+    if (data.nodes[idx].childrenStart != -1) {
+        for (let i = 0; i < data.nodes[idx].childrenLen; i++) {
+            if (data.nodes[data.nodes[idx].childrenStart + i].size) {
+                node_t(data.nodes[idx].childrenStart + i, depth + 1, offset + data.nodes[data.nodes[idx].childrenStart + i].offset)
+            }
+        }
+    }
+}
+
+node_t(0, 0, 0)
+
+for (const row of rows) table.appendChild(row.el)
+
+const grid = document.createElement("div")
+grid.classList.add("grid")
+container.appendChild(grid)
+
+for (let i = 0; i < data.nodes[0].size / 8 + 1; i++) {
+    const el = document.createElement("div")
+    el.classList.add("grid-line")
+    el.style.top = (i / (data.nodes[0].size / 8) * 100) + "%"
+    el.innerText = i * 8
+    grid.appendChild(el)
+}
+
+addEventListener("mousemove", e => {
+    tooltip.style.top = e.clientY + 10 + "px"
+    tooltip.style.left = e.clientX + 10 + "px"
+})
+
+function locate() {
+    container.style.top = height * y + "px"
+    container.style.height = (height * zoom) + "px"
+
+    table.style.width = container.style.height
+}
+
+locate()
+
+})()
+</script>
+</html>`
+
+        ctx.pushExtCleanup(document);
+    };
+}

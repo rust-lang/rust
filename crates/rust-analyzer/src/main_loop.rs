@@ -753,6 +753,7 @@ impl GlobalState {
             )
             .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
+            .on::<lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
             .finish();
     }
 

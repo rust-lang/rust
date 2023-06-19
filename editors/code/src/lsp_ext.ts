@@ -70,7 +70,7 @@ export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>
 
 export type AnalyzerStatusParams = { textDocument?: lc.TextDocumentIdentifier };
 
-export interface FetchDependencyListParams {}
+export interface FetchDependencyListParams { }
 
 export interface FetchDependencyListResult {
     crates: {
@@ -86,7 +86,7 @@ export const fetchDependencyList = new lc.RequestType<
     void
 >("rust-analyzer/fetchDependencyList");
 
-export interface FetchDependencyGraphParams {}
+export interface FetchDependencyGraphParams { }
 
 export interface FetchDependencyGraphResult {
     crates: {
@@ -150,6 +150,9 @@ export const serverStatus = new lc.NotificationType<ServerStatusParams>(
     "experimental/serverStatus"
 );
 export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, void>("experimental/ssr");
+export const viewRecursiveMemoryLayout = new lc.RequestType<ViewRecursiveMemoryLayoutParams, RecursiveMemoryLayout | null, void>(
+    "rust-analyzer/viewRecursiveMemoryLayout"
+);
 
 export type JoinLinesParams = {
     textDocument: lc.TextDocumentIdentifier;
@@ -196,4 +199,24 @@ export type SsrParams = {
     textDocument: lc.TextDocumentIdentifier;
     position: lc.Position;
     selections: readonly lc.Range[];
+};
+
+export type ViewRecursiveMemoryLayoutParams = {
+    textDocument: lc.TextDocumentIdentifier;
+    position: lc.Position;
+};
+export type RecursiveMemoryLayoutNode = {
+    item_name: string;
+    typename: string;
+    size: number;
+    alignment: number;
+    offset: number;
+    parent_idx: number;
+    children_start: number;
+    children_len: number;
+};
+export type RecursiveMemoryLayout = {
+    name: string;
+    expansion: string;
+    nodes: RecursiveMemoryLayoutNode[];
 };
