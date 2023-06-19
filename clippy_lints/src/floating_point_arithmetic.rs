@@ -215,7 +215,7 @@ fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
 // ranges [-16777215, 16777216) for type f32 as whole number floats outside
 // this range are lossy and ambiguous.
 #[expect(clippy::cast_possible_truncation)]
-fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
+fn get_integer_from_float_constant(value: &Constant<'_>) -> Option<i32> {
     match value {
         F32(num) if num.fract() == 0.0 => {
             if (-16_777_215.0..16_777_216.0).contains(num) {

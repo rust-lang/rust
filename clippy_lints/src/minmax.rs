@@ -66,7 +66,7 @@ enum MinMax {
     Max,
 }
 
-fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
+fn min_max<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant<'tcx>, &'a Expr<'a>)> {
     match expr.kind {
         ExprKind::Call(path, args) => {
             if let ExprKind::Path(ref qpath) = path.kind {
@@ -99,12 +99,12 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
     }
 }
 
-fn fetch_const<'a>(
-    cx: &LateContext<'_>,
+fn fetch_const<'a, 'tcx>(
+    cx: &LateContext<'tcx>,
     receiver: Option<&'a Expr<'a>>,
     args: &'a [Expr<'a>],
     m: MinMax,
-) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
+) -> Option<(MinMax, Constant<'tcx>, &'a Expr<'a>)> {
     let mut args = receiver.into_iter().chain(args);
     let first_arg = args.next()?;
     let second_arg = args.next()?;
