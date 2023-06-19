@@ -1033,6 +1033,7 @@ impl UnusedDelimLint for UnusedParens {
                 followed_by_block,
                 None,
                 None,
+                false,
             ),
 
             _ => {}
