@@ -32,7 +32,7 @@ use thin_vec::ThinVec;
 
 use crate::errors::{
     AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
-    ConsiderAddingADeriveEnum, ExplicitUnsafeTraits,
+    ExplicitUnsafeTraits,
 };
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
@@ -1393,14 +1393,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let span = self.def_span(def_id);
             let source_map = self.tcx.sess.source_map();
             let head_span = source_map.guess_head_span(span);
-            if let Ok(head) = source_map.span_to_snippet(head_span) {
-                err.subdiagnostic(ConsiderAddingADerive {
-                    span: head_span,
-                    suggestion: format!("#[derive(Default)]\n{head}")
-                });
-            } else {
-                err.subdiagnostic(ConsiderAddingADeriveEnum { span: head_span });
-            }
+            err.subdiagnostic(ConsiderAddingADerive {
+                span: head_span.shrink_to_lo(),
+                suggestion: format!("#[derive(Default)]\n")
+            });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(

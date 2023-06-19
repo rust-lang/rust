@@ -646,10 +646,3 @@ pub(crate) struct ConsiderAddingADerive {
     pub(crate) span: Span,
     pub(crate) suggestion: String,
 }
-
-#[derive(Subdiagnostic)]
-#[help(resolve_consider_adding_a_derive_enum)]
-pub(crate) struct ConsiderAddingADeriveEnum {
-    #[primary_span]
-    pub(crate) span: Span,
-}

@@ -60,9 +60,6 @@ resolve_change_import_binding =
 resolve_consider_adding_a_derive =
     consider adding a derive
 
-resolve_consider_adding_a_derive_enum =
-    consider adding `#[derive(Default)]` to this enum
-
 resolve_const_not_member_of_trait =
     const `{$const_}` is not a member of trait `{$trait_}`
     .label = not a member of trait `{$trait_}`
