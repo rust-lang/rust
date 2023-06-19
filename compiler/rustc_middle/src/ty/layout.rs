@@ -318,7 +318,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Ok(layout) => {
                 return Ok(SizeSkeleton::Known(layout.size));
             }
-            Err(err) => err,
+            Err(err @ LayoutError::Unknown(_)) => err,
+            // We can't extract SizeSkeleton info from other layout errors
+            Err(
+                e @ LayoutError::Cycle
+                | e @ LayoutError::SizeOverflow(_)
+                | e @ LayoutError::NormalizationFailure(..),
+            ) => return Err(e),
         };
 
         match *ty.kind() {
