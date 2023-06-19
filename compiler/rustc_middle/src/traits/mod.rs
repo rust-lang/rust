@@ -981,7 +981,7 @@ pub enum CodegenObligationError {
     FulfillmentError,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum DefiningAnchor {
     /// `DefId` of the item.
     Bind(LocalDefId),
@@ -990,4 +990,10 @@ pub enum DefiningAnchor {
     Bubble,
     /// Used to catch type mismatch errors when handling opaque types.
     Error,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+pub enum IsNormalizesToHack {
+    Yes,
+    No,
 }
