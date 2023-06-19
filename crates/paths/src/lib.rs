@@ -6,7 +6,7 @@
 use std::{
     borrow::Borrow,
     ffi::OsStr,
-    ops,
+    fmt, ops,
     path::{Component, Path, PathBuf},
 };
 
@@ -92,6 +92,12 @@ impl AbsPathBuf {
     /// absolute.
     pub fn pop(&mut self) -> bool {
         self.0.pop()
+    }
+}
+
+impl fmt::Display for AbsPathBuf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0.display(), f)
     }
 }
 
@@ -217,6 +223,7 @@ impl AbsPath {
     pub fn as_os_str(&self) -> &OsStr {
         self.0.as_os_str()
     }
+    #[deprecated(note = "use Display instead")]
     pub fn display(&self) -> std::path::Display<'_> {
         self.0.display()
     }
@@ -225,6 +232,12 @@ impl AbsPath {
         self.0.exists()
     }
     // endregion:delegate-methods
+}
+
+impl fmt::Display for AbsPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0.display(), f)
+    }
 }
 
 /// Wrapper around a relative [`PathBuf`].

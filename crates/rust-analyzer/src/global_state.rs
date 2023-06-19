@@ -318,7 +318,7 @@ impl GlobalState {
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
             if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
                 self.fetch_workspaces_queue.request_op(
-                    format!("workspace vfs file change: {}", path.display()),
+                    format!("workspace vfs file change: {path}"),
                     force_crate_graph_reload,
                 );
             }

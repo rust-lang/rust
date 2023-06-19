@@ -20,7 +20,6 @@ use crate::cli::load_cargo::ProcMacroServerChoice;
 use crate::cli::{
     flags,
     load_cargo::{load_workspace, LoadCargoConfig},
-    Result,
 };
 use crate::line_index::{LineEndings, LineIndex, PositionEncoding};
 use crate::to_proto;
@@ -286,7 +285,7 @@ impl LsifManager<'_> {
 }
 
 impl flags::Lsif {
-    pub fn run(self) -> Result<()> {
+    pub fn run(self) -> anyhow::Result<()> {
         eprintln!("Generating LSIF started...");
         let now = Instant::now();
         let mut cargo_config = CargoConfig::default();

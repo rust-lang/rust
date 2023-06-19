@@ -127,7 +127,7 @@ pub(crate) fn handle_did_save_text_document(
             if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
                 state
                     .fetch_workspaces_queue
-                    .request_op(format!("DidSaveTextDocument {}", abs_path.display()), false);
+                    .request_op(format!("DidSaveTextDocument {abs_path}"), false);
             }
         }
 

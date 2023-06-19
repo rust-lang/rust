@@ -2,7 +2,6 @@
 
 use std::process::Command;
 
-use anyhow::Result;
 use rustc_hash::FxHashMap;
 
 use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath};
@@ -44,7 +43,7 @@ fn get_rust_cfgs(
     cargo_toml: Option<&ManifestPath>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     if let Some(cargo_toml) = cargo_toml {
         let mut cargo_config = Command::new(toolchain::cargo());
         cargo_config.envs(extra_env);
