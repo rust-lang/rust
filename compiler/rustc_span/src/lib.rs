@@ -65,11 +65,11 @@ use rustc_data_structures::sync::{Lock, Lrc};
 
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
-use std::fmt;
 use std::hash::Hash;
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::{fmt, iter};
 
 use md5::Digest;
 use md5::Md5;
@@ -733,12 +733,15 @@ impl Span {
     /// else returns the `ExpnData` for the macro definition
     /// corresponding to the source callsite.
     pub fn source_callee(self) -> Option<ExpnData> {
-        fn source_callee(expn_data: ExpnData) -> ExpnData {
-            let next_expn_data = expn_data.call_site.ctxt().outer_expn_data();
-            if !next_expn_data.is_root() { source_callee(next_expn_data) } else { expn_data }
-        }
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(source_callee(expn_data)) } else { None }
+
+        // Create an iterator of call site expansions
+        iter::successors(Some(expn_data), |expn_data| {
+            Some(expn_data.call_site.ctxt().outer_expn_data())
+        })
+        // Find the last expansion which is not root
+        .take_while(|expn_data| !expn_data.is_root())
+        .last()
     }
 
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
@@ -777,7 +780,7 @@ impl Span {
 
     pub fn macro_backtrace(mut self) -> impl Iterator<Item = ExpnData> {
         let mut prev_span = DUMMY_SP;
-        std::iter::from_fn(move || {
+        iter::from_fn(move || {
             loop {
                 let expn_data = self.ctxt().outer_expn_data();
                 if expn_data.is_root() {
