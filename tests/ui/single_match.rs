@@ -270,3 +270,29 @@ fn issue_10808(bar: Option<i32>) {
         _ => {},
     }
 }
+
+mod issue8634 {
+    struct SomeError(i32, i32);
+
+    fn foo(x: Result<i32, ()>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(()) => {
+                // Ignore this error because blah blah blah.
+            },
+        }
+    }
+
+    fn bar(x: Result<i32, SomeError>) {
+        match x {
+            Ok(y) => {
+                println!("Yay! {y}");
+            },
+            Err(_) => {
+                // TODO: Process the error properly.
+            },
+        }
+    }
+}
