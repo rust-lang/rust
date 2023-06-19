@@ -107,6 +107,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     }
                 }
             }
+            ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
+                self.tcx
+                    .type_of(alias_ty.def_id)
+                    .subst(self.tcx, alias_ty.substs)
+                    .visit_with(self)?;
+            }
             ty::Alias(ty::Projection, alias_ty) => {
                 // This avoids having to do normalization of `Self::AssocTy` by only
                 // supporting the case of a method defining opaque types from assoc types
@@ -136,24 +142,23 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 ty::InternalSubsts::identity_for_item(self.tcx, parent),
                             );
 
-                            if !check_substs_compatible(self.tcx, assoc, impl_substs) {
+                            if check_substs_compatible(self.tcx, assoc, impl_substs) {
+                                return self
+                                    .tcx
+                                    .type_of(assoc.def_id)
+                                    .subst(self.tcx, impl_substs)
+                                    .visit_with(self);
+                            } else {
                                 self.tcx.sess.delay_span_bug(
                                     self.tcx.def_span(assoc.def_id),
                                     "item had incorrect substs",
                                 );
-                                return ControlFlow::Continue(());
                             }
-
-                            return self
-                                .tcx
-                                .type_of(assoc.def_id)
-                                .subst(self.tcx, impl_substs)
-                                .visit_with(self);
                         }
                     }
                 }
             }
-            _ => {}
+            _ => trace!(kind=?t.kind()),
         }
         ControlFlow::Continue(())
     }
