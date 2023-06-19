@@ -105,13 +105,20 @@ fn complete_fields(
     mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
     mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
 ) {
+    let mut seen_names = FxHashSet::default();
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            named_field(acc, field, ty);
+            if seen_names.insert(field.name(ctx.db)) {
+                named_field(acc, field, ty);
+            }
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
-            // Tuple fields are always public (tuple struct fields are handled above).
-            tuple_index(acc, i, ty);
+            // Tuples are always the last type in a deref chain, so just check if the name is
+            // already seen without inserting into the hashset.
+            if !seen_names.contains(&hir::Name::new_tuple_field(i)) {
+                // Tuple fields are always public (tuple struct fields are handled above).
+                tuple_index(acc, i, ty);
+            }
         }
     }
 }
@@ -672,6 +679,74 @@ impl T {
     }
 
     #[test]
+    fn test_field_no_same_name() {
+        check(
+            r#"
+//- minicore: deref
+struct A { field: u8 }
+struct B { field: u16, another: u32 }
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                fd another                u32
+                fd field                  u8
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_field_no_same_index() {
+        check(
+            r#"
+//- minicore: deref
+struct A(u8);
+struct B(u16, u32);
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                fd 0                      u8
+                fd 1                      u32
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_struct_deref_to_tuple_no_same_index() {
+        check(
+            r#"
+//- minicore: deref
+struct A(u8);
+impl core::ops::Deref for A {
+    type Target = (u16, u32);
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                fd 0                      u8
+                fd 1                      u32
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_completion_works_in_consts() {
         check(
             r#"
@@ -978,5 +1053,46 @@ fn test(thing: impl Encrypt) {
                 me encrypt(…) (as Encrypt) fn(self, impl Closure<Size = <Self as SizeUser>::Size>)
             "#]],
         )
+    }
+
+    #[test]
+    fn only_consider_same_type_once() {
+        check(
+            r#"
+//- minicore: deref
+struct A(u8);
+struct B(u16);
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for B {
+    type Target = A;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                fd 0                      u8
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
+    fn no_inference_var_in_completion() {
+        check(
+            r#"
+struct S<T>(T);
+fn test(s: S<Unknown>) {
+    s.$0
+}
+"#,
+            expect![[r#"
+                fd 0 {unknown}
+            "#]],
+        );
     }
 }

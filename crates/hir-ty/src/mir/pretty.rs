@@ -60,6 +60,9 @@ impl MirBody {
                 let data = db.enum_data(id.parent);
                 w!(this, "enum {} = ", data.name.display(db.upcast()));
             }
+            hir_def::DefWithBodyId::InTypeConstId(id) => {
+                w!(this, "in type const {id:?} = ");
+            }
         });
         ctx.result
     }

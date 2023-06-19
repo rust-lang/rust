@@ -52,9 +52,10 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
-    TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, InTypeConstId, ItemContainerId,
+    LifetimeParamId, LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId,
+    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
+    UnionId,
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
@@ -202,7 +203,7 @@ impl Crate {
 
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id);
-        Module { id: def_map.module_id(DefMap::ROOT) }
+        Module { id: def_map.crate_root().into() }
     }
 
     pub fn modules(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -475,7 +476,7 @@ impl Module {
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id.krate());
-        Module { id: def_map.module_id(DefMap::ROOT) }
+        Module { id: def_map.crate_root().into() }
     }
 
     pub fn is_crate_root(self) -> bool {
@@ -1375,8 +1376,9 @@ pub enum DefWithBody {
     Static(Static),
     Const(Const),
     Variant(Variant),
+    InTypeConst(InTypeConst),
 }
-impl_from!(Function, Const, Static, Variant for DefWithBody);
+impl_from!(Function, Const, Static, Variant, InTypeConst for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1385,6 +1387,7 @@ impl DefWithBody {
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
             DefWithBody::Variant(v) => v.module(db),
+            DefWithBody::InTypeConst(c) => c.module(db),
         }
     }
 
@@ -1394,6 +1397,7 @@ impl DefWithBody {
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
             DefWithBody::Variant(v) => Some(v.name(db)),
+            DefWithBody::InTypeConst(_) => None,
         }
     }
 
@@ -1404,6 +1408,11 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
             DefWithBody::Variant(it) => it.parent.variant_body_ty(db),
+            DefWithBody::InTypeConst(it) => Type::new_with_resolver_inner(
+                db,
+                &DefWithBodyId::from(it.id).resolver(db.upcast()),
+                TyKind::Error.intern(Interner),
+            ),
         }
     }
 
@@ -1413,6 +1422,7 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
             DefWithBody::Variant(it) => it.into(),
+            DefWithBody::InTypeConst(it) => it.id.into(),
         }
     }
 
@@ -1797,6 +1807,8 @@ impl DefWithBody {
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
             DefWithBody::Variant(it) => it.into(),
+            // FIXME: don't ignore diagnostics for in type const
+            DefWithBody::InTypeConst(_) => return,
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
             acc.push(diag.into())
@@ -2082,6 +2094,17 @@ impl SelfParam {
 impl HasVisibility for Function {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         db.function_visibility(self.id)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InTypeConst {
+    pub(crate) id: InTypeConstId,
+}
+
+impl InTypeConst {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        Module { id: self.id.lookup(db.upcast()).owner.module(db.upcast()) }
     }
 }
 
@@ -2515,7 +2538,7 @@ impl AsAssocItem for DefWithBody {
         match self {
             DefWithBody::Function(it) => it.as_assoc_item(db),
             DefWithBody::Const(it) => it.as_assoc_item(db),
-            DefWithBody::Static(_) | DefWithBody::Variant(_) => None,
+            DefWithBody::Static(_) | DefWithBody::Variant(_) | DefWithBody::InTypeConst(_) => None,
         }
     }
 }
@@ -2641,14 +2664,22 @@ impl GenericDef {
                 Either::Right(x) => GenericParam::TypeParam(x),
             }
         });
-        let lt_params = generics
+        self.lifetime_params(db)
+            .into_iter()
+            .map(GenericParam::LifetimeParam)
+            .chain(ty_params)
+            .collect()
+    }
+
+    pub fn lifetime_params(self, db: &dyn HirDatabase) -> Vec<LifetimeParam> {
+        let generics = db.generic_params(self.into());
+        generics
             .lifetimes
             .iter()
             .map(|(local_id, _)| LifetimeParam {
                 id: LifetimeParamId { parent: self.into(), local_id },
             })
-            .map(GenericParam::LifetimeParam);
-        lt_params.chain(ty_params).collect()
+            .collect()
     }
 
     pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
@@ -2769,6 +2800,22 @@ impl Local {
     /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = x;`
     pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
         let (body, source_map) = db.body_with_source_map(self.parent);
+        self.sources_(db, &body, &source_map).collect()
+    }
+
+    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = x;`
+    pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
+        let (body, source_map) = db.body_with_source_map(self.parent);
+        let src = self.sources_(db, &body, &source_map).next().unwrap();
+        src
+    }
+
+    fn sources_<'a>(
+        self,
+        db: &'a dyn HirDatabase,
+        body: &'a hir_def::body::Body,
+        source_map: &'a hir_def::body::BodySourceMap,
+    ) -> impl Iterator<Item = LocalSource> + 'a {
         body[self.binding_id]
             .definitions
             .iter()
@@ -2781,14 +2828,7 @@ impl Local {
                     Either::Right(it) => Either::Right(it.to_node(&root)),
                 })
             })
-            .map(|source| LocalSource { local: self, source })
-            .collect()
-    }
-
-    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = x;`
-    pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
-        let all_sources = self.sources(db);
-        all_sources.into_iter().next().unwrap()
+            .map(move |source| LocalSource { local: self, source })
     }
 }
 
@@ -3494,6 +3534,14 @@ impl Type {
         }
     }
 
+    pub fn is_scalar(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Scalar(_))
+    }
+
+    pub fn is_tuple(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Tuple(..))
+    }
+
     pub fn remove_ref(&self) -> Option<Type> {
         match &self.ty.kind(Interner) {
             TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),
@@ -3779,14 +3827,16 @@ impl Type {
         }
     }
 
-    pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {
+    /// Returns types that this type dereferences to (including this type itself). The returned
+    /// iterator won't yield the same type more than once even if the deref chain contains a cycle.
+    pub fn autoderef(&self, db: &dyn HirDatabase) -> impl Iterator<Item = Type> + '_ {
         self.autoderef_(db).map(move |ty| self.derived(ty))
     }
 
-    fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
+    fn autoderef_(&self, db: &dyn HirDatabase) -> impl Iterator<Item = Ty> {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
-        autoderef(db, self.env.clone(), canonical).map(|canonical| canonical.value)
+        autoderef(db, self.env.clone(), canonical)
     }
 
     // This would be nicer if it just returned an iterator, but that runs into

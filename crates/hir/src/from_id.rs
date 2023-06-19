@@ -40,6 +40,7 @@ from_id![
     (hir_def::TraitAliasId, crate::TraitAlias),
     (hir_def::StaticId, crate::Static),
     (hir_def::ConstId, crate::Const),
+    (hir_def::InTypeConstId, crate::InTypeConst),
     (hir_def::FunctionId, crate::Function),
     (hir_def::ImplId, crate::Impl),
     (hir_def::TypeOrConstParamId, crate::TypeOrConstParam),
@@ -144,6 +145,7 @@ impl From<DefWithBody> for DefWithBodyId {
             DefWithBody::Static(it) => DefWithBodyId::StaticId(it.id),
             DefWithBody::Const(it) => DefWithBodyId::ConstId(it.id),
             DefWithBody::Variant(it) => DefWithBodyId::VariantId(it.into()),
+            DefWithBody::InTypeConst(it) => DefWithBodyId::InTypeConstId(it.id),
         }
     }
 }
@@ -155,6 +157,7 @@ impl From<DefWithBodyId> for DefWithBody {
             DefWithBodyId::StaticId(it) => DefWithBody::Static(it.into()),
             DefWithBodyId::ConstId(it) => DefWithBody::Const(it.into()),
             DefWithBodyId::VariantId(it) => DefWithBody::Variant(it.into()),
+            DefWithBodyId::InTypeConstId(it) => DefWithBody::InTypeConst(it.into()),
         }
     }
 }

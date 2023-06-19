@@ -50,21 +50,24 @@ fn report_metric(metric: &str, value: u64, unit: &str) {
 }
 
 fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
-    let mut mem = host.per_query_memory_usage();
+    let mem = host.per_query_memory_usage();
 
     let before = profile::memory_usage();
     drop(vfs);
     let vfs = before.allocated - profile::memory_usage().allocated;
-    mem.push(("VFS".into(), vfs));
 
     let before = profile::memory_usage();
     drop(host);
-    mem.push(("Unaccounted".into(), before.allocated - profile::memory_usage().allocated));
+    let unaccounted = before.allocated - profile::memory_usage().allocated;
+    let remaining = profile::memory_usage().allocated;
 
-    mem.push(("Remaining".into(), profile::memory_usage().allocated));
-
-    for (name, bytes) in mem {
+    for (name, bytes, entries) in mem {
         // NOTE: Not a debug print, so avoid going through the `eprintln` defined above.
-        eprintln!("{bytes:>8} {name}");
+        eprintln!("{bytes:>8} {entries:>6} {name}");
     }
+    eprintln!("{vfs:>8}        VFS");
+
+    eprintln!("{unaccounted:>8}        Unaccounted");
+
+    eprintln!("{remaining:>8}        Remaining");
 }

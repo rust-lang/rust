@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use crate::{lower::LowerCtx, type_ref::ConstRefOrPath};
+use crate::{lower::LowerCtx, type_ref::ConstRef};
 
 use either::Either;
 use hir_expand::name::{name, AsName};
@@ -217,7 +217,7 @@ pub(super) fn lower_generic_args(
                 }
             }
             ast::GenericArg::ConstArg(arg) => {
-                let arg = ConstRefOrPath::from_expr_opt(arg.expr());
+                let arg = ConstRef::from_const_arg(lower_ctx, Some(arg));
                 args.push(GenericArg::Const(arg))
             }
         }

@@ -77,7 +77,7 @@ impl VTableMap {
         id
     }
 
-    fn ty(&self, id: usize) -> Result<&Ty> {
+    pub(crate) fn ty(&self, id: usize) -> Result<&Ty> {
         self.id_to_ty.get(id).ok_or(MirEvalError::InvalidVTableId(id))
     }
 
@@ -1571,16 +1571,24 @@ impl Evaluator<'_> {
                         }
                         None => {
                             let mut check_inner = None;
+                            let (addr, meta) = bytes.split_at(bytes.len() / 2);
                             let element_size = match t.kind(Interner) {
                                 TyKind::Str => 1,
                                 TyKind::Slice(t) => {
                                     check_inner = Some(t);
                                     this.size_of_sized(t, locals, "slice inner type")?
                                 }
-                                _ => return Ok(()), // FIXME: support other kind of unsized types
+                                TyKind::Dyn(_) => {
+                                    let t = this.vtable_map.ty_of_bytes(meta)?;
+                                    check_inner = Some(t);
+                                    this.size_of_sized(t, locals, "dyn concrete type")?
+                                }
+                                _ => return Ok(()),
                             };
-                            let (addr, meta) = bytes.split_at(bytes.len() / 2);
-                            let count = from_bytes!(usize, meta);
+                            let count = match t.kind(Interner) {
+                                TyKind::Dyn(_) => 1,
+                                _ => from_bytes!(usize, meta),
+                            };
                             let size = element_size * count;
                             let addr = Address::from_bytes(addr)?;
                             let b = this.read_memory(addr, size)?;
@@ -1588,7 +1596,7 @@ impl Evaluator<'_> {
                             if let Some(ty) = check_inner {
                                 for i in 0..count {
                                     let offset = element_size * i;
-                                    rec(this, &b[offset..offset + element_size], ty, locals, mm)?;
+                                    rec(this, &b[offset..offset + element_size], &ty, locals, mm)?;
                                 }
                             }
                         }

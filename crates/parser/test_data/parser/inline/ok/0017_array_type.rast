@@ -14,8 +14,9 @@ SOURCE_FILE
         R_PAREN ")"
       SEMICOLON ";"
       WHITESPACE " "
-      LITERAL
-        INT_NUMBER "92"
+      CONST_ARG
+        LITERAL
+          INT_NUMBER "92"
       R_BRACK "]"
     SEMICOLON ";"
   WHITESPACE "\n"

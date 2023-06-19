@@ -151,6 +151,12 @@ pub enum CrateOrigin {
     Lang(LangCrateOrigin),
 }
 
+impl CrateOrigin {
+    pub fn is_local(&self) -> bool {
+        matches!(self, CrateOrigin::Local { .. })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LangCrateOrigin {
     Alloc,
@@ -333,6 +339,17 @@ pub struct Env {
     entries: FxHashMap<String, String>,
 }
 
+impl Env {
+    pub fn new_for_test_fixture() -> Self {
+        Env {
+            entries: FxHashMap::from_iter([(
+                String::from("__ra_is_test_fixture"),
+                String::from("__ra_is_test_fixture"),
+            )]),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dependency {
     pub crate_id: CrateId,
@@ -454,6 +471,12 @@ impl CrateGraph {
 
     pub fn iter(&self) -> impl Iterator<Item = CrateId> + '_ {
         self.arena.iter().map(|(idx, _)| idx)
+    }
+
+    // FIXME: used for `handle_hack_cargo_workspace`, should be removed later
+    #[doc(hidden)]
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (CrateId, &mut CrateData)> + '_ {
+        self.arena.iter_mut()
     }
 
     /// Returns an iterator over all transitive dependencies of the given crate,
