@@ -26,7 +26,7 @@ chalk-solve = { version = "0.91.0", default-features = false }
 chalk-ir = "0.91.0"
 chalk-recursive = { version = "0.91.0", default-features = false }
 chalk-derive = "0.91.0"
-la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+la-arena.workspace = true
 once_cell = "1.17.0"
 triomphe.workspace = true
 nohash-hasher.workspace = true
