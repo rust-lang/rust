@@ -82,10 +82,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         // start seeing the error below.
 
                         // Collect opaque types nested within the associated type bounds of this opaque type.
+                        // We use identity substs here, because we already know that the opaque type uses
+                        // only generic parameters, and thus substituting would not give us more information.
                         for (pred, span) in self
                             .tcx
                             .explicit_item_bounds(alias_ty.def_id)
-                            .subst_iter_copied(self.tcx, alias_ty.substs)
+                            .subst_identity_iter_copied()
                         {
                             trace!(?pred);
                             self.visit_spanned(span, pred);
@@ -155,6 +157,25 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 );
                             }
                         }
+                    }
+                }
+            }
+            ty::Adt(def, _) if def.did().is_local() => {
+                if !self.seen.insert(def.did().expect_local()) {
+                    return ControlFlow::Continue(());
+                }
+                for variant in def.variants().iter() {
+                    for field in variant.fields.iter() {
+                        // Don't use the `ty::Adt` substs, we either
+                        // * found the opaque in the substs
+                        // * will find the opaque in the unsubstituted fields
+                        // The only other situation that can occur is that after substituting,
+                        // some projection resolves to an opaque that we would have otherwise
+                        // not found. While we could substitute and walk those, that would mean we
+                        // would have to walk all substitutions of an Adt, which can quickly
+                        // degenerate into looking at an exponential number of types.
+                        let ty = self.tcx.type_of(field.did).subst_identity();
+                        self.visit_spanned(self.tcx.def_span(field.did), ty);
                     }
                 }
             }
