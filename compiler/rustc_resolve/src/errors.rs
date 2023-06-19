@@ -586,3 +586,63 @@ pub(crate) enum ParamKindInEnumDiscriminant {
     #[note(resolve_lifetime_param_in_enum_discriminant)]
     Lifetime,
 }
+
+#[derive(Subdiagnostic)]
+#[label(resolve_change_import_binding)]
+pub(crate) struct ChangeImportBinding {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_change_import_binding,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ChangeImportBindingSuggestion {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) suggestion: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_imports_cannot_refer_to)]
+pub(crate) struct ImportsCannotReferTo<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) what: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_find_ident_in_this_scope)]
+pub(crate) struct CannotFindIdentInThisScope<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) expected: &'a str,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_explicit_unsafe_traits)]
+pub(crate) struct ExplicitUnsafeTraits {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_added_macro_use)]
+pub(crate) struct AddedMacroUse;
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_consider_adding_a_derive,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ConsiderAddingADerive {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) suggestion: String,
+}

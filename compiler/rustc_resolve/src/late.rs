@@ -6,6 +6,7 @@
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
 //! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
+use crate::errors::ImportsCannotReferTo;
 use crate::BindingKey;
 use crate::{path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
@@ -2244,12 +2245,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 _ => &[TypeNS],
             };
             let report_error = |this: &Self, ns| {
-                let what = if ns == TypeNS { "type parameters" } else { "local variables" };
                 if this.should_report_errs() {
+                    let what = if ns == TypeNS { "type parameters" } else { "local variables" };
                     this.r
                         .tcx
                         .sess
-                        .span_err(ident.span, format!("imports cannot refer to {}", what));
+                        .create_err(ImportsCannotReferTo { span: ident.span, what })
+                        .emit();
                 }
             };
 
