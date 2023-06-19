@@ -462,6 +462,7 @@ impl AttrsWithOwner {
                 }
             },
             AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),
+            AttrDefId::ExternCrateId(it) => attrs_from_item_tree_loc(db, it),
         };
 
         let attrs = raw_attrs.filter(db.upcast(), def.krate(db));
@@ -546,6 +547,7 @@ impl AttrsWithOwner {
                     .map(|source| ast::AnyHasAttrs::new(source[id.local_id].clone())),
             },
             AttrDefId::ExternBlockId(id) => any_has_attrs(db, id),
+            AttrDefId::ExternCrateId(id) => any_has_attrs(db, id),
         };
 
         AttrSourceMap::new(owner.as_ref().map(|node| node as &dyn HasAttrs))

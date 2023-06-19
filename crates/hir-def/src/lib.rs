@@ -88,8 +88,8 @@ use crate::{
     builtin_type::BuiltinType,
     data::adt::VariantData,
     item_tree::{
-        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, Static,
-        Struct, Trait, TraitAlias, TypeAlias, Union,
+        Const, Enum, ExternCrate, Function, Impl, Import, ItemTreeId, ItemTreeNode, MacroDef,
+        MacroRules, Static, Struct, Trait, TraitAlias, TypeAlias, Union,
     },
 };
 
@@ -312,6 +312,16 @@ impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_al
 pub struct ImplId(salsa::InternId);
 type ImplLoc = ItemLoc<Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct ImportId(salsa::InternId);
+type ImportLoc = ItemLoc<Import>;
+impl_intern!(ImportId, ImportLoc, intern_import, lookup_intern_import);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct ExternCrateId(salsa::InternId);
+type ExternCrateLoc = ItemLoc<ExternCrate>;
+impl_intern!(ExternCrateId, ExternCrateLoc, intern_extern_crate, lookup_intern_extern_crate);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ExternBlockId(salsa::InternId);
@@ -821,6 +831,7 @@ pub enum AttrDefId {
     ImplId(ImplId),
     GenericParamId(GenericParamId),
     ExternBlockId(ExternBlockId),
+    ExternCrateId(ExternCrateId),
 }
 
 impl_from!(
@@ -835,7 +846,8 @@ impl_from!(
     TypeAliasId,
     MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
-    GenericParamId
+    GenericParamId,
+    ExternCrateId
     for AttrDefId
 );
 
@@ -924,6 +936,12 @@ impl HasModule for AdtId {
             AdtId::UnionId(it) => it.lookup(db).container,
             AdtId::EnumId(it) => it.lookup(db).container,
         }
+    }
+}
+
+impl HasModule for ExternCrateId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        self.lookup(db).container
     }
 }
 
@@ -1050,6 +1068,7 @@ impl AttrDefId {
                 .krate
             }
             AttrDefId::MacroId(it) => it.module(db).krate,
+            AttrDefId::ExternCrateId(it) => it.lookup(db).container.krate,
         }
     }
 }
