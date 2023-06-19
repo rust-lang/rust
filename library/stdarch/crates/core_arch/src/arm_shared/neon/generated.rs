@@ -1532,7 +1532,7 @@ pub unsafe fn vcgtq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u8)
 #[inline]
@@ -1545,7 +1545,7 @@ pub unsafe fn vcgt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u8)
 #[inline]
@@ -1558,7 +1558,7 @@ pub unsafe fn vcgtq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u16)
 #[inline]
@@ -1571,7 +1571,7 @@ pub unsafe fn vcgt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u16)
 #[inline]
@@ -1584,7 +1584,7 @@ pub unsafe fn vcgtq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u32)
 #[inline]
@@ -1597,7 +1597,7 @@ pub unsafe fn vcgt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u32)
 #[inline]
@@ -26185,7 +26185,7 @@ vrshlq_u64_(a, b)
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    vrshl_s8(a, vdup_n_s8((-N) as _))
+    vrshl_s8(a, vdup_n_s8(-N as _))
 }
 
 /// Signed rounding shift right
@@ -26200,7 +26200,7 @@ pub unsafe fn vrshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    vrshlq_s8(a, vdupq_n_s8((-N) as _))
+    vrshlq_s8(a, vdupq_n_s8(-N as _))
 }
 
 /// Signed rounding shift right
@@ -26215,7 +26215,7 @@ pub unsafe fn vrshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    vrshl_s16(a, vdup_n_s16((-N) as _))
+    vrshl_s16(a, vdup_n_s16(-N as _))
 }
 
 /// Signed rounding shift right
@@ -26230,7 +26230,7 @@ pub unsafe fn vrshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    vrshlq_s16(a, vdupq_n_s16((-N) as _))
+    vrshlq_s16(a, vdupq_n_s16(-N as _))
 }
 
 /// Signed rounding shift right
@@ -26245,7 +26245,7 @@ pub unsafe fn vrshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    vrshl_s32(a, vdup_n_s32((-N) as _))
+    vrshl_s32(a, vdup_n_s32(-N as _))
 }
 
 /// Signed rounding shift right
@@ -26260,7 +26260,7 @@ pub unsafe fn vrshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    vrshlq_s32(a, vdupq_n_s32((-N) as _))
+    vrshlq_s32(a, vdupq_n_s32(-N as _))
 }
 
 /// Signed rounding shift right
@@ -26275,7 +26275,7 @@ pub unsafe fn vrshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert!(N >= 1 && N <= 64);
-    vrshl_s64(a, vdup_n_s64((-N) as _))
+    vrshl_s64(a, vdup_n_s64(-N as _))
 }
 
 /// Signed rounding shift right
@@ -26290,7 +26290,7 @@ pub unsafe fn vrshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert!(N >= 1 && N <= 64);
-    vrshlq_s64(a, vdupq_n_s64((-N) as _))
+    vrshlq_s64(a, vdupq_n_s64(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26305,7 +26305,7 @@ pub unsafe fn vrshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
-    vrshl_u8(a, vdup_n_s8((-N) as _))
+    vrshl_u8(a, vdup_n_s8(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26320,7 +26320,7 @@ pub unsafe fn vrshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    vrshlq_u8(a, vdupq_n_s8((-N) as _))
+    vrshlq_u8(a, vdupq_n_s8(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26335,7 +26335,7 @@ pub unsafe fn vrshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
-    vrshl_u16(a, vdup_n_s16((-N) as _))
+    vrshl_u16(a, vdup_n_s16(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26350,7 +26350,7 @@ pub unsafe fn vrshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    vrshlq_u16(a, vdupq_n_s16((-N) as _))
+    vrshlq_u16(a, vdupq_n_s16(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26365,7 +26365,7 @@ pub unsafe fn vrshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
-    vrshl_u32(a, vdup_n_s32((-N) as _))
+    vrshl_u32(a, vdup_n_s32(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26380,7 +26380,7 @@ pub unsafe fn vrshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    vrshlq_u32(a, vdupq_n_s32((-N) as _))
+    vrshlq_u32(a, vdupq_n_s32(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26395,7 +26395,7 @@ pub unsafe fn vrshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N >= 1 && N <= 64);
-    vrshl_u64(a, vdup_n_s64((-N) as _))
+    vrshl_u64(a, vdup_n_s64(-N as _))
 }
 
 /// Unsigned rounding shift right
@@ -26410,7 +26410,7 @@ pub unsafe fn vrshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 pub unsafe fn vrshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert!(N >= 1 && N <= 64);
-    vrshlq_u64(a, vdupq_n_s64((-N) as _))
+    vrshlq_u64(a, vdupq_n_s64(-N as _))
 }
 
 /// Rounding shift right narrow

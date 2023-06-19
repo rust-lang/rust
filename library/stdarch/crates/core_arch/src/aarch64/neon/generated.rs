@@ -926,7 +926,7 @@ pub unsafe fn vcgtq_s64(a: int64x2_t, b: int64x2_t) -> uint64x2_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u64)
 #[inline]
@@ -937,7 +937,7 @@ pub unsafe fn vcgt_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_gt(a, b)
 }
 
-/// Compare unsigned highe
+/// Compare unsigned greater than
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u64)
 #[inline]
