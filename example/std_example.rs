@@ -155,10 +155,23 @@ fn main() {
     }
 
     foo(I64X2(0, 0));
+
+    transmute_fat_pointer();
 }
 
 fn panic(_: u128) {
     panic!();
+}
+
+use std::mem::transmute;
+
+#[cfg(target_pointer_width = "32")]
+type TwoPtrs = i64;
+#[cfg(target_pointer_width = "64")]
+type TwoPtrs = i128;
+
+fn transmute_fat_pointer() -> TwoPtrs {
+    unsafe { transmute::<_, TwoPtrs>("true !") }
 }
 
 #[repr(simd)]

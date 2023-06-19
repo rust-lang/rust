@@ -587,7 +587,14 @@ impl<'tcx> CPlace<'tcx> {
         let dst_layout = self.layout();
         match self.inner {
             CPlaceInner::Var(_local, var) => {
-                let data = CValue(from.0, dst_layout).load_scalar(fx);
+                let data = match from.1.abi {
+                    Abi::Scalar(_) => CValue(from.0, dst_layout).load_scalar(fx),
+                    _ => {
+                        let (ptr, meta) = from.force_stack(fx);
+                        assert!(meta.is_none());
+                        CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar(fx)
+                    }
+                };
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
                 transmute_scalar(fx, var, data, dst_ty);
             }
