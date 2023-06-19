@@ -13,4 +13,4 @@ Rule =
 | Rule '?'
 | Rule '*'
 | '(' Rule ')'
-| label:'ident' ':'
+| label:'ident' ':' Rule
