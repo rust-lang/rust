@@ -13,6 +13,7 @@ use rust_analyzer::{config::Config, lsp_ext, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
 use test_utils::FixtureWithProjectMeta;
+use tracing_subscriber::{prelude::*, Layer};
 use vfs::AbsPathBuf;
 
 use crate::testdir::TestDir;
@@ -76,13 +77,11 @@ impl<'a> Project<'a> {
         let tmp_dir = self.tmp_dir.unwrap_or_else(TestDir::new);
         static INIT: Once = Once::new();
         INIT.call_once(|| {
-            tracing_subscriber::fmt()
-                .with_test_writer()
-                // FIXME: I am not smart enough to figure out how to use this with
-                // `tracing_subscriber::filter::Targets`.
-                //
-                // .with_env_filter(tracing_subscriber::EnvFilter::from_env("RA_LOG"))
-                .init();
+            let filter: tracing_subscriber::filter::Targets =
+                std::env::var("RA_LOG").ok().and_then(|it| it.parse().ok()).unwrap_or_default();
+            let layer =
+                tracing_subscriber::fmt::Layer::new().with_test_writer().with_filter(filter);
+            tracing_subscriber::Registry::default().with(layer).init();
             profile::init_from(crate::PROFILE);
         });
 
