@@ -10,6 +10,46 @@
                     "message": 3
                 }
             ]
+        },
+        {
+            "owner": "cargo-common",
+            "pattern": [
+                {
+                    "regexp": "^(warning|warn|error)(\\[(\\S*)\\])?: (.*)$",
+                    "severity": 1,
+                    "message": 4,
+                    "code": 3
+                },
+                {
+                    "regexp": "^\\s+-->\\s(\\S+):(\\d+):(\\d+)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3
+                }
+            ]
+        },
+        {
+            "owner": "compiler-panic",
+            "pattern": [
+                {
+                    "regexp": "error: internal compiler error: (.*):(\\d+):(\\d+): (.*)$",
+                    "message": 4,
+                    "file": 1,
+                    "line": 2,
+                    "column": 3
+                }
+            ]
+        },
+        {
+            "owner": "cargo-fmt",
+            "pattern": [
+                {
+                    "regexp": "^(Diff in (\\S+)) at line (\\d+):",
+                    "message": 1,
+                    "file": 2,
+                    "line": 3
+                }
+            ]
         }
     ]
 }
