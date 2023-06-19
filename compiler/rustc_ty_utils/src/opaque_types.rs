@@ -177,13 +177,9 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
                     }
                 }
                 DefKind::AssocTy | DefKind::AssocConst => {
-                    let span = match tcx.hir().get_by_def_id(item) {
-                        rustc_hir::Node::ImplItem(it) => match it.kind {
-                            rustc_hir::ImplItemKind::Const(ty, _) => ty.span,
-                            rustc_hir::ImplItemKind::Type(ty) => ty.span,
-                            other => span_bug!(tcx.def_span(item), "{other:#?}"),
-                        },
-                        other => span_bug!(tcx.def_span(item), "{other:#?}"),
+                    let span = match tcx.hir().get_by_def_id(item).ty() {
+                        Some(ty) => ty.span,
+                        _ => tcx.def_span(item),
                     };
                     collector.visit_spanned(span, tcx.type_of(item).subst_identity());
                 }
