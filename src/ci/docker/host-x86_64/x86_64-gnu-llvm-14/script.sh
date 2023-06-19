@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 # Only run the stage 1 tests on merges, not on PR CI jobs.
 if [[ -z "${PR_CI_JOB}" ]]; then
