@@ -40,6 +40,7 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
             };
             format!("const {name} = ")
         }
+        DefWithBodyId::InTypeConstId(_) => format!("In type const = "),
         DefWithBodyId::VariantId(it) => {
             let src = it.parent.child_source(db);
             let variant = &src.value[it.local_id];

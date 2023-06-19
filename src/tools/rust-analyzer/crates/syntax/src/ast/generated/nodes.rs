@@ -1207,7 +1207,7 @@ impl ArrayType {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 

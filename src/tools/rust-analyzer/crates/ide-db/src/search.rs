@@ -243,6 +243,8 @@ impl Definition {
                 DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                // FIXME: implement
+                DefWithBody::InTypeConst(_) => return SearchScope::empty(),
             };
             return match def {
                 Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),

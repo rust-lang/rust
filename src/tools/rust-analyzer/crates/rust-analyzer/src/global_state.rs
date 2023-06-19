@@ -14,7 +14,7 @@ use nohash_hasher::IntMap;
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use triomphe::Arc;
 use vfs::AnchoredPathBuf;
 
@@ -54,6 +54,7 @@ pub(crate) struct GlobalState {
     req_queue: ReqQueue,
 
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
+    pub(crate) fmt_pool: Handle<TaskPool<Task>, Receiver<Task>>,
 
     pub(crate) config: Arc<Config>,
     pub(crate) config_errors: Option<ConfigError>,
@@ -111,9 +112,11 @@ pub(crate) struct GlobalState {
     /// the user just adds comments or whitespace to Cargo.toml, we do not want
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) crate_graph_file_dependencies: FxHashSet<vfs::VfsPath>,
 
     // op queues
-    pub(crate) fetch_workspaces_queue: OpQueue<(), Option<Vec<anyhow::Result<ProjectWorkspace>>>>,
+    pub(crate) fetch_workspaces_queue:
+        OpQueue<bool, Option<(Vec<anyhow::Result<ProjectWorkspace>>, bool)>>,
     pub(crate) fetch_build_data_queue:
         OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
     pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
@@ -151,6 +154,11 @@ impl GlobalState {
             let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
+        let fmt_pool = {
+            let (sender, receiver) = unbounded();
+            let handle = TaskPool::new_with_threads(sender, 1);
+            Handle { handle, receiver }
+        };
 
         let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
         if let Some(capacities) = config.lru_query_capacities() {
@@ -161,6 +169,7 @@ impl GlobalState {
             sender,
             req_queue: ReqQueue::default(),
             task_pool,
+            fmt_pool,
             loader,
             config: Arc::new(config.clone()),
             analysis_host,
@@ -189,6 +198,7 @@ impl GlobalState {
             vfs_progress_n_done: 0,
 
             workspaces: Arc::new(Vec::new()),
+            crate_graph_file_dependencies: FxHashSet::default(),
             fetch_workspaces_queue: OpQueue::default(),
             fetch_build_data_queue: OpQueue::default(),
             fetch_proc_macros_queue: OpQueue::default(),
@@ -202,10 +212,9 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
-        let mut workspace_structure_change = None;
 
         let mut file_changes = FxHashMap::default();
-        let (change, changed_files) = {
+        let (change, changed_files, workspace_structure_change) = {
             let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
             let changed_files = vfs.take_changes();
@@ -260,16 +269,20 @@ impl GlobalState {
                 .map(|(file_id, (change_kind, _))| vfs::ChangedFile { file_id, change_kind })
                 .collect();
 
+            let mut workspace_structure_change = None;
             // A file was added or deleted
             let mut has_structure_changes = false;
             for file in &changed_files {
-                if let Some(path) = vfs.file_path(file.file_id).as_path() {
+                let vfs_path = &vfs.file_path(file.file_id);
+                if let Some(path) = vfs_path.as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
-                        workspace_structure_change = Some(path);
+                        workspace_structure_change = Some((path.clone(), false));
                     }
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
+                        workspace_structure_change =
+                            Some((path, self.crate_graph_file_dependencies.contains(vfs_path)));
                     }
                 }
 
@@ -294,7 +307,7 @@ impl GlobalState {
                 let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
             }
-            (change, changed_files)
+            (change, changed_files, workspace_structure_change)
         };
 
         self.analysis_host.apply_change(change);
@@ -304,9 +317,11 @@ impl GlobalState {
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
             // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
-            if let Some(path) = workspace_structure_change {
-                self.fetch_workspaces_queue
-                    .request_op(format!("workspace vfs file change: {}", path.display()), ());
+            if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
+                self.fetch_workspaces_queue.request_op(
+                    format!("workspace vfs file change: {}", path.display()),
+                    force_crate_graph_reload,
+                );
             }
             self.proc_macro_changed =
                 changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {

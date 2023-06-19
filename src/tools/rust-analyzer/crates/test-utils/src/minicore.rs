@@ -32,6 +32,7 @@
 //!     include:
 //!     index: sized
 //!     infallible:
+//!     int_impl: size_of, transmute
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     manually_drop: drop
@@ -41,9 +42,11 @@
 //!     panic: fmt
 //!     phantom_data:
 //!     pin:
+//!     pointee:
 //!     range:
 //!     result:
 //!     send: sized
+//!     size_of: sized
 //!     sized:
 //!     slice:
 //!     sync: sized
@@ -345,6 +348,12 @@ pub mod mem {
         pub fn transmute<Src, Dst>(src: Src) -> Dst;
     }
     // endregion:transmute
+
+    // region:size_of
+    extern "rust-intrinsic" {
+        pub fn size_of<T>() -> usize;
+    }
+    // endregion:size_of
 }
 
 pub mod ptr {
@@ -360,6 +369,14 @@ pub mod ptr {
         *dst = src;
     }
     // endregion:drop
+
+    // region:pointee
+    #[lang = "pointee_trait"]
+    pub trait Pointee {
+        #[lang = "metadata_type"]
+        type Metadata;
+    }
+    // endregion:pointee
 }
 
 pub mod ops {
@@ -859,29 +876,26 @@ pub mod fmt {
     }
 
     #[lang = "format_argument"]
-    pub struct ArgumentV1<'a> {
+    pub struct Argument<'a> {
         value: &'a Opaque,
         formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
     }
 
-    impl<'a> ArgumentV1<'a> {
-        pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+    impl<'a> Argument<'a> {
+        pub fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
             use crate::mem::transmute;
-            unsafe { ArgumentV1 { formatter: transmute(f), value: transmute(x) } }
+            unsafe { Argument { formatter: transmute(f), value: transmute(x) } }
         }
     }
 
     #[lang = "format_arguments"]
     pub struct Arguments<'a> {
         pieces: &'a [&'static str],
-        args: &'a [ArgumentV1<'a>],
+        args: &'a [Argument<'a>],
     }
 
     impl<'a> Arguments<'a> {
-        pub const fn new_v1(
-            pieces: &'a [&'static str],
-            args: &'a [ArgumentV1<'a>],
-        ) -> Arguments<'a> {
+        pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
             Arguments { pieces, args }
         }
     }
@@ -1306,6 +1320,25 @@ impl bool {
     }
 }
 // endregion:bool_impl
+
+// region:int_impl
+macro_rules! impl_int {
+    ($($t:ty)*) => {
+        $(
+            impl $t {
+                pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                    unsafe { mem::transmute(bytes) }
+                }
+            }
+        )*
+    }
+}
+
+impl_int! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+}
+// endregion:int_impl
 
 // region:error
 pub mod error {

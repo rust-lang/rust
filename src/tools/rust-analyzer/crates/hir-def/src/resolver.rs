@@ -21,11 +21,11 @@ use crate::{
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId,
-    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
-    VariantId,
+    AdtId, AssocItemId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId,
+    EnumVariantId, ExternBlockId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
+    ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId,
+    ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeOwnerId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -946,6 +946,15 @@ impl HasResolver for ModuleId {
     }
 }
 
+impl HasResolver for CrateRootModuleId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        Resolver {
+            scopes: vec![],
+            module_scope: ModuleItemMap { def_map: self.def_map(db), module_id: DefMap::ROOT },
+        }
+    }
+}
+
 impl HasResolver for TraitId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
@@ -1009,6 +1018,24 @@ impl HasResolver for ExternBlockId {
     }
 }
 
+impl HasResolver for TypeOwnerId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        match self {
+            TypeOwnerId::FunctionId(x) => x.resolver(db),
+            TypeOwnerId::StaticId(x) => x.resolver(db),
+            TypeOwnerId::ConstId(x) => x.resolver(db),
+            TypeOwnerId::InTypeConstId(x) => x.lookup(db).owner.resolver(db),
+            TypeOwnerId::AdtId(x) => x.resolver(db),
+            TypeOwnerId::TraitId(x) => x.resolver(db),
+            TypeOwnerId::TraitAliasId(x) => x.resolver(db),
+            TypeOwnerId::TypeAliasId(x) => x.resolver(db),
+            TypeOwnerId::ImplId(x) => x.resolver(db),
+            TypeOwnerId::EnumVariantId(x) => x.resolver(db),
+            TypeOwnerId::ModuleId(x) => x.resolver(db),
+        }
+    }
+}
+
 impl HasResolver for DefWithBodyId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {
@@ -1016,6 +1043,7 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::FunctionId(f) => f.resolver(db),
             DefWithBodyId::StaticId(s) => s.resolver(db),
             DefWithBodyId::VariantId(v) => v.parent.resolver(db),
+            DefWithBodyId::InTypeConstId(c) => c.lookup(db).owner.resolver(db),
         }
     }
 }

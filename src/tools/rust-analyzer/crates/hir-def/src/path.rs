@@ -9,7 +9,7 @@ use std::{
 use crate::{
     lang_item::LangItemTarget,
     lower::LowerCtx,
-    type_ref::{ConstRefOrPath, LifetimeRef, TypeBound, TypeRef},
+    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
 };
 use hir_expand::name::Name;
 use intern::Interned;
@@ -90,7 +90,7 @@ pub struct AssociatedTypeBinding {
 pub enum GenericArg {
     Type(TypeRef),
     Lifetime(LifetimeRef),
-    Const(ConstRefOrPath),
+    Const(ConstRef),
 }
 
 impl Path {

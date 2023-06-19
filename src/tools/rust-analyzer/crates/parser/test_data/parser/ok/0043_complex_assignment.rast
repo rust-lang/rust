@@ -24,8 +24,9 @@ SOURCE_FILE
                   IDENT "u8"
           SEMICOLON ";"
           WHITESPACE " "
-          LITERAL
-            INT_NUMBER "1"
+          CONST_ARG
+            LITERAL
+              INT_NUMBER "1"
           R_BRACK "]"
       WHITESPACE " "
       R_CURLY "}"

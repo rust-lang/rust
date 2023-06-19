@@ -153,7 +153,9 @@ fn array_or_slice_type(p: &mut Parser<'_>) {
         // type T = [(); 92];
         T![;] => {
             p.bump(T![;]);
+            let m = p.start();
             expressions::expr(p);
+            m.complete(p, CONST_ARG);
             p.expect(T![']']);
             ARRAY_TYPE
         }
