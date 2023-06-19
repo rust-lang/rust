@@ -227,3 +227,12 @@ pub(crate) struct UnwindingInlineAsm {
 pub(crate) struct InvalidMinimumAlignment {
     pub err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_gcc_tied_target_features)]
+#[help]
+pub(crate) struct TiedTargetFeatures {
+    #[primary_span]
+    pub span: Span,
+    pub features: String,
+}
