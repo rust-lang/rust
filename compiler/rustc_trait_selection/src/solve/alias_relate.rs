@@ -110,12 +110,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         direction: ty::AliasRelationDirection,
         invert: Invert,
     ) -> QueryResult<'tcx> {
-        self.probe(
+        self.probe(|r| CandidateKind::Candidate { name: "normalizes-to".into(), result: *r }).enter(
             |ecx| {
                 ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             },
-            |r| CandidateKind::Candidate { name: "normalizes-to".into(), result: *r },
         )
     }
 
@@ -157,7 +156,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         alias_rhs: ty::AliasTy<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe(
+        self.probe(|r| CandidateKind::Candidate { name: "substs relate".into(), result: *r }).enter(
             |ecx| {
                 match direction {
                     ty::AliasRelationDirection::Equate => {
@@ -170,7 +169,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             },
-            |r| CandidateKind::Candidate { name: "substs relate".into(), result: *r },
         )
     }
 
@@ -181,8 +179,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         rhs: ty::Term<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe(
-            |ecx| {
+        self.probe(|r| CandidateKind::Candidate { name: "bidir normalizes-to".into(), result: *r })
+            .enter(|ecx| {
                 ecx.normalizes_to_inner(
                     param_env,
                     lhs.to_alias_ty(ecx.tcx()).unwrap(),
@@ -198,8 +196,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     Invert::Yes,
                 )?;
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            },
-            |r| CandidateKind::Candidate { name: "bidir normalizes-to".into(), result: *r },
-        )
+            })
     }
 }

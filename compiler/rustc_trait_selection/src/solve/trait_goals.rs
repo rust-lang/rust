@@ -62,24 +62,21 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             },
         };
 
-        ecx.probe(
-            |ecx| {
-                let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
-                let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
+        ecx.probe(|r| CandidateKind::Candidate { name: "impl".into(), result: *r }).enter(|ecx| {
+            let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
+            let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-                ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
-                let where_clause_bounds = tcx
-                    .predicates_of(impl_def_id)
-                    .instantiate(tcx, impl_substs)
-                    .predicates
-                    .into_iter()
-                    .map(|pred| goal.with(tcx, pred));
-                ecx.add_goals(where_clause_bounds);
+            ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
+            let where_clause_bounds = tcx
+                .predicates_of(impl_def_id)
+                .instantiate(tcx, impl_substs)
+                .predicates
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred));
+            ecx.add_goals(where_clause_bounds);
 
-                ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
-            },
-            |r| CandidateKind::Candidate { name: "impl".into(), result: *r },
-        )
+            ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
+        })
     }
 
     fn probe_and_match_goal_against_assumption(
@@ -93,8 +90,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 && trait_clause.polarity() == goal.predicate.polarity
             {
                 // FIXME: Constness
-                ecx.probe(
-                    |ecx| {
+                ecx.probe(|r| CandidateKind::Candidate { name: "assumption".into(), result: *r })
+                    .enter(|ecx| {
                         let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
                         ecx.eq(
                             goal.param_env,
@@ -102,9 +99,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                             assumption_trait_pred.trait_ref,
                         )?;
                         then(ecx)
-                    },
-                    |r| CandidateKind::Candidate { name: "assumption".into(), result: *r },
-                )
+                    })
             } else {
                 Err(NoSolution)
             }
@@ -141,7 +136,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let tcx = ecx.tcx();
 
-        ecx.probe(
+        ecx.probe(|r| CandidateKind::Candidate { name: "trait alias".into(), result: *r }).enter(
             |ecx| {
                 let nested_obligations = tcx
                     .predicates_of(goal.predicate.def_id())
@@ -149,7 +144,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 ecx.add_goals(nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)));
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             },
-            |r| CandidateKind::Candidate { name: "trait alias".into(), result: *r },
         )
     }
 
@@ -356,7 +350,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         if b_ty.is_ty_var() {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
-        ecx.probe(
+        ecx.probe(|r| CandidateKind::Candidate { name: "builtin unsize".into(), result: *r }).enter(
             |ecx| {
                 match (a_ty.kind(), b_ty.kind()) {
                     // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`
@@ -464,7 +458,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     _ => Err(NoSolution),
                 }
             },
-            |r| CandidateKind::Candidate { name: "builtin unsize".into(), result: *r },
         )
     }
 
@@ -495,38 +488,36 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         let mut unsize_dyn_to_principal = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
-            ecx.probe(
-                |ecx| -> Result<_, NoSolution> {
-                    // Require that all of the trait predicates from A match B, except for
-                    // the auto traits. We do this by constructing a new A type with B's
-                    // auto traits, and equating these types.
-                    let new_a_data = principal
-                        .into_iter()
-                        .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait))
-                        .chain(a_data.iter().filter(|a| {
-                            matches!(a.skip_binder(), ty::ExistentialPredicate::Projection(_))
-                        }))
-                        .chain(
-                            b_data
-                                .auto_traits()
-                                .map(ty::ExistentialPredicate::AutoTrait)
-                                .map(ty::Binder::dummy),
-                        );
-                    let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
-                    let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
-
-                    // We also require that A's lifetime outlives B's lifetime.
-                    ecx.eq(goal.param_env, new_a_ty, b_ty)?;
-                    ecx.add_goal(
-                        goal.with(
-                            tcx,
-                            ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
-                        ),
+            ecx.probe(|r| CandidateKind::Candidate {
+                name: "upcast dyn to principle".into(),
+                result: *r,
+            })
+            .enter(|ecx| -> Result<_, NoSolution> {
+                // Require that all of the trait predicates from A match B, except for
+                // the auto traits. We do this by constructing a new A type with B's
+                // auto traits, and equating these types.
+                let new_a_data = principal
+                    .into_iter()
+                    .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait))
+                    .chain(a_data.iter().filter(|a| {
+                        matches!(a.skip_binder(), ty::ExistentialPredicate::Projection(_))
+                    }))
+                    .chain(
+                        b_data
+                            .auto_traits()
+                            .map(ty::ExistentialPredicate::AutoTrait)
+                            .map(ty::Binder::dummy),
                     );
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                },
-                |r| CandidateKind::Candidate { name: "upcast dyn to principle".into(), result: *r },
-            )
+                let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
+                let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
+
+                // We also require that A's lifetime outlives B's lifetime.
+                ecx.eq(goal.param_env, new_a_ty, b_ty)?;
+                ecx.add_goal(
+                    goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region))),
+                );
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            })
         };
 
         let mut responses = vec![];
@@ -723,8 +714,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         constituent_tys: impl Fn(&EvalCtxt<'_, 'tcx>, Ty<'tcx>) -> Result<Vec<Ty<'tcx>>, NoSolution>,
     ) -> QueryResult<'tcx> {
-        self.probe(
-            |ecx| {
+        self.probe(|r| CandidateKind::Candidate { name: "constituent tys".into(), result: *r })
+            .enter(|ecx| {
                 ecx.add_goals(
                     constituent_tys(ecx, goal.predicate.self_ty())?
                         .into_iter()
@@ -737,9 +728,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         .collect::<Vec<_>>(),
                 );
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            },
-            |r| CandidateKind::Candidate { name: "constituent tys".into(), result: *r },
-        )
+            })
     }
 
     #[instrument(level = "debug", skip(self))]
