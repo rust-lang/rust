@@ -1721,7 +1721,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
         };
 
         let eligible = match &impl_source {
-            super::ImplSource::TraitAlias(_) => true,
             super::ImplSource::UserDefined(impl_data) => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
@@ -2013,8 +2012,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
         }
         super::ImplSource::Object(_)
         | super::ImplSource::Param(..)
-        | super::ImplSource::TraitUpcasting(_)
-        | super::ImplSource::TraitAlias(..) => {
+        | super::ImplSource::TraitUpcasting(_) => {
             // we don't create Select candidates with this kind of resolution
             span_bug!(
                 obligation.cause.span,

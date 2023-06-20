@@ -27,10 +27,9 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceObjectData, ImplSourceTraitAliasData, ImplSourceTraitUpcastingData,
-    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
-    OutputTypeParameterMismatch, PredicateObligation, Selection, SelectionError,
-    TraitNotObjectSafe, TraitObligation, Unimplemented,
+    ImplSourceObjectData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
+    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
+    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -105,7 +104,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             TraitAliasCandidate => {
                 let data = self.confirm_trait_alias_candidate(obligation);
-                ImplSource::TraitAlias(data)
+                ImplSource::Builtin(data)
             }
 
             BuiltinObjectCandidate => {
@@ -721,10 +720,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_trait_alias_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> ImplSourceTraitAliasData<'tcx, PredicateObligation<'tcx>> {
+    ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, "confirm_trait_alias_candidate");
 
-        let alias_def_id = obligation.predicate.def_id();
         let predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let trait_ref = predicate.trait_ref;
         let trait_def_id = trait_ref.def_id;
@@ -741,7 +739,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?trait_def_id, ?trait_obligations, "trait alias obligations");
 
-        ImplSourceTraitAliasData { alias_def_id, substs, nested: trait_obligations }
+        trait_obligations
     }
 
     fn confirm_generator_candidate(
