@@ -1039,9 +1039,14 @@ macro_rules! super_body {
 
         $self.visit_span($(& $mutability)? $body.span);
 
-        for const_ in &$($mutability)? $body.required_consts {
+        for (item, _) in &$($mutability)? $body.required_items {
             let location = Location::START;
-            $self.visit_constant(const_, location);
+            match item {
+                MonoItem::Const(const_) => if let ConstantKind::Unevaluated(..) = const_.literal {
+                    $self.visit_constant(const_, location)
+                },
+                _ => {}
+            }
         }
     }
 }

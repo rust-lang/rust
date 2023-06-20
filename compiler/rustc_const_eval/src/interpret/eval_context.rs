@@ -703,10 +703,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack_mut().push(frame);
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
-        for ct in &body.required_consts {
-            let span = ct.span;
-            let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
-            self.eval_mir_constant(&ct, Some(span), None)?;
+        for (ct, span) in &body.required_items {
+            if let mir::MonoItem::Const(ct) = ct {
+                match ct.literal {
+                    mir::ConstantKind::Ty(c) => match c.kind() {
+                        ty::ConstKind::Unevaluated(_) => {}
+                        _ => continue,
+                    },
+                    mir::ConstantKind::Unevaluated(_, _) => {}
+                    mir::ConstantKind::Val(_, _) => continue,
+                }
+                let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
+                self.eval_mir_constant(&ct, Some(*span), None)?;
+            }
         }
 
         // Most locals are initially dead.

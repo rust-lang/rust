@@ -625,18 +625,7 @@ impl<'tcx> Inliner<'tcx> {
                     kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
                 });
 
-                // Copy only unevaluated constants from the callee_body into the caller_body.
-                // Although we are only pushing `ConstKind::Unevaluated` consts to
-                // `required_consts`, here we may not only have `ConstKind::Unevaluated`
-                // because we are calling `subst_and_normalize_erasing_regions`.
-                caller_body.required_consts.extend(
-                    callee_body.required_consts.iter().copied().filter(|&ct| match ct.literal {
-                        ConstantKind::Ty(_) => {
-                            bug!("should never encounter ty::UnevaluatedConst in `required_consts`")
-                        }
-                        ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => true,
-                    }),
-                );
+                caller_body.required_items.extend(callee_body.required_items.iter().cloned());
             }
             kind => bug!("unexpected terminator kind {:?}", kind),
         }

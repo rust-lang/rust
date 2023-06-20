@@ -35,9 +35,11 @@ impl ConstantCx {
 
 pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
-    for constant in &fx.mir.required_consts {
-        if eval_mir_constant(fx, constant).is_none() {
-            all_constants_ok = false;
+    for (item, _) in &fx.mir.required_items {
+        if let rustc_middle::mir::MonoItem::Const(constant) = item {
+            if eval_mir_constant(fx, constant).is_none() {
+                all_constants_ok = false;
+            }
         }
     }
     all_constants_ok

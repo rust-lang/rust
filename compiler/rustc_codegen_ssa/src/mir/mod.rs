@@ -2,6 +2,7 @@ use crate::base;
 use crate::traits::*;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::MonoItem;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_target::abi::call::{FnAbi, PassMode};
@@ -202,14 +203,20 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Evaluate all required consts; codegen later assumes that CTFE will never fail.
     let mut all_consts_ok = true;
-    for const_ in &mir.required_consts {
-        if let Err(err) = fx.eval_mir_constant(const_) {
-            all_consts_ok = false;
-            match err {
-                // errored or at least linted
-                ErrorHandled::Reported(_) => {}
-                ErrorHandled::TooGeneric => {
-                    span_bug!(const_.span, "codegen encountered polymorphic constant: {:?}", err)
+    for (const_, _) in &mir.required_items {
+        if let MonoItem::Const(const_) = const_ {
+            if let Err(err) = fx.eval_mir_constant(const_) {
+                all_consts_ok = false;
+                match err {
+                    // errored or at least linted
+                    ErrorHandled::Reported(_) => {}
+                    ErrorHandled::TooGeneric => {
+                        span_bug!(
+                            const_.span,
+                            "codegen encountered polymorphic constant: {:?}",
+                            err
+                        )
+                    }
                 }
             }
         }

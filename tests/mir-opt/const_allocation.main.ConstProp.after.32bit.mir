@@ -18,42 +18,42 @@ fn main() -> () {
 }
 
 alloc1 (static: FOO, size: 8, align: 4) {
-    ╾─alloc19─╼ 03 00 00 00                         │ ╾──╼....
+    ╾─alloc24─╼ 03 00 00 00                         │ ╾──╼....
 }
 
-alloc19 (size: 48, align: 4) {
-    0x00 │ 00 00 00 00 __ __ __ __ ╾─alloc6──╼ 00 00 00 00 │ ....░░░░╾──╼....
-    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc9──╼ 02 00 00 00 │ ....░░░░╾──╼....
-    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc14─╼ 03 00 00 00 │ ....*...╾──╼....
+alloc24 (size: 48, align: 4) {
+    0x00 │ 00 00 00 00 __ __ __ __ ╾─alloc11─╼ 00 00 00 00 │ ....░░░░╾──╼....
+    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc14─╼ 02 00 00 00 │ ....░░░░╾──╼....
+    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc19─╼ 03 00 00 00 │ ....*...╾──╼....
 }
 
-alloc6 (size: 0, align: 4) {}
+alloc11 (size: 0, align: 4) {}
 
-alloc9 (size: 16, align: 4) {
-    ╾─alloc10─╼ 03 00 00 00 ╾─alloc11─╼ 03 00 00 00 │ ╾──╼....╾──╼....
-}
-
-alloc10 (size: 3, align: 1) {
-    66 6f 6f                                        │ foo
-}
-
-alloc11 (size: 3, align: 1) {
-    62 61 72                                        │ bar
-}
-
-alloc14 (size: 24, align: 4) {
-    0x00 │ ╾─alloc15─╼ 03 00 00 00 ╾─alloc16─╼ 03 00 00 00 │ ╾──╼....╾──╼....
-    0x10 │ ╾─alloc17─╼ 04 00 00 00                         │ ╾──╼....
+alloc14 (size: 16, align: 4) {
+    ╾─alloc15─╼ 03 00 00 00 ╾─alloc16─╼ 03 00 00 00 │ ╾──╼....╾──╼....
 }
 
 alloc15 (size: 3, align: 1) {
-    6d 65 68                                        │ meh
+    66 6f 6f                                        │ foo
 }
 
 alloc16 (size: 3, align: 1) {
+    62 61 72                                        │ bar
+}
+
+alloc19 (size: 24, align: 4) {
+    0x00 │ ╾─alloc20─╼ 03 00 00 00 ╾─alloc21─╼ 03 00 00 00 │ ╾──╼....╾──╼....
+    0x10 │ ╾─alloc22─╼ 04 00 00 00                         │ ╾──╼....
+}
+
+alloc20 (size: 3, align: 1) {
+    6d 65 68                                        │ meh
+}
+
+alloc21 (size: 3, align: 1) {
     6d 6f 70                                        │ mop
 }
 
-alloc17 (size: 4, align: 1) {
+alloc22 (size: 4, align: 1) {
     6d c3 b6 70                                     │ m..p
 }

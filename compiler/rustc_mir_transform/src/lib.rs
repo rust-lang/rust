@@ -19,7 +19,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
-use required_consts::RequiredConstsVisitor;
 use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
@@ -303,12 +302,13 @@ fn mir_promoted(
         body.tainted_by_errors = Some(error_reported);
     }
 
-    let mut required_consts = Vec::new();
-    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
+    let param_env = tcx.param_env(def);
+    let mut required_consts_visitor =
+        required_consts::MirNeighborCollector { tcx, body: &body, output: vec![], param_env };
     for (bb, bb_data) in traversal::reverse_postorder(&body) {
         required_consts_visitor.visit_basic_block_data(bb, bb_data);
     }
-    body.required_consts = required_consts;
+    body.required_items = required_consts_visitor.output;
 
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();

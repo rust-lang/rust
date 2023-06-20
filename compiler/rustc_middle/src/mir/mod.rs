@@ -220,6 +220,23 @@ pub struct GeneratorInfo<'tcx> {
     pub generator_kind: GeneratorKind,
 }
 
+#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
+/// Items that the monomorphization collector needs to walk into.
+pub enum MonoItem<'tcx> {
+    /// The `bool` states whether this is a direct call or not.
+    Fn(DefId, SubstsRef<'tcx>, bool),
+    Static(DefId),
+    Vtable {
+        source_ty: Ty<'tcx>,
+        target_ty: Ty<'tcx>,
+    },
+    Const(Constant<'tcx>),
+    Drop(Ty<'tcx>),
+    Closure(DefId, SubstsRef<'tcx>),
+}
+
+pub type MonoItems<'tcx> = Vec<(MonoItem<'tcx>, Span)>;
+
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Body<'tcx> {
@@ -275,9 +292,11 @@ pub struct Body<'tcx> {
     /// A span representing this MIR, for error reporting.
     pub span: Span,
 
-    /// Constants that are required to evaluate successfully for this MIR to be well-formed.
-    /// We hold in this field all the constants we are not able to evaluate yet.
-    pub required_consts: Vec<Constant<'tcx>>,
+    /// Items that this body needs to monomorphize if monomorphized itself.
+    /// This field avoids the issue that optimizations can remove function calls in dead code
+    /// causing differences in monomorphization time errors depending on the optimizations
+    /// enabled.
+    pub required_items: MonoItems<'tcx>,
 
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
@@ -347,7 +366,7 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
-            required_consts: Vec::new(),
+            required_items: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
@@ -374,7 +393,7 @@ impl<'tcx> Body<'tcx> {
             arg_count: 0,
             spread_arg: None,
             span: DUMMY_SP,
-            required_consts: Vec::new(),
+            required_items: Vec::new(),
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,
