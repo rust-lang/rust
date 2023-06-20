@@ -230,7 +230,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
 impl TraitBounds {
     /// Is the given bound a `?Sized` bound, and is combining it (i.e. `T: X + ?Sized`) an error on
-    /// this MSRV? See https://github.com/rust-lang/rust-clippy/issues/8772 for details.
+    /// this MSRV? See <https://github.com/rust-lang/rust-clippy/issues/8772> for details.
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
         if !self.msrv.meets(msrvs::COMBINED_MAYBE_BOUND)
             && let GenericBound::Trait(tr, TraitBoundModifier::Maybe) = bound
