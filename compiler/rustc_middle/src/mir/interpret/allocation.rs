@@ -416,7 +416,8 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     /// even when new allocations are pushed to the `HashMap`. `mem_copy_repeatedly` relies
     /// on that.
     #[inline]
-    pub fn get_bytes_unchecked(&self, range: AllocRange) -> &[u8] {
+    pub fn get_bytes_unchecked(&self, range: impl Into<AllocRange>) -> &[u8] {
+        let range = range.into();
         &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
     }
 
@@ -430,8 +431,9 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn get_bytes_strip_provenance(
         &self,
         cx: &impl HasDataLayout,
-        range: AllocRange,
+        range: impl Into<AllocRange>,
     ) -> AllocResult<&[u8]> {
+        let range = range.into();
         self.init_mask.is_range_initialized(range).map_err(|uninit_range| {
             AllocError::InvalidUninitBytes(Some(UninitBytesAccess {
                 access: range,
@@ -455,8 +457,9 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn get_bytes_mut(
         &mut self,
         cx: &impl HasDataLayout,
-        range: AllocRange,
+        range: impl Into<AllocRange>,
     ) -> AllocResult<&mut [u8]> {
+        let range = range.into();
         self.mark_init(range, true);
         self.provenance.clear(range, cx)?;
 
@@ -467,8 +470,9 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn get_bytes_mut_ptr(
         &mut self,
         cx: &impl HasDataLayout,
-        range: AllocRange,
+        range: impl Into<AllocRange>,
     ) -> AllocResult<*mut [u8]> {
+        let range = range.into();
         self.mark_init(range, true);
         self.provenance.clear(range, cx)?;
 
@@ -482,7 +486,8 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 /// Reading and writing.
 impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     /// Sets the init bit for the given range.
-    fn mark_init(&mut self, range: AllocRange, is_init: bool) {
+    fn mark_init(&mut self, range: impl Into<AllocRange>, is_init: bool) {
+        let range = range.into();
         if range.size.bytes() == 0 {
             return;
         }
@@ -503,9 +508,10 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn read_scalar(
         &self,
         cx: &impl HasDataLayout,
-        range: AllocRange,
+        range: impl Into<AllocRange>,
         read_provenance: bool,
     ) -> AllocResult<Scalar<Prov>> {
+        let range = range.into();
         // First and foremost, if anything is uninit, bail.
         if self.init_mask.is_range_initialized(range).is_err() {
             return Err(AllocError::InvalidUninitBytes(None));
@@ -565,9 +571,10 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
-        range: AllocRange,
+        range: impl Into<AllocRange>,
         val: Scalar<Prov>,
     ) -> AllocResult {
+        let range = range.into();
         assert!(self.mutability == Mutability::Mut);
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
@@ -594,7 +601,12 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     }
 
     /// Write "uninit" to the given memory range.
-    pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
+    pub fn write_uninit(
+        &mut self,
+        cx: &impl HasDataLayout,
+        range: impl Into<AllocRange>,
+    ) -> AllocResult {
+        let range = range.into();
         self.mark_init(range, false);
         self.provenance.clear(range, cx)?;
         return Ok(());
@@ -614,7 +626,13 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     ///
     /// This is dangerous to use as it can violate internal `Allocation` invariants!
     /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
-    pub fn init_mask_apply_copy(&mut self, copy: InitCopy, range: AllocRange, repeat: u64) {
+    pub fn init_mask_apply_copy(
+        &mut self,
+        copy: InitCopy,
+        range: impl Into<AllocRange>,
+        repeat: u64,
+    ) {
+        let range = range.into();
         self.init_mask.apply_copy(copy, range, repeat)
     }
 }
