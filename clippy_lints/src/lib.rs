@@ -930,9 +930,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     let accept_comment_above_statement = conf.accept_comment_above_statement;
+    let accept_comment_above_attributes = conf.accept_comment_above_attributes;
     store.register_late_pass(move |_| {
         Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::new(
             accept_comment_above_statement,
+            accept_comment_above_attributes,
         ))
     });
     let allow_mixed_uninlined = conf.allow_mixed_uninlined_format_args;

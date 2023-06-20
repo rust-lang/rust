@@ -1,7 +1,8 @@
 //@aux-build:proc_macro_unsafe.rs
 
 #![warn(clippy::undocumented_unsafe_blocks, clippy::unnecessary_safety_comment)]
-#![allow(clippy::let_unit_value, clippy::missing_safety_doc)]
+#![allow(deref_nullptr, clippy::let_unit_value, clippy::missing_safety_doc)]
+#![feature(lint_reasons)]
 
 extern crate proc_macro_unsafe;
 
@@ -529,6 +530,38 @@ fn issue_10832() {
     // Safety: Yet another safety comment
     static _SOME_STATIC_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+}
+
+fn issue_8679<T: Copy>() {
+    // SAFETY:
+    #[allow(unsafe_code)]
+    unsafe {}
+
+    // SAFETY:
+    #[expect(unsafe_code, reason = "totally safe")]
+    unsafe {
+        *std::ptr::null::<T>()
+    };
+
+    // Safety: A safety comment
+    #[allow(unsafe_code)]
+    let _some_variable_with_a_very_long_name_to_break_the_line =
+        unsafe { a_function_with_a_very_long_name_to_break_the_line() };
+
+    // Safety: Another safety comment
+    #[allow(unsafe_code)]
+    const _SOME_CONST_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
+        unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+
+    // Safety: Yet another safety comment
+    #[allow(unsafe_code)]
+    static _SOME_STATIC_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
+        unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+
+    // SAFETY:
+    #[allow(unsafe_code)]
+    // This also works I guess
+    unsafe {}
 }
 
 fn main() {}
