@@ -270,7 +270,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let offset_ptr = ptr.wrapping_signed_offset(offset_bytes, self);
                 self.write_pointer(offset_ptr, dest)?;
             }
-            sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
+            sym::ptr_offset_from
+            | sym::ptr_offset_from_unsigned
+            | sym::ptr_wrapping_offset_from => {
                 let a = self.read_pointer(&args[0])?;
                 let b = self.read_pointer(&args[1])?;
 
@@ -288,6 +290,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (Err(_), _) | (_, Err(_)) => {
                             // We managed to find a valid allocation for one pointer, but not the other.
                             // That means they are definitely not pointing to the same allocation.
+                            // FIXME: if at least one pointer was a wildcard pointer, we should not throw UB here
+                            // but just use their absolute addresses instead.
                             throw_ub_custom!(
                                 fluent::const_eval_different_allocations,
                                 name = intrinsic_name,
@@ -315,57 +319,62 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let b_offset = ImmTy::from_uint(b_offset, usize_layout);
                         self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?
                     };
-                    if overflowed {
-                        // a < b
-                        if intrinsic_name == sym::ptr_offset_from_unsigned {
-                            throw_ub_custom!(
-                                fluent::const_eval_unsigned_offset_from_overflow,
-                                a_offset = a_offset,
-                                b_offset = b_offset,
-                            );
+                    let dist = val.to_target_isize(self)?;
+                    if intrinsic_name != sym::ptr_wrapping_offset_from {
+                        // Overflow check.
+                        if overflowed {
+                            // a < b
+                            if intrinsic_name == sym::ptr_offset_from_unsigned {
+                                throw_ub_custom!(
+                                    fluent::const_eval_unsigned_offset_from_overflow,
+                                    a_offset = a_offset,
+                                    b_offset = b_offset,
+                                );
+                            }
+                            // The signed form of the intrinsic allows this. If we interpret the
+                            // difference as isize, we'll get the proper signed difference. If that
+                            // seems *positive*, they were more than isize::MAX apart.
+                            if dist >= 0 {
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_underflow,
+                                    name = intrinsic_name,
+                                );
+                            }
+                        } else {
+                            // b >= a, no overflow during subtraction.
+                            // If converting to isize produced a *negative* result, we had an overflow
+                            // when converting to `isize` because they were more than isize::MAX apart.
+                            if dist < 0 {
+                                throw_ub_custom!(
+                                    fluent::const_eval_offset_from_overflow,
+                                    name = intrinsic_name,
+                                );
+                            }
                         }
-                        // The signed form of the intrinsic allows this. If we interpret the
-                        // difference as isize, we'll get the proper signed difference. If that
-                        // seems *positive*, they were more than isize::MAX apart.
-                        let dist = val.to_target_isize(self)?;
-                        if dist >= 0 {
-                            throw_ub_custom!(
-                                fluent::const_eval_offset_from_underflow,
-                                name = intrinsic_name,
-                            );
-                        }
-                        dist
-                    } else {
-                        // b >= a
-                        let dist = val.to_target_isize(self)?;
-                        // If converting to isize produced a *negative* result, we had an overflow
-                        // because they were more than isize::MAX apart.
-                        if dist < 0 {
-                            throw_ub_custom!(
-                                fluent::const_eval_offset_from_overflow,
-                                name = intrinsic_name,
-                            );
-                        }
-                        dist
                     }
+                    dist
                 };
 
                 // Check that the range between them is dereferenceable ("in-bounds or one past the
                 // end of the same allocation"). This is like the check in ptr_offset_inbounds.
-                let min_ptr = if dist >= 0 { b } else { a };
-                self.check_ptr_access_align(
-                    min_ptr,
-                    Size::from_bytes(dist.unsigned_abs()),
-                    Align::ONE,
-                    CheckInAllocMsg::OffsetFromTest,
-                )?;
+                if intrinsic_name != sym::ptr_wrapping_offset_from {
+                    let min_ptr = if dist >= 0 { b } else { a };
+                    self.check_ptr_access_align(
+                        min_ptr,
+                        Size::from_bytes(dist.unsigned_abs()),
+                        Align::ONE,
+                        CheckInAllocMsg::OffsetFromTest,
+                    )?;
+                }
 
                 // Perform division by size to compute return value.
                 let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {
                     assert!(0 <= dist && dist <= self.target_isize_max());
                     usize_layout
                 } else {
-                    assert!(self.target_isize_min() <= dist && dist <= self.target_isize_max());
+                    if intrinsic_name != sym::ptr_wrapping_offset_from {
+                        assert!(self.target_isize_min() <= dist && dist <= self.target_isize_max());
+                    }
                     isize_layout
                 };
                 let pointee_layout = self.layout_of(substs.type_at(0))?;

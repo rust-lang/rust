@@ -438,7 +438,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.icmp(IntPredicate::IntEQ, a, b)
             }
 
-            sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
+            sym::ptr_offset_from | sym::ptr_offset_from_unsigned | sym::ptr_wrapping_offset_from => {
                 let ty = substs.type_at(0);
                 let pointee_size = bx.layout_of(ty).size;
 
@@ -447,18 +447,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let a = bx.ptrtoint(a, bx.type_isize());
                 let b = bx.ptrtoint(b, bx.type_isize());
                 let pointee_size = bx.const_usize(pointee_size.bytes());
-                if name == sym::ptr_offset_from {
-                    // This is the same sequence that Clang emits for pointer subtraction.
-                    // It can be neither `nsw` nor `nuw` because the input is treated as
-                    // unsigned but then the output is treated as signed, so neither works.
-                    let d = bx.sub(a, b);
-                    // this is where the signed magic happens (notice the `s` in `exactsdiv`)
-                    bx.exactsdiv(d, pointee_size)
-                } else {
-                    // The `_unsigned` version knows the relative ordering of the pointers,
-                    // so can use `sub nuw` and `udiv exact` instead of dealing in signed.
-                    let d = bx.unchecked_usub(a, b);
-                    bx.exactudiv(d, pointee_size)
+                match name {
+                    sym::ptr_offset_from | sym::ptr_wrapping_offset_from => {
+                        // This is the same sequence that Clang emits for pointer subtraction.
+                        // Even for `ptr_offset_from`, which cannot wrap, this can be neither `nsw`
+                        // nor `nuw` because the input is treated as unsigned but then the output is
+                        // treated as signed, so neither works.
+                        let d = bx.sub(a, b);
+                        // this is where the signed magic happens (notice the `s` in `exactsdiv`)
+                        bx.exactsdiv(d, pointee_size)
+                    }
+                    sym::ptr_offset_from_unsigned => {
+                        // The `_unsigned` version knows the relative ordering of the pointers,
+                        // so can use `sub nuw` and `udiv exact` instead of dealing in signed.
+                        let d = bx.unchecked_usub(a, b);
+                        bx.exactudiv(d, pointee_size)
+                    }
+                    _ => bug!(),
                 }
             }
 

@@ -34,3 +34,15 @@ pub unsafe fn offset_from_unsigned_odd_size(a: *const RGB, b: *const RGB) -> usi
     // CHECK-NEXT: ret i64
     ptr_offset_from_unsigned(a, b)
 }
+
+// CHECK-LABEL: @wrapping_offset_from_odd_size
+#[no_mangle]
+pub unsafe fn wrapping_offset_from_odd_size(a: *const RGB, b: *const RGB) -> isize {
+    // CHECK: start
+    // CHECK-NEXT: ptrtoint
+    // CHECK-NEXT: ptrtoint
+    // CHECK-NEXT: sub i64
+    // CHECK-NEXT: sdiv exact i64 %{{[0-9]+}}, 3
+    // CHECK-NEXT: ret i64
+    ptr_wrapping_offset_from(a, b)
+}

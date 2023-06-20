@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(ptr_sub_ptr)]
+#![feature(ptr_sub_ptr, ptr_wrapping_offset_from)]
 use std::{mem, ptr};
 
 fn main() {
@@ -37,11 +37,16 @@ fn test_offset_from() {
         assert_eq!(x.offset_from(y), -12);
         assert_eq!((y as *const u32).offset_from(x as *const u32), 12 / 4);
         assert_eq!((x as *const u32).offset_from(y as *const u32), -12 / 4);
+        assert_eq!(y.wrapping_add(12).wrapping_offset_from(x), 24);
+        assert_eq!(x.wrapping_sub(12).wrapping_offset_from(y), -24);
 
-        let x = (((x as usize) * 2) / 2) as *const u8;
+        let x = (((x as usize) * 2) / 2) as *const u8; // lose track of provenance
         assert_eq!(y.offset_from(x), 12);
         assert_eq!(y.sub_ptr(x), 12);
         assert_eq!(x.offset_from(y), -12);
+        assert_eq!(y.wrapping_add(12).wrapping_offset_from(x), 24);
+        //FIXME: this doesn't work yet as exposed ptrs are not handled correctly
+        //assert_eq!(x.wrapping_sub(12).wrapping_offset_from(y), -24);
     }
 }
 

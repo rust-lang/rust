@@ -1156,6 +1156,7 @@ symbols! {
         ptr_offset_from,
         ptr_offset_from_unsigned,
         ptr_unique,
+        ptr_wrapping_offset_from,
         pub_macro_rules,
         pub_restricted,
         public,

@@ -1,7 +1,7 @@
-#![feature(const_ptr_sub_ptr)]
+#![feature(const_ptr_sub_ptr, ptr_wrapping_offset_from)]
 #![feature(core_intrinsics)]
 
-use std::intrinsics::{ptr_offset_from, ptr_offset_from_unsigned};
+use std::intrinsics::{ptr_offset_from, ptr_offset_from_unsigned, ptr_wrapping_offset_from};
 use std::ptr;
 
 #[repr(C)]
@@ -121,5 +121,50 @@ pub const OFFSET_VERY_FAR2: isize = {
     unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }
     //~^ inside
 };
+
+
+pub const DIFFERENT_ALLOC_WRAPPING: isize = {
+    let uninit = std::mem::MaybeUninit::<Struct>::uninit();
+    let base_ptr: *const Struct = &uninit as *const _ as *const Struct;
+    let uninit2 = std::mem::MaybeUninit::<Struct>::uninit();
+    let field_ptr: *const Struct = &uninit2 as *const _ as *const Struct;
+    unsafe { ptr_wrapping_offset_from(field_ptr, base_ptr) } //~ERROR evaluation of constant value failed
+    //~| pointers into different allocations
+};
+
+pub const NOT_MULTIPLE_OF_SIZE_WRAPPING: isize = {
+    let data = [5u8, 6, 7];
+    let base_ptr = data.as_ptr();
+    let field_ptr = base_ptr.wrapping_offset(1) as *const u16;
+    unsafe { ptr_wrapping_offset_from(field_ptr, base_ptr as *const u16) } //~ERROR evaluation of constant value failed
+    //~| 1_isize cannot be divided by 2_isize without remainder
+};
+
+pub const OFFSET_FROM_NULL_WRAPPING: isize = {
+    let ptr = 0 as *const u8;
+    unsafe { ptr_wrapping_offset_from(ptr, ptr) }
+};
+
+const OUT_OF_BOUNDS_WRAPPING_: () = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = start_ptr.wrapping_offset(length);
+    let start_ptr = start_ptr.wrapping_offset(-length);
+    // Both pointers are out of bounds.
+    assert!(2*length == unsafe { ptr_wrapping_offset_from(end_ptr, start_ptr) });
+    assert!(-2*length == unsafe { ptr_wrapping_offset_from(start_ptr, end_ptr) });
+};
+
+pub const FAR_APART_WRAPPING1: isize = {
+    let ptr1 = ptr::null::<u8>();
+    let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
+    unsafe { ptr_wrapping_offset_from(ptr2, ptr1) }
+};
+pub const FAR_APART_WRAPPING2: isize = {
+    let ptr1 = ptr::null::<u8>();
+    let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
+    unsafe { ptr_wrapping_offset_from(ptr1, ptr2) }
+};
+
 
 fn main() {}

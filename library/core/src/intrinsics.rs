@@ -2337,6 +2337,12 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
+    /// See documentation of `<*const T>::wrapping_offset_from` for details.
+    #[rustc_const_unstable(feature = "ptr_wrapping_offset_from", issue = "none")]
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn ptr_wrapping_offset_from<T>(ptr: *const T, base: *const T) -> isize;
+
     /// See documentation of `<*const T>::guaranteed_eq` for details.
     /// Returns `2` if the result is unknown.
     /// Returns `1` if the pointers are guaranteed equal

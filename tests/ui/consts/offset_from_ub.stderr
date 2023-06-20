@@ -109,6 +109,18 @@ note: inside `OFFSET_VERY_FAR2`
 LL |     unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/offset_from_ub.rs:131:14
+   |
+LL |     unsafe { ptr_wrapping_offset_from(field_ptr, base_ptr) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_wrapping_offset_from` called on pointers into different allocations
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/offset_from_ub.rs:139:14
+   |
+LL |     unsafe { ptr_wrapping_offset_from(field_ptr, base_ptr as *const u16) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exact_div: 1_isize cannot be divided by 2_isize without remainder
+
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

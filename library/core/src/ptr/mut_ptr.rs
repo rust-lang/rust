@@ -777,7 +777,9 @@ impl<T: ?Sized> *mut T {
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
-    /// This function is the inverse of [`offset`].
+    /// This function is the inverse of [`offset`]: it is valid to call if and only if
+    /// `self` could have been computed as `origin.offset(n)` for some `n`, and it will
+    /// then return that `n`.
     ///
     /// [`offset`]: #method.offset-1
     ///
@@ -815,6 +817,12 @@ impl<T: ?Sized> *mut T {
     /// mapped files *may* be too large to handle with this function.
     /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
     /// such large allocations either.)
+    ///
+    /// The requirement for pointers to be derived from the same allocated object is primarily
+    /// needed for `const`-compatibility: at compile-time, pointers into *different* allocated
+    /// object do not have a known distance to each other. However, the requirement also exists at
+    /// runtime, and may be exploited by optimizations. You can use `(self as usize).sub(origin as
+    /// usize) / mem::size_of::<T>()` to avoid this requirement.
     ///
     /// [`add`]: #method.add
     /// [allocated object]: crate::ptr#allocated-object
@@ -956,6 +964,108 @@ impl<T: ?Sized> *mut T {
     {
         // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
         unsafe { (self as *const T).sub_ptr(origin) }
+    }
+
+    /// Calculates the distance between two pointers using wrapping arithmetic. The returned value
+    /// is in units of T: the distance in bytes divided by `mem::size_of::<T>()`.
+    ///
+    /// This function is the inverse of [`wrapping_offset`]: it is valid to call if and only if
+    /// `self` could have been computed as `origin.wrapping_offset(n)` for some `n`, and it will
+    /// then return that `n`.
+    ///
+    /// [`wrapping_offset`]: #method.wrapping_offset-1
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both pointers must be *derived from* a pointer to the same [allocated object].
+    ///   (See below for an example.)
+    ///
+    /// * The distance between the pointers, in bytes, must be an exact multiple
+    ///   of the size of `T`.
+    ///
+    /// Unlike [`offset_from`][pointer::offset_from], this method does *not* require the pointers to
+    /// be in-bounds of the object they are derived from, nor does it impose any restrictions
+    /// regarding the maximum distance or wrapping around the address space.
+    ///
+    /// The requirement for pointers to be derived from the same allocated object is primarily
+    /// needed for `const`-compatibility: at compile-time, pointers into *different* allocated
+    /// object do not have a known distance to each other. However, the requirement also exists at
+    /// runtime, and may be exploited by optimizations. You can use `(self as usize).sub(origin as
+    /// usize) / mem::size_of::<T>()` to avoid this requirement.
+    ///
+    /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_wrapping_offset_from)]
+    /// let mut a = [0; 2];
+    /// let ptr1: *mut i32 = &mut a[1];
+    /// let ptr2: *mut i32 = ptr1.wrapping_offset(2); // out-of-bounds!
+    /// unsafe {
+    ///     assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    ///     assert_eq!(ptr1.wrapping_offset_from(ptr2), -2);
+    ///     assert_eq!(ptr1.wrapping_offset(2), ptr2);
+    ///     assert_eq!(ptr2.wrapping_offset(-2), ptr1);
+    /// }
+    /// ```
+    ///
+    /// *Incorrect* usage:
+    ///
+    /// ```rust,no_run
+    /// #![feature(ptr_wrapping_offset_from)]
+    /// let ptr1 = Box::into_raw(Box::new(0u8));
+    /// let ptr2 = Box::into_raw(Box::new(1u8));
+    /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);
+    /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
+    /// let ptr2_other = (ptr1 as *mut u8).wrapping_offset(diff);
+    /// assert_eq!(ptr2 as usize, ptr2_other as usize);
+    /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
+    /// // computing their offset is undefined behavior, even though
+    /// // they point to the same address!
+    /// unsafe {
+    ///     let zero = ptr2_other.wrapping_offset_from(ptr2); // Undefined Behavior
+    /// }
+    /// ```
+    #[unstable(feature = "ptr_wrapping_offset_from", issue = "none")]
+    #[rustc_const_unstable(feature = "ptr_wrapping_offset_from", issue = "none")]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[cfg(not(bootstrap))]
+    pub const unsafe fn wrapping_offset_from(self, origin: *const T) -> isize
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `ptr_offset_from`.
+        unsafe { (self as *const T).wrapping_offset_from(origin) }
+    }
+
+    /// Calculates the distance between two pointers using wrapping arithmetic. The returned value
+    /// is in units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and using
+    /// [`wrapping_offset_from`][pointer::wrapping_offset_from] on it. See that method for
+    /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[inline(always)]
+    #[unstable(feature = "ptr_wrapping_offset_from", issue = "none")]
+    #[rustc_const_unstable(feature = "ptr_wrapping_offset_from", issue = "none")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[cfg(not(bootstrap))]
+    pub const unsafe fn wrapping_byte_offset_from<U: ?Sized>(self, origin: *const U) -> isize {
+        // SAFETY: the caller must uphold the safety contract for `wrapping_offset_from`.
+        unsafe { self.cast::<u8>().wrapping_offset_from(origin.cast::<u8>()) }
     }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).

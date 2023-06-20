@@ -355,7 +355,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 tcx.mk_unit(),
             ),
 
-            sym::ptr_offset_from => {
+            sym::ptr_offset_from | sym::ptr_wrapping_offset_from => {
                 (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.isize)
             }
             sym::ptr_offset_from_unsigned => {
