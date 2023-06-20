@@ -39,19 +39,20 @@
           StorageLive(_4);
 -         _4 = _1;
 -         _3 = Eq(move _4, const 1_i32);
+-         switchInt(move _3) -> [0: bb2, otherwise: bb1];
 +         _4 = const 1_i32;
 +         _3 = const true;
-          StorageDead(_4);
--         switchInt(move _3) -> [0: bb2, otherwise: bb1];
 +         switchInt(const true) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
+          StorageDead(_4);
           _2 = const 2_i32;
           goto -> bb3;
       }
   
       bb2: {
+          StorageDead(_4);
           _2 = const 3_i32;
           goto -> bb3;
       }
@@ -70,20 +71,21 @@
           StorageLive(_9);
 -         _9 = _1;
 -         _8 = Eq(move _9, const 1_i32);
+-         switchInt(move _8) -> [0: bb5, otherwise: bb4];
 +         _9 = const 1_i32;
 +         _8 = const true;
-          StorageDead(_9);
--         switchInt(move _8) -> [0: bb5, otherwise: bb4];
 +         switchInt(const true) -> [0: bb5, otherwise: bb4];
       }
   
       bb4: {
+          StorageDead(_9);
 -         _7 = _1;
 +         _7 = const 1_i32;
           goto -> bb6;
       }
   
       bb5: {
+          StorageDead(_9);
           StorageLive(_10);
           _10 = _1;
           _7 = Add(move _10, const 1_i32);
