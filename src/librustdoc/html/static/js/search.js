@@ -2024,7 +2024,9 @@ function initSearch(rawSearchIndex) {
 
                 resultName.insertAdjacentHTML(
                     "beforeend",
-                    `${typeName} ${item.displayPath}<span class="${type}">${name}</span>`);
+                    `<span class="typename">${typeName}</span>`
+                    + ` ${item.displayPath}<span class="${type}">${name}</span>`
+                );
                 link.appendChild(resultName);
 
                 const description = document.createElement("div");
