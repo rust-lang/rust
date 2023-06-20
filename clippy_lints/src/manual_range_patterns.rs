@@ -30,11 +30,11 @@ declare_clippy_lint! {
     /// let foo = matches!(x, 1..=10);
     /// ```
     #[clippy::version = "1.72.0"]
-    pub MANUAL_RANGE_PATTERN,
+    pub MANUAL_RANGE_PATTERNS,
     complexity,
     "manually writing range patterns using a combined OR pattern (`|`)"
 }
-declare_lint_pass!(ManualRangePattern => [MANUAL_RANGE_PATTERN]);
+declare_lint_pass!(ManualRangePatterns => [MANUAL_RANGE_PATTERNS]);
 
 fn expr_as_u128(expr: &Expr<'_>) -> Option<u128> {
     if let ExprKind::Lit(lit) = expr.kind
@@ -46,7 +46,7 @@ fn expr_as_u128(expr: &Expr<'_>) -> Option<u128> {
     }
 }
 
-impl LateLintPass<'_> for ManualRangePattern {
+impl LateLintPass<'_> for ManualRangePatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &'_ rustc_hir::Pat<'_>) {
         if in_external_macro(cx.sess(), pat.span) {
             return;
@@ -110,7 +110,7 @@ impl LateLintPass<'_> for ManualRangePattern {
             if contains_whole_range {
                 span_lint_and_sugg(
                     cx,
-                    MANUAL_RANGE_PATTERN,
+                    MANUAL_RANGE_PATTERNS,
                     pat.span,
                     "this OR pattern can be rewritten using a range",
                     "try",
