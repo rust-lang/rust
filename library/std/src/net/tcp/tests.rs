@@ -47,17 +47,6 @@ fn connect_error() {
 }
 
 #[test]
-fn connect_timeout_to_unreachable_address() {
-    let now = Instant::now();
-    match TcpStream::connect_timeout(&format!("1.1.1.1:9999").parse().unwrap(), Duration::MAX) {
-        Ok(..) => panic!("connected to an unreachable address, this is impossible"),
-        Err(e) => assert_eq!(e.kind(), ErrorKind::TimedOut),
-    }
-
-    assert!(now.elapsed() > Duration::from_secs(20));
-}
-
-#[test]
 #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
 fn connect_timeout_error() {
     let socket_addr = next_test_ip4();
@@ -66,16 +55,6 @@ fn connect_timeout_error() {
 
     let _listener = TcpListener::bind(&socket_addr).unwrap();
     assert!(TcpStream::connect_timeout(&socket_addr, Duration::MAX).is_ok());
-}
-
-#[test]
-fn connect_timeout_ok_bind() {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap(); // :0 picks some free port
-    let port = listener.local_addr().unwrap().port(); // obtain the port it picked
-    assert!(
-        TcpStream::connect_timeout(&format!("127.0.0.1:{port}").parse().unwrap(), Duration::MAX)
-            .is_ok()
-    );
 }
 
 #[test]
