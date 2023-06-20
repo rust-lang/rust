@@ -28,6 +28,12 @@ define-function: (
             ".result-" + |result_kind| + ":focus ." + |result_kind|,
             {"color": |hover_color|},
         )
+        // color of the typename (struct, module, method, ...) before search results
+        assert-css: (
+            ".result-name .typename",
+            {"color": "#888"},
+            ALL,
+        )
     },
 )
 
