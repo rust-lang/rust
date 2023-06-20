@@ -58,6 +58,7 @@ fn connect_timeout_to_unreachable_address() {
 }
 
 #[test]
+#[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
 fn connect_timeout_error() {
     let socket_addr = next_test_ip4();
     let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
