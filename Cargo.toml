@@ -79,7 +79,7 @@ vfs = { path = "./crates/vfs", version = "0.0.0" }
 # In-tree crates that are published separately and follow semver.
 line-index = { version = "0.1.0-pre.1", path = "lib/line-index" }
 la-arena = { version = "0.3.1", path = "lib/la-arena" }
-lsp-server = { version = "0.7.0", path = "lib/lsp-server" }
+lsp-server = { version = "0.7.1", path = "lib/lsp-server" }
 
 # non-local crates
 smallvec = { version = "1.10.0", features = [
