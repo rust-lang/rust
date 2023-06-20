@@ -10,7 +10,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::{self, ExistentialPredicate};
 use rustc_span::{sym, Span};
 
-fn is_dyn_trait(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+fn is_dyn_any(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     if let ty::Dynamic(preds, ..) = ty.kind() {
         preds.iter().any(|p| match p.skip_binder() {
             ExistentialPredicate::Trait(tr) => cx.tcx.is_diagnostic_item(sym::Any, tr.def_id),
@@ -28,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, receiver: &Expr<'_>, call_span: Span) 
         && let ty::Ref(_, ty, _) = recv_ty.kind()
         && let ty::Adt(adt, substs) = ty.kind()
         && adt.is_box()
-        && is_dyn_trait(cx, substs.type_at(0))
+        && is_dyn_any(cx, substs.type_at(0))
     {
         span_lint_and_then(
             cx,
