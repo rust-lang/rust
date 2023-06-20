@@ -20,9 +20,9 @@ pub(super) fn check<'tcx>(
     let caller_type = if derefs_to_slice(cx, iter_recv, cx.typeck_results().expr_ty(iter_recv)).is_some() {
         "slice"
     } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(iter_recv), sym::Vec) {
-        "Vec"
+        "`Vec`"
     } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(iter_recv), sym::VecDeque) {
-        "VecDeque"
+        "`VecDeque`"
     } else {
         iter_nth_zero::check(cx, expr, nth_recv, nth_arg);
         return; // caller is not a type that we want to lint
