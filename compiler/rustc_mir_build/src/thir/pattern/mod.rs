@@ -20,7 +20,7 @@ use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
     ConstValue, ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
 };
-use rustc_middle::mir::{self, ConstantKind, UserTypeProjection};
+use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
@@ -525,7 +525,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .tcx
             .const_eval_global_id_for_typeck(param_env_reveal_all, cid, Some(span))
             .map(|val| match val {
-                Some(valtree) => mir::ConstantKind::Ty(self.tcx.mk_const(valtree, ty)),
+                Some(valtree) => self.tcx.mk_const(valtree, ty).into(),
                 None => mir::ConstantKind::Val(
                     self.tcx
                         .const_eval_global_id(param_env_reveal_all, cid, Some(span))
@@ -608,7 +608,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
         if let Some(lit_input) = lit_input {
             match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return self.const_to_pat(ConstantKind::Ty(c), id, span, None).kind,
+                Ok(c) => return self.const_to_pat(c.into(), id, span, None).kind,
                 // If an error occurred, ignore that it's a literal
                 // and leave reporting the error up to const eval of
                 // the unevaluated constant below.
@@ -631,7 +631,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
-            self.const_to_pat(ConstantKind::Ty(self.tcx.mk_const(valtree, ty)), id, span, None).kind
+            self.const_to_pat(self.tcx.mk_const(valtree, ty).into(), id, span, None).kind
         } else {
             // If that fails, convert it to an opaque constant pattern.
             match tcx.const_eval_resolve(self.param_env, uneval, None) {
@@ -671,9 +671,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lit_input =
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(constant) => {
-                self.const_to_pat(ConstantKind::Ty(constant), expr.hir_id, lit.span, None).kind
-            }
+            Ok(constant) => self.const_to_pat(constant.into(), expr.hir_id, lit.span, None).kind,
             Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }

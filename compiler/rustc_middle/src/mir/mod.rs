@@ -2259,6 +2259,12 @@ pub enum ConstantKind<'tcx> {
     Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
 }
 
+impl<'tcx> From<ty::Const<'tcx>> for ConstantKind<'tcx> {
+    fn from(v: ty::Const<'tcx>) -> Self {
+        Self::Ty(v)
+    }
+}
+
 impl<'tcx> Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.literal.try_to_scalar() {
