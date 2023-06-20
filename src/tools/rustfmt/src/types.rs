@@ -578,49 +578,41 @@ impl Rewrite for ast::GenericBounds {
 
 impl Rewrite for ast::GenericParam {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        let mut result = String::with_capacity(128);
         // FIXME: If there are more than one attributes, this will force multiline.
-        match self.attrs.rewrite(context, shape) {
-            Some(ref rw) if !rw.is_empty() => {
-                result.push_str(rw);
-                // When rewriting generic params, an extra newline should be put
-                // if the attributes end with a doc comment
-                if let Some(true) = self.attrs.last().map(|a| a.is_doc_comment()) {
-                    result.push_str(&shape.indent.to_string_with_newline(context.config));
-                } else {
-                    result.push(' ');
-                }
-            }
-            _ => (),
-        }
+        let mut result = self.attrs.rewrite(context, shape).unwrap_or(String::new());
+        let has_attrs = !result.is_empty();
 
-        if let ast::GenericParamKind::Const {
+        let mut param = String::with_capacity(128);
+
+        let param_start = if let ast::GenericParamKind::Const {
             ref ty,
-            kw_span: _,
+            kw_span,
             default,
         } = &self.kind
         {
-            result.push_str("const ");
-            result.push_str(rewrite_ident(context, self.ident));
-            result.push_str(": ");
-            result.push_str(&ty.rewrite(context, shape)?);
+            param.push_str("const ");
+            param.push_str(rewrite_ident(context, self.ident));
+            param.push_str(": ");
+            param.push_str(&ty.rewrite(context, shape)?);
             if let Some(default) = default {
                 let eq_str = match context.config.type_punctuation_density() {
                     TypeDensity::Compressed => "=",
                     TypeDensity::Wide => " = ",
                 };
-                result.push_str(eq_str);
-                let budget = shape.width.checked_sub(result.len())?;
+                param.push_str(eq_str);
+                let budget = shape.width.checked_sub(param.len())?;
                 let rewrite = default.rewrite(context, Shape::legacy(budget, shape.indent))?;
-                result.push_str(&rewrite);
+                param.push_str(&rewrite);
             }
+            kw_span.lo()
         } else {
-            result.push_str(rewrite_ident(context, self.ident));
-        }
+            param.push_str(rewrite_ident(context, self.ident));
+            self.ident.span.lo()
+        };
 
         if !self.bounds.is_empty() {
-            result.push_str(type_bound_colon(context));
-            result.push_str(&self.bounds.rewrite(context, shape)?)
+            param.push_str(type_bound_colon(context));
+            param.push_str(&self.bounds.rewrite(context, shape)?)
         }
         if let ast::GenericParamKind::Type {
             default: Some(ref def),
@@ -630,11 +622,33 @@ impl Rewrite for ast::GenericParam {
                 TypeDensity::Compressed => "=",
                 TypeDensity::Wide => " = ",
             };
-            result.push_str(eq_str);
-            let budget = shape.width.checked_sub(result.len())?;
+            param.push_str(eq_str);
+            let budget = shape.width.checked_sub(param.len())?;
             let rewrite =
-                def.rewrite(context, Shape::legacy(budget, shape.indent + result.len()))?;
-            result.push_str(&rewrite);
+                def.rewrite(context, Shape::legacy(budget, shape.indent + param.len()))?;
+            param.push_str(&rewrite);
+        }
+
+        if let Some(last_attr) = self.attrs.last().filter(|last_attr| {
+            contains_comment(context.snippet(mk_sp(last_attr.span.hi(), param_start)))
+        }) {
+            result = combine_strs_with_missing_comments(
+                context,
+                &result,
+                &param,
+                mk_sp(last_attr.span.hi(), param_start),
+                shape,
+                !last_attr.is_doc_comment(),
+            )?;
+        } else {
+            // When rewriting generic params, an extra newline should be put
+            // if the attributes end with a doc comment
+            if let Some(true) = self.attrs.last().map(|a| a.is_doc_comment()) {
+                result.push_str(&shape.indent.to_string_with_newline(context.config));
+            } else if has_attrs {
+                result.push(' ');
+            }
+            result.push_str(&param);
         }
 
         Some(result)

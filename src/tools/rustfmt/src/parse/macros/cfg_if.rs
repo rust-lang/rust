@@ -34,6 +34,11 @@ fn parse_cfg_if_inner<'a>(
             if !parser.eat_keyword(kw::If) {
                 return Err("Expected `if`");
             }
+
+            if !matches!(parser.token.kind, TokenKind::Pound) {
+                return Err("Failed to parse attributes");
+            }
+
             // Inner attributes are not actually syntactically permitted here, but we don't
             // care about inner vs outer attributes in this position. Our purpose with this
             // special case parsing of cfg_if macros is to ensure we can correctly resolve
@@ -44,7 +49,10 @@ fn parse_cfg_if_inner<'a>(
             // See also https://github.com/rust-lang/rust/pull/79433
             parser
                 .parse_attribute(rustc_parse::parser::attr::InnerAttrPolicy::Permitted)
-                .map_err(|_| "Failed to parse attributes")?;
+                .map_err(|e| {
+                    e.cancel();
+                    "Failed to parse attributes"
+                })?;
         }
 
         if !parser.eat(&TokenKind::OpenDelim(Delimiter::Brace)) {
