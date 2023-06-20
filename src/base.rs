@@ -7,6 +7,8 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
 use cranelift_codegen::ir::UserFuncName;
+use cranelift_codegen::CodegenError;
+use cranelift_module::ModuleError;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
@@ -172,7 +174,26 @@ pub(crate) fn compile_fn(
     // Define function
     cx.profiler.generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
-        module.define_function(codegened_func.func_id, context).unwrap();
+        match module.define_function(codegened_func.func_id, context) {
+            Ok(()) => {}
+            Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
+                // FIXME pass the error to the main thread and do a span_fatal instead
+                rustc_session::early_error(
+                    rustc_session::config::ErrorOutputType::HumanReadable(
+                        rustc_errors::emitter::HumanReadableErrorType::Default(
+                            rustc_errors::emitter::ColorConfig::Auto,
+                        ),
+                    ),
+                    format!(
+                        "backend implementation limit exceeded while compiling {name}",
+                        name = codegened_func.symbol_name
+                    ),
+                );
+            }
+            Err(err) => {
+                panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);
+            }
+        }
     });
 
     if cx.should_write_ir {
