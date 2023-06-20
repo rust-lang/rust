@@ -663,7 +663,12 @@ trait UnusedDelimLint {
                 | ast::ExprKind::Match(..)
                 | ast::ExprKind::If(..)
                 // #51185
-                | ast::ExprKind::Closure(..) => return true,
+                | ast::ExprKind::Closure(..)
+                // This pattern is technically unnecessary, because unary-minus has higher
+                // precedence than cast. However, casts followed by it may be confusing
+                // snippet to code readers. If we want to revisit this, this case shall be
+                // handled by some external approach.
+                | ast::ExprKind::Unary(ast::UnOp::Neg, ..) => return true,
                 _ => {}
             }
         }
@@ -1027,10 +1032,6 @@ impl UnusedDelimLint for UnusedParens {
                 );
             }
             ast::ExprKind::Cast(ref expr, _) => match expr.kind {
-                // linting against `(-expr) as T` and suggest replace it with
-                // `expr as T` may become confusing. If we would lint them,
-                // it would be handled by some external mechanism.
-                ast::ExprKind::Unary(ast::UnOp::Neg, _) => {}
                 _ => self.check_unused_delims_expr(
                     cx,
                     expr,
