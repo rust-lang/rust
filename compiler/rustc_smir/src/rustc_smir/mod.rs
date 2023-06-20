@@ -119,8 +119,11 @@ fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
     stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
 }
 
-pub trait Stable {
+/// Trait used to convert between an internal MIR type to a Stable MIR type.
+pub(crate) trait Stable {
+    /// The stable representation of the type implementing Stable.
     type T;
+    /// Converts an object to the equivalent Stable MIR representation.
     fn stable(&self) -> Self::T;
 }
 
@@ -211,34 +214,38 @@ impl Stable for mir::UnwindAction {
     }
 }
 
-fn rustc_assert_msg_to_msg<'tcx>(
-    assert_message: &rustc_middle::mir::AssertMessage<'tcx>,
-) -> stable_mir::mir::AssertMessage {
-    use rustc_middle::mir::AssertKind;
-    match assert_message {
-        AssertKind::BoundsCheck { len, index } => {
-            stable_mir::mir::AssertMessage::BoundsCheck { len: len.stable(), index: index.stable() }
-        }
-        AssertKind::Overflow(bin_op, op1, op2) => {
-            stable_mir::mir::AssertMessage::Overflow(bin_op.stable(), op1.stable(), op2.stable())
-        }
-        AssertKind::OverflowNeg(op) => stable_mir::mir::AssertMessage::OverflowNeg(op.stable()),
-        AssertKind::DivisionByZero(op) => {
-            stable_mir::mir::AssertMessage::DivisionByZero(op.stable())
-        }
-        AssertKind::RemainderByZero(op) => {
-            stable_mir::mir::AssertMessage::RemainderByZero(op.stable())
-        }
-        AssertKind::ResumedAfterReturn(generator) => {
-            stable_mir::mir::AssertMessage::ResumedAfterReturn(generator.stable())
-        }
-        AssertKind::ResumedAfterPanic(generator) => {
-            stable_mir::mir::AssertMessage::ResumedAfterPanic(generator.stable())
-        }
-        AssertKind::MisalignedPointerDereference { required, found } => {
-            stable_mir::mir::AssertMessage::MisalignedPointerDereference {
-                required: required.stable(),
-                found: found.stable(),
+impl<'tcx> Stable for mir::AssertMessage<'tcx> {
+    type T = stable_mir::mir::AssertMessage;
+    fn stable(&self) -> Self::T {
+        use rustc_middle::mir::AssertKind;
+        match self {
+            AssertKind::BoundsCheck { len, index } => stable_mir::mir::AssertMessage::BoundsCheck {
+                len: len.stable(),
+                index: index.stable(),
+            },
+            AssertKind::Overflow(bin_op, op1, op2) => stable_mir::mir::AssertMessage::Overflow(
+                bin_op.stable(),
+                op1.stable(),
+                op2.stable(),
+            ),
+            AssertKind::OverflowNeg(op) => stable_mir::mir::AssertMessage::OverflowNeg(op.stable()),
+            AssertKind::DivisionByZero(op) => {
+                stable_mir::mir::AssertMessage::DivisionByZero(op.stable())
+            }
+            AssertKind::RemainderByZero(op) => {
+                stable_mir::mir::AssertMessage::RemainderByZero(op.stable())
+            }
+            AssertKind::ResumedAfterReturn(generator) => {
+                stable_mir::mir::AssertMessage::ResumedAfterReturn(generator.stable())
+            }
+            AssertKind::ResumedAfterPanic(generator) => {
+                stable_mir::mir::AssertMessage::ResumedAfterPanic(generator.stable())
+            }
+            AssertKind::MisalignedPointerDereference { required, found } => {
+                stable_mir::mir::AssertMessage::MisalignedPointerDereference {
+                    required: required.stable(),
+                    found: found.stable(),
+                }
             }
         }
     }
@@ -363,7 +370,7 @@ impl<'tcx> Stable for mir::Terminator<'tcx> {
             Assert { cond, expected, msg, target, unwind } => Terminator::Assert {
                 cond: cond.stable(),
                 expected: *expected,
-                msg: rustc_assert_msg_to_msg(msg),
+                msg: msg.stable(),
                 target: target.as_usize(),
                 unwind: unwind.stable(),
             },
