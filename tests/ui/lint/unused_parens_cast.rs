@@ -38,8 +38,8 @@ fn basic_test() {
     let baz = [4.0f32];
     let _ = (baz[0]) as f64;
     //~^ WARN unnecessary parentheses around cast expression
+    // following is technically unnecessary, but is allowed because it may confusing.
     let _ = (-1.0f32) as f64;
-    //~^ WARN unnecessary parentheses around cast expression
     let x = Box::new(-1.0f32);
     let _ = (*x) as f64;
     //~^ WARN unnecessary parentheses around cast expression

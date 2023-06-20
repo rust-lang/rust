@@ -76,18 +76,6 @@ LL +     let _ = baz[0] as f64;
    |
 
 warning: unnecessary parentheses around cast expression
-  --> $DIR/unused_parens_cast.rs:41:13
-   |
-LL |     let _ = (-1.0f32) as f64;
-   |             ^       ^
-   |
-help: remove these parentheses
-   |
-LL -     let _ = (-1.0f32) as f64;
-LL +     let _ = -1.0f32 as f64;
-   |
-
-warning: unnecessary parentheses around cast expression
   --> $DIR/unused_parens_cast.rs:44:13
    |
 LL |     let _ = (*x) as f64;
