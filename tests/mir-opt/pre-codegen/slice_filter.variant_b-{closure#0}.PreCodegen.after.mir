@@ -32,61 +32,64 @@ fn variant_b::{closure#0}(_1: &mut [closure@$DIR/slice_filter.rs:11:25: 11:41], 
         _8 = ((*_7).2: usize);
         _9 = deref_copy (*_2);
         _10 = ((*_9).3: usize);
-        StorageLive(_13);
+        StorageLive(_12);
         StorageLive(_11);
         _11 = Le(_4, _8);
         switchInt(move _11) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        StorageDead(_12);
-        StorageDead(_11);
+        _12 = const false;
         goto -> bb3;
     }
 
     bb2: {
-        StorageLive(_12);
-        _12 = Le(_10, _6);
-        _13 = move _12;
-        StorageDead(_12);
-        StorageDead(_11);
-        switchInt(move _13) -> [0: bb3, otherwise: bb7];
+        StorageLive(_13);
+        _13 = Le(_10, _6);
+        _12 = move _13;
+        goto -> bb3;
     }
 
     bb3: {
-        StorageLive(_15);
-        StorageLive(_14);
-        _14 = Le(_8, _4);
-        switchInt(move _14) -> [0: bb4, otherwise: bb5];
+        StorageDead(_13);
+        StorageDead(_11);
+        switchInt(move _12) -> [0: bb4, otherwise: bb8];
     }
 
     bb4: {
-        _15 = const false;
-        goto -> bb6;
+        StorageLive(_15);
+        StorageLive(_14);
+        _14 = Le(_8, _4);
+        switchInt(move _14) -> [0: bb5, otherwise: bb6];
     }
 
     bb5: {
-        StorageLive(_16);
-        _16 = Le(_6, _10);
-        _15 = move _16;
-        goto -> bb6;
+        _15 = const false;
+        goto -> bb7;
     }
 
     bb6: {
-        StorageDead(_16);
-        StorageDead(_14);
-        _0 = move _15;
-        goto -> bb8;
+        StorageLive(_16);
+        _16 = Le(_6, _10);
+        _15 = move _16;
+        goto -> bb7;
     }
 
     bb7: {
-        _0 = const true;
-        goto -> bb8;
+        StorageDead(_16);
+        StorageDead(_14);
+        _0 = move _15;
+        goto -> bb9;
     }
 
     bb8: {
+        _0 = const true;
+        goto -> bb9;
+    }
+
+    bb9: {
         StorageDead(_15);
-        StorageDead(_13);
+        StorageDead(_12);
         return;
     }
 }
