@@ -1239,10 +1239,19 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut needs_thin_lto = Vec::new();
         let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
-        let mut codegen_aborted = false;
 
-        // This flag tracks whether all items have gone through codegens
-        let mut codegen_done = false;
+        /// Possible state transitions:
+        /// - Ongoing -> Completed
+        /// - Ongoing -> Aborted
+        /// - Completed -> Aborted
+        #[derive(Debug, PartialEq)]
+        enum CodegenState {
+            Ongoing,
+            Completed,
+            Aborted,
+        }
+        use CodegenState::*;
+        let mut codegen_state = Ongoing;
 
         // This is the queue of LLVM work items that still need processing.
         let mut work_items = Vec::<(WorkItem<B>, u64)>::new();
@@ -1262,10 +1271,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // wait for all existing work to finish, so many of the conditions here
         // only apply if codegen hasn't been aborted as they represent pending
         // work to be done.
-        while !codegen_done
+        while codegen_state == Ongoing
             || running > 0
             || main_thread_worker_state == MainThreadWorkerState::LLVMing
-            || (!codegen_aborted
+            || (codegen_state == Completed
                 && !(work_items.is_empty()
                     && needs_fat_lto.is_empty()
                     && needs_thin_lto.is_empty()
@@ -1275,7 +1284,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
             // For codegenning more CGU or for running them through LLVM.
-            if !codegen_done {
+            if codegen_state == Ongoing {
                 if main_thread_worker_state == MainThreadWorkerState::Idle {
                     // Compute the number of workers that will be running once we've taken as many
                     // items from the work queue as we can, plus one for the main thread. It's not
@@ -1312,10 +1321,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         spawn_work(cgcx, item);
                     }
                 }
-            } else if codegen_aborted {
-                // don't queue up any more work if codegen was aborted, we're
-                // just waiting for our existing children to finish
-            } else {
+            } else if codegen_state == Completed {
                 // If we've finished everything related to normal codegen
                 // then it must be the case that we've got some LTO work to do.
                 // Perform the serial work here of figuring out what we're
@@ -1382,11 +1388,15 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         // Already making good use of that token
                     }
                 }
+            } else {
+                // Don't queue up any more work if codegen was aborted, we're
+                // just waiting for our existing children to finish.
+                assert!(codegen_state == Aborted);
             }
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while !codegen_aborted && !work_items.is_empty() && running < tokens.len() {
+            while codegen_state != Aborted && !work_items.is_empty() && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
                 maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
@@ -1438,8 +1448,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         Err(e) => {
                             let msg = &format!("failed to acquire jobserver token: {}", e);
                             shared_emitter.fatal(msg);
-                            codegen_done = true;
-                            codegen_aborted = true;
+                            codegen_state = Aborted;
                         }
                     }
                 }
@@ -1467,7 +1476,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 }
 
                 Message::CodegenComplete => {
-                    codegen_done = true;
+                    if codegen_state != Aborted {
+                        codegen_state = Completed;
+                    }
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
@@ -1479,8 +1490,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // then conditions above will ensure no more work is spawned but
                 // we'll keep executing this loop until `running` hits 0.
                 Message::CodegenAborted => {
-                    codegen_done = true;
-                    codegen_aborted = true;
+                    codegen_state = Aborted;
                 }
 
                 Message::WorkItem { result, worker_id } => {
@@ -1512,8 +1522,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         }
                         Err(Some(WorkerFatalError)) => {
                             // Like `CodegenAborted`, wait for remaining work to finish.
-                            codegen_done = true;
-                            codegen_aborted = true;
+                            codegen_state = Aborted;
                         }
                         Err(None) => {
                             // If the thread failed that means it panicked, so
@@ -1525,7 +1534,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
                 Message::AddImportOnlyModule { module_data, work_product } => {
                     assert!(!started_lto);
-                    assert!(!codegen_done);
+                    assert_eq!(codegen_state, Ongoing);
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                     lto_import_only_modules.push((module_data, work_product));
                     main_thread_worker_state = MainThreadWorkerState::Idle;
@@ -1533,7 +1542,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
         }
 
-        if codegen_aborted {
+        if codegen_state == Aborted {
             return Err(());
         }
 
