@@ -18,5 +18,11 @@ error: usage of `mem::forget` on `Drop` type
 LL |     forgetSomething(eight);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: usage of `mem::forget` on type with `Drop` fields
+  --> $DIR/mem_forget.rs:23:5
+   |
+LL |     std::mem::forget(string);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
