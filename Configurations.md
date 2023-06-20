@@ -2997,6 +2997,10 @@ See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_s
 
 Break comments to fit on the line
 
+Note that no wrapping will happen if:
+1. The comment is the start of a markdown header doc comment
+2. An URL was found in the comment
+
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
 - **Stable**: No (tracking issue: [#3347](https://github.com/rust-lang/rustfmt/issues/3347))
@@ -3011,6 +3015,11 @@ Break comments to fit on the line
 // commodo consequat.
 
 // Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+// Information on the lorem ipsum can be found at the following url: https://en.wikipedia.org/wiki/Lorem_ipsum. Its text is: lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+/// # This doc comment is a very long header (it starts with a '#'). Had it not been a header it would have been wrapped. But because it is a header, it will not be. That is because wrapping a markdown header breaks it.
+struct Foo {}
 ```
 
 #### `true`:
@@ -3021,6 +3030,17 @@ Break comments to fit on the line
 // magna aliqua. Ut enim ad minim veniam, quis nostrud
 // exercitation ullamco laboris nisi ut aliquip ex ea
 // commodo consequat.
+
+// Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+// sed do eiusmod tempor incididunt ut labore et dolore
+// magna aliqua. Ut enim ad minim veniam, quis nostrud
+// exercitation ullamco laboris nisi ut aliquip ex ea
+// commodo consequat.
+
+// Information on the lorem ipsum can be found at the following url: https://en.wikipedia.org/wiki/Lorem_ipsum. Its text is: lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+/// # This doc comment is a very long header (it starts with a '#'). Had it not been a header it would have been wrapped. But because it is a header, it will not be. That is because wrapping a markdown header breaks it.
+struct Foo {}
 ```
 
 # Internal Options

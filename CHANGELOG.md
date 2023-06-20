@@ -2,6 +2,47 @@
 
 ## [Unreleased]
 
+## [1.5.3] 2023-06-20
+
+### Fixed
+
+- When formatting doc comments with `wrap_comments = true` rustfmt will no longer wrap markdown tables [#4210](https://github.com/rust-lang/rustfmt/issues/4210)
+- Properly handle wrapping comments that include a numbered list in markdown [#5416](https://github.com/rust-lang/rustfmt/issues/5416)
+- Properly handle markdown sublists that utilize a `+` [#4041](https://github.com/rust-lang/rustfmt/issues/4210)
+- rustfmt will no longer use shorthand initialization when rewriting a tuple struct even when `use_field_init_shorthand = true` as this leads to code that could no longer compile.
+  Take the following struct as an example `struct MyStruct(u64);`. rustfmt will no longer format `MyStruct { 0: 0 }` as `MyStruct { 0 }` [#5488](https://github.com/rust-lang/rustfmt/issues/5488)
+- rustfmt no longer panics when formatting an empty code block in a doc comment with `format_code_in_doc_comments = true` [#5234](https://github.com/rust-lang/rustfmt/issues/5234). For example:
+  ```rust
+  /// ```
+  ///
+  /// ```
+  fn main() {}
+  ```
+- rustfmt no longer incorrectly duplicates the where clause bounds when using const expression in where clause bounds with feature `#![feature(generic_const_exprs)]` [#5691](https://github.com/rust-lang/rustfmt/issues/5691). e.g.:
+  ```rust
+  struct S<const C: usize>
+  where
+      [(); { num_slots!(C) }]:, {
+      // code ...
+  }
+  ```
+- Prevent ICE when parsing invalid attributes in `cfg_if!` macros [#5728](https://github.com/rust-lang/rustfmt/issues/5728), [#5729](https://github.com/rust-lang/rustfmt/issues/5729)
+- rustfmt no longer loses comments placed between a doc comment and generic params [#5320](https://github.com/rust-lang/rustfmt/issues/5320)
+- Handle explicit discriminants in enums with comments present [#5686](https://github.com/rust-lang/rustfmt/issues/5686)
+
+### Changed
+
+- Users can now control whether rustc parser errors are displayed with color using rustfmt's `--color` option. To disable colored errors pass `--color=Never` to rustfmt [#5717](https://github.com/rust-lang/rustfmt/issues/5717)
+
+
+### Added
+
+- rustfmt now recognises `+` as the start of a markdown list, and won't incorrectly wrap sublists that begin with `+` when formatting doc comments with `wrap_comments = true` [#5560](https://github.com/rust-lang/rustfmt/pull/5560)
+
+### Misc
+
+- Update various dependencies, including `syn`, `cargo_metadata`, `env_logger`, and `toml`
+
 ## [1.5.2] 2023-01-24
 
 ### Fixed
@@ -55,6 +96,8 @@
 ### Changed
 
 - Simplify the rustfmt help text by eliding the full path to the rustfmt binary path from the usage string when running `rustfmt --help` [#5214](https://github.com/rust-lang/rustfmt/issues/5214)
+
+- Bumped the version for serveral dependencies. Most notably `dirs` `v2.0.1` -> `v4.0.0`. This changed the global user config directory on macOS from `$HOME/Library/Preferences` to `$HOME/Library/Application Support` [#5237](https://github.com/rust-lang/rustfmt/pull/5237)
 
 ### Fixed
 
