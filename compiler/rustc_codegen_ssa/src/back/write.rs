@@ -685,7 +685,7 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-pub enum WorkItem<B: WriteBackendMethods> {
+pub(crate) enum WorkItem<B: WriteBackendMethods> {
     /// Optimize a newly codegened, totally unoptimized module.
     Optimize(ModuleCodegen<B::Module>),
     /// Copy the post-LTO artifacts from the incremental cache to the output
@@ -731,7 +731,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
     }
 }
 
-enum WorkItemResult<B: WriteBackendMethods> {
+pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
     NeedsLink(ModuleCodegen<B::Module>),
     NeedsFatLTO(FatLTOInput<B>),
@@ -923,23 +923,10 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
     }
 }
 
-pub enum Message<B: WriteBackendMethods> {
+pub(crate) enum Message<B: WriteBackendMethods> {
     Token(io::Result<Acquired>),
-    NeedsFatLTO {
-        result: FatLTOInput<B>,
-        worker_id: usize,
-    },
-    NeedsThinLTO {
-        name: String,
-        thin_buffer: B::ThinBuffer,
-        worker_id: usize,
-    },
-    NeedsLink {
-        module: ModuleCodegen<B::Module>,
-        worker_id: usize,
-    },
-    Done {
-        result: Result<CompiledModule, Option<WorkerFatalError>>,
+    WorkItem {
+        result: Result<WorkItemResult<B>, Option<WorkerFatalError>>,
         worker_id: usize,
     },
     CodegenDone {
@@ -1481,49 +1468,53 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     codegen_done = true;
                     codegen_aborted = true;
                 }
-                Message::Done { result: Ok(compiled_module), worker_id } => {
+
+                Message::WorkItem { result, worker_id } => {
                     free_worker(worker_id);
-                    match compiled_module.kind {
-                        ModuleKind::Regular => {
-                            compiled_modules.push(compiled_module);
+
+                    match result {
+                        Ok(WorkItemResult::Compiled(compiled_module)) => {
+                            match compiled_module.kind {
+                                ModuleKind::Regular => {
+                                    compiled_modules.push(compiled_module);
+                                }
+                                ModuleKind::Allocator => {
+                                    assert!(compiled_allocator_module.is_none());
+                                    compiled_allocator_module = Some(compiled_module);
+                                }
+                                ModuleKind::Metadata => bug!("Should be handled separately"),
+                            }
                         }
-                        ModuleKind::Allocator => {
-                            assert!(compiled_allocator_module.is_none());
-                            compiled_allocator_module = Some(compiled_module);
+                        Ok(WorkItemResult::NeedsLink(module)) => {
+                            needs_link.push(module);
                         }
-                        ModuleKind::Metadata => bug!("Should be handled separately"),
+                        Ok(WorkItemResult::NeedsFatLTO(fat_lto_input)) => {
+                            assert!(!started_lto);
+                            needs_fat_lto.push(fat_lto_input);
+                        }
+                        Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                            assert!(!started_lto);
+                            needs_thin_lto.push((name, thin_buffer));
+                        }
+                        Err(Some(WorkerFatalError)) => {
+                            // Like `CodegenAborted`, wait for remaining work to finish.
+                            codegen_done = true;
+                            codegen_aborted = true;
+                        }
+                        Err(None) => {
+                            // If the thread failed that means it panicked, so
+                            // we abort immediately.
+                            bug!("worker thread panicked");
+                        }
                     }
                 }
-                Message::NeedsLink { module, worker_id } => {
-                    free_worker(worker_id);
-                    needs_link.push(module);
-                }
-                Message::NeedsFatLTO { result, worker_id } => {
-                    assert!(!started_lto);
-                    free_worker(worker_id);
-                    needs_fat_lto.push(result);
-                }
-                Message::NeedsThinLTO { name, thin_buffer, worker_id } => {
-                    assert!(!started_lto);
-                    free_worker(worker_id);
-                    needs_thin_lto.push((name, thin_buffer));
-                }
+
                 Message::AddImportOnlyModule { module_data, work_product } => {
                     assert!(!started_lto);
                     assert!(!codegen_done);
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                     lto_import_only_modules.push((module_data, work_product));
                     main_thread_worker_state = MainThreadWorkerState::Idle;
-                }
-                // If the thread failed that means it panicked, so we abort immediately.
-                Message::Done { result: Err(None), worker_id: _ } => {
-                    bug!("worker thread panicked");
-                }
-                Message::Done { result: Err(Some(WorkerFatalError)), worker_id } => {
-                    // Similar to CodegenAborted, wait for remaining work to finish.
-                    free_worker(worker_id);
-                    codegen_done = true;
-                    codegen_aborted = true;
                 }
             }
         }
@@ -1643,22 +1634,11 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
             fn drop(&mut self) {
                 let worker_id = self.worker_id;
                 let msg = match self.result.take() {
-                    Some(Ok(WorkItemResult::Compiled(m))) => {
-                        Message::Done::<B> { result: Ok(m), worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsLink(m))) => {
-                        Message::NeedsLink::<B> { module: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
-                        Message::NeedsFatLTO::<B> { result: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
-                        Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
-                    }
+                    Some(Ok(result)) => Message::WorkItem::<B> { result: Ok(result), worker_id },
                     Some(Err(FatalError)) => {
-                        Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                        Message::WorkItem::<B> { result: Err(Some(WorkerFatalError)), worker_id }
                     }
-                    None => Message::Done::<B> { result: Err(None), worker_id },
+                    None => Message::WorkItem::<B> { result: Err(None), worker_id },
                 };
                 drop(self.coordinator_send.send(Box::new(msg)));
             }
