@@ -6,8 +6,8 @@ use rustc_hir::intravisit::Visitor;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location, Operand, Place,
-    Rvalue, Statement, StatementKind, TerminatorKind,
+    Body, CallSource, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location,
+    Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
@@ -494,7 +494,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
-                    if let TerminatorKind::Call { func, from_hir_call: true, .. } =
+                    if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
                         &block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.

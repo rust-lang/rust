@@ -702,7 +702,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, args, fn_span, from_hir_call, .. } => {
+            TerminatorKind::Call { func, args, fn_span, call_source, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id();
 
@@ -755,7 +755,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             callee,
                             substs,
                             span: *fn_span,
-                            from_hir_call: *from_hir_call,
+                            call_source: *call_source,
                             feature: Some(sym::const_trait_impl),
                         });
                         return;
@@ -797,7 +797,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     callee,
                                     substs,
                                     span: *fn_span,
-                                    from_hir_call: *from_hir_call,
+                                    call_source: *call_source,
                                     feature: None,
                                 });
 
@@ -823,7 +823,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     callee,
                                     substs,
                                     span: *fn_span,
-                                    from_hir_call: *from_hir_call,
+                                    call_source: *call_source,
                                     feature: None,
                                 });
                                 return;
@@ -866,7 +866,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     callee,
                                     substs,
                                     span: *fn_span,
-                                    from_hir_call: *from_hir_call,
+                                    call_source: *call_source,
                                     feature: None,
                                 });
                                 return;
@@ -926,7 +926,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             callee,
                             substs,
                             span: *fn_span,
-                            from_hir_call: *from_hir_call,
+                            call_source: *call_source,
                             feature: None,
                         });
                         return;

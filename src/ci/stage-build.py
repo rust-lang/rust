@@ -440,7 +440,7 @@ def retry_action(action, name: str, max_fails: int = 5):
         try:
             action()
             return
-        except:
+        except BaseException: # also catch ctrl+c/sysexit
             LOGGER.error(f"Action `{name}` has failed\n{traceback.format_exc()}")
 
     raise Exception(f"Action `{name}` has failed after {max_fails} attempts")
@@ -818,7 +818,7 @@ def run_tests(pipeline: Pipeline):
     # Extract rustc, libstd, cargo and src archives to create the optimized sysroot
     rustc_dir = extract_dist_dir(f"rustc-nightly-{PGO_HOST}") / "rustc"
     libstd_dir = extract_dist_dir(f"rust-std-nightly-{PGO_HOST}") / f"rust-std-{PGO_HOST}"
-    cargo_dir = extract_dist_dir(f"cargo-nightly-{PGO_HOST}") / f"cargo"
+    cargo_dir = extract_dist_dir(f"cargo-nightly-{PGO_HOST}") / "cargo"
     extracted_src_dir = extract_dist_dir("rust-src-nightly") / "rust-src"
 
     # We need to manually copy libstd to the extracted rustc sysroot

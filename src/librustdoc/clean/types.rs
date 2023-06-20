@@ -783,6 +783,10 @@ impl Item {
         }
         attrs
     }
+
+    pub fn is_doc_hidden(&self) -> bool {
+        self.attrs.is_doc_hidden()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1127,6 +1131,10 @@ impl Attributes {
         }
 
         false
+    }
+
+    fn is_doc_hidden(&self) -> bool {
+        self.has_doc_flag(sym::hidden)
     }
 
     pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {

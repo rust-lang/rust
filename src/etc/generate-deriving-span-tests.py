@@ -102,7 +102,9 @@ for (trait, supers, errs) in [('Clone', [], 1),
     traits[trait] = (ALL, supers, errs)
 
 for (trait, (types, super_traits, error_count)) in traits.items():
-    mk = lambda ty: create_test_case(ty, trait, super_traits, error_count)
+    def mk(ty, t=trait, st=super_traits, ec=error_count):
+        return create_test_case(ty, t, st, ec)
+
     if types & ENUM:
         write_file(trait + '-enum', mk(ENUM_TUPLE))
         write_file(trait + '-enum-struct-variant', mk(ENUM_STRUCT))

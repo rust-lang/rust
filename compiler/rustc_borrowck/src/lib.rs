@@ -710,7 +710,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                 destination,
                 target: _,
                 unwind: _,
-                from_hir_call: _,
+                call_source: _,
                 fn_span: _,
             } => {
                 self.consume_operand(loc, (func, span), flow_state);

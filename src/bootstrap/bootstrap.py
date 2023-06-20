@@ -620,7 +620,7 @@ class RustBuild(object):
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    if not any(l.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for l in f):
+                    if not any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for ln in f):
                         return False
             except FileNotFoundError:
                 return False
@@ -872,7 +872,7 @@ class RustBuild(object):
         }
         for var_name, toml_key in var_data.items():
             toml_val = self.get_toml(toml_key, build_section)
-            if toml_val != None:
+            if toml_val is not None:
                 env["{}_{}".format(var_name, host_triple_sanitized)] = toml_val
 
         # preserve existing RUSTFLAGS

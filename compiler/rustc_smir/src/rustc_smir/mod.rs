@@ -351,7 +351,7 @@ impl<'tcx> Stable for mir::Terminator<'tcx> {
                 target: target.as_usize(),
                 unwind: unwind.stable(),
             },
-            Call { func, args, destination, target, unwind, from_hir_call: _, fn_span: _ } => {
+            Call { func, args, destination, target, unwind, call_source: _, fn_span: _ } => {
                 Terminator::Call {
                     func: func.stable(),
                     args: args.iter().map(|arg| arg.stable()).collect(),

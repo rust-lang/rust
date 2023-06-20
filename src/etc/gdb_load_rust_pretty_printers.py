@@ -4,6 +4,7 @@ from os import path
 self_dir = path.dirname(path.realpath(__file__))
 sys.path.append(self_dir)
 
+# ruff: noqa: E402
 import gdb
 import gdb_lookup
 

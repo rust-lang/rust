@@ -519,7 +519,7 @@ macro_rules! make_mir_visitor {
                         destination,
                         target: _,
                         unwind: _,
-                        from_hir_call: _,
+                        call_source: _,
                         fn_span: _
                     } => {
                         self.visit_operand(func, location);

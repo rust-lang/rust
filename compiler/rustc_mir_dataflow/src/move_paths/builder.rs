@@ -399,7 +399,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 destination,
                 target,
                 unwind: _,
-                from_hir_call: _,
+                call_source: _,
                 fn_span: _,
             } => {
                 self.gather_operand(func);

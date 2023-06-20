@@ -119,7 +119,7 @@ def print_singletons(uppers, lowers, uppersname, lowersname):
     print("#[rustfmt::skip]")
     print("const {}: &[u8] = &[".format(lowersname))
     for i in range(0, len(lowers), 8):
-        print("    {}".format(" ".join("{:#04x},".format(l) for l in lowers[i:i+8])))
+        print("    {}".format(" ".join("{:#04x},".format(x) for x in lowers[i:i+8])))
     print("];")
 
 def print_normal(normal, normalname):
