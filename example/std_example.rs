@@ -1,4 +1,12 @@
-#![feature(core_intrinsics, generators, generator_trait, is_sorted, repr_simd)]
+#![feature(
+    core_intrinsics,
+    generators,
+    generator_trait,
+    is_sorted,
+    repr_simd,
+    tuple_trait,
+    unboxed_closures
+)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -157,6 +165,8 @@ fn main() {
     foo(I64X2(0, 0));
 
     transmute_fat_pointer();
+
+    rust_call_abi();
 }
 
 fn panic(_: u128) {
@@ -172,6 +182,13 @@ type TwoPtrs = i128;
 
 fn transmute_fat_pointer() -> TwoPtrs {
     unsafe { transmute::<_, TwoPtrs>("true !") }
+}
+
+extern "rust-call" fn rust_call_abi_callee<T: std::marker::Tuple>(_: T) {}
+
+fn rust_call_abi() {
+    rust_call_abi_callee(());
+    rust_call_abi_callee((1, 2));
 }
 
 #[repr(simd)]

@@ -445,9 +445,14 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     // Unpack arguments tuple for closures
     let mut args = if fn_sig.abi() == Abi::RustCall {
-        assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
-        let self_arg = codegen_call_argument_operand(fx, &args[0]);
-        let pack_arg = codegen_call_argument_operand(fx, &args[1]);
+        let (self_arg, pack_arg) = match args {
+            [pack_arg] => (None, codegen_call_argument_operand(fx, pack_arg)),
+            [self_arg, pack_arg] => (
+                Some(codegen_call_argument_operand(fx, self_arg)),
+                codegen_call_argument_operand(fx, pack_arg),
+            ),
+            _ => panic!("rust-call abi requires one or two arguments"),
+        };
 
         let tupled_arguments = match pack_arg.value.layout().ty.kind() {
             ty::Tuple(ref tupled_arguments) => tupled_arguments,
@@ -455,7 +460,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         };
 
         let mut args = Vec::with_capacity(1 + tupled_arguments.len());
-        args.push(self_arg);
+        args.extend(self_arg);
         for i in 0..tupled_arguments.len() {
             args.push(CallArgument {
                 value: pack_arg.value.value_field(fx, FieldIdx::new(i)),
