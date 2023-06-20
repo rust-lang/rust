@@ -731,7 +731,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
     // FIXME(clause): should this be a `Clause`?
-    pub predicates: FxHashMap<DefId, &'tcx [(ClauseKind<'tcx>, Span)]>,
+    pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -1269,6 +1269,13 @@ impl<'tcx> ToPredicate<'tcx> for Clause<'tcx> {
     #[inline(always)]
     fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.as_predicate()
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for ClauseKind<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        tcx.mk_predicate(Binder::dummy(ty::PredicateKind::Clause(self))).expect_clause()
     }
 }
 
