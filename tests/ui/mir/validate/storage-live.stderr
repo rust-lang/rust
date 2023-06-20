@@ -5,6 +5,7 @@ error: internal compiler error: broken MIR in Item(DefId(0:8 ~ storage_live[HASH
 LL |             StorageLive(a);
    |             ^^^^^^^^^^^^^^
 
+aborting due to `-Z treat-err-as-bug=1`
 error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:

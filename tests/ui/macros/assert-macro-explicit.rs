@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:panicked at 'assertion failed: false'
+// error-pattern:assertion failed: false
 // ignore-emscripten no processes
 
 fn main() {

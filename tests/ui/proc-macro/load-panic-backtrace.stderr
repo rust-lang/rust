@@ -1,4 +1,5 @@
-at 'panic-derive', $DIR/auxiliary/test-macros.rs:43:5
+at $DIR/auxiliary/test-macros.rs:43:5:
+panic-derive
 error: proc-macro derive panicked
   --> $DIR/load-panic-backtrace.rs:11:10
    |
