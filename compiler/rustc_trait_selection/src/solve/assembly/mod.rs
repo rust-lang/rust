@@ -640,6 +640,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
+        let tcx = self.tcx();
+        if !tcx.trait_def(goal.predicate.trait_def_id(tcx)).implement_via_object {
+            return;
+        }
+
         let self_ty = goal.predicate.self_ty();
         let bounds = match *self_ty.kind() {
             ty::Bool
@@ -672,7 +677,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Dynamic(bounds, ..) => bounds,
         };
 
-        let tcx = self.tcx();
         let own_bounds: FxIndexSet<_> =
             bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
         for assumption in elaborate(tcx, own_bounds.iter().copied())

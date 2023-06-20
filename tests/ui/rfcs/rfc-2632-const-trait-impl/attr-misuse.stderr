@@ -3,12 +3,16 @@ error: attribute should be applied to a trait
    |
 LL | #[const_trait]
    | ^^^^^^^^^^^^^^
+LL | fn main() {}
+   | ------------ not a trait
 
 error: attribute should be applied to a trait
   --> $DIR/attr-misuse.rs:5:5
    |
 LL |     #[const_trait]
    |     ^^^^^^^^^^^^^^
+LL |     fn foo(self);
+   |     ------------- not a trait
 
 error: aborting due to 2 previous errors
 

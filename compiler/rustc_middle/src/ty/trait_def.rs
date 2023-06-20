@@ -52,6 +52,16 @@ pub struct TraitDef {
     /// List of functions from `#[rustc_must_implement_one_of]` attribute one of which
     /// must be implemented.
     pub must_implement_one_of: Option<Box<[Ident]>>,
+
+    /// Whether to add a builtin `dyn Trait: Trait` implementation.
+    /// This is enabled for all traits except ones marked with
+    /// `#[rustc_deny_explicit_impl(implement_via_object = false)]`.
+    pub implement_via_object: bool,
+
+    /// Whether a trait is fully built-in, and any implementation is disallowed.
+    /// This only applies to built-in traits, and is marked via
+    /// `#[rustc_deny_explicit_impl(implement_via_object = ...)]`.
+    pub deny_explicit_impl: bool,
 }
 
 /// Whether this trait is treated specially by the standard library

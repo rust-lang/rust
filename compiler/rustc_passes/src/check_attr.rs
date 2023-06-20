@@ -110,9 +110,6 @@ impl CheckAttrVisitor<'_> {
                 sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
                 sym::marker => self.check_marker(hir_id, attr, span, target),
-                sym::rustc_must_implement_one_of => {
-                    self.check_rustc_must_implement_one_of(attr, span, target)
-                }
                 sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
                 sym::thread_local => self.check_thread_local(attr, span, target),
                 sym::track_caller => {
@@ -159,12 +156,14 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
-                sym::rustc_coinductive => self.check_rustc_coinductive(&attr, span, target),
+                sym::rustc_coinductive
+                | sym::rustc_must_implement_one_of
+                | sym::rustc_deny_explicit_impl
+                | sym::const_trait => self.check_must_be_applied_to_trait(&attr, span, target),
                 sym::cmse_nonsecure_entry => {
                     self.check_cmse_nonsecure_entry(hir_id, attr, span, target)
                 }
                 sym::collapse_debuginfo => self.check_collapse_debuginfo(attr, span, target),
-                sym::const_trait => self.check_const_trait(attr, span, target),
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, &attr, target),
                 sym::rustc_pass_by_value => self.check_pass_by_value(&attr, span, target),
@@ -557,25 +556,6 @@ impl CheckAttrVisitor<'_> {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "marker");
                 true
             }
-            _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToTrait {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
-                false
-            }
-        }
-    }
-
-    /// Checks if the `#[rustc_must_implement_one_of]` attribute on a `target` is valid. Returns `true` if valid.
-    fn check_rustc_must_implement_one_of(
-        &self,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) -> bool {
-        match target {
-            Target::Trait => true,
             _ => {
                 self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToTrait {
                     attr_span: attr.span,
@@ -1591,8 +1571,8 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// Checks if the `#[rustc_coinductive]` attribute is applied to a trait.
-    fn check_rustc_coinductive(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+    /// Checks if the attribute is applied to a trait.
+    fn check_must_be_applied_to_trait(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::Trait => true,
             _ => {
@@ -1981,17 +1961,6 @@ impl CheckAttrVisitor<'_> {
                 self.tcx
                     .sess
                     .emit_err(errors::RustcStdInternalSymbol { attr_span: attr.span, span });
-                false
-            }
-        }
-    }
-
-    /// `#[const_trait]` only applies to traits.
-    fn check_const_trait(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
-        match target {
-            Target::Trait => true,
-            _ => {
-                self.tcx.sess.emit_err(errors::ConstTrait { attr_span: attr.span });
                 false
             }
         }

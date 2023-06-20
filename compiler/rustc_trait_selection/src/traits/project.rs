@@ -1607,6 +1607,10 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
 
+    if !tcx.trait_def(obligation.predicate.trait_def_id(tcx)).implement_via_object {
+        return;
+    }
+
     let self_ty = obligation.predicate.self_ty();
     let object_ty = selcx.infcx.shallow_resolve(self_ty);
     let data = match object_ty.kind() {
