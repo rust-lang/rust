@@ -248,7 +248,7 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
 ) -> Option<usize> {
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
-    tcx.own_existential_vtable_entries(object.upcast_trait_def_id)
+    tcx.own_existential_vtable_entries(tcx.parent(method_def_id))
         .iter()
         .copied()
         .position(|def_id| def_id == method_def_id)

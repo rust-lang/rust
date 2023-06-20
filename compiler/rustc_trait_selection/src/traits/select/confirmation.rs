@@ -651,11 +651,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (unnormalized_upcast_trait_ref, ty::Binder::dummy(object_trait_ref)),
         );
 
-        Ok(ImplSourceObjectData {
-            upcast_trait_def_id: upcast_trait_ref.def_id(),
-            vtable_base,
-            nested,
-        })
+        Ok(ImplSourceObjectData { vtable_base, nested })
     }
 
     fn confirm_fn_pointer_candidate(

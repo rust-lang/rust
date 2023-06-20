@@ -703,7 +703,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
             ImplSource::Builtin(n) => ImplSource::Builtin(n.into_iter().map(f).collect()),
             ImplSource::Object(o) => ImplSource::Object(ImplSourceObjectData {
-                upcast_trait_def_id: o.upcast_trait_def_id,
                 vtable_base: o.vtable_base,
                 nested: o.nested.into_iter().map(f).collect(),
             }),
@@ -750,9 +749,6 @@ pub struct ImplSourceTraitUpcastingData<N> {
 #[derive(PartialEq, Eq, Clone, TyEncodable, TyDecodable, HashStable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceObjectData<N> {
-    /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
-    pub upcast_trait_def_id: DefId,
-
     /// The vtable is formed by concatenating together the method lists of
     /// the base object trait and all supertraits, pointers to supertrait vtable will
     /// be provided when necessary; this is the start of `upcast_trait_ref`'s methods

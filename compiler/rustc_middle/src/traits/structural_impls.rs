@@ -46,8 +46,8 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceObjectData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ImplSourceObjectData(upcast={:?}, vtable_base={}, nested={:?})",
-            self.upcast_trait_def_id, self.vtable_base, self.nested
+            "ImplSourceObjectData(vtable_base={}, nested={:?})",
+            self.vtable_base, self.nested
         )
     }
 }
