@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{Cursor, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_span::{
@@ -736,7 +736,7 @@ impl MacroArgParser {
         self.buf.clear();
     }
 
-    fn add_meta_variable(&mut self, iter: &mut Cursor) -> Option<()> {
+    fn add_meta_variable(&mut self, iter: &mut TokenTreeCursor) -> Option<()> {
         match iter.next() {
             Some(TokenTree::Token(
                 Token {
@@ -768,7 +768,7 @@ impl MacroArgParser {
         &mut self,
         inner: Vec<ParsedMacroArg>,
         delim: Delimiter,
-        iter: &mut Cursor,
+        iter: &mut TokenTreeCursor,
     ) -> Option<()> {
         let mut buffer = String::new();
         let mut first = true;
@@ -1120,11 +1120,11 @@ pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> D
 // A very simple parser that just parses a macros 2.0 definition into its branches.
 // Currently we do not attempt to parse any further than that.
 struct MacroParser {
-    toks: Cursor,
+    toks: TokenTreeCursor,
 }
 
 impl MacroParser {
-    const fn new(toks: Cursor) -> Self {
+    const fn new(toks: TokenTreeCursor) -> Self {
         Self { toks }
     }
 

@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_data_structures::sync::{Lrc, Send};
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::translation::Translate;
-use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
+use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel, TerminalUrl};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
@@ -135,8 +135,10 @@ fn default_handler(
     let emitter = if hide_parse_errors {
         silent_emitter()
     } else {
-        let fallback_bundle =
-            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+            rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
+            false,
+        );
         Box::new(EmitterWriter::stderr(
             emit_color,
             Some(source_map.clone()),
@@ -147,6 +149,7 @@ fn default_handler(
             None,
             false,
             false,
+            TerminalUrl::No,
         ))
     };
     Handler::with_emitter(

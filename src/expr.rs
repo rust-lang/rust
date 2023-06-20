@@ -218,7 +218,7 @@ pub(crate) fn format_expr(
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Await(_) => rewrite_chain(expr, context, shape),
+        | ast::ExprKind::Await(_, _) => rewrite_chain(expr, context, shape),
         ast::ExprKind::MacCall(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
@@ -236,7 +236,6 @@ pub(crate) fn format_expr(
         ast::ExprKind::Yeet(Some(ref expr)) => {
             rewrite_unary_prefix(context, "do yeet ", &**expr, shape)
         }
-        ast::ExprKind::Box(ref expr) => rewrite_unary_prefix(context, "box ", &**expr, shape),
         ast::ExprKind::AddrOf(borrow_kind, mutability, ref expr) => {
             rewrite_expr_addrof(context, borrow_kind, mutability, expr, shape)
         }
@@ -367,7 +366,7 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::Async(capture_by, _node_id, ref block) => {
+        ast::ExprKind::Async(capture_by, ref block) => {
             let mover = if capture_by == ast::CaptureBy::Value {
                 "move "
             } else {
@@ -400,7 +399,12 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Underscore => Some("_".to_owned()),
-        ast::ExprKind::IncludedBytes(..) => unreachable!(),
+        ast::ExprKind::FormatArgs(..)
+        | ast::ExprKind::IncludedBytes(..)
+        | ast::ExprKind::OffsetOf(..) => {
+            // These do not occur in the AST because macros aren't expanded.
+            unreachable!()
+        }
         ast::ExprKind::Err => None,
     };
 
@@ -1296,7 +1300,6 @@ pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
         ast::ExprKind::Lit(..) => true,
         ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Field(ref expr, _)
         | ast::ExprKind::Try(ref expr)
@@ -1358,7 +1361,6 @@ pub(crate) fn can_be_overflowed_expr(
 
         // Handle unary-like expressions
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
@@ -1370,7 +1372,6 @@ pub(crate) fn is_nested_call(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::Call(..) | ast::ExprKind::MacCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => is_nested_call(expr),
@@ -1890,7 +1891,7 @@ impl<'ast> RhsAssignKind<'ast> {
                     ast::ExprKind::Try(..)
                         | ast::ExprKind::Field(..)
                         | ast::ExprKind::MethodCall(..)
-                        | ast::ExprKind::Await(_)
+                        | ast::ExprKind::Await(_, _)
                 )
             }
             _ => false,
@@ -2132,7 +2133,6 @@ pub(crate) fn is_method_call(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::MethodCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr) => is_method_call(expr),

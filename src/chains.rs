@@ -74,6 +74,8 @@ use crate::utils::{
     rewrite_ident, trimmed_last_line_width, wrap_str,
 };
 
+use thin_vec::ThinVec;
+
 /// Provides the original input contents from the span
 /// of a chain element with trailing spaces trimmed.
 fn format_overflow_style(span: Span, context: &RewriteContext<'_>) -> Option<String> {
@@ -168,7 +170,7 @@ enum ChainItemKind {
     MethodCall(
         ast::PathSegment,
         Vec<ast::GenericArg>,
-        Vec<ptr::P<ast::Expr>>,
+        ThinVec<ptr::P<ast::Expr>>,
     ),
     StructField(symbol::Ident),
     TupleField(symbol::Ident, bool),
@@ -230,7 +232,7 @@ impl ChainItemKind {
                 let span = mk_sp(nested.span.hi(), field.span.hi());
                 (kind, span)
             }
-            ast::ExprKind::Await(ref nested) => {
+            ast::ExprKind::Await(ref nested, _) => {
                 let span = mk_sp(nested.span.hi(), expr.span.hi());
                 (ChainItemKind::Await, span)
             }
@@ -457,7 +459,7 @@ impl Chain {
             ast::ExprKind::MethodCall(ref call) => Some(Self::convert_try(&call.receiver, context)),
             ast::ExprKind::Field(ref subexpr, _)
             | ast::ExprKind::Try(ref subexpr)
-            | ast::ExprKind::Await(ref subexpr) => Some(Self::convert_try(subexpr, context)),
+            | ast::ExprKind::Await(ref subexpr, _) => Some(Self::convert_try(subexpr, context)),
             _ => None,
         }
     }

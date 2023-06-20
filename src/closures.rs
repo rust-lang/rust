@@ -1,5 +1,6 @@
 use rustc_ast::{ast, ptr};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 use crate::attr::get_attrs_from_stmt;
 use crate::config::lists::*;
@@ -150,7 +151,7 @@ fn rewrite_closure_with_block(
     }
 
     let block = ast::Block {
-        stmts: vec![ast::Stmt {
+        stmts: thin_vec![ast::Stmt {
             id: ast::NodeId::root(),
             kind: ast::StmtKind::Expr(ptr::P(body.clone())),
             span: body.span,
@@ -194,7 +195,6 @@ fn rewrite_closure_expr(
             | ast::ExprKind::Struct(..) => true,
 
             ast::ExprKind::AddrOf(_, _, ref expr)
-            | ast::ExprKind::Box(ref expr)
             | ast::ExprKind::Try(ref expr)
             | ast::ExprKind::Unary(_, ref expr)
             | ast::ExprKind::Cast(ref expr, _) => allow_multi_line(expr),
@@ -440,7 +440,6 @@ fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
         ast::ExprKind::If(..) | ast::ExprKind::While(..) | ast::ExprKind::ForLoop(..) => true,
         ast::ExprKind::Loop(..) if version == Version::Two => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced_inner(expr, version),
