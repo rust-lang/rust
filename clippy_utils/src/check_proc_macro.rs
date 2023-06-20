@@ -24,7 +24,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -99,9 +99,13 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
             let start = if ty.is_some() {
                 Pat::Str("<")
             } else {
-                path.segments
-                    .first()
-                    .map_or(Pat::Str(""), |seg| Pat::Sym(seg.ident.name))
+                path.segments.first().map_or(Pat::Str(""), |seg| {
+                    if seg.ident.name == kw::PathRoot {
+                        Pat::Str("::")
+                    } else {
+                        Pat::Sym(seg.ident.name)
+                    }
+                })
             };
             let end = path.segments.last().map_or(Pat::Str(""), |seg| {
                 if seg.args.is_some() {
