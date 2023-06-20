@@ -36,6 +36,22 @@ pub(crate) fn mir_built(
     tcx.alloc_steal_mir(mir_build(tcx, def))
 }
 
+pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> IndexVec<FieldIdx, Symbol> {
+    tcx.closure_captures(def_id)
+        .iter()
+        .map(|captured_place| {
+            let name = captured_place.to_symbol();
+            match captured_place.info.capture_kind {
+                ty::UpvarCapture::ByValue => name,
+                ty::UpvarCapture::ByRef(..) => Symbol::intern(&format!("_ref__{name}")),
+            }
+        })
+        .collect()
+}
+
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.

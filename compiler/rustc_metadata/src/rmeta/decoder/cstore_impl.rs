@@ -218,6 +218,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    closure_saved_names_of_captured_variables => { table }
     mir_generator_witnesses => { table }
     promoted_mir => { table }
     def_span => { table }
