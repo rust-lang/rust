@@ -158,53 +158,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     end_block.unit()
                 }
             }
-            ExprKind::LogicalOp { op, lhs, rhs } => {
-                // And:
-                //
-                // [block: If(lhs)] -true-> [else_block: dest = (rhs)]
-                //        | (false)
-                //  [shortcircuit_block: dest = false]
-                //
-                // Or:
-                //
-                // [block: If(lhs)] -false-> [else_block: dest = (rhs)]
-                //        | (true)
-                //  [shortcircuit_block: dest = true]
-
-                let (shortcircuit_block, mut else_block, join_block) = (
-                    this.cfg.start_new_block(),
-                    this.cfg.start_new_block(),
-                    this.cfg.start_new_block(),
-                );
-
-                let lhs = unpack!(block = this.as_local_operand(block, &this.thir[lhs]));
-                let blocks = match op {
-                    LogicalOp::And => (else_block, shortcircuit_block),
-                    LogicalOp::Or => (shortcircuit_block, else_block),
-                };
-                let term = TerminatorKind::if_(lhs, blocks.0, blocks.1);
-                this.cfg.terminate(block, source_info, term);
-
+            ExprKind::LogicalOp { .. } => {
+                let condition_scope = this.local_scope();
+                let source_info = this.source_info(expr.span);
+                let (then_block, else_block) =
+                    this.in_if_then_scope(condition_scope, expr.span, |this| {
+                        this.then_else_break(
+                            block,
+                            expr,
+                            Some(condition_scope),
+                            condition_scope,
+                            source_info,
+                        )
+                    });
                 this.cfg.push_assign_constant(
-                    shortcircuit_block,
+                    then_block,
                     source_info,
                     destination,
                     Constant {
-                        span: expr_span,
+                        span: expr.span,
                         user_ty: None,
-                        literal: match op {
-                            LogicalOp::And => ConstantKind::from_bool(this.tcx, false),
-                            LogicalOp::Or => ConstantKind::from_bool(this.tcx, true),
-                        },
+                        literal: ConstantKind::from_bool(this.tcx, true),
                     },
                 );
-                this.cfg.goto(shortcircuit_block, source_info, join_block);
-
-                let rhs = unpack!(else_block = this.as_local_operand(else_block, &this.thir[rhs]));
-                this.cfg.push_assign(else_block, source_info, destination, Rvalue::Use(rhs));
-                this.cfg.goto(else_block, source_info, join_block);
-
-                join_block.unit()
+                this.cfg.push_assign_constant(
+                    else_block,
+                    source_info,
+                    destination,
+                    Constant {
+                        span: expr.span,
+                        user_ty: None,
+                        literal: ConstantKind::from_bool(this.tcx, false),
+                    },
+                );
+                let target = this.cfg.start_new_block();
+                this.cfg.goto(then_block, source_info, target);
+                this.cfg.goto(else_block, source_info, target);
+                target.unit()
             }
             ExprKind::Loop { body } => {
                 // [block]

@@ -1,3 +1,5 @@
+// check-pass
+
 fn and_chain() {
     let z;
     if true && { z = 3; true} && z == 3 {}
@@ -6,7 +8,6 @@ fn and_chain() {
 fn and_chain_2() {
     let z;
     true && { z = 3; true} && z == 3;
-    //~^ ERROR E0381
 }
 
 fn or_chain() {
