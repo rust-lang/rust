@@ -1039,7 +1039,7 @@ impl UnusedDelimLint for UnusedParens {
                     None,
                     None,
                     false,
-                );
+                ),
             }
 
             _ => {}
