@@ -91,7 +91,7 @@ unsafe fn int_protected_read() {
     name!(base);
     let x = &mut *(base as *mut u8);
     name!(x);
-    let y = (&mut *base) as *mut u8;
+    let y = &mut *base as *mut u8;
     name!(y);
     read_second(x, y); // Foreign Read for callee:x
     print_state!(alloc_id);
@@ -106,7 +106,7 @@ unsafe fn int_unprotected_read() {
     let alloc_id = alloc_id!(base);
     let x = &mut *(base as *mut u8);
     name!(x);
-    let y = (&mut *base) as *mut u8;
+    let y = &mut *base as *mut u8;
     name!(y);
     let _val = *y; // Foreign Read for x
     print_state!(alloc_id);
@@ -120,7 +120,7 @@ unsafe fn int_unprotected_write() {
     let alloc_id = alloc_id!(base);
     let x = &mut *(base as *mut u8);
     name!(x);
-    let y = (&mut *base) as *mut u8;
+    let y = &mut *base as *mut u8;
     name!(y);
     *y = 1; // Foreign Write for x
     print_state!(alloc_id);
