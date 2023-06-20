@@ -17,7 +17,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
 }
 
-fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clause<'_>, Span)] {
+fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::ClauseKind<'_>, Span)] {
     let id = tcx.hir().local_def_id_to_hir_id(item_def_id);
 
     if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst)
@@ -53,8 +53,8 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
                     let mut pred: Vec<String> = predicates
                         .iter()
                         .map(|(out_pred, _)| match out_pred {
-                            ty::Clause::RegionOutlives(p) => p.to_string(),
-                            ty::Clause::TypeOutlives(p) => p.to_string(),
+                            ty::ClauseKind::RegionOutlives(p) => p.to_string(),
+                            ty::ClauseKind::TypeOutlives(p) => p.to_string(),
                             err => bug!("unexpected clause {:?}", err),
                         })
                         .collect();
@@ -104,11 +104,11 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                     |(ty::OutlivesPredicate(kind1, region2), &span)| {
                         match kind1.unpack() {
                             GenericArgKind::Type(ty1) => Some((
-                                ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
+                                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
                                 span,
                             )),
                             GenericArgKind::Lifetime(region1) => Some((
-                                ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
                                     region1, *region2,
                                 )),
                                 span,

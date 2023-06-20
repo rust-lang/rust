@@ -173,14 +173,20 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::Clause<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.kind())
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ClauseKind<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::Clause::ConstArgHasType(ct, ty) => write!(f, "ConstArgHasType({ct:?}, {ty:?})"),
-            ty::Clause::Trait(ref a) => a.fmt(f),
-            ty::Clause::RegionOutlives(ref pair) => pair.fmt(f),
-            ty::Clause::TypeOutlives(ref pair) => pair.fmt(f),
-            ty::Clause::Projection(ref pair) => pair.fmt(f),
-            ty::Clause::WellFormed(ref data) => write!(f, "WellFormed({:?})", data),
-            ty::Clause::ConstEvaluatable(ct) => {
+            ty::ClauseKind::ConstArgHasType(ct, ty) => write!(f, "ConstArgHasType({ct:?}, {ty:?})"),
+            ty::ClauseKind::Trait(ref a) => a.fmt(f),
+            ty::ClauseKind::RegionOutlives(ref pair) => pair.fmt(f),
+            ty::ClauseKind::TypeOutlives(ref pair) => pair.fmt(f),
+            ty::ClauseKind::Projection(ref pair) => pair.fmt(f),
+            ty::ClauseKind::WellFormed(ref data) => write!(f, "WellFormed({:?})", data),
+            ty::ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
         }
@@ -654,9 +660,28 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
+// FIXME(clause): This is wonky
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(folder
+            .try_fold_predicate(self.as_predicate())?
+            .as_clause()
+            .expect("no sensible folder would do this"))
+    }
+}
+
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_predicate(*self)
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_predicate(self.as_predicate())
     }
 }
 

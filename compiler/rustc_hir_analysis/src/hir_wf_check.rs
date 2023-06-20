@@ -79,7 +79,7 @@ fn diagnostic_hir_wf_check<'tcx>(
                 self.tcx,
                 cause,
                 self.param_env,
-                ty::PredicateKind::Clause(ty::Clause::WellFormed(tcx_ty.into())),
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(tcx_ty.into())),
             ));
 
             for error in ocx.select_all_or_error() {

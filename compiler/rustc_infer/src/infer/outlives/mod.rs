@@ -23,21 +23,21 @@ pub fn explicit_outlives_bounds<'tcx>(
         .map(ty::Predicate::kind)
         .filter_map(ty::Binder::no_bound_vars)
         .filter_map(move |kind| match kind {
-            ty::PredicateKind::Clause(ty::Clause::Projection(..))
-            | ty::PredicateKind::Clause(ty::Clause::Trait(..))
-            | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
             | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Subtype(..)
-            | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
-            | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
                 r_a,
                 r_b,
             ))) => Some(OutlivesBound::RegionSubRegion(r_b, r_a)),

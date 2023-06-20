@@ -237,21 +237,24 @@ impl FlagComputation {
 
     fn add_predicate_atom(&mut self, atom: ty::PredicateKind<'_>) {
         match atom {
-            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 self.add_substs(trait_pred.trait_ref.substs);
             }
-            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(a, b))) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
+                a,
+                b,
+            ))) => {
                 self.add_region(a);
                 self.add_region(b);
             }
-            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
                 ty,
                 region,
             ))) => {
                 self.add_ty(ty);
                 self.add_region(region);
             }
-            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                 self.add_const(ct);
                 self.add_ty(ty);
             }
@@ -263,21 +266,21 @@ impl FlagComputation {
                 self.add_ty(a);
                 self.add_ty(b);
             }
-            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
                 projection_ty,
                 term,
             })) => {
                 self.add_alias_ty(projection_ty);
                 self.add_term(term);
             }
-            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                 self.add_substs(slice::from_ref(&arg));
             }
             ty::PredicateKind::ObjectSafe(_def_id) => {}
             ty::PredicateKind::ClosureKind(_def_id, substs, _kind) => {
                 self.add_substs(substs);
             }
-            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(uv)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                 self.add_const(uv);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {

@@ -282,11 +282,11 @@ fn predicate_references_self<'tcx>(
     let self_ty = tcx.types.self_param;
     let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
+        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ref data)) => {
             // In the case of a trait predicate, we can skip the "self" type.
             data.trait_ref.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
-        ty::PredicateKind::Clause(ty::Clause::Projection(ref data)) => {
+        ty::PredicateKind::Clause(ty::ClauseKind::Projection(ref data)) => {
             // And similarly for projections. This should be redundant with
             // the previous check because any projection should have a
             // matching `Trait` predicate with the same inputs, but we do
@@ -304,21 +304,21 @@ fn predicate_references_self<'tcx>(
             // possible alternatives.
             data.projection_ty.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
-        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(_ct, ty)) => {
+        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(_ct, ty)) => {
             has_self_ty(&ty.into()).then_some(sp)
         }
 
         ty::PredicateKind::AliasRelate(..) => bug!("`AliasRelate` not allowed as assumption"),
 
-        ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
+        ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
         | ty::PredicateKind::ObjectSafe(..)
-        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
-        | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
         // FIXME(generic_const_exprs): this can mention `Self`
-        | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
@@ -353,19 +353,19 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate(tcx, predicates.into_iter()).any(|pred| match pred.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::Clause::Trait(ref trait_pred)) => {
+        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ref trait_pred)) => {
             trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
         }
-        ty::PredicateKind::Clause(ty::Clause::Projection(..))
-        | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+        ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
-        | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
-        | ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
-        | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Ambiguous
@@ -592,7 +592,7 @@ fn virtual_call_violation_for_method<'tcx>(
         // only if the autotrait is one of the trait object's trait bounds, like
         // in `dyn Trait + AutoTrait`. This guarantees that trait objects only
         // implement auto traits if the underlying type does as well.
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref: pred_trait_ref,
             constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Positive,

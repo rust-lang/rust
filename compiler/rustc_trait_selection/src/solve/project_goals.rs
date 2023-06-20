@@ -107,7 +107,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
+        assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
         if let Some(projection_pred) = assumption.as_projection_clause() {

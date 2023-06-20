@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let obligations = predicates.predicates.iter().filter_map(|&(pred, _)| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                         // The order here needs to match what we would get from `subst_supertrait`
                         let pred_bound_vars = bound_predicate.bound_vars();
                         let mut all_bound_vars = bound_vars.clone();

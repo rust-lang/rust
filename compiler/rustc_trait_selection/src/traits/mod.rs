@@ -357,7 +357,7 @@ pub fn normalize_param_env_or_error<'tcx>(
         .extract_if(|predicate| {
             matches!(
                 predicate.kind().skip_binder(),
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
             )
         })
         .collect();

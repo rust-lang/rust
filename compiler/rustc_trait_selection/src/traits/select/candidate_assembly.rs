@@ -402,7 +402,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         for &(predicate, _) in self.tcx().predicates_of(impl_def_id).predicates {
-            let ty::PredicateKind::Clause(ty::Clause::Trait(pred))
+            let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 = predicate.kind().skip_binder() else { continue };
             if fn_ptr_trait != pred.trait_ref.def_id {
                 continue;
@@ -461,7 +461,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().mk_predicate(obligation.predicate.map_bound(|mut pred| {
                     pred.trait_ref =
                         ty::TraitRef::new(self.tcx(), fn_ptr_trait, [pred.trait_ref.self_ty()]);
-                    ty::PredicateKind::Clause(ty::Clause::Trait(pred))
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 })),
             );
             if let Ok(r) = self.infcx.evaluate_obligation(&obligation) {

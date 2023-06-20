@@ -896,7 +896,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
-            && let ty::Clause::Projection(projection_pred) = clause
+            && let ty::ClauseKind::Projection(projection_pred) = clause
         {
             p.kind()
                 .rebind(ty::ProjectionPredicate {

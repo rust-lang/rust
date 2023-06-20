@@ -521,7 +521,8 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
                 });
 
                 p = tcx.mk_predicate(
-                    new_trait_pred.map_bound(|p| ty::PredicateKind::Clause(ty::Clause::Trait(p))),
+                    new_trait_pred
+                        .map_bound(|p| ty::PredicateKind::Clause(ty::ClauseKind::Trait(p))),
                 )
             }
         }
