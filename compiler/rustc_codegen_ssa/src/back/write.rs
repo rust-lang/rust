@@ -731,6 +731,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
     }
 }
 
+/// A result produced by the backend.
 pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
     NeedsLink(ModuleCodegen<B::Module>),
@@ -923,21 +924,34 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
     }
 }
 
+/// Messages sent to the coordinator.
 pub(crate) enum Message<B: WriteBackendMethods> {
+    /// A jobserver token has become available. Sent from the jobserver helper
+    /// thread.
     Token(io::Result<Acquired>),
-    WorkItem {
-        result: Result<WorkItemResult<B>, Option<WorkerFatalError>>,
-        worker_id: usize,
-    },
-    CodegenDone {
-        llvm_work_item: WorkItem<B>,
-        cost: u64,
-    },
+
+    /// The backend has finished processing a work item for a codegen unit.
+    /// Sent from a backend worker thread.
+    WorkItem { result: Result<WorkItemResult<B>, Option<WorkerFatalError>>, worker_id: usize },
+
+    /// The frontend has finished generating something (backend IR or a
+    /// post-LTO artifact) for a codegen unit, and it should be passed to the
+    /// backend. Sent from the main thread.
+    CodegenDone { llvm_work_item: WorkItem<B>, cost: u64 },
+
+    /// Similar to `CodegenDone`, but for reusing a pre-LTO artifact
+    /// Sent from the main thread.
     AddImportOnlyModule {
         module_data: SerializedModule<B::ModuleBuffer>,
         work_product: WorkProduct,
     },
+
+    /// The frontend has finished generating everything for all codegen units.
+    /// Sent from the main thread.
     CodegenComplete,
+
+    /// Some normal-ish compiler error occurred, and codegen should be wound
+    /// down. Sent from the main thread.
     CodegenAborted,
 }
 
