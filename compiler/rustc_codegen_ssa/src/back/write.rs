@@ -951,9 +951,12 @@ pub enum Message<B: WriteBackendMethods> {
         work_product: WorkProduct,
     },
     CodegenComplete,
-    CodegenItem,
     CodegenAborted,
 }
+
+/// A message sent from the coordinator thread to the main thread telling it to
+/// process another codegen unit.
+pub struct CguMessage;
 
 type DiagnosticArgName<'source> = Cow<'source, str>;
 
@@ -976,7 +979,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     tcx: TyCtxt<'_>,
     crate_info: &CrateInfo,
     shared_emitter: SharedEmitter,
-    codegen_worker_send: Sender<Message<B>>,
+    codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
     total_cgus: usize,
     jobserver: Client,
@@ -1284,9 +1287,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let anticipated_running = running + additional_running + 1;
 
                     if !queue_full_enough(work_items.len(), anticipated_running) {
-                        // The queue is not full enough, codegen more items:
-                        if codegen_worker_send.send(Message::CodegenItem).is_err() {
-                            panic!("Could not send Message::CodegenItem to main thread")
+                        // The queue is not full enough, process more codegen units:
+                        if codegen_worker_send.send(CguMessage).is_err() {
+                            panic!("Could not send CguMessage to main thread")
                         }
                         main_thread_worker_state = MainThreadWorkerState::Codegenning;
                     } else {
@@ -1522,7 +1525,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     codegen_done = true;
                     codegen_aborted = true;
                 }
-                Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
             }
         }
 
@@ -1879,7 +1881,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub metadata: EncodedMetadata,
     pub metadata_module: Option<CompiledModule>,
     pub crate_info: CrateInfo,
-    pub codegen_worker_receive: Receiver<Message<B>>,
+    pub codegen_worker_receive: Receiver<CguMessage>,
     pub shared_emitter_main: SharedEmitterMain,
     pub output_filenames: Arc<OutputFilenames>,
     pub coordinator: Coordinator<B>,
@@ -1953,10 +1955,9 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
     pub fn wait_for_signal_to_codegen_item(&self) {
         match self.codegen_worker_receive.recv() {
-            Ok(Message::CodegenItem) => {
-                // Nothing to do
+            Ok(CguMessage) => {
+                // Ok to proceed.
             }
-            Ok(_) => panic!("unexpected message"),
             Err(_) => {
                 // One of the LLVM threads must have panicked, fall through so
                 // error handling can be reached.
