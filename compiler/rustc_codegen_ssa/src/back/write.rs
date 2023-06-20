@@ -320,7 +320,6 @@ pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo
 #[derive(Clone)]
 pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
-    pub backend: B,
     pub prof: SelfProfilerRef,
     pub lto: Lto,
     pub save_temps: bool,
@@ -338,14 +337,10 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
     pub target_can_use_split_dwarf: bool,
-    pub target_pointer_width: u32,
     pub target_arch: String,
-    pub debuginfo: config::DebugInfo,
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
 
-    /// Number of cgus excluding the allocator/metadata modules
-    pub total_cgus: usize,
     /// Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
     /// LLVM optimizations for which we want to print remarks.
@@ -441,7 +436,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     target_cpu: String,
     metadata: EncodedMetadata,
     metadata_module: Option<CompiledModule>,
-    total_cgus: usize,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
@@ -469,7 +463,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
-        total_cgus,
         sess.jobserver.clone(),
         Arc::new(regular_config),
         Arc::new(metadata_config),
@@ -982,7 +975,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
-    total_cgus: usize,
     jobserver: Client,
     regular_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
@@ -1050,7 +1042,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         };
     let backend_features = tcx.global_backend_features(());
     let cgcx = CodegenContext::<B> {
-        backend: backend.clone(),
         crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
@@ -1071,13 +1062,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
         tm_factory: backend.target_machine_factory(tcx.sess, ol, backend_features),
-        total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
-        target_pointer_width: tcx.sess.target.pointer_width,
         target_arch: tcx.sess.target.arch.to_string(),
-        debuginfo: tcx.sess.opts.debuginfo,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
     };
