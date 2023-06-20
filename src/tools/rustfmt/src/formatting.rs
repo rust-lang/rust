@@ -175,7 +175,6 @@ fn format_project<T: FormatHandler>(
 }
 
 // Used for formatting files.
-#[derive(new)]
 struct FormatContext<'a, T: FormatHandler> {
     krate: &'a ast::Crate,
     report: FormatReport,
@@ -185,6 +184,22 @@ struct FormatContext<'a, T: FormatHandler> {
 }
 
 impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
+    fn new(
+        krate: &'a ast::Crate,
+        report: FormatReport,
+        parse_session: ParseSess,
+        config: &'a Config,
+        handler: &'a mut T,
+    ) -> Self {
+        FormatContext {
+            krate,
+            report,
+            parse_session,
+            config,
+            handler,
+        }
+    }
+
     fn ignore_file(&self, path: &FileName) -> bool {
         self.parse_session.ignore_file(path)
     }

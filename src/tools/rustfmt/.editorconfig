@@ -21,6 +21,3 @@ indent_size = unset
 indent_style = unset
 trim_trailing_whitespace = unset
 insert_final_newline = unset
-
-[appveyor.yml]
-end_of_line = unset
