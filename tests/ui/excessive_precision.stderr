@@ -1,5 +1,5 @@
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:15:26
+  --> $DIR/excessive_precision.rs:21:26
    |
 LL |     const BAD32_1: f32 = 0.123_456_789_f32;
    |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_79_f32`
@@ -7,85 +7,85 @@ LL |     const BAD32_1: f32 = 0.123_456_789_f32;
    = note: `-D clippy::excessive-precision` implied by `-D warnings`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:16:26
+  --> $DIR/excessive_precision.rs:22:26
    |
 LL |     const BAD32_2: f32 = 0.123_456_789;
    |                          ^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_79`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:17:26
+  --> $DIR/excessive_precision.rs:23:26
    |
 LL |     const BAD32_3: f32 = 0.100_000_000_000_1;
    |                          ^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.1`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:18:29
+  --> $DIR/excessive_precision.rs:24:29
    |
 LL |     const BAD32_EDGE: f32 = 1.000_000_9;
    |                             ^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.000_001`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:22:26
+  --> $DIR/excessive_precision.rs:28:26
    |
 LL |     const BAD64_3: f64 = 0.100_000_000_000_000_000_1;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.1`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:25:22
+  --> $DIR/excessive_precision.rs:31:22
    |
 LL |     println!("{:?}", 8.888_888_888_888_888_888_888);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `8.888_888_888_888_89`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:36:22
+  --> $DIR/excessive_precision.rs:42:22
    |
 LL |     let bad32: f32 = 1.123_456_789;
    |                      ^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:37:26
+  --> $DIR/excessive_precision.rs:43:26
    |
 LL |     let bad32_suf: f32 = 1.123_456_789_f32;
    |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8_f32`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:38:21
+  --> $DIR/excessive_precision.rs:44:21
    |
 LL |     let bad32_inf = 1.123_456_789_f32;
    |                     ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8_f32`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:48:36
+  --> $DIR/excessive_precision.rs:54:36
    |
 LL |     let bad_vec32: Vec<f32> = vec![0.123_456_789];
    |                                    ^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_79`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:49:36
+  --> $DIR/excessive_precision.rs:55:36
    |
 LL |     let bad_vec64: Vec<f64> = vec![0.123_456_789_123_456_789];
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_789_123_456_78`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:53:24
+  --> $DIR/excessive_precision.rs:59:24
    |
 LL |     let bad_e32: f32 = 1.123_456_788_888e-10;
    |                        ^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8e-10`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:56:27
+  --> $DIR/excessive_precision.rs:62:27
    |
 LL |     let bad_bige32: f32 = 1.123_456_788_888E-10;
    |                           ^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.123_456_8E-10`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:65:13
+  --> $DIR/excessive_precision.rs:71:13
    |
 LL |     let _ = 2.225_073_858_507_201_1e-308_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `2.225_073_858_507_201e-308_f64`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:68:13
+  --> $DIR/excessive_precision.rs:74:13
    |
 LL |     let _ = 1.000_000_000_000_001e-324_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0_f64`
