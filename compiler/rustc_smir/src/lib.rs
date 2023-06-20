@@ -14,6 +14,16 @@
 #![feature(local_key_cell_methods)]
 #![feature(ptr_metadata)]
 
+// Declare extern rustc_* crates to enable building this crate separately from the compiler.
+#[cfg(not(feature = "default"))]
+extern crate rustc_hir;
+#[cfg(not(feature = "default"))]
+extern crate rustc_middle;
+#[cfg(not(feature = "default"))]
+extern crate rustc_span;
+#[cfg(not(feature = "default"))]
+extern crate rustc_target;
+
 pub mod rustc_internal;
 pub mod stable_mir;
 
