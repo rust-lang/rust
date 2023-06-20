@@ -147,5 +147,5 @@ LL -     new_rect((x) as f64, (y) as f64, (width) as f64, (height) as f64);
 LL +     new_rect((x) as f64, (y) as f64, (width) as f64, height as f64);
    |
 
-warning: 13 warnings emitted
+warning: 12 warnings emitted
 
