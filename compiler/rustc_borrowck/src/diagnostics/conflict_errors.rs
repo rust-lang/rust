@@ -14,7 +14,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
+    self, AggregateKind, BindingForm, BorrowKind, CallSource, ClearCrossCrate, ConstraintCategory,
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
@@ -2579,7 +2579,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut Diagnostic) {
         let tcx = self.infcx.tcx;
         if let (
-            Some(Terminator { kind: TerminatorKind::Call { from_hir_call: false, .. }, .. }),
+            Some(Terminator {
+                kind: TerminatorKind::Call { call_source: CallSource::OverloadedOperator, .. },
+                ..
+            }),
             Some((method_did, method_substs)),
         ) = (
             &self.body[loan.reserve_location.block].terminator,

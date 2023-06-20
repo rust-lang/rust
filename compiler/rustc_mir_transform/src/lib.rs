@@ -30,8 +30,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, ClearCrossCrate, ConstQualifs, Constant, LocalDecl, MirPass,
-    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstQualifs, Constant, LocalDecl,
+    MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
     Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::query::Providers;
@@ -189,7 +189,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                     };
                     method(place)
                 }).collect();
-                terminator.kind = TerminatorKind::Call { func, args: arguments, destination, target, unwind, from_hir_call: false, fn_span };
+                terminator.kind = TerminatorKind::Call { func, args: arguments, destination, target, unwind, call_source: CallSource::Misc, fn_span };
             }
             _ => {}
         }

@@ -1280,7 +1280,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 destination,
                 target,
                 unwind,
-                from_hir_call: _,
+                call_source: _,
                 fn_span,
             } => self.codegen_call_terminator(
                 helper,

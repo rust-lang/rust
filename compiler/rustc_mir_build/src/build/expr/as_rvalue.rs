@@ -173,7 +173,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         destination: storage,
                         target: Some(success),
                         unwind: UnwindAction::Continue,
-                        from_hir_call: false,
+                        call_source: CallSource::Misc,
                         fn_span: expr_span,
                     },
                 );

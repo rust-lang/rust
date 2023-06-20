@@ -128,7 +128,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 destination,
                 target: _,
                 unwind: _,
-                from_hir_call: _,
+                call_source: _,
                 fn_span: _,
             } => {
                 self.consume_operand(location, func);

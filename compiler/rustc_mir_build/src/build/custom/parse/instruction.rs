@@ -128,7 +128,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     destination,
                     target: Some(target),
                     unwind: UnwindAction::Continue,
-                    from_hir_call: *from_hir_call,
+                    call_source: if *from_hir_call { CallSource::Normal } else {
+                        CallSource::OverloadedOperator
+                    },
                     fn_span: *fn_span,
                 })
             },

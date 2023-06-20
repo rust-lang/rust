@@ -317,7 +317,7 @@ fn check_terminator<'tcx>(
         TerminatorKind::Call {
             func,
             args,
-            from_hir_call: _,
+            call_source: _,
             destination: _,
             target: _,
             unwind: _,
