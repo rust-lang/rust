@@ -2,6 +2,67 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- When formatting doc comments with `wrap_comments = true` rustfmt will no longer wrap markdown tables [#4210](https://github.com/rust-lang/rustfmt/issues/4210)
+- rustfmt will no longer use shorthand initialization when rewriting a tuple struct even when `use_field_init_shorthand = true` as this lead to code that could no longer compile.
+  Take the following struct as an example `struct MyStruct(u64);`. rustfmt will no longer format `MyStruct { 0: 0 }` as `MyStruct { 0 }` [#5488](https://github.com/rust-lang/rustfmt/issues/5488)
+- rustfmt no longer panics when formatting an empty code block in a doc comment with `format_code_in_doc_comments = true` [#5234](https://github.com/rust-lang/rustfmt/issues/5234). For example:
+  ```rust
+  /// ```
+  ///
+  /// ```
+  fn main() {}
+  ```
+- Use the correct span when rewriting struct generics. This prevents rustfmt from incorrectly duplicating where clause bounds when using const expression in where clause bounds with feature `#![feature(generic_const_exprs)]` [#5691](https://github.com/rust-lang/rustfmt/issues/5691). e.g.:
+  ```rust
+  struct S<const C: usize>
+  where
+      [(); { num_slots!(C) }]:, {
+      // code ...
+  }
+  ```
+
+### Changed
+
+- Users can now control whether rustc parser errors are displayed with color using rustfmt's `--color` option. To disable colored errors pass `--color=Never` to rustfmt [#5717](https://github.com/rust-lang/rustfmt/issues/5717)
+
+
+### Added
+
+- rustfmt now recognises `+` as the start of a markdown list, and won't incorrectly wrap sublists that begin with `+` when formatting doc comments with `wrap_comments = true` [#5560](https://github.com/rust-lang/rustfmt/pull/5560)
+
+### Misc
+
+- Prevent ICE when parsing invalid attributes in `cfg_if!` macros [#5728](https://github.com/rust-lang/rustfmt/issues/5728)
+
+
+## [1.5.2] 2023-01-24
+
+### Fixed
+
+- Resolve issue when comments are found within const generic defaults in unit structs [#5668](https://github.com/rust-lang/rustfmt/issues/5668)
+- Resolve issue when block comments are found within trait generics [#5358](https://github.com/rust-lang/rustfmt/issues/5358)
+- Correctly handle alignment of comments containing unicode characters [#5504](https://github.com/rust-lang/rustfmt/issues/5504)
+- Properly indent a single generic bound that requires being written across multiple lines [#4689](https://github.com/rust-lang/rustfmt/issues/4689) (n.b. this change is version gated and will only appear when the `version` configuration option is set to `Two`)
+
+### Changed
+
+- Renamed `fn_args_layout` configuration option to `fn_params_layout` [#4149](https://github.com/rust-lang/rustfmt/issues/4149). Note that `fn_args_layout` has only been soft deprecated: `fn_args_layout` will continue to work without issue, but rustfmt will display a warning to encourage users to switch to the new name
+
+### Added
+
+- New configuration option (`skip_macro_invocations`)[https://rust-lang.github.io/rustfmt/?version=master&search=#skip_macro_invocations] [#5347](https://github.com/rust-lang/rustfmt/pull/5347) that can be used to globally define a single enumerated list of macro calls that rustfmt should skip formatting. rustfmt [currently also supports this via a custom tool attribute](https://github.com/rust-lang/rustfmt#tips), however, these cannot be used in all contexts because [custom inner attributes are unstable](https://github.com/rust-lang/rust/issues/54726)
+
+### Misc
+
+- rustfmt now internally supports the ability to have both stable and unstable variants of a configuration option [#5378](https://github.com/rust-lang/rustfmt/issues/5378). This ability will allow the rustfmt team to make certain configuration options available on stable toolchains more quickly because we no longer have to wait for _every_ variant to be stable-ready before stabilizing _any_ variant. 
+
+### Install/Download Options
+- **rustup (nightly)** - nightly-2023-01-24
+- **GitHub Release Binaries** - [Release v1.5.2](https://github.com/rust-lang/rustfmt/releases/tag/v1.5.2)
+- **Build from source** - [Tag v1.5.2](https://github.com/rust-lang/rustfmt/tree/v1.5.2), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.5.2] 2023-01-24
 
 ### Fixed
@@ -55,6 +116,8 @@
 ### Changed
 
 - Simplify the rustfmt help text by eliding the full path to the rustfmt binary path from the usage string when running `rustfmt --help` [#5214](https://github.com/rust-lang/rustfmt/issues/5214)
+
+- Bumped the version for serveral dependencies. Most notably `dirs` `v2.0.1` -> `v4.0.0`. This changed the global user config directory on macOS from `$HOME/Library/Preferences` to `$HOME/Library/Application Support` [#5237](https://github.com/rust-lang/rustfmt/pull/5237)
 
 ### Fixed
 

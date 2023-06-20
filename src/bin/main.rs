@@ -84,7 +84,7 @@ pub enum OperationError {
     #[error("{0}")]
     IoError(IoError),
     /// Attempt to use --emit with a mode which is not currently
-    /// supported with stdandard input.
+    /// supported with standard input.
     #[error("Emit mode {0} not supported with standard output.")]
     StdinBadEmit(EmitMode),
 }

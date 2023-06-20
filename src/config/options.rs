@@ -18,7 +18,7 @@ pub enum NewlineStyle {
     Auto,
     /// Force CRLF (`\r\n`).
     Windows,
-    /// Force CR (`\n).
+    /// Force CR (`\n`).
     Unix,
     /// `\r\n` in Windows, `\n` on other platforms.
     Native,

@@ -560,7 +560,7 @@ impl<'a> FmtVisitor<'a> {
         let variant_body = match field.data {
             ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => format_struct(
                 &context,
-                &StructParts::from_variant(field),
+                &StructParts::from_variant(field, &context),
                 self.block_indent,
                 Some(one_line_width),
             )?,
@@ -951,14 +951,14 @@ impl<'a> StructParts<'a> {
         format_header(context, self.prefix, self.ident, self.vis, offset)
     }
 
-    fn from_variant(variant: &'a ast::Variant) -> Self {
+    fn from_variant(variant: &'a ast::Variant, context: &RewriteContext<'_>) -> Self {
         StructParts {
             prefix: "",
             ident: variant.ident,
             vis: &DEFAULT_VISIBILITY,
             def: &variant.data,
             generics: None,
-            span: variant.span,
+            span: enum_variant_span(variant, context),
         }
     }
 
@@ -976,6 +976,25 @@ impl<'a> StructParts<'a> {
             generics: Some(generics),
             span: item.span,
         }
+    }
+}
+
+fn enum_variant_span(variant: &ast::Variant, context: &RewriteContext<'_>) -> Span {
+    use ast::VariantData::*;
+    if let Some(ref anon_const) = variant.disr_expr {
+        let span_before_consts = variant.span.until(anon_const.value.span);
+        let hi = match &variant.data {
+            Struct(..) => context
+                .snippet_provider
+                .span_after_last(span_before_consts, "}"),
+            Tuple(..) => context
+                .snippet_provider
+                .span_after_last(span_before_consts, ")"),
+            Unit(..) => variant.ident.span.hi(),
+        };
+        mk_sp(span_before_consts.lo(), hi)
+    } else {
+        variant.span
     }
 }
 
@@ -1278,7 +1297,7 @@ pub(crate) fn format_struct_struct(
     let header_hi = struct_parts.ident.span.hi();
     let body_lo = if let Some(generics) = struct_parts.generics {
         // Adjust the span to start at the end of the generic arguments before searching for the '{'
-        let span = span.with_lo(generics.span.hi());
+        let span = span.with_lo(generics.where_clause.span.hi());
         context.snippet_provider.span_after(span, "{")
     } else {
         context.snippet_provider.span_after(span, "{")

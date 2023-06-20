@@ -12,6 +12,7 @@ use rustc_span::{
 };
 
 use crate::config::file_lines::LineRange;
+use crate::config::options::Color;
 use crate::ignore_path::IgnorePathSet;
 use crate::parse::parser::{ModError, ModulePathSuccess};
 use crate::source_map::LineRangeUtils;
@@ -107,15 +108,26 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
     }
 }
 
+impl From<Color> for ColorConfig {
+    fn from(color: Color) -> Self {
+        match color {
+            Color::Auto => ColorConfig::Auto,
+            Color::Always => ColorConfig::Always,
+            Color::Never => ColorConfig::Never,
+        }
+    }
+}
+
 fn default_handler(
     source_map: Lrc<SourceMap>,
     ignore_path_set: Lrc<IgnorePathSet>,
     can_reset: Lrc<AtomicBool>,
     hide_parse_errors: bool,
+    color: Color,
 ) -> Handler {
     let supports_color = term::stderr().map_or(false, |term| term.supports_color());
-    let color_cfg = if supports_color {
-        ColorConfig::Auto
+    let emit_color = if supports_color {
+        ColorConfig::from(color)
     } else {
         ColorConfig::Never
     };
@@ -128,7 +140,7 @@ fn default_handler(
             false,
         );
         Box::new(EmitterWriter::stderr(
-            color_cfg,
+            emit_color,
             Some(source_map.clone()),
             None,
             fallback_bundle,
@@ -167,6 +179,7 @@ impl ParseSess {
             Lrc::clone(&ignore_path_set),
             Lrc::clone(&can_reset_errors),
             config.hide_parse_errors(),
+            config.color(),
         );
         let parse_sess = RawParseSess::with_span_handler(handler, source_map);
 
