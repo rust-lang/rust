@@ -38,6 +38,11 @@ declare_clippy_lint! {
     /// Checks for matches with a single arm where an `if let`
     /// will usually suffice.
     ///
+    /// This intentionally does not lint if there are comments
+    /// inside of the other arm, so as to allow the user to document
+    /// why having another explicit pattern with an empty body is necessary,
+    /// or because the comments need to be preserved for other reasons.
+    ///
     /// ### Why is this bad?
     /// Just readability – `if let` nests less than a `match`.
     ///
