@@ -1124,7 +1124,7 @@ struct MacroParser {
 }
 
 impl MacroParser {
-    const fn new(toks: Cursor) -> Self {
+    const fn new(toks: TokenTreeCursor) -> Self {
         Self { toks }
     }
 

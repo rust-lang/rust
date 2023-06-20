@@ -64,13 +64,6 @@ fn is_attr_path(attr: &syn::Attribute, name: &str) -> bool {
     }
 }
 
-fn is_attr_path(attr: &syn::Attribute, name: &str) -> bool {
-    attr.parse_meta().ok().map_or(false, |meta| match meta {
-        syn::Meta::Path(path) if path.is_ident(name) => true,
-        _ => false,
-    })
-}
-
 fn get_name_value_str_lit(attr: &syn::Attribute, name: &str) -> Option<String> {
     match &attr.meta {
         syn::Meta::NameValue(syn::MetaNameValue {
