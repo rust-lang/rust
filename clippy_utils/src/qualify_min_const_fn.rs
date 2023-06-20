@@ -284,13 +284,10 @@ fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, b
 }
 
 fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
-    let mut cursor = place.projection.as_ref();
-
-    while let [ref proj_base @ .., elem] = *cursor {
-        cursor = proj_base;
+    for (base, elem) in place.as_ref().iter_projections() {
         match elem {
             ProjectionElem::Field(..) => {
-                let base_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
+                let base_ty = base.ty(body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
                     // No union field accesses in `const fn`
                     if def.is_union() {

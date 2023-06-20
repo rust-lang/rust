@@ -157,3 +157,12 @@ impl Issue10617 {
         self.0
     }
 }
+
+union U {
+    f: u32,
+}
+
+// Do not lint because accessing union fields from const functions is unstable
+fn h(u: U) -> u32 {
+    unsafe { u.f }
+}
