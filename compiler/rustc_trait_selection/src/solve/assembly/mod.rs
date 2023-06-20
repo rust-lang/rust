@@ -337,8 +337,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return
         };
 
-        let normalized_self_candidates: Result<_, NoSolution> = self.probe(
-            |ecx| {
+        let normalized_self_candidates: Result<_, NoSolution> =
+            self.probe(|_| CandidateKind::NormalizedSelfTyAssembly).enter(|ecx| {
                 ecx.with_incremented_depth(
                     |ecx| {
                         let result = ecx.evaluate_added_goals_and_make_canonical_response(
@@ -368,9 +368,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         Ok(ecx.assemble_and_evaluate_candidates(goal))
                     },
                 )
-            },
-            |_| CandidateKind::NormalizedSelfTyAssembly,
-        );
+            });
 
         if let Ok(normalized_self_candidates) = normalized_self_candidates {
             candidates.extend(normalized_self_candidates);
