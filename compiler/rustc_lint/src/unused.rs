@@ -1026,15 +1026,21 @@ impl UnusedDelimLint for UnusedParens {
                     false,
                 );
             }
-            ast::ExprKind::Cast(ref expr, _) => self.check_unused_delims_expr(
-                cx,
-                expr,
-                UnusedDelimsCtx::CastExpr,
-                followed_by_block,
-                None,
-                None,
-                false,
-            ),
+            ast::ExprKind::Cast(ref expr, _) => match expr.kind {
+                // linting against `(-expr) as T` and suggest replace it with
+                // `expr as T` may become confusing. If we would lint them,
+                // it would be handled by some external mechanism.
+                ast::ExprKind::Unary(ast::UnOp::Neg, _) => {}
+                _ => self.check_unused_delims_expr(
+                    cx,
+                    expr,
+                    UnusedDelimsCtx::CastExpr,
+                    followed_by_block,
+                    None,
+                    None,
+                    false,
+                );
+            }
 
             _ => {}
         }
