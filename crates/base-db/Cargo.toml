@@ -17,7 +17,7 @@ rustc-hash = "1.1.0"
 
 triomphe.workspace = true
 
-la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+la-arena.workspace = true
 
 # local deps
 cfg.workspace = true

@@ -878,7 +878,7 @@ dependencies = [
 
 [[package]]
 name = "la-arena"
-version = "0.3.0"
+version = "0.3.1"
 
 [[package]]
 name = "lazy_static"
@@ -945,7 +945,7 @@ dependencies = [
 
 [[package]]
 name = "lsp-server"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "crossbeam-channel",
  "log",
