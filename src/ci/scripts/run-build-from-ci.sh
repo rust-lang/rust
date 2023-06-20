@@ -19,5 +19,6 @@ rustup self uninstall -y || true
 if [ -z "${IMAGE+x}" ]; then
     src/ci/run.sh
 else
-    src/ci/docker/run.sh "${IMAGE}"
+    TIME_TAKEN=$( { time src/ci/docker/run.sh "${IMAGE}"; } 2>&1 )
+    echo "Time taken for image ${IMAGE}: $TIME_TAKEN"
 fi
