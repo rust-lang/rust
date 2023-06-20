@@ -6,7 +6,7 @@ use rustc_span::symbol::sym;
 use std::mem;
 
 use crate::clean;
-use crate::clean::{Item, ItemIdSet, NestedAttributesExt};
+use crate::clean::{Item, ItemIdSet};
 use crate::core::DocContext;
 use crate::fold::{strip_item, DocFolder};
 use crate::passes::{ImplStripper, Pass};
@@ -85,7 +85,7 @@ impl<'a, 'tcx> Stripper<'a, 'tcx> {
 
 impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        let has_doc_hidden = i.attrs.lists(sym::doc).has_word(sym::hidden);
+        let has_doc_hidden = i.is_doc_hidden();
         let is_impl_or_exported_macro = match *i.kind {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
