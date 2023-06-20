@@ -11,10 +11,10 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect::{self, CandidateKind};
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, MaybeCause, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult,
+    CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, MaybeCause,
+    PredefinedOpaques, PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::traits::{DefiningAnchor, IsNormalizesToHack};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
@@ -30,6 +30,7 @@ use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
 
 mod canonical;
+mod probe;
 
 pub struct EvalCtxt<'a, 'tcx> {
     /// The inference context that backs (mostly) inference and placeholder terms
@@ -529,32 +530,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
-    /// `probe_kind` is only called when proof tree building is enabled so it can be
-    /// as expensive as necessary to output the desired information.
-    pub(super) fn probe<T>(
-        &mut self,
-        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> T,
-        probe_kind: impl FnOnce(&T) -> CandidateKind<'tcx>,
-    ) -> T {
-        let mut ecx = EvalCtxt {
-            infcx: self.infcx,
-            var_values: self.var_values,
-            predefined_opaques_in_body: self.predefined_opaques_in_body,
-            max_input_universe: self.max_input_universe,
-            search_graph: self.search_graph,
-            nested_goals: self.nested_goals.clone(),
-            tainted: self.tainted,
-            inspect: self.inspect.new_goal_candidate(),
-        };
-        let r = self.infcx.probe(|_| f(&mut ecx));
-        if !self.inspect.is_noop() {
-            let cand_kind = probe_kind(&r);
-            ecx.inspect.candidate_kind(cand_kind);
-            self.inspect.goal_candidate(ecx.inspect);
-        }
-        r
-    }
-
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -868,8 +843,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if candidate_key.def_id != key.def_id {
                 continue;
             }
-            values.extend(self.probe(
-                |ecx| {
+            values.extend(
+                self.probe(|r| CandidateKind::Candidate {
+                    name: "opaque type storage".into(),
+                    result: *r,
+                })
+                .enter(|ecx| {
                     for (a, b) in std::iter::zip(candidate_key.substs, key.substs) {
                         ecx.eq(param_env, a, b)?;
                     }
@@ -881,9 +860,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         candidate_ty,
                     );
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                },
-                |r| CandidateKind::Candidate { name: "opaque type storage".into(), result: *r },
-            ));
+                }),
+            );
         }
         values
     }

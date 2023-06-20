@@ -1,5 +1,7 @@
-use super::{CanonicalInput, Certainty, Goal, NoSolution, QueryInput, QueryResult};
-use crate::{traits::IsNormalizesToHack, ty};
+use super::{
+    CanonicalInput, Certainty, Goal, IsNormalizesToHack, NoSolution, QueryInput, QueryResult,
+};
+use crate::ty;
 use format::ProofTreeFormatter;
 use std::fmt::{Debug, Write};
 
@@ -22,6 +24,7 @@ pub struct GoalEvaluation<'tcx> {
 
     pub result: QueryResult<'tcx>,
 }
+
 #[derive(Eq, PartialEq, Hash, HashStable)]
 pub enum GoalEvaluationKind<'tcx> {
     CacheHit(CacheHit),
@@ -65,6 +68,7 @@ pub struct GoalCandidate<'tcx> {
     pub candidates: Vec<GoalCandidate<'tcx>>,
     pub kind: CandidateKind<'tcx>,
 }
+
 #[derive(Eq, PartialEq, Debug, Hash, HashStable)]
 pub enum CandidateKind<'tcx> {
     /// Probe entered when normalizing the self ty during candidate assembly
