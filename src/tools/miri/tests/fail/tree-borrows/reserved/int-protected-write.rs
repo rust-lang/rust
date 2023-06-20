@@ -12,7 +12,7 @@ fn main() {
         name!(n);
         let x = &mut *(n as *mut _);
         name!(x);
-        let y = (&mut *n) as *mut _;
+        let y = &mut *n as *mut _;
         name!(y);
         write_second(x, y);
         unsafe fn write_second(x: &mut u8, y: *mut u8) {

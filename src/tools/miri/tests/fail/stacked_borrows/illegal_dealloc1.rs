@@ -4,8 +4,8 @@ use std::alloc::{alloc, dealloc, Layout};
 fn main() {
     unsafe {
         let x = alloc(Layout::from_size_align_unchecked(1, 1));
-        let ptr1 = (&mut *x) as *mut u8;
-        let ptr2 = (&mut *ptr1) as *mut u8;
+        let ptr1 = &mut *x as *mut u8;
+        let ptr2 = &mut *ptr1 as *mut u8;
         // Invalidate ptr2 by writing to ptr1.
         ptr1.write(0);
         // Deallocate through ptr2.
