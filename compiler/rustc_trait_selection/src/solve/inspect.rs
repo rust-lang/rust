@@ -1,14 +1,9 @@
-use rustc_middle::{
-    traits::{
-        query::NoSolution,
-        solve::{
-            inspect::{self, CacheHit, CandidateKind},
-            CanonicalInput, Certainty, Goal, QueryInput, QueryResult,
-        },
-        IsNormalizesToHack,
-    },
-    ty,
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::solve::inspect::{self, CacheHit, CandidateKind};
+use rustc_middle::traits::solve::{
+    CanonicalInput, Certainty, Goal, IsNormalizesToHack, QueryInput, QueryResult,
 };
+use rustc_middle::ty;
 
 pub mod dump;
 

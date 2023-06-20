@@ -11,10 +11,10 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect::{self, CandidateKind};
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, MaybeCause, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult,
+    CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, MaybeCause,
+    PredefinedOpaques, PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::traits::{DefiningAnchor, IsNormalizesToHack};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
