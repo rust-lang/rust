@@ -89,7 +89,7 @@ mod arch {
     }
 }
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "riscv64"))]
 mod arch {
     use crate::os::raw::{c_int, c_long, c_uint, c_ulong};
     use crate::os::unix::raw::{gid_t, uid_t};
