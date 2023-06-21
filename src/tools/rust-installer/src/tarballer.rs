@@ -14,23 +14,23 @@ actor! {
     #[derive(Debug)]
     pub struct Tarballer {
         /// The input folder to be compressed.
-        #[clap(value_name = "NAME")]
+        #[arg(value_name = "NAME")]
         input: String = "package",
 
         /// The prefix of the tarballs.
-        #[clap(value_name = "PATH")]
+        #[arg(value_name = "PATH")]
         output: String = "./dist",
 
         /// The folder in which the input is to be found.
-        #[clap(value_name = "DIR")]
+        #[arg(value_name = "DIR")]
         work_dir: String = "./workdir",
 
         /// The profile used to compress the tarball.
-        #[clap(value_name = "FORMAT", default_value_t)]
+        #[arg(value_name = "FORMAT", default_value_t)]
         compression_profile: CompressionProfile,
 
         /// The formats used to compress the tarball.
-        #[clap(value_name = "FORMAT", default_value_t)]
+        #[arg(value_name = "FORMAT", default_value_t)]
         compression_formats: CompressionFormats,
     }
 }
