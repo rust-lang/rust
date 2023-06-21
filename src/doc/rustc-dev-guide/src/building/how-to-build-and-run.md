@@ -67,8 +67,11 @@ You can install it with `cargo install --path src/tools/x`.
 
 ## Create a `config.toml`
 
-To start, run `./x.py setup`. This will do some initialization and create a
-`config.toml` for you with reasonable defaults.
+To start, run `./x.py setup` and select the `compiler` defaults. This will do some initialization
+and create a `config.toml` for you with reasonable defaults. If you use a different default (which
+you'll likely want to do if you want to contribute to an area of rust other than the compiler, such
+as rustdoc), make sure to read information about that default (located in `src/bootstrap/defaults`)
+as the build process may be different for other defaults.
 
 Alternatively, you can write `config.toml` by hand. See `config.example.toml` for all the available
 settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
