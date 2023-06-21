@@ -87,7 +87,7 @@ name = "base-db"
 version = "0.0.0"
 dependencies = [
  "cfg",
- "la-arena",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "profile",
  "rustc-hash",
  "salsa",
@@ -524,7 +524,7 @@ dependencies = [
  "indexmap",
  "intern",
  "itertools",
- "la-arena",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "mbe",
  "once_cell",
@@ -551,7 +551,7 @@ dependencies = [
  "hashbrown",
  "intern",
  "itertools",
- "la-arena",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "mbe",
  "profile",
@@ -584,7 +584,7 @@ dependencies = [
  "hkalbasi-rustc-ap-rustc_index",
  "intern",
  "itertools",
- "la-arena",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "nohash-hasher",
  "once_cell",
@@ -718,7 +718,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "limit",
- "line-index",
+ "line-index 0.1.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr",
  "nohash-hasher",
  "once_cell",
@@ -881,6 +881,12 @@ name = "la-arena"
 version = "0.3.1"
 
 [[package]]
+name = "la-arena"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3752f229dcc5a481d60f385fa479ff46818033d881d2d801aa27dffcfb5e8306"
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -925,6 +931,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "line-index"
+version = "0.1.0-pre.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cad96769710c1745e11d4f940a8ff36000ade4bbada4285b001cb8aa2f745ce"
+dependencies = [
+ "nohash-hasher",
+ "text-size",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -950,6 +966,18 @@ dependencies = [
  "crossbeam-channel",
  "log",
  "lsp-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lsp-server"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3711e4d6f491dc9edc0f1df80e204f38206775ac92c1241e89b79229a850bc00"
+dependencies = [
+ "crossbeam-channel",
+ "log",
  "serde",
  "serde_json",
 ]
@@ -1308,7 +1336,7 @@ version = "0.0.0"
 dependencies = [
  "cfg-if",
  "countme",
- "la-arena",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc",
  "once_cell",
  "perf-event",
@@ -1326,7 +1354,7 @@ dependencies = [
  "cfg",
  "expect-test",
  "itertools",
- "la-arena",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
  "profile",
  "rustc-hash",
@@ -1461,7 +1489,7 @@ dependencies = [
  "ide-db",
  "ide-ssr",
  "itertools",
- "lsp-server",
+ "lsp-server 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types",
  "mbe",
  "mimalloc",
