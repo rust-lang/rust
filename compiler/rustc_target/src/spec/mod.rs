@@ -367,6 +367,25 @@ impl LinkerFlavor {
             | LinkerFlavor::Ptx => false,
         }
     }
+
+    /// Returns whether the flavor calls the linker via a C/C++ compiler.
+    pub fn uses_cc(self) -> bool {
+        // Exhaustive match in case new flavors are added in the future.
+        match self {
+            LinkerFlavor::Gnu(Cc::Yes, _)
+            | LinkerFlavor::Darwin(Cc::Yes, _)
+            | LinkerFlavor::WasmLld(Cc::Yes)
+            | LinkerFlavor::Unix(Cc::Yes)
+            | LinkerFlavor::EmCc => true,
+            LinkerFlavor::Gnu(..)
+            | LinkerFlavor::Darwin(..)
+            | LinkerFlavor::WasmLld(_)
+            | LinkerFlavor::Msvc(_)
+            | LinkerFlavor::Unix(_)
+            | LinkerFlavor::Bpf
+            | LinkerFlavor::Ptx => false,
+        }
+    }
 }
 
 macro_rules! linker_flavor_cli_impls {
