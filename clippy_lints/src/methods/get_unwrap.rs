@@ -22,7 +22,6 @@ pub(super) fn check<'tcx>(
     let mut applicability = Applicability::MachineApplicable;
     let expr_ty = cx.typeck_results().expr_ty(recv);
     let get_args_str = snippet_with_applicability(cx, get_arg.span, "..", &mut applicability);
-    let mut needs_ref = true;
     let caller_type = if derefs_to_slice(cx, recv, expr_ty).is_some() {
         "slice"
     } else if is_type_diagnostic_item(cx, expr_ty, sym::Vec) {
@@ -42,8 +41,7 @@ pub(super) fn check<'tcx>(
     // Handle the case where the result is immediately dereferenced,
     // either directly be the user, or as a result of a method call or the like
     // by not requiring an explicit reference
-    if needs_ref
-        && let Some(parent) = get_parent_expr(cx, expr)
+    let needs_ref = if let Some(parent) = get_parent_expr(cx, expr)
         && let hir::ExprKind::Unary(hir::UnOp::Deref, _)
             | hir::ExprKind::MethodCall(..)
             | hir::ExprKind::Field(..)
@@ -54,8 +52,10 @@ pub(super) fn check<'tcx>(
             // the span to also include the deref part
             span = parent.span;
         }
-        needs_ref = false;
-    }
+        false
+    } else {
+        true
+    };
 
     let mut_str = if is_mut { "_mut" } else { "" };
     let borrow_str = if !needs_ref {
