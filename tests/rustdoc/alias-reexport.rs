@@ -7,11 +7,9 @@
 extern crate alias_reexport2;
 
 // @has 'foo/reexport/fn.foo.html'
-// FIXME: should be 'pub fn foo() -> Reexport'
-// @has - '//*[@class="rust item-decl"]' 'pub fn foo() -> u8'
+// @has - '//*[@class="rust item-decl"]' 'pub fn foo() -> Reexported'
 // @has 'foo/reexport/fn.foo2.html'
-// FIXME: should be 'pub fn foo2() -> Result<Reexport, ()>'
-// @has - '//*[@class="rust item-decl"]' 'pub fn foo2() -> Result<u8, ()>'
+// @has - '//*[@class="rust item-decl"]' 'pub fn foo2() -> Result<Reexported, ()>'
 // @has 'foo/reexport/type.Reexported.html'
 // @has - '//*[@class="rust item-decl"]' 'pub type Reexported = u8;'
 #[doc(inline)]
