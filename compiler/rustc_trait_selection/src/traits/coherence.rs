@@ -398,8 +398,8 @@ fn impl_intersection_has_negative_obligation(
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
-    let ref infcx = tcx.infer_ctxt().intercrate(true).build();
-    let universe = infcx.create_next_universe();
+    let ref infcx = tcx.infer_ctxt().intercrate(true).with_next_trait_solver(true).build();
+    let universe = infcx.universe();
 
     let impl1_header = fresh_impl_header(infcx, impl1_def_id);
     let param_env =

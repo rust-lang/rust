@@ -13,8 +13,6 @@ impl B for u32 {}
 trait C {}
 impl<T: AB> C for T {}
 impl C for u32 {}
-//~^ ERROR
-// FIXME it's giving an ungreat error but unsure if we care given that it's using an internal rustc
-// attribute and an artificial code path for testing purposes
+//~^ ERROR conflicting implementations of trait `C` for type `u32`
 
 fn main() {}

@@ -22,6 +22,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         self.trait_ref
     }
 
+    fn polarity(self) -> ty::ImplPolarity {
+        self.polarity
+    }
+
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         self.with_self_ty(tcx, self_ty)
     }
