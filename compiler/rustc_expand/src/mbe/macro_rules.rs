@@ -535,7 +535,7 @@ pub fn compile_declarative_macro(
                     .pop()
                     .unwrap();
                 }
-                sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+                sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
         _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs"),
