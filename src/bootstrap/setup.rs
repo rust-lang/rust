@@ -20,7 +20,7 @@ pub enum Profile {
     Codegen,
     Library,
     Tools,
-    Dist,
+    User,
     None,
 }
 
@@ -43,7 +43,7 @@ impl Profile {
     pub fn all() -> impl Iterator<Item = Self> {
         use Profile::*;
         // N.B. these are ordered by how they are displayed, not alphabetically
-        [Library, Compiler, Codegen, Tools, Dist, None].iter().copied()
+        [Library, Compiler, Codegen, Tools, User, None].iter().copied()
     }
 
     pub fn purpose(&self) -> String {
@@ -53,7 +53,7 @@ impl Profile {
             Compiler => "Contribute to the compiler itself",
             Codegen => "Contribute to the compiler, and also modify LLVM or codegen",
             Tools => "Contribute to tools which depend on the compiler, but do not modify it directly (e.g. rustdoc, clippy, miri)",
-            Dist => "Install Rust from source",
+            User => "Install Rust from source",
             None => "Do not modify `config.toml`"
         }
         .to_string()
@@ -73,7 +73,7 @@ impl Profile {
             Profile::Codegen => "codegen",
             Profile::Library => "library",
             Profile::Tools => "tools",
-            Profile::Dist => "dist",
+            Profile::User => "user",
             Profile::None => "none",
         }
     }
@@ -87,7 +87,7 @@ impl FromStr for Profile {
             "lib" | "library" => Ok(Profile::Library),
             "compiler" => Ok(Profile::Compiler),
             "llvm" | "codegen" => Ok(Profile::Codegen),
-            "maintainer" | "dist" => Ok(Profile::Dist),
+            "maintainer" | "user" => Ok(Profile::User),
             "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" | "rls" => {
                 Ok(Profile::Tools)
             }
@@ -160,7 +160,7 @@ pub fn setup(config: &Config, profile: Profile) {
             "test src/tools/rustfmt",
         ],
         Profile::Library => &["check", "build", "test library/std", "doc"],
-        Profile::Dist => &["dist", "build"],
+        Profile::User => &["dist", "build"],
     };
 
     println!();
@@ -170,7 +170,7 @@ pub fn setup(config: &Config, profile: Profile) {
         println!("- `x.py {}`", cmd);
     }
 
-    if profile != Profile::Dist {
+    if profile != Profile::User {
         println!(
             "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
         );

@@ -896,7 +896,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let ty = self.tcx().at(span).type_of(did);
 
         if matches!(self.tcx().def_kind(did), DefKind::TyAlias)
-            && ty.skip_binder().has_opaque_types()
+            && (ty.skip_binder().has_opaque_types() || self.tcx().features().lazy_type_alias)
         {
             // Type aliases referring to types that contain opaque types (but aren't just directly
             // referencing a single opaque type) get encoded as a type alias that normalization will

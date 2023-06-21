@@ -871,6 +871,7 @@ symbols! {
         large_assignments,
         lateout,
         lazy_normalization_consts,
+        lazy_type_alias,
         le,
         len,
         let_chains,
