@@ -39,9 +39,11 @@ missing or incomplete support:
 - `std::process::Command`'s API will return an error if it is configured in a
   manner which cannot be performed using `posix_spawn` -- this is because the
   more flexible `fork`/`exec`-based approach is prohibited on these platforms in
-  favor of `posix_spawn{,p}`. A concrete set of cases where this will occur is
-  difficult to enumerate (and would quickly become stale), but in some cases it
-  may be worked around by tweaking the manner in which `Command` is invoked.
+  favor of `posix_spawn{,p}` (which still probably will get you rejected from
+  app stores, so is likely sideloading-only). A concrete set of cases where this
+  will occur is difficult to enumerate (and would quickly become stale), but in
+  some cases it may be worked around by tweaking the manner in which `Command`
+  is invoked.
 
 ## Building the target
 
