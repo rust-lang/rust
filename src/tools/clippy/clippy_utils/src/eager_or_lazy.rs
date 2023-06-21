@@ -191,6 +191,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::Break(..)
                 | ExprKind::Continue(_)
                 | ExprKind::Ret(_)
+                | ExprKind::Become(_)
                 | ExprKind::InlineAsm(_)
                 | ExprKind::Yield(..)
                 | ExprKind::Err(_) => {

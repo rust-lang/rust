@@ -651,6 +651,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             // Either drops temporaries, jumps out of the current expression, or has no sub expression.
             ExprKind::DropTemps(_)
             | ExprKind::Ret(_)
+            | ExprKind::Become(_)
             | ExprKind::Break(..)
             | ExprKind::Yield(..)
             | ExprKind::Block(..)
