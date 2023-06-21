@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -23,21 +22,16 @@ pub(super) fn check<'tcx>(
     let mut applicability = Applicability::MachineApplicable;
     let expr_ty = cx.typeck_results().expr_ty(recv);
     let get_args_str = snippet_with_applicability(cx, get_arg.span, "..", &mut applicability);
-    let mut needs_ref;
+    let mut needs_ref = true;
     let caller_type = if derefs_to_slice(cx, recv, expr_ty).is_some() {
-        needs_ref = true;
         "slice"
     } else if is_type_diagnostic_item(cx, expr_ty, sym::Vec) {
-        needs_ref = true;
         "Vec"
     } else if is_type_diagnostic_item(cx, expr_ty, sym::VecDeque) {
-        needs_ref = true;
         "VecDeque"
     } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::HashMap) {
-        needs_ref = true;
         "HashMap"
     } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::BTreeMap) {
-        needs_ref = true;
         "BTreeMap"
     } else {
         return; // caller is not a type that we want to lint
@@ -48,21 +42,19 @@ pub(super) fn check<'tcx>(
     // Handle the case where the result is immediately dereferenced,
     // either directly be the user, or as a result of a method call or the like
     // by not requiring an explicit reference
-    if_chain! {
-        if needs_ref;
-        if let Some(parent) = get_parent_expr(cx, expr);
-        if let hir::ExprKind::Unary(hir::UnOp::Deref, _)
+    if needs_ref
+        && let Some(parent) = get_parent_expr(cx, expr)
+        && let hir::ExprKind::Unary(hir::UnOp::Deref, _)
             | hir::ExprKind::MethodCall(..)
             | hir::ExprKind::Field(..)
-            | hir::ExprKind::Index(..) = parent.kind;
-        then {
-            if let hir::ExprKind::Unary(hir::UnOp::Deref, _) = parent.kind {
-                // if the user explicitly dereferences the result, we can adjust
-                // the span to also include the deref part
-                span = parent.span;
-            }
-            needs_ref = false;
+            | hir::ExprKind::Index(..) = parent.kind
+    {
+        if let hir::ExprKind::Unary(hir::UnOp::Deref, _) = parent.kind {
+            // if the user explicitly dereferences the result, we can adjust
+            // the span to also include the deref part
+            span = parent.span;
         }
+        needs_ref = false;
     }
 
     let mut_str = if is_mut { "_mut" } else { "" };
