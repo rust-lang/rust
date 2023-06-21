@@ -11,7 +11,7 @@ use crate::{EarlyErrorHandler, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
-use rustc_target::spec::{LinkerFlavorCli, PanicStrategy, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
 use crate::parse::{CrateCheckConfig, CrateConfig};
@@ -306,6 +306,14 @@ impl LinkSelfContained {
         let mut on = LinkSelfContained::default();
         on.set_all_explicitly(true);
         on
+    }
+
+    /// To help checking CLI usage while some of the values are unstable: returns whether one of the
+    /// components was set individually. This would also require the `-Zunstable-options` flag, to
+    /// be allowed.
+    fn are_unstable_variants_set(&self) -> bool {
+        let any_component_set = !self.components.is_empty();
+        self.explicitly_set.is_none() && any_component_set
     }
 
     /// Returns whether the self-contained linker component is enabled.
@@ -2648,16 +2656,28 @@ pub fn build_session_options(
         }
     }
 
-    if let Some(flavor) = cg.linker_flavor {
-        if matches!(flavor, LinkerFlavorCli::BpfLinker | LinkerFlavorCli::PtxLinker)
-            && !nightly_options::is_unstable_enabled(matches)
-        {
-            let msg = format!(
-                "linker flavor `{}` is unstable, `-Z unstable-options` \
-                 flag must also be passed to explicitly use it",
-                flavor.desc()
+    // For testing purposes, until we have more feedback about these options: ensure `-Z
+    // unstable-options` is required when using the unstable `-C link-self-contained` options, like
+    // `-C link-self-contained=+linker`, and when using the unstable `-C linker-flavor` options, like
+    // `-C linker-flavor=gnu-lld-cc`.
+    if !nightly_options::is_unstable_enabled(matches) {
+        let uses_unstable_self_contained_option =
+            cg.link_self_contained.are_unstable_variants_set();
+        if uses_unstable_self_contained_option {
+            handler.early_error(
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off` are stable, \
+                the `-Z unstable-options` flag must also be passed to use the unstable values",
             );
-            handler.early_error(msg);
+        }
+
+        if let Some(flavor) = cg.linker_flavor {
+            if flavor.is_unstable() {
+                handler.early_error(format!(
+                    "the linker flavor `{}` is unstable, the `-Z unstable-options` \
+                        flag must also be passed to use the unstable values",
+                    flavor.desc()
+                ));
+            }
         }
     }
 

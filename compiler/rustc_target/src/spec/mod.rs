@@ -181,6 +181,29 @@ pub enum LinkerFlavorCli {
     PtxLinker,
 }
 
+impl LinkerFlavorCli {
+    /// Returns whether this `-C linker-flavor` option is one of the unstable values.
+    pub fn is_unstable(&self) -> bool {
+        match self {
+            LinkerFlavorCli::Gnu(..)
+            | LinkerFlavorCli::Darwin(..)
+            | LinkerFlavorCli::WasmLld(..)
+            | LinkerFlavorCli::Unix(..)
+            | LinkerFlavorCli::Msvc(Lld::Yes)
+            | LinkerFlavorCli::EmCc
+            | LinkerFlavorCli::Bpf
+            | LinkerFlavorCli::Ptx
+            | LinkerFlavorCli::BpfLinker
+            | LinkerFlavorCli::PtxLinker => true,
+            LinkerFlavorCli::Gcc
+            | LinkerFlavorCli::Ld
+            | LinkerFlavorCli::Lld(..)
+            | LinkerFlavorCli::Msvc(Lld::No)
+            | LinkerFlavorCli::Em => false,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LldFlavor {
     Wasm,
