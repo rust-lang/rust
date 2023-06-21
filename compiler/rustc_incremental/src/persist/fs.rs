@@ -855,12 +855,11 @@ fn all_except_most_recent(
     let most_recent = deletion_candidates.items().map(|(&(timestamp, _), _)| timestamp).max();
 
     if let Some(most_recent) = most_recent {
-        UnordMap::from(
-            deletion_candidates
-                .into_items()
-                .filter(|&((timestamp, _), _)| timestamp != most_recent)
-                .map(|((_, path), lock)| (path, lock)),
-        )
+        deletion_candidates
+            .into_items()
+            .filter(|&((timestamp, _), _)| timestamp != most_recent)
+            .map(|((_, path), lock)| (path, lock))
+            .collect()
     } else {
         UnordMap::default()
     }
