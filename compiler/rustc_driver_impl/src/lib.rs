@@ -329,7 +329,7 @@ fn run_compiler(
                         return;
                     }
                     let should_stop =
-                        print_crate_info(&***compiler.codegen_backend(), compiler.session(), false);
+                        print_crate_info(&**compiler.codegen_backend(), compiler.session(), false);
 
                     if should_stop == Compilation::Stop {
                         return;
@@ -351,7 +351,7 @@ fn run_compiler(
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
-        let should_stop = print_crate_info(&***compiler.codegen_backend(), sess, true)
+        let should_stop = print_crate_info(&**compiler.codegen_backend(), sess, true)
             .and_then(|| list_metadata(sess, &*compiler.codegen_backend().metadata_loader()))
             .and_then(|| try_process_rlink(sess, compiler));
 

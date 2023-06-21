@@ -115,7 +115,7 @@ impl<'tcx> Queries<'tcx> {
     fn session(&self) -> &Lrc<Session> {
         &self.compiler.sess
     }
-    fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
+    fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         self.compiler.codegen_backend()
     }
 
@@ -259,7 +259,7 @@ impl<'tcx> Queries<'tcx> {
             // Hook for UI tests.
             Self::check_for_rustc_errors_attr(tcx);
 
-            Ok(passes::start_codegen(&***self.codegen_backend(), tcx))
+            Ok(passes::start_codegen(&**self.codegen_backend(), tcx))
         })
     }
 
@@ -324,7 +324,7 @@ impl<'tcx> Queries<'tcx> {
 pub struct Linker {
     // compilation inputs
     sess: Lrc<Session>,
-    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
+    codegen_backend: Lrc<dyn CodegenBackend>,
 
     // compilation outputs
     dep_graph: DepGraph,
