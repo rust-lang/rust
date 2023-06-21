@@ -121,6 +121,11 @@ pub(crate) struct Cache {
     pub(crate) intra_doc_links: FxHashMap<ItemId, FxIndexSet<clean::ItemLink>>,
     /// Cfg that have been hidden via #![doc(cfg_hide(...))]
     pub(crate) hidden_cfg: FxHashSet<clean::cfg::Cfg>,
+
+    /// Contains the list of `DefId`s which have been inlined. It is used when generating files
+    /// to check if a stripped item should get its file generated or not: if it's inside a
+    /// `#[doc(hidden)]` item or a private one and not inlined, it shouldn't get a file.
+    pub(crate) inlined_items: DefIdSet,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
