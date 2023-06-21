@@ -260,7 +260,7 @@ originally specified. They have since been implemented following the path which 
 to the author and reviewers.
 
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
-[attr-reference]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-track_caller-attribute
+[attr-reference]: https://doc.rust-lang.org/reference/attributes/codegen.html#the-track_caller-attribute
 [intrinsic]: https://doc.rust-lang.org/nightly/core/intrinsics/fn.caller_location.html
 [wrapper]: https://doc.rust-lang.org/nightly/core/panic/struct.Location.html#method.caller
 [non-viable alternatives]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md#non-viable-alternatives
