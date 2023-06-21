@@ -150,14 +150,11 @@ where
 
     let cx = &PartitioningCx { tcx, usage_map };
 
-    // Place all mono items into a codegen unit.
+    // Place all mono items into a codegen unit. `place_mono_items` is
+    // responsible for initializing the CGU size estimates.
     let PlacedMonoItems { mut codegen_units, internalization_candidates, unique_inlined_stats } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_items");
-        let mut placed = place_mono_items(cx, mono_items);
-
-        for cgu in &mut placed.codegen_units {
-            cgu.create_size_estimate(tcx);
-        }
+        let placed = place_mono_items(cx, mono_items);
 
         debug_dump(tcx, "PLACE", &placed.codegen_units, placed.unique_inlined_stats);
 
@@ -282,6 +279,10 @@ where
     let mut codegen_units: Vec<_> = codegen_units.into_values().collect();
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
+    for cgu in codegen_units.iter_mut() {
+        cgu.compute_size_estimate(cx.tcx);
+    }
+
     return PlacedMonoItems {
         codegen_units,
         internalization_candidates,
@@ -351,7 +352,7 @@ fn merge_codegen_units<'tcx>(
         // may be duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
         second_smallest.items_mut().extend(smallest.items_mut().drain());
-        second_smallest.create_size_estimate(cx.tcx);
+        second_smallest.compute_size_estimate(cx.tcx);
 
         // Record that `second_smallest` now contains all the stuff that was
         // in `smallest` before.
