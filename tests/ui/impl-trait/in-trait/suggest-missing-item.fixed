@@ -9,11 +9,14 @@ trait Trait {
     async fn bar() -> i32;
 
     fn test(&self) -> impl Sized + '_;
+
+    async fn baz(&self) -> &i32;
 }
 
 struct S;
 
-impl Trait for S {fn test(&self) -> impl Sized + '_ { todo!() }
+impl Trait for S {async fn baz(&self) -> &i32 { todo!() }
+fn test(&self) -> impl Sized + '_ { todo!() }
 async fn bar() -> i32 { todo!() }
 async fn foo() { todo!() }
 }

@@ -1459,60 +1459,47 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-            enum FindBindingResult<'a> {
-                Binding(Result<&'a NameBinding<'a>, Determinacy>),
-                Res(Res),
-            }
-            let find_binding_in_ns = |this: &mut Self, ns| {
-                let binding = if let Some(module) = module {
-                    this.resolve_ident_in_module(
-                        module,
-                        ident,
-                        ns,
-                        parent_scope,
-                        finalize,
-                        ignore_binding,
-                    )
-                } else if let Some(ribs) = ribs
-                    && let Some(TypeNS | ValueNS) = opt_ns
-                {
-                    match this.resolve_ident_in_lexical_scope(
-                        ident,
-                        ns,
-                        parent_scope,
-                        finalize,
-                        &ribs[ns],
-                        ignore_binding,
-                    ) {
-                        // we found a locally-imported or available item/module
-                        Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
-                        // we found a local variable or type param
-                        Some(LexicalScopeBinding::Res(res)) => return FindBindingResult::Res(res),
-                        _ => Err(Determinacy::determined(finalize.is_some())),
+            let binding = if let Some(module) = module {
+                self.resolve_ident_in_module(
+                    module,
+                    ident,
+                    ns,
+                    parent_scope,
+                    finalize,
+                    ignore_binding,
+                )
+            } else if let Some(ribs) = ribs && let Some(TypeNS | ValueNS) = opt_ns {
+                match self.resolve_ident_in_lexical_scope(
+                    ident,
+                    ns,
+                    parent_scope,
+                    finalize,
+                    &ribs[ns],
+                    ignore_binding,
+                ) {
+                    // we found a locally-imported or available item/module
+                    Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
+                    // we found a local variable or type param
+                    Some(LexicalScopeBinding::Res(res)) => {
+                        record_segment_res(self, res);
+                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
+                            res,
+                            path.len() - 1,
+                        ));
                     }
-                } else {
-                    let scopes = ScopeSet::All(ns, opt_ns.is_none());
-                    this.early_resolve_ident_in_lexical_scope(
-                        ident,
-                        scopes,
-                        parent_scope,
-                        finalize,
-                        finalize.is_some(),
-                        ignore_binding,
-                    )
-                };
-                FindBindingResult::Binding(binding)
-            };
-            let binding = match find_binding_in_ns(self, ns) {
-                FindBindingResult::Res(res) => {
-                    record_segment_res(self, res);
-                    return PathResult::NonModule(PartialRes::with_unresolved_segments(
-                        res,
-                        path.len() - 1,
-                    ));
+                    _ => Err(Determinacy::determined(finalize.is_some())),
                 }
-                FindBindingResult::Binding(binding) => binding,
+            } else {
+                self.early_resolve_ident_in_lexical_scope(
+                    ident,
+                    ScopeSet::All(ns, opt_ns.is_none()),
+                    parent_scope,
+                    finalize,
+                    finalize.is_some(),
+                    ignore_binding,
+                )
             };
+
             match binding {
                 Ok(binding) => {
                     if segment_idx == 1 {

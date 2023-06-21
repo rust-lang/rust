@@ -421,11 +421,10 @@ fn document<'a, 'cx: 'a>(
     display_fn(move |f| {
         document_item_info(cx, item, parent).render_into(f).unwrap();
         if parent.is_none() {
-            write!(f, "{}", document_full_collapsible(item, cx, heading_offset))?;
+            write!(f, "{}", document_full_collapsible(item, cx, heading_offset))
         } else {
-            write!(f, "{}", document_full(item, cx, heading_offset))?;
+            write!(f, "{}", document_full(item, cx, heading_offset))
         }
-        Ok(())
     })
 }
 
