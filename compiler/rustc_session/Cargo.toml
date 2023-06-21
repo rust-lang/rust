@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 atty = "0.2.13"
+bitflags = "1.2.1"
 getopts = "0.2"
 rustc_macros = { path = "../rustc_macros" }
 tracing = "0.1"

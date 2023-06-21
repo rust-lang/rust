@@ -9,7 +9,6 @@ use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
 use rustc_target::spec::{LinkerFlavorCli, PanicStrategy, SanitizerSet, SplitDebuginfo};
@@ -207,6 +206,50 @@ impl LinkerPluginLto {
             LinkerPluginLto::LinkerPlugin(_) | LinkerPluginLto::LinkerPluginAuto => true,
             LinkerPluginLto::Disabled => false,
         }
+    }
+}
+
+/// The different values `-C link-self-contained` can take: a list of individually enabled or
+/// disabled components used during linking, coming from the rustc distribution, instead of being
+/// found somewhere on the host system.
+///
+/// They can be set in bulk via `-C link-self-contained=yes|y|on` or `-C
+/// link-self-contained=no|n|off`, and those boolean values are the historical defaults.
+///
+/// But each component is fine-grained, and can be unstably targeted, to use:
+/// - some CRT objects
+/// - the libc static library
+/// - libgcc/libunwind libraries
+/// - a linker we distribute
+/// - some sanitizer runtime libraries
+/// - all other MinGW libraries and Windows import libs
+///
+#[derive(Default, Clone, PartialEq, Debug)]
+pub struct LinkSelfContained {
+    /// Whether the user explicitly set `-C link-self-contained` on or off, the historical values.
+    /// Used for compatibility with the existing opt-in and target inference.
+    pub explicitly_set: Option<bool>,
+
+    /// The components that are enabled.
+    components: LinkSelfContainedComponents,
+}
+
+bitflags::bitflags! {
+    #[derive(Default)]
+    /// The `-C link-self-contained` components that can individually be enabled or disabled.
+    pub struct LinkSelfContainedComponents: u8 {
+        /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
+        const CRT_OBJECTS = 1 << 0;
+        /// libc static library (e.g. on `musl`, `wasi` targets)
+        const LIBC        = 1 << 1;
+        /// libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
+        const UNWIND      = 1 << 2;
+        /// Linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
+        const LINKER      = 1 << 3;
+        /// Sanitizer runtime libraries
+        const SANITIZERS  = 1 << 4;
+        /// Other MinGW libs and Windows import libs
+        const MINGW       = 1 << 5;
     }
 }
 
