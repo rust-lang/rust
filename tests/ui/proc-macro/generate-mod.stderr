@@ -5,7 +5,7 @@ LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = help: consider importing this struct:
-           FromOutside
+           use FromOutside;
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `Outer` in this scope
@@ -15,7 +15,7 @@ LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = help: consider importing this struct:
-           Outer
+           use Outer;
    = note: this error originates in the macro `generate_mod::check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `FromOutside` in this scope
@@ -25,7 +25,7 @@ LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = help: consider importing this struct:
-           FromOutside
+           use FromOutside;
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `OuterAttr` in this scope
@@ -35,7 +35,7 @@ LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
    = help: consider importing this struct:
-           OuterAttr
+           use OuterAttr;
    = note: this error originates in the attribute macro `generate_mod::check_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot find type `FromOutside` in this scope

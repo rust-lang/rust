@@ -9,7 +9,8 @@ LL |     macro_two!();
 LL | macro_rules! macro_one { () => ("one") }
    | ---------------------- similarly named macro `macro_one` defined here
    |
-help: a macro with a similar name exists
+   = help: consider importing this macro:
+           use two_macros::macro_two;
    |
 LL |     macro_one!();
    |     ~~~~~~~~~

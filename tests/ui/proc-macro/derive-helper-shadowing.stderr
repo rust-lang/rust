@@ -16,8 +16,9 @@ error: cannot find attribute `empty_helper` in this scope
 LL |             #[derive(GenHelperUse)]
    |                      ^^^^^^^^^^^^
    |
+   = help: consider importing this attribute macro:
+           use empty_helper;
    = note: this error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this attribute macro
    |
 LL +             use empty_helper;
    |
@@ -31,8 +32,9 @@ LL |         #[empty_helper]
 LL |             gen_helper_use!();
    |             ----------------- in this macro invocation
    |
+   = help: consider importing this attribute macro:
+           use crate::empty_helper;
    = note: this error originates in the macro `gen_helper_use` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this attribute macro
    |
 LL +             use crate::empty_helper;
    |

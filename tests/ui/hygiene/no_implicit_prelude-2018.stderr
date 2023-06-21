@@ -4,7 +4,8 @@ error: cannot find macro `print` in this scope
 LL |         print!();
    |         ^^^^^
    |
-help: consider importing this macro
+   = help: consider importing this macro:
+           use std::print;
    |
 LL +     use std::print;
    |
