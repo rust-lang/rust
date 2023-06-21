@@ -307,6 +307,11 @@ impl LinkSelfContained {
         on.set_all_explicitly(true);
         on
     }
+
+    /// Returns whether the self-contained linker component is enabled.
+    pub fn linker(&self) -> bool {
+        self.components.contains(LinkSelfContainedComponents::LINKER)
+    }
 }
 
 /// Used with `-Z assert-incr-state`.
