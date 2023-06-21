@@ -142,16 +142,13 @@ pub fn overlapping_impls(
     Some(overlap)
 }
 
-fn with_fresh_ty_vars<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl_def_id: DefId,
-) -> ty::ImplHeader<'tcx> {
-    let tcx = selcx.tcx();
-    let impl_args = selcx.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ty::ImplHeader<'tcx> {
+    let tcx = infcx.tcx;
+    let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
-    let header = ty::ImplHeader {
+    ty::ImplHeader {
         impl_def_id,
+        impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
         trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.instantiate(tcx, impl_args)),
         predicates: tcx
@@ -160,10 +157,18 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
             .iter()
             .map(|(c, _)| c.as_predicate())
             .collect(),
-    };
+    }
+}
+
+fn fresh_impl_header_normalized<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: DefId,
+) -> ty::ImplHeader<'tcx> {
+    let header = fresh_impl_header(infcx, impl_def_id);
 
     let InferOk { value: mut header, obligations } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
+        infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header
@@ -206,12 +211,13 @@ fn overlap<'tcx>(
     // empty environment.
     let param_env = ty::ParamEnv::empty();
 
-    let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
-    let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
+    let impl1_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl1_def_id);
+    let impl2_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl2_def_id);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
-    let mut obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
+    let mut obligations =
+        equate_impl_headers(selcx.infcx, param_env, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
     obligations.extend(
@@ -312,20 +318,22 @@ fn overlap<'tcx>(
 #[instrument(level = "debug", skip(infcx), ret)]
 fn equate_impl_headers<'tcx>(
     infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     impl1: &ty::ImplHeader<'tcx>,
     impl2: &ty::ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
-    let result = match (impl1.trait_ref, impl2.trait_ref) {
-        (Some(impl1_ref), Some(impl2_ref)) => infcx
-            .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-            .eq(DefineOpaqueTypes::Yes, impl1_ref, impl2_ref),
-        (None, None) => infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-            DefineOpaqueTypes::Yes,
-            impl1.self_ty,
-            impl2.self_ty,
-        ),
-        _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
-    };
+    let result =
+        match (impl1.trait_ref, impl2.trait_ref) {
+            (Some(impl1_ref), Some(impl2_ref)) => infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .eq(DefineOpaqueTypes::Yes, impl1_ref, impl2_ref),
+            (None, None) => infcx.at(&ObligationCause::dummy(), param_env).eq(
+                DefineOpaqueTypes::Yes,
+                impl1.self_ty,
+                impl2.self_ty,
+            ),
+            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+        };
 
     result.map(|infer_ok| infer_ok.obligations).ok()
 }
