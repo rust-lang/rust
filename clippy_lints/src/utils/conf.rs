@@ -21,6 +21,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "GitHub", "GitLab",
     "IPv4", "IPv6",
     "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
+    "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
