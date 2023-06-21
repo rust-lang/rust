@@ -11,36 +11,37 @@ use crate::marker::{StructuralEq, StructuralPartialEq};
 // will implement everything for (A, B, C), (A, B) and (A,).
 macro_rules! tuple_impls {
     // Stopping criteria (1-ary tuple)
-    ($T:ident) => {
-        tuple_impls!(@impl $T);
+    ($T:ident $U:ident) => {
+        tuple_impls!(@impl $T $U);
     };
     // Running criteria (n-ary tuple, with n >= 2)
-    ($T:ident $( $U:ident )+) => {
-        tuple_impls!($( $U )+);
-        tuple_impls!(@impl $T $( $U )+);
+    ($T:ident $U:ident $( $rest:ident )+) => {
+        tuple_impls!($( $rest )+);
+        tuple_impls!(@impl $T $U $( $rest )+);
     };
     // "Private" internal implementation
-    (@impl $( $T:ident )+) => {
+    (@impl $( $T:ident $U:ident )+) => {
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: PartialEq),+> PartialEq for ($($T,)+)
+            impl<$($T: PartialEq<$U>,)+ $($U,)+> PartialEq<($($U,)+)> for ($($T,)+)
             where
-                last_type!($($T,)+): ?Sized
+                last_type!($($T,)+): ?Sized,
+                last_type!($($U,)+): ?Sized
             {
                 #[inline]
-                fn eq(&self, other: &($($T,)+)) -> bool {
+                fn eq(&self, other: &($($U,)+)) -> bool {
                     $( ${ignore(T)} self.${index()} == other.${index()} )&&+
                 }
                 #[inline]
-                fn ne(&self, other: &($($T,)+)) -> bool {
+                fn ne(&self, other: &($($U,)+)) -> bool {
                     $( ${ignore(T)} self.${index()} != other.${index()} )||+
                 }
             }
         }
 
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: Eq),+> Eq for ($($T,)+)
             where
@@ -49,7 +50,7 @@ macro_rules! tuple_impls {
         }
 
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
             #[cfg(not(bootstrap))]
             impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+)
@@ -57,65 +58,66 @@ macro_rules! tuple_impls {
         }
 
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
             impl<$($T),+> StructuralPartialEq for ($($T,)+)
             {}
         }
 
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
             impl<$($T),+> StructuralEq for ($($T,)+)
             {}
         }
 
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: PartialOrd),+> PartialOrd for ($($T,)+)
+            impl<$($T: PartialOrd<$U>,)+ $($U,)+> PartialOrd<($($U,)+)> for ($($T,)+)
             where
-                last_type!($($T,)+): ?Sized
+                last_type!($($T,)+): ?Sized,
+                last_type!($($U,)+): ?Sized
             {
                 #[inline]
-                fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
+                fn partial_cmp(&self, other: &($($U,)+)) -> Option<Ordering> {
                     lexical_partial_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn lt(&self, other: &($($T,)+)) -> bool {
+                fn lt(&self, other: &($($U,)+)) -> bool {
                     lexical_ord!(lt, Less, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn le(&self, other: &($($T,)+)) -> bool {
+                fn le(&self, other: &($($U,)+)) -> bool {
                     lexical_ord!(le, Less, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn ge(&self, other: &($($T,)+)) -> bool {
+                fn ge(&self, other: &($($U,)+)) -> bool {
                     lexical_ord!(ge, Greater, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn gt(&self, other: &($($T,)+)) -> bool {
+                fn gt(&self, other: &($($U,)+)) -> bool {
                     lexical_ord!(gt, Greater, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
             }
         }
 
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: Ord),+> Ord for ($($T,)+)
             where
                 last_type!($($T,)+): ?Sized
             {
                 #[inline]
-                fn cmp(&self, other: &($($T,)+)) -> Ordering {
+                fn cmp(&self, other: &Self) -> Ordering {
                     lexical_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
             }
         }
 
         maybe_tuple_doc! {
-            $($T)+ @
+            $($T $U)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: Default),+> Default for ($($T,)+) {
                 #[inline]
@@ -219,4 +221,4 @@ macro_rules! last_type {
     ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
-tuple_impls!(E D C B A Z Y X W V U T);
+tuple_impls!(E1 E2 D1 D2 C1 C2 B1 B2 A1 A2 Z1 Z2 Y1 Y2 X1 X2 W1 W2 V1 V2 U1 U2 T1 T2);
