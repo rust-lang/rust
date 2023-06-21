@@ -1648,7 +1648,7 @@
                 "path": "ra_syntax_tree.tmGrammar.json"
             },
             {
-                "scopeName": "rustdoc.markdown.injection",
+                "scopeName": "source.rustdoc.markdown.injection",
                 "path": "rustdoc.markdown.injection.tmGrammar.json",
                 "injectTo": [
                     "source.rust"
