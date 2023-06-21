@@ -889,7 +889,7 @@ impl Drop for PanicGuard {
 /// it is guaranteed that this function will not panic (it may abort the
 /// process if the implementation encounters some rare errors).
 ///
-/// # park and unpark
+/// # `park` and `unpark`
 ///
 /// Every thread is equipped with some basic low-level blocking support, via the
 /// [`thread::park`][`park`] function and [`thread::Thread::unpark`][`unpark`]
@@ -910,14 +910,6 @@ impl Drop for PanicGuard {
 ///   if it wasn't already. Because the token is initially absent, [`unpark`]
 ///   followed by [`park`] will result in the second call returning immediately.
 ///
-/// In other words, each [`Thread`] acts a bit like a spinlock that can be
-/// locked and unlocked using `park` and `unpark`.
-///
-/// Notice that being unblocked does not imply any synchronization with someone
-/// that unparked this thread, it could also be spurious.
-/// For example, it would be a valid, but inefficient, implementation to make both [`park`] and
-/// [`unpark`] return immediately without doing anything.
-///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
 /// find it, and then `park`ing in a loop. When some desired condition is met, another
@@ -930,6 +922,23 @@ impl Drop for PanicGuard {
 ///   blocking/signaling.
 ///
 /// * It can be implemented very efficiently on many platforms.
+///
+/// # Memory Ordering
+///
+/// Calls to `park` _synchronize-with_ calls to `unpark`, meaning that memory
+/// operations performed before a call to `unpark` are made visible to the thread that
+/// consumes the token and returns from `park`. Note that all `park` and `unpark`
+/// operations for a given thread form a total order and `park` synchronizes-with
+/// _all_ prior `unpark` operations.
+///
+/// In atomic ordering terms, `unpark` performs a `Release` operation and `park`
+/// performs the corresponding `Acquire` operation. Calls to `unpark` for the same
+/// thread form a [release sequence].
+///
+/// Note that being unblocked does not imply a call was made to `unpark`, because
+/// wakeups can also be spurious. For example, a valid, but inefficient,
+/// implementation could have `park` and `unpark` return immediately without doing anything,
+/// making *all* wakeups spurious.
 ///
 /// # Examples
 ///
@@ -944,7 +953,7 @@ impl Drop for PanicGuard {
 /// let parked_thread = thread::spawn(move || {
 ///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
-///     while !flag2.load(Ordering::Acquire) {
+///     while !flag2.load(Ordering::Relaxed) {
 ///         println!("Parking thread");
 ///         thread::park();
 ///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
@@ -961,7 +970,7 @@ impl Drop for PanicGuard {
 /// // There is no race condition here, if `unpark`
 /// // happens first, `park` will return immediately.
 /// // Hence there is no risk of a deadlock.
-/// flag.store(true, Ordering::Release);
+/// flag.store(true, Ordering::Relaxed);
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
@@ -970,6 +979,7 @@ impl Drop for PanicGuard {
 ///
 /// [`unpark`]: Thread::unpark
 /// [`thread::park_timeout`]: park_timeout
+/// [release sequence]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release_sequence
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
     let guard = PanicGuard;
