@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::{Delimiter, LitKind};
+use rustc_ast::token::{Delimiter, Lit, LitKind};
 use rustc_ast::{ast, ptr, token};
 use rustc_span::{BytePos, Span};
 
@@ -46,6 +46,10 @@ impl Rewrite for ast::Expr {
 pub(crate) enum ExprType {
     Statement,
     SubExpression,
+}
+
+pub(crate) fn lit_ends_in_dot(lit: &Lit) -> bool {
+    matches!(lit, Lit { kind: LitKind::Float, suffix: None, symbol } if symbol.as_str().ends_with('.'))
 }
 
 pub(crate) fn format_expr(
@@ -275,12 +279,7 @@ pub(crate) fn format_expr(
 
             fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
                 match lhs.kind {
-                    ast::ExprKind::Lit(token_lit) => match token_lit.kind {
-                        token::LitKind::Float if token_lit.suffix.is_none() => {
-                            context.snippet(lhs.span).ends_with('.')
-                        }
-                        _ => false,
-                    },
+                    ast::ExprKind::Lit(token_lit) => lit_ends_in_dot(&token_lit),
                     ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, expr),
                     _ => false,
                 }
@@ -1440,7 +1439,7 @@ pub(crate) fn span_ends_with_comma(context: &RewriteContext<'_>, span: Span) -> 
     result
 }
 
-fn rewrite_paren(
+pub(crate) fn rewrite_paren(
     context: &RewriteContext<'_>,
     mut subexpr: &ast::Expr,
     shape: Shape,
