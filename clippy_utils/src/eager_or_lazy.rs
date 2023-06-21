@@ -9,12 +9,13 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
+use crate::consts::{constant, FullInt};
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, QPath, UnOp};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
@@ -193,6 +194,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                         self.eagerness = Lazy;
                     }
                 },
+
+                // `-i32::MIN` panics with overflow checks, but `constant` lets us rule out some simple cases
+                ExprKind::Unary(UnOp::Neg, _) if constant(self.cx, self.cx.typeck_results(), e).is_none() => {
+                    self.eagerness |= NoChange;
+                },
+
                 // Custom `Deref` impl might have side effects
                 ExprKind::Unary(UnOp::Deref, e)
                     if self.cx.typeck_results().expr_ty(e).builtin_deref(true).is_none() =>
@@ -207,6 +214,37 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                         self.cx.typeck_results().expr_ty(e).kind(),
                         ty::Bool | ty::Int(_) | ty::Uint(_),
                     ) => {},
+
+                // `>>` and `<<` panic when the right-hand side is greater than or equal to the number of bits in the
+                // type of the left-hand side, or is negative. Doesn't need `constant` on the whole expression
+                // because only the right side matters.
+                ExprKind::Binary(op, left, right)
+                    if matches!(op.node, BinOpKind::Shl | BinOpKind::Shr)
+                        && let left_ty = self.cx.typeck_results().expr_ty(left)
+                        && let left_bits = left_ty.int_size_and_signed(self.cx.tcx).0.bits()
+                        && constant(self.cx, self.cx.typeck_results(), right)
+                            .and_then(|c| c.int_value(self.cx, left_ty))
+                            .map_or(true, |c| match c {
+                                FullInt::S(i) => i >= i128::from(left_bits) || i.is_negative(),
+                                FullInt::U(i) => i >= u128::from(left_bits),
+                            }) =>
+                {
+                    self.eagerness |= NoChange;
+                },
+
+                // Arithmetic operations panic on under-/overflow with overflow checks, so don't suggest changing it:
+                // https://doc.rust-lang.org/stable/reference/expressions/operator-expr.html#overflow
+                // Using `constant` lets us allow some simple cases where we know for sure it can't overflow
+                ExprKind::Binary(op, ..)
+                    if matches!(
+                        op.node,
+                        BinOpKind::Add | BinOpKind::Mul | BinOpKind::Sub | BinOpKind::Div | BinOpKind::Rem
+                    ) && !self.cx.typeck_results().expr_ty(e).is_floating_point()
+                        && constant(self.cx, self.cx.typeck_results(), e).is_none() =>
+                {
+                    self.eagerness |= NoChange;
+                },
+
                 ExprKind::Binary(_, lhs, rhs)
                     if self.cx.typeck_results().expr_ty(lhs).is_primitive()
                         && self.cx.typeck_results().expr_ty(rhs).is_primitive() => {},
