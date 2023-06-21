@@ -473,7 +473,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx,
             obligation.cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(method_ty.into()))),
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
+                method_ty.into(),
+            ))),
         ));
 
         let callee = MethodCallee { def_id, substs, sig: fn_sig };

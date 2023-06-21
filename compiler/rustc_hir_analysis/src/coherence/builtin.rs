@@ -571,7 +571,7 @@ fn infringing_fields_error(
                             .or_default()
                             .push(error.obligation.cause.span);
                     }
-                    if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+                    if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
                         trait_ref,
                         polarity: ty::ImplPolarity::Positive,
                         ..

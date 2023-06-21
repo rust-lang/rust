@@ -167,6 +167,26 @@ impl<'tcx> Elaboratable<'tcx> for (ty::Predicate<'tcx>, Span) {
     }
 }
 
+impl<'tcx> Elaboratable<'tcx> for ty::Clause<'tcx> {
+    fn predicate(&self) -> ty::Predicate<'tcx> {
+        self.as_predicate()
+    }
+
+    fn child(&self, predicate: ty::Predicate<'tcx>) -> Self {
+        predicate.as_clause().unwrap()
+    }
+
+    fn child_with_derived_cause(
+        &self,
+        predicate: ty::Predicate<'tcx>,
+        _span: Span,
+        _parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        _index: usize,
+    ) -> Self {
+        predicate.as_clause().unwrap()
+    }
+}
+
 pub fn elaborate<'tcx, O: Elaboratable<'tcx>>(
     tcx: TyCtxt<'tcx>,
     obligations: impl IntoIterator<Item = O>,
@@ -199,7 +219,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
 
         let bound_predicate = elaboratable.predicate().kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                 // Negative trait bounds do not imply any supertrait bounds
                 if data.polarity == ty::ImplPolarity::Negative {
                     return;
@@ -227,7 +247,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 debug!(?data, ?obligations, "super_predicates");
                 self.extend_deduped(obligations);
             }
-            ty::PredicateKind::Clause(ty::Clause::WellFormed(..)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..)) => {
                 // Currently, we do not elaborate WF predicates,
                 // although we easily could.
             }
@@ -243,13 +263,13 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 // Currently, we do not "elaborate" predicates like `X -> Y`,
                 // though conceivably we might.
             }
-            ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
                 // Nothing to elaborate in a projection predicate.
             }
             ty::PredicateKind::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
-            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..)) => {
                 // Currently, we do not elaborate const-evaluatable
                 // predicates.
             }
@@ -257,10 +277,10 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 // Currently, we do not elaborate const-equate
                 // predicates.
             }
-            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..)) => {
                 // Nothing to elaborate from `'a: 'b`.
             }
-            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
                 ty_max,
                 r_min,
             ))) => {
@@ -292,7 +312,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                                 if r.is_late_bound() {
                                     None
                                 } else {
-                                    Some(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                                    Some(ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
                                         ty::OutlivesPredicate(r, r_min),
                                     )))
                                 }
@@ -300,7 +320,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
 
                             Component::Param(p) => {
                                 let ty = tcx.mk_ty_param(p.index, p.name);
-                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                Some(ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
                                     ty::OutlivesPredicate(ty, r_min),
                                 )))
                             }
@@ -310,7 +330,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                             Component::Alias(alias_ty) => {
                                 // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
                                 // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
-                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                Some(ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
                                     ty::OutlivesPredicate(alias_ty.to_ty(tcx), r_min),
                                 )))
                             }
@@ -334,7 +354,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
             ty::PredicateKind::AliasRelate(..) => {
                 // No
             }
-            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..)) => {
                 // Nothing to elaborate
             }
         }

@@ -73,7 +73,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
             .flat_map(|v| v.fields.iter())
             .any(|x| matches!(cx.tcx.type_of(x.did).subst_identity().peel_refs().kind(), ty::Param(_)))
             && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
-                PredicateKind::Clause(ty::Clause::Trait(pred)) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
+                PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
                 _ => true,
             })
             && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))

@@ -400,8 +400,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             if let (
-                ty::PredicateKind::Clause(ty::Clause::Trait(new_trait)),
-                ty::PredicateKind::Clause(ty::Clause::Trait(old_trait)),
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(new_trait)),
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(old_trait)),
             ) = (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
             {
                 if new_trait.def_id() == old_trait.def_id() {
@@ -621,14 +621,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(p)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(p)) => {
                     // Add this to `predicates` so that we end up calling `select`
                     // with it. If this predicate ends up being unimplemented,
                     // then `evaluate_predicates` will handle adding it the `ParamEnv`
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
                 }
-                ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(p)) => {
                     let p = bound_predicate.rebind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
@@ -758,11 +758,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(binder)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(binder)) => {
                     let binder = bound_predicate.rebind(binder);
                     selcx.infcx.region_outlives_predicate(&dummy_cause, binder)
                 }
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(binder)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(binder)) => {
                     let binder = bound_predicate.rebind(binder);
                     match (
                         binder.no_bound_vars(),
@@ -826,14 +826,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 // we start out with a `ParamEnv` with no inference variables,
                 // and these don't correspond to adding any new bounds to
                 // the `ParamEnv`.
-                ty::PredicateKind::Clause(ty::Clause::WellFormed(..))
-                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::AliasRelate(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
-                | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::Coerce(..) => {}
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("predicate should only exist in the environment: {bound_predicate:?}")

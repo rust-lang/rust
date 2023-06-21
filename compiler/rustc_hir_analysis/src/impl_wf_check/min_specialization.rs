@@ -236,7 +236,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
     // the functions in `cgp` add the constrained parameters to a list of
     // unconstrained parameters.
     for (predicate, _) in impl_generic_predicates.predicates.iter() {
-        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) =
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
             predicate.kind().skip_binder()
         {
             let projection_ty = proj.projection_ty;
@@ -438,8 +438,8 @@ fn trait_predicates_eq<'tcx>(
     let pred2_kind = predicate2.kind().skip_binder();
     let (trait_pred1, trait_pred2) = match (pred1_kind, pred2_kind) {
         (
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred1)),
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred2)),
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred1)),
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred2)),
         ) => (pred1, pred2),
         // Just use plain syntactic equivalence if either of the predicates aren't
         // trait predicates or have bound vars.
@@ -478,7 +478,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         _ if predicate.is_global() => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref,
             constness: _,
             polarity: _,
@@ -498,7 +498,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                     .emit();
             }
         }
-        ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+        ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
             projection_ty,
             term,
         })) => {
@@ -509,7 +509,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                 )
                 .emit();
         }
-        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..)) => {
             // FIXME(min_specialization), FIXME(const_generics):
             // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
             // about the actual rules that would be sound. Can't just always error here because otherwise
@@ -532,22 +532,22 @@ fn trait_predicate_kind<'tcx>(
     predicate: ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref,
             constness: _,
             polarity: _,
         })) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
-        ty::PredicateKind::Clause(ty::Clause::RegionOutlives(_))
-        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
-        | ty::PredicateKind::Clause(ty::Clause::Projection(_))
-        | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+        ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(_))
+        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(_))
+        | ty::PredicateKind::Clause(ty::ClauseKind::Projection(_))
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
         | ty::PredicateKind::AliasRelate(..)
-        | ty::PredicateKind::Clause(ty::Clause::WellFormed(_))
+        | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
         | ty::PredicateKind::Subtype(_)
         | ty::PredicateKind::Coerce(_)
         | ty::PredicateKind::ObjectSafe(_)
         | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,

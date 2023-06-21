@@ -67,7 +67,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let mut _orig_values = OriginalQueryValues::default();
 
         let param_env = match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                 // we ignore the value set to it.
                 let mut _constness = pred.constness;
                 obligation

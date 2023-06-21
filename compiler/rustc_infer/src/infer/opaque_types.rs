@@ -649,7 +649,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 ct_op: |ct| ct,
             });
 
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) =
                 predicate.kind().skip_binder()
             {
                 if projection.term.references_error() {

@@ -647,7 +647,7 @@ rustc_queries! {
 
     /// Returns the inferred outlives predicates (e.g., for `struct
     /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
+    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::ClauseKind<'tcx>, Span)] {
         desc { |tcx| "computing inferred outlives predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
