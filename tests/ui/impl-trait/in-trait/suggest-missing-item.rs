@@ -9,6 +9,8 @@ trait Trait {
     async fn bar() -> i32;
 
     fn test(&self) -> impl Sized + '_;
+
+    async fn baz(&self) -> &i32;
 }
 
 struct S;

@@ -470,19 +470,16 @@ fn suggestion_signature<'tcx>(
     );
 
     match assoc.kind {
-        ty::AssocKind::Fn => {
-            // We skip the binder here because the binder would deanonymize all
-            // late-bound regions, and we don't want method signatures to show up
-            // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
-            // regions just fine, showing `fn(&MyType)`.
-            fn_sig_suggestion(
-                tcx,
-                tcx.fn_sig(assoc.def_id).subst(tcx, substs).skip_binder(),
-                assoc.ident(tcx),
-                tcx.predicates_of(assoc.def_id).instantiate_own(tcx, substs),
-                assoc,
-            )
-        }
+        ty::AssocKind::Fn => fn_sig_suggestion(
+            tcx,
+            tcx.liberate_late_bound_regions(
+                assoc.def_id,
+                tcx.fn_sig(assoc.def_id).subst(tcx, substs),
+            ),
+            assoc.ident(tcx),
+            tcx.predicates_of(assoc.def_id).instantiate_own(tcx, substs),
+            assoc,
+        ),
         ty::AssocKind::Type => {
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
