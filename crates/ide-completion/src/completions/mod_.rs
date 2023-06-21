@@ -42,7 +42,7 @@ pub(crate) fn complete_mod(
     }
 
     let module_definition_file =
-        current_module.definition_source(ctx.db).file_id.original_file(ctx.db);
+        current_module.definition_source_file_id(ctx.db).original_file(ctx.db);
     let source_root = ctx.db.source_root(ctx.db.file_source_root(module_definition_file));
     let directory_to_look_for_submodules = directory_to_look_for_submodules(
         current_module,

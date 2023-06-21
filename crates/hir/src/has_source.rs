@@ -1,12 +1,13 @@
 //! Provides set of implementation for hir's objects that allows get back location in file.
 
+use base_db::FileId;
 use either::Either;
 use hir_def::{
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource as _},
     Lookup, MacroId, VariantId,
 };
-use hir_expand::InFile;
+use hir_expand::{HirFileId, InFile};
 use syntax::ast;
 
 use crate::{
@@ -32,11 +33,26 @@ impl Module {
         def_map[self.id.local_id].definition_source(db.upcast())
     }
 
+    pub fn definition_source_file_id(self, db: &dyn HirDatabase) -> HirFileId {
+        let def_map = self.id.def_map(db.upcast());
+        def_map[self.id.local_id].definition_source_file_id()
+    }
+
     pub fn is_mod_rs(self, db: &dyn HirDatabase) -> bool {
         let def_map = self.id.def_map(db.upcast());
         match def_map[self.id.local_id].origin {
             ModuleOrigin::File { is_mod_rs, .. } => is_mod_rs,
             _ => false,
+        }
+    }
+
+    pub fn as_source_file_id(self, db: &dyn HirDatabase) -> Option<FileId> {
+        let def_map = self.id.def_map(db.upcast());
+        match def_map[self.id.local_id].origin {
+            ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition, .. } => {
+                Some(definition)
+            }
+            _ => None,
         }
     }
 

@@ -95,17 +95,41 @@ impl flags::AnalysisStats {
         eprintln!(")");
 
         let mut analysis_sw = self.stop_watch();
-        let mut num_crates = 0;
-        let mut visited_modules = FxHashSet::default();
-        let mut visit_queue = Vec::new();
 
         let mut krates = Crate::all(db);
         if self.randomize {
             shuffle(&mut rng, &mut krates);
         }
+
+        let mut item_tree_sw = self.stop_watch();
+        let mut num_item_trees = 0;
+        let source_roots =
+            krates.iter().cloned().map(|krate| db.file_source_root(krate.root_file(db))).unique();
+        for source_root_id in source_roots {
+            let source_root = db.source_root(source_root_id);
+            if !source_root.is_library || self.with_deps {
+                for file_id in source_root.iter() {
+                    if let Some(p) = source_root.path_for_file(&file_id) {
+                        if let Some((_, Some("rs"))) = p.name_and_extension() {
+                            db.file_item_tree(file_id.into());
+                            num_item_trees += 1;
+                        }
+                    }
+                }
+            }
+        }
+        eprintln!("  item trees: {num_item_trees}");
+        let item_tree_time = item_tree_sw.elapsed();
+        eprintln!("{:<20} {}", "Item Tree Collection:", item_tree_time);
+        report_metric("item tree time", item_tree_time.time.as_millis() as u64, "ms");
+
+        let mut crate_def_map_sw = self.stop_watch();
+        let mut num_crates = 0;
+        let mut visited_modules = FxHashSet::default();
+        let mut visit_queue = Vec::new();
         for krate in krates {
             let module = krate.root_module(db);
-            let file_id = module.definition_source(db).file_id;
+            let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
             let source_root = db.file_source_root(file_id);
             let source_root = db.source_root(source_root);
@@ -171,7 +195,9 @@ impl flags::AnalysisStats {
             adts.len(),
             consts.len(),
         );
-        eprintln!("{:<20} {}", "Item Collection:", analysis_sw.elapsed());
+        let crate_def_map_time = crate_def_map_sw.elapsed();
+        eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
+        report_metric("crate def map time", crate_def_map_time.time.as_millis() as u64, "ms");
 
         if self.randomize {
             shuffle(&mut rng, &mut bodies);

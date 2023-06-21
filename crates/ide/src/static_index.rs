@@ -187,7 +187,7 @@ impl StaticIndex<'_> {
     pub fn compute(analysis: &Analysis) -> StaticIndex<'_> {
         let db = &*analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
-            let file_id = module.definition_source(db).file_id.original_file(db);
+            let file_id = module.definition_source_file_id(db).original_file(db);
             let source_root = db.file_source_root(file_id);
             let source_root = db.source_root(source_root);
             !source_root.is_library
@@ -201,7 +201,7 @@ impl StaticIndex<'_> {
         };
         let mut visited_files = FxHashSet::default();
         for module in work {
-            let file_id = module.definition_source(db).file_id.original_file(db);
+            let file_id = module.definition_source_file_id(db).original_file(db);
             if visited_files.contains(&file_id) {
                 continue;
             }
