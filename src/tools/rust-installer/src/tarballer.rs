@@ -98,7 +98,7 @@ fn append_path<W: Write>(builder: &mut Builder<W>, src: &Path, path: &String) ->
         if cfg!(windows) {
             // Windows doesn't really have a mode, so `tar` never marks files executable.
             // Use an extension whitelist to update files that usually should be so.
-            const EXECUTABLES: [&'static str; 4] = ["exe", "dll", "py", "sh"];
+            const EXECUTABLES: [&str; 4] = ["exe", "dll", "py", "sh"];
             if let Some(ext) = src.extension().and_then(|s| s.to_str()) {
                 if EXECUTABLES.contains(&ext) {
                     let mode = header.mode()?;
@@ -134,7 +134,7 @@ where
     for entry in WalkDir::new(root.join(name)) {
         let entry = entry?;
         let path = entry.path().strip_prefix(root)?;
-        let path = path_to_str(&path)?;
+        let path = path_to_str(path)?;
 
         if entry.file_type().is_dir() {
             dirs.push(path.to_owned());

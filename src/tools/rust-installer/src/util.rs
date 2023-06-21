@@ -117,7 +117,7 @@ where
         } else {
             copy(entry.path(), dst)?;
         }
-        callback(&path, file_type)?;
+        callback(path, file_type)?;
     }
     Ok(())
 }

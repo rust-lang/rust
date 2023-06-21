@@ -2,7 +2,7 @@ use crate::util::*;
 use anyhow::{Context, Result};
 use std::io::Write;
 
-const TEMPLATE: &'static str = include_str!("../install-template.sh");
+const TEMPLATE: &str = include_str!("../install-template.sh");
 
 actor! {
     #[derive(Debug)]

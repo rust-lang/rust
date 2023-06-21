@@ -118,7 +118,7 @@ impl Generator {
             .input(self.package_name)
             .output(path_to_str(&output)?.into())
             .compression_profile(self.compression_profile)
-            .compression_formats(self.compression_formats.clone());
+            .compression_formats(self.compression_formats);
         tarballer.run()?;
 
         Ok(())

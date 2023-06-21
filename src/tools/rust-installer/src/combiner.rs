@@ -94,7 +94,7 @@ impl Combiner {
             let pkg_name =
                 input_tarball.trim_end_matches(&format!(".tar.{}", compression.extension()));
             let pkg_name = Path::new(pkg_name).file_name().unwrap();
-            let pkg_dir = Path::new(&self.work_dir).join(&pkg_name);
+            let pkg_dir = Path::new(&self.work_dir).join(pkg_name);
 
             // Verify the version number.
             let mut version = String::new();
@@ -114,9 +114,9 @@ impl Combiner {
                 // All we need to do is copy the component directory. We could
                 // move it, but rustbuild wants to reuse the unpacked package
                 // dir for OS-specific installers on macOS and Windows.
-                let component_dir = package_dir.join(&component);
+                let component_dir = package_dir.join(component);
                 create_dir(&component_dir)?;
-                copy_recursive(&pkg_dir.join(&component), &component_dir)?;
+                copy_recursive(&pkg_dir.join(component), &component_dir)?;
 
                 // Merge the component name.
                 writeln!(&components, "{}", component).context("failed to write new components")?;
@@ -158,7 +158,7 @@ impl Combiner {
             .input(self.package_name)
             .output(path_to_str(&output)?.into())
             .compression_profile(self.compression_profile)
-            .compression_formats(self.compression_formats.clone());
+            .compression_formats(self.compression_formats);
         tarballer.run()?;
 
         Ok(())
