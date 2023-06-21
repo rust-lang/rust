@@ -8,10 +8,7 @@
 //!
 //! FIXME: No span and source file information is implemented yet
 
-use proc_macro::{
-    bridge::{self, server},
-    LineColumn,
-};
+use proc_macro::bridge::{self, server};
 
 mod token_stream;
 pub use token_stream::TokenStream;
