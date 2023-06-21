@@ -893,7 +893,8 @@ pub fn sleep(dur: Duration) {
 ///
 /// Note that being unblocked does not imply a call was made to `unpark`, because
 /// wakeups can also be spurious. For example, a valid, but inefficient,
-/// implementation could have `park` and `unpark` return immediately without doing anything.
+/// implementation could have `park` and `unpark` return immediately without doing anything,
+/// making *all* wakeups spurious.
 ///
 /// # Examples
 ///
@@ -908,7 +909,7 @@ pub fn sleep(dur: Duration) {
 /// let parked_thread = thread::spawn(move || {
 ///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
-///     while !flag2.load(Ordering::Acquire) {
+///     while !flag2.load(Ordering::Relaxed) {
 ///         println!("Parking thread");
 ///         thread::park();
 ///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
@@ -925,7 +926,7 @@ pub fn sleep(dur: Duration) {
 /// // There is no race condition here, if `unpark`
 /// // happens first, `park` will return immediately.
 /// // Hence there is no risk of a deadlock.
-/// flag.store(true, Ordering::Release);
+/// flag.store(true, Ordering::Relaxed);
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
