@@ -1,0 +1,23 @@
+error[E0659]: `EVP_PKEY_id` is ambiguous
+  --> $DIR/issue-112743.rs:24:5
+   |
+LL |     EVP_PKEY_id();
+   |     ^^^^^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `EVP_PKEY_id` could refer to the function imported here
+  --> $DIR/issue-112743.rs:10:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^^^^
+   = help: consider adding an explicit import of `EVP_PKEY_id` to disambiguate
+note: `EVP_PKEY_id` could also refer to the function imported here
+  --> $DIR/issue-112743.rs:11:13
+   |
+LL |     pub use self::handwritten::*;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `EVP_PKEY_id` to disambiguate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

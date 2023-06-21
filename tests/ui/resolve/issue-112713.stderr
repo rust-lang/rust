@@ -1,0 +1,23 @@
+error[E0659]: `C` is ambiguous
+  --> $DIR/issue-112713.rs:5:5
+   |
+LL |     C
+   |     ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `C` could refer to the constant imported here
+  --> $DIR/issue-112713.rs:12:13
+   |
+LL |     pub use mod1::*;
+   |             ^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+note: `C` could also refer to the constant imported here
+  --> $DIR/issue-112713.rs:13:13
+   |
+LL |     pub use mod2::*;
+   |             ^^^^^^^
+   = help: consider adding an explicit import of `C` to disambiguate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

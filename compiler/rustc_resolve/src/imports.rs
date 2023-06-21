@@ -321,6 +321,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
                             // We are glob-importing the same item but with greater visibility.
                             resolution.binding = Some(binding);
+                        } else if binding.is_ambiguity() {
+                            resolution.binding = Some(binding)
                         }
                     }
                     (old_glob @ true, false) | (old_glob @ false, true) => {
@@ -393,7 +395,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let t = f(self, resolution);
 
             match resolution.binding() {
-                _ if old_binding.is_some() => return t,
                 None => return t,
                 Some(binding) => match old_binding {
                     Some(old_binding) if ptr::eq(old_binding, binding) => return t,
@@ -402,7 +403,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         };
 
-        // Define `binding` in `module`s glob importers.
+        // Define or update `binding` in `module`s glob importers.
         for import in module.glob_importers.borrow_mut().iter() {
             let mut ident = key.ident;
             let scope = match ident.span.reverse_glob_adjust(module.expansion, import.span) {
