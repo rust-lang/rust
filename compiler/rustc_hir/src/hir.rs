@@ -2664,6 +2664,10 @@ pub struct OpaqueTy<'hir> {
     pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
     pub origin: OpaqueTyOrigin,
+    // Opaques have duplicated lifetimes, this mapping connects the original lifetime with the copy
+    // so we can later generate bidirectional outlives predicates to enforce that these lifetimes
+    // stay in sync.
+    pub lifetime_mapping: &'hir [(Lifetime, LocalDefId)],
     pub in_trait: bool,
 }
 

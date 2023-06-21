@@ -1568,14 +1568,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // This creates HIR lifetime arguments as `hir::GenericArg`, in the given example `type
         // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing `&['x]`.
-        let lifetimes: Vec<_> = collected_lifetimes
+        let lifetime_mapping: Vec<_> = collected_lifetimes
             .iter()
-            .map(|(_, lifetime)| {
+            .map(|(node_id, lifetime)| {
                 let id = self.next_node_id();
-                self.new_named_lifetime(lifetime.id, id, lifetime.ident)
+                let lifetime = self.new_named_lifetime(lifetime.id, id, lifetime.ident);
+                let def_id = self.local_def_id(*node_id);
+                (lifetime, def_id)
             })
             .collect();
-        debug!(?lifetimes);
+        debug!(?lifetime_mapping);
 
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             // Install the remapping from old to new (if any):
@@ -1626,6 +1628,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                     bounds: hir_bounds,
                     origin,
+                    lifetime_mapping: self.arena.alloc_from_iter(
+                        lifetime_mapping.iter().map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                    ),
                     in_trait,
                 };
                 debug!(?opaque_ty_item);
@@ -1634,17 +1639,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })
         });
 
-        // This creates HIR lifetime arguments as `hir::GenericArg`, in the given example `type
-        // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing `&['x]`.
-        let lifetimes = self.arena.alloc_from_iter(
-            lifetimes.into_iter().map(|lifetime| hir::GenericArg::Lifetime(lifetime)),
-        );
-        debug!(?lifetimes);
-
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
         hir::TyKind::OpaqueDef(
             hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },
-            lifetimes,
+            self.arena.alloc_from_iter(
+                lifetime_mapping.iter().map(|(lifetime, _)| hir::GenericArg::Lifetime(*lifetime)),
+            ),
             in_trait,
         )
     }
@@ -1986,7 +1986,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let lifetime = Lifetime { id: outer_node_id, ident };
             collected_lifetimes.push((inner_node_id, lifetime, Some(inner_res)));
         }
-
         debug!(?collected_lifetimes);
 
         // We only want to capture the lifetimes that appear in the bounds. So visit the bounds to
@@ -2007,19 +2006,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?collected_lifetimes);
         debug!(?new_remapping);
 
-        // This creates HIR lifetime arguments as `hir::GenericArg`, in the given example `type
-        // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing `&['x]`.
-        let lifetimes: Vec<_> = collected_lifetimes
+        // This creates pairs of HIR lifetimes and def_ids. In the given example `type
+        // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing the
+        // new lifetime of the RPIT 'x and the def_id of the lifetime 'x corresponding to
+        // `TestReturn`.
+        let lifetime_mapping: Vec<_> = collected_lifetimes
             .iter()
-            .map(|(_, lifetime, res)| {
+            .map(|(node_id, lifetime, res)| {
                 let id = self.next_node_id();
                 let res = res.unwrap_or(
                     self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error),
                 );
-                self.new_named_lifetime_with_res(id, lifetime.ident, res)
+                let lifetime = self.new_named_lifetime_with_res(id, lifetime.ident, res);
+                let def_id = self.local_def_id(*node_id);
+                (lifetime, def_id)
             })
             .collect();
-        debug!(?lifetimes);
+        debug!(?lifetime_mapping);
 
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // Install the remapping from old to new (if any):
@@ -2086,6 +2089,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                     bounds: arena_vec![this; future_bound],
                     origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
+                    lifetime_mapping: self.arena.alloc_from_iter(
+                        lifetime_mapping.iter().map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                    ),
                     in_trait,
                 };
 
@@ -2109,9 +2115,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
-        let generic_args = self
-            .arena
-            .alloc_from_iter(lifetimes.iter().map(|lifetime| hir::GenericArg::Lifetime(*lifetime)));
+        let generic_args = self.arena.alloc_from_iter(
+            lifetime_mapping.iter().map(|(lifetime, _)| hir::GenericArg::Lifetime(*lifetime)),
+        );
 
         // Create the `Foo<...>` reference itself. Note that the `type
         // Foo = impl Trait` is, internally, created as a child of the

@@ -10,7 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericPredicates, Generics, ToPredicate};
+use rustc_middle::ty::{GenericPredicates, Generics, ImplTraitInTraitData, ToPredicate};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
@@ -61,6 +61,54 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
+
+    match tcx.opt_rpitit_info(def_id.to_def_id()) {
+        Some(ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
+            let opaque_ty_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id.expect_local());
+            let opaque_ty_node = tcx.hir().get(opaque_ty_id);
+            let Node::Item(&Item { kind: ItemKind::OpaqueTy(OpaqueTy { lifetime_mapping, .. }), .. }) = opaque_ty_node else {
+                bug!("unexpected {opaque_ty_node:?}")
+            };
+
+            let mut predicates = Vec::new();
+            compute_bidirectional_outlives_predicates(
+                tcx,
+                def_id,
+                lifetime_mapping.iter().map(|(lifetime, def_id)| {
+                    (*lifetime, (*def_id, lifetime.ident.name, lifetime.ident.span))
+                }),
+                tcx.generics_of(def_id.to_def_id()),
+                &mut predicates,
+            );
+
+            return ty::GenericPredicates {
+                parent: Some(tcx.parent(def_id.to_def_id())),
+                predicates: tcx.arena.alloc_from_iter(predicates),
+            };
+        }
+
+        Some(ImplTraitInTraitData::Impl { fn_def_id }) => {
+            let assoc_item = tcx.associated_item(def_id);
+            let trait_assoc_predicates = tcx.predicates_of(assoc_item.trait_item_def_id.unwrap());
+
+            let impl_assoc_identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
+            let impl_def_id = tcx.parent(fn_def_id);
+            let impl_trait_ref_substs =
+                tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder().substs;
+
+            let impl_assoc_substs =
+                impl_assoc_identity_substs.rebase_onto(tcx, impl_def_id, impl_trait_ref_substs);
+
+            let impl_predicates = trait_assoc_predicates.instantiate_own(tcx, impl_assoc_substs);
+
+            return ty::GenericPredicates {
+                parent: Some(impl_def_id),
+                predicates: tcx.arena.alloc_from_iter(impl_predicates),
+            };
+        }
+
+        None => {}
+    }
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let node = tcx.hir().get(hir_id);
@@ -298,7 +346,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             .filter(|(_, dup)| matches!(dup.kind, hir::GenericParamKind::Lifetime { .. }))
             .map(|(lifetime, dup)| (lifetime, (dup.def_id, dup.name.ident().name, dup.span)));
 
-        bidirectional_lifetime_predicates(tcx, def_id, lifetime_mapping, generics, &mut predicates);
+        compute_bidirectional_outlives_predicates(
+            tcx,
+            def_id,
+            lifetime_mapping,
+            generics,
+            &mut predicates,
+        );
         debug!(?predicates);
     }
 
