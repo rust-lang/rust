@@ -2023,8 +2023,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Tuple(t.iter().map(|t| clean_middle_ty(bound_ty.rebind(t), cx, None, None)).collect())
         }
 
-        ty::Alias(ty::Projection, ref data) => {
-            clean_projection(bound_ty.rebind(*data), cx, parent_def_id)
+        ty::Alias(ty::Projection, data) => {
+            clean_projection(bound_ty.rebind(data), cx, parent_def_id)
         }
 
         ty::Alias(ty::Inherent, alias_ty) => {
@@ -2052,8 +2052,21 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Alias(ty::Weak, data) => {
-            let ty = cx.tcx.type_of(data.def_id).subst(cx.tcx, data.substs);
-            clean_middle_ty(bound_ty.rebind(ty), cx, None, None)
+            if cx.tcx.features().lazy_type_alias {
+                // Weak type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
+                // we need to use `type_of`.
+                let path = external_path(
+                    cx,
+                    data.def_id,
+                    false,
+                    ThinVec::new(),
+                    bound_ty.rebind(data.substs),
+                );
+                Type::Path { path }
+            } else {
+                let ty = cx.tcx.type_of(data.def_id).subst(cx.tcx, data.substs);
+                clean_middle_ty(bound_ty.rebind(ty), cx, None, None)
+            }
         }
 
         ty::Param(ref p) => {
