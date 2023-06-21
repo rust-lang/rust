@@ -879,7 +879,7 @@ pub fn sleep(dur: Duration) {
 ///
 /// * It can be implemented very efficiently on many platforms.
 ///
-/// # Memory Orderings
+/// # Memory Ordering
 ///
 /// Calls to `park` _synchronize-with_ calls to `unpark`, meaning that memory
 /// operations performed before a call to `unpark` are made visible to the thread that
