@@ -73,6 +73,8 @@ pub(crate) struct Context<'tcx> {
     pub(crate) include_sources: bool,
     /// Collection of all types with notable traits referenced in the current module.
     pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
+    /// Field used during rendering, to know if we're inside an inlined item.
+    pub(crate) is_inside_inlined_module: bool,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
@@ -171,6 +173,19 @@ impl<'tcx> Context<'tcx> {
     }
 
     fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
+        let mut render_redirect_pages = self.render_redirect_pages;
+        // If the item is stripped but inlined, links won't point to the item so no need to generate
+        // a file for it.
+        if it.is_stripped() &&
+            let Some(def_id) = it.def_id() &&
+            def_id.is_local()
+        {
+            if self.is_inside_inlined_module || self.shared.cache.inlined_items.contains(&def_id) {
+                // For now we're forced to generate a redirect page for stripped items until
+                // `record_extern_fqn` correctly points to external items.
+                render_redirect_pages = true;
+            }
+        }
         let mut title = String::new();
         if !is_module {
             title.push_str(it.name.unwrap().as_str());
@@ -205,7 +220,7 @@ impl<'tcx> Context<'tcx> {
             tyname.as_str()
         };
 
-        if !self.render_redirect_pages {
+        if !render_redirect_pages {
             let clone_shared = Rc::clone(&self.shared);
             let page = layout::Page {
                 css_class: tyname_s,
@@ -545,6 +560,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared: Rc::new(scx),
             include_sources,
             types_with_notable_traits: FxHashSet::default(),
+            is_inside_inlined_module: false,
         };
 
         if emit_crate {
@@ -574,6 +590,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
             types_with_notable_traits: FxHashSet::default(),
+            is_inside_inlined_module: self.is_inside_inlined_module,
         }
     }
 
@@ -768,12 +785,22 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
-        let buf = self.render_item(item, true);
-        // buf will be empty if the module is stripped and there is no redirect for it
-        if !buf.is_empty() {
-            self.shared.ensure_dir(&self.dst)?;
-            let joint_dst = self.dst.join("index.html");
-            self.shared.fs.write(joint_dst, buf)?;
+        if !item.is_stripped() {
+            let buf = self.render_item(item, true);
+            // buf will be empty if the module is stripped and there is no redirect for it
+            if !buf.is_empty() {
+                self.shared.ensure_dir(&self.dst)?;
+                let joint_dst = self.dst.join("index.html");
+                self.shared.fs.write(joint_dst, buf)?;
+            }
+        }
+        if !self.is_inside_inlined_module {
+            if let Some(def_id) = item.def_id() && self.cache().inlined_items.contains(&def_id) {
+                self.is_inside_inlined_module = true;
+            }
+        } else if item.is_doc_hidden() {
+            // We're not inside an inlined module anymore since this one cannot be re-exported.
+            self.is_inside_inlined_module = false;
         }
 
         // Render sidebar-items.js used throughout this module.

@@ -1,18 +1,23 @@
+#![crate_name = "foo"]
 #![feature(no_core)]
 #![no_core]
-#![crate_name = "foo"]
 
+// The following five should not fail!
 // @!has 'foo/hidden/index.html'
 // @!has 'foo/hidden/inner/index.html'
 // FIXME: Should be `@!has`: https://github.com/rust-lang/rust/issues/111249
 // @has 'foo/hidden/inner/trait.Foo.html'
 // @matchesraw - '<meta http-equiv="refresh" content="0;URL=../../../foo/visible/trait.Foo.html">'
+// @!has 'foo/hidden/inner/inner_hidden/index.html'
+// @!has 'foo/hidden/inner/inner_hidden/trait.HiddenFoo.html'
 #[doc(hidden)]
 pub mod hidden {
     pub mod inner {
-        pub trait Foo {
-            /// Hello, world!
-            fn test();
+        pub trait Foo {}
+
+        #[doc(hidden)]
+        pub mod inner_hidden {
+            pub trait HiddenFoo {}
         }
     }
 }
@@ -26,6 +31,4 @@ pub use hidden::inner as visible;
 // @count - '//*[@id="impl-Foo-for-Bar"]' 1
 pub struct Bar;
 
-impl visible::Foo for Bar {
-    fn test() {}
-}
+impl visible::Foo for Bar {}
