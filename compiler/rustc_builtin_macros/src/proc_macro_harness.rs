@@ -1,3 +1,4 @@
+use crate::errors;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, attr, NodeId};
@@ -83,12 +84,7 @@ pub fn inject(
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate && self.in_root && vis.kind.is_pub() {
-            self.handler.span_err(
-                sp,
-                "`proc-macro` crate types currently cannot export any items other \
-                    than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, \
-                    or `#[proc_macro_attribute]`",
-            );
+            self.handler.emit_err(errors::ProcMacro { span: sp });
         }
     }
 
@@ -157,9 +153,9 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.kind {
             if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
-                let msg =
-                    "cannot export macro_rules! macros from a `proc-macro` crate type currently";
-                self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
+                self.handler.emit_err(errors::ExportMacroRules {
+                    span: self.source_map.guess_head_span(item.span),
+                });
             }
         }
 

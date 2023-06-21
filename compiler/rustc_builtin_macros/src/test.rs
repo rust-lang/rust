@@ -576,12 +576,7 @@ fn check_bench_signature(
     // N.B., inadequate check, but we're running
     // well before resolve, can't get too deep.
     if f.sig.decl.inputs.len() != 1 {
-        return Err(cx.sess.parse_sess.span_diagnostic.span_err(
-            i.span,
-            "functions used as benches must have \
-            signature `fn(&mut Bencher) -> impl Termination`",
-        ));
+        return Err(cx.sess.parse_sess.span_diagnostic.emit_err(errors::BenchSig { span: i.span }));
     }
-
     Ok(())
 }

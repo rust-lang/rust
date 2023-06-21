@@ -33,7 +33,7 @@ pub fn expand_concat(
                     accumulator.push_str(&b.to_string());
                 }
                 Ok(ast::LitKind::CStr(..)) => {
-                    cx.span_err(e.span, "cannot concatenate a C string literal");
+                    cx.emit_err(errors::ConcatCStrLit{ span: e.span});
                     has_errors = true;
                 }
                 Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
