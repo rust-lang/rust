@@ -1094,4 +1094,17 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_15099() {
+        check_diagnostics(
+            r#"
+//- minicore: iterator, range
+fn f() {
+    loop {}
+    for _ in 0..2 {}
+}
+"#,
+        );
+    }
 }

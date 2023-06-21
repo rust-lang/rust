@@ -1661,6 +1661,14 @@ impl DefWithBody {
                     let Some(&local) = mir_body.binding_locals.get(binding_id) else {
                         continue;
                     };
+                    if body[binding_id]
+                        .definitions
+                        .iter()
+                        .any(|&pat| source_map.pat_syntax(pat).is_err())
+                    {
+                        // Skip synthetic bindings
+                        continue;
+                    }
                     let need_mut = &mol[local];
                     let local = Local { parent: self.into(), binding_id };
                     match (need_mut, local.is_mut(db)) {
