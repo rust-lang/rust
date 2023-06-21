@@ -1,5 +1,5 @@
-error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `test`
-  --> $DIR/suggest-missing-item.rs:16:1
+error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `test`, `baz`
+  --> $DIR/suggest-missing-item.rs:18:1
    |
 LL |     async fn foo();
    |     --------------- `foo` from trait
@@ -9,9 +9,12 @@ LL |     async fn bar() -> i32;
 LL |
 LL |     fn test(&self) -> impl Sized + '_;
    |     ---------------------------------- `test` from trait
+LL |
+LL |     async fn baz(&self) -> &i32;
+   |     ---------------------------- `baz` from trait
 ...
 LL | impl Trait for S {}
-   | ^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `test` in implementation
+   | ^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `test`, `baz` in implementation
 
 error: aborting due to previous error
 
