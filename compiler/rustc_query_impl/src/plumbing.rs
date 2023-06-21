@@ -531,6 +531,8 @@ macro_rules! define_queries {
                     key: queries::$name::Key<'tcx>,
                     mode: QueryMode,
                 ) -> Option<Erase<queries::$name::Value<'tcx>>> {
+                    #[cfg(debug_assertions)]
+                    let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                     get_query_incr(
                         QueryType::config(tcx),
                         QueryCtxt::new(tcx),
@@ -571,10 +573,16 @@ macro_rules! define_queries {
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                     execute_query: |tcx, key| erase(tcx.$name(key)),
                     compute: |tcx, key| {
+                        #[cfg(debug_assertions)]
+                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                         __rust_begin_short_backtrace(||
                             queries::$name::provided_to_erased(
                                 tcx,
-                                call_provider!([$($modifiers)*][tcx, $name, key])
+                                {
+                                    let ret = call_provider!([$($modifiers)*][tcx, $name, key]);
+                                    tracing::trace!(?ret);
+                                    ret
+                                }
                             )
                         )
                     },
