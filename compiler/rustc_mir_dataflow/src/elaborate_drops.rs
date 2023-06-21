@@ -638,7 +638,7 @@ where
                 Place::from(ref_place),
                 Rvalue::Ref(
                     tcx.lifetimes.re_erased,
-                    BorrowKind::Mut { allow_two_phase_borrow: false },
+                    BorrowKind::Mut { kind: MutBorrowKind::Default },
                     self.place,
                 ),
             )],

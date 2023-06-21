@@ -454,7 +454,9 @@ impl<'tcx> Validator<'_, 'tcx> {
         match kind {
             // Reject these borrow types just to be safe.
             // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
-            BorrowKind::Shallow | BorrowKind::Unique => return Err(Unpromotable),
+            BorrowKind::Shallow | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
+                return Err(Unpromotable);
+            }
 
             BorrowKind::Shared => {
                 let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
@@ -463,7 +465,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
 
-            BorrowKind::Mut { .. } => {
+            // FIXME: consider changing this to only promote &mut [] for default borrows,
+            // also forbidding two phase borrows
+            BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow } => {
                 let ty = place.ty(self.body, self.tcx).ty;
 
                 // In theory, any zero-sized value could be borrowed

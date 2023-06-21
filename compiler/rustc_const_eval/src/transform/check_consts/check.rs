@@ -412,7 +412,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         BorrowKind::Shallow => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
                         }
-                        BorrowKind::Unique => PlaceContext::MutatingUse(MutatingUseContext::Borrow),
                         BorrowKind::Mut { .. } => {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
@@ -457,7 +456,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(_, kind @ (BorrowKind::Mut { .. } | BorrowKind::Unique), place) => {
+            Rvalue::Ref(_, BorrowKind::Mut { .. }, place) => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let is_allowed = match ty.kind() {
                     // Inside a `static mut`, `&mut [...]` is allowed.
@@ -478,11 +477,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 };
 
                 if !is_allowed {
-                    if let BorrowKind::Mut { .. } = kind {
-                        self.check_mut_borrow(place.local, hir::BorrowKind::Ref)
-                    } else {
-                        self.check_op(ops::CellBorrow);
-                    }
+                    self.check_mut_borrow(place.local, hir::BorrowKind::Ref)
                 }
             }
 
