@@ -1,0 +1,17 @@
+error[E0080]: evaluation of `Foo::<()>::BAR` failed
+  --> $DIR/optimization_dependent_errors.rs:11:9
+   |
+LL |         panic!()
+   |         ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/optimization_dependent_errors.rs:11:9
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: the above error was encountered while instantiating `fn bop::<()>`
+  --> $DIR/optimization_dependent_errors.rs:23:9
+   |
+LL |         bop::<T>();
+   |         ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.
