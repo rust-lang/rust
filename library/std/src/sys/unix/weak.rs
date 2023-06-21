@@ -28,7 +28,7 @@ use crate::ptr;
 use crate::sync::atomic::{self, AtomicPtr, Ordering};
 
 // We can use true weak linkage on ELF targets.
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "tvos")))]
 pub(crate) macro weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
@@ -43,7 +43,7 @@ pub(crate) macro weak {
 }
 
 // On non-ELF targets, use the dlsym approximation of weak linkage.
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos"))]
 pub(crate) use self::dlsym as weak;
 
 pub(crate) struct ExternWeak<F: Copy> {

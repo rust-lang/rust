@@ -32,6 +32,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     all(target_os = "linux", target_env = "gnu"),
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos",
 ))]
 use crate::sys::weak::syscall;
@@ -43,6 +44,7 @@ use libc::{c_int, mode_t};
 #[cfg(any(
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos",
     target_os = "solaris",
     all(target_os = "linux", target_env = "gnu")
@@ -360,7 +362,7 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<SystemTime>,
     modified: Option<SystemTime>,
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
     created: Option<SystemTime>,
 }
 
@@ -519,6 +521,7 @@ impl FileAttr {
         target_os = "openbsd",
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
@@ -530,6 +533,7 @@ impl FileAttr {
         target_os = "openbsd",
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "vita",
     )))]
@@ -611,7 +615,7 @@ impl FileTimes {
         self.modified = Some(t);
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
     pub fn set_created(&mut self, t: SystemTime) {
         self.created = Some(t);
     }
@@ -895,6 +899,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "linux",
         target_os = "emscripten",
@@ -928,6 +933,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -946,6 +952,7 @@ impl DirEntry {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -1107,11 +1114,21 @@ impl File {
         cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+        ))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
-        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
+        #[cfg(not(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+        )))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
@@ -1121,7 +1138,12 @@ impl File {
         cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+        ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
@@ -1140,6 +1162,7 @@ impl File {
             target_os = "android",
             target_os = "freebsd",
             target_os = "ios",
+            target_os = "tvos",
             target_os = "linux",
             target_os = "macos",
             target_os = "netbsd",
@@ -1249,7 +1272,7 @@ impl File {
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))] {
+            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
                 let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
                 let mut num_times = 0;
                 let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
@@ -1709,6 +1732,7 @@ fn open_to_and_set_permissions(
     target_os = "android",
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos",
 )))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
@@ -1736,7 +1760,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::sync::atomic::{AtomicBool, Ordering};
 
