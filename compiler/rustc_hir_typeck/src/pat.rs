@@ -2024,6 +2024,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ty::new_ref(self.tcx, region, mt)
     }
 
+    fn try_resolve_slice_ty_to_array_ty(
+        &self,
+        before: &'tcx [Pat<'tcx>],
+        slice: Option<&'tcx Pat<'tcx>>,
+        span: Span,
+    ) -> Option<Ty<'tcx>> {
+        if !slice.is_none() {
+            return None;
+        }
+
+        let tcx = self.tcx;
+        let len = before.len();
+        let ty_var_origin =
+            TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
+        let inner_ty = self.next_ty_var(ty_var_origin);
+
+        Some(tcx.mk_array(inner_ty, len.try_into().unwrap()))
+    }
+
     /// Type check a slice pattern.
     ///
     /// Syntactically, these look like `[pat_0, ..., pat_n]`.
@@ -2044,6 +2063,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
+        // If `expected` is an infer ty, we try to equate it to an array if the given pattern
+        // allows it. See issue #76342
+        if let Some(resolved_arr_ty) = self.try_resolve_slice_ty_to_array_ty(before, slice, span) && expected.is_ty_var() {
+            debug!(?resolved_arr_ty);
+            self.demand_eqtype(span, expected, resolved_arr_ty);
+        }
+
         let expected = self.structurally_resolve_type(span, expected);
         let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
