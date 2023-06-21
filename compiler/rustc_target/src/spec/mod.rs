@@ -349,6 +349,24 @@ impl LinkerFlavor {
     pub fn is_gnu(self) -> bool {
         matches!(self, LinkerFlavor::Gnu(..))
     }
+
+    /// Returns whether the flavor uses the `lld` linker.
+    pub fn uses_lld(self) -> bool {
+        // Exhaustive match in case new flavors are added in the future.
+        match self {
+            LinkerFlavor::Gnu(_, Lld::Yes)
+            | LinkerFlavor::Darwin(_, Lld::Yes)
+            | LinkerFlavor::WasmLld(..)
+            | LinkerFlavor::EmCc
+            | LinkerFlavor::Msvc(Lld::Yes) => true,
+            LinkerFlavor::Gnu(..)
+            | LinkerFlavor::Darwin(..)
+            | LinkerFlavor::Msvc(_)
+            | LinkerFlavor::Unix(_)
+            | LinkerFlavor::Bpf
+            | LinkerFlavor::Ptx => false,
+        }
+    }
 }
 
 macro_rules! linker_flavor_cli_impls {
