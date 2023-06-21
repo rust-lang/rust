@@ -253,6 +253,62 @@ bitflags::bitflags! {
     }
 }
 
+impl FromStr for LinkSelfContainedComponents {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
+            "libc" => LinkSelfContainedComponents::LIBC,
+            "unwind" => LinkSelfContainedComponents::UNWIND,
+            "linker" => LinkSelfContainedComponents::LINKER,
+            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
+            "mingw" => LinkSelfContainedComponents::MINGW,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl LinkSelfContained {
+    /// Incorporates an enabled or disabled component as specified on the CLI, if possible.
+    /// For example: `+linker`, and `-crto`.
+    pub(crate) fn handle_cli_component(&mut self, component: &str) -> Result<(), ()> {
+        // Note that for example `-Cself-contained=y -Cself-contained=-linker` is not an explicit
+        // set of all values like `y` or `n` used to be. Therefore, if this flag had previously been
+        // set in bulk with its historical values, then manually setting a component clears that
+        // `explicitly_set` state.
+        if let Some(component_to_enable) = component.strip_prefix("+") {
+            self.explicitly_set = None;
+            self.components.insert(component_to_enable.parse()?);
+            Ok(())
+        } else if let Some(component_to_disable) = component.strip_prefix("-") {
+            self.explicitly_set = None;
+            self.components.remove(component_to_disable.parse()?);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    /// Turns all components on or off and records that this was done explicitly for compatibility
+    /// purposes.
+    pub(crate) fn set_all_explicitly(&mut self, enabled: bool) {
+        self.explicitly_set = Some(enabled);
+        self.components = if enabled {
+            LinkSelfContainedComponents::all()
+        } else {
+            LinkSelfContainedComponents::empty()
+        };
+    }
+
+    /// Helper creating a fully enabled `LinkSelfContained` instance. Used in tests.
+    pub fn on() -> Self {
+        let mut on = LinkSelfContained::default();
+        on.set_all_explicitly(true);
+        on
+    }
+}
+
 /// Used with `-Z assert-incr-state`.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum IncrementalStateAssertion {

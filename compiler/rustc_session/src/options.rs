@@ -410,6 +410,8 @@ mod desc {
     pub const parse_split_dwarf_kind: &str =
         "one of supported split dwarf modes (`split` or `single`)";
     pub const parse_gcc_ld: &str = "one of: no value, `lld`";
+    pub const parse_link_self_contained: &str = "one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) \
+        components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub const parse_branch_protection: &str =
@@ -1122,6 +1124,34 @@ mod parse {
         }
     }
 
+    pub(crate) fn parse_link_self_contained(slot: &mut LinkSelfContained, v: Option<&str>) -> bool {
+        // Whenever `-C link-self-contained` is passed without a value, it's an opt-in
+        // just like `parse_opt_bool`, the historical value of this flag.
+        //
+        // 1. Parse historical single bool values
+        let s = v.unwrap_or("y");
+        match s {
+            "y" | "yes" | "on" => {
+                slot.set_all_explicitly(true);
+                return true;
+            }
+            "n" | "no" | "off" => {
+                slot.set_all_explicitly(false);
+                return true;
+            }
+            _ => {}
+        }
+
+        // 2. Parse a list of enabled and disabled components.
+        for comp in s.split(",") {
+            if slot.handle_cli_component(comp).is_err() {
+                return false;
+            }
+        }
+
+        true
+    }
+
     pub(crate) fn parse_wasi_exec_model(slot: &mut Option<WasiExecModel>, v: Option<&str>) -> bool {
         match v {
             Some("command") => *slot = Some(WasiExecModel::Command),
@@ -1265,9 +1295,9 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::link_dead_code` instead of this field")]
     link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "keep dead code at link time (useful for code coverage) (default: no)"),
-    link_self_contained: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+    link_self_contained: LinkSelfContained = (LinkSelfContained::default(), parse_link_self_contained, [UNTRACKED],
         "control whether to link Rust provided C objects/libraries or rely
-        on C toolchain installed in the system"),
+        on a C toolchain or linker installed in the system"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
     linker_flavor: Option<LinkerFlavorCli> = (None, parse_linker_flavor, [UNTRACKED],

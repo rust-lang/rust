@@ -1688,7 +1688,7 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
 fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
-    if let Some(self_contained) = sess.opts.cg.link_self_contained {
+    if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
         if sess.target.link_self_contained == LinkSelfContainedDefault::False {
             sess.emit_err(errors::UnsupportedLinkSelfContained);
         }
