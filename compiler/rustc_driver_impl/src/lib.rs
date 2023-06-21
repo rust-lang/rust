@@ -424,7 +424,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.ongoing_codegen()?;
+            let ongoing_codegen = queries.ongoing_codegen()?;
 
             if sess.opts.unstable_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
@@ -437,7 +437,7 @@ fn run_compiler(
                 sess.code_stats.print_vtable_sizes(crate_name);
             }
 
-            let linker = queries.linker()?;
+            let linker = queries.linker(ongoing_codegen)?;
             Ok(Some(linker))
         })?;
 

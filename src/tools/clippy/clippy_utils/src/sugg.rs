@@ -211,6 +211,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Path(..)
             | ast::ExprKind::Repeat(..)
             | ast::ExprKind::Ret(..)
+            | ast::ExprKind::Become(..)
             | ast::ExprKind::Yeet(..)
             | ast::ExprKind::FormatArgs(..)
             | ast::ExprKind::Struct(..)

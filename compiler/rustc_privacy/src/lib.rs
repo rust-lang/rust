@@ -161,29 +161,31 @@ where
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: _,
                 polarity: _,
             })) => self.visit_trait(trait_ref),
-            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
                 projection_ty,
                 term,
             })) => {
                 term.visit_with(self)?;
                 self.visit_projection_ty(projection_ty)
             }
-            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
                 ty,
                 _region,
             ))) => ty.visit_with(self),
-            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => ControlFlow::Continue(()),
-            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..)) => {
+                ControlFlow::Continue(())
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                 ct.visit_with(self)?;
                 ty.visit_with(self)
             }
-            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)) => ct.visit_with(self),
-            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => arg.visit_with(self),
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => ct.visit_with(self),
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => arg.visit_with(self),
 
             ty::PredicateKind::ObjectSafe(_)
             | ty::PredicateKind::ClosureKind(_, _, _)
@@ -1269,14 +1271,14 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.tcx.types.never,
             );
 
-            for (pred, _) in bounds.predicates() {
-                match pred.skip_binder() {
-                    ty::Clause::Trait(trait_predicate) => {
+            for (clause, _) in bounds.clauses() {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::Trait(trait_predicate) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
                             return;
                         }
                     }
-                    ty::Clause::Projection(proj_predicate) => {
+                    ty::ClauseKind::Projection(proj_predicate) => {
                         let term = self.visit(proj_predicate.term);
                         if term.is_break()
                             || self.visit_projection_ty(proj_predicate.projection_ty).is_break()

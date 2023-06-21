@@ -531,6 +531,19 @@ rustc_queries! {
         }
     }
 
+    /// Returns names of captured upvars for closures and generators.
+    ///
+    /// Here are some examples:
+    ///  - `name__field1__field2` when the upvar is captured by value.
+    ///  - `_ref__name__field` when the upvar is captured by reference.
+    ///
+    /// For generators this only contains upvars that are shared by all states.
+    query closure_saved_names_of_captured_variables(def_id: DefId) -> &'tcx IndexVec<abi::FieldIdx, Symbol> {
+        arena_cache
+        desc { |tcx| "computing debuginfo for closure `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     query mir_generator_witnesses(key: DefId) -> &'tcx Option<mir::GeneratorLayout<'tcx>> {
         arena_cache
         desc { |tcx| "generator witness types for `{}`", tcx.def_path_str(key) }
@@ -634,7 +647,7 @@ rustc_queries! {
 
     /// Returns the inferred outlives predicates (e.g., for `struct
     /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
+    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::ClauseKind<'tcx>, Span)] {
         desc { |tcx| "computing inferred outlives predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern

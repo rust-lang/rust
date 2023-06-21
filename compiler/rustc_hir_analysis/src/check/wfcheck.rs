@@ -81,7 +81,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.tcx(),
             cause,
             param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(arg))),
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg))),
         ));
     }
 }
@@ -419,10 +419,9 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
         let mut unsatisfied_bounds: Vec<_> = required_bounds
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
-                    a,
-                    b,
-                ))) => !region_known_to_outlive(
+                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
+                    ty::OutlivesPredicate(a, b),
+                )) => !region_known_to_outlive(
                     tcx,
                     gat_def_id.def_id,
                     param_env,
@@ -430,7 +429,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                     a,
                     b,
                 ),
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
                     a,
                     b,
                 ))) => !ty_known_to_outlive(
@@ -574,7 +573,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 );
                 // The predicate we expect to see. (In our example,
                 // `Self: 'me`.)
-                let clause = ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                let clause = ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
                     ty::OutlivesPredicate(ty_param, region_param),
                 ));
                 let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
@@ -623,7 +622,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                     },
                 );
                 // The predicate we expect to see.
-                let clause = ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                let clause = ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
                     ty::OutlivesPredicate(region_a_param, region_b_param),
                 ));
                 let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
@@ -1032,7 +1031,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                     tcx,
                     cause,
                     wfcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(
                         ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
                     ))),
                 ));
@@ -1876,7 +1875,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             // We lower empty bounds like `Vec<dyn Copy>:` as
             // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
             // regular WF checking
-            if let ty::PredicateKind::Clause(ty::Clause::WellFormed(..)) = pred.kind().skip_binder()
+            if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..)) =
+                pred.kind().skip_binder()
             {
                 continue;
             }

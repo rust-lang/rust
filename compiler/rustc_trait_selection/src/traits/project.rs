@@ -1653,7 +1653,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx;
     for predicate in env_predicates {
         let bound_predicate = predicate.kind();
-        if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) =
             predicate.kind().skip_binder()
         {
             let data = bound_predicate.rebind(data);

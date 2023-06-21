@@ -676,8 +676,7 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
         _ => unreachable!(),
     };
 
-    let (generator_layout, state_specific_upvar_names) =
-        cx.tcx.generator_layout_and_saved_local_names(generator_def_id);
+    let generator_layout = cx.tcx.optimized_mir(generator_def_id).generator_layout().unwrap();
 
     let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
     let variant_range = generator_substs.variant_range(generator_def_id, cx.tcx);
@@ -714,7 +713,6 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
                 generator_type_and_layout,
                 generator_type_di_node,
                 generator_layout,
-                &state_specific_upvar_names,
                 &common_upvar_names,
             );
 

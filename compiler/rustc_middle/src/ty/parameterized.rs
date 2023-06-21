@@ -128,6 +128,6 @@ parameterized_over_tcx! {
     ty::TraitRef,
     ty::Const,
     ty::Predicate,
-    ty::Clause,
+    ty::ClauseKind,
     ty::GeneratorDiagnosticData,
 }

@@ -908,6 +908,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Yeet(optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
+        ExprKind::Become(expr) => visitor.visit_expr(expr),
         ExprKind::MacCall(mac) => visitor.visit_mac_call(mac),
         ExprKind::Paren(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(asm) => visitor.visit_inline_asm(asm),

@@ -11,9 +11,7 @@ use jobserver::{Acquired, Client};
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::profiling::TimingGuard;
-use rustc_data_structures::profiling::VerboseTimingGuard;
+use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{translation::Translate, DiagnosticId, FatalError, Handler, Level};
@@ -705,20 +703,6 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
     }
 
-    fn start_profiling<'a>(&self, cgcx: &'a CodegenContext<B>) -> TimingGuard<'a> {
-        match *self {
-            WorkItem::Optimize(ref m) => {
-                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*m.name)
-            }
-            WorkItem::CopyPostLtoArtifacts(ref m) => cgcx
-                .prof
-                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &*m.name),
-            WorkItem::LTO(ref m) => {
-                cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name())
-            }
-        }
-    }
-
     /// Generate a short description of this work item suitable for use as a thread name.
     fn short_description(&self) -> String {
         // `pthread_setname()` on *nix is limited to 15 characters and longer names are ignored.
@@ -757,21 +741,6 @@ enum WorkItemResult<B: WriteBackendMethods> {
 pub enum FatLTOInput<B: WriteBackendMethods> {
     Serialized { name: String, buffer: B::ModuleBuffer },
     InMemory(ModuleCodegen<B::Module>),
-}
-
-fn execute_work_item<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    work_item: WorkItem<B>,
-) -> Result<WorkItemResult<B>, FatalError> {
-    let module_config = cgcx.config(work_item.module_kind());
-
-    match work_item {
-        WorkItem::Optimize(module) => execute_optimize_work_item(cgcx, module, module_config),
-        WorkItem::CopyPostLtoArtifacts(module) => {
-            Ok(execute_copy_from_cache_work_item(cgcx, module, module_config))
-        }
-        WorkItem::LTO(module) => execute_lto_work_item(cgcx, module, module_config),
-    }
 }
 
 /// Actual LTO type we end up choosing based on multiple factors.
@@ -1706,8 +1675,27 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _prof_timer = work.start_profiling(&cgcx);
-            Some(execute_work_item(&cgcx, work))
+            let module_config = cgcx.config(work.module_kind());
+
+            Some(match work {
+                WorkItem::Optimize(m) => {
+                    let _timer =
+                        cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*m.name);
+                    execute_optimize_work_item(&cgcx, m, module_config)
+                }
+                WorkItem::CopyPostLtoArtifacts(m) => {
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "codegen_copy_artifacts_from_incr_cache",
+                        &*m.name,
+                    );
+                    Ok(execute_copy_from_cache_work_item(&cgcx, m, module_config))
+                }
+                WorkItem::LTO(m) => {
+                    let _timer =
+                        cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
+                    execute_lto_work_item(&cgcx, m, module_config)
+                }
+            })
         };
     })
     .expect("failed to spawn thread");

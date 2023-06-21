@@ -289,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         .filter_only_self()
                         .find_map(|(pred, _span)| {
                             // We only look at the `DefId`, so it is safe to skip the binder here.
-                            if let ty::PredicateKind::Clause(ty::Clause::Trait(
+                            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
                                 ref poly_trait_predicate,
                             )) = pred.kind().skip_binder()
                             {

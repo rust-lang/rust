@@ -679,7 +679,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Find out if the predicates show that the type is a Fn or FnMut
         let find_fn_kind_from_did = |(pred, _): (ty::Predicate<'tcx>, _)| {
-            if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = pred.kind().skip_binder()
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) = pred.kind().skip_binder()
                 && pred.self_ty() == ty
             {
                 if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
@@ -776,7 +776,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let predicates: Result<Vec<_>, _> = errors
             .into_iter()
             .map(|err| match err.obligation.predicate.kind().skip_binder() {
-                PredicateKind::Clause(ty::Clause::Trait(predicate)) => {
+                PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                     match predicate.self_ty().kind() {
                         ty::Param(param_ty) => Ok((
                             generics.type_param(param_ty, tcx),
