@@ -44,12 +44,25 @@ resolve_binding_shadows_something_unacceptable =
 resolve_binding_shadows_something_unacceptable_suggestion =
     try specify the pattern arguments
 
+resolve_cannot_be_reexported_crate_public =
+    `{$ident}` is only public within the crate, and cannot be re-exported outside
+
+resolve_cannot_be_reexported_private =
+    `{$ident}` is private, and cannot be re-exported
+
 resolve_cannot_capture_dynamic_environment_in_fn_item =
     can't capture dynamic environment in a fn item
     .help = use the `|| {"{"} ... {"}"}` closure form instead
 
+resolve_cannot_determine_import_resolution =
+    cannot determine resolution for the import
+    .note = import resolution is stuck, try simplifying other imports
+
 resolve_cannot_find_ident_in_this_scope =
     cannot find {$expected} `{$ident}` in this scope
+
+resolve_cannot_glob_import_possible_crates =
+    cannot glob-import all possible crates
 
 resolve_cannot_use_self_type_here =
     can't use `Self` here
@@ -59,6 +72,15 @@ resolve_change_import_binding =
 
 resolve_consider_adding_a_derive =
     consider adding a derive
+
+resolve_consider_adding_macro_export =
+    consider adding a `#[macro_export]` to the macro in the imported module
+
+resolve_consider_declaring_with_pub =
+    consider declaring type or module `{$ident}` with `pub`
+
+resolve_consider_marking_as_pub =
+    consider marking `{$ident}` as `pub` in the imported module
 
 resolve_const_not_member_of_trait =
     const `{$const_}` is not a member of trait `{$trait_}`
@@ -98,6 +120,9 @@ resolve_generic_params_from_outer_function =
     .label = use of generic parameter from outer function
     .suggestion = try using a local generic parameter instead
 
+resolve_glob_import_doesnt_reexport =
+    glob import doesn't reexport anything because no candidate is public enough
+
 resolve_help_try_using_local_generic_param =
     try using a local generic parameter instead
 
@@ -121,6 +146,13 @@ resolve_invalid_asm_sym =
     invalid `sym` operand
     .label = is a local variable
     .help = `sym` operands must refer to either a function or a static
+
+resolve_is_not_directly_importable =
+    `{$target}` is not directly importable
+    .label = cannot be imported directly
+
+resolve_items_in_traits_are_not_importable =
+    items in traits are not importable
 
 resolve_label_with_similar_name_reachable =
     a label with a similar name is reachable
@@ -175,6 +207,12 @@ resolve_parent_module_reset_for_binding =
 
 resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
     .help = you can define integration tests in a directory named `tests`
+
+resolve_reexport_of_crate_public =
+    re-export of crate public `{$ident}`
+
+resolve_reexport_of_private =
+    re-export of private `{$ident}`
 
 resolve_relative_2018 =
     relative paths are not supported in visibilities in 2018 edition or later
