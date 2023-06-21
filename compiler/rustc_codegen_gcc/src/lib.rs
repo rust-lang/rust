@@ -111,6 +111,8 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
+        #[cfg(feature="master")]
+        gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
         if sess.lto() != Lto::No {
             sess.emit_warning(LTONotSupported {});
         }
