@@ -1,6 +1,5 @@
 use crate::task::{Poll, Context, Waker};
 use crate::io;
-use crate::mem::ManuallyDrop;
 use wasi::x::Errno;
 
 // Callback when a waker is woken
@@ -11,8 +10,8 @@ pub extern "C" fn _wake(waker0: i64, waker1: i64, waker2: i64, waker3: i64, wake
         if waker > 0 {
             unsafe {
                 let waker = waker.abs() as *mut Waker;
-                ManuallyDrop::new(Box::from_raw(waker))
-            }.wake_by_ref();
+                Box::from_raw(waker)
+            }.wake();
         } else if waker < 0 {
             drop(unsafe {
                 let waker = waker.abs() as *mut Waker;
@@ -30,48 +29,50 @@ pub extern "C" fn _wake(waker0: i64, waker1: i64, waker2: i64, waker3: i64, wake
     process(waker7);
 }
 
-pub fn waker_register(cx: &mut crate::task::Context<'_>) -> RawWakerRef {
+#[allow(fuzzy_provenance_casts)]
+fn waker_register(cx: &mut crate::task::Context<'_>) -> (RawWakerRef, u64) {
     let waker = Box::new(cx.waker().clone());
     let waker = Box::into_raw(waker) as *mut Waker;
-    RawWakerRef {
-        raw: Some(waker as u64)
-    }
+    let waker_id = waker as u64;
+    (
+        RawWakerRef {
+            raw: waker_id
+        },
+        waker_id
+    )
 }
 
 pub struct RawWakerRef {
-    raw: Option<u64>,
-}
-impl Drop
-for RawWakerRef {
-    #[allow(fuzzy_provenance_casts)]
-    fn drop(&mut self) {
-        if let Some(raw) = self.raw.take() {
-            drop(unsafe {
-                let waker = raw as *mut Waker;
-                Box::from_raw(waker)
-            })
-        }
-    }
+    raw: u64
 }
 impl Into<u64>
 for RawWakerRef {
-    fn into(mut self) -> u64 {
-        self.raw.take().unwrap()
+    fn into(self) -> u64 {
+        self.raw
     }
 }
 
+#[allow(fuzzy_provenance_casts)]
 pub(crate) fn asyncify<T, F>(cx: &mut Context<'_>, funct: F) -> Poll<io::Result<T>>
 where F: FnOnce(RawWakerRef) -> Result<T, Errno> {
-    let waker_id = waker_register(cx);
-    let ret = funct(waker_id);
+    let (waker_ref, waker_id) = waker_register(cx);
+    let ret = funct(waker_ref);
     match ret {
         Ok(ret) => {
+            drop(unsafe {
+                let waker = waker_id as *mut Waker;
+                Box::from_raw(waker)
+            });
             Poll::Ready(Ok(ret))
         },
         Err(wasi::ERRNO_PENDING) => {
             Poll::Pending
         },
         Err(err) => {
+            drop(unsafe {
+                let waker = waker_id as *mut Waker;
+                Box::from_raw(waker)
+            });
             Poll::Ready(Err(super::err2io(err)))
         }
     }
