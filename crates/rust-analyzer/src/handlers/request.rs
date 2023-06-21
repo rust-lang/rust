@@ -10,8 +10,8 @@ use std::{
 use anyhow::Context;
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
-    SingleResolve, SourceChange, TextEdit,
+    FileSystemEdit, HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable,
+    RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -20,9 +20,9 @@ use lsp_types::{
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeLens, CompletionItem, FoldingRange, FoldingRangeParams, HoverContents, InlayHint,
     InlayHintParams, Location, LocationLink, Position, PrepareRenameResponse, Range, RenameParams,
-    SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    ResourceOp, ResourceOperationKind, SemanticTokensDeltaParams, SemanticTokensFullDeltaResult,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
@@ -548,6 +548,14 @@ pub(crate) fn handle_will_rename_files(
 ) -> anyhow::Result<Option<lsp_types::WorkspaceEdit>> {
     let _p = profile::span("handle_will_rename_files");
 
+    if !resource_ops_supported(&snap, &ResourceOperationKind::Rename) {
+        return Err(LspError::new(
+            ErrorCode::RequestFailed as i32,
+            "Client does not support rename capability.".to_owned(),
+        )
+        .into());
+    }
+
     let source_changes: Vec<SourceChange> = params
         .files
         .into_iter()
@@ -1029,7 +1037,32 @@ pub(crate) fn handle_rename(
     // See https://github.com/microsoft/vscode-languageserver-node/issues/752 for more info
     if !change.file_system_edits.is_empty() && snap.config.will_rename() {
         change.source_file_edits.clear();
+    } else {
+        for edit in &change.file_system_edits {
+            match edit {
+                &FileSystemEdit::CreateFile { .. }
+                    if !resource_ops_supported(&snap, &ResourceOperationKind::Create) =>
+                {
+                    return Err(LspError::new(
+                        ErrorCode::RequestFailed as i32,
+                        "Client does not support create capability.".to_owned(),
+                    )
+                    .into())
+                }
+                &FileSystemEdit::MoveFile { .. } | &FileSystemEdit::MoveDir { .. }
+                    if !resource_ops_supported(&snap, &ResourceOperationKind::Rename) =>
+                {
+                    return Err(LspError::new(
+                        ErrorCode::RequestFailed as i32,
+                        "Client does not support move/rename capability.".to_owned(),
+                    )
+                    .into())
+                }
+                _ => (),
+            }
+        }
     }
+
     let workspace_edit = to_proto::workspace_edit(&snap, change)?;
     Ok(Some(workspace_edit))
 }
@@ -1137,6 +1170,43 @@ pub(crate) fn handle_code_action(
         let resolve_data =
             if code_action_resolve_cap { Some((index, params.clone())) } else { None };
         let code_action = to_proto::code_action(&snap, assist, resolve_data)?;
+
+        // Check if the client supports the necessary `ResourceOperation`s.
+        if let Some(changes) = &code_action.edit.as_ref().unwrap().document_changes {
+            for change in changes {
+                match change {
+                    lsp_ext::SnippetDocumentChangeOperation::Op(ResourceOp::Create(_))
+                        if !resource_ops_supported(&snap, &ResourceOperationKind::Create) =>
+                    {
+                        return Err(LspError::new(
+                            ErrorCode::RequestFailed as i32,
+                            "Client does not support create capability.".to_owned(),
+                        )
+                        .into());
+                    }
+                    lsp_ext::SnippetDocumentChangeOperation::Op(ResourceOp::Rename(_))
+                        if !resource_ops_supported(&snap, &ResourceOperationKind::Rename) =>
+                    {
+                        return Err(LspError::new(
+                            ErrorCode::RequestFailed as i32,
+                            "Client does not support rename capability.".to_owned(),
+                        )
+                        .into());
+                    }
+                    lsp_ext::SnippetDocumentChangeOperation::Op(ResourceOp::Delete(_))
+                        if !resource_ops_supported(&snap, &ResourceOperationKind::Delete) =>
+                    {
+                        return Err(LspError::new(
+                            ErrorCode::RequestFailed as i32,
+                            "Client does not support delete capability.".to_owned(),
+                        )
+                        .into());
+                    }
+                    _ => (),
+                }
+            }
+        }
+
         res.push(code_action)
     }
 
@@ -1219,6 +1289,44 @@ pub(crate) fn handle_code_action_resolve(
     let ca = to_proto::code_action(&snap, assist.clone(), None)?;
     code_action.edit = ca.edit;
     code_action.command = ca.command;
+
+    if let Some(edit) = code_action.edit.as_ref() {
+        if let Some(changes) = edit.document_changes.as_ref() {
+            for change in changes {
+                match change {
+                    lsp_ext::SnippetDocumentChangeOperation::Op(ResourceOp::Create(_))
+                        if !resource_ops_supported(&snap, &ResourceOperationKind::Create) =>
+                    {
+                        return Err(LspError::new(
+                            ErrorCode::RequestFailed as i32,
+                            "Client does not support create capability.".to_owned(),
+                        )
+                        .into());
+                    }
+                    lsp_ext::SnippetDocumentChangeOperation::Op(ResourceOp::Rename(_))
+                        if !resource_ops_supported(&snap, &ResourceOperationKind::Rename) =>
+                    {
+                        return Err(LspError::new(
+                            ErrorCode::RequestFailed as i32,
+                            "Client does not support rename capability.".to_owned(),
+                        )
+                        .into());
+                    }
+                    lsp_ext::SnippetDocumentChangeOperation::Op(ResourceOp::Delete(_))
+                        if !resource_ops_supported(&snap, &ResourceOperationKind::Delete) =>
+                    {
+                        return Err(LspError::new(
+                            ErrorCode::RequestFailed as i32,
+                            "Client does not support delete capability.".to_owned(),
+                        )
+                        .into());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+
     Ok(code_action)
 }
 
@@ -1989,4 +2097,20 @@ fn to_url(path: VfsPath) -> Option<Url> {
     let path = path.as_path()?;
     let str_path = path.as_os_str().to_str()?;
     Url::from_file_path(str_path).ok()
+}
+
+fn resource_ops_supported(snap: &GlobalStateSnapshot, kind: &ResourceOperationKind) -> bool {
+    snap.config
+        .as_ref()
+        .caps()
+        .workspace
+        .as_ref()
+        .unwrap()
+        .workspace_edit
+        .as_ref()
+        .unwrap()
+        .resource_operations
+        .as_ref()
+        .unwrap()
+        .contains(kind)
 }
