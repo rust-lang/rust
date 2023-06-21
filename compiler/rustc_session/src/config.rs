@@ -201,6 +201,15 @@ pub enum LinkerPluginLto {
     Disabled,
 }
 
+impl LinkerPluginLto {
+    pub fn enabled(&self) -> bool {
+        match *self {
+            LinkerPluginLto::LinkerPlugin(_) | LinkerPluginLto::LinkerPluginAuto => true,
+            LinkerPluginLto::Disabled => false,
+        }
+    }
+}
+
 /// Used with `-Z assert-incr-state`.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum IncrementalStateAssertion {
@@ -211,15 +220,6 @@ pub enum IncrementalStateAssertion {
     Loaded,
     /// Did not load an existing session directory.
     NotLoaded,
-}
-
-impl LinkerPluginLto {
-    pub fn enabled(&self) -> bool {
-        match *self {
-            LinkerPluginLto::LinkerPlugin(_) | LinkerPluginLto::LinkerPluginAuto => true,
-            LinkerPluginLto::Disabled => false,
-        }
-    }
 }
 
 /// The different settings that can be enabled via the `-Z location-detail` flag.
