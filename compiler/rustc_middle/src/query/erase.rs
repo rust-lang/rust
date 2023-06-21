@@ -55,6 +55,10 @@ impl<T> EraseType for &'_ ty::List<T> {
     type Result = [u8; size_of::<*const ()>()];
 }
 
+impl<I: rustc_index::Idx, T> EraseType for &'_ rustc_index::IndexSlice<I, T> {
+    type Result = [u8; size_of::<&'static rustc_index::IndexSlice<u32, ()>>()];
+}
+
 impl<T> EraseType for Result<&'_ T, traits::query::NoSolution> {
     type Result = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
 }

@@ -27,6 +27,11 @@ macro_rules! arena_types {
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<'tcx>
                 >,
+            [decode] closure_debuginfo:
+                rustc_index::IndexVec<
+                    rustc_target::abi::FieldIdx,
+                    rustc_span::symbol::Symbol,
+                >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
             [decode] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<'tcx>,

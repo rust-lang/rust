@@ -944,7 +944,7 @@ fn variant_info_for_generator<'tcx>(
         return (vec![], None);
     };
 
-    let (generator, state_specific_names) = cx.tcx.generator_layout_and_saved_local_names(def_id);
+    let generator = cx.tcx.optimized_mir(def_id).generator_layout().unwrap();
     let upvar_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
 
     let mut upvars_size = Size::ZERO;
@@ -959,7 +959,7 @@ fn variant_info_for_generator<'tcx>(
             upvars_size = upvars_size.max(offset + field_layout.size);
             FieldInfo {
                 kind: FieldKind::Upvar,
-                name: Symbol::intern(&name),
+                name: *name,
                 offset: offset.bytes(),
                 size: field_layout.size.bytes(),
                 align: field_layout.align.abi.bytes(),
@@ -983,9 +983,10 @@ fn variant_info_for_generator<'tcx>(
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
                         kind: FieldKind::GeneratorLocal,
-                        name: state_specific_names.get(*local).copied().flatten().unwrap_or(
-                            Symbol::intern(&format!(".generator_field{}", local.as_usize())),
-                        ),
+                        name: generator.field_names[*local].unwrap_or(Symbol::intern(&format!(
+                            ".generator_field{}",
+                            local.as_usize()
+                        ))),
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
                         align: field_layout.align.abi.bytes(),

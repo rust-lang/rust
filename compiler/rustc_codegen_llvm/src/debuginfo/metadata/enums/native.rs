@@ -155,8 +155,8 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
         ),
         |cx, generator_type_di_node| {
-            let (generator_layout, state_specific_upvar_names) =
-                cx.tcx.generator_layout_and_saved_local_names(generator_def_id);
+            let generator_layout =
+                cx.tcx.optimized_mir(generator_def_id).generator_layout().unwrap();
 
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } = generator_type_and_layout.variants else {
                 bug!(
@@ -195,7 +195,6 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                                 generator_type_and_layout,
                                 generator_type_di_node,
                                 generator_layout,
-                                &state_specific_upvar_names,
                                 &common_upvar_names,
                             ),
                         source_info,
