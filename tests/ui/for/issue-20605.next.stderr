@@ -13,6 +13,10 @@ LL |     for item in *things { *item = 0 }
    = help: the trait `Sized` is not implemented for `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter`
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
+help: consider further restricting the associated type
+   |
+LL | fn changer<'a>(mut things: Box<dyn Iterator<Item=&'a mut u8>>) where <dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter: Sized {
+   |                                                                ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: the type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
   --> $DIR/issue-20605.rs:5:17

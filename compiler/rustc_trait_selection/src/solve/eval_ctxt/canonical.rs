@@ -20,7 +20,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
 };
-use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty};
+use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
@@ -28,10 +28,10 @@ use std::ops::Deref;
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Canonicalizes the goal remembering the original values
     /// for each bound variable.
-    pub(super) fn canonicalize_goal(
+    pub(super) fn canonicalize_goal<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalInput<'tcx>) {
+        goal: Goal<'tcx, T>,
+    ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalInput<'tcx, T>) {
         let mut orig_values = Default::default();
         let canonical_goal = Canonicalizer::canonicalize(
             self.infcx,

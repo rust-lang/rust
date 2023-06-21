@@ -20,6 +20,7 @@ use super::{
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
+use crate::solve::InferCtxtSelectExt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::try_normalize_with_depth_to;
 use crate::traits::project::ProjectAndUnifyResult;
@@ -264,6 +265,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
+        if self.infcx.next_trait_solver() {
+            return self.infcx.select_in_new_trait_solver(obligation);
+        }
+
         let candidate = match self.select_from_obligation(obligation) {
             Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 // In standard mode, overflow must have been caught and reported
@@ -290,7 +295,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    pub(crate) fn select_from_obligation(
+    fn select_from_obligation(
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {

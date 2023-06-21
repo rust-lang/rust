@@ -28,9 +28,11 @@ use super::inspect::ProofTreeBuilder;
 use super::search_graph::{self, OverflowHandler};
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
+pub use select::InferCtxtSelectExt;
 
 mod canonical;
 mod probe;
+mod select;
 
 pub struct EvalCtxt<'a, 'tcx> {
     /// The inference context that backs (mostly) inference and placeholder terms
