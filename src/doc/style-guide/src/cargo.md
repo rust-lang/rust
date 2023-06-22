@@ -1,4 +1,4 @@
-# Cargo.toml conventions
+# `Cargo.toml` conventions
 
 ## Formatting conventions
 
