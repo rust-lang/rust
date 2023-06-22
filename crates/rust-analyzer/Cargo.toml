@@ -47,12 +47,8 @@ triomphe.workspace = true
 nohash-hasher.workspace = true
 always-assert = "0.1.2"
 
-# These dependencies are unused, but we pin them to a version here to restrict them for our transitive dependencies
-# so that we don't pull in duplicates of their dependencies like windows-sys and syn 1 vs 2
-# these would pull in serde 2
-thiserror = "=1.0.39"
-serde_repr = "=0.1.11"
-# these would pull in windows-sys 0.45.0
+# These 3 deps are not used by r-a directly, but we list them here to lock in their versions
+# in our transitive deps to prevent them from pulling in windows-sys 0.45.0
 mio = "=0.8.5"
 filetime = "=0.2.19"
 parking_lot_core = "=0.9.6"

@@ -15,7 +15,7 @@ doctest = false
 [dependencies]
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.4.0", features = ["raw-api"] }
-hashbrown = { version = "0.12.1", default-features = false }
+hashbrown.workspace = true
 once_cell = "1.17.0"
 rustc-hash = "1.1.0"
 triomphe.workspace = true
