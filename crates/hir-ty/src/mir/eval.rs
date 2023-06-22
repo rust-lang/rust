@@ -2122,7 +2122,7 @@ impl Evaluator<'_> {
 }
 
 pub fn pad16(x: &[u8], is_signed: bool) -> [u8; 16] {
-    let is_negative = is_signed && x.last().unwrap_or(&0) > &128;
+    let is_negative = is_signed && x.last().unwrap_or(&0) > &127;
     let fill_with = if is_negative { 255 } else { 0 };
     x.iter()
         .copied()

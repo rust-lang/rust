@@ -779,6 +779,39 @@ const foo$0: u32 = {
             ```
         "#]],
     );
+
+    check(
+        r#"const FOO$0: i32 = -2147483648;"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: i32 = -2147483648 (0x80000000)
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+        const FOO: i32 = -2147483648;
+        const BAR$0: bool = FOO > 0;
+        "#,
+        expect![[r#"
+            *BAR*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const BAR: bool = false
+            ```
+        "#]],
+    );
 }
 
 #[test]
