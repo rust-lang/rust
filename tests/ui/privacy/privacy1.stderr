@@ -50,7 +50,9 @@ error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:104:16
    |
 LL |         ::bar::baz::A::foo();
-   |                ^^^ private module
+   |                ^^^  - struct `A` is not publicly re-exported
+   |                |
+   |                private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -62,7 +64,9 @@ error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:105:16
    |
 LL |         ::bar::baz::A::bar();
-   |                ^^^ private module
+   |                ^^^  - struct `A` is not publicly re-exported
+   |                |
+   |                private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -74,7 +78,9 @@ error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:107:16
    |
 LL |         ::bar::baz::A.foo2();
-   |                ^^^ private module
+   |                ^^^  - unit struct `A` is not publicly re-exported
+   |                |
+   |                private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -86,7 +92,9 @@ error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:108:16
    |
 LL |         ::bar::baz::A.bar2();
-   |                ^^^ private module
+   |                ^^^  - unit struct `A` is not publicly re-exported
+   |                |
+   |                private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -98,7 +106,9 @@ error[E0603]: trait `B` is private
   --> $DIR/privacy1.rs:112:16
    |
 LL |         ::bar::B::foo();
-   |                ^ private trait
+   |                ^  --- associated function `foo` is not publicly re-exported
+   |                |
+   |                private trait
    |
 note: the trait `B` is defined here
   --> $DIR/privacy1.rs:40:5
@@ -129,6 +139,10 @@ note: the module `baz` is defined here
    |
 LL |     mod baz {
    |     ^^^^^^^
+help: consider importing this function through its public re-export instead
+   |
+LL |         bar::foo();
+   |         ~~~~~~~~
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:128:16
@@ -141,6 +155,10 @@ note: the module `baz` is defined here
    |
 LL |     mod baz {
    |     ^^^^^^^
+help: consider importing this function through its public re-export instead
+   |
+LL |         bar::bar();
+   |         ~~~~~~~~
 
 error[E0603]: trait `B` is private
   --> $DIR/privacy1.rs:157:17

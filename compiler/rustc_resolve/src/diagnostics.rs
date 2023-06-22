@@ -103,6 +103,7 @@ pub(crate) struct ImportSuggestion {
     pub descr: &'static str,
     pub path: Path,
     pub accessible: bool,
+    pub via_import: bool,
     /// An extra note that should be issued if this item is suggested
     pub note: Option<String>,
 }
@@ -140,9 +141,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let mut reported_spans = FxHashSet::default();
-        for error in &self.privacy_errors {
+        for error in std::mem::take(&mut self.privacy_errors) {
             if reported_spans.insert(error.dedup_span) {
-                self.report_privacy_error(error);
+                self.report_privacy_error(&error);
             }
         }
     }
@@ -1256,6 +1257,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 path,
                                 accessible: child_accessible,
                                 note,
+                                via_import,
                             });
                         }
                     }
@@ -1609,8 +1611,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         None
     }
 
-    fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
-        let PrivacyError { ident, binding, .. } = *privacy_error;
+    fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'a>) {
+        let PrivacyError { ident, binding, outermost_res, parent_scope, dedup_span } =
+            *privacy_error;
 
         let res = binding.res();
         let ctor_fields_span = self.ctor_fields_span(binding);
@@ -1626,6 +1629,33 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut err =
             struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
         err.span_label(ident.span, format!("private {}", descr));
+
+        if let Some((this_res, outer_ident)) = outermost_res {
+            let import_suggestions = self.lookup_import_candidates(
+                outer_ident,
+                this_res.ns().unwrap_or(Namespace::TypeNS),
+                &parent_scope,
+                &|res: Res| res == this_res,
+            );
+            let point_to_def = !show_candidates(
+                self.tcx,
+                &mut err,
+                Some(dedup_span.until(outer_ident.span.shrink_to_hi())),
+                &import_suggestions,
+                Instead::Yes,
+                FoundUse::Yes,
+                DiagnosticMode::Import,
+                vec![],
+                "",
+            );
+            // If we suggest importing a public re-export, don't point at the definition.
+            if point_to_def && ident.span != outer_ident.span {
+                err.span_label(
+                    outer_ident.span,
+                    format!("{} `{outer_ident}` is not publicly re-exported", this_res.descr()),
+                );
+            }
+        }
 
         let mut non_exhaustive = None;
         // If an ADT is foreign and marked as `non_exhaustive`, then that's
@@ -2455,7 +2485,8 @@ pub(crate) fn import_candidates(
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
-/// results of this search in a programmer-friendly way
+/// results of this search in a programmer-friendly way. If any entities are
+/// found and suggested, returns `true`, otherwise returns `false`.
 fn show_candidates(
     tcx: TyCtxt<'_>,
     err: &mut Diagnostic,
@@ -2467,19 +2498,19 @@ fn show_candidates(
     mode: DiagnosticMode,
     path: Vec<Segment>,
     append: &str,
-) {
+) -> bool {
     if candidates.is_empty() {
-        return;
+        return false;
     }
 
-    let mut accessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>)> =
+    let mut accessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>, bool)> =
         Vec::new();
-    let mut inaccessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>)> =
+    let mut inaccessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>, bool)> =
         Vec::new();
 
     candidates.iter().for_each(|c| {
         (if c.accessible { &mut accessible_path_strings } else { &mut inaccessible_path_strings })
-            .push((path_names_to_string(&c.path), c.descr, c.did, &c.note))
+            .push((path_names_to_string(&c.path), c.descr, c.did, &c.note, c.via_import))
     });
 
     // we want consistent results across executions, but candidates are produced
@@ -2493,20 +2524,25 @@ fn show_candidates(
     }
 
     if !accessible_path_strings.is_empty() {
-        let (determiner, kind, name) = if accessible_path_strings.len() == 1 {
-            ("this", accessible_path_strings[0].1, format!(" `{}`", accessible_path_strings[0].0))
-        } else {
-            ("one of these", "items", String::new())
-        };
+        let (determiner, kind, name, through) =
+            if let [(name, descr, _, _, via_import)] = &accessible_path_strings[..] {
+                (
+                    "this",
+                    *descr,
+                    format!(" `{name}`"),
+                    if *via_import { " through its public re-export" } else { "" },
+                )
+            } else {
+                ("one of these", "items", String::new(), "")
+            };
 
         let instead = if let Instead::Yes = instead { " instead" } else { "" };
         let mut msg = if let DiagnosticMode::Pattern = mode {
             format!(
-                "if you meant to match on {}{}{}, use the full path in the pattern",
-                kind, instead, name
+                "if you meant to match on {kind}{instead}{name}, use the full path in the pattern",
             )
         } else {
-            format!("consider importing {} {}{}", determiner, kind, instead)
+            format!("consider importing {determiner} {kind}{through}{instead}")
         };
 
         for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
@@ -2522,7 +2558,7 @@ fn show_candidates(
                         accessible_path_strings.into_iter().map(|a| a.0),
                         Applicability::MaybeIncorrect,
                     );
-                    return;
+                    return true;
                 }
                 DiagnosticMode::Import => ("", ""),
                 DiagnosticMode::Normal => ("use ", ";\n"),
@@ -2563,6 +2599,7 @@ fn show_candidates(
 
             err.help(msg);
         }
+        true
     } else if !matches!(mode, DiagnosticMode::Import) {
         assert!(!inaccessible_path_strings.is_empty());
 
@@ -2571,13 +2608,9 @@ fn show_candidates(
         } else {
             ""
         };
-        if inaccessible_path_strings.len() == 1 {
-            let (name, descr, def_id, note) = &inaccessible_path_strings[0];
+        if let [(name, descr, def_id, note, _)] = &inaccessible_path_strings[..] {
             let msg = format!(
-                "{}{} `{}`{} exists but is inaccessible",
-                prefix,
-                descr,
-                name,
+                "{prefix}{descr} `{name}`{} exists but is inaccessible",
                 if let DiagnosticMode::Pattern = mode { ", which" } else { "" }
             );
 
@@ -2594,11 +2627,11 @@ fn show_candidates(
                 err.note(note.to_string());
             }
         } else {
-            let (_, descr_first, _, _) = &inaccessible_path_strings[0];
+            let (_, descr_first, _, _, _) = &inaccessible_path_strings[0];
             let descr = if inaccessible_path_strings
                 .iter()
                 .skip(1)
-                .all(|(_, descr, _, _)| descr == descr_first)
+                .all(|(_, descr, _, _, _)| descr == descr_first)
             {
                 descr_first
             } else {
@@ -2611,7 +2644,7 @@ fn show_candidates(
             let mut has_colon = false;
 
             let mut spans = Vec::new();
-            for (name, _, def_id, _) in &inaccessible_path_strings {
+            for (name, _, def_id, _, _) in &inaccessible_path_strings {
                 if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
                     let span = tcx.source_span(local_def_id);
                     let span = tcx.sess.source_map().guess_head_span(span);
@@ -2637,6 +2670,9 @@ fn show_candidates(
 
             err.span_note(multi_span, msg);
         }
+        true
+    } else {
+        false
     }
 }
 

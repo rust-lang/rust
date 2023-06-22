@@ -9,6 +9,10 @@ note: the crate import `core` is defined here
    |
 LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^
+help: consider importing this module instead
+   |
+LL | use std::cell;
+   |     ~~~~~~~~~
 
 error[E0603]: crate import `core` is private
   --> $DIR/extern-crate-visibility.rs:9:10
@@ -21,6 +25,10 @@ note: the crate import `core` is defined here
    |
 LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^
+help: consider importing this struct instead
+   |
+LL |     std::cell::Cell::new(0);
+   |     ~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

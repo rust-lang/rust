@@ -17,7 +17,7 @@ LL |             #[derive(GenHelperUse)]
    |                      ^^^^^^^^^^^^
    |
    = note: this error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this attribute macro
+help: consider importing this attribute macro through its public re-export
    |
 LL +             use empty_helper;
    |
@@ -32,7 +32,7 @@ LL |             gen_helper_use!();
    |             ----------------- in this macro invocation
    |
    = note: this error originates in the macro `gen_helper_use` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this attribute macro
+help: consider importing this attribute macro through its public re-export
    |
 LL +             use crate::empty_helper;
    |
