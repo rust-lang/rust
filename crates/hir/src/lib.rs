@@ -1927,6 +1927,21 @@ impl Function {
         db.function_data(self.id).has_async_kw()
     }
 
+    /// Does this function have `#[test]` attribute?
+    pub fn is_test(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).attrs.is_test()
+    }
+
+    /// Does this function have the ignore attribute?
+    pub fn is_ignore(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).attrs.is_ignore()
+    }
+
+    /// Does this function have `#[bench]` attribute?
+    pub fn is_bench(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).attrs.is_bench()
+    }
+
     pub fn is_unsafe_to_call(self, db: &dyn HirDatabase) -> bool {
         hir_ty::is_fn_unsafe_to_call(db, self.id)
     }
