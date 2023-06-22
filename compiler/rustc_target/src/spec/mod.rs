@@ -1586,6 +1586,7 @@ supported_targets! {
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
+    ("aarch64-unknown-illumos", aarch64_unknown_illumos),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
