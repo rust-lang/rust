@@ -125,7 +125,7 @@ struct PartitioningCx<'a, 'tcx> {
     usage_map: &'a UsageMap<'tcx>,
 }
 
-struct PlacedRootMonoItems<'tcx> {
+struct PlacedMonoItems<'tcx> {
     /// The codegen units, sorted by name to make things deterministic.
     codegen_units: Vec<CodegenUnit<'tcx>>,
 
@@ -150,18 +150,13 @@ where
 
     let cx = &PartitioningCx { tcx, usage_map };
 
-    // In the first step, we place all regular monomorphizations into their
-    // respective 'home' codegen unit. Regular monomorphizations are all
-    // functions and statics defined in the local crate.
-    let PlacedRootMonoItems { mut codegen_units, internalization_candidates, unique_inlined_stats } = {
-        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
-        let mut placed = place_root_mono_items(cx, mono_items);
+    // Place all mono items into a codegen unit. `place_mono_items` is
+    // responsible for initializing the CGU size estimates.
+    let PlacedMonoItems { mut codegen_units, internalization_candidates, unique_inlined_stats } = {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_items");
+        let placed = place_mono_items(cx, mono_items);
 
-        for cgu in &mut placed.codegen_units {
-            cgu.create_size_estimate(tcx);
-        }
-
-        debug_dump(tcx, "ROOTS", &placed.codegen_units, placed.unique_inlined_stats);
+        debug_dump(tcx, "PLACE", &placed.codegen_units, placed.unique_inlined_stats);
 
         placed
     };
@@ -175,23 +170,8 @@ where
         debug_dump(tcx, "MERGE", &codegen_units, unique_inlined_stats);
     }
 
-    // In the next step, we use the inlining map to determine which additional
-    // monomorphizations have to go into each codegen unit. These additional
-    // monomorphizations can be drop-glue, functions from external crates, and
-    // local functions the definition of which is marked with `#[inline]`.
-    {
-        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        place_inlined_mono_items(cx, &mut codegen_units);
-
-        for cgu in &mut codegen_units {
-            cgu.create_size_estimate(tcx);
-        }
-
-        debug_dump(tcx, "INLINE", &codegen_units, unique_inlined_stats);
-    }
-
-    // Next we try to make as many symbols "internal" as possible, so LLVM has
-    // more freedom to optimize.
+    // Make as many symbols "internal" as possible, so LLVM has more freedom to
+    // optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(cx, &mut codegen_units, internalization_candidates);
@@ -212,10 +192,7 @@ where
     codegen_units
 }
 
-fn place_root_mono_items<'tcx, I>(
-    cx: &PartitioningCx<'_, 'tcx>,
-    mono_items: I,
-) -> PlacedRootMonoItems<'tcx>
+fn place_mono_items<'tcx, I>(cx: &PartitioningCx<'_, 'tcx>, mono_items: I) -> PlacedMonoItems<'tcx>
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
@@ -236,6 +213,8 @@ where
     let mut num_unique_inlined_items = 0;
     let mut unique_inlined_items_size = 0;
     for mono_item in mono_items {
+        // Handle only root items directly here. Inlined items are handled at
+        // the bottom of the loop based on reachability.
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
             InstantiationMode::LocalCopy => {
@@ -248,7 +227,7 @@ where
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
         let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
-        let codegen_unit_name = match characteristic_def_id {
+        let cgu_name = match characteristic_def_id {
             Some(def_id) => compute_codegen_unit_name(
                 cx.tcx,
                 cgu_name_builder,
@@ -259,9 +238,7 @@ where
             None => fallback_cgu_name(cgu_name_builder),
         };
 
-        let codegen_unit = codegen_units
-            .entry(codegen_unit_name)
-            .or_insert_with(|| CodegenUnit::new(codegen_unit_name));
+        let cgu = codegen_units.entry(cgu_name).or_insert_with(|| CodegenUnit::new(cgu_name));
 
         let mut can_be_internalized = true;
         let (linkage, visibility) = mono_item_linkage_and_visibility(
@@ -274,23 +251,56 @@ where
             internalization_candidates.insert(mono_item);
         }
 
-        codegen_unit.items_mut().insert(mono_item, (linkage, visibility));
+        cgu.items_mut().insert(mono_item, (linkage, visibility));
+
+        // Get all inlined items that are reachable from `mono_item` without
+        // going via another root item. This includes drop-glue, functions from
+        // external crates, and local functions the definition of which is
+        // marked with `#[inline]`.
+        let mut reachable_inlined_items = FxHashSet::default();
+        get_reachable_inlined_items(cx.tcx, mono_item, cx.usage_map, &mut reachable_inlined_items);
+
+        // Add those inlined items. It's possible an inlined item is reachable
+        // from multiple root items within a CGU, which is fine, it just means
+        // the `insert` will be a no-op.
+        for inlined_item in reachable_inlined_items {
+            // This is a CGU-private copy.
+            cgu.items_mut().insert(inlined_item, (Linkage::Internal, Visibility::Default));
+        }
     }
 
     // Always ensure we have at least one CGU; otherwise, if we have a
     // crate with just types (for example), we could wind up with no CGU.
     if codegen_units.is_empty() {
-        let codegen_unit_name = fallback_cgu_name(cgu_name_builder);
-        codegen_units.insert(codegen_unit_name, CodegenUnit::new(codegen_unit_name));
+        let cgu_name = fallback_cgu_name(cgu_name_builder);
+        codegen_units.insert(cgu_name, CodegenUnit::new(cgu_name));
     }
 
     let mut codegen_units: Vec<_> = codegen_units.into_values().collect();
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
-    PlacedRootMonoItems {
+    for cgu in codegen_units.iter_mut() {
+        cgu.compute_size_estimate(cx.tcx);
+    }
+
+    return PlacedMonoItems {
         codegen_units,
         internalization_candidates,
         unique_inlined_stats: (num_unique_inlined_items, unique_inlined_items_size),
+    };
+
+    fn get_reachable_inlined_items<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        item: MonoItem<'tcx>,
+        usage_map: &UsageMap<'tcx>,
+        visited: &mut FxHashSet<MonoItem<'tcx>>,
+    ) {
+        usage_map.for_each_inlined_used_item(tcx, item, |inlined_item| {
+            let is_new = visited.insert(inlined_item);
+            if is_new {
+                get_reachable_inlined_items(tcx, inlined_item, usage_map, visited);
+            }
+        });
     }
 }
 
@@ -314,7 +324,7 @@ fn merge_codegen_units<'tcx>(
     // worse generated code. So we don't allow CGUs smaller than this (unless
     // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
     // common in larger programs, so this isn't all that large.
-    const NON_INCR_MIN_CGU_SIZE: usize = 1000;
+    const NON_INCR_MIN_CGU_SIZE: usize = 1800;
 
     // Repeatedly merge the two smallest codegen units as long as:
     // - we have more CGUs than the upper limit, or
@@ -338,9 +348,11 @@ fn merge_codegen_units<'tcx>(
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 
-        // Move the mono-items from `smallest` to `second_smallest`
-        second_smallest.modify_size_estimate(smallest.size_estimate());
+        // Move the items from `smallest` to `second_smallest`. Some of them
+        // may be duplicate inlined items, in which case the destination CGU is
+        // unaffected. Recalculate size estimates afterwards.
         second_smallest.items_mut().extend(smallest.items_mut().drain());
+        second_smallest.compute_size_estimate(cx.tcx);
 
         // Record that `second_smallest` now contains all the stuff that was
         // in `smallest` before.
@@ -404,43 +416,6 @@ fn merge_codegen_units<'tcx>(
 
     // A sorted order here ensures what follows can be deterministic.
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
-}
-
-fn place_inlined_mono_items<'tcx>(
-    cx: &PartitioningCx<'_, 'tcx>,
-    codegen_units: &mut [CodegenUnit<'tcx>],
-) {
-    for cgu in codegen_units.iter_mut() {
-        // Collect all inlined items that need to be available in this codegen unit.
-        let mut reachable_inlined_items = FxHashSet::default();
-        for root in cgu.items().keys() {
-            // Get all inlined items that are reachable from it without going
-            // via another root item.
-            get_reachable_inlined_items(cx.tcx, *root, cx.usage_map, &mut reachable_inlined_items);
-        }
-
-        // Add all monomorphizations that are not already there.
-        for inlined_item in reachable_inlined_items {
-            assert!(!cgu.items().contains_key(&inlined_item));
-
-            // This is a CGU-private copy.
-            cgu.items_mut().insert(inlined_item, (Linkage::Internal, Visibility::Default));
-        }
-    }
-
-    fn get_reachable_inlined_items<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        item: MonoItem<'tcx>,
-        usage_map: &UsageMap<'tcx>,
-        visited: &mut FxHashSet<MonoItem<'tcx>>,
-    ) {
-        usage_map.for_each_inlined_used_item(tcx, item, |inlined_item| {
-            let is_new = visited.insert(inlined_item);
-            if is_new {
-                get_reachable_inlined_items(tcx, inlined_item, usage_map, visited);
-            }
-        });
-    }
 }
 
 fn internalize_symbols<'tcx>(
