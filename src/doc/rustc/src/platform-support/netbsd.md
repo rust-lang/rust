@@ -105,4 +105,3 @@ fragment.
 The pkgsrc rust package has a few files to assist with building
 pkgsrc packages written in rust, ref. the `rust.mk` and `cargo.mk`
 Makefile fragments in the `lang/rust` package.
-
