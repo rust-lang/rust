@@ -17,7 +17,6 @@ impl Foo for () {
     fn foo() -> (Self::Bar<u32>, Self::Baz) {
         //~^ ERROR non-defining opaque type use
         ((), ())
-        //~^ ERROR mismatched types
     }
 }
 

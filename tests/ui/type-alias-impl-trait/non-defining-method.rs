@@ -15,7 +15,6 @@ impl Foo for () {
     type Bar<T> = impl Sized;
     fn foo() -> Self::Bar<u32> {}
     //~^ ERROR non-defining opaque type use
-    //~| ERROR mismatched types
     fn bar<T>() -> Self::Bar<T> {}
 }
 

@@ -72,13 +72,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 if !self.seen.insert(alias_ty.def_id.expect_local()) {
                     return ControlFlow::Continue(());
                 }
+
+                self.opaques.push(alias_ty.def_id.expect_local());
+
                 match self.tcx.uses_unique_generic_params(alias_ty.substs, CheckRegions::Bound) {
                     Ok(()) => {
                         // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
                         // supported at all, so this is sound to do, but once we want to support them, you'll
                         // start seeing the error below.
-
-                        self.opaques.push(alias_ty.def_id.expect_local());
 
                         // Collect opaque types nested within the associated type bounds of this opaque type.
                         for (pred, span) in self
