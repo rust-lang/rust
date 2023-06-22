@@ -24,7 +24,7 @@ pub fn foo() {
 
     // basic-NOT: attributes #0 = { {{.*}} sspreq {{.*}} }
     // basic-NOT: attributes #0 = { {{.*}} sspstrong {{.*}} }
-    // basic: attributes #0 = { {{.*}} ssp {{.*}} }
+    // basic: attributes #0 = { {{.*}}ssp {{.*}} }
     // basic-NOT: attributes #0 = { {{.*}} sspreq {{.*}} }
     // basic-NOT: attributes #0 = { {{.*}} sspstrong {{.*}} }
 
