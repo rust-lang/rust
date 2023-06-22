@@ -125,7 +125,6 @@ fn add_missing_impl_members_inner(
 
     if let IgnoreAssocItems::HiddenDocAttrPresent = ignore_items {
         // Relax condition for local crates.
-
         let db = ctx.db();
         if trait_.module(db).krate().origin(db).is_local() {
             ign_item = IgnoreAssocItems::No;
@@ -1987,6 +1986,7 @@ impl AnotherTrait<i32> for () {
 
     #[test]
     fn doc_hidden_default_impls_ignored() {
+        // doc(hidden) attr is ignored trait and impl both belong to the local crate.
         check_assist(
             add_missing_default_members,
             r#"
@@ -2025,7 +2025,7 @@ impl Trait for Foo {
     }
 
     #[test]
-    fn doc_hidden_default_impls_extern_crates() {
+    fn doc_hidden_default_impls_lang_crates() {
         // Not applicable because Eq has a single method and this has a #[doc(hidden)] attr set.
         check_assist_not_applicable(
             add_missing_default_members,
@@ -2035,6 +2035,117 @@ use core::cmp::Eq;
 struct Foo;
 impl E$0q for Foo { /* $0 */ }
 "#,
+        )
+    }
+
+    #[test]
+    fn doc_hidden_default_impls_lib_crates() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+    //- /main.rs crate:a deps:b
+    struct B;
+    impl b::Exte$0rnTrait for B {}
+    //- /lib.rs crate:b new_source_root:library
+    pub trait ExternTrait {
+        #[doc(hidden)]
+        fn hidden_default() -> Option<()> {
+            todo!()
+        }
+
+        fn unhidden_default() -> Option<()> {
+            todo!()
+        }
+
+        fn unhidden_nondefault() -> Option<()>;
+    }
+                "#,
+            r#"
+    struct B;
+    impl b::ExternTrait for B {
+        $0fn unhidden_default() -> Option<()> {
+            todo!()
+        }
+    }
+    "#,
+        )
+    }
+
+    #[test]
+    fn doc_hidden_default_impls_local_crates() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+trait LocalTrait {
+    #[doc(hidden)]
+    fn no_skip_default() -> Option<()> {
+        todo!()
+    }
+    fn no_skip_default_2() -> Option<()> {
+        todo!()
+    }
+}
+
+struct B;
+impl Loc$0alTrait for B {}
+            "#,
+            r#"
+trait LocalTrait {
+    #[doc(hidden)]
+    fn no_skip_default() -> Option<()> {
+        todo!()
+    }
+    fn no_skip_default_2() -> Option<()> {
+        todo!()
+    }
+}
+
+struct B;
+impl LocalTrait for B {
+    $0fn no_skip_default() -> Option<()> {
+        todo!()
+    }
+
+    fn no_skip_default_2() -> Option<()> {
+        todo!()
+    }
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn doc_hidden_default_impls_workspace_crates() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+//- /lib.rs crate:b new_source_root:local
+trait LocalTrait {
+    #[doc(hidden)]
+    fn no_skip_default() -> Option<()> {
+        todo!()
+    }
+    fn no_skip_default_2() -> Option<()> {
+        todo!()
+    }
+}
+
+//- /main.rs crate:a deps:b
+struct B;
+impl b::Loc$0alTrait for B {}
+            "#,
+            r#"
+struct B;
+impl b::LocalTrait for B {
+    $0fn no_skip_default() -> Option<()> {
+        todo!()
+    }
+
+    fn no_skip_default_2() -> Option<()> {
+        todo!()
+    }
+}
+            "#,
         )
     }
 }

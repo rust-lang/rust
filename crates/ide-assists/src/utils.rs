@@ -109,6 +109,7 @@ pub fn filter_assoc_items(
             !(ignore_items == IgnoreAssocItems::HiddenDocAttrPresent
                 && assoc_item.attrs(sema.db).has_doc_hidden())
         })
+        // Note: This throws away items with no source.
         .filter_map(|assoc_item| {
             let item = match assoc_item {
                 hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
@@ -118,7 +119,6 @@ pub fn filter_assoc_items(
             Some(item)
         })
         .filter(has_def_name)
-        // Note: This throws away items with no source.
         .filter(|it| match &it.value {
             ast::AssocItem::Fn(def) => matches!(
                 (default_methods, def.body()),
