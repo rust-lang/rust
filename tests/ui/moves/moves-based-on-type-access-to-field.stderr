@@ -13,7 +13,7 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `x`
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     consume(x.clone().into_iter().next().unwrap());
-   |               ++++++++
+   |              ++++++++
 
 error: aborting due to previous error
 
