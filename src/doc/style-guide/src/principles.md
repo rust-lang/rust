@@ -24,6 +24,6 @@ following principles (in rough priority order):
 
 * application
     - ease of manual application
-    - ease of implementation (in Rustfmt, and in other tools/editors/code generators)
+    - ease of implementation (in `rustfmt`, and in other tools/editors/code generators)
     - internal consistency
     - simplicity of formatting rules

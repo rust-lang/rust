@@ -16,8 +16,8 @@ Rust code has similar formatting, less mental effort is required to comprehend a
 new project, lowering the barrier to entry for new developers.
 
 Thus, there are productivity benefits to using a formatting tool (such as
-rustfmt), and even larger benefits by using a community-consistent formatting,
-typically by using a formatting tool's default settings.
+`rustfmt`), and even larger benefits by using a community-consistent
+formatting, typically by using a formatting tool's default settings.
 
 
 ## Formatting conventions

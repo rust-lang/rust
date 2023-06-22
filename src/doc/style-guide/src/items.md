@@ -505,8 +505,8 @@ use b;
 Because of `macro_use`, attributes must also start a new group and prevent
 re-ordering.
 
-Note that tools which only have access to syntax (such as Rustfmt) cannot tell
-which imports are from an external crate or the std lib, etc.
+Note that tools which only have access to syntax (such as `rustfmt`) cannot
+tell which imports are from an external crate or the std lib, etc.
 
 
 #### Ordering list import
