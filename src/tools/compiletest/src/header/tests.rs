@@ -129,7 +129,7 @@ fn should_fail() {
 fn revisions() {
     let config = config();
 
-    assert_eq!(parse_rs(&config, "// revisions: a b c").revisions, vec!["a", "b", "c"],);
+    assert_eq!(parse_rs(&config, "//@revisions: a b c").revisions, vec!["a", "b", "c"],);
     assert_eq!(
         parse_makefile(&config, "# revisions: hello there").revisions,
         vec!["hello", "there"],
@@ -294,7 +294,7 @@ fn asm_support() {
         let mut config = config();
         config.target = target.to_string();
         assert_eq!(config.has_asm_support(), has_asm);
-        assert_eq!(check_ignore(&config, "// needs-asm-support"), !has_asm)
+        assert_eq!(check_ignore(&config, "//@needs-asm-support"), !has_asm)
     }
 }
 
@@ -331,7 +331,7 @@ fn test_extract_version_range() {
 #[should_panic(expected = "Duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config = config();
-    parse_rs(&config, "// revisions: rpass1 rpass1");
+    parse_rs(&config, "//@revisions: rpass1 rpass1");
 }
 
 #[test]

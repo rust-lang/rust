@@ -8,7 +8,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use once_cell::sync::Lazy;
-use regex::Regex;
+use regex::{Captures, Regex};
 use tracing::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -64,13 +64,13 @@ enum WhichLine {
     AdjustBackward(usize),
 }
 
-/// Looks for either "//~| KIND MESSAGE" or "//~^^... KIND MESSAGE"
+/// Looks for either `//~| KIND MESSAGE` or `//~^^... KIND MESSAGE`
 /// The former is a "follow" that inherits its target from the preceding line;
 /// the latter is an "adjusts" that goes that many lines up.
 ///
-/// Goal is to enable tests both like: //~^^^ ERROR go up three
-/// and also //~^ ERROR message one for the preceding line, and
-///          //~| ERROR message two for that same line.
+/// Goal is to enable tests both like: `//~^^^ ERROR` go up three
+/// and also `//~^` ERROR message one for the preceding line, and
+///          `//~|` ERROR message two for that same line.
 ///
 /// If cfg is not None (i.e., in an incremental test), then we look
 /// for `//[X]~` instead, where `X` is the current `cfg`.
@@ -90,7 +90,7 @@ pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<Error> {
     rdr.lines()
         .enumerate()
         .filter_map(|(line_num, line)| {
-            parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), cfg).map(
+            try_parse_error_comment(last_nonfollow_error, line_num + 1, &line.unwrap(), cfg).map(
                 |(which, error)| {
                     match which {
                         FollowPrevious(_) => {}
@@ -104,56 +104,92 @@ pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<Error> {
         .collect()
 }
 
-fn parse_expected(
+/// Parses an error pattern from a line, if a pattern exists on that line.
+fn try_parse_error_comment(
     last_nonfollow_error: Option<usize>,
     line_num: usize,
     line: &str,
     cfg: Option<&str>,
 ) -> Option<(WhichLine, Error)> {
-    // Matches comments like:
-    //     //~
-    //     //~|
-    //     //~^
-    //     //~^^^^^
-    //     //[cfg1]~
-    //     //[cfg1,cfg2]~^^
-    static RE: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"//(?:\[(?P<cfgs>[\w,]+)])?~(?P<adjust>\||\^*)").unwrap());
+    let mut line = line.trim_start();
 
-    let captures = RE.captures(line)?;
+    // compiletest style revisions are `[revs]~`
+    static COMPILETEST_REVISION: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"//\[(?P<revs>[\w,]+)\]~").unwrap());
 
-    match (cfg, captures.name("cfgs")) {
-        // Only error messages that contain our `cfg` between the square brackets apply to us.
-        (Some(cfg), Some(filter)) if !filter.as_str().split(',').any(|s| s == cfg) => return None,
-        (Some(_), Some(_)) => {}
+    // ui_test style revisions are `~[revs]`
+    static UI_TEST_REVISION: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"//~\[(?P<revs>[\w,]+)\]").unwrap());
 
-        (None, Some(_)) => panic!("Only tests with revisions should use `//[X]~`"),
-
-        // If an error has no list of revisions, it applies to all revisions.
-        (Some(_), None) | (None, None) => {}
-    }
-
-    let (follow, adjusts) = match &captures["adjust"] {
-        "|" => (true, 0),
-        circumflexes => (false, circumflexes.len()),
+    let check_valid_rev = |captures: &Captures<'_>| {
+        let revs = captures.name("revs").unwrap_or_else(|| {
+            panic!("expected comment {} parsed as compiletest to have a revs group", line)
+        });
+        match cfg {
+            // If the comment has revisions, only emit an expected error if one of the specified
+            // revisions is the current revision.
+            Some(current_rev) => {
+                revs.as_str().split(',').position(|rev| rev == current_rev).is_some()
+            }
+            None => {
+                panic!("Only tests with revisions should use revisioned error patterns //~[rev]")
+            }
+        }
     };
 
-    // Get the part of the comment after the sigil (e.g. `~^^` or ~|).
-    let whole_match = captures.get(0).unwrap();
-    let (_, mut msg) = line.split_at(whole_match.end());
-
-    let first_word = msg.split_whitespace().next().expect("Encountered unexpected empty comment");
-
-    // If we find `//~ ERROR foo` or something like that, skip the first word.
-    let kind = first_word.parse::<ErrorKind>().ok();
-    if kind.is_some() {
-        msg = &msg.trim_start().split_at(first_word.len()).1;
+    // Check for the different types of revisions.
+    // If neither of the revision styles match, it's a normal error pattern which must start with a //~
+    // Note that error pattern comments may start anywhere within a line, such as on the same line as code.
+    if let Some(captures) = COMPILETEST_REVISION.captures(line) {
+        if !check_valid_rev(&captures) {
+            // Comment doesn't have a revision for the current revision.
+            return None;
+        }
+        // Remove the matched revisions and trailing ~ from the line.
+        line = &line[captures.get(0).unwrap().end()..];
+    } else if let Some(captures) = UI_TEST_REVISION.captures(line) {
+        if !check_valid_rev(&captures) {
+            // Comment doesn't have a revision for the current revision.
+            return None;
+        }
+        // Remove the matched ~ and revisions from the line.
+        line = &line[captures.get(0).unwrap().end()..];
+    } else {
+        // Errors without revisions start with a //~ so find where that starts
+        line = line.find("//~").map(|idx| &line[idx + 3..])?;
     }
 
-    let msg = msg.trim().to_owned();
+    // At this point, if the comment has revisions, they've been verified to be correct for the
+    // current checking revision. Those revisions have been stripped if applicable, and the leading
+    // ~ for non-revisioned comments has been removed.
+
+    // Parse adjustments:
+    //  - | = "same line as previous error"
+    //  - ^ = "applies to the previous line" (may be repeated indefinitely)
+    // Only one type of adjustment may exist per error pattern.
+
+    let (follow, adjusts) = if line.starts_with('|') {
+        line = &line[1..];
+        (true, 0)
+    } else {
+        let adjust_count = line.chars().take_while(|&c| c == '^').count();
+        line = &line[adjust_count..];
+        (false, adjust_count)
+    };
+
+    line = line.trim_start();
+    let first_word = line.split_whitespace().next().expect("Encountered unexpected empty comment");
+
+    // If we find `//~ ERROR foo` or something like that, skip the first word.
+    // The `FromStr` impl for ErrorKind accepts a trailing `:` too.
+    let kind = first_word.parse::<ErrorKind>().ok();
+    if kind.is_some() {
+        line = &line.trim_start().split_at(first_word.len()).1;
+    }
+
+    let line = line.trim().to_owned();
 
     let (which, line_num) = if follow {
-        assert_eq!(adjusts, 0, "use either //~| or //~^, not both.");
         let line_num = last_nonfollow_error.expect(
             "encountered //~| without \
              preceding //~^ line.",
@@ -165,13 +201,6 @@ fn parse_expected(
         (which, line_num)
     };
 
-    debug!(
-        "line={} tag={:?} which={:?} kind={:?} msg={:?}",
-        line_num,
-        whole_match.as_str(),
-        which,
-        kind,
-        msg
-    );
-    Some((which, Error { line_num, kind, msg }))
+    debug!("line={} which={:?} kind={:?} line={:?}", line_num, which, kind, line);
+    Some((which, Error { line_num, kind, msg: line }))
 }

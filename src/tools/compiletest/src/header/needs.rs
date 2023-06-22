@@ -7,131 +7,131 @@ pub(super) fn handle_needs(
     config: &Config,
     ln: &str,
 ) -> IgnoreDecision {
-    // Note thet we intentionally still put the needs- prefix here to make the file show up when
+    // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
     let needs = &[
         Need {
-            name: "needs-asm-support",
+            names: &["needs-asm-support", "@needs-asm-support"],
             condition: config.has_asm_support(),
             ignore_reason: "ignored on targets without inline assembly support",
         },
         Need {
-            name: "needs-sanitizer-support",
+            names: &["needs-sanitizer-support"],
             condition: cache.sanitizer_support,
             ignore_reason: "ignored on targets without sanitizers support",
         },
         Need {
-            name: "needs-sanitizer-address",
+            names: &["needs-sanitizer-address"],
             condition: cache.sanitizer_address,
             ignore_reason: "ignored on targets without address sanitizer",
         },
         Need {
-            name: "needs-sanitizer-cfi",
+            names: &["needs-sanitizer-cfi"],
             condition: cache.sanitizer_cfi,
             ignore_reason: "ignored on targets without CFI sanitizer",
         },
         Need {
-            name: "needs-sanitizer-kcfi",
+            names: &["needs-sanitizer-kcfi"],
             condition: cache.sanitizer_kcfi,
             ignore_reason: "ignored on targets without kernel CFI sanitizer",
         },
         Need {
-            name: "needs-sanitizer-kasan",
+            names: &["needs-sanitizer-kasan"],
             condition: cache.sanitizer_kasan,
             ignore_reason: "ignored on targets without kernel address sanitizer",
         },
         Need {
-            name: "needs-sanitizer-leak",
+            names: &["needs-sanitizer-leak"],
             condition: cache.sanitizer_leak,
             ignore_reason: "ignored on targets without leak sanitizer",
         },
         Need {
-            name: "needs-sanitizer-memory",
+            names: &["needs-sanitizer-memory"],
             condition: cache.sanitizer_memory,
             ignore_reason: "ignored on targets without memory sanitizer",
         },
         Need {
-            name: "needs-sanitizer-thread",
+            names: &["needs-sanitizer-thread"],
             condition: cache.sanitizer_thread,
             ignore_reason: "ignored on targets without thread sanitizer",
         },
         Need {
-            name: "needs-sanitizer-hwaddress",
+            names: &["needs-sanitizer-hwaddress"],
             condition: cache.sanitizer_hwaddress,
             ignore_reason: "ignored on targets without hardware-assisted address sanitizer",
         },
         Need {
-            name: "needs-sanitizer-memtag",
+            names: &["needs-sanitizer-memtag"],
             condition: cache.sanitizer_memtag,
             ignore_reason: "ignored on targets without memory tagging sanitizer",
         },
         Need {
-            name: "needs-sanitizer-shadow-call-stack",
+            names: &["needs-sanitizer-shadow-call-stack"],
             condition: cache.sanitizer_shadow_call_stack,
             ignore_reason: "ignored on targets without shadow call stacks",
         },
         Need {
-            name: "needs-sanitizer-safestack",
+            names: &["needs-sanitizer-safestack"],
             condition: cache.sanitizer_safestack,
             ignore_reason: "ignored on targets without SafeStack support",
         },
         Need {
-            name: "needs-run-enabled",
+            names: &["needs-run-enabled"],
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",
         },
         Need {
-            name: "needs-unwind",
+            names: &["needs-unwind"],
             condition: config.can_unwind(),
             ignore_reason: "ignored on targets without unwinding support",
         },
         Need {
-            name: "needs-profiler-support",
+            names: &["needs-profiler-support"],
             condition: cache.profiler_support,
             ignore_reason: "ignored when profiler support is disabled",
         },
         Need {
-            name: "needs-matching-clang",
+            names: &["needs-matching-clang"],
             condition: config.run_clang_based_tests_with.is_some(),
             ignore_reason: "ignored when the used clang does not match the built LLVM",
         },
         Need {
-            name: "needs-xray",
+            names: &["needs-xray"],
             condition: cache.xray,
             ignore_reason: "ignored on targets without xray tracing",
         },
         Need {
-            name: "needs-rust-lld",
+            names: &["needs-rust-lld"],
             condition: cache.rust_lld,
             ignore_reason: "ignored on targets without Rust's LLD",
         },
         Need {
-            name: "needs-rust-lldb",
+            names: &["needs-rust-lldb"],
             condition: config.debugger != Some(Debugger::Lldb) || config.lldb_native_rust,
             ignore_reason: "ignored on targets without Rust's LLDB",
         },
         Need {
-            name: "needs-i686-dlltool",
+            names: &["needs-i686-dlltool"],
             condition: cache.i686_dlltool,
             ignore_reason: "ignored when dlltool for i686 is not present",
         },
         Need {
-            name: "needs-x86_64-dlltool",
+            names: &["needs-x86_64-dlltool"],
             condition: cache.x86_64_dlltool,
             ignore_reason: "ignored when dlltool for x86_64 is not present",
         },
         Need {
-            name: "needs-dlltool",
+            names: &["needs-dlltool"],
             condition: cache.dlltool,
             ignore_reason: "ignored when dlltool for the current architecture is not present",
         },
         Need {
-            name: "needs-git-hash",
+            names: &["needs-git-hash"],
             condition: config.git_hash,
             ignore_reason: "ignored when git hashes have been omitted for building",
         },
         Need {
-            name: "needs-dynamic-linking",
+            names: &["needs-dynamic-linking"],
             condition: config.target_cfg().dynamic_linking,
             ignore_reason: "ignored on targets without dynamic linking",
         },
@@ -153,7 +153,7 @@ pub(super) fn handle_needs(
 
     let mut found_valid = false;
     for need in needs {
-        if need.name == name {
+        if need.names.contains(&name) {
             if need.condition {
                 found_valid = true;
                 break;
@@ -177,7 +177,7 @@ pub(super) fn handle_needs(
 }
 
 struct Need {
-    name: &'static str,
+    names: &'static [&'static str],
     condition: bool,
     ignore_reason: &'static str,
 }

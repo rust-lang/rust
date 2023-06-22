@@ -14,6 +14,7 @@ walkdir = "2"
 ignore = "0.4.18"
 semver = "1.0"
 termcolor = "1.1.3"
+test_common = { path = "../test_common" }
 
 [[bin]]
 name = "rust-tidy"

@@ -1,11 +1,10 @@
 use crate::common::Config;
-use crate::header::line_directive;
 use crate::runtest::ProcRes;
-
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use test_common::line_directive;
 
 /// Representation of information to invoke a debugger and check its output
 pub(super) struct DebuggerCommands {
@@ -39,6 +38,7 @@ impl DebuggerCommands {
         for (line_no, line) in reader.lines().enumerate() {
             counter += 1;
             let line = line.map_err(|e| format!("Error while parsing debugger commands: {}", e))?;
+            // FIXME: (ui_test) should this allow ui_test style `//@`?
             let (lnrev, line) = line_directive("//", &line).unwrap_or((None, &line));
 
             // Skip any revision specific directive that doesn't match the current
@@ -51,13 +51,13 @@ impl DebuggerCommands {
                 breakpoint_lines.push(counter);
             }
 
-            for &(ref command_directive, ref check_directive) in &directives {
+            for (command_directive, check_directive) in &directives {
                 config
-                    .parse_name_value_directive(&line, command_directive)
+                    .parse_compiletest_arbitrary_name_value(&line, command_directive.as_str())
                     .map(|cmd| commands.push(cmd));
 
                 config
-                    .parse_name_value_directive(&line, check_directive)
+                    .parse_compiletest_arbitrary_name_value(&line, check_directive.as_str())
                     .map(|cmd| check_lines.push((line_no, cmd)));
             }
         }

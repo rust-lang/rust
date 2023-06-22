@@ -668,6 +668,7 @@ dependencies = [
  "rustfix",
  "serde",
  "serde_json",
+ "test_common",
  "tracing",
  "tracing-subscriber",
  "unified-diff",
@@ -5054,6 +5055,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_common"
+version = "0.0.0"
+dependencies = [
+ "tracing",
+]
+
+[[package]]
 name = "tester"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5135,6 +5143,7 @@ dependencies = [
  "regex",
  "semver",
  "termcolor",
+ "test_common",
  "walkdir",
 ]
 

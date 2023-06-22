@@ -2,11 +2,13 @@ use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tracing::*;
+
+use test_common::directives::{self, NameDirective, NameValueDirective};
+use test_common::TestComment;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::header::cfg::parse_cfg_name_directive;
@@ -46,17 +48,20 @@ impl EarlyProps {
 
     pub fn from_reader<R: Read>(config: &Config, testfile: &Path, rdr: R) -> Self {
         let mut props = EarlyProps::default();
-        iter_header(testfile, rdr, &mut |_, ln, _| {
-            config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
+        test_common::iter_header(testfile, rdr, &mut |comment| {
+            use directives::*;
+
+            config.push_name_value_directive(&comment, AuxBuildDirective, &mut props.aux, |r| {
                 r.trim().to_string()
             });
             config.push_name_value_directive(
-                ln,
-                directives::AUX_CRATE,
+                &comment,
+                AuxCrateDirective,
                 &mut props.aux_crate,
                 Config::parse_aux_crate,
             );
-            config.parse_and_update_revisions(ln, &mut props.revisions);
+
+            config.parse_and_update_revisions(&comment, &mut props.revisions);
         });
         return props;
     }
@@ -66,8 +71,6 @@ impl EarlyProps {
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String>,
-    // Regexes that should be expected, in order, on standard out
-    pub regex_error_patterns: Vec<String>,
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
@@ -180,51 +183,10 @@ pub struct TestProps {
     pub remap_src_base: bool,
 }
 
-mod directives {
-    pub const ERROR_PATTERN: &'static str = "error-pattern";
-    pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
-    pub const COMPILE_FLAGS: &'static str = "compile-flags";
-    pub const RUN_FLAGS: &'static str = "run-flags";
-    pub const SHOULD_ICE: &'static str = "should-ice";
-    pub const BUILD_AUX_DOCS: &'static str = "build-aux-docs";
-    pub const FORCE_HOST: &'static str = "force-host";
-    pub const CHECK_STDOUT: &'static str = "check-stdout";
-    pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
-    pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
-    pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
-    pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
-    pub const PRETTY_EXPANDED: &'static str = "pretty-expanded";
-    pub const PRETTY_MODE: &'static str = "pretty-mode";
-    pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
-    pub const AUX_BUILD: &'static str = "aux-build";
-    pub const AUX_CRATE: &'static str = "aux-crate";
-    pub const EXEC_ENV: &'static str = "exec-env";
-    pub const RUSTC_ENV: &'static str = "rustc-env";
-    pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
-    pub const UNSET_RUSTC_ENV: &'static str = "unset-rustc-env";
-    pub const FORBID_OUTPUT: &'static str = "forbid-output";
-    pub const CHECK_TEST_LINE_NUMBERS_MATCH: &'static str = "check-test-line-numbers-match";
-    pub const IGNORE_PASS: &'static str = "ignore-pass";
-    pub const FAILURE_STATUS: &'static str = "failure-status";
-    pub const DONT_CHECK_FAILURE_STATUS: &'static str = "dont-check-failure-status";
-    pub const RUN_RUSTFIX: &'static str = "run-rustfix";
-    pub const RUSTFIX_ONLY_MACHINE_APPLICABLE: &'static str = "rustfix-only-machine-applicable";
-    pub const ASSEMBLY_OUTPUT: &'static str = "assembly-output";
-    pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
-    pub const INCREMENTAL: &'static str = "incremental";
-    pub const KNOWN_BUG: &'static str = "known-bug";
-    pub const MIR_UNIT_TEST: &'static str = "unit-test";
-    pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
-    pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
-    // This isn't a real directive, just one that is probably mistyped often
-    pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
-}
-
 impl TestProps {
     pub fn new() -> Self {
         TestProps {
             error_patterns: vec![],
-            regex_error_patterns: vec![],
             compile_flags: vec![],
             run_flags: None,
             pp_exact: None,
@@ -301,153 +263,193 @@ impl TestProps {
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
 
-            iter_header(testfile, file, &mut |revision, ln, _| {
-                if revision.is_some() && revision != cfg {
+            test_common::iter_header(testfile, file, &mut |comment| {
+                if comment.revision().is_some() && comment.revision() != cfg {
                     return;
                 }
 
                 use directives::*;
 
                 config.push_name_value_directive(
-                    ln,
-                    ERROR_PATTERN,
+                    &comment,
+                    ErrorPatternDirective,
                     &mut self.error_patterns,
                     |r| r,
                 );
-                config.push_name_value_directive(
-                    ln,
-                    REGEX_ERROR_PATTERN,
-                    &mut self.regex_error_patterns,
-                    |r| r,
-                );
 
-                if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
+                if let Some(flags) = config.parse_expand_name_value(CompileFlagsDirective, &comment)
+                {
                     self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
                 }
-                if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
+
+                if IncorrectCompileFlagsDirective.parse_name_value(&comment).is_some() {
                     panic!("`compiler-flags` directive should be spelled `compile-flags`");
                 }
 
-                if let Some(edition) = config.parse_edition(ln) {
+                if let Some(edition) = config.parse_edition(&comment) {
                     self.compile_flags.push(format!("--edition={}", edition.trim()));
                     has_edition = true;
                 }
 
-                config.parse_and_update_revisions(ln, &mut self.revisions);
+                config.parse_and_update_revisions(&comment, &mut self.revisions);
 
-                config.set_name_value_directive(ln, RUN_FLAGS, &mut self.run_flags, |r| r);
+                config.set_name_value_directive(
+                    &comment,
+                    RunFlagsDirective,
+                    &mut self.run_flags,
+                    |r| r,
+                );
 
                 if self.pp_exact.is_none() {
-                    self.pp_exact = config.parse_pp_exact(ln, testfile);
+                    self.pp_exact = config.parse_pp_exact(&comment, testfile);
                 }
 
-                config.set_name_directive(ln, SHOULD_ICE, &mut self.should_ice);
-                config.set_name_directive(ln, BUILD_AUX_DOCS, &mut self.build_aux_docs);
-                config.set_name_directive(ln, FORCE_HOST, &mut self.force_host);
-                config.set_name_directive(ln, CHECK_STDOUT, &mut self.check_stdout);
-                config.set_name_directive(ln, CHECK_RUN_RESULTS, &mut self.check_run_results);
+                config.set_name_directive(&comment, ShouldIceDirective, &mut self.should_ice);
                 config.set_name_directive(
-                    ln,
-                    DONT_CHECK_COMPILER_STDOUT,
+                    &comment,
+                    BuildAuxDocsDirective,
+                    &mut self.build_aux_docs,
+                );
+                config.set_name_directive(&comment, ForceHostDirective, &mut self.force_host);
+                config.set_name_directive(&comment, CheckStdoutDirective, &mut self.check_stdout);
+                config.set_name_directive(
+                    &comment,
+                    CheckRunResultsDirective,
+                    &mut self.check_run_results,
+                );
+                config.set_name_directive(
+                    &comment,
+                    DontCheckCompilerStdoutDirective,
                     &mut self.dont_check_compiler_stdout,
                 );
                 config.set_name_directive(
-                    ln,
-                    DONT_CHECK_COMPILER_STDERR,
+                    &comment,
+                    DontCheckCompilerStderrDirective,
                     &mut self.dont_check_compiler_stderr,
                 );
-                config.set_name_directive(ln, NO_PREFER_DYNAMIC, &mut self.no_prefer_dynamic);
-                config.set_name_directive(ln, PRETTY_EXPANDED, &mut self.pretty_expanded);
+                config.set_name_directive(
+                    &comment,
+                    NoPreferDynamicDirective,
+                    &mut self.no_prefer_dynamic,
+                );
+                config.set_name_directive(
+                    &comment,
+                    PrettyExpandedDirective,
+                    &mut self.pretty_expanded,
+                );
 
-                if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE) {
+                if let Some(m) = config.parse_expand_name_value(PrettyModeDirective, &comment) {
                     self.pretty_mode = m;
                 }
 
-                config.set_name_directive(ln, PRETTY_COMPARE_ONLY, &mut self.pretty_compare_only);
-                config.push_name_value_directive(ln, AUX_BUILD, &mut self.aux_builds, |r| {
-                    r.trim().to_string()
-                });
+                config.set_name_directive(
+                    &comment,
+                    PrettyCompareOnlyDirective,
+                    &mut self.pretty_compare_only,
+                );
+
                 config.push_name_value_directive(
-                    ln,
-                    AUX_CRATE,
+                    &comment,
+                    AuxBuildDirective,
+                    &mut self.aux_builds,
+                    |r| r.trim().to_string(),
+                );
+                config.push_name_value_directive(
+                    &comment,
+                    AuxCrateDirective,
                     &mut self.aux_crates,
                     Config::parse_aux_crate,
                 );
                 config.push_name_value_directive(
-                    ln,
-                    EXEC_ENV,
+                    &comment,
+                    ExecEnvDirective,
                     &mut self.exec_env,
                     Config::parse_env,
                 );
                 config.push_name_value_directive(
-                    ln,
-                    UNSET_EXEC_ENV,
+                    &comment,
+                    UnsetExecEnvDirective,
                     &mut self.unset_exec_env,
                     |r| r,
                 );
                 config.push_name_value_directive(
-                    ln,
-                    RUSTC_ENV,
+                    &comment,
+                    RustcEnvDirective,
                     &mut self.rustc_env,
                     Config::parse_env,
                 );
                 config.push_name_value_directive(
-                    ln,
-                    UNSET_RUSTC_ENV,
+                    &comment,
+                    UnsetRustcEnvDirective,
                     &mut self.unset_rustc_env,
                     |r| r,
                 );
-                config.push_name_value_directive(ln, FORBID_OUTPUT, &mut self.forbid_output, |r| r);
+                config.push_name_value_directive(
+                    &comment,
+                    ForbidOutputDirective,
+                    &mut self.forbid_output,
+                    |r| r,
+                );
+
                 config.set_name_directive(
-                    ln,
-                    CHECK_TEST_LINE_NUMBERS_MATCH,
+                    &comment,
+                    CheckTestLineNumbersMatchDirective,
                     &mut self.check_test_line_numbers_match,
                 );
 
-                self.update_pass_mode(ln, cfg, config);
-                self.update_fail_mode(ln, config);
+                self.update_pass_mode(&comment, cfg, config);
+                self.update_fail_mode(&comment, config);
 
-                config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
+                config.set_name_directive(&comment, IgnorePassDirective, &mut self.ignore_pass);
 
-                if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
+                if let Some(rule) =
+                    config.parse_custom_normalization(comment.comment_str(), "normalize-stdout")
+                {
                     self.normalize_stdout.push(rule);
                 }
-                if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
+                if let Some(rule) =
+                    config.parse_custom_normalization(comment.comment_str(), "normalize-stderr")
+                {
                     self.normalize_stderr.push(rule);
                 }
 
                 if let Some(code) = config
-                    .parse_name_value_directive(ln, FAILURE_STATUS)
+                    .parse_expand_name_value(FailureStatusDirective, &comment)
                     .and_then(|code| code.trim().parse::<i32>().ok())
                 {
                     self.failure_status = Some(code);
                 }
 
                 config.set_name_directive(
-                    ln,
-                    DONT_CHECK_FAILURE_STATUS,
+                    &comment,
+                    DontCheckFailureStatusDirective,
                     &mut self.dont_check_failure_status,
                 );
-
-                config.set_name_directive(ln, RUN_RUSTFIX, &mut self.run_rustfix);
+                config.set_name_directive(&comment, RunRustfixDirective, &mut self.run_rustfix);
                 config.set_name_directive(
-                    ln,
-                    RUSTFIX_ONLY_MACHINE_APPLICABLE,
+                    &comment,
+                    RustfixOnlyMachineApplicableDirective,
                     &mut self.rustfix_only_machine_applicable,
                 );
                 config.set_name_value_directive(
-                    ln,
-                    ASSEMBLY_OUTPUT,
+                    &comment,
+                    AssemblyOutputDirective,
                     &mut self.assembly_output,
                     |r| r.trim().to_string(),
                 );
-                config.set_name_directive(ln, STDERR_PER_BITWIDTH, &mut self.stderr_per_bitwidth);
-                config.set_name_directive(ln, INCREMENTAL, &mut self.incremental);
+                config.set_name_directive(
+                    &comment,
+                    StderrPerBitwidthDirective,
+                    &mut self.stderr_per_bitwidth,
+                );
+                config.set_name_directive(&comment, IncrementalDirective, &mut self.incremental);
 
                 // Unlike the other `name_value_directive`s this needs to be handled manually,
                 // because it sets a `bool` flag.
-                if let Some(known_bug) = config.parse_name_value_directive(ln, KNOWN_BUG) {
-                    let known_bug = known_bug.trim();
+                if let Some(known_bug) = KnownBugDirective.parse_name_value(&comment) {
+                    // Because known-bug has such a strict value format,
+                    // don't expand variables inside it, they'll never match.
+                    let known_bug = known_bug.unexpanded_value().trim();
                     if known_bug == "unknown"
                         || known_bug.split(',').all(|issue_ref| {
                             issue_ref
@@ -465,19 +467,26 @@ impl TestProps {
                             "Invalid known-bug value: {known_bug}\nIt requires comma-separated issue references (`#000` or `chalk#000`) or `known-bug: unknown`."
                         );
                     }
-                } else if config.parse_name_directive(ln, KNOWN_BUG) {
+                } else if KnownBugDirective.parse_name(&comment) {
                     panic!(
                         "Invalid known-bug attribute, requires comma-separated issue references (`#000` or `chalk#000`) or `known-bug: unknown`."
                     );
                 }
 
-                config.set_name_value_directive(ln, MIR_UNIT_TEST, &mut self.mir_unit_test, |s| {
-                    s.trim().to_string()
-                });
-                config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
+                config.set_name_value_directive(
+                    &comment,
+                    MirUnitTestDirective,
+                    &mut self.mir_unit_test,
+                    |s| s.trim().to_string(),
+                );
                 config.set_name_directive(
-                    ln,
-                    COMPARE_OUTPUT_LINES_BY_SUBSET,
+                    &comment,
+                    RemapSrcBaseDirective,
+                    &mut self.remap_src_base,
+                );
+                config.set_name_directive(
+                    &comment,
+                    CompareOutputLinesBySubsetDirective,
                     &mut self.compare_output_lines_by_subset,
                 );
             });
@@ -504,22 +513,23 @@ impl TestProps {
         }
     }
 
-    fn update_fail_mode(&mut self, ln: &str, config: &Config) {
+    fn update_fail_mode(&mut self, comment: &TestComment<'_>, config: &Config) {
         let check_ui = |mode: &str| {
             if config.mode != Mode::Ui {
                 panic!("`{}-fail` header is only supported in UI tests", mode);
             }
         };
-        if config.mode == Mode::Ui && config.parse_name_directive(ln, "compile-fail") {
+        use directives::*;
+        if config.mode == Mode::Ui && CompileFailDirective.parse_name(comment) {
             panic!("`compile-fail` header is useless in UI tests");
         }
-        let fail_mode = if config.parse_name_directive(ln, "check-fail") {
+        let fail_mode = if CheckFailDirective.parse_name(comment) {
             check_ui("check");
             Some(FailMode::Check)
-        } else if config.parse_name_directive(ln, "build-fail") {
+        } else if BuildFailDirective.parse_name(comment) {
             check_ui("build");
             Some(FailMode::Build)
-        } else if config.parse_name_directive(ln, "run-fail") {
+        } else if RunFailDirective.parse_name(comment) {
             check_ui("run");
             Some(FailMode::Run)
         } else {
@@ -532,7 +542,13 @@ impl TestProps {
         }
     }
 
-    fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
+    fn update_pass_mode(
+        &mut self,
+        comment: &TestComment<'_>,
+        revision: Option<&str>,
+        config: &Config,
+    ) {
+        use directives::*;
         let check_no_run = |s| match (config.mode, s) {
             (Mode::Ui, _) => (),
             (Mode::Codegen, "build-pass") => (),
@@ -543,13 +559,13 @@ impl TestProps {
             }
             (mode, _) => panic!("`{s}` header is not supported in `{mode}` tests"),
         };
-        let pass_mode = if config.parse_name_directive(ln, "check-pass") {
+        let pass_mode = if CheckPassDirective.parse_name(comment) {
             check_no_run("check-pass");
             Some(PassMode::Check)
-        } else if config.parse_name_directive(ln, "build-pass") {
+        } else if BuildPassDirective.parse_name(comment) {
             check_no_run("build-pass");
             Some(PassMode::Build)
-        } else if config.parse_name_directive(ln, "run-pass") {
+        } else if RunPassDirective.parse_name(comment) {
             check_no_run("run-pass");
             Some(PassMode::Run)
         } else {
@@ -577,42 +593,11 @@ impl TestProps {
     }
 }
 
-/// Extract a `(Option<line_config>, directive)` directive from a line if comment is present.
-pub fn line_directive<'line>(
-    comment: &str,
-    ln: &'line str,
-) -> Option<(Option<&'line str>, &'line str)> {
-    let ln = ln.trim_start();
-    if ln.starts_with(comment) {
-        let ln = ln[comment.len()..].trim_start();
-        if ln.starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            let Some(close_brace) = ln.find(']') else {
-                panic!(
-                    "malformed condition directive: expected `{}[foo]`, found `{}`",
-                    comment, ln
-                );
-            };
-
-            let lncfg = &ln[1..close_brace];
-            Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
-        } else {
-            Some((None, ln))
-        }
-    } else {
-        None
-    }
-}
-
-fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str, usize)) {
-    iter_header_extra(testfile, rdr, &[], it)
-}
-
 fn iter_header_extra(
     testfile: &Path,
     rdr: impl Read,
     extra_directives: &[&str],
-    it: &mut dyn FnMut(Option<&str>, &str, usize),
+    it: &mut dyn FnMut(TestComment<'_>),
 ) {
     if testfile.is_dir() {
         return;
@@ -621,32 +606,10 @@ fn iter_header_extra(
     // Process any extra directives supplied by the caller (e.g. because they
     // are implied by the test mode), with a dummy line number of 0.
     for directive in extra_directives {
-        it(None, directive, 0);
+        it(TestComment::new(None, test_common::CommentKind::Compiletest(directive), 0));
     }
 
-    let comment = if testfile.extension().map(|e| e == "rs") == Some(true) { "//" } else { "#" };
-
-    let mut rdr = BufReader::new(rdr);
-    let mut ln = String::new();
-    let mut line_number = 0;
-
-    loop {
-        line_number += 1;
-        ln.clear();
-        if rdr.read_line(&mut ln).unwrap() == 0 {
-            break;
-        }
-
-        // Assume that any directives will be found before the first
-        // module or function. This doesn't seem to be an optimization
-        // with a warm page cache. Maybe with a cold one.
-        let ln = ln.trim();
-        if ln.starts_with("fn") || ln.starts_with("mod") {
-            return;
-        } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
-            it(lncfg, ln, line_number);
-        }
-    }
+    test_common::iter_header(testfile, rdr, it);
 }
 
 impl Config {
@@ -658,8 +621,9 @@ impl Config {
         )
     }
 
-    fn parse_and_update_revisions(&self, line: &str, existing: &mut Vec<String>) {
-        if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
+    fn parse_and_update_revisions(&self, comment: &TestComment<'_>, existing: &mut Vec<String>) {
+        // FIXME: (ui_test) this probably shouldn't expand actually
+        if let Some(raw) = self.parse_expand_name_value(directives::RevisionsDirective, comment) {
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
             for revision in raw.split_whitespace().map(|r| r.to_string()) {
                 if !duplicates.insert(revision.clone()) {
@@ -684,10 +648,11 @@ impl Config {
         }
     }
 
-    fn parse_pp_exact(&self, line: &str, testfile: &Path) -> Option<PathBuf> {
-        if let Some(s) = self.parse_name_value_directive(line, "pp-exact") {
+    fn parse_pp_exact(&self, comment: &TestComment<'_>, testfile: &Path) -> Option<PathBuf> {
+        use directives::PPExactDirective;
+        if let Some(s) = self.parse_expand_name_value(PPExactDirective, comment) {
             Some(PathBuf::from(&s))
-        } else if self.parse_name_directive(line, "pp-exact") {
+        } else if PPExactDirective.parse_name(comment) {
             testfile.file_name().map(PathBuf::from)
         } else {
             None
@@ -699,28 +664,6 @@ impl Config {
             let from = parse_normalization_string(&mut line)?;
             let to = parse_normalization_string(&mut line)?;
             Some((from, to))
-        } else {
-            None
-        }
-    }
-
-    fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
-        // Ensure the directive is a whole word. Do not match "ignore-x86" when
-        // the line says "ignore-x86_64".
-        line.starts_with(directive)
-            && matches!(line.as_bytes().get(directive.len()), None | Some(&b' ') | Some(&b':'))
-    }
-
-    fn parse_negative_name_directive(&self, line: &str, directive: &str) -> bool {
-        line.starts_with("no-") && self.parse_name_directive(&line[3..], directive)
-    }
-
-    pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
-        let colon = directive.len();
-        if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
-            let value = line[(colon + 1)..].to_owned();
-            debug!("{}: {}", directive, value);
-            Some(expand_variables(value, self))
         } else {
             None
         }
@@ -739,54 +682,88 @@ impl Config {
         None
     }
 
-    fn parse_edition(&self, line: &str) -> Option<String> {
-        self.parse_name_value_directive(line, "edition")
+    fn parse_edition(&self, comment: &TestComment<'_>) -> Option<String> {
+        self.parse_expand_name_value(directives::EditionDirective, comment)
     }
 
-    fn set_name_directive(&self, line: &str, directive: &str, value: &mut bool) {
+    fn set_name_directive(
+        &self,
+        comment: &TestComment<'_>,
+        directive: impl NameDirective,
+        value: &mut bool,
+    ) {
         match value {
             true => {
-                if self.parse_negative_name_directive(line, directive) {
+                if directive.parse_name_negative(comment) {
                     *value = false;
                 }
             }
             false => {
-                if self.parse_name_directive(line, directive) {
+                if directive.parse_name(comment) {
                     *value = true;
                 }
             }
         }
     }
 
-    fn set_name_value_directive<T>(
+    /// This function should be avoided. It cannot accept ui_test style comments.
+    // FIXME: (ui_test) can this be removed?
+    pub fn parse_compiletest_arbitrary_name_value(
         &self,
         line: &str,
         directive: &str,
+    ) -> Option<String> {
+        if let Some(args) =
+            line.strip_prefix(directive).and_then(|with_colon| with_colon.strip_prefix(':'))
+        {
+            debug!("{}: {}", directive, args);
+            Some(expand_variables(args.to_string(), self))
+        } else {
+            None
+        }
+    }
+
+    fn set_name_value_directive<T>(
+        &self,
+        comment: &TestComment<'_>,
+        directive: impl NameValueDirective,
         value: &mut Option<T>,
         parse: impl FnOnce(String) -> T,
     ) {
         if value.is_none() {
-            *value = self.parse_name_value_directive(line, directive).map(parse);
+            *value = self.parse_expand_name_value(directive, comment).map(parse);
         }
     }
 
     fn push_name_value_directive<T>(
         &self,
-        line: &str,
-        directive: &str,
+        comment: &TestComment<'_>,
+        directive: impl NameValueDirective,
         values: &mut Vec<T>,
         parse: impl FnOnce(String) -> T,
     ) {
-        if let Some(value) = self.parse_name_value_directive(line, directive).map(parse) {
+        if let Some(value) = self.parse_expand_name_value(directive, comment).map(parse) {
             values.push(value);
         }
     }
+
+    fn parse_expand_name_value<'line>(
+        &self,
+        directive: impl NameValueDirective,
+        comment: &'line TestComment<'_>,
+    ) -> Option<String> {
+        directive
+            .parse_name_value(comment)
+            .map(|unexpanded| expand_variables(unexpanded.unexpanded_value(), self))
+    }
 }
 
-fn expand_variables(mut value: String, config: &Config) -> String {
+fn expand_variables(value: impl Into<String>, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
     const BUILD_BASE: &str = "{{build-base}}";
+
+    let mut value = value.into();
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
@@ -922,10 +899,12 @@ pub fn make_test_description<R: Read>(
         _ => &[],
     };
 
-    iter_header_extra(path, src, extra_directives, &mut |revision, ln, line_number| {
-        if revision.is_some() && revision != cfg {
+    iter_header_extra(path, src, extra_directives, &mut |comment| {
+        if comment.revision().is_some() && comment.revision() != cfg {
             return;
         }
+
+        let line_number = comment.line_num();
 
         macro_rules! decision {
             ($e:expr) => {
@@ -947,23 +926,24 @@ pub fn make_test_description<R: Read>(
             };
         }
 
+        let ln = comment.comment_str();
         decision!(cfg::handle_ignore(config, ln));
         decision!(cfg::handle_only(config, ln));
         decision!(needs::handle_needs(&cache.needs, config, ln));
-        decision!(ignore_llvm(config, ln));
+        decision!(ignore_llvm(config, &comment));
         decision!(ignore_cdb(config, ln));
         decision!(ignore_gdb(config, ln));
         decision!(ignore_lldb(config, ln));
 
         if config.target == "wasm32-unknown-unknown" {
-            if config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS) {
+            if directives::CheckRunResultsDirective.parse_name(&comment) {
                 decision!(IgnoreDecision::Ignore {
                     reason: "ignored when checking the run results on WASM".into(),
                 });
             }
         }
 
-        should_fail |= config.parse_name_directive(ln, "should-fail");
+        should_fail |= directives::ShouldFailDirective.parse_name(&comment);
     });
 
     // The `should-fail` annotation doesn't apply to pretty tests,
@@ -1084,12 +1064,13 @@ fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
+fn ignore_llvm(config: &Config, comment: &TestComment<'_>) -> IgnoreDecision {
+    let line = comment.comment_str();
     if config.system_llvm && line.starts_with("no-system-llvm") {
         return IgnoreDecision::Ignore { reason: "ignored when the system LLVM is used".into() };
     }
     if let Some(needed_components) =
-        config.parse_name_value_directive(line, "needs-llvm-components")
+        config.parse_expand_name_value(directives::NeedsLlvmComponentsDirective, comment)
     {
         let components: HashSet<_> = config.llvm_components.split_whitespace().collect();
         if let Some(missing_component) = needed_components
