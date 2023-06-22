@@ -63,8 +63,9 @@ let y = (11, 22, 33);
 
 In the declaration, put each variant on its own line, block indented.
 
-Format each variant accordingly as either a struct, tuple struct, or identifier,
-which doesn't require special formatting (but without the `struct` keyword.
+Format each variant accordingly as either a struct (but without the `struct`
+keyword), a tuple struct, or an identifier (which doesn't require special
+formatting):
 
 ```rust
 enum FooBar {
