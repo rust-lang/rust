@@ -49,6 +49,27 @@ a_function_call(foo,
 This makes for smaller diffs (e.g., if `a_function_call` is renamed in the above
 example) and less rightward drift.
 
+### Trailing commas
+
+Lists should have a trailing comma when followed by a newline:
+
+```rust
+function_call(
+    argument,
+    another_argument,
+);
+
+let array = [
+    element,
+    another_element,
+    yet_another_element,
+];
+```
+
+This makes moving code (e.g., by copy and paste) easier, and makes diffs
+smaller, as appending or removing items does not require modifying another line
+to add or remove a comma.
+
 ### Blank lines
 
 Separate items and statements by either zero or one blank lines (i.e., one or
