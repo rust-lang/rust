@@ -2,7 +2,7 @@ error[E0502]: cannot borrow `heap` as immutable because it is also borrowed as m
   --> $DIR/issue-47646.rs:9:30
    |
 LL |     let borrow = heap.peek_mut();
-   |                  --------------- mutable borrow occurs here
+   |                  ---- mutable borrow occurs here
 LL |
 LL |     match (borrow, ()) {
    |           ------------ a temporary with access to the mutable borrow is created here ...

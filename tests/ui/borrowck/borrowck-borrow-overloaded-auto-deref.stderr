@@ -58,7 +58,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:72:5
    |
 LL |     x.set(0, 0);
-   |     ^^^^^^^^^^^ cannot borrow as mutable
+   |     ^ cannot borrow as mutable
    |
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Point>`
 
@@ -66,7 +66,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:76:5
    |
 LL |     x.set(0, 0);
-   |     ^^^^^^^^^^^ cannot borrow as mutable
+   |     ^ cannot borrow as mutable
    |
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Point>`
 
@@ -74,7 +74,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:84:5
    |
 LL |     x.y_mut()
-   |     ^^^^^^^^^ cannot borrow as mutable
+   |     ^ cannot borrow as mutable
    |
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Point>`
 
@@ -82,7 +82,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:88:5
    |
 LL |     x.y_mut()
-   |     ^^^^^^^^^ cannot borrow as mutable
+   |     ^ cannot borrow as mutable
    |
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Point>`
 
@@ -90,7 +90,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:92:6
    |
 LL |     *x.y_mut() = 3;
-   |      ^^^^^^^^^ cannot borrow as mutable
+   |      ^ cannot borrow as mutable
    |
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Point>`
 
@@ -98,7 +98,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:96:6
    |
 LL |     *x.y_mut() = 3;
-   |      ^^^^^^^^^ cannot borrow as mutable
+   |      ^ cannot borrow as mutable
    |
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Point>`
 
@@ -106,7 +106,7 @@ error[E0596]: cannot borrow data in an `Rc` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:100:6
    |
 LL |     *x.y_mut() = 3;
-   |      ^^^^^^^^^ cannot borrow as mutable
+   |      ^ cannot borrow as mutable
    |
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Rc<Point>`
 

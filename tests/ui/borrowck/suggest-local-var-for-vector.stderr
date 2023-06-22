@@ -2,7 +2,7 @@ error[E0502]: cannot borrow `vec` as immutable because it is also borrowed as mu
   --> $DIR/suggest-local-var-for-vector.rs:3:9
    |
 LL |     vec[vec.len() - 1] = 123;
-   |     ----^^^^^^^^^-----
+   |     ----^^^-----------
    |     |   |
    |     |   immutable borrow occurs here
    |     mutable borrow occurs here

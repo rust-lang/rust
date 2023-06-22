@@ -41,11 +41,6 @@ impl<'tcx> Cx<'tcx> {
 
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 
-        let adjustment_span = match self.adjustment_span {
-            Some((hir_id, span)) if hir_id == hir_expr.hir_id => Some(span),
-            _ => None,
-        };
-
         trace!(?expr.ty);
 
         // Now apply adjustments, if any.
@@ -53,12 +48,7 @@ impl<'tcx> Cx<'tcx> {
             for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
                 trace!(?expr, ?adjustment);
                 let span = expr.span;
-                expr = self.apply_adjustment(
-                    hir_expr,
-                    expr,
-                    adjustment,
-                    adjustment_span.unwrap_or(span),
-                );
+                expr = self.apply_adjustment(hir_expr, expr, adjustment, span);
             }
         }
 
@@ -274,7 +264,6 @@ impl<'tcx> Cx<'tcx> {
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results().expr_ty(expr);
-        let expr_span = expr.span;
         let temp_lifetime =
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
 
@@ -283,17 +272,11 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::MethodCall(segment, receiver, ref args, fn_span) => {
                 // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
                 let expr = self.method_callee(expr, segment.ident.span, None);
-                // When we apply adjustments to the receiver, use the span of
-                // the overall method call for better diagnostics. args[0]
-                // is guaranteed to exist, since a method call always has a receiver.
-                let old_adjustment_span =
-                    self.adjustment_span.replace((receiver.hir_id, expr_span));
                 info!("Using method span: {:?}", expr.span);
                 let args = std::iter::once(receiver)
                     .chain(args.iter())
                     .map(|expr| self.mirror_expr(expr))
                     .collect();
-                self.adjustment_span = old_adjustment_span;
                 ExprKind::Call {
                     ty: expr.ty,
                     fun: self.thir.exprs.push(expr),

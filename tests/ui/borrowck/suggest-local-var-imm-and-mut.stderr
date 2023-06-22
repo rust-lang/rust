@@ -2,9 +2,8 @@ error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as im
   --> $DIR/suggest-local-var-imm-and-mut.rs:12:22
    |
 LL |             self.foo(self.bar());
-   |             ---------^^^^^^^^^^-
-   |             |    |   |
-   |             |    |   mutable borrow occurs here
+   |             ---- --- ^^^^^^^^^^ mutable borrow occurs here
+   |             |    |
    |             |    immutable borrow later used by call
    |             immutable borrow occurs here
 

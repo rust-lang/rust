@@ -21,7 +21,7 @@ help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (act
   --> $DIR/fnentry_invalidation.rs:LL:CC
    |
 LL |     x.do_bad();
-   |     ^^^^^^^^^^
+   |     ^
    = help: this transition corresponds to a loss of write permissions
    = note: BACKTRACE (of the first span):
    = note: inside `main` at $DIR/fnentry_invalidation.rs:LL:CC

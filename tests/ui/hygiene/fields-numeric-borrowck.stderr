@@ -7,7 +7,7 @@ LL |     let S { 0: ref mut borrow2 } = s;
    |                ^^^^^^^^^^^^^^^ second mutable borrow occurs here
 ...
 LL |     borrow1.use_mut();
-   |     ----------------- first borrow later used here
+   |     ------- first borrow later used here
 
 error: aborting due to previous error
 

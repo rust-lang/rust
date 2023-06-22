@@ -5,7 +5,7 @@ LL |         let helpers = [vec![], vec![]];
    |             ------- move occurs because `helpers` has type `[Vec<&i64>; 2]`, which does not implement the `Copy` trait
 LL |
 LL |         HelperStruct { helpers, is_empty: helpers[0].is_empty() }
-   |                        -------            ^^^^^^^^^^^^^^^^^^^^^ value borrowed here after move
+   |                        -------            ^^^^^^^^^^ value borrowed here after move
    |                        |
    |                        value moved here
 
