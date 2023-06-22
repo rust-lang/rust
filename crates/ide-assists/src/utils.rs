@@ -84,6 +84,12 @@ pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
     })
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum IgnoreAssocItems {
+    HiddenDocAttrPresent,
+    No,
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum DefaultMethods {
     Only,
@@ -94,48 +100,25 @@ pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
     items: &[hir::AssocItem],
     default_methods: DefaultMethods,
-    ignore_hidden: bool,
+    ignore_items: IgnoreAssocItems,
 ) -> Vec<InFile<ast::AssocItem>> {
-    // FIXME : How to use the closure below  this so I can write sth like
-    // sema.source(hide(it)?)?...
-
-    // let hide = |it: impl HasAttrs| {
-    //     if default_methods == DefaultMethods::IgnoreHidden && it.attrs(sema.db).has_doc_hidden() {
-    //         None;
-    //     }
-    //     Some(it)
-    // };
-
     return items
         .iter()
-        // Note: This throws away items with no source.
         .copied()
+        .filter(|assoc_item| {
+            !(ignore_items == IgnoreAssocItems::HiddenDocAttrPresent
+                && assoc_item.attrs(sema.db).has_doc_hidden())
+        })
         .filter_map(|assoc_item| {
             let item = match assoc_item {
-                hir::AssocItem::Function(it) => {
-                    if ignore_hidden && it.attrs(sema.db).has_doc_hidden() {
-                        return None;
-                    }
-                    sema.source(it)?.map(ast::AssocItem::Fn)
-                }
-                hir::AssocItem::TypeAlias(it) => {
-                    if ignore_hidden && it.attrs(sema.db).has_doc_hidden() {
-                        return None;
-                    }
-
-                    sema.source(it)?.map(ast::AssocItem::TypeAlias)
-                }
-                hir::AssocItem::Const(it) => {
-                    if ignore_hidden && it.attrs(sema.db).has_doc_hidden() {
-                        return None;
-                    }
-
-                    sema.source(it)?.map(ast::AssocItem::Const)
-                }
+                hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
+                hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
+                hir::AssocItem::Const(it) => sema.source(it)?.map(ast::AssocItem::Const),
             };
             Some(item)
         })
         .filter(has_def_name)
+        // Note: This throws away items with no source.
         .filter(|it| match &it.value {
             ast::AssocItem::Fn(def) => matches!(
                 (default_methods, def.body()),

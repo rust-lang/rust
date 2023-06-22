@@ -3,7 +3,10 @@ use syntax::ast::{self, make, AstNode};
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::{add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, DefaultMethods},
+    utils::{
+        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, DefaultMethods,
+        IgnoreAssocItems,
+    },
     AssistId, AssistKind,
 };
 
@@ -43,7 +46,7 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext<'_
         acc,
         ctx,
         DefaultMethods::No,
-        true,
+        IgnoreAssocItems::HiddenDocAttrPresent,
         "add_impl_missing_members",
         "Implement missing members",
     )
@@ -88,7 +91,7 @@ pub(crate) fn add_missing_default_members(
         acc,
         ctx,
         DefaultMethods::Only,
-        true,
+        IgnoreAssocItems::HiddenDocAttrPresent,
         "add_impl_default_members",
         "Implement default members",
     )
@@ -98,7 +101,7 @@ fn add_missing_impl_members_inner(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
     mode: DefaultMethods,
-    ignore_hidden: bool,
+    ignore_items: IgnoreAssocItems,
     assist_id: &'static str,
     label: &'static str,
 ) -> Option<()> {
@@ -118,11 +121,22 @@ fn add_missing_impl_members_inner(
     let trait_ref = impl_.trait_ref(ctx.db())?;
     let trait_ = trait_ref.trait_();
 
+    let mut ign_item = ignore_items;
+
+    if let IgnoreAssocItems::HiddenDocAttrPresent = ignore_items {
+        // Relax condition for local crates.
+
+        let db = ctx.db();
+        if trait_.module(db).krate().origin(db).is_local() {
+            ign_item = IgnoreAssocItems::No;
+        }
+    }
+
     let missing_items = filter_assoc_items(
         &ctx.sema,
         &ide_db::traits::get_missing_assoc_items(&ctx.sema, &impl_def),
         mode,
-        ignore_hidden,
+        ign_item,
     );
 
     if missing_items.is_empty() {
@@ -1999,10 +2013,28 @@ trait Trait {
     }
 }
 impl Trait for Foo {
-    $0fn another_default_impl() -> u32 {
+    $0fn func_with_default_impl() -> u32 {
+        42
+    }
+
+    fn another_default_impl() -> u32 {
         43
     }
 }"#,
+        )
+    }
+
+    #[test]
+    fn doc_hidden_default_impls_extern_crates() {
+        // Not applicable because Eq has a single method and this has a #[doc(hidden)] attr set.
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+//- minicore: eq
+use core::cmp::Eq;
+struct Foo;
+impl E$0q for Foo { /* $0 */ }
+"#,
         )
     }
 }
