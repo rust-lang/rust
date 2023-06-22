@@ -4,6 +4,7 @@ use crate::late::{LifetimeBinderKind, LifetimeRes, LifetimeRibKind, LifetimeUseS
 use crate::{errors, path_names_to_string};
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
+use rustc_hir::def::Namespace::{self, *};
 
 use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt};
 use rustc_ast::{
@@ -17,7 +18,6 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
@@ -221,10 +221,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let suggestion = if self.current_trait_ref.is_none()
                     && let Some((fn_kind, _)) = self.diagnostic_metadata.current_function
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
+                    && let FnKind::Fn(_, _, sig, ..) = fn_kind
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
                         if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
                             && i.ident.name == item_str.name
+                            // don't suggest if the item is in Fn signature arguments
+                            // issue #112590
+                            && !sig.span.contains(item_span)
                         {
                             debug!(?item_str.name);
                             return true
@@ -316,6 +320,30 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 module,
             }
         }
+    }
+
+    /// Try to suggest for a module path that cannot be resolved.
+    /// Such as `fmt::Debug` where `fmt` is not resolved without importing,
+    /// here we search with `lookup_import_candidates` for a module named `fmt`
+    /// with `TypeNS` as namespace.
+    ///
+    /// We need a separate function here because we won't suggest for a path with single segment
+    /// and we won't change `SourcePath` api `is_expected` to match `Type` with `DefKind::Mod`
+    pub(crate) fn smart_resolve_partial_mod_path_errors(
+        &mut self,
+        prefix_path: &[Segment],
+        path: &[Segment],
+    ) -> Vec<ImportSuggestion> {
+        if path.len() <= 1 {
+            return Vec::new();
+        }
+        let ident = prefix_path.last().unwrap().ident;
+        self.r.lookup_import_candidates(
+            ident,
+            Namespace::TypeNS,
+            &self.parent_scope,
+            &|res: Res| matches!(res, Res::Def(DefKind::Mod, _)),
+        )
     }
 
     /// Handles error reporting for `smart_resolve_path_fragment` function.
