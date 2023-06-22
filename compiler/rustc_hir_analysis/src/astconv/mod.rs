@@ -2809,7 +2809,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let opaque_ty = tcx.hir().item(item_id);
 
                 match opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
+                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { origin, .. }) => {
                         let local_def_id = item_id.owner_id.def_id;
                         // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
                         // generate the def_id of an associated type for the trait and return as

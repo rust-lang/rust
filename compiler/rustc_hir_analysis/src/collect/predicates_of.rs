@@ -686,7 +686,7 @@ pub(super) fn type_param_predicates(
                 ItemKind::Fn(.., generics, _)
                 | ItemKind::Impl(&hir::Impl { generics, .. })
                 | ItemKind::TyAlias(_, generics)
-                | ItemKind::OpaqueTy(OpaqueTy {
+                | ItemKind::OpaqueTy(&OpaqueTy {
                     generics,
                     origin: hir::OpaqueTyOrigin::TyAlias { .. },
                     ..

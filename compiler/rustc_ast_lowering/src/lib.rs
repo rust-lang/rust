@@ -1658,7 +1658,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         opaque_ty_span: Span,
     ) -> hir::OwnerNode<'hir> {
-        let opaque_ty_item_kind = hir::ItemKind::OpaqueTy(opaque_ty_item);
+        let opaque_ty_item_kind = hir::ItemKind::OpaqueTy(self.arena.alloc(opaque_ty_item));
         // Generate an `type Foo = impl Trait;` declaration.
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
         let opaque_ty_item = hir::Item {
