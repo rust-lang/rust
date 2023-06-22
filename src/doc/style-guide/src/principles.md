@@ -1,7 +1,7 @@
 # Guiding principles and rationale
 
-When deciding on style guidelines, the style team tried to be guided by the
-following principles (in rough priority order):
+When deciding on style guidelines, the style team follows these guiding
+principles (in rough priority order):
 
 * readability
     - scan-ability
