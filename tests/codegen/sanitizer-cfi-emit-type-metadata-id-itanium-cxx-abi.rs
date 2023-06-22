@@ -61,7 +61,19 @@ pub type Type9 = impl Send;
 pub type Type10 = impl Send;
 pub type Type11 = impl Send;
 
-pub fn fn1<'a>() {
+pub fn fn1<'a>() where
+    Type1: 'static,
+    Type2: 'static,
+    Type3: 'static,
+    Type4: 'static,
+    Type5: 'static,
+    Type6: 'static,
+    Type7: 'static,
+    Type8: 'static,
+    Type9: 'static,
+    Type10: 'static,
+    Type11: 'static,
+{
     // Closure
     let closure1 = || { };
     let _: Type1 = closure1;

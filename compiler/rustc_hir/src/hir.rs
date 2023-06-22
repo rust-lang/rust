@@ -3743,6 +3743,29 @@ impl<'hir> Node<'hir> {
         }
     }
 
+    /// Get the type for constants, assoc types, type aliases and statics.
+    pub fn ty(self) -> Option<&'hir Ty<'hir>> {
+        match self {
+            Node::Item(it) => match it.kind {
+                ItemKind::TyAlias(ty, _) | ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _) => {
+                    Some(ty)
+                }
+                _ => None,
+            },
+            Node::TraitItem(it) => match it.kind {
+                TraitItemKind::Const(ty, _) => Some(ty),
+                TraitItemKind::Type(_, ty) => ty,
+                _ => None,
+            },
+            Node::ImplItem(it) => match it.kind {
+                ImplItemKind::Const(ty, _) => Some(ty),
+                ImplItemKind::Type(ty) => Some(ty),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn alias_ty(self) -> Option<&'hir Ty<'hir>> {
         match self {
             Node::Item(Item { kind: ItemKind::TyAlias(ty, ..), .. }) => Some(ty),

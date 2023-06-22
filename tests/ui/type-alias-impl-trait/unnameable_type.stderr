@@ -25,11 +25,6 @@ LL |         fn dont_define_this(_private: Private) {}
    |                                       ^^^^^^^
    = note: expected signature `fn(Private)`
               found signature `fn(MyPrivate)`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/unnameable_type.rs:20:5
-   |
-LL |     fn dont_define_this(_private: MyPrivate) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
