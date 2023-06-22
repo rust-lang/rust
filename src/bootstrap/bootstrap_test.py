@@ -4,7 +4,6 @@ Run these with `x test bootstrap`, or `python -m unittest src/bootstrap/bootstra
 
 from __future__ import absolute_import, division, print_function
 import os
-import doctest
 import unittest
 import tempfile
 import hashlib
@@ -16,11 +15,14 @@ from shutil import rmtree
 bootstrap_dir = os.path.dirname(os.path.abspath(__file__))
 # For the import below, have Python search in src/bootstrap first.
 sys.path.insert(0, bootstrap_dir)
-import bootstrap
-import configure
+import bootstrap # noqa: E402
+import configure # noqa: E402
 
-def serialize_and_parse(configure_args, bootstrap_args=bootstrap.FakeArgs()):
+def serialize_and_parse(configure_args, bootstrap_args=None):
     from io import StringIO
+
+    if bootstrap_args is None:
+        bootstrap_args = bootstrap.FakeArgs()
 
     section_order, sections, targets = configure.parse_args(configure_args)
     buffer = StringIO()
@@ -129,7 +131,14 @@ class GenerateAndParseConfig(unittest.TestCase):
 class BuildBootstrap(unittest.TestCase):
     """Test that we generate the appropriate arguments when building bootstrap"""
 
-    def build_args(self, configure_args=[], args=[], env={}):
+    def build_args(self, configure_args=None, args=None, env=None):
+        if configure_args is None:
+            configure_args = []
+        if args is None:
+            args = []
+        if env is None:
+            env = {}
+
         env = env.copy()
         env["PATH"] = os.environ["PATH"]
 

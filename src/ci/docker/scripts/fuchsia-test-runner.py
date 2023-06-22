@@ -15,12 +15,10 @@ import hashlib
 import json
 import os
 import platform
-import re
 import shutil
-import signal
 import subprocess
 import sys
-from typing import ClassVar, List, Optional
+from typing import ClassVar, List
 
 
 @dataclass
@@ -523,7 +521,7 @@ class TestEnvironment:
                     env_vars += '\n            "RUST_BACKTRACE=0",'
 
                 # Use /tmp as the test temporary directory
-                env_vars += f'\n            "RUST_TEST_TMPDIR=/tmp",'
+                env_vars += '\n            "RUST_TEST_TMPDIR=/tmp",'
 
                 cml.write(
                     self.CML_TEMPLATE.format(env_vars=env_vars, exe_name=exe_name)
