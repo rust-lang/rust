@@ -94,7 +94,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
-                            ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                            ty::ClauseKind::Trait(trait_predicate) => {
                                 if trait_predicate
                                     .trait_ref
                                     .substs
@@ -107,7 +107,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                             },
                             // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
                             // so we check the term for `U`.
-                            ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate)) => {
+                            ty::ClauseKind::Projection(projection_predicate) => {
                                 if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
                                     if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
                                         return true;
@@ -268,7 +268,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(def_id).skip_binder() {
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() {
+                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
                     }
@@ -665,7 +665,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => sig_from_bounds(
             cx,
             ty,
-            cx.tcx.item_bounds(def_id).subst(cx.tcx, substs),
+            cx.tcx.item_bounds(def_id).subst_iter(cx.tcx, substs).map(|c| c.as_predicate()),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
@@ -698,7 +698,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
 fn sig_from_bounds<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
-    predicates: &'tcx [Predicate<'tcx>],
+    predicates: impl IntoIterator<Item = Predicate<'tcx>>,
     predicates_id: Option<DefId>,
 ) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
@@ -707,7 +707,7 @@ fn sig_from_bounds<'tcx>(
 
     for pred in predicates {
         match pred.kind().skip_binder() {
-            PredicateKind::Clause(ty::Clause::Trait(p))
+            PredicateKind::Clause(ty::ClauseKind::Trait(p))
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id()))
@@ -720,7 +720,7 @@ fn sig_from_bounds<'tcx>(
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Clause(ty::Clause::Projection(p))
+            PredicateKind::Clause(ty::ClauseKind::Projection(p))
                 if Some(p.projection_ty.def_id) == lang_items.fn_once_output() && p.projection_ty.self_ty() == ty =>
             {
                 if output.is_some() {
@@ -747,7 +747,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
         .subst_iter_copied(cx.tcx, ty.substs)
     {
         match pred.kind().skip_binder() {
-            PredicateKind::Clause(ty::Clause::Trait(p))
+            ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
@@ -760,7 +760,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Clause(ty::Clause::Projection(p))
+            ty::ClauseKind::Projection(p)
                 if Some(p.projection_ty.def_id) == lang_items.fn_once_output() =>
             {
                 if output.is_some() {
@@ -950,7 +950,7 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
     predicates
         .iter()
         .try_fold(false, |found, p| {
-            if let PredicateKind::Clause(ty::Clause::Trait(p)) = p.kind().skip_binder()
+            if let PredicateKind::Clause(ty::ClauseKind::Trait(p)) = p.kind().skip_binder()
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && ty.index == self_ty.index
         {

@@ -7,26 +7,26 @@ fn naive(_1: &Blueprint, _2: &Blueprint) -> bool {
     let mut _3: u32;
     let mut _4: u32;
     let mut _5: bool;
-    let mut _6: u32;
+    let mut _6: bool;
     let mut _7: u32;
-    let mut _8: bool;
+    let mut _8: u32;
     let mut _9: bool;
-    let mut _10: u32;
+    let mut _10: bool;
     let mut _11: u32;
-    let mut _12: bool;
+    let mut _12: u32;
     let mut _13: bool;
-    let mut _14: u32;
+    let mut _14: bool;
     let mut _15: u32;
-    let mut _16: bool;
+    let mut _16: u32;
     let mut _17: bool;
     let mut _18: u32;
     let mut _19: u32;
     let mut _20: bool;
 
     bb0: {
-        StorageLive(_17);
-        StorageLive(_13);
-        StorageLive(_9);
+        StorageLive(_14);
+        StorageLive(_10);
+        StorageLive(_6);
         StorageLive(_5);
         StorageLive(_3);
         _3 = ((*_1).0: u32);
@@ -39,74 +39,83 @@ fn naive(_1: &Blueprint, _2: &Blueprint) -> bool {
     }
 
     bb1: {
-        StorageDead(_8);
-        StorageDead(_5);
+        _6 = const false;
         goto -> bb3;
     }
 
     bb2: {
-        StorageLive(_8);
-        StorageLive(_6);
-        _6 = ((*_1).1: u32);
+        StorageLive(_9);
         StorageLive(_7);
-        _7 = ((*_2).1: u32);
-        _8 = Eq(move _6, move _7);
-        StorageDead(_7);
-        StorageDead(_6);
-        _9 = move _8;
+        _7 = ((*_1).1: u32);
+        StorageLive(_8);
+        _8 = ((*_2).1: u32);
+        _9 = Eq(move _7, move _8);
         StorageDead(_8);
-        StorageDead(_5);
-        switchInt(move _9) -> [0: bb3, otherwise: bb4];
+        StorageDead(_7);
+        _6 = move _9;
+        goto -> bb3;
     }
 
     bb3: {
-        StorageDead(_12);
         StorageDead(_9);
-        goto -> bb5;
+        StorageDead(_5);
+        switchInt(move _6) -> [0: bb4, otherwise: bb5];
     }
 
     bb4: {
-        StorageLive(_12);
-        StorageLive(_10);
-        _10 = ((*_1).2: u32);
-        StorageLive(_11);
-        _11 = ((*_2).2: u32);
-        _12 = Eq(move _10, move _11);
-        StorageDead(_11);
-        StorageDead(_10);
-        _13 = move _12;
-        StorageDead(_12);
-        StorageDead(_9);
-        switchInt(move _13) -> [0: bb5, otherwise: bb6];
+        _10 = const false;
+        goto -> bb6;
     }
 
     bb5: {
-        StorageDead(_16);
-        StorageDead(_13);
-        goto -> bb7;
+        StorageLive(_13);
+        StorageLive(_11);
+        _11 = ((*_1).2: u32);
+        StorageLive(_12);
+        _12 = ((*_2).2: u32);
+        _13 = Eq(move _11, move _12);
+        StorageDead(_12);
+        StorageDead(_11);
+        _10 = move _13;
+        goto -> bb6;
     }
 
     bb6: {
-        StorageLive(_16);
-        StorageLive(_14);
-        _14 = ((*_1).3: u32);
-        StorageLive(_15);
-        _15 = ((*_2).3: u32);
-        _16 = Eq(move _14, move _15);
-        StorageDead(_15);
-        StorageDead(_14);
-        _17 = move _16;
-        StorageDead(_16);
         StorageDead(_13);
-        switchInt(move _17) -> [0: bb7, otherwise: bb8];
+        StorageDead(_6);
+        switchInt(move _10) -> [0: bb7, otherwise: bb8];
     }
 
     bb7: {
-        _0 = const false;
+        _14 = const false;
         goto -> bb9;
     }
 
     bb8: {
+        StorageLive(_17);
+        StorageLive(_15);
+        _15 = ((*_1).3: u32);
+        StorageLive(_16);
+        _16 = ((*_2).3: u32);
+        _17 = Eq(move _15, move _16);
+        StorageDead(_16);
+        StorageDead(_15);
+        _14 = move _17;
+        goto -> bb9;
+    }
+
+    bb9: {
+        StorageDead(_17);
+        StorageDead(_10);
+        switchInt(move _14) -> [0: bb10, otherwise: bb11];
+    }
+
+    bb10: {
+        _0 = const false;
+        goto -> bb12;
+    }
+
+    bb11: {
         StorageLive(_20);
         StorageLive(_18);
         _18 = ((*_1).4: u32);
@@ -116,12 +125,12 @@ fn naive(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_19);
         StorageDead(_18);
         _0 = move _20;
-        goto -> bb9;
+        goto -> bb12;
     }
 
-    bb9: {
+    bb12: {
         StorageDead(_20);
-        StorageDead(_17);
+        StorageDead(_14);
         return;
     }
 }

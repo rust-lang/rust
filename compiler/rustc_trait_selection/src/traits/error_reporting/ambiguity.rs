@@ -84,7 +84,7 @@ pub fn recompute_applicable_impls<'tcx>(
         tcx.predicates_of(obligation.cause.body_id.to_def_id()).instantiate_identity(tcx);
     for (pred, span) in elaborate(tcx, predicates.into_iter()) {
         let kind = pred.kind();
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = kind.skip_binder()
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) = kind.skip_binder()
             && param_env_candidate_may_apply(kind.rebind(trait_pred))
         {
             if kind.rebind(trait_pred.trait_ref) == ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_pred.def_id())) {

@@ -1831,6 +1831,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 path,
                                 accessible: true,
                                 note: None,
+                                via_import: false,
                             },
                         ));
                     } else {

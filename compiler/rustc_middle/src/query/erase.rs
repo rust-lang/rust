@@ -55,6 +55,10 @@ impl<T> EraseType for &'_ ty::List<T> {
     type Result = [u8; size_of::<*const ()>()];
 }
 
+impl<I: rustc_index::Idx, T> EraseType for &'_ rustc_index::IndexSlice<I, T> {
+    type Result = [u8; size_of::<&'static rustc_index::IndexSlice<u32, ()>>()];
+}
+
 impl<T> EraseType for Result<&'_ T, traits::query::NoSolution> {
     type Result = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
 }
@@ -317,7 +321,7 @@ tcx_lifetime! {
     rustc_middle::traits::query::type_op::Subtype,
     rustc_middle::ty::AdtDef,
     rustc_middle::ty::AliasTy,
-    rustc_middle::ty::Clause,
+    rustc_middle::ty::ClauseKind,
     rustc_middle::ty::ClosureTypeInfo,
     rustc_middle::ty::Const,
     rustc_middle::ty::DestructuredConst,

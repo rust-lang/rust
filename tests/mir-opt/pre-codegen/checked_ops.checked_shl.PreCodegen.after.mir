@@ -7,17 +7,16 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     scope 1 (inlined core::num::<impl u32>::checked_shl) {
         debug self => _1;
         debug rhs => _2;
-        let mut _11: u32;
-        let mut _12: bool;
+        let mut _7: bool;
         scope 2 {
-            debug a => _11;
-            debug b => _10;
+            debug a => _5;
+            debug b => _6;
         }
         scope 3 (inlined core::num::<impl u32>::overflowing_shl) {
             debug self => _1;
             debug rhs => _2;
-            let mut _9: u32;
-            let mut _10: bool;
+            let mut _5: u32;
+            let mut _6: bool;
             scope 4 (inlined core::num::<impl u32>::wrapping_shl) {
                 debug self => _1;
                 debug rhs => _2;
@@ -27,52 +26,7 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
                     scope 6 (inlined core::num::<impl u32>::unchecked_shl) {
                         debug self => _1;
                         debug rhs => _4;
-                        let mut _8: u32;
                         scope 7 {
-                            scope 8 (inlined core::num::<impl u32>::unchecked_shl::conv) {
-                                debug x => _4;
-                                let mut _5: std::result::Result<u32, std::convert::Infallible>;
-                                let mut _7: std::option::Option<u32>;
-                                scope 9 {
-                                    scope 10 (inlined <u32 as TryInto<u32>>::try_into) {
-                                        debug self => _4;
-                                        scope 11 (inlined <u32 as TryFrom<u32>>::try_from) {
-                                            debug value => _4;
-                                            scope 12 (inlined <u32 as Into<u32>>::into) {
-                                                debug self => _4;
-                                                scope 13 (inlined <u32 as From<u32>>::from) {
-                                                    debug t => _4;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    scope 14 (inlined Result::<u32, Infallible>::ok) {
-                                        debug self => _5;
-                                        let _6: u32;
-                                        scope 15 {
-                                            debug x => _6;
-                                        }
-                                    }
-                                    scope 16 (inlined #[track_caller] Option::<u32>::unwrap_unchecked) {
-                                        debug self => _7;
-                                        let mut _13: &std::option::Option<u32>;
-                                        scope 17 {
-                                            debug val => _8;
-                                        }
-                                        scope 18 {
-                                            scope 20 (inlined unreachable_unchecked) {
-                                                scope 21 {
-                                                    scope 22 (inlined unreachable_unchecked::runtime) {
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        scope 19 (inlined Option::<u32>::is_some) {
-                                            debug self => _13;
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -81,58 +35,38 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     }
 
     bb0: {
-        StorageLive(_10);
-        StorageLive(_11);
-        StorageLive(_9);
+        StorageLive(_5);
+        StorageLive(_6);
         StorageLive(_4);
         StorageLive(_3);
         _3 = const 31_u32;
         _4 = BitAnd(_2, move _3);
         StorageDead(_3);
-        StorageLive(_8);
+        _5 = ShlUnchecked(_1, _4);
+        StorageDead(_4);
+        _6 = Ge(_2, const _);
         StorageLive(_7);
-        StorageLive(_5);
-        _5 = Result::<u32, Infallible>::Ok(_4);
-        StorageLive(_6);
-        _6 = move ((_5 as Ok).0: u32);
-        _7 = Option::<u32>::Some(move _6);
-        StorageDead(_6);
-        StorageDead(_5);
-        StorageLive(_13);
-        _8 = move ((_7 as Some).0: u32);
-        StorageDead(_13);
-        StorageDead(_7);
-        _9 = unchecked_shl::<u32>(_1, move _8) -> [return: bb1, unwind unreachable];
+        _7 = unlikely(_6) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
-        StorageDead(_8);
-        StorageDead(_4);
-        _10 = Ge(_2, const _);
-        _11 = move _9;
-        StorageDead(_9);
-        StorageLive(_12);
-        _12 = unlikely(_10) -> [return: bb2, unwind unreachable];
+        switchInt(move _7) -> [0: bb2, otherwise: bb3];
     }
 
     bb2: {
-        switchInt(move _12) -> [0: bb3, otherwise: bb4];
+        _0 = Option::<u32>::Some(_5);
+        goto -> bb4;
     }
 
     bb3: {
-        _0 = Option::<u32>::Some(_11);
-        goto -> bb5;
+        _0 = Option::<u32>::None;
+        goto -> bb4;
     }
 
     bb4: {
-        _0 = Option::<u32>::None;
-        goto -> bb5;
-    }
-
-    bb5: {
-        StorageDead(_12);
-        StorageDead(_11);
-        StorageDead(_10);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_5);
         return;
     }
 }

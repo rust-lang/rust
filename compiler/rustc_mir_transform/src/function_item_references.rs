@@ -34,7 +34,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
             destination: _,
             target: _,
             unwind: _,
-            from_hir_call: _,
+            call_source: _,
             fn_span: _,
         } = &terminator.kind
         {
@@ -105,7 +105,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
 
     /// If the given predicate is the trait `fmt::Pointer`, returns the bound parameter type.
     fn is_pointer_trait(&self, bound: &PredicateKind<'tcx>) -> Option<Ty<'tcx>> {
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) = bound {
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) = bound {
             self.tcx
                 .is_diagnostic_item(sym::Pointer, predicate.def_id())
                 .then(|| predicate.trait_ref.self_ty())

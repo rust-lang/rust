@@ -631,7 +631,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let bound_predicate = obligation.predicate.kind();
             let trait_pred = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred))
                     if traits.contains(&trait_pred.def_id()) =>
                 {
                     if unsize_did == trait_pred.def_id() {
@@ -767,7 +767,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     self.tcx,
                     self.cause.clone(),
                     self.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
                         ty::OutlivesPredicate(a, b_region),
                     ))),
                 ),

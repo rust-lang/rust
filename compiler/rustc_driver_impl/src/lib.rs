@@ -97,6 +97,7 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
     rustc_const_eval::DEFAULT_LOCALE_RESOURCE,
     rustc_error_messages::DEFAULT_LOCALE_RESOURCE,
+    rustc_errors::DEFAULT_LOCALE_RESOURCE,
     rustc_expand::DEFAULT_LOCALE_RESOURCE,
     rustc_hir_analysis::DEFAULT_LOCALE_RESOURCE,
     rustc_hir_typeck::DEFAULT_LOCALE_RESOURCE,
@@ -329,7 +330,7 @@ fn run_compiler(
                         return;
                     }
                     let should_stop =
-                        print_crate_info(&***compiler.codegen_backend(), compiler.session(), false);
+                        print_crate_info(&**compiler.codegen_backend(), compiler.session(), false);
 
                     if should_stop == Compilation::Stop {
                         return;
@@ -351,7 +352,7 @@ fn run_compiler(
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
-        let should_stop = print_crate_info(&***compiler.codegen_backend(), sess, true)
+        let should_stop = print_crate_info(&**compiler.codegen_backend(), sess, true)
             .and_then(|| list_metadata(sess, &*compiler.codegen_backend().metadata_loader()))
             .and_then(|| try_process_rlink(sess, compiler));
 
@@ -424,7 +425,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.ongoing_codegen()?;
+            let ongoing_codegen = queries.ongoing_codegen()?;
 
             if sess.opts.unstable_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
@@ -437,7 +438,7 @@ fn run_compiler(
                 sess.code_stats.print_vtable_sizes(crate_name);
             }
 
-            let linker = queries.linker()?;
+            let linker = queries.linker(ongoing_codegen)?;
             Ok(Some(linker))
         })?;
 

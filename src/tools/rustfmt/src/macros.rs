@@ -1119,12 +1119,15 @@ pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> D
 
 // A very simple parser that just parses a macros 2.0 definition into its branches.
 // Currently we do not attempt to parse any further than that.
-#[derive(new)]
 struct MacroParser {
     toks: TokenTreeCursor,
 }
 
 impl MacroParser {
+    const fn new(toks: TokenTreeCursor) -> Self {
+        Self { toks }
+    }
+
     // (`(` ... `)` `=>` `{` ... `}`)*
     fn parse(&mut self) -> Option<Macro> {
         let mut branches = vec![];

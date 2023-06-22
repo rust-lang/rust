@@ -2,7 +2,9 @@ error[E0603]: module `thread_info` is private
   --> $DIR/stability-in-private-module.rs:2:26
    |
 LL |     let _ = std::thread::thread_info::current_thread();
-   |                          ^^^^^^^^^^^ private module
+   |                          ^^^^^^^^^^^  -------------- function `current_thread` is not publicly re-exported
+   |                          |
+   |                          private module
    |
 note: the module `thread_info` is defined here
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL

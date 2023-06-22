@@ -1,7 +1,6 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::mir;
 use crate::query::Providers;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
@@ -17,7 +16,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_index::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_session::Limit;
 use rustc_span::sym;
@@ -738,80 +736,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
     }
 
-    /// Returns names of captured upvars for closures and generators.
-    ///
-    /// Here are some examples:
-    ///  - `name__field1__field2` when the upvar is captured by value.
-    ///  - `_ref__name__field` when the upvar is captured by reference.
-    ///
-    /// For generators this only contains upvars that are shared by all states.
-    pub fn closure_saved_names_of_captured_variables(
-        self,
-        def_id: DefId,
-    ) -> SmallVec<[String; 16]> {
-        let body = self.optimized_mir(def_id);
-
-        body.var_debug_info
-            .iter()
-            .filter_map(|var| {
-                let is_ref = match var.value {
-                    mir::VarDebugInfoContents::Place(place)
-                        if place.local == mir::Local::new(1) =>
-                    {
-                        // The projection is either `[.., Field, Deref]` or `[.., Field]`. It
-                        // implies whether the variable is captured by value or by reference.
-                        matches!(place.projection.last().unwrap(), mir::ProjectionElem::Deref)
-                    }
-                    _ => return None,
-                };
-                let prefix = if is_ref { "_ref__" } else { "" };
-                Some(prefix.to_owned() + var.name.as_str())
-            })
-            .collect()
-    }
-
-    // FIXME(eddyb) maybe precompute this? Right now it's computed once
-    // per generator monomorphization, but it doesn't depend on substs.
-    pub fn generator_layout_and_saved_local_names(
-        self,
-        def_id: DefId,
-    ) -> (
-        &'tcx ty::GeneratorLayout<'tcx>,
-        IndexVec<mir::GeneratorSavedLocal, Option<rustc_span::Symbol>>,
-    ) {
-        let tcx = self;
-        let body = tcx.optimized_mir(def_id);
-        let generator_layout = body.generator_layout().unwrap();
-        let mut generator_saved_local_names =
-            IndexVec::from_elem(None, &generator_layout.field_tys);
-
-        let state_arg = mir::Local::new(1);
-        for var in &body.var_debug_info {
-            let mir::VarDebugInfoContents::Place(place) = &var.value else { continue };
-            if place.local != state_arg {
-                continue;
-            }
-            match place.projection[..] {
-                [
-                    // Deref of the `Pin<&mut Self>` state argument.
-                    mir::ProjectionElem::Field(..),
-                    mir::ProjectionElem::Deref,
-                    // Field of a variant of the state.
-                    mir::ProjectionElem::Downcast(_, variant),
-                    mir::ProjectionElem::Field(field, _),
-                ] => {
-                    let name = &mut generator_saved_local_names
-                        [generator_layout.variant_fields[variant][field]];
-                    if name.is_none() {
-                        name.replace(var.name);
-                    }
-                }
-                _ => {}
-            }
-        }
-        (generator_layout, generator_saved_local_names)
-    }
-
     /// Query and get an English description for the item's kind.
     pub fn def_descr(self, def_id: DefId) -> &'static str {
         self.def_kind_descr(self.def_kind(def_id), def_id)
@@ -972,7 +896,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
-            && let ty::Clause::Projection(projection_pred) = clause
+            && let ty::ClauseKind::Projection(projection_pred) = clause
         {
             p.kind()
                 .rebind(ty::ProjectionPredicate {

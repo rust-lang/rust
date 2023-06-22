@@ -214,7 +214,7 @@ host tools.
 target | std | host | notes
 -------|:---:|:----:|-------
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
-`aarch64-apple-tvos` | * |  | ARM64 tvOS
+[`aarch64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS
 [`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
@@ -316,7 +316,7 @@ target | std | host | notes
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, MUSL
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
-`x86_64-apple-tvos` | * | | x86 64-bit tvOS
+[`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? | | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |

@@ -90,10 +90,7 @@ error: expected identifier, found `)`
   --> $DIR/offset-of-tuple.rs:14:5
    |
 LL |     offset_of!((u8, u8), 1.);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected identifier
-   |     in this macro invocation
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected identifier
    |
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -110,10 +107,7 @@ error: expected identifier, found `)`
   --> $DIR/offset-of-tuple.rs:36:5
    |
 LL |     offset_of!(ComplexTup, 0.0.1.);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected identifier
-   |     in this macro invocation
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected identifier
    |
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -147,10 +141,7 @@ error: expected identifier, found `)`
   --> $DIR/offset-of-tuple.rs:40:5
    |
 LL |     offset_of!(ComplexTup, 0.0 .1.);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected identifier
-   |     in this macro invocation
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected identifier
    |
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -158,10 +149,7 @@ error: expected identifier, found `)`
   --> $DIR/offset-of-tuple.rs:41:5
    |
 LL |     offset_of!(ComplexTup, 0.0 . 1.);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected identifier
-   |     in this macro invocation
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected identifier
    |
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -169,10 +157,7 @@ error: expected identifier, found `)`
   --> $DIR/offset-of-tuple.rs:42:5
    |
 LL |     offset_of!(ComplexTup, 0.0. 1.);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected identifier
-   |     in this macro invocation
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected identifier
    |
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 

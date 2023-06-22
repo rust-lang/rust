@@ -1457,6 +1457,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Yeet(expr) => {
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
+        ExprKind::Become(expr) => vis.visit_expr(expr),
         ExprKind::InlineAsm(asm) => vis.visit_inline_asm(asm),
         ExprKind::FormatArgs(fmt) => vis.visit_format_args(fmt),
         ExprKind::OffsetOf(container, fields) => {

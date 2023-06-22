@@ -1,0 +1,72 @@
+- // MIR for `concrete` before ConstProp
++ // MIR for `concrete` after ConstProp
+  
+  fn concrete() -> () {
+      let mut _0: ();
+      let _1: usize;
+      let mut _2: usize;
+      let mut _4: usize;
+      let mut _6: usize;
+      let mut _8: usize;
+      scope 1 {
+          debug x => _1;
+          let _3: usize;
+          scope 2 {
+              debug y => _3;
+              let _5: usize;
+              scope 3 {
+                  debug z0 => _5;
+                  let _7: usize;
+                  scope 4 {
+                      debug z1 => _7;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = OffsetOf(Alpha, [0]);
++         _2 = const 4_usize;
+          _1 = must_use::<usize>(move _2) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+-         _4 = OffsetOf(Alpha, [1]);
++         _4 = const 0_usize;
+          _3 = must_use::<usize>(move _4) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         _6 = OffsetOf(Alpha, [2, 0]);
++         _6 = const 2_usize;
+          _5 = must_use::<usize>(move _6) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+-         _8 = OffsetOf(Alpha, [2, 1]);
++         _8 = const 3_usize;
+          _7 = must_use::<usize>(move _8) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_8);
+          _0 = const ();
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

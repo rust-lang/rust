@@ -244,7 +244,7 @@ Any other tools or libraries you will need to acquire  from Flatpak.
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
-To use `rust-analyzer`, you need to install and enable one of the two popular two popular LSP client implementations for Emacs, https://github.com/joaotavora/eglot[Eglot] or https://github.com/emacs-lsp/lsp-mode[LSP Mode]. Both enable `rust-analyzer` by default in rust buffers if it is available.
+To use `rust-analyzer`, you need to install and enable one of the two popular LSP client implementations for Emacs, https://github.com/joaotavora/eglot[Eglot] or https://github.com/emacs-lsp/lsp-mode[LSP Mode]. Both enable `rust-analyzer` by default in rust buffers if it is available.
 
 ==== Eglot
 
@@ -653,8 +653,27 @@ However, if you use some other build system, you'll have to describe the structu
 [source,TypeScript]
 ----
 interface JsonProject {
+    /// Path to the sysroot directory.
+    ///
+    /// The sysroot is where rustc looks for the
+    /// crates that are built-in to rust, such as
+    /// std.
+    ///
+    /// https://doc.rust-lang.org/rustc/command-line-arguments.html#--sysroot-override-the-system-root
+    ///
+    /// To see the current value of sysroot, you
+    /// can query rustc:
+    ///
+    /// ```
+    /// $ rustc --print sysroot
+    /// /Users/yourname/.rustup/toolchains/stable-x86_64-apple-darwin
+    /// ```
+    sysroot?: string;
     /// Path to the directory with *source code* of
     /// sysroot crates.
+    ///
+    /// By default, this is `lib/rustlib/src/rust/library`
+    /// relative to the sysroot.
     ///
     /// It should point to the directory where std,
     /// core, and friends can be found:

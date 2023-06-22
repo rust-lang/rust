@@ -1,6 +1,6 @@
 use crate::sip128::SipHasher128;
 use rustc_index::bit_set::{self, BitSet};
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use smallvec::SmallVec;
 use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
@@ -594,6 +594,18 @@ where
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.start().hash_stable(ctx, hasher);
         self.end().hash_stable(ctx, hasher);
+    }
+}
+
+impl<I: Idx, T, CTX> HashStable<CTX> for IndexSlice<I, T>
+where
+    T: HashStable<CTX>,
+{
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+        for v in &self.raw {
+            v.hash_stable(ctx, hasher);
+        }
     }
 }
 

@@ -7,16 +7,36 @@
       let mut _0: i16;
       let mut _3: i16;
       let mut _4: u32;
++     scope 1 (inlined core::num::<impl i16>::unchecked_shr) {
++         debug self => _3;
++         debug rhs => _4;
++         let mut _5: i16;
++         let mut _6: bool;
++         let mut _7: u32;
++         scope 2 {
++         }
++     }
   
       bb0: {
           StorageLive(_3);
           _3 = _1;
           StorageLive(_4);
           _4 = _2;
-          _0 = core::num::<impl i16>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind unreachable];
-      }
-  
-      bb1: {
+-         _0 = core::num::<impl i16>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind unreachable];
+-     }
+- 
+-     bb1: {
++         StorageLive(_5);
++         StorageLive(_6);
++         StorageLive(_7);
++         _7 = const 32767_u32;
++         _6 = Le(_4, move _7);
++         StorageDead(_7);
++         assume(move _6);
++         StorageDead(_6);
++         _5 = _4 as i16 (IntToInt);
++         _0 = ShrUnchecked(_3, move _5);
++         StorageDead(_5);
           StorageDead(_4);
           StorageDead(_3);
           return;

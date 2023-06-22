@@ -43,8 +43,8 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL |     std::mem::transmute(v)
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type `[[[u32; 8888888]; 9999999]; 777777777]` are too big for the current architecture)
-   = note: target type: `[[[u32; 9999999]; 777777777]; 8888888]` (values of the type `[[[u32; 9999999]; 777777777]; 8888888]` are too big for the current architecture)
+   = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type `[[u32; 8888888]; 9999999]` are too big for the current architecture)
+   = note: target type: `[[[u32; 9999999]; 777777777]; 8888888]` (values of the type `[[u32; 9999999]; 777777777]` are too big for the current architecture)
 
 error: aborting due to 6 previous errors
 

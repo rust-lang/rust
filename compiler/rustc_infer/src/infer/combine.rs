@@ -124,13 +124,10 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             // During coherence, opaque types should be treated as *possibly*
-            // equal to each other, even if their generic params differ, as
-            // they could resolve to the same hidden type, even for different
-            // generic params.
-            (
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
-            ) if self.intercrate && a_def_id == b_def_id => {
+            // equal to any other type (except for possibly itself). This is an
+            // extremely heavy hammer, but can be relaxed in a fowards-compatible
+            // way later.
+            (&ty::Alias(ty::Opaque, _), _) | (_, &ty::Alias(ty::Opaque, _)) if self.intercrate => {
                 relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                 Ok(a)
             }
@@ -417,7 +414,9 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                 self.tcx(),
                 self.trace.cause.clone(),
                 self.param_env,
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(b_ty.into()))),
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
+                    b_ty.into(),
+                ))),
             ));
         }
 

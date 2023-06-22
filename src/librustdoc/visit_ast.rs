@@ -313,7 +313,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         }
 
-        let ret = match tcx.hir().get_by_def_id(res_did) {
+        let inlined = match tcx.hir().get_by_def_id(res_did) {
             // Bang macros are handled a bit on their because of how they are handled by the
             // compiler. If they have `#[doc(hidden)]` and the re-export doesn't have
             // `#[doc(inline)]`, then we don't inline it.
@@ -344,7 +344,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ => false,
         };
         self.view_item_stack.remove(&res_did);
-        ret
+        if inlined {
+            self.cx.cache.inlined_items.insert(res_did.to_def_id());
+        }
+        inlined
     }
 
     /// Returns `true` if the item is visible, meaning it's not `#[doc(hidden)]` or private.

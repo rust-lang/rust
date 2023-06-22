@@ -1,5 +1,5 @@
 <div class="main-heading"> {# #}
-    <h1> {# #}
+    <h1>
         {{typ}}
         {# The breadcrumbs of the item path, like std::string #}
         {% for component in path_components %}
@@ -12,7 +12,7 @@
                 alt="Copy item path"> {# #}
         </button> {# #}
     </h1> {# #}
-    <span class="out-of-band"> {# #}
+    <span class="out-of-band">
         {% if !stability_since_raw.is_empty() %}
         {{ stability_since_raw|safe +}} · {#+ #}
         {% endif %}

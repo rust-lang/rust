@@ -40,10 +40,10 @@ LL |         fn method() -> Self::Ty;
    = note: expected signature `fn() -> <() as compare_method::Trait>::Ty`
               found signature `fn()`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/in-assoc-type-unconstrained.rs:22:9
+  --> $DIR/in-assoc-type-unconstrained.rs:22:12
    |
 LL |         fn method() -> () {}
-   |         ^^^^^^^^^^^^^^^^^
+   |            ^^^^^^
 
 error: unconstrained opaque type
   --> $DIR/in-assoc-type-unconstrained.rs:20:19

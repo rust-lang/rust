@@ -63,10 +63,11 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     };
 
     interface::run_compiler(config, |compiler| {
-        // This runs all the passes prior to linking, too.
-        let linker = compiler.enter(|queries| queries.linker());
-        if let Ok(linker) = linker {
-            linker.link();
-        }
+        let linker = compiler.enter(|queries| {
+            queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
+            let ongoing_codegen = queries.ongoing_codegen()?;
+            queries.linker(ongoing_codegen)
+        });
+        linker.unwrap().link();
     });
 }

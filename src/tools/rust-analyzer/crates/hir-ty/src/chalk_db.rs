@@ -497,7 +497,7 @@ pub(crate) fn associated_ty_data_query(
     let generic_params = generics(db.upcast(), type_alias.into());
     // let bound_vars = generic_params.bound_vars_subst(DebruijnIndex::INNERMOST);
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
-    let ctx = crate::TyLoweringContext::new(db, &resolver)
+    let ctx = crate::TyLoweringContext::new(db, &resolver, type_alias.into())
         .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
 
     let trait_subst = TyBuilder::subst_for_def(db, trait_, None)
@@ -592,6 +592,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Unpin => WellKnownTrait::Unpin,
         LangItem::Unsize => WellKnownTrait::Unsize,
         LangItem::Tuple => WellKnownTrait::Tuple,
+        LangItem::PointeeTrait => WellKnownTrait::Pointee,
         _ => return None,
     })
 }
@@ -612,6 +613,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Tuple => LangItem::Tuple,
         WellKnownTrait::Unpin => LangItem::Unpin,
         WellKnownTrait::Unsize => LangItem::Unsize,
+        WellKnownTrait::Pointee => LangItem::PointeeTrait,
     }
 }
 

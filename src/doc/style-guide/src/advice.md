@@ -25,9 +25,9 @@ if y {
  * Local variables shall be `snake_case`,
  * Macro names shall be `snake_case`,
  * Constants (`const`s and immutable `static`s) shall be `SCREAMING_SNAKE_CASE`.
- * When a name is forbidden because it is a reserved word (e.g., `crate`), use a
-   trailing underscore to make the name legal (e.g., `crate_`), or use raw
-   identifiers if possible.
+ * When a name is forbidden because it is a reserved word (such as `crate`),
+   either use a raw identifier (`r#crate`) or use a trailing underscore
+   (`crate_`). Don't misspell the word (`krate`).
 
 ### Modules
 

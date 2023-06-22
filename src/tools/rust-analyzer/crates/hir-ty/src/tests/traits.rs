@@ -4335,8 +4335,9 @@ fn derive_macro_bounds() {
         #[derive(Clone)]
         struct AssocGeneric<T: Tr>(T::Assoc);
 
-        #[derive(Clone)]
-        struct AssocGeneric2<T: Tr>(<T as Tr>::Assoc);
+        // Currently rustc does not accept this.
+        // #[derive(Clone)]
+        // struct AssocGeneric2<T: Tr>(<T as Tr>::Assoc);
 
         #[derive(Clone)]
         struct AssocGeneric3<T: Tr>(Generic<T::Assoc>);
@@ -4361,9 +4362,8 @@ fn derive_macro_bounds() {
             let x: &AssocGeneric<Copy> = &AssocGeneric(NotCopy);
             let x = x.clone();
               //^ &AssocGeneric<Copy>
-            let x: &AssocGeneric2<Copy> = &AssocGeneric2(NotCopy);
-            let x = x.clone();
-              //^ &AssocGeneric2<Copy>
+            // let x: &AssocGeneric2<Copy> = &AssocGeneric2(NotCopy);
+            // let x = x.clone();
             let x: &AssocGeneric3<Copy> = &AssocGeneric3(Generic(NotCopy));
             let x = x.clone();
               //^ &AssocGeneric3<Copy>

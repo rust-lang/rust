@@ -62,7 +62,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 destination,
                 target,
                 unwind,
-                from_hir_call: _,
+                call_source: _,
                 fn_span: _,
             } => {
                 let old_stack = self.frame_idx();

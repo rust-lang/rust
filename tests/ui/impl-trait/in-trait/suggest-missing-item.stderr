@@ -1,0 +1,21 @@
+error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `test`, `baz`
+  --> $DIR/suggest-missing-item.rs:18:1
+   |
+LL |     async fn foo();
+   |     --------------- `foo` from trait
+LL |
+LL |     async fn bar() -> i32;
+   |     ---------------------- `bar` from trait
+LL |
+LL |     fn test(&self) -> impl Sized + '_;
+   |     ---------------------------------- `test` from trait
+LL |
+LL |     async fn baz(&self) -> &i32;
+   |     ---------------------------- `baz` from trait
+...
+LL | impl Trait for S {}
+   | ^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `test`, `baz` in implementation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0046`.

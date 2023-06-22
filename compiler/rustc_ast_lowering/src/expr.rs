@@ -275,6 +275,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Ret(e)
                 }
                 ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
+                ExprKind::Become(sub_expr) => {
+                    let sub_expr = self.lower_expr(sub_expr);
+
+                    // FIXME(explicit_tail_calls): Use `hir::ExprKind::Become` once we implemented it
+                    hir::ExprKind::Ret(Some(sub_expr))
+                }
                 ExprKind::InlineAsm(asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }

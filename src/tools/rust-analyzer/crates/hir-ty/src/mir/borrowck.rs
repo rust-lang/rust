@@ -240,10 +240,14 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
 /// Returns a map from basic blocks to the set of locals that might be ever initialized before
 /// the start of the block. Only `StorageDead` can remove something from this map, and we ignore
 /// `Uninit` and `drop` and similar after initialization.
-fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> {
+fn ever_initialized_map(
+    db: &dyn HirDatabase,
+    body: &MirBody,
+) -> ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> {
     let mut result: ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> =
         body.basic_blocks.iter().map(|x| (x.0, ArenaMap::default())).collect();
     fn dfs(
+        db: &dyn HirDatabase,
         body: &MirBody,
         b: BasicBlockId,
         l: LocalId,
@@ -267,7 +271,7 @@ fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<Local
             }
         }
         let Some(terminator) = &block.terminator else {
-            never!("Terminator should be none only in construction");
+            never!("Terminator should be none only in construction.\nThe body:\n{}", body.pretty_print(db));
             return;
         };
         let targets = match &terminator.kind {
@@ -299,18 +303,18 @@ fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<Local
         for target in targets {
             if !result[target].contains_idx(l) || !result[target][l] && is_ever_initialized {
                 result[target].insert(l, is_ever_initialized);
-                dfs(body, target, l, result);
+                dfs(db, body, target, l, result);
             }
         }
     }
     for &l in &body.param_locals {
         result[body.start_block].insert(l, true);
-        dfs(body, body.start_block, l, &mut result);
+        dfs(db, body, body.start_block, l, &mut result);
     }
     for l in body.locals.iter().map(|x| x.0) {
         if !result[body.start_block].contains_idx(l) {
             result[body.start_block].insert(l, false);
-            dfs(body, body.start_block, l, &mut result);
+            dfs(db, body, body.start_block, l, &mut result);
         }
     }
     result
@@ -326,7 +330,7 @@ fn mutability_of_locals(
         MutabilityReason::Mut { spans } => spans.push(span),
         x @ MutabilityReason::Not => *x = MutabilityReason::Mut { spans: vec![span] },
     };
-    let ever_init_maps = ever_initialized_map(body);
+    let ever_init_maps = ever_initialized_map(db, body);
     for (block_id, mut ever_init_map) in ever_init_maps.into_iter() {
         let block = &body.basic_blocks[block_id];
         for statement in &block.statements {

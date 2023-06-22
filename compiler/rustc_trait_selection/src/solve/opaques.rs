@@ -20,8 +20,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 let Some(opaque_ty_def_id) = opaque_ty.def_id.as_local() else {
                     return Err(NoSolution);
                 };
-                let opaque_ty =
-                    ty::OpaqueTypeKey { def_id: opaque_ty_def_id, substs: opaque_ty.substs };
                 // FIXME: at some point we should call queries without defining
                 // new opaque types but having the existing opaque type definitions.
                 // This will require moving this below "Prefer opaques registered already".
@@ -41,7 +39,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     Ok(()) => {}
                 }
                 // Prefer opaques registered already.
-                let matches = self.unify_existing_opaque_tys(goal.param_env, opaque_ty, expected);
+                let opaque_type_key =
+                    ty::OpaqueTypeKey { def_id: opaque_ty_def_id, substs: opaque_ty.substs };
+                let matches =
+                    self.unify_existing_opaque_tys(goal.param_env, opaque_type_key, expected);
                 if !matches.is_empty() {
                     if let Some(response) = self.try_merge_responses(&matches) {
                         return Ok(response);
@@ -50,11 +51,24 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     }
                 }
                 // Otherwise, define a new opaque type
-                self.insert_hidden_type(opaque_ty, goal.param_env, expected)?;
-                self.add_item_bounds_for_hidden_type(opaque_ty, goal.param_env, expected);
+                self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
+                self.add_item_bounds_for_hidden_type(
+                    opaque_ty.def_id,
+                    opaque_ty.substs,
+                    goal.param_env,
+                    expected,
+                );
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             (Reveal::UserFacing, SolverMode::Coherence) => {
+                // An impossible opaque type bound is the only way this goal will fail
+                // e.g. assigning `impl Copy := NotCopy`
+                self.add_item_bounds_for_hidden_type(
+                    opaque_ty.def_id,
+                    opaque_ty.substs,
+                    goal.param_env,
+                    expected,
+                );
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
             (Reveal::All, _) => {

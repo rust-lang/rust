@@ -162,28 +162,25 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         // which thus mentions `'a` and should thus accept hidden types that borrow 'a
         // instead of requiring an additional `+ 'a`.
         match pred.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+            ty::ClauseKind::Trait(ty::TraitPredicate {
                 trait_ref: ty::TraitRef { def_id: _, substs, .. },
                 constness: _,
                 polarity: _,
-            })) => {
+            }) => {
                 for subst in &substs[1..] {
                     subst.visit_with(&mut collector);
                 }
             }
-            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+            ty::ClauseKind::Projection(ty::ProjectionPredicate {
                 projection_ty: ty::AliasTy { substs, .. },
                 term,
-            })) => {
+            }) => {
                 for subst in &substs[1..] {
                     subst.visit_with(&mut collector);
                 }
                 term.visit_with(&mut collector);
             }
-            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
-                _,
-                region,
-            ))) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_, region)) => {
                 region.visit_with(&mut collector);
             }
             _ => {

@@ -18,9 +18,10 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
 
     let is_unsafe = match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).has_unsafe_kw(),
-        DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) | DefWithBodyId::VariantId(_) => {
-            false
-        }
+        DefWithBodyId::StaticId(_)
+        | DefWithBodyId::ConstId(_)
+        | DefWithBodyId::VariantId(_)
+        | DefWithBodyId::InTypeConstId(_) => false,
     };
     if is_unsafe {
         return res;

@@ -234,7 +234,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     borrow_spans.var_subdiag(
                     None,
                     &mut err,
-                    Some(mir::BorrowKind::Mut { allow_two_phase_borrow: false }),
+                    Some(mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }),
                     |_kind, var_span| {
                         let place = self.describe_any_place(access_place.as_ref());
                         crate::session_diagnostics::CaptureVarCause::MutableBorrowUsePlaceClosure {
@@ -300,7 +300,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             _,
                             mir::Rvalue::Ref(
                                 _,
-                                mir::BorrowKind::Mut { allow_two_phase_borrow: false },
+                                mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
                                 _,
                             ),
                         )),

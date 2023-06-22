@@ -6,7 +6,7 @@ import json
 
 
 def find_redirect_map_file(folder, errors):
-    for root, dirs, files in os.walk(folder):
+    for root, _dirs, files in os.walk(folder):
         for name in files:
             if not name.endswith("redirect-map.json"):
                 continue

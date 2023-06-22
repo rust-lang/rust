@@ -159,7 +159,7 @@ impl Socket {
                 }
 
                 let mut timeout = c::timeval {
-                    tv_sec: timeout.as_secs() as c_long,
+                    tv_sec: cmp::min(timeout.as_secs(), c_long::MAX as u64) as c_long,
                     tv_usec: (timeout.subsec_nanos() / 1000) as c_long,
                 };
 

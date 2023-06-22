@@ -13,7 +13,7 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind, ALLOCATOR_METHODS};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -580,7 +580,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -631,14 +631,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         })
     });
 
-    let ongoing_codegen = start_async_codegen(
-        backend.clone(),
-        tcx,
-        target_cpu,
-        metadata,
-        metadata_module,
-        codegen_units.len(),
-    );
+    let ongoing_codegen =
+        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, metadata_module);
 
     // Codegen an allocator shim, if necessary.
     if let Some(kind) = allocator_kind_for_codegen(tcx) {
@@ -921,7 +915,21 @@ impl CrateInfo {
                         missing_weak_lang_items
                             .iter()
                             .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text)),
-                    )
+                    );
+                    if tcx.allocator_kind(()).is_some() {
+                        // At least one crate needs a global allocator. This crate may be placed
+                        // after the crate that defines it in the linker order, in which case some
+                        // linkers return an error. By adding the global allocator shim methods to
+                        // the linked_symbols list, linking the generated symbols.o will ensure that
+                        // circular dependencies involving the global allocator don't lead to linker
+                        // errors.
+                        linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
+                            (
+                                format!("{prefix}{}", global_fn_name(method.name).as_str()),
+                                SymbolExportKind::Text,
+                            )
+                        }));
+                    }
                 });
         }
 

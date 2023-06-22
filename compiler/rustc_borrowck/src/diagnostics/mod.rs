@@ -13,8 +13,9 @@ use rustc_index::IndexSlice;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    AggregateKind, Constant, FakeReadCause, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, CallSource, Constant, FakeReadCause, Local, LocalInfo, LocalKind, Location,
+    Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -414,7 +415,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if !is_terminator {
                         continue;
                     } else if let Some(Terminator {
-                        kind: TerminatorKind::Call { func, from_hir_call: false, .. },
+                        kind:
+                            TerminatorKind::Call {
+                                func,
+                                call_source: CallSource::OverloadedOperator,
+                                ..
+                            },
                         ..
                     }) = &bbd.terminator
                     {
@@ -622,8 +628,7 @@ impl UseSpans<'_> {
                 err.subdiagnostic(match kind {
                     Some(kd) => match kd {
                         rustc_middle::mir::BorrowKind::Shared
-                        | rustc_middle::mir::BorrowKind::Shallow
-                        | rustc_middle::mir::BorrowKind::Unique => {
+                        | rustc_middle::mir::BorrowKind::Shallow => {
                             CaptureVarKind::Immut { kind_span: capture_kind_span }
                         }
 
@@ -839,7 +844,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
-            kind: TerminatorKind::Call { fn_span, from_hir_call, .. }, ..
+            kind: TerminatorKind::Call { fn_span, call_source, .. }, ..
         }) = &self.body[location.block].terminator
         {
             let Some((method_did, method_substs)) =
@@ -859,7 +864,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 method_did,
                 method_substs,
                 *fn_span,
-                *from_hir_call,
+                call_source.from_hir_call(),
                 Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
             );
 

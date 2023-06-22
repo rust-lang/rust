@@ -9,7 +9,7 @@ rust_dir = os.path.dirname(os.path.abspath(__file__))
 rust_dir = os.path.dirname(rust_dir)
 rust_dir = os.path.dirname(rust_dir)
 sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
-import bootstrap
+import bootstrap # noqa: E402
 
 
 class Option(object):
@@ -319,7 +319,7 @@ def apply_args(known_args, option_checking, config):
     for key in known_args:
         # The `set` option is special and can be passed a bunch of times
         if key == 'set':
-            for option, value in known_args[key]:
+            for _option, value in known_args[key]:
                 keyval = value.split('=', 1)
                 if len(keyval) == 1 or keyval[1] == "true":
                     value = True
@@ -401,7 +401,7 @@ def parse_example_config(known_args, config):
     top_level_keys = []
 
     for line in open(rust_dir + '/config.example.toml').read().split("\n"):
-        if cur_section == None:
+        if cur_section is None:
             if line.count('=') == 1:
                 top_level_key = line.split('=')[0]
                 top_level_key = top_level_key.strip(' #')
@@ -523,8 +523,8 @@ def write_uncommented(target, f):
         block.append(line)
         if len(line) == 0:
             if not is_comment:
-                for l in block:
-                    f.write(l + "\n")
+                for ln in block:
+                    f.write(ln + "\n")
             block = []
             is_comment = True
             continue

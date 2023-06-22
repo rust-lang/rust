@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![feature(unsize)]
 
 use std::marker::Unsize;

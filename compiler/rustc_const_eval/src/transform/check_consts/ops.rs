@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
-use rustc_middle::mir;
+use rustc_middle::mir::{self, CallSource};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, Ty};
@@ -100,7 +100,7 @@ pub struct FnCallNonConst<'tcx> {
     pub callee: DefId,
     pub substs: SubstsRef<'tcx>,
     pub span: Span,
-    pub from_hir_call: bool,
+    pub call_source: CallSource,
     pub feature: Option<Symbol>,
 }
 
@@ -110,7 +110,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         ccx: &ConstCx<'_, 'tcx>,
         _: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let FnCallNonConst { caller, callee, substs, span, from_hir_call, feature } = *self;
+        let FnCallNonConst { caller, callee, substs, span, call_source, feature } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
@@ -157,7 +157,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             }
         };
 
-        let call_kind = call_kind(tcx, ccx.param_env, callee, substs, span, from_hir_call, None);
+        let call_kind =
+            call_kind(tcx, ccx.param_env, callee, substs, span, call_source.from_hir_call(), None);
 
         debug!(?call_kind);
 
@@ -219,48 +220,59 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 err
             }
             CallKind::Operator { trait_id, self_ty, .. } => {
-                let mut sugg = None;
+                let mut err = if let CallSource::MatchCmp = call_source {
+                    tcx.sess.create_err(errors::NonConstMatchEq {
+                        span,
+                        kind: ccx.const_kind(),
+                        ty: self_ty,
+                    })
+                } else {
+                    let mut sugg = None;
 
-                if Some(trait_id) == ccx.tcx.lang_items().eq_trait() {
-                    match (substs[0].unpack(), substs[1].unpack()) {
-                        (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
-                            if self_ty == rhs_ty
-                                && self_ty.is_ref()
-                                && self_ty.peel_refs().is_primitive() =>
-                        {
-                            let mut num_refs = 0;
-                            let mut tmp_ty = self_ty;
-                            while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
-                                num_refs += 1;
-                                tmp_ty = *inner_ty;
-                            }
-                            let deref = "*".repeat(num_refs);
+                    if Some(trait_id) == ccx.tcx.lang_items().eq_trait() {
+                        match (substs[0].unpack(), substs[1].unpack()) {
+                            (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
+                                if self_ty == rhs_ty
+                                    && self_ty.is_ref()
+                                    && self_ty.peel_refs().is_primitive() =>
+                            {
+                                let mut num_refs = 0;
+                                let mut tmp_ty = self_ty;
+                                while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
+                                    num_refs += 1;
+                                    tmp_ty = *inner_ty;
+                                }
+                                let deref = "*".repeat(num_refs);
 
-                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span) {
-                                if let Some(eq_idx) = call_str.find("==") {
-                                    if let Some(rhs_idx) =
-                                        call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
-                                    {
-                                        let rhs_pos =
-                                            span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
-                                        let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
-                                        sugg = Some(errors::ConsiderDereferencing {
-                                            deref,
-                                            span: span.shrink_to_lo(),
-                                            rhs_span,
-                                        });
+                                if let Ok(call_str) =
+                                    ccx.tcx.sess.source_map().span_to_snippet(span)
+                                {
+                                    if let Some(eq_idx) = call_str.find("==") {
+                                        if let Some(rhs_idx) = call_str[(eq_idx + 2)..]
+                                            .find(|c: char| !c.is_whitespace())
+                                        {
+                                            let rhs_pos = span.lo()
+                                                + BytePos::from_usize(eq_idx + 2 + rhs_idx);
+                                            let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
+                                            sugg = Some(errors::ConsiderDereferencing {
+                                                deref,
+                                                span: span.shrink_to_lo(),
+                                                rhs_span,
+                                            });
+                                        }
                                     }
                                 }
                             }
+                            _ => {}
                         }
-                        _ => {}
                     }
-                }
-                let mut err = tcx.sess.create_err(errors::NonConstOperator {
-                    span,
-                    kind: ccx.const_kind(),
-                    sugg,
-                });
+                    tcx.sess.create_err(errors::NonConstOperator {
+                        span,
+                        kind: ccx.const_kind(),
+                        sugg,
+                    })
+                };
+
                 diag_trait(&mut err, self_ty, trait_id);
                 err
             }

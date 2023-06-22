@@ -715,10 +715,9 @@ impl InferenceContext<'_> {
     }
 
     fn is_upvar(&self, place: &HirPlace) -> bool {
-        let b = &self.body[place.local];
         if let Some(c) = self.current_closure {
             let (_, root) = self.db.lookup_intern_closure(c.into());
-            return b.is_upvar(root);
+            return self.body.is_binding_upvar(place.local, root);
         }
         false
     }

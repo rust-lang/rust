@@ -1,5 +1,7 @@
 // edition: 2021
 // check-pass
+// [next] compile-flags: -Zlower-impl-trait-in-trait-to-assoc-ty
+// revisions: current next
 
 #![feature(return_type_notation)]
 //~^ WARN the feature `return_type_notation` is incomplete

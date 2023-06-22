@@ -114,6 +114,12 @@ trait DefIdVisitor<'tcx> {
     ) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_predicates(predicates)
     }
+    fn visit_clauses(
+        &mut self,
+        predicates: &[(ty::Clause<'tcx>, Span)],
+    ) -> ControlFlow<Self::BreakTy> {
+        self.skeleton().visit_clauses(predicates)
+    }
 }
 
 struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
@@ -159,40 +165,23 @@ where
         }
     }
 
-    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
-        match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
-                trait_ref,
-                constness: _,
-                polarity: _,
-            })) => self.visit_trait(trait_ref),
-            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
-                projection_ty,
-                term,
-            })) => {
+    fn visit_clause(&mut self, clause: ty::Clause<'tcx>) -> ControlFlow<V::BreakTy> {
+        match clause.kind().skip_binder() {
+            ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, constness: _, polarity: _ }) => {
+                self.visit_trait(trait_ref)
+            }
+            ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
                 term.visit_with(self)?;
                 self.visit_projection_ty(projection_ty)
             }
-            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
-                ty,
-                _region,
-            ))) => ty.visit_with(self),
-            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => ControlFlow::Continue(()),
-            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => ty.visit_with(self),
+            ty::ClauseKind::RegionOutlives(..) => ControlFlow::Continue(()),
+            ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 ct.visit_with(self)?;
                 ty.visit_with(self)
             }
-            ty::PredicateKind::Clause(ty::Clause::ConstEvaluatable(ct)) => ct.visit_with(self),
-            ty::PredicateKind::Clause(ty::Clause::WellFormed(arg)) => arg.visit_with(self),
-
-            ty::PredicateKind::ObjectSafe(_)
-            | ty::PredicateKind::ClosureKind(_, _, _)
-            | ty::PredicateKind::Subtype(_)
-            | ty::PredicateKind::Coerce(_)
-            | ty::PredicateKind::ConstEquate(_, _)
-            | ty::PredicateKind::TypeWellFormedFromEnv(_)
-            | ty::PredicateKind::Ambiguous
-            | ty::PredicateKind::AliasRelate(..) => bug!("unexpected predicate: {:?}", predicate),
+            ty::ClauseKind::ConstEvaluatable(ct) => ct.visit_with(self),
+            ty::ClauseKind::WellFormed(arg) => arg.visit_with(self),
         }
     }
 
@@ -201,7 +190,16 @@ where
         predicates: ty::GenericPredicates<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
-        predicates.iter().try_for_each(|&(predicate, _span)| self.visit_predicate(predicate))
+        predicates.iter().try_for_each(|&(predicate, _span)| {
+            let clause = predicate
+                .as_clause()
+                .unwrap_or_else(|| bug!("unexpected predicate: {:?}", predicate));
+            self.visit_clause(clause)
+        })
+    }
+
+    fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> ControlFlow<V::BreakTy> {
+        clauses.iter().try_for_each(|&(clause, _span)| self.visit_clause(clause))
     }
 }
 
@@ -305,10 +303,7 @@ where
                     // through the trait list (default type visitor doesn't visit those traits).
                     // All traits in the list are considered the "primary" part of the type
                     // and are visited by shallow visitors.
-                    self.visit_predicates(ty::GenericPredicates {
-                        parent: None,
-                        predicates: tcx.explicit_item_bounds(def_id).skip_binder(),
-                    })?;
+                    self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder())?;
                 }
             }
             // These types don't have their own def-ids (but may have subcomponents
@@ -1269,14 +1264,14 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.tcx.types.never,
             );
 
-            for (pred, _) in bounds.predicates() {
-                match pred.skip_binder() {
-                    ty::Clause::Trait(trait_predicate) => {
+            for (clause, _) in bounds.clauses() {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::Trait(trait_predicate) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
                             return;
                         }
                     }
-                    ty::Clause::Projection(proj_predicate) => {
+                    ty::ClauseKind::Projection(proj_predicate) => {
                         let term = self.visit(proj_predicate.term);
                         if term.is_break()
                             || self.visit_projection_ty(proj_predicate.projection_ty).is_break()
@@ -1812,10 +1807,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn bounds(&mut self) -> &mut Self {
         self.in_primary_interface = false;
-        self.visit_predicates(ty::GenericPredicates {
-            parent: None,
-            predicates: self.tcx.explicit_item_bounds(self.item_def_id).skip_binder(),
-        });
+        self.visit_clauses(self.tcx.explicit_item_bounds(self.item_def_id).skip_binder());
         self
     }
 

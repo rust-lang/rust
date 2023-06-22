@@ -1,7 +1,7 @@
 # Guiding principles and rationale
 
-When deciding on style guidelines, the style team tried to be guided by the
-following principles (in rough priority order):
+When deciding on style guidelines, the style team follows these guiding
+principles (in rough priority order):
 
 * readability
     - scan-ability
@@ -19,35 +19,11 @@ following principles (in rough priority order):
 * specifics
     - compatibility with version control practices - preserving diffs,
       merge-friendliness, etc.
-    - preventing right-ward drift
+    - preventing rightward drift
     - minimising vertical space
 
 * application
     - ease of manual application
-    - ease of implementation (in Rustfmt, and in other tools/editors/code generators)
+    - ease of implementation (in `rustfmt`, and in other tools/editors/code generators)
     - internal consistency
     - simplicity of formatting rules
-
-
-## Overarching guidelines
-
-Prefer block indent over visual indent. E.g.,
-
-```rust
-// Block indent
-a_function_call(
-    foo,
-    bar,
-);
-
-// Visual indent
-a_function_call(foo,
-                bar);
-```
-
-This makes for smaller diffs (e.g., if `a_function_call` is renamed in the above
-example) and less rightward drift.
-
-Lists should have a trailing comma when followed by a newline, see the block
-indent example above. This choice makes moving code (e.g., by copy and paste)
-easier and makes smaller diffs.

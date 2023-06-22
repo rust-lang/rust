@@ -7,7 +7,7 @@ LL | async fn foo(x: u32) -> u32 {
    = help: the trait `Future` is not implemented for `[async fn body@$DIR/async.rs:23:29: 25:2]`
    = note: [async fn body@$DIR/async.rs:23:29: 25:2] must be a future or must implement `IntoFuture` to be awaited
 
-error: internal compiler error: projection clauses should be implied from elsewhere. obligation: `Obligation(predicate=Binder(ProjectionPredicate(AliasTy { substs: [[async fn body@$DIR/async.rs:23:29: 25:2]], def_id: ... }, Term::Ty(u32)), []), depth=0)`
+error: internal compiler error: projection clauses should be implied from elsewhere. obligation: `Obligation(predicate=Binder { value: ProjectionPredicate(AliasTy { substs: [[async fn body@$DIR/async.rs:23:29: 25:2]], def_id: ... }, Term::Ty(u32)), bound_vars: [] }, depth=0)`
   --> $DIR/async.rs:23:25
    |
 LL | async fn foo(x: u32) -> u32 {

@@ -188,7 +188,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         // has been put into the body.
         let reborrow = Rvalue::Ref(
             tcx.lifetimes.re_erased,
-            BorrowKind::Mut { allow_two_phase_borrow: false },
+            BorrowKind::Mut { kind: MutBorrowKind::Default },
             tcx.mk_place_deref(dropee_ptr),
         );
         let ref_ty = reborrow.ty(body.local_decls(), tcx);
@@ -500,7 +500,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 destination: dest,
                 target: Some(next),
                 unwind: UnwindAction::Cleanup(cleanup),
-                from_hir_call: true,
+                call_source: CallSource::Normal,
                 fn_span: self.span,
             },
             false,
@@ -712,7 +712,7 @@ fn build_call_shim<'tcx>(
                 )
                 .immutable(),
             );
-            let borrow_kind = BorrowKind::Mut { allow_two_phase_borrow: false };
+            let borrow_kind = BorrowKind::Mut { kind: MutBorrowKind::Default };
             statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(Box::new((
@@ -789,7 +789,7 @@ fn build_call_shim<'tcx>(
             } else {
                 UnwindAction::Continue
             },
-            from_hir_call: true,
+            call_source: CallSource::Misc,
             fn_span: span,
         },
         false,

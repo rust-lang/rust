@@ -8,6 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::Reveal;
+use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
 use rustc_middle::ty::fast_reject::TreatProjections;
 use rustc_middle::ty::TypeFoldable;
@@ -105,7 +106,7 @@ pub(super) trait GoalKind<'tcx>:
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
+        assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx>;
 
@@ -115,7 +116,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
+        assumption: ty::Clause<'tcx>,
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
@@ -131,7 +132,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_alias_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
+        assumption: ty::Clause<'tcx>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             ecx.validate_alias_bound_self_from_param_env(goal)
@@ -144,7 +145,7 @@ pub(super) trait GoalKind<'tcx>:
     fn consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
+        assumption: ty::Clause<'tcx>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             let tcx = ecx.tcx();
@@ -336,37 +337,38 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return
         };
 
-        let normalized_self_candidates: Result<_, NoSolution> = self.probe(|ecx| {
-            ecx.with_incremented_depth(
-                |ecx| {
-                    let result = ecx.evaluate_added_goals_and_make_canonical_response(
-                        Certainty::Maybe(MaybeCause::Overflow),
-                    )?;
-                    Ok(vec![Candidate { source: CandidateSource::BuiltinImpl, result }])
-                },
-                |ecx| {
-                    let normalized_ty = ecx.next_ty_infer();
-                    let normalizes_to_goal = goal.with(
-                        tcx,
-                        ty::Binder::dummy(ty::ProjectionPredicate {
-                            projection_ty,
-                            term: normalized_ty.into(),
-                        }),
-                    );
-                    ecx.add_goal(normalizes_to_goal);
-                    let _ = ecx.try_evaluate_added_goals().inspect_err(|_| {
-                        debug!("self type normalization failed");
-                    })?;
-                    let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
-                    debug!(?normalized_ty, "self type normalized");
-                    // NOTE: Alternatively we could call `evaluate_goal` here and only
-                    // have a `Normalized` candidate. This doesn't work as long as we
-                    // use `CandidateSource` in winnowing.
-                    let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-                    Ok(ecx.assemble_and_evaluate_candidates(goal))
-                },
-            )
-        });
+        let normalized_self_candidates: Result<_, NoSolution> =
+            self.probe(|_| CandidateKind::NormalizedSelfTyAssembly).enter(|ecx| {
+                ecx.with_incremented_depth(
+                    |ecx| {
+                        let result = ecx.evaluate_added_goals_and_make_canonical_response(
+                            Certainty::Maybe(MaybeCause::Overflow),
+                        )?;
+                        Ok(vec![Candidate { source: CandidateSource::BuiltinImpl, result }])
+                    },
+                    |ecx| {
+                        let normalized_ty = ecx.next_ty_infer();
+                        let normalizes_to_goal = goal.with(
+                            tcx,
+                            ty::Binder::dummy(ty::ProjectionPredicate {
+                                projection_ty,
+                                term: normalized_ty.into(),
+                            }),
+                        );
+                        ecx.add_goal(normalizes_to_goal);
+                        let _ = ecx.try_evaluate_added_goals().inspect_err(|_| {
+                            debug!("self type normalization failed");
+                        })?;
+                        let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
+                        debug!(?normalized_ty, "self type normalized");
+                        // NOTE: Alternatively we could call `evaluate_goal` here and only
+                        // have a `Normalized` candidate. This doesn't work as long as we
+                        // use `CandidateSource` in winnowing.
+                        let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
+                        Ok(ecx.assemble_and_evaluate_candidates(goal))
+                    },
+                )
+            });
 
         if let Ok(normalized_self_candidates) = normalized_self_candidates {
             candidates.extend(normalized_self_candidates);
@@ -520,13 +522,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
-            if let Some(clause) = assumption.as_clause() {
-                match G::consider_alias_bound_candidate(self, goal, clause) {
-                    Ok(result) => {
-                        candidates.push(Candidate { source: CandidateSource::AliasBound, result })
-                    }
-                    Err(NoSolution) => (),
+            match G::consider_alias_bound_candidate(self, goal, assumption) {
+                Ok(result) => {
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
+                Err(NoSolution) => (),
             }
         }
     }
@@ -636,6 +636,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
+        let tcx = self.tcx();
+        if !tcx.trait_def(goal.predicate.trait_def_id(tcx)).implement_via_object {
+            return;
+        }
+
         let self_ty = goal.predicate.self_ty();
         let bounds = match *self_ty.kind() {
             ty::Bool
@@ -668,7 +673,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Dynamic(bounds, ..) => bounds,
         };
 
-        let tcx = self.tcx();
         let own_bounds: FxIndexSet<_> =
             bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
         for assumption in elaborate(tcx, own_bounds.iter().copied())

@@ -16,6 +16,7 @@
     - [Target Tier Policy](target-tier-policy.md)
     - [Template for Target-specific Documentation](platform-support/TEMPLATE.md)
     - [aarch64-apple-ios-sim](platform-support/aarch64-apple-ios-sim.md)
+    - [\*-apple-tvos](platform-support/apple-tvos.md)
     - [\*-apple-watchos\*](platform-support/apple-watchos.md)
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
     - [armeb-unknown-linux-gnueabi](platform-support/armeb-unknown-linux-gnueabi.md)

@@ -18,7 +18,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         // `&T`, accounts for about 60% percentage of the predicates
         // we have to prove. No need to canonicalize and all that for
         // such cases.
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_ref)) =
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
             key.value.predicate.kind().skip_binder()
         {
             if let Some(sized_def_id) = tcx.lang_items().sized_trait() {

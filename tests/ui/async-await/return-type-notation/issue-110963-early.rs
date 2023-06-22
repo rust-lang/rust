@@ -1,5 +1,7 @@
 // edition: 2021
 // known-bug: #110963
+// [next] compile-flags: -Zlower-impl-trait-in-trait-to-assoc-ty
+// revisions: current next
 
 #![feature(return_type_notation)]
 #![feature(async_fn_in_trait)]

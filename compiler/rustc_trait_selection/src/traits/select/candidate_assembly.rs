@@ -402,7 +402,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         for &(predicate, _) in self.tcx().predicates_of(impl_def_id).predicates {
-            let ty::PredicateKind::Clause(ty::Clause::Trait(pred))
+            let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 = predicate.kind().skip_binder() else { continue };
             if fn_ptr_trait != pred.trait_ref.def_id {
                 continue;
@@ -417,17 +417,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Fast path to avoid evaluating an obligation that trivially holds.
                 // There may be more bounds, but these are checked by the regular path.
                 ty::FnPtr(..) => return false,
+
                 // These may potentially implement `FnPtr`
                 ty::Placeholder(..)
                 | ty::Dynamic(_, _, _)
                 | ty::Alias(_, _)
                 | ty::Infer(_)
-                | ty::Param(..) => {}
+                | ty::Param(..)
+                | ty::Bound(_, _) => {}
 
-                ty::Bound(_, _) => span_bug!(
-                    obligation.cause.span(),
-                    "cannot have escaping bound var in self type of {obligation:#?}"
-                ),
                 // These can't possibly implement `FnPtr` as they are concrete types
                 // and not `FnPtr`
                 ty::Bool
@@ -463,7 +461,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().mk_predicate(obligation.predicate.map_bound(|mut pred| {
                     pred.trait_ref =
                         ty::TraitRef::new(self.tcx(), fn_ptr_trait, [pred.trait_ref.self_ty()]);
-                    ty::PredicateKind::Clause(ty::Clause::Trait(pred))
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 })),
             );
             if let Ok(r) = self.infcx.evaluate_obligation(&obligation) {
@@ -553,6 +551,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self_ty = ?obligation.self_ty().skip_binder(),
             "assemble_candidates_from_object_ty",
         );
+
+        if !self.tcx().trait_def(obligation.predicate.def_id()).implement_via_object {
+            return;
+        }
 
         self.infcx.probe(|_snapshot| {
             if obligation.has_non_region_late_bound() {

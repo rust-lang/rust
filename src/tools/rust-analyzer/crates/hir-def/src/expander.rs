@@ -113,10 +113,10 @@ impl Expander {
         call_id: MacroCallId,
         error: Option<ExpandError>,
     ) -> ExpandResult<Option<InFile<Parse<SyntaxNode>>>> {
-        let file_id = call_id.as_file();
-        let ExpandResult { value, err } = db.parse_or_expand_with_err(file_id);
+        let macro_file = call_id.as_macro_file();
+        let ExpandResult { value, err } = db.parse_macro_expansion(macro_file);
 
-        ExpandResult { value: Some(InFile::new(file_id, value)), err: error.or(err) }
+        ExpandResult { value: Some(InFile::new(macro_file.into(), value.0)), err: error.or(err) }
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
@@ -155,7 +155,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::with_hygiene(db, &self.cfg_expander.hygiene);
+        let ctx = LowerCtx::new(db, &self.cfg_expander.hygiene, self.current_file_id);
         Path::from_src(path, &ctx)
     }
 
@@ -179,8 +179,8 @@ impl Expander {
         } else if self.recursion_limit.check(self.recursion_depth as usize + 1).is_err() {
             self.recursion_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
-            return ExpandResult::only_err(ExpandError::Other(
-                "reached recursion limit during macro expansion".into(),
+            return ExpandResult::only_err(ExpandError::other(
+                "reached recursion limit during macro expansion",
             ));
         }
 

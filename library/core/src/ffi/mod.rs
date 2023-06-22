@@ -238,7 +238,7 @@ impl fmt::Debug for c_void {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
     target_arch = "asmjs",
     target_os = "uefi",
@@ -267,7 +267,7 @@ pub struct VaListImpl<'f> {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
     target_arch = "asmjs",
     target_os = "uefi",
@@ -292,7 +292,7 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
 /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
 #[cfg(all(
     target_arch = "aarch64",
-    not(any(target_os = "macos", target_os = "ios")),
+    not(any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     not(target_os = "uefi"),
     not(windows),
 ))]
@@ -389,7 +389,10 @@ pub struct VaList<'a, 'f: 'a> {
             not(target_arch = "s390x"),
             not(target_arch = "x86_64")
         ),
-        all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+        all(
+            target_arch = "aarch64",
+            any(target_os = "macos", target_os = "ios", target_os = "tvos")
+        ),
         target_family = "wasm",
         target_arch = "asmjs",
         target_os = "uefi",
@@ -404,7 +407,10 @@ pub struct VaList<'a, 'f: 'a> {
             target_arch = "s390x",
             target_arch = "x86_64"
         ),
-        any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
+        any(
+            not(target_arch = "aarch64"),
+            not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
+        ),
         not(target_family = "wasm"),
         not(target_arch = "asmjs"),
         not(target_os = "uefi"),
@@ -422,7 +428,7 @@ pub struct VaList<'a, 'f: 'a> {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
     target_arch = "asmjs",
     target_os = "uefi",
@@ -449,7 +455,10 @@ impl<'f> VaListImpl<'f> {
         target_arch = "s390x",
         target_arch = "x86_64"
     ),
-    any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
+    any(
+        not(target_arch = "aarch64"),
+        not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
+    ),
     not(target_family = "wasm"),
     not(target_arch = "asmjs"),
     not(target_os = "uefi"),

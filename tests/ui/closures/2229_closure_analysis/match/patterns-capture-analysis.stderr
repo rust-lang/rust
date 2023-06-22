@@ -109,7 +109,29 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:105:5
+  --> $DIR/patterns-capture-analysis.rs:95:5
+   |
+LL | /     || {
+LL | |
+LL | |         match array {
+LL | |             [_, _, _] => {}
+LL | |         }
+LL | |     };
+   | |_____^
+
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:108:5
+   |
+LL | /     || {
+LL | |
+LL | |         match f {
+LL | |             Foo([_, _, _]) => ()
+LL | |         }
+LL | |     };
+   | |_____^
+
+error: First Pass analysis includes:
+  --> $DIR/patterns-capture-analysis.rs:130:5
    |
 LL | /     || {
 LL | |
@@ -121,13 +143,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:108:15
+  --> $DIR/patterns-capture-analysis.rs:133:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:105:5
+  --> $DIR/patterns-capture-analysis.rs:130:5
    |
 LL | /     || {
 LL | |
@@ -139,13 +161,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:108:15
+  --> $DIR/patterns-capture-analysis.rs:133:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:123:5
+  --> $DIR/patterns-capture-analysis.rs:148:5
    |
 LL | /     || {
 LL | |
@@ -157,13 +179,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing slice[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:126:15
+  --> $DIR/patterns-capture-analysis.rs:151:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:123:5
+  --> $DIR/patterns-capture-analysis.rs:148:5
    |
 LL | /     || {
 LL | |
@@ -175,13 +197,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture slice[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:126:15
+  --> $DIR/patterns-capture-analysis.rs:151:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:135:5
+  --> $DIR/patterns-capture-analysis.rs:160:5
    |
 LL | /     || {
 LL | |
@@ -193,13 +215,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing slice[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:138:15
+  --> $DIR/patterns-capture-analysis.rs:163:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:135:5
+  --> $DIR/patterns-capture-analysis.rs:160:5
    |
 LL | /     || {
 LL | |
@@ -211,13 +233,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture slice[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:138:15
+  --> $DIR/patterns-capture-analysis.rs:163:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:147:5
+  --> $DIR/patterns-capture-analysis.rs:172:5
    |
 LL | /     || {
 LL | |
@@ -229,13 +251,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing slice[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:150:15
+  --> $DIR/patterns-capture-analysis.rs:175:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:147:5
+  --> $DIR/patterns-capture-analysis.rs:172:5
    |
 LL | /     || {
 LL | |
@@ -247,13 +269,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture slice[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:150:15
+  --> $DIR/patterns-capture-analysis.rs:175:15
    |
 LL |         match slice {
    |               ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:164:5
+  --> $DIR/patterns-capture-analysis.rs:189:5
    |
 LL | /     || {
 LL | |
@@ -264,5 +286,5 @@ LL | |         }
 LL | |     };
    | |_____^
 
-error: aborting due to 16 previous errors
+error: aborting due to 18 previous errors
 

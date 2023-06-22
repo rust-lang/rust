@@ -10,7 +10,9 @@ pub trait Foo {}
 // @has - '//code' 'pub use reexp_stripped::Bar'
 // @has - '//code/a' 'Bar'
 // @has - '//a[@href="../reexp_stripped/hidden/struct.Bar.html"]' 'Bar'
+// FIXME: Should be `@!has`: https://github.com/rust-lang/rust/issues/111249
 // @has reexp_stripped/hidden/struct.Bar.html
+// @matchesraw - '<meta http-equiv="refresh" content="0;URL=../../reexp_stripped/struct.Bar.html">'
 // @has 'reexp_stripped/struct.Bar.html'
 // @has - '//a[@href="struct.Bar.html"]' 'Bar'
 #[doc(no_inline)]

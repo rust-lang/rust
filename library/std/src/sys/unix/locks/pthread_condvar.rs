@@ -32,6 +32,7 @@ impl LazyInit for AllocatedCondvar {
             if #[cfg(any(
                 target_os = "macos",
                 target_os = "ios",
+                target_os = "tvos",
                 target_os = "watchos",
                 target_os = "l4re",
                 target_os = "android",
@@ -124,6 +125,7 @@ impl Condvar {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "android",
         target_os = "espidf",
@@ -158,6 +160,7 @@ impl Condvar {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "android",
         target_os = "espidf",

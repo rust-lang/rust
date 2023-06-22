@@ -231,7 +231,7 @@ pub struct CodegenUnit<'tcx> {
     /// as well as the crate name and disambiguator.
     name: Symbol,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
-    size_estimate: Option<usize>,
+    size_estimate: usize,
     primary: bool,
     /// True if this is CGU is used to hold code coverage information for dead code,
     /// false otherwise.
@@ -269,7 +269,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         CodegenUnit {
             name,
             items: Default::default(),
-            size_estimate: None,
+            size_estimate: 0,
             primary: false,
             is_code_coverage_dead_code_cgu: false,
         }
@@ -320,23 +320,21 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn create_size_estimate(&mut self, tcx: TyCtxt<'tcx>) {
+    pub fn compute_size_estimate(&mut self, tcx: TyCtxt<'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
-        self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
+        self.size_estimate = self.items.keys().map(|mi| mi.size_estimate(tcx)).sum();
     }
 
     #[inline]
-    /// Should only be called if [`create_size_estimate`] has previously been called.
+    /// Should only be called if [`compute_size_estimate`] has previously been called.
     ///
-    /// [`create_size_estimate`]: Self::create_size_estimate
+    /// [`compute_size_estimate`]: Self::compute_size_estimate
     pub fn size_estimate(&self) -> usize {
+        // Items are never zero-sized, so if we have items the estimate must be
+        // non-zero, unless we forgot to call `compute_size_estimate` first.
+        assert!(self.items.is_empty() || self.size_estimate != 0);
         self.size_estimate
-            .expect("create_size_estimate must be called before getting a size_estimate")
-    }
-
-    pub fn modify_size_estimate(&mut self, delta: usize) {
-        *self.size_estimate.as_mut().unwrap() += delta;
     }
 
     pub fn contains_item(&self, item: &MonoItem<'tcx>) -> bool {

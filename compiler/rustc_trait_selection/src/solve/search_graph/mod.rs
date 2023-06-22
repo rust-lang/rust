@@ -2,6 +2,7 @@ mod cache;
 mod overflow;
 
 pub(super) use overflow::OverflowHandler;
+use rustc_middle::traits::solve::inspect::CacheHit;
 
 use self::cache::ProvisionalEntry;
 use cache::ProvisionalCache;
@@ -12,6 +13,7 @@ use rustc_middle::traits::solve::{CanonicalInput, Certainty, MaybeCause, QueryRe
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
 
+use super::inspect::ProofTreeBuilder;
 use super::SolverMode;
 
 rustc_index::newtype_index! {
@@ -88,11 +90,12 @@ impl<'tcx> SearchGraph<'tcx> {
     /// Tries putting the new goal on the stack, returning an error if it is already cached.
     ///
     /// This correctly updates the provisional cache if there is a cycle.
-    #[instrument(level = "debug", skip(self, tcx), ret)]
+    #[instrument(level = "debug", skip(self, tcx, inspect), ret)]
     fn try_push_stack(
         &mut self,
         tcx: TyCtxt<'tcx>,
         input: CanonicalInput<'tcx>,
+        inspect: &mut ProofTreeBuilder<'tcx>,
     ) -> Result<(), QueryResult<'tcx>> {
         // Look at the provisional cache to check for cycles.
         let cache = &mut self.provisional_cache;
@@ -119,6 +122,8 @@ impl<'tcx> SearchGraph<'tcx> {
             // Finally we can return either the provisional response for that goal if we have a
             // coinductive cycle or an ambiguous result if the cycle is inductive.
             Entry::Occupied(entry_index) => {
+                inspect.cache_hit(CacheHit::Provisional);
+
                 let entry_index = *entry_index.get();
 
                 let stack_depth = cache.depth(entry_index);
@@ -205,16 +210,18 @@ impl<'tcx> SearchGraph<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         canonical_input: CanonicalInput<'tcx>,
-        mut loop_body: impl FnMut(&mut Self) -> QueryResult<'tcx>,
+        inspect: &mut ProofTreeBuilder<'tcx>,
+        mut loop_body: impl FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
         if self.should_use_global_cache() {
             if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_input, tcx) {
                 debug!(?canonical_input, ?result, "cache hit");
+                inspect.cache_hit(CacheHit::Global);
                 return result;
             }
         }
 
-        match self.try_push_stack(tcx, canonical_input) {
+        match self.try_push_stack(tcx, canonical_input, inspect) {
             Ok(()) => {}
             // Our goal is already on the stack, eager return.
             Err(response) => return response,
@@ -231,7 +238,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     result
                 },
                 |this| {
-                    let result = loop_body(this);
+                    let result = loop_body(this, inspect);
                     this.try_finalize_goal(canonical_input, result).then(|| result)
                 },
             )

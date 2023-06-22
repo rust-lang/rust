@@ -17,9 +17,15 @@ impl flags::Diagnostics {
     pub fn run(self) -> anyhow::Result<()> {
         let mut cargo_config = CargoConfig::default();
         cargo_config.sysroot = Some(RustLibSource::Discover);
+        let with_proc_macro_server = if let Some(p) = &self.proc_macro_srv {
+            let path = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(&p));
+            ProcMacroServerChoice::Explicit(path)
+        } else {
+            ProcMacroServerChoice::Sysroot
+        };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: !self.disable_build_scripts,
-            with_proc_macro_server: ProcMacroServerChoice::Sysroot,
+            with_proc_macro_server,
             prefill_caches: false,
         };
         let (host, _vfs, _proc_macro) =

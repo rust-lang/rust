@@ -7,6 +7,8 @@ use crate::marker::ConstParamTy;
 /// notwithstanding whatever safety checks you have asked the compiler to [`Assume`] are satisfied.
 #[unstable(feature = "transmutability", issue = "99571")]
 #[lang = "transmute_trait"]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = false))]
+#[cfg_attr(bootstrap, rustc_deny_explicit_impl)]
 pub unsafe trait BikeshedIntrinsicFrom<Src, Context, const ASSUME: Assume = { Assume::NOTHING }>
 where
     Src: ?Sized,

@@ -240,7 +240,12 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
         // may occur when we're linking a custom build script while targeting iOS for example.
         if let Ok(sdkroot) = env::var("SDKROOT") {
-            if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("iPhoneSimulator.platform")
+            if sdkroot.contains("iPhoneOS.platform")
+                || sdkroot.contains("iPhoneSimulator.platform")
+                || sdkroot.contains("AppleTVOS.platform")
+                || sdkroot.contains("AppleTVSimulator.platform")
+                || sdkroot.contains("WatchOS.platform")
+                || sdkroot.contains("WatchSimulator.platform")
             {
                 env_remove.push("SDKROOT".into())
             }
@@ -249,6 +254,7 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
         env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
+        env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
         env_remove.into()
     } else {
         // Otherwise if cross-compiling for a different OS/SDK, remove any part
@@ -297,6 +303,16 @@ fn tvos_deployment_target() -> (u32, u32) {
 fn tvos_lld_platform_version() -> String {
     let (major, minor) = tvos_deployment_target();
     format!("{major}.{minor}")
+}
+
+pub fn tvos_llvm_target(arch: Arch) -> String {
+    let (major, minor) = tvos_deployment_target();
+    format!("{}-apple-tvos{}.{}.0", arch.target_name(), major, minor)
+}
+
+pub fn tvos_sim_llvm_target(arch: Arch) -> String {
+    let (major, minor) = tvos_deployment_target();
+    format!("{}-apple-tvos{}.{}.0-simulator", arch.target_name(), major, minor)
 }
 
 fn watchos_deployment_target() -> (u32, u32) {

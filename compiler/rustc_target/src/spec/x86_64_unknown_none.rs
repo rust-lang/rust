@@ -10,6 +10,7 @@ use super::{RelroLevel, SanitizerSet, StackProbeType, Target, TargetOptions};
 pub fn target() -> Target {
     let opts = TargetOptions {
         cpu: "x86-64".into(),
+        plt_by_default: false,
         max_atomic_width: Some(64),
         stack_probes: StackProbeType::X86,
         position_independent_executables: true,

@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `S: Hidden` is not satisfied
+  --> $DIR/sealed-trait-local.rs:17:20
+   |
+LL | impl a::Sealed for S {}
+   |                    ^ the trait `Hidden` is not implemented for `S`
+   |
+note: required by a bound in `Sealed`
+  --> $DIR/sealed-trait-local.rs:3:23
+   |
+LL |     pub trait Sealed: self::b::Hidden {
+   |                       ^^^^^^^^^^^^^^^ required by this bound in `Sealed`
+   = note: `Sealed` is a "sealed trait", because to implement it you also need to implelement `a::b::Hidden`, which is not accessible; this is usually done to force you to use one of the provided types that already implement it
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

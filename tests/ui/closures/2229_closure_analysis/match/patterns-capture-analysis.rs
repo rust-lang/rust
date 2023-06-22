@@ -87,6 +87,31 @@ fn test_4_should_not_capture_array() {
         }
     };
     c();
+
+    // We also do not need to capture an array
+    // behind a reference (#112607)
+    let array: &[i32; 3] = &[0; 3];
+    let c = #[rustc_capture_analysis]
+    || {
+    //~^ First Pass analysis includes:
+        match array {
+            [_, _, _] => {}
+        }
+    };
+    c();
+
+    // We should still not insert a read if the array is inside an
+    // irrefutable pattern
+    struct Foo<T>(T);
+    let f = &Foo(&[10; 3]);
+    let c = #[rustc_capture_analysis]
+    || {
+    //~^ First Pass analysis includes:
+        match f {
+            Foo([_, _, _]) => ()
+        }
+    };
+    c();
 }
 
 // Testing MultiVariant patterns

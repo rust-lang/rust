@@ -264,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             destination: ref_str,
                             target: Some(eq_block),
                             unwind: UnwindAction::Continue,
-                            from_hir_call: false,
+                            call_source: CallSource::Misc,
                             fn_span: source_info.span
                         }
                     );
@@ -496,7 +496,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 destination: eq_result,
                 target: Some(eq_block),
                 unwind: UnwindAction::Continue,
-                from_hir_call: false,
+                call_source: CallSource::MatchCmp,
                 fn_span: source_info.span,
             },
         );
