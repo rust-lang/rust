@@ -140,7 +140,7 @@ union Foo {
 
 Put the whole struct on one line if possible. Types in the parentheses should be
 separated by a comma and space with no trailing comma. No spaces around the
-parentheses or semi-colon:
+parentheses or semicolon:
 
 ```rust
 pub struct Foo(String, u8);
@@ -231,7 +231,7 @@ impl Bar
 
 `extern crate foo;`
 
-Use spaces around keywords, no spaces around the semi-colon.
+Use spaces around keywords, no spaces around the semicolon.
 
 
 ### Modules
@@ -246,7 +246,7 @@ mod foo;
 ```
 
 Use spaces around keywords and before the opening brace, no spaces around the
-semi-colon.
+semicolon.
 
 ### macro\_rules!
 
