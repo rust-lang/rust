@@ -2,7 +2,7 @@ use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
-use hir::{HirId, Node};
+use hir::{HirId, Lifetime, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -10,9 +10,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericPredicates, ToPredicate};
+use rustc_middle::ty::{GenericPredicates, Generics, ToPredicate};
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
@@ -289,44 +289,62 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             bug!("unexpected {opaque_ty_node:?}")
         };
         debug!(?lifetimes);
-        for (arg, duplicate) in std::iter::zip(lifetimes, ast_generics.params) {
-            let hir::GenericArg::Lifetime(arg) = arg else { bug!() };
-            let orig_region = icx.astconv().ast_region_to_region(&arg, None);
-            if !matches!(orig_region.kind(), ty::ReEarlyBound(..)) {
-                // Only early-bound regions can point to the original generic parameter.
-                continue;
-            }
 
-            let hir::GenericParamKind::Lifetime { .. } = duplicate.kind else { continue };
-            let dup_def = duplicate.def_id.to_def_id();
+        let lifetime_mapping = std::iter::zip(lifetimes, ast_generics.params)
+            .map(|(arg, dup)| {
+                let hir::GenericArg::Lifetime(arg) = arg else { bug!() };
+                (**arg, dup)
+            })
+            .filter(|(_, dup)| matches!(dup.kind, hir::GenericParamKind::Lifetime { .. }))
+            .map(|(lifetime, dup)| (lifetime, (dup.def_id, dup.name.ident().name, dup.span)));
 
-            let Some(dup_index) = generics.param_def_id_to_index(tcx, dup_def) else { bug!() };
-
-            let dup_region = ty::Region::new_early_bound(
-                tcx,
-                ty::EarlyBoundRegion {
-                    def_id: dup_def,
-                    index: dup_index,
-                    name: duplicate.name.ident().name,
-                },
-            );
-            predicates.push((
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_region, dup_region))
-                    .to_predicate(icx.tcx),
-                duplicate.span,
-            ));
-            predicates.push((
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(dup_region, orig_region))
-                    .to_predicate(icx.tcx),
-                duplicate.span,
-            ));
-        }
+        bidirectional_lifetime_predicates(tcx, def_id, lifetime_mapping, generics, &mut predicates);
         debug!(?predicates);
     }
 
     ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
+    }
+}
+
+/// Opaques have duplicated lifetimes and we need to compute bidirectional outlives predicates to
+/// enforce that these lifetimes stay in sync.
+fn compute_bidirectional_outlives_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item_def_id: LocalDefId,
+    lifetime_mapping: impl Iterator<Item = (Lifetime, (LocalDefId, Symbol, Span))>,
+    generics: &Generics,
+    predicates: &mut Vec<(ty::Clause<'tcx>, Span)>,
+) {
+    let icx = ItemCtxt::new(tcx, item_def_id);
+
+    for (arg, (dup_def, name, span)) in lifetime_mapping {
+        let orig_region = icx.astconv().ast_region_to_region(&arg, None);
+        if !matches!(orig_region.kind(), ty::ReEarlyBound(..)) {
+            // There is no late-bound lifetime to actually match up here, since the lifetime doesn't
+            // show up in the opaque's parent's substs.
+            continue;
+        }
+
+        let Some(dup_index) = generics.param_def_id_to_index(icx.tcx, dup_def.to_def_id()) else { bug!() };
+
+        let dup_region = ty::Region::new_early_bound(
+            tcx,
+            ty::EarlyBoundRegion { def_id: dup_def.to_def_id(), index: dup_index, name },
+        );
+
+        predicates.push((
+            ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_region, dup_region))
+                .to_predicate(tcx),
+            span,
+        ));
+
+        predicates.push((
+            ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(dup_region, orig_region))
+                .to_predicate(tcx),
+            span,
+        ));
     }
 }
 
