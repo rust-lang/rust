@@ -1,10 +1,10 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
-use crate::config::Input;
 use crate::config::{
     self, CrateType, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
 };
+use crate::config::{ErrorOutputType, Input};
 use crate::errors;
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
@@ -25,7 +25,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
+    ErrorGuaranteed, FluentBundle, Handler, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
     TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
@@ -1382,6 +1382,7 @@ fn default_emitter(
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
 pub fn build_session(
+    handler: &EarlyErrorHandler,
     sopts: config::Options,
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
@@ -1408,13 +1409,12 @@ pub fn build_session(
         None => filesearch::get_or_default_sysroot().expect("Failed finding sysroot"),
     };
 
-    let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
+    let target_cfg = config::build_target_config(handler, &sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
-    let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_error(sopts.error_format, format!("Error loading host specification: {e}"))
-    });
+    let (host, target_warnings) = Target::search(&host_triple, &sysroot)
+        .unwrap_or_else(|e| handler.early_error(format!("Error loading host specification: {e}")));
     for warning in target_warnings.warning_messages() {
-        early_warn(sopts.error_format, warning)
+        handler.early_warn(warning)
     }
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
@@ -1456,7 +1456,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                early_warn(sopts.error_format, format!("failed to create profiler: {e}"));
+                handler.early_warn(format!("failed to create profiler: {e}"));
                 None
             }
         }
@@ -1723,7 +1723,64 @@ pub enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
+/// A wrapper around an [`Handler`] that is used for early error emissions.
+pub struct EarlyErrorHandler {
+    handler: Handler,
+}
+
+impl EarlyErrorHandler {
+    pub fn new(output: ErrorOutputType) -> Self {
+        let emitter = mk_emitter(output);
+        Self { handler: rustc_errors::Handler::with_emitter(true, None, emitter) }
+    }
+
+    pub fn abort_if_errors(&self) {
+        self.handler.abort_if_errors()
+    }
+
+    /// Swap out the underlying handler once we acquire the user's preference on error emission
+    /// format. Any errors prior to that will cause an abort and all stashed diagnostics of the
+    /// previous handler will be emitted.
+    pub fn abort_if_error_and_set_error_format(&mut self, output: ErrorOutputType) {
+        self.handler.abort_if_errors();
+
+        let emitter = mk_emitter(output);
+        self.handler = Handler::with_emitter(true, None, emitter);
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
+        self.handler.struct_note_without_error(msg).emit()
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_help(&self, msg: impl Into<DiagnosticMessage>) {
+        self.handler.struct_help(msg).emit()
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
+    pub fn early_error_no_abort(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+        self.handler.struct_err(msg).emit()
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_error(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+        self.handler.struct_fatal(msg).emit()
+    }
+
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
+        self.handler.struct_warn(msg).emit()
+    }
+}
+
+fn mk_emitter(output: ErrorOutputType) -> Box<dyn Emitter + sync::Send + 'static> {
     // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
     // need to reference every crate that might emit an early error for translation to work.
     let fallback_bundle =
@@ -1755,27 +1812,5 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
             TerminalUrl::No,
         )),
     };
-    rustc_errors::Handler::with_emitter(true, None, emitter)
-}
-
-#[allow(rustc::untranslatable_diagnostic)]
-#[allow(rustc::diagnostic_outside_of_impl)]
-#[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
-pub fn early_error_no_abort(
-    output: config::ErrorOutputType,
-    msg: impl Into<DiagnosticMessage>,
-) -> ErrorGuaranteed {
-    early_error_handler(output).struct_err(msg).emit()
-}
-
-#[allow(rustc::untranslatable_diagnostic)]
-#[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_error(output: config::ErrorOutputType, msg: impl Into<DiagnosticMessage>) -> ! {
-    early_error_handler(output).struct_fatal(msg).emit()
-}
-
-#[allow(rustc::untranslatable_diagnostic)]
-#[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_warn(output: config::ErrorOutputType, msg: impl Into<DiagnosticMessage>) {
-    early_error_handler(output).struct_warn(msg).emit()
+    emitter
 }

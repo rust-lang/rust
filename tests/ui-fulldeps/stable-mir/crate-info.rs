@@ -12,12 +12,14 @@ extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_middle;
+extern crate rustc_session;
 extern crate rustc_smir;
 
 use rustc_driver::{Callbacks, Compilation, RunCompiler};
 use rustc_hir::def::DefKind;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
+use rustc_session::EarlyErrorHandler;
 use rustc_smir::{rustc_internal, stable_mir};
 use std::io::Write;
 
@@ -121,6 +123,7 @@ impl Callbacks for SMirCalls {
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_analysis<'tcx>(
         &mut self,
+        _handler: &EarlyErrorHandler,
         _compiler: &interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
