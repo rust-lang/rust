@@ -30,6 +30,24 @@ typically by using a formatting tool's default settings.
 * The maximum width for a line is 100 characters.
 * A tool should be configurable for all three of these variables.
 
+#### Block indent
+
+Prefer block indent over visual indent:
+
+```rust
+// Block indent
+a_function_call(
+    foo,
+    bar,
+);
+
+// Visual indent
+a_function_call(foo,
+                bar);
+```
+
+This makes for smaller diffs (e.g., if `a_function_call` is renamed in the above
+example) and less rightward drift.
 
 ### Blank lines
 

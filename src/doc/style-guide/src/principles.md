@@ -31,23 +31,6 @@ following principles (in rough priority order):
 
 ## Overarching guidelines
 
-Prefer block indent over visual indent. E.g.,
-
-```rust
-// Block indent
-a_function_call(
-    foo,
-    bar,
-);
-
-// Visual indent
-a_function_call(foo,
-                bar);
-```
-
-This makes for smaller diffs (e.g., if `a_function_call` is renamed in the above
-example) and less rightward drift.
-
 Lists should have a trailing comma when followed by a newline, see the block
 indent example above. This choice makes moving code (e.g., by copy and paste)
 easier and makes smaller diffs.
