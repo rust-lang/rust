@@ -19,7 +19,7 @@ following principles (in rough priority order):
 * specifics
     - compatibility with version control practices - preserving diffs,
       merge-friendliness, etc.
-    - preventing right-ward drift
+    - preventing rightward drift
     - minimising vertical space
 
 * application
