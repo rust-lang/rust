@@ -272,6 +272,18 @@ impl Attrs {
         self.by_key("proc_macro_derive").exists()
     }
 
+    pub fn is_test(&self) -> bool {
+        self.by_key("test").exists()
+    }
+
+    pub fn is_ignore(&self) -> bool {
+        self.by_key("ignore").exists()
+    }
+
+    pub fn is_bench(&self) -> bool {
+        self.by_key("bench").exists()
+    }
+
     pub fn is_unstable(&self) -> bool {
         self.by_key("unstable").exists()
     }

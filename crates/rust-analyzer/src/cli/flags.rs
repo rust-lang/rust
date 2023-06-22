@@ -90,6 +90,12 @@ xflags::xflags! {
             optional --skip-const-eval
         }
 
+        /// Run unit tests of the project using mir interpreter
+        cmd run-tests {
+            /// Directory with Cargo.toml.
+            required path: PathBuf
+        }
+
         cmd diagnostics {
             /// Directory with Cargo.toml.
             required path: PathBuf
@@ -147,6 +153,7 @@ pub enum RustAnalyzerCmd {
     Symbols(Symbols),
     Highlight(Highlight),
     AnalysisStats(AnalysisStats),
+    RunTests(RunTests),
     Diagnostics(Diagnostics),
     Ssr(Ssr),
     Search(Search),
@@ -182,16 +189,21 @@ pub struct AnalysisStats {
     pub parallel: bool,
     pub memory_usage: bool,
     pub source_stats: bool,
-    pub skip_lowering: bool,
-    pub skip_inference: bool,
-    pub skip_mir_stats: bool,
-    pub skip_data_layout: bool,
-    pub skip_const_eval: bool,
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
+    pub skip_lowering: bool,
+    pub skip_inference: bool,
+    pub skip_mir_stats: bool,
+    pub skip_data_layout: bool,
+    pub skip_const_eval: bool,
+}
+
+#[derive(Debug)]
+pub struct RunTests {
+    pub path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -223,6 +235,7 @@ pub struct Lsif {
 #[derive(Debug)]
 pub struct Scip {
     pub path: PathBuf,
+
     pub output: Option<PathBuf>,
 }
 

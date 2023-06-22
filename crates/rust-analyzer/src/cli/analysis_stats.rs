@@ -34,6 +34,7 @@ use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
     flags::{self, OutputFormat},
+    full_name_of_item,
     load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice},
     print_memory_usage,
     progress_report::ProgressReport,
@@ -274,15 +275,7 @@ impl flags::AnalysisStats {
                 continue
             };
             if verbosity.is_spammy() {
-                let full_name = a
-                    .module(db)
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(db))
-                    .chain(Some(a.name(db)))
-                    .map(|it| it.display(db).to_string())
-                    .join("::");
+                let full_name = full_name_of_item(db, a.module(db), a.name(db));
                 println!("Data layout for {full_name} failed due {e:?}");
             }
             fail += 1;
@@ -304,15 +297,8 @@ impl flags::AnalysisStats {
                 continue;
             };
             if verbosity.is_spammy() {
-                let full_name = c
-                    .module(db)
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(db))
-                    .chain(c.name(db))
-                    .map(|it| it.display(db).to_string())
-                    .join("::");
+                let full_name =
+                    full_name_of_item(db, c.module(db), c.name(db).unwrap_or(Name::missing()));
                 println!("Const eval for {full_name} failed due {e:?}");
             }
             fail += 1;

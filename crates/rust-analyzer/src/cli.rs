@@ -10,12 +10,17 @@ mod diagnostics;
 mod ssr;
 mod lsif;
 mod scip;
+mod run_tests;
 
 mod progress_report;
 
 use std::io::Read;
 
+use anyhow::Result;
+use hir::{Module, Name};
+use hir_ty::db::HirDatabase;
 use ide::AnalysisHost;
+use itertools::Itertools;
 use vfs::Vfs;
 
 #[derive(Clone, Copy)]
@@ -69,4 +74,15 @@ fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
     eprintln!("{unaccounted:>8}        Unaccounted");
 
     eprintln!("{remaining:>8}        Remaining");
+}
+
+fn full_name_of_item(db: &dyn HirDatabase, module: Module, name: Name) -> String {
+    module
+        .path_to_root(db)
+        .into_iter()
+        .rev()
+        .filter_map(|it| it.name(db))
+        .chain(Some(name))
+        .map(|it| it.display(db.upcast()).to_string())
+        .join("::")
 }
