@@ -1799,7 +1799,7 @@ impl Evaluator<'_> {
         match def {
             CallableDefId::FunctionId(def) => {
                 if let Some(_) = self.detect_fn_trait(def) {
-                    self.exec_fn_trait(&args, destination, locals, span)?;
+                    self.exec_fn_trait(def, args, generic_args, locals, destination, span)?;
                     return Ok(());
                 }
                 self.exec_fn_with_args(def, args, generic_args, locals, destination, span)?;
@@ -1921,9 +1921,11 @@ impl Evaluator<'_> {
 
     fn exec_fn_trait(
         &mut self,
+        def: FunctionId,
         args: &[IntervalAndTy],
-        destination: Interval,
+        generic_args: Substitution,
         locals: &Locals<'_>,
+        destination: Interval,
         span: MirSpan,
     ) -> Result<()> {
         let func = args.get(0).ok_or(MirEvalError::TypeError("fn trait with no arg"))?;
@@ -1958,7 +1960,38 @@ impl Evaluator<'_> {
                     span,
                 )?;
             }
-            x => not_supported!("Call FnTrait methods with type {x:?}"),
+            _ => {
+                // try to execute the manual impl of `FnTrait` for structs (nightly feature used in std)
+                let arg0 = func;
+                let args = &args[1..];
+                let arg1 = {
+                    let ty = TyKind::Tuple(
+                        args.len(),
+                        Substitution::from_iter(Interner, args.iter().map(|x| x.ty.clone())),
+                    )
+                    .intern(Interner);
+                    let layout = self.layout(&ty)?;
+                    let result = self.make_by_layout(
+                        layout.size.bytes_usize(),
+                        &layout,
+                        None,
+                        args.iter().map(|x| IntervalOrOwned::Borrowed(x.interval)),
+                    )?;
+                    // FIXME: there is some leak here
+                    let size = layout.size.bytes_usize();
+                    let addr = self.heap_allocate(size, layout.align.abi.bytes() as usize);
+                    self.write_memory(addr, &result)?;
+                    IntervalAndTy { interval: Interval { addr, size }, ty }
+                };
+                return self.exec_fn_with_args(
+                    def,
+                    &[arg0.clone(), arg1],
+                    generic_args,
+                    locals,
+                    destination,
+                    span,
+                );
+            }
         }
         Ok(())
     }

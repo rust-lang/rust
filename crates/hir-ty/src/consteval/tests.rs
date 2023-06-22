@@ -1551,6 +1551,30 @@ fn closures() {
 }
 
 #[test]
+fn manual_fn_trait_impl() {
+    check_number(
+        r#"
+//- minicore: fn, copy
+struct S(i32);
+
+impl FnOnce<(i32, i32)> for S {
+    type Output = i32;
+
+    extern "rust-call" fn call_once(self, arg: (i32, i32)) -> i32 {
+        arg.0 + arg.1 + self.0
+    }
+}
+
+const GOAL: i32 = {
+    let s = S(1);
+    s(2, 3)
+};
+"#,
+        6,
+    );
+}
+
+#[test]
 fn closure_and_impl_fn() {
     check_number(
         r#"

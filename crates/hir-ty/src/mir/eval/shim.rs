@@ -681,7 +681,23 @@ impl Evaluator<'_> {
                     let addr = tuple.interval.addr.offset(offset);
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
-                self.exec_fn_trait(&args, destination, locals, span)
+                if let Some(target) = self.db.lang_item(self.crate_id, LangItem::FnOnce) {
+                    if let Some(def) = target
+                        .as_trait()
+                        .and_then(|x| self.db.trait_data(x).method_by_name(&name![call_once]))
+                    {
+                        return self.exec_fn_trait(
+                            def,
+                            &args,
+                            // FIXME: wrong for manual impls of `FnOnce`
+                            Substitution::empty(Interner),
+                            locals,
+                            destination,
+                            span,
+                        );
+                    }
+                }
+                not_supported!("FnOnce was not available for executing const_eval_select");
             }
             _ => not_supported!("unknown intrinsic {name}"),
         }

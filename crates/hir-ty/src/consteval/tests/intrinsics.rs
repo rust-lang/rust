@@ -32,6 +32,7 @@ fn transmute() {
 fn const_eval_select() {
     check_number(
         r#"
+        //- minicore: fn
         extern "rust-intrinsic" {
             pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
             where
