@@ -16,6 +16,12 @@ use crate::{
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 #[derive(Clone, Debug)]
 pub struct StepBy<I> {
+    /// This field is guaranteed to be preprocessed by the specialized `SpecRangeSetup::setup`
+    /// in the constructor.
+    /// For most iterators that processing is a no-op, but for Range<{integer}> types it is lossy
+    /// which means the inner iterator cannot be returned to user code.
+    /// Additionally this type-dependent preprocessing means specialized implementations
+    /// cannot be used interchangeably.
     iter: I,
     step: usize,
     first_take: bool,
@@ -133,6 +139,16 @@ impl<T> SpecRangeSetup<T> for T {
     }
 }
 
+/// Specialization trait to optimize `StepBy<Range<{integer}>>` iteration.
+///
+/// # Correctness
+///
+/// Technically this is safe to implement (look ma, no unsafe!), but in reality
+/// a lot of unsafe code relies on ranges over integers being correct.
+///
+/// For correctness *all* public StepBy methods must be specialized
+/// because `setup` drastically alters the meaning of the struct fields so that mixing
+/// different implementations would lead to incorrect results.
 trait StepByImpl<I> {
     type Item;
 
@@ -152,6 +168,16 @@ trait StepByImpl<I> {
         F: FnMut(Acc, Self::Item) -> Acc;
 }
 
+/// Specialization trait for double-ended iteration.
+///
+/// See also: `StepByImpl`
+///
+/// # Correctness
+///
+/// The specializations must be implemented together with `StepByImpl`
+/// where applicable. I.e. if `StepBy` does support backwards iteration
+/// for a given iterator and that is specialized for forward iteration then
+/// it must also be specialized for backwards iteration.
 trait StepByBackImpl<I> {
     type Item;
 
@@ -357,6 +383,21 @@ impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for StepBy<I>
     }
 }
 
+/// For these implementations, `SpecRangeSetup` calculates the number
+/// of iterations that will be needed and stores that in `iter.end`.
+///
+/// The various iterator implementations then rely on that to not need
+/// overflow checking, letting loops just be counted instead.
+///
+/// These only work for unsigned types, and will need to be reworked
+/// if you want to use it to specialize on signed types.
+///
+/// Currently these are only implemented for integers up to usize due to
+/// correctness issues around ExactSizeIterator impls on 16bit platforms.
+/// And since ExactSizeIterator is a prerequisite for backwards iteration
+/// and we must consistently specialize backwards and forwards iteration
+/// that makes the situation complicated enough that it's not covered
+/// for now.
 macro_rules! spec_int_ranges {
     ($($t:ty)*) => ($(
 
