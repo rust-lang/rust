@@ -165,10 +165,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             InvalidMonomorphizationReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
+        let arg1 = args[0].immediate();
+        // NOTE: we get different vector types for the same vector type and libgccjit doesn't
+        // compare them as equal, so bitcast.
+        // FIXME(antoyo): allow comparing vector types as equal in libgccjit.
+        let arg2 = bx.context.new_bitcast(None, args[1].immediate(), arg1.get_type());
         return Ok(compare_simd_types(
             bx,
-            args[0].immediate(),
-            args[1].immediate(),
+            arg1,
+            arg2,
             in_elem,
             llret_ty,
             cmp_op,
@@ -341,7 +346,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         // endian and MSB-first for big endian.
 
         let vector = args[0].immediate();
-        let vector_type = vector.get_type().dyncast_vector().expect("vector type");
+        // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+        let vector_type = vector.get_type().unqualified().dyncast_vector().expect("vector type");
         let elem_type = vector_type.get_element_type();
 
         let expected_int_bits = in_len.max(8);
@@ -848,7 +854,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 (true, true) => {
                     // Algorithm from: https://codereview.stackexchange.com/questions/115869/saturated-signed-addition
                     // TODO(antoyo): improve using conditional operators if possible.
-                    let arg_type = lhs.get_type();
+                    // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+                    let arg_type = lhs.get_type().unqualified();
                     // TODO(antoyo): convert lhs and rhs to unsigned.
                     let sum = lhs + rhs;
                     let vector_type = arg_type.dyncast_vector().expect("vector type");
@@ -878,7 +885,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     res & cmp
                 },
                 (true, false) => {
-                    let arg_type = lhs.get_type();
+                    // TODO(antoyo): dyncast_vector should not require a call to unqualified.
+                    let arg_type = lhs.get_type().unqualified();
                     // TODO(antoyo): this uses the same algorithm from saturating add, but add the
                     // negative of the right operand. Find a proper subtraction algorithm.
                     let rhs = bx.context.new_unary_op(None, UnaryOp::Minus, arg_type, rhs);
