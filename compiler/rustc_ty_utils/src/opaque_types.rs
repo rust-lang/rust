@@ -6,7 +6,7 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
-use rustc_type_ir::AliasKind;
+use rustc_trait_selection::traits::check_substs_compatible;
 use std::ops::ControlFlow;
 
 use crate::errors::{DuplicateArg, NotParam};
@@ -36,6 +36,15 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         self.tcx.def_span(self.item)
     }
 
+    fn parent_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
+        let parent = self.parent()?;
+        if matches!(self.tcx.def_kind(parent), DefKind::Impl { .. }) {
+            Some(self.tcx.impl_trait_ref(parent)?.subst_identity())
+        } else {
+            None
+        }
+    }
+
     fn parent(&self) -> Option<LocalDefId> {
         match self.tcx.def_kind(self.item) {
             DefKind::Fn => None,
@@ -56,7 +65,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<ErrorGuaranteed> {
         match t.kind() {
-            ty::Alias(AliasKind::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
+            ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 if !self.seen.insert(alias_ty.def_id.expect_local()) {
                     return ControlFlow::Continue(());
                 }
@@ -98,37 +107,48 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     }
                 }
             }
-            ty::Alias(AliasKind::Projection, alias_ty) => {
-                if let Some(parent) = self.parent() {
-                    trace!(?alias_ty);
-                    let (trait_ref, own_substs) = alias_ty.trait_ref_and_own_substs(self.tcx);
+            ty::Alias(ty::Projection, alias_ty) => {
+                // This avoids having to do normalization of `Self::AssocTy` by only
+                // supporting the case of a method defining opaque types from assoc types
+                // in the same impl block.
+                if let Some(parent_trait_ref) = self.parent_trait_ref() {
+                    // If the trait ref of the associated item and the impl differs,
+                    // then we can't use the impl's identity substitutions below, so
+                    // just skip.
+                    if alias_ty.trait_ref(self.tcx) == parent_trait_ref {
+                        let parent = self.parent().expect("we should have a parent here");
 
-                    trace!(?trait_ref, ?own_substs);
-                    // This avoids having to do normalization of `Self::AssocTy` by only
-                    // supporting the case of a method defining opaque types from assoc types
-                    // in the same impl block.
-                    if trait_ref.self_ty() == self.tcx.type_of(parent).subst_identity() {
-                        for assoc in self.tcx.associated_items(parent).in_definition_order() {
+                        for &assoc in self.tcx.associated_items(parent).in_definition_order() {
                             trace!(?assoc);
-                            if assoc.trait_item_def_id == Some(alias_ty.def_id) {
-                                // We reconstruct the generic args of the associated type within the impl
-                                // from the impl's generics and the generic args passed to the type via the
-                                // projection.
-                                let substs = ty::InternalSubsts::identity_for_item(
-                                    self.tcx,
-                                    parent.to_def_id(),
-                                );
-                                trace!(?substs);
-                                let substs: Vec<_> =
-                                    substs.iter().chain(own_substs.iter().copied()).collect();
-                                trace!(?substs);
-                                // Find opaque types in this associated type.
-                                return self
-                                    .tcx
-                                    .type_of(assoc.def_id)
-                                    .subst(self.tcx, &substs)
-                                    .visit_with(self);
+                            if assoc.trait_item_def_id != Some(alias_ty.def_id) {
+                                continue;
                             }
+
+                            // If the type is further specializable, then the type_of
+                            // is not actually correct below.
+                            if !assoc.defaultness(self.tcx).is_final() {
+                                continue;
+                            }
+
+                            let impl_substs = alias_ty.substs.rebase_onto(
+                                self.tcx,
+                                parent_trait_ref.def_id,
+                                ty::InternalSubsts::identity_for_item(self.tcx, parent),
+                            );
+
+                            if !check_substs_compatible(self.tcx, assoc, impl_substs) {
+                                self.tcx.sess.delay_span_bug(
+                                    self.tcx.def_span(assoc.def_id),
+                                    "item had incorrect substs",
+                                );
+                                return ControlFlow::Continue(());
+                            }
+
+                            return self
+                                .tcx
+                                .type_of(assoc.def_id)
+                                .subst(self.tcx, impl_substs)
+                                .visit_with(self);
                         }
                     }
                 }
