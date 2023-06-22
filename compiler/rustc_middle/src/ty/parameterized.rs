@@ -129,5 +129,6 @@ parameterized_over_tcx! {
     ty::Const,
     ty::Predicate,
     ty::Clause,
+    ty::ClauseKind,
     ty::GeneratorDiagnosticData,
 }

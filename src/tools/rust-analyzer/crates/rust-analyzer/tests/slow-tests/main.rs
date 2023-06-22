@@ -839,6 +839,17 @@ fn resolve_proc_macro() {
         return;
     }
 
+    // skip using the sysroot config as to prevent us from loading the sysroot sources
+    let mut rustc = std::process::Command::new(toolchain::rustc());
+    rustc.args(["--print", "sysroot"]);
+    let output = rustc.output().unwrap();
+    let sysroot =
+        vfs::AbsPathBuf::try_from(std::str::from_utf8(&output.stdout).unwrap().trim()).unwrap();
+
+    let standalone_server_name =
+        format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
+    let proc_macro_server_path = sysroot.join("libexec").join(&standalone_server_name);
+
     let server = Project::with_fixture(
         r###"
 //- /foo/Cargo.toml
@@ -916,7 +927,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         },
         "procMacro": {
             "enable": true,
-            "server": PathBuf::from(env!("CARGO_BIN_EXE_rust-analyzer")),
+            "server": proc_macro_server_path.as_path().as_ref(),
         }
     }))
     .root("foo")

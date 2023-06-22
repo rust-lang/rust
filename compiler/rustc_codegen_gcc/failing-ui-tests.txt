@@ -54,8 +54,8 @@ tests/ui/issues/issue-40883.rs
 tests/ui/issues/issue-43853.rs
 tests/ui/issues/issue-47364.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/assert-without-captures-does-not-create-unnecessary-code.rs
-tests/ui/rfc-2091-track-caller/std-panic-locations.rs
-tests/ui/rfcs/rfc1857-drop-order.rs
+tests/ui/rfcs/rfc-2091-track-caller/std-panic-locations.rs
+tests/ui/rfcs/rfc-1857-stabilize-drop-order/drop-order.rs
 tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
 tests/ui/simd/issue-89193.rs
@@ -66,3 +66,5 @@ tests/ui/generator/panic-safe.rs
 tests/ui/issues/issue-14875.rs
 tests/ui/issues/issue-29948.rs
 tests/ui/panic-while-printing.rs
+tests/ui/enum-discriminant/get_discr.rs
+tests/ui/panics/nested_panic_caught.rs

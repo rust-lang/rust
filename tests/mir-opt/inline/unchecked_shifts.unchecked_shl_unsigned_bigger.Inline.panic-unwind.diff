@@ -1,0 +1,36 @@
+- // MIR for `unchecked_shl_unsigned_bigger` before Inline
++ // MIR for `unchecked_shl_unsigned_bigger` after Inline
+  
+  fn unchecked_shl_unsigned_bigger(_1: u64, _2: u32) -> u64 {
+      debug a => _1;
+      debug b => _2;
+      let mut _0: u64;
+      let mut _3: u64;
+      let mut _4: u32;
++     scope 1 (inlined core::num::<impl u64>::unchecked_shl) {
++         debug self => _3;
++         debug rhs => _4;
++         let mut _5: u64;
++         scope 2 {
++         }
++     }
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = _1;
+          StorageLive(_4);
+          _4 = _2;
+-         _0 = core::num::<impl u64>::unchecked_shl(move _3, move _4) -> bb1;
+-     }
+- 
+-     bb1: {
++         StorageLive(_5);
++         _5 = _4 as u64 (IntToInt);
++         _0 = ShlUnchecked(_3, move _5);
++         StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

@@ -250,15 +250,20 @@ impl Stable for mir::BinOp {
         use mir::BinOp;
         match self {
             BinOp::Add => stable_mir::mir::BinOp::Add,
+            BinOp::AddUnchecked => stable_mir::mir::BinOp::AddUnchecked,
             BinOp::Sub => stable_mir::mir::BinOp::Sub,
+            BinOp::SubUnchecked => stable_mir::mir::BinOp::SubUnchecked,
             BinOp::Mul => stable_mir::mir::BinOp::Mul,
+            BinOp::MulUnchecked => stable_mir::mir::BinOp::MulUnchecked,
             BinOp::Div => stable_mir::mir::BinOp::Div,
             BinOp::Rem => stable_mir::mir::BinOp::Rem,
             BinOp::BitXor => stable_mir::mir::BinOp::BitXor,
             BinOp::BitAnd => stable_mir::mir::BinOp::BitAnd,
             BinOp::BitOr => stable_mir::mir::BinOp::BitOr,
             BinOp::Shl => stable_mir::mir::BinOp::Shl,
+            BinOp::ShlUnchecked => stable_mir::mir::BinOp::ShlUnchecked,
             BinOp::Shr => stable_mir::mir::BinOp::Shr,
+            BinOp::ShrUnchecked => stable_mir::mir::BinOp::ShrUnchecked,
             BinOp::Eq => stable_mir::mir::BinOp::Eq,
             BinOp::Lt => stable_mir::mir::BinOp::Lt,
             BinOp::Le => stable_mir::mir::BinOp::Le,
@@ -346,7 +351,7 @@ impl<'tcx> Stable for mir::Terminator<'tcx> {
                 target: target.as_usize(),
                 unwind: unwind.stable(),
             },
-            Call { func, args, destination, target, unwind, from_hir_call: _, fn_span: _ } => {
+            Call { func, args, destination, target, unwind, call_source: _, fn_span: _ } => {
                 Terminator::Call {
                     func: func.stable(),
                     args: args.iter().map(|arg| arg.stable()).collect(),

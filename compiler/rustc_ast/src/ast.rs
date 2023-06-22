@@ -1295,6 +1295,7 @@ impl Expr {
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
             ExprKind::FormatArgs(..) => ExprPrecedence::FormatArgs,
+            ExprKind::Become(..) => ExprPrecedence::Become,
             ExprKind::Err => ExprPrecedence::Err,
         }
     }
@@ -1514,6 +1515,11 @@ pub enum ExprKind {
     /// A `do yeet` (aka `throw`/`fail`/`bail`/`raise`/whatever),
     /// with an optional value to be returned.
     Yeet(Option<P<Expr>>),
+
+    /// A tail call return, with the value to be returned.
+    ///
+    /// While `.0` must be a function call, we check this later, after parsing.
+    Become(P<Expr>),
 
     /// Bytes included via `include_bytes!`
     /// Added for optimization purposes to avoid the need to escape

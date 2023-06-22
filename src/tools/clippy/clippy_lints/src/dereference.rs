@@ -26,7 +26,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
-    self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamEnv, ParamTy,
+    self, Binder, BoundVariableKind, ClauseKind, EarlyBinder, FnSig, GenericArgKind, List, ParamEnv, ParamTy,
     PredicateKind, ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -1133,7 +1133,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     let projection_predicates = predicates
         .iter()
         .filter_map(|predicate| {
-            if let PredicateKind::Clause(Clause::Projection(projection_predicate)) = predicate.kind().skip_binder() {
+            if let PredicateKind::Clause(ClauseKind::Projection(projection_predicate)) = predicate.kind().skip_binder() {
                 Some(projection_predicate)
             } else {
                 None
@@ -1147,7 +1147,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     if predicates
         .iter()
         .filter_map(|predicate| {
-            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder()
+            if let PredicateKind::Clause(ClauseKind::Trait(trait_predicate)) = predicate.kind().skip_binder()
                 && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
             {
                 Some(trait_predicate.trait_ref.def_id)
@@ -1209,7 +1209,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
         }
 
         predicates.iter().all(|predicate| {
-            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder()
+            if let PredicateKind::Clause(ClauseKind::Trait(trait_predicate)) = predicate.kind().skip_binder()
                 && cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
                 && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
                 && let GenericArgKind::Type(ty) = substs_with_referent_ty[param_ty.index as usize].unpack()

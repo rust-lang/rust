@@ -3,8 +3,11 @@
 use std::ops;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HirDisplay, Semantics};
-use ide_db::{famous_defs::FamousDefs, path_transform::PathTransform, RootDatabase, SnippetCap};
+use hir::{db::HirDatabase, HirDisplay, InFile, Semantics};
+use ide_db::{
+    famous_defs::FamousDefs, path_transform::PathTransform,
+    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
+};
 use stdx::format_to;
 use syntax::{
     ast::{
@@ -91,30 +94,21 @@ pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
     items: &[hir::AssocItem],
     default_methods: DefaultMethods,
-) -> Vec<ast::AssocItem> {
-    fn has_def_name(item: &ast::AssocItem) -> bool {
-        match item {
-            ast::AssocItem::Fn(def) => def.name(),
-            ast::AssocItem::TypeAlias(def) => def.name(),
-            ast::AssocItem::Const(def) => def.name(),
-            ast::AssocItem::MacroCall(_) => None,
-        }
-        .is_some()
-    }
-
-    items
+) -> Vec<InFile<ast::AssocItem>> {
+    return items
         .iter()
         // Note: This throws away items with no source.
-        .filter_map(|&i| {
-            let item = match i {
-                hir::AssocItem::Function(i) => ast::AssocItem::Fn(sema.source(i)?.value),
-                hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(sema.source(i)?.value),
-                hir::AssocItem::Const(i) => ast::AssocItem::Const(sema.source(i)?.value),
+        .copied()
+        .filter_map(|assoc_item| {
+            let item = match assoc_item {
+                hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
+                hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
+                hir::AssocItem::Const(it) => sema.source(it)?.map(ast::AssocItem::Const),
             };
             Some(item)
         })
         .filter(has_def_name)
-        .filter(|it| match it {
+        .filter(|it| match &it.value {
             ast::AssocItem::Fn(def) => matches!(
                 (default_methods, def.body()),
                 (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
@@ -125,31 +119,58 @@ pub fn filter_assoc_items(
             ),
             _ => default_methods == DefaultMethods::No,
         })
-        .collect::<Vec<_>>()
+        .collect();
+
+    fn has_def_name(item: &InFile<ast::AssocItem>) -> bool {
+        match &item.value {
+            ast::AssocItem::Fn(def) => def.name(),
+            ast::AssocItem::TypeAlias(def) => def.name(),
+            ast::AssocItem::Const(def) => def.name(),
+            ast::AssocItem::MacroCall(_) => None,
+        }
+        .is_some()
+    }
 }
 
+/// Given `original_items` retrieved from the trait definition (usually by
+/// [`filter_assoc_items()`]), clones each item for update and applies path transformation to it,
+/// then inserts into `impl_`. Returns the modified `impl_` and the first associated item that got
+/// inserted.
 pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
-    items: Vec<ast::AssocItem>,
+    original_items: &[InFile<ast::AssocItem>],
     trait_: hir::Trait,
-    impl_: ast::Impl,
+    impl_: &ast::Impl,
     target_scope: hir::SemanticsScope<'_>,
-) -> (ast::Impl, ast::AssocItem) {
-    let source_scope = sema.scope_for_def(trait_);
-
-    let transform = PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
-
+) -> ast::AssocItem {
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
-    let items = items.into_iter().map(|assoc_item| {
-        transform.apply(assoc_item.syntax());
-        assoc_item.remove_attrs_and_docs();
-        assoc_item.reindent_to(new_indent_level);
-        assoc_item
+    let items = original_items.into_iter().map(|InFile { file_id, value: original_item }| {
+        let cloned_item = {
+            if file_id.is_macro() {
+                if let Some(formatted) =
+                    ast::AssocItem::cast(insert_ws_into(original_item.syntax().clone()))
+                {
+                    return formatted;
+                } else {
+                    stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
+                }
+            }
+            original_item.clone_for_update()
+        };
+
+        if let Some(source_scope) = sema.scope(original_item.syntax()) {
+            // FIXME: Paths in nested macros are not handled well. See
+            // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
+            let transform =
+                PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
+            transform.apply(cloned_item.syntax());
+        }
+        cloned_item.remove_attrs_and_docs();
+        cloned_item.reindent_to(new_indent_level);
+        cloned_item
     });
 
-    let res = impl_.clone_for_update();
-
-    let assoc_item_list = res.get_or_create_assoc_item_list();
+    let assoc_item_list = impl_.get_or_create_assoc_item_list();
     let mut first_item = None;
     for item in items {
         first_item.get_or_insert_with(|| item.clone());
@@ -172,7 +193,7 @@ pub fn add_trait_assoc_items_to_impl(
         assoc_item_list.add_item(item)
     }
 
-    (res, first_item.unwrap())
+    first_item.unwrap()
 }
 
 #[derive(Clone, Copy, Debug)]

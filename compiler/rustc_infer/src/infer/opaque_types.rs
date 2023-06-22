@@ -378,7 +378,7 @@ impl<'tcx> InferCtxt<'tcx> {
             DefiningAnchor::Bind(bind) => bind,
         };
 
-        let origin = self.opaque_type_origin_unchecked(def_id);
+        let origin = self.tcx.opaque_type_origin(def_id);
         let in_definition_scope = match origin {
             // Async `impl Trait`
             hir::OpaqueTyOrigin::AsyncFn(parent) => parent == parent_def_id,
@@ -394,13 +394,6 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         };
         in_definition_scope.then_some(origin)
-    }
-
-    /// Returns the origin of the opaque type `def_id` even if we are not in its
-    /// defining scope.
-    #[instrument(skip(self), level = "trace", ret)]
-    fn opaque_type_origin_unchecked(&self, def_id: LocalDefId) -> OpaqueTyOrigin {
-        self.tcx.hir().expect_item(def_id).expect_opaque_ty().origin
     }
 }
 
@@ -536,7 +529,8 @@ impl<'tcx> InferCtxt<'tcx> {
         )?;
 
         self.add_item_bounds_for_hidden_type(
-            opaque_type_key,
+            opaque_type_key.def_id.to_def_id(),
+            opaque_type_key.substs,
             cause,
             param_env,
             hidden_ty,
@@ -598,7 +592,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn add_item_bounds_for_hidden_type(
         &self,
-        OpaqueTypeKey { def_id, substs }: OpaqueTypeKey<'tcx>,
+        def_id: DefId,
+        substs: ty::SubstsRef<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
@@ -631,7 +626,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
                     ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, substs: substs2, .. })
-                        if def_id.to_def_id() == def_id2 && substs == substs2 =>
+                        if def_id == def_id2 && substs == substs2 =>
                     {
                         hidden_ty
                     }
@@ -640,16 +635,14 @@ impl<'tcx> InferCtxt<'tcx> {
                     ty::Alias(
                         ty::Projection,
                         ty::AliasTy { def_id: def_id2, substs: substs2, .. },
-                    ) if def_id.to_def_id() == def_id2 && substs == substs2 => hidden_ty,
+                    ) if def_id == def_id2 && substs == substs2 => hidden_ty,
                     _ => ty,
                 },
                 lt_op: |lt| lt,
                 ct_op: |ct| ct,
             });
 
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
-                predicate.kind().skip_binder()
-            {
+            if let ty::ClauseKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.term.references_error() {
                     // No point on adding any obligations since there's a type error involved.
                     obligations.clear();

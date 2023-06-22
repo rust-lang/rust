@@ -11,9 +11,7 @@ use jobserver::{Acquired, Client};
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::profiling::TimingGuard;
-use rustc_data_structures::profiling::VerboseTimingGuard;
+use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{translation::Translate, DiagnosticId, FatalError, Handler, Level};
@@ -322,7 +320,6 @@ pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo
 #[derive(Clone)]
 pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
-    pub backend: B,
     pub prof: SelfProfilerRef,
     pub lto: Lto,
     pub save_temps: bool,
@@ -340,14 +337,10 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
     pub target_can_use_split_dwarf: bool,
-    pub target_pointer_width: u32,
     pub target_arch: String,
-    pub debuginfo: config::DebugInfo,
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
 
-    /// Number of cgus excluding the allocator/metadata modules
-    pub total_cgus: usize,
     /// Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
     /// LLVM optimizations for which we want to print remarks.
@@ -443,7 +436,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     target_cpu: String,
     metadata: EncodedMetadata,
     metadata_module: Option<CompiledModule>,
-    total_cgus: usize,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
@@ -471,7 +463,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
-        total_cgus,
         sess.jobserver.clone(),
         Arc::new(regular_config),
         Arc::new(metadata_config),
@@ -687,7 +678,7 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-pub enum WorkItem<B: WriteBackendMethods> {
+pub(crate) enum WorkItem<B: WriteBackendMethods> {
     /// Optimize a newly codegened, totally unoptimized module.
     Optimize(ModuleCodegen<B::Module>),
     /// Copy the post-LTO artifacts from the incremental cache to the output
@@ -702,20 +693,6 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         match *self {
             WorkItem::Optimize(ref m) => m.kind,
             WorkItem::CopyPostLtoArtifacts(_) | WorkItem::LTO(_) => ModuleKind::Regular,
-        }
-    }
-
-    fn start_profiling<'a>(&self, cgcx: &'a CodegenContext<B>) -> TimingGuard<'a> {
-        match *self {
-            WorkItem::Optimize(ref m) => {
-                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*m.name)
-            }
-            WorkItem::CopyPostLtoArtifacts(ref m) => cgcx
-                .prof
-                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &*m.name),
-            WorkItem::LTO(ref m) => {
-                cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name())
-            }
         }
     }
 
@@ -747,7 +724,8 @@ impl<B: WriteBackendMethods> WorkItem<B> {
     }
 }
 
-enum WorkItemResult<B: WriteBackendMethods> {
+/// A result produced by the backend.
+pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
     NeedsLink(ModuleCodegen<B::Module>),
     NeedsFatLTO(FatLTOInput<B>),
@@ -757,21 +735,6 @@ enum WorkItemResult<B: WriteBackendMethods> {
 pub enum FatLTOInput<B: WriteBackendMethods> {
     Serialized { name: String, buffer: B::ModuleBuffer },
     InMemory(ModuleCodegen<B::Module>),
-}
-
-fn execute_work_item<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    work_item: WorkItem<B>,
-) -> Result<WorkItemResult<B>, FatalError> {
-    let module_config = cgcx.config(work_item.module_kind());
-
-    match work_item {
-        WorkItem::Optimize(module) => execute_optimize_work_item(cgcx, module, module_config),
-        WorkItem::CopyPostLtoArtifacts(module) => {
-            Ok(execute_copy_from_cache_work_item(cgcx, module, module_config))
-        }
-        WorkItem::LTO(module) => execute_lto_work_item(cgcx, module, module_config),
-    }
 }
 
 /// Actual LTO type we end up choosing based on multiple factors.
@@ -954,37 +917,40 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
     }
 }
 
-pub enum Message<B: WriteBackendMethods> {
+/// Messages sent to the coordinator.
+pub(crate) enum Message<B: WriteBackendMethods> {
+    /// A jobserver token has become available. Sent from the jobserver helper
+    /// thread.
     Token(io::Result<Acquired>),
-    NeedsFatLTO {
-        result: FatLTOInput<B>,
-        worker_id: usize,
-    },
-    NeedsThinLTO {
-        name: String,
-        thin_buffer: B::ThinBuffer,
-        worker_id: usize,
-    },
-    NeedsLink {
-        module: ModuleCodegen<B::Module>,
-        worker_id: usize,
-    },
-    Done {
-        result: Result<CompiledModule, Option<WorkerFatalError>>,
-        worker_id: usize,
-    },
-    CodegenDone {
-        llvm_work_item: WorkItem<B>,
-        cost: u64,
-    },
+
+    /// The backend has finished processing a work item for a codegen unit.
+    /// Sent from a backend worker thread.
+    WorkItem { result: Result<WorkItemResult<B>, Option<WorkerFatalError>>, worker_id: usize },
+
+    /// The frontend has finished generating something (backend IR or a
+    /// post-LTO artifact) for a codegen unit, and it should be passed to the
+    /// backend. Sent from the main thread.
+    CodegenDone { llvm_work_item: WorkItem<B>, cost: u64 },
+
+    /// Similar to `CodegenDone`, but for reusing a pre-LTO artifact
+    /// Sent from the main thread.
     AddImportOnlyModule {
         module_data: SerializedModule<B::ModuleBuffer>,
         work_product: WorkProduct,
     },
+
+    /// The frontend has finished generating everything for all codegen units.
+    /// Sent from the main thread.
     CodegenComplete,
-    CodegenItem,
+
+    /// Some normal-ish compiler error occurred, and codegen should be wound
+    /// down. Sent from the main thread.
     CodegenAborted,
 }
+
+/// A message sent from the coordinator thread to the main thread telling it to
+/// process another codegen unit.
+pub struct CguMessage;
 
 type DiagnosticArgName<'source> = Cow<'source, str>;
 
@@ -1007,9 +973,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
     tcx: TyCtxt<'_>,
     crate_info: &CrateInfo,
     shared_emitter: SharedEmitter,
-    codegen_worker_send: Sender<Message<B>>,
+    codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
-    total_cgus: usize,
     jobserver: Client,
     regular_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
@@ -1077,7 +1042,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         };
     let backend_features = tcx.global_backend_features(());
     let cgcx = CodegenContext::<B> {
-        backend: backend.clone(),
         crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
@@ -1098,13 +1062,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
         tm_factory: backend.target_machine_factory(tcx.sess, ol, backend_features),
-        total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
-        target_pointer_width: tcx.sess.target.pointer_width,
         target_arch: tcx.sess.target.arch.to_string(),
-        debuginfo: tcx.sess.opts.debuginfo,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
     };
@@ -1266,10 +1227,19 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut needs_thin_lto = Vec::new();
         let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
-        let mut codegen_aborted = false;
 
-        // This flag tracks whether all items have gone through codegens
-        let mut codegen_done = false;
+        /// Possible state transitions:
+        /// - Ongoing -> Completed
+        /// - Ongoing -> Aborted
+        /// - Completed -> Aborted
+        #[derive(Debug, PartialEq)]
+        enum CodegenState {
+            Ongoing,
+            Completed,
+            Aborted,
+        }
+        use CodegenState::*;
+        let mut codegen_state = Ongoing;
 
         // This is the queue of LLVM work items that still need processing.
         let mut work_items = Vec::<(WorkItem<B>, u64)>::new();
@@ -1289,10 +1259,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // wait for all existing work to finish, so many of the conditions here
         // only apply if codegen hasn't been aborted as they represent pending
         // work to be done.
-        while !codegen_done
+        while codegen_state == Ongoing
             || running > 0
             || main_thread_worker_state == MainThreadWorkerState::LLVMing
-            || (!codegen_aborted
+            || (codegen_state == Completed
                 && !(work_items.is_empty()
                     && needs_fat_lto.is_empty()
                     && needs_thin_lto.is_empty()
@@ -1302,7 +1272,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
             // For codegenning more CGU or for running them through LLVM.
-            if !codegen_done {
+            if codegen_state == Ongoing {
                 if main_thread_worker_state == MainThreadWorkerState::Idle {
                     // Compute the number of workers that will be running once we've taken as many
                     // items from the work queue as we can, plus one for the main thread. It's not
@@ -1315,9 +1285,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let anticipated_running = running + additional_running + 1;
 
                     if !queue_full_enough(work_items.len(), anticipated_running) {
-                        // The queue is not full enough, codegen more items:
-                        if codegen_worker_send.send(Message::CodegenItem).is_err() {
-                            panic!("Could not send Message::CodegenItem to main thread")
+                        // The queue is not full enough, process more codegen units:
+                        if codegen_worker_send.send(CguMessage).is_err() {
+                            panic!("Could not send CguMessage to main thread")
                         }
                         main_thread_worker_state = MainThreadWorkerState::Codegenning;
                     } else {
@@ -1339,10 +1309,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         spawn_work(cgcx, item);
                     }
                 }
-            } else if codegen_aborted {
-                // don't queue up any more work if codegen was aborted, we're
-                // just waiting for our existing children to finish
-            } else {
+            } else if codegen_state == Completed {
                 // If we've finished everything related to normal codegen
                 // then it must be the case that we've got some LTO work to do.
                 // Perform the serial work here of figuring out what we're
@@ -1409,11 +1376,15 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         // Already making good use of that token
                     }
                 }
+            } else {
+                // Don't queue up any more work if codegen was aborted, we're
+                // just waiting for our existing children to finish.
+                assert!(codegen_state == Aborted);
             }
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while !codegen_aborted && !work_items.is_empty() && running < tokens.len() {
+            while codegen_state != Aborted && !work_items.is_empty() && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
                 maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
@@ -1465,8 +1436,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         Err(e) => {
                             let msg = &format!("failed to acquire jobserver token: {}", e);
                             shared_emitter.fatal(msg);
-                            codegen_done = true;
-                            codegen_aborted = true;
+                            codegen_state = Aborted;
                         }
                     }
                 }
@@ -1494,7 +1464,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 }
 
                 Message::CodegenComplete => {
-                    codegen_done = true;
+                    if codegen_state != Aborted {
+                        codegen_state = Completed;
+                    }
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
@@ -1506,58 +1478,59 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // then conditions above will ensure no more work is spawned but
                 // we'll keep executing this loop until `running` hits 0.
                 Message::CodegenAborted => {
-                    codegen_done = true;
-                    codegen_aborted = true;
+                    codegen_state = Aborted;
                 }
-                Message::Done { result: Ok(compiled_module), worker_id } => {
+
+                Message::WorkItem { result, worker_id } => {
                     free_worker(worker_id);
-                    match compiled_module.kind {
-                        ModuleKind::Regular => {
-                            compiled_modules.push(compiled_module);
+
+                    match result {
+                        Ok(WorkItemResult::Compiled(compiled_module)) => {
+                            match compiled_module.kind {
+                                ModuleKind::Regular => {
+                                    compiled_modules.push(compiled_module);
+                                }
+                                ModuleKind::Allocator => {
+                                    assert!(compiled_allocator_module.is_none());
+                                    compiled_allocator_module = Some(compiled_module);
+                                }
+                                ModuleKind::Metadata => bug!("Should be handled separately"),
+                            }
                         }
-                        ModuleKind::Allocator => {
-                            assert!(compiled_allocator_module.is_none());
-                            compiled_allocator_module = Some(compiled_module);
+                        Ok(WorkItemResult::NeedsLink(module)) => {
+                            needs_link.push(module);
                         }
-                        ModuleKind::Metadata => bug!("Should be handled separately"),
+                        Ok(WorkItemResult::NeedsFatLTO(fat_lto_input)) => {
+                            assert!(!started_lto);
+                            needs_fat_lto.push(fat_lto_input);
+                        }
+                        Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                            assert!(!started_lto);
+                            needs_thin_lto.push((name, thin_buffer));
+                        }
+                        Err(Some(WorkerFatalError)) => {
+                            // Like `CodegenAborted`, wait for remaining work to finish.
+                            codegen_state = Aborted;
+                        }
+                        Err(None) => {
+                            // If the thread failed that means it panicked, so
+                            // we abort immediately.
+                            bug!("worker thread panicked");
+                        }
                     }
                 }
-                Message::NeedsLink { module, worker_id } => {
-                    free_worker(worker_id);
-                    needs_link.push(module);
-                }
-                Message::NeedsFatLTO { result, worker_id } => {
-                    assert!(!started_lto);
-                    free_worker(worker_id);
-                    needs_fat_lto.push(result);
-                }
-                Message::NeedsThinLTO { name, thin_buffer, worker_id } => {
-                    assert!(!started_lto);
-                    free_worker(worker_id);
-                    needs_thin_lto.push((name, thin_buffer));
-                }
+
                 Message::AddImportOnlyModule { module_data, work_product } => {
                     assert!(!started_lto);
-                    assert!(!codegen_done);
+                    assert_eq!(codegen_state, Ongoing);
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                     lto_import_only_modules.push((module_data, work_product));
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
-                // If the thread failed that means it panicked, so we abort immediately.
-                Message::Done { result: Err(None), worker_id: _ } => {
-                    bug!("worker thread panicked");
-                }
-                Message::Done { result: Err(Some(WorkerFatalError)), worker_id } => {
-                    // Similar to CodegenAborted, wait for remaining work to finish.
-                    free_worker(worker_id);
-                    codegen_done = true;
-                    codegen_aborted = true;
-                }
-                Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
             }
         }
 
-        if codegen_aborted {
+        if codegen_state == Aborted {
             return Err(());
         }
 
@@ -1672,22 +1645,11 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
             fn drop(&mut self) {
                 let worker_id = self.worker_id;
                 let msg = match self.result.take() {
-                    Some(Ok(WorkItemResult::Compiled(m))) => {
-                        Message::Done::<B> { result: Ok(m), worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsLink(m))) => {
-                        Message::NeedsLink::<B> { module: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
-                        Message::NeedsFatLTO::<B> { result: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
-                        Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
-                    }
+                    Some(Ok(result)) => Message::WorkItem::<B> { result: Ok(result), worker_id },
                     Some(Err(FatalError)) => {
-                        Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                        Message::WorkItem::<B> { result: Err(Some(WorkerFatalError)), worker_id }
                     }
-                    None => Message::Done::<B> { result: Err(None), worker_id },
+                    None => Message::WorkItem::<B> { result: Err(None), worker_id },
                 };
                 drop(self.coordinator_send.send(Box::new(msg)));
             }
@@ -1706,8 +1668,27 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _prof_timer = work.start_profiling(&cgcx);
-            Some(execute_work_item(&cgcx, work))
+            let module_config = cgcx.config(work.module_kind());
+
+            Some(match work {
+                WorkItem::Optimize(m) => {
+                    let _timer =
+                        cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*m.name);
+                    execute_optimize_work_item(&cgcx, m, module_config)
+                }
+                WorkItem::CopyPostLtoArtifacts(m) => {
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "codegen_copy_artifacts_from_incr_cache",
+                        &*m.name,
+                    );
+                    Ok(execute_copy_from_cache_work_item(&cgcx, m, module_config))
+                }
+                WorkItem::LTO(m) => {
+                    let _timer =
+                        cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
+                    execute_lto_work_item(&cgcx, m, module_config)
+                }
+            })
         };
     })
     .expect("failed to spawn thread");
@@ -1891,7 +1872,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub metadata: EncodedMetadata,
     pub metadata_module: Option<CompiledModule>,
     pub crate_info: CrateInfo,
-    pub codegen_worker_receive: Receiver<Message<B>>,
+    pub codegen_worker_receive: Receiver<CguMessage>,
     pub shared_emitter_main: SharedEmitterMain,
     pub output_filenames: Arc<OutputFilenames>,
     pub coordinator: Coordinator<B>,
@@ -1965,10 +1946,9 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
     pub fn wait_for_signal_to_codegen_item(&self) {
         match self.codegen_worker_receive.recv() {
-            Ok(Message::CodegenItem) => {
-                // Nothing to do
+            Ok(CguMessage) => {
+                // Ok to proceed.
             }
-            Ok(_) => panic!("unexpected message"),
             Err(_) => {
                 // One of the LLVM threads must have panicked, fall through so
                 // error handling can be reached.

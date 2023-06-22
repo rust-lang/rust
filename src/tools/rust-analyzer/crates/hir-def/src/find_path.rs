@@ -81,7 +81,7 @@ fn find_path_inner(
     }
 
     let def_map = from.def_map(db);
-    let crate_root = def_map.crate_root();
+    let crate_root = def_map.crate_root().into();
     // - if the item is a module, jump straight to module search
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
@@ -374,7 +374,7 @@ fn calculate_best_path(
         }
     }
     if let Some(module) = item.module(db) {
-        if module.def_map(db).block_id().is_some() && prefixed.is_some() {
+        if module.containing_block().is_some() && prefixed.is_some() {
             cov_mark::hit!(prefixed_in_block_expression);
             prefixed = Some(PrefixKind::Plain);
         }

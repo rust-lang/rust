@@ -421,11 +421,10 @@ fn document<'a, 'cx: 'a>(
     display_fn(move |f| {
         document_item_info(cx, item, parent).render_into(f).unwrap();
         if parent.is_none() {
-            write!(f, "{}", document_full_collapsible(item, cx, heading_offset))?;
+            write!(f, "{}", document_full_collapsible(item, cx, heading_offset))
         } else {
-            write!(f, "{}", document_full(item, cx, heading_offset))?;
+            write!(f, "{}", document_full(item, cx, heading_offset))
         }
-        Ok(())
     })
 }
 
@@ -861,8 +860,8 @@ fn assoc_method(
     w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
     write!(
         w,
-        "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a{href} class=\"fn\">{name}</a>\
-         {generics}{decl}{notable_traits}{where_clause}",
+        "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn \
+         <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
         indent = indent_str,
         vis = vis,
         constness = constness,

@@ -440,7 +440,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
     // hidden type is well formed even without those bounds.
     let predicate =
-        ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::WellFormed(hidden_ty.into())));
+        ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(hidden_ty.into())));
     ocx.register_obligation(Obligation::new(tcx, misc_cause, param_env, predicate));
 
     // Check that all obligations are satisfied by the implementation's
@@ -563,8 +563,8 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             check_union(tcx, id.owner_id.def_id);
         }
         DefKind::OpaqueTy => {
-            let opaque = tcx.hir().expect_item(id.owner_id.def_id).expect_opaque_ty();
-            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = opaque.origin
+            let origin = tcx.opaque_type_origin(id.owner_id.def_id);
+            if let hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir().get_by_def_id(fn_def_id)
                 && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
             {

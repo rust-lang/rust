@@ -277,7 +277,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             .ty
                             .is_inhabited_from(this.tcx, this.parent_module, this.param_env)
                             .then_some(success),
-                        from_hir_call,
+                        call_source: if from_hir_call {
+                            CallSource::Normal
+                        } else {
+                            CallSource::OverloadedOperator
+                        },
                         fn_span,
                     },
                 );

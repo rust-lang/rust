@@ -166,7 +166,7 @@ pub fn ty_alias(
     assignment: Option<(ast::Type, Option<ast::WhereClause>)>,
 ) -> ast::TypeAlias {
     let mut s = String::new();
-    s.push_str(&format!("type {} ", ident));
+    s.push_str(&format!("type {}", ident));
 
     if let Some(list) = generic_param_list {
         s.push_str(&list.to_string());
@@ -182,9 +182,9 @@ pub fn ty_alias(
 
     if let Some(exp) = assignment {
         if let Some(cl) = exp.1 {
-            s.push_str(&format!("= {} {}", &exp.0.to_string(), &cl.to_string()));
+            s.push_str(&format!(" = {} {}", &exp.0.to_string(), &cl.to_string()));
         } else {
-            s.push_str(&format!("= {}", &exp.0.to_string()));
+            s.push_str(&format!(" = {}", &exp.0.to_string()));
         }
     }
 

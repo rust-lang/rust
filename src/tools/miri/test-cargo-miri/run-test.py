@@ -5,7 +5,11 @@ Assumes the `MIRI_SYSROOT` env var to be set appropriately,
 and the working directory to contain the cargo-miri-test project.
 '''
 
-import sys, subprocess, os, re, difflib
+import difflib
+import os
+import re
+import sys
+import subprocess
 
 CGREEN  = '\33[32m'
 CBOLD   = '\33[1m'
@@ -46,7 +50,9 @@ def check_output(actual, path, name):
     print(f"--- END diff {name} ---")
     return False
 
-def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
+def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env=None):
+    if env is None:
+        env = {}
     print("Testing {}...".format(name))
     ## Call `cargo miri`, capture all output
     p_env = os.environ.copy()
@@ -64,13 +70,15 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
 
     stdout_matches = check_output(stdout, stdout_ref, "stdout")
     stderr_matches = check_output(stderr, stderr_ref, "stderr")
-    
+
     if p.returncode == 0 and stdout_matches and stderr_matches:
         # All good!
         return
     fail("exit code was {}".format(p.returncode))
 
-def test_no_rebuild(name, cmd, env={}):
+def test_no_rebuild(name, cmd, env=None):
+    if env is None:
+        env = {}
     print("Testing {}...".format(name))
     p_env = os.environ.copy()
     p_env.update(env)
@@ -84,13 +92,13 @@ def test_no_rebuild(name, cmd, env={}):
     stdout = stdout.decode("UTF-8")
     stderr = stderr.decode("UTF-8")
     if p.returncode != 0:
-        fail("rebuild failed");
+        fail("rebuild failed")
     # Also check for 'Running' as a sanity check.
     if stderr.count(" Compiling ") > 0 or stderr.count(" Running ") == 0:
         print("--- BEGIN stderr ---")
         print(stderr, end="")
         print("--- END stderr ---")
-        fail("Something was being rebuilt when it should not be (or we got no output)");
+        fail("Something was being rebuilt when it should not be (or we got no output)")
 
 def test_cargo_miri_run():
     test("`cargo miri run` (no isolation)",

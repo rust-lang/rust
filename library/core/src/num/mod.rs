@@ -3,7 +3,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
-use crate::convert::TryInto;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
@@ -278,18 +277,12 @@ macro_rules! widening_impl {
 
 macro_rules! conv_rhs_for_unchecked_shift {
     ($SelfT:ty, $x:expr) => {{
-        #[inline]
-        fn conv(x: u32) -> $SelfT {
-            // FIXME(const-hack) replace with `.try_into().ok().unwrap_unchecked()`.
-            // SAFETY: Any legal shift amount must be losslessly representable in the self type.
-            unsafe { x.try_into().ok().unwrap_unchecked() }
+        // If the `as` cast will truncate, ensure we still tell the backend
+        // that the pre-truncation value was also small.
+        if <$SelfT>::BITS < 32 {
+            intrinsics::assume($x <= (<$SelfT>::MAX as u32));
         }
-        #[inline]
-        const fn const_conv(x: u32) -> $SelfT {
-            x as _
-        }
-
-        intrinsics::const_eval_select(($x,), const_conv, conv)
+        $x as $SelfT
     }};
 }
 

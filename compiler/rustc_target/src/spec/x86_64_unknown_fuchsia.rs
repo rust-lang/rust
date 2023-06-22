@@ -3,6 +3,7 @@ use crate::spec::{SanitizerSet, StackProbeType, Target};
 pub fn target() -> Target {
     let mut base = super::fuchsia_base::opts();
     base.cpu = "x86-64".into();
+    base.plt_by_default = false;
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::X86;
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI;

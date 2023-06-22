@@ -1,5 +1,6 @@
 //! Code for projecting associated types out of trait references.
 
+use super::check_substs_compatible;
 use super::specialization_graph;
 use super::translate_substs;
 use super::util;
@@ -1584,7 +1585,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::TraitDef,
-        bounds.iter(),
+        bounds.iter().map(|clause| clause.as_predicate()),
         true,
     );
 }
@@ -1606,6 +1607,10 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     debug!("assemble_candidates_from_object_ty(..)");
 
     let tcx = selcx.tcx();
+
+    if !tcx.trait_def(obligation.predicate.trait_def_id(tcx)).implement_via_object {
+        return;
+    }
 
     let self_ty = obligation.predicate.self_ty();
     let object_ty = selcx.infcx.shallow_resolve(self_ty);
@@ -1649,7 +1654,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx;
     for predicate in env_predicates {
         let bound_predicate = predicate.kind();
-        if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) =
             predicate.kind().skip_binder()
         {
             let data = bound_predicate.rebind(data);
@@ -2372,47 +2377,6 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         assoc_ty_own_obligations(selcx, obligation, &mut nested);
         Progress { term: term.subst(tcx, substs), obligations: nested }
     }
-}
-
-// Verify that the trait item and its implementation have compatible substs lists
-fn check_substs_compatible<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    assoc_item: ty::AssocItem,
-    substs: ty::SubstsRef<'tcx>,
-) -> bool {
-    fn check_substs_compatible_inner<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        generics: &'tcx ty::Generics,
-        args: &'tcx [ty::GenericArg<'tcx>],
-    ) -> bool {
-        if generics.count() != args.len() {
-            return false;
-        }
-
-        let (parent_args, own_args) = args.split_at(generics.parent_count);
-
-        if let Some(parent) = generics.parent
-            && let parent_generics = tcx.generics_of(parent)
-            && !check_substs_compatible_inner(tcx, parent_generics, parent_args) {
-            return false;
-        }
-
-        for (param, arg) in std::iter::zip(&generics.params, own_args) {
-            match (&param.kind, arg.unpack()) {
-                (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
-                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
-                | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
-                _ => return false,
-            }
-        }
-
-        true
-    }
-
-    let generics = tcx.generics_of(assoc_item.def_id);
-    // Chop off any additional substs (RPITIT) substs
-    let substs = &substs[0..generics.count().min(substs.len())];
-    check_substs_compatible_inner(tcx, generics, substs)
 }
 
 fn confirm_impl_trait_in_trait_candidate<'tcx>(

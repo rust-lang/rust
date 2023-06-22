@@ -18,7 +18,7 @@ use crate::ffi::{c_int, c_void};
 cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "dragonfly", target_os = "freebsd",
-        target_os = "ios", target_os = "macos", target_os = "watchos",
+        target_os = "ios", target_os = "tvos", target_os = "macos", target_os = "watchos",
         target_os = "openbsd", target_os = "netbsd", target_os = "illumos",
         target_os = "solaris", target_os = "haiku", target_os = "l4re", target_os = "nto"))] {
         use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;

@@ -287,7 +287,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ty::BindByValue(mutbl) => (mutbl, BindingMode::ByValue),
                     ty::BindByReference(hir::Mutability::Mut) => (
                         Mutability::Not,
-                        BindingMode::ByRef(BorrowKind::Mut { allow_two_phase_borrow: false }),
+                        BindingMode::ByRef(BorrowKind::Mut { kind: mir::MutBorrowKind::Default }),
                     ),
                     ty::BindByReference(hir::Mutability::Not) => {
                         (Mutability::Not, BindingMode::ByRef(BorrowKind::Shared))

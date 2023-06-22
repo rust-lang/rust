@@ -1,0 +1,22 @@
+// MIR for `unchecked_shl_unsigned_bigger` after PreCodegen
+
+fn unchecked_shl_unsigned_bigger(_1: u64, _2: u32) -> u64 {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: u64;
+    scope 1 (inlined core::num::<impl u64>::unchecked_shl) {
+        debug self => _1;
+        debug rhs => _2;
+        let mut _3: u64;
+        scope 2 {
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = _2 as u64 (IntToInt);
+        _0 = ShlUnchecked(_1, move _3);
+        StorageDead(_3);
+        return;
+    }
+}

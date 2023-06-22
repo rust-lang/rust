@@ -10,5 +10,6 @@
 !package-lock.json
 !package.json
 !ra_syntax_tree.tmGrammar.json
+!rustdoc.markdown.injection.tmGrammar.json
 !server
 !README.md

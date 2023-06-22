@@ -798,6 +798,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.add(lhs, rhs)
                 }
             }
+            mir::BinOp::AddUnchecked => {
+                if is_signed {
+                    bx.unchecked_sadd(lhs, rhs)
+                } else {
+                    bx.unchecked_uadd(lhs, rhs)
+                }
+            }
             mir::BinOp::Sub => {
                 if is_float {
                     bx.fsub(lhs, rhs)
@@ -805,11 +812,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.sub(lhs, rhs)
                 }
             }
+            mir::BinOp::SubUnchecked => {
+                if is_signed {
+                    bx.unchecked_ssub(lhs, rhs)
+                } else {
+                    bx.unchecked_usub(lhs, rhs)
+                }
+            }
             mir::BinOp::Mul => {
                 if is_float {
                     bx.fmul(lhs, rhs)
                 } else {
                     bx.mul(lhs, rhs)
+                }
+            }
+            mir::BinOp::MulUnchecked => {
+                if is_signed {
+                    bx.unchecked_smul(lhs, rhs)
+                } else {
+                    bx.unchecked_umul(lhs, rhs)
                 }
             }
             mir::BinOp::Div => {
@@ -848,8 +869,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.inbounds_gep(llty, lhs, &[rhs])
                 }
             }
-            mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
-            mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
+            mir::BinOp::Shl => common::build_masked_lshift(bx, lhs, rhs),
+            mir::BinOp::ShlUnchecked => {
+                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+                bx.shl(lhs, rhs)
+            }
+            mir::BinOp::Shr => common::build_masked_rshift(bx, input_ty, lhs, rhs),
+            mir::BinOp::ShrUnchecked => {
+                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+                if is_signed { bx.ashr(lhs, rhs) } else { bx.lshr(lhs, rhs) }
+            }
             mir::BinOp::Ne
             | mir::BinOp::Lt
             | mir::BinOp::Gt

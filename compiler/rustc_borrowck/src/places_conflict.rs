@@ -4,7 +4,9 @@ use crate::ArtificialField;
 use crate::Overlap;
 use crate::{AccessDepth, Deep, Shallow};
 use rustc_hir as hir;
-use rustc_middle::mir::{Body, BorrowKind, Local, Place, PlaceElem, PlaceRef, ProjectionElem};
+use rustc_middle::mir::{
+    Body, BorrowKind, Local, MutBorrowKind, Place, PlaceElem, PlaceRef, ProjectionElem,
+};
 use rustc_middle::ty::{self, TyCtxt};
 use std::cmp::max;
 use std::iter;
@@ -35,7 +37,7 @@ pub fn places_conflict<'tcx>(
         tcx,
         body,
         borrow_place,
-        BorrowKind::Mut { allow_two_phase_borrow: true },
+        BorrowKind::Mut { kind: MutBorrowKind::TwoPhaseBorrow },
         access_place.as_ref(),
         AccessDepth::Deep,
         bias,

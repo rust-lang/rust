@@ -24,6 +24,7 @@ jobs:
       pull-requests: read
     outputs:
       typescript: ${{ steps.filter.outputs.typescript }}
+      proc_macros: ${{ steps.filter.outputs.proc_macros }}
     steps:
       - uses: actions/checkout@v3
       - uses: dorny/paths-filter@4067d885736b84de7c414f582ac45897079b0a78
@@ -45,8 +46,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
-      RUST_CHANNEL: "${{ needs.changes.outputs.proc_macros == 'true' && 'nightly' || 'stable'}}"
-      USE_SYSROOT_ABI: "${{ needs.changes.outputs.proc_macros == 'true' && '--features sysroot-abi' || ''}}"
+      RUST_CHANNEL: "${{ needs.changes.outputs.proc_macros == 'true' && 'nightly' || 'stable' }}"
+      USE_SYSROOT_ABI: "${{ needs.changes.outputs.proc_macros == 'true' && '--features sysroot-abi' || '' }}"
 
     strategy:
       fail-fast: false
@@ -62,7 +63,8 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update ${{ env.RUST_CHANNEL }}
-          rustup component add rustfmt rust-src
+          rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
+          rustup default ${{ env.RUST_CHANNEL }}
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894

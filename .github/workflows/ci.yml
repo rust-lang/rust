@@ -417,30 +417,16 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json"
               DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
             os: windows-2019-8core-32gb
-          - name: i686-mingw-1
+          - name: i686-mingw
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
-              SCRIPT: make ci-mingw-subset-1
+              SCRIPT: make ci-mingw
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-2019-8core-32gb
-          - name: i686-mingw-2
+          - name: x86_64-mingw
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
-              SCRIPT: make ci-mingw-subset-2
-              NO_DOWNLOAD_CI_LLVM: 1
-              CUSTOM_MINGW: 1
-            os: windows-2019-8core-32gb
-          - name: x86_64-mingw-1
-            env:
-              SCRIPT: make ci-mingw-subset-1
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
-              NO_DOWNLOAD_CI_LLVM: 1
-              CUSTOM_MINGW: 1
-            os: windows-2019-8core-32gb
-          - name: x86_64-mingw-2
-            env:
-              SCRIPT: make ci-mingw-subset-2
+              SCRIPT: make ci-mingw
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1

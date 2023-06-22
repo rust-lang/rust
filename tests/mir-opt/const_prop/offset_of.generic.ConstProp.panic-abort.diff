@@ -1,0 +1,68 @@
+- // MIR for `generic` before ConstProp
++ // MIR for `generic` after ConstProp
+  
+  fn generic() -> () {
+      let mut _0: ();
+      let _1: usize;
+      let mut _2: usize;
+      let mut _4: usize;
+      let mut _6: usize;
+      let mut _8: usize;
+      scope 1 {
+          debug gx => _1;
+          let _3: usize;
+          scope 2 {
+              debug gy => _3;
+              let _5: usize;
+              scope 3 {
+                  debug dx => _5;
+                  let _7: usize;
+                  scope 4 {
+                      debug dy => _7;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = OffsetOf(Gamma<T>, [0]);
+          _1 = must_use::<usize>(move _2) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = OffsetOf(Gamma<T>, [1]);
+          _3 = must_use::<usize>(move _4) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = OffsetOf(Delta<T>, [1]);
+          _5 = must_use::<usize>(move _6) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = OffsetOf(Delta<T>, [2]);
+          _7 = must_use::<usize>(move _8) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_8);
+          _0 = const ();
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -67,5 +67,5 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-window-size: (1000, 1000) // Popover only appears when the screen width is >700px.
 assert-false: "#help"
 click: "#help-button > a"
-click: ".popover a[href='https://doc.rust-lang.org/rustdoc/']"
-wait-for-document-property: {"URL": "https://doc.rust-lang.org/rustdoc/"}
+click: "//*[@id='help']//a[text()='the rustdoc book']"
+wait-for-document-property: ({"URL": "https://doc.rust-lang.org/"}, STARTS_WITH)

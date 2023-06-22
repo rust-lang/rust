@@ -9,27 +9,7 @@ use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
 
 use super::{ImmTy, InterpCx, Machine};
-
-/// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
-/// same type as the result.
-#[inline]
-fn binop_left_homogeneous(op: mir::BinOp) -> bool {
-    use rustc_middle::mir::BinOp::*;
-    match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
-        Eq | Ne | Lt | Le | Gt | Ge => false,
-    }
-}
-/// Classify whether an operator is "right-homogeneous", i.e., the RHS has the
-/// same type as the LHS.
-#[inline]
-fn binop_right_homogeneous(op: mir::BinOp) -> bool {
-    use rustc_middle::mir::BinOp::*;
-    match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge => true,
-        Offset | Shl | Shr => false,
-    }
-}
+use crate::util;
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` as long as there are more things to do.
@@ -179,9 +159,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
-                let layout = binop_left_homogeneous(bin_op).then_some(dest.layout);
+                let layout = util::binop_left_homogeneous(bin_op).then_some(dest.layout);
                 let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
-                let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
+                let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
                 self.binop_ignore_overflow(bin_op, &left, &right, &dest)?;
             }
@@ -189,7 +169,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             CheckedBinaryOp(bin_op, box (ref left, ref right)) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
                 let left = self.read_immediate(&self.eval_operand(left, None)?)?;
-                let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
+                let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
                 self.binop_with_overflow(bin_op, &left, &right, &dest)?;
             }

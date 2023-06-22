@@ -522,7 +522,7 @@ impl<'tcx> Inliner<'tcx> {
                     trace!("creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.lifetimes.re_erased,
-                        BorrowKind::Mut { allow_two_phase_borrow: false },
+                        BorrowKind::Mut { kind: MutBorrowKind::Default },
                         destination,
                     );
                     let dest_ty = dest.ty(caller_body, self.tcx);

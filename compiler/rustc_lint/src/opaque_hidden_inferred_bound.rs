@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             // Liberate bound regions in the predicate since we
             // don't actually care about lifetimes in this check.
             let predicate = cx.tcx.liberate_late_bound_regions(def_id, pred.kind());
-            let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = predicate else {
+            let ty::ClauseKind::Projection(proj) = predicate else {
                 continue;
             };
             // Only check types, since those are the only things that may
@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
                         (
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }),
-                            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)),
+                            ty::ClauseKind::Trait(trait_pred),
                         ) => Some(AddBound {
                             suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
                             trait_ref: trait_pred.print_modifiers_and_trait_path(),

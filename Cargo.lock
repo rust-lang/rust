@@ -360,7 +360,7 @@ dependencies = [
 name = "cargo-miri"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.15.3",
+ "cargo_metadata",
  "directories",
  "rustc-build-sysroot",
  "rustc-workspace-hack",
@@ -381,22 +381,9 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.14.0"
+version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c297bd3135f558552f99a0daa180876984ea2c4ffa7470314540dff8c654109a"
-dependencies = [
- "camino",
- "cargo-platform",
- "semver",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "cargo_metadata"
-version = "0.15.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a1ec454bc3eead8719cb56e15dbbfecdbc14e4b3a3ae4936cc6e31f5fc0d07"
+checksum = "eee4243f1f26fc7a42710e7439c149e2b10b05472f88090acce52632f231a73a"
 dependencies = [
  "camino",
  "cargo-platform",
@@ -631,7 +618,7 @@ name = "clippy_lints"
 version = "0.1.72"
 dependencies = [
  "arrayvec",
- "cargo_metadata 0.15.3",
+ "cargo_metadata",
  "clippy_utils",
  "declare_clippy_lint",
  "if_chain",
@@ -710,9 +697,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.92"
+version = "0.1.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64518f1ae689f74db058bbfb3238dfe6eb53f59f4ae712f1ff4348628522e190"
+checksum = "76630810d973ecea3dbf611e1b7aecfb1012751ef1ff8de3998f89014a166781"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -4348,35 +4335,33 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde",
- "syn 1.0.102",
+ "syn 2.0.8",
 ]
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.5.2"
+version = "1.5.3"
 dependencies = [
  "annotate-snippets",
  "anyhow",
  "bytecount",
- "cargo_metadata 0.14.0",
- "clap 3.2.20",
- "derive-new",
+ "cargo_metadata",
+ "clap 4.2.1",
  "diff",
  "dirs",
- "env_logger 0.9.0",
+ "env_logger 0.10.0",
  "getopts",
  "ignore",
  "itertools",
  "lazy_static",
  "log",
  "regex",
- "rustc-workspace-hack",
  "rustfmt-config_proc_macro",
  "serde",
  "serde_json",
  "term",
  "thiserror",
- "toml 0.5.7",
+ "toml 0.7.4",
  "unicode-segmentation",
  "unicode-width",
  "unicode_categories",
@@ -4956,7 +4941,7 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "cargo-platform",
- "cargo_metadata 0.15.3",
+ "cargo_metadata",
  "ignore",
  "lazy_static",
  "miropt-test-tools",
@@ -5192,7 +5177,7 @@ checksum = "191a442639ea102fa62671026047e51d574bfda44b7fdf32151d7314624c1cd2"
 dependencies = [
  "bstr",
  "cargo-platform",
- "cargo_metadata 0.15.3",
+ "cargo_metadata",
  "color-eyre",
  "colored",
  "crossbeam-channel",

@@ -10,7 +10,6 @@ use rustc_errors::{error_code, struct_span_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::sym;
 use rustc_trait_selection::traits;
 
 mod builtin;
@@ -44,7 +43,7 @@ fn enforce_trait_manually_implementable(
     let impl_header_span = tcx.def_span(impl_def_id);
 
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
-    if tcx.has_attr(trait_def_id, sym::rustc_deny_explicit_impl) {
+    if tcx.trait_def(trait_def_id).deny_explicit_impl {
         let trait_name = tcx.item_name(trait_def_id);
         let mut err = struct_span_err!(
             tcx.sess,

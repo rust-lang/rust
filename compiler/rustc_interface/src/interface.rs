@@ -36,7 +36,7 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 /// Created by passing [`Config`] to [`run_compiler`].
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
-    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
+    codegen_backend: Lrc<dyn CodegenBackend>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
 }
@@ -45,7 +45,7 @@ impl Compiler {
     pub fn session(&self) -> &Lrc<Session> {
         &self.sess
     }
-    pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
+    pub fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         &self.codegen_backend
     }
     pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
@@ -318,7 +318,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let compiler = Compiler {
                 sess: Lrc::new(sess),
-                codegen_backend: Lrc::new(codegen_backend),
+                codegen_backend: Lrc::from(codegen_backend),
                 register_lints: config.register_lints,
                 override_queries: config.override_queries,
             };

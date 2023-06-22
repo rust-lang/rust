@@ -1267,7 +1267,7 @@ impl<T: ?Sized> Arc<T> {
     }
 
     /// Returns `true` if the two `Arc`s point to the same allocation in a vein similar to
-    /// [`ptr::eq`]. See [that function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
+    /// [`ptr::eq`]. This function ignores the metadata of  `dyn Trait` pointers.
     ///
     /// # Examples
     ///
@@ -1287,7 +1287,7 @@ impl<T: ?Sized> Arc<T> {
     #[must_use]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
+        this.ptr.as_ptr() as *const () == other.ptr.as_ptr() as *const ()
     }
 }
 
@@ -2254,8 +2254,8 @@ impl<T: ?Sized> Weak<T> {
     }
 
     /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
-    /// both don't point to any allocation (because they were created with `Weak::new()`). See [that
-    /// function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
+    /// both don't point to any allocation (because they were created with `Weak::new()`). However,
+    /// this function ignores the metadata of  `dyn Trait` pointers.
     ///
     /// # Notes
     ///
@@ -2298,7 +2298,7 @@ impl<T: ?Sized> Weak<T> {
     #[must_use]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
-        self.ptr.as_ptr() == other.ptr.as_ptr()
+        ptr::eq(self.ptr.as_ptr() as *const (), other.ptr.as_ptr() as *const ())
     }
 }
 

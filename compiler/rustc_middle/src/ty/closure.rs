@@ -427,6 +427,8 @@ pub enum BorrowKind {
     /// immutable, but not aliasable. This solves the problem. For
     /// simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
+    ///
+    /// FIXME: Rename this to indicate the borrow is actually not immutable.
     UniqueImmBorrow,
 
     /// Data is mutable and not aliasable.

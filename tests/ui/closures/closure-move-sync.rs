@@ -13,10 +13,4 @@ fn bar() {
     t.join().unwrap();
 }
 
-fn foo() {
-    let (tx, _rx) = channel();
-    thread::spawn(|| tx.send(()).unwrap());
-    //~^ ERROR `Sender<()>` cannot be shared between threads safely
-}
-
 fn main() {}

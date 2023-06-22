@@ -11,6 +11,8 @@ use crate::ty::{
     TypeVisitor,
 };
 
+pub mod inspect;
+
 pub type EvaluationCache<'tcx> = Cache<CanonicalInput<'tcx>, QueryResult<'tcx>>;
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
@@ -18,7 +20,7 @@ pub type EvaluationCache<'tcx> = Cache<CanonicalInput<'tcx>, QueryResult<'tcx>>;
 ///
 /// Most of the time the `param_env` contains the `where`-bounds of the function
 /// we're currently typechecking while the `predicate` is some trait bound.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Goal<'tcx, P> {
     pub predicate: P,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -39,7 +41,7 @@ impl<'tcx, P> Goal<'tcx, P> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Response<'tcx> {
     pub certainty: Certainty,
     pub var_values: CanonicalVarValues<'tcx>,
@@ -47,7 +49,7 @@ pub struct Response<'tcx> {
     pub external_constraints: ExternalConstraints<'tcx>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum Certainty {
     Yes,
     Maybe(MaybeCause),
@@ -86,7 +88,7 @@ impl Certainty {
 }
 
 /// Why we failed to evaluate a goal.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum MaybeCause {
     /// We failed due to ambiguity. This ambiguity can either
     /// be a true ambiguity, i.e. there are multiple different answers,
@@ -96,7 +98,7 @@ pub enum MaybeCause {
     Overflow,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryInput<'tcx, T> {
     pub goal: Goal<'tcx, T>,
     pub anchor: DefiningAnchor,
@@ -104,12 +106,12 @@ pub struct QueryInput<'tcx, T> {
 }
 
 /// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default)]
 pub struct PredefinedOpaquesData<'tcx> {
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable)]
 pub struct PredefinedOpaques<'tcx>(pub(crate) Interned<'tcx, PredefinedOpaquesData<'tcx>>);
 
 impl<'tcx> std::ops::Deref for PredefinedOpaques<'tcx> {
@@ -132,7 +134,7 @@ pub type CanonicalResponse<'tcx> = Canonical<'tcx, Response<'tcx>>;
 /// solver, merge the two responses again.
 pub type QueryResult<'tcx> = Result<CanonicalResponse<'tcx>, NoSolution>;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable)]
 pub struct ExternalConstraints<'tcx>(pub(crate) Interned<'tcx, ExternalConstraintsData<'tcx>>);
 
 impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
@@ -144,7 +146,7 @@ impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
 }
 
 /// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default)]
 pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
     pub region_constraints: QueryRegionConstraints<'tcx>,
@@ -225,4 +227,10 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
     ) -> std::ops::ControlFlow<V::BreakTy> {
         self.opaque_types.visit_with(visitor)
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+pub enum IsNormalizesToHack {
+    Yes,
+    No,
 }

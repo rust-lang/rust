@@ -574,3 +574,48 @@ fn test_rc_cyclic_with_two_ref() {
     assert_eq!(Rc::strong_count(&two_refs), 3);
     assert_eq!(Rc::weak_count(&two_refs), 2);
 }
+
+#[test]
+fn test_unique_rc_weak() {
+    let rc = UniqueRc::new(42);
+    let weak = UniqueRc::downgrade(&rc);
+    assert!(weak.upgrade().is_none());
+
+    let _rc = UniqueRc::into_rc(rc);
+    assert_eq!(*weak.upgrade().unwrap(), 42);
+}
+
+#[test]
+fn test_unique_rc_drop_weak() {
+    let rc = UniqueRc::new(42);
+    let weak = UniqueRc::downgrade(&rc);
+    mem::drop(weak);
+
+    let rc = UniqueRc::into_rc(rc);
+    assert_eq!(*rc, 42);
+}
+
+#[test]
+fn test_unique_rc_drops_contents() {
+    let mut dropped = false;
+    struct DropMe<'a>(&'a mut bool);
+    impl Drop for DropMe<'_> {
+        fn drop(&mut self) {
+            *self.0 = true;
+        }
+    }
+    {
+        let rc = UniqueRc::new(DropMe(&mut dropped));
+        drop(rc);
+    }
+    assert!(dropped);
+}
+
+#[test]
+fn test_unique_rc_weak_clone_holding_ref() {
+    let mut v = UniqueRc::new(0u8);
+    let w = UniqueRc::downgrade(&v);
+    let r = &mut *v;
+    let _ = w.clone(); // touch weak count
+    *r = 123;
+}

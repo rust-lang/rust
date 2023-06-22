@@ -79,7 +79,7 @@ fn main() { env!("TEST_ENV_VAR"); }
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { "__RA_UNIMPLEMENTED__"; }
+fn main() { "UNRESOLVED_ENV_VAR"; }
 "##]],
     );
 }
@@ -202,6 +202,44 @@ macro_rules! format_args {
 
 fn main() {
     ::core::fmt::Arguments::new_v1(&["", " ", ], &[::core::fmt::Argument::new(&(arg1(a, b, c)), ::core::fmt::Display::fmt), ::core::fmt::Argument::new(&(arg2), ::core::fmt::Debug::fmt), ]);
+}
+"##]],
+    );
+}
+
+#[test]
+fn regression_15002() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! format_args {
+    ($fmt:expr) => ({ /* compiler built-in */ });
+    ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+}
+
+fn main() {
+    format_args!(x = 2);
+    format_args!(x =);
+    format_args!(x =, x = 2);
+    format_args!("{}", x =);
+    format_args!(=, "{}", x =);
+    format_args!(x = 2, "{}", 5);
+}
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro_rules! format_args {
+    ($fmt:expr) => ({ /* compiler built-in */ });
+    ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+}
+
+fn main() {
+    /* error: no rule matches input tokens */;
+    /* error: no rule matches input tokens */;
+    /* error: no rule matches input tokens */;
+    /* error: no rule matches input tokens */::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::Argument::new(&(), ::core::fmt::Display::fmt), ]);
+    /* error: no rule matches input tokens */;
+    ::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::Argument::new(&(5), ::core::fmt::Display::fmt), ]);
 }
 "##]],
     );
@@ -404,10 +442,6 @@ macro_rules! surprise {
     () => { "s" };
 }
 
-macro_rules! stuff {
-    ($string:expr) => { concat!($string) };
-}
-
 fn main() { concat!(surprise!()); }
 "##,
         expect![[r##"
@@ -416,10 +450,6 @@ macro_rules! concat {}
 
 macro_rules! surprise {
     () => { "s" };
-}
-
-macro_rules! stuff {
-    ($string:expr) => { concat!($string) };
 }
 
 fn main() { "s"; }

@@ -235,8 +235,11 @@ impl<'tcx> BinOp {
         // FIXME: handle SIMD correctly
         match self {
             &BinOp::Add
+            | &BinOp::AddUnchecked
             | &BinOp::Sub
+            | &BinOp::SubUnchecked
             | &BinOp::Mul
+            | &BinOp::MulUnchecked
             | &BinOp::Div
             | &BinOp::Rem
             | &BinOp::BitXor
@@ -246,7 +249,11 @@ impl<'tcx> BinOp {
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
             }
-            &BinOp::Shl | &BinOp::Shr | &BinOp::Offset => {
+            &BinOp::Shl
+            | &BinOp::ShlUnchecked
+            | &BinOp::Shr
+            | &BinOp::ShrUnchecked
+            | &BinOp::Offset => {
                 lhs_ty // lhs_ty can be != rhs_ty
             }
             &BinOp::Eq | &BinOp::Lt | &BinOp::Le | &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
@@ -261,11 +268,6 @@ impl BorrowKind {
         match self {
             BorrowKind::Mut { .. } => hir::Mutability::Mut,
             BorrowKind::Shared => hir::Mutability::Not,
-
-            // We have no type corresponding to a unique imm borrow, so
-            // use `&mut`. It gives all the capabilities of a `&uniq`
-            // and hence is a safe "over approximation".
-            BorrowKind::Unique => hir::Mutability::Mut,
 
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
@@ -293,7 +295,14 @@ impl BinOp {
             BinOp::Gt => hir::BinOpKind::Gt,
             BinOp::Le => hir::BinOpKind::Le,
             BinOp::Ge => hir::BinOpKind::Ge,
-            BinOp::Offset => unreachable!(),
+            BinOp::AddUnchecked
+            | BinOp::SubUnchecked
+            | BinOp::MulUnchecked
+            | BinOp::ShlUnchecked
+            | BinOp::ShrUnchecked
+            | BinOp::Offset => {
+                unreachable!()
+            }
         }
     }
 }

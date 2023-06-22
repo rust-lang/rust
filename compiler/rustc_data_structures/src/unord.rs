@@ -107,6 +107,10 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     {
         UnordItems(self.0.flat_map(f))
     }
+
+    pub fn collect<C: From<UnordItems<T, I>>>(self) -> C {
+        self.into()
+    }
 }
 
 impl<T> UnordItems<T, std::iter::Empty<T>> {
@@ -160,10 +164,6 @@ impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
         let mut items: SmallVec<[T; LEN]> = self.0.collect();
         items.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
         items
-    }
-
-    pub fn collect<C: From<UnordItems<T, I>>>(self) -> C {
-        self.into()
     }
 }
 

@@ -287,9 +287,11 @@ where
 
         let mut results = Results { analysis, entry_sets, _marker: PhantomData };
 
-        let res = write_graphviz_results(tcx, body, &mut results, pass_name);
-        if let Err(e) = res {
-            error!("Failed to write graphviz dataflow results: {}", e);
+        if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
+            let res = write_graphviz_results(tcx, &body, &mut results, pass_name);
+            if let Err(e) = res {
+                error!("Failed to write graphviz dataflow results: {}", e);
+            }
         }
 
         results
@@ -299,7 +301,7 @@ where
 // Graphviz
 
 /// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
-/// `rustc_mir` attributes.
+/// `rustc_mir` attributes and `-Z dump-mir-dataflow`.
 fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
@@ -328,9 +330,7 @@ where
             io::BufWriter::new(fs::File::create(&path)?)
         }
 
-        None if tcx.sess.opts.unstable_opts.dump_mir_dataflow
-            && dump_enabled(tcx, A::NAME, def_id) =>
-        {
+        None if dump_enabled(tcx, A::NAME, def_id) => {
             create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
         }
 

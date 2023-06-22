@@ -792,6 +792,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
         let prev_ambiguity_errors_len = self.ambiguity_errors.len();
         let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
+
+        // We'll provide more context to the privacy errors later, up to `len`.
+        let privacy_errors_len = self.privacy_errors.len();
+
         let path_res = self.resolve_path(
             &import.module_path,
             None,
@@ -930,6 +934,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 _ => unreachable!(),
             };
+
+        if self.privacy_errors.len() != privacy_errors_len {
+            // Get the Res for the last element, so that we can point to alternative ways of
+            // importing it if available.
+            let mut path = import.module_path.clone();
+            path.push(Segment::from_ident(ident));
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
+                self.resolve_path(&path, None, &import.parent_scope, Some(finalize), ignore_binding)
+            {
+                let res = module.res().map(|r| (r, ident));
+                for error in &mut self.privacy_errors[privacy_errors_len..] {
+                    error.outermost_res = res;
+                }
+            }
+        }
 
         let mut all_ns_err = true;
         self.per_ns(|this, ns| {

@@ -51,26 +51,26 @@ pub fn is_unstable_variant(attr: &syn::Attribute) -> bool {
 }
 
 fn is_attr_name_value(attr: &syn::Attribute, name: &str) -> bool {
-    attr.parse_meta().ok().map_or(false, |meta| match meta {
-        syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }) if path.is_ident(name) => true,
+    match &attr.meta {
+        syn::Meta::NameValue(syn::MetaNameValue { path, .. }) if path.is_ident(name) => true,
         _ => false,
-    })
+    }
 }
 
 fn is_attr_path(attr: &syn::Attribute, name: &str) -> bool {
-    attr.parse_meta().ok().map_or(false, |meta| match meta {
+    match &attr.meta {
         syn::Meta::Path(path) if path.is_ident(name) => true,
         _ => false,
-    })
+    }
 }
 
 fn get_name_value_str_lit(attr: &syn::Attribute, name: &str) -> Option<String> {
-    attr.parse_meta().ok().and_then(|meta| match meta {
+    match &attr.meta {
         syn::Meta::NameValue(syn::MetaNameValue {
-            ref path,
-            lit: syn::Lit::Str(ref lit_str),
+            path,
+            value: syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Str(lit_str), .. }),
             ..
         }) if path.is_ident(name) => Some(lit_str.value()),
         _ => None,
-    })
+    }
 }

@@ -1592,27 +1592,27 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        use rustc_middle::ty::Clause;
+        use rustc_middle::ty::ClauseKind;
         use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
             let predicates = cx.tcx.predicates_of(item.owner_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
-                    Clause(Clause::Trait(..)) => "trait",
-                    Clause(Clause::TypeOutlives(..)) |
-                    Clause(Clause::RegionOutlives(..)) => "lifetime",
+                    Clause(ClauseKind::Trait(..)) => "trait",
+                    Clause(ClauseKind::TypeOutlives(..)) |
+                    Clause(ClauseKind::RegionOutlives(..)) => "lifetime",
 
                     // `ConstArgHasType` is never global as `ct` is always a param
-                    Clause(Clause::ConstArgHasType(..)) |
+                    Clause(ClauseKind::ConstArgHasType(..)) |
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
-                    Clause(Clause::Projection(..)) |
-                    AliasRelate(..) |
+                    Clause(ClauseKind::Projection(..)) |
                     // Ignore bounds that a user can't type
-                    Clause(Clause::WellFormed(..)) |
+                    Clause(ClauseKind::WellFormed(..)) |
                     // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
-                    Clause(Clause::ConstEvaluatable(..)) |
+                    Clause(ClauseKind::ConstEvaluatable(..)) |
+                    AliasRelate(..) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |
@@ -1989,8 +1989,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(clause, _)| match *clause {
-                ty::Clause::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
+            .filter_map(|(clause, _)| match clause.kind().skip_binder() {
+                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyBound(ebr) if ebr.def_id == def_id => Some(b),
                     _ => None,
                 },
@@ -2005,8 +2005,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(clause, _)| match *clause {
-                ty::Clause::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+            .filter_map(|(clause, _)| match clause.kind().skip_binder() {
+                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
                 }
                 _ => None,

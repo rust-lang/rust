@@ -1,7 +1,10 @@
 //! Applies changes to the IDE state transactionally.
 
 use base_db::{
-    salsa::{Database, Durability},
+    salsa::{
+        debug::{DebugQueryTable, TableEntry},
+        Database, Durability, Query, QueryTable,
+    },
     Change, SourceRootId,
 };
 use profile::{memory_usage, Bytes};
@@ -47,16 +50,37 @@ impl RootDatabase {
     // | VS Code | **rust-analyzer: Memory Usage (Clears Database)**
     // |===
     // image::https://user-images.githubusercontent.com/48062697/113065592-08559f00-91b1-11eb-8c96-64b88068ec02.gif[]
-    pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
-        let mut acc: Vec<(String, Bytes)> = vec![];
+    pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes, usize)> {
+        let mut acc: Vec<(String, Bytes, usize)> = vec![];
+
+        fn collect_query_count<'q, Q>(table: &QueryTable<'q, Q>) -> usize
+        where
+            QueryTable<'q, Q>: DebugQueryTable,
+            Q: Query,
+            <Q as Query>::Storage: 'q,
+        {
+            struct EntryCounter(usize);
+            impl<K, V> FromIterator<TableEntry<K, V>> for EntryCounter {
+                fn from_iter<T>(iter: T) -> EntryCounter
+                where
+                    T: IntoIterator<Item = TableEntry<K, V>>,
+                {
+                    EntryCounter(iter.into_iter().count())
+                }
+            }
+            table.entries::<EntryCounter>().0
+        }
+
         macro_rules! purge_each_query {
             ($($q:path)*) => {$(
                 let before = memory_usage().allocated;
-                $q.in_db(self).purge();
+                let table = $q.in_db(self);
+                let count = collect_query_count(&table);
+                table.purge();
                 let after = memory_usage().allocated;
                 let q: $q = Default::default();
                 let name = format!("{:?}", q);
-                acc.push((name, before - after));
+                acc.push((name, before - after, count));
             )*}
         }
         purge_each_query![

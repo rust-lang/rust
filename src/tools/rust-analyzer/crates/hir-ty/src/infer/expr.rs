@@ -173,8 +173,8 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Const(id) => {
                 self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-                    let (_, expr) = this.db.lookup_intern_anonymous_const(*id);
-                    this.infer_expr(expr, expected)
+                    let loc = this.db.lookup_intern_anonymous_const(*id);
+                    this.infer_expr(loc.root, expected)
                 })
                 .1
             }
@@ -1715,6 +1715,7 @@ impl<'a> InferenceContext<'a> {
                         const_or_path_to_chalk(
                             this.db,
                             &this.resolver,
+                            this.owner.into(),
                             ty,
                             c,
                             ParamLoweringMode::Placeholder,

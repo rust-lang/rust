@@ -1009,11 +1009,11 @@ impl Session {
         self.edition().rust_2024()
     }
 
-    /// Returns `true` if we cannot skip the PLT for shared library calls.
+    /// Returns `true` if we should use the PLT for shared library calls.
     pub fn needs_plt(&self) -> bool {
-        // Check if the current target usually needs PLT to be enabled.
+        // Check if the current target usually wants PLT to be enabled.
         // The user can use the command line flag to override it.
-        let needs_plt = self.target.needs_plt;
+        let want_plt = self.target.plt_by_default;
 
         let dbg_opts = &self.opts.unstable_opts;
 
@@ -1025,8 +1025,8 @@ impl Session {
         let full_relro = RelroLevel::Full == relro_level;
 
         // If user didn't explicitly forced us to use / skip the PLT,
-        // then try to skip it where possible.
-        dbg_opts.plt.unwrap_or(needs_plt || !full_relro)
+        // then use it unless the target doesn't want it by default or the full relro forces it on.
+        dbg_opts.plt.unwrap_or(want_plt || !full_relro)
     }
 
     /// Checks if LLVM lifetime markers should be emitted.

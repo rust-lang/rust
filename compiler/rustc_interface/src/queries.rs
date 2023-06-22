@@ -93,7 +93,6 @@ pub struct Queries<'tcx> {
     dep_graph: Query<DepGraph>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
-    ongoing_codegen: Query<Box<dyn Any>>,
 }
 
 impl<'tcx> Queries<'tcx> {
@@ -110,14 +109,13 @@ impl<'tcx> Queries<'tcx> {
             register_plugins: Default::default(),
             dep_graph: Default::default(),
             gcx: Default::default(),
-            ongoing_codegen: Default::default(),
         }
     }
 
     fn session(&self) -> &Lrc<Session> {
         &self.compiler.sess
     }
-    fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
+    fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         self.compiler.codegen_backend()
     }
 
@@ -249,23 +247,19 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn ongoing_codegen(&'tcx self) -> Result<QueryResult<'_, Box<dyn Any>>> {
-        self.ongoing_codegen.compute(|| {
-            self.global_ctxt()?.enter(|tcx| {
-                tcx.analysis(()).ok();
+    pub fn ongoing_codegen(&'tcx self) -> Result<Box<dyn Any>> {
+        self.global_ctxt()?.enter(|tcx| {
+            // Don't do code generation if there were any errors
+            self.session().compile_status()?;
 
-                // Don't do code generation if there were any errors
-                self.session().compile_status()?;
+            // If we have any delayed bugs, for example because we created TyKind::Error earlier,
+            // it's likely that codegen will only cause more ICEs, obscuring the original problem
+            self.session().diagnostic().flush_delayed();
 
-                // If we have any delayed bugs, for example because we created TyKind::Error earlier,
-                // it's likely that codegen will only cause more ICEs, obscuring the original problem
-                self.session().diagnostic().flush_delayed();
+            // Hook for UI tests.
+            Self::check_for_rustc_errors_attr(tcx);
 
-                // Hook for UI tests.
-                Self::check_for_rustc_errors_attr(tcx);
-
-                Ok(passes::start_codegen(&***self.codegen_backend(), tcx))
-            })
+            Ok(passes::start_codegen(&**self.codegen_backend(), tcx))
         })
     }
 
@@ -303,7 +297,7 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    pub fn linker(&'tcx self) -> Result<Linker> {
+    pub fn linker(&'tcx self, ongoing_codegen: Box<dyn Any>) -> Result<Linker> {
         let sess = self.session().clone();
         let codegen_backend = self.codegen_backend().clone();
 
@@ -314,7 +308,6 @@ impl<'tcx> Queries<'tcx> {
                 tcx.dep_graph.clone(),
             )
         });
-        let ongoing_codegen = self.ongoing_codegen()?.steal();
 
         Ok(Linker {
             sess,
@@ -331,7 +324,7 @@ impl<'tcx> Queries<'tcx> {
 pub struct Linker {
     // compilation inputs
     sess: Lrc<Session>,
-    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
+    codegen_backend: Lrc<dyn CodegenBackend>,
 
     // compilation outputs
     dep_graph: DepGraph,

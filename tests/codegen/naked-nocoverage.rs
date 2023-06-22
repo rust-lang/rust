@@ -11,7 +11,7 @@ use std::arch::asm;
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn f() {
-    // CHECK:       define void @f()
+    // CHECK:       define {{(dso_local )?}}void @f()
     // CHECK-NEXT:  start:
     // CHECK-NEXT:    call void asm
     // CHECK-NEXT:    unreachable

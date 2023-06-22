@@ -638,7 +638,7 @@ where
                 Place::from(ref_place),
                 Rvalue::Ref(
                     tcx.lifetimes.re_erased,
-                    BorrowKind::Mut { allow_two_phase_borrow: false },
+                    BorrowKind::Mut { kind: MutBorrowKind::Default },
                     self.place,
                 ),
             )],
@@ -654,7 +654,7 @@ where
                     destination: unit_temp,
                     target: Some(succ),
                     unwind: unwind.into_action(),
-                    from_hir_call: true,
+                    call_source: CallSource::Misc,
                     fn_span: self.source_info.span,
                 },
                 source_info: self.source_info,

@@ -1,6 +1,7 @@
 // only-aarch64
 // run-pass
 // needs-asm-support
+// needs-unwind
 
 #![feature(asm_unwind)]
 

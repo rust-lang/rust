@@ -58,7 +58,13 @@ pub enum ExpandError {
     UnresolvedProcMacro(CrateId),
     Mbe(mbe::ExpandError),
     RecursionOverflowPoisoned,
-    Other(Box<str>),
+    Other(Box<Box<str>>),
+}
+
+impl ExpandError {
+    pub fn other(msg: impl Into<Box<str>>) -> Self {
+        ExpandError::Other(Box::new(msg.into()))
+    }
 }
 
 impl From<mbe::ExpandError> for ExpandError {
@@ -97,8 +103,14 @@ impl fmt::Display for ExpandError {
 /// The two variants are encoded in a single u32 which are differentiated by the MSB.
 /// If the MSB is 0, the value represents a `FileId`, otherwise the remaining 31 bits represent a
 /// `MacroCallId`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HirFileId(u32);
+
+impl fmt::Debug for HirFileId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.repr().fmt(f)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroFile {
@@ -115,6 +127,7 @@ impl_intern_key!(MacroCallId);
 pub struct MacroCallLoc {
     pub def: MacroDefId,
     pub(crate) krate: CrateId,
+    /// Some if `def` is a builtin eager macro.
     eager: Option<Box<EagerCallInfo>>,
     pub kind: MacroCallKind,
 }
@@ -140,8 +153,10 @@ pub enum MacroDefKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EagerCallInfo {
     /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
-    arg_or_expansion: Arc<tt::Subtree>,
-    included_file: Option<(FileId, TokenMap)>,
+    arg: Arc<(tt::Subtree, TokenMap)>,
+    /// call id of the eager macro's input file. If this is none, macro call containing this call info
+    /// is an eager macro's input, otherwise it is its output.
+    arg_id: Option<MacroCallId>,
     error: Option<ExpandError>,
 }
 
@@ -206,10 +221,15 @@ impl HirFileId {
                 HirFileIdRepr::FileId(id) => break id,
                 HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
                     let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
-                    file_id = match loc.eager.as_deref() {
-                        Some(&EagerCallInfo { included_file: Some((file, _)), .. }) => file.into(),
+                    let is_include_expansion = loc.def.is_include()
+                        && matches!(
+                            loc.eager.as_deref(),
+                            Some(EagerCallInfo { arg_id: Some(_), .. })
+                        );
+                    file_id = match is_include_expansion.then(|| db.include_expand(macro_call_id)) {
+                        Some(Ok((_, file))) => file.into(),
                         _ => loc.kind.file_id(),
-                    };
+                    }
                 }
             }
         }
@@ -325,7 +345,17 @@ impl HirFileId {
         match self.macro_file() {
             Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                matches!(loc.eager.as_deref(), Some(EagerCallInfo { included_file: Some(..), .. }))
+                loc.def.is_include()
+            }
+            _ => false,
+        }
+    }
+
+    pub fn is_eager(&self, db: &dyn db::ExpandDatabase) -> bool {
+        match self.macro_file() {
+            Some(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+                matches!(loc.eager.as_deref(), Some(EagerCallInfo { .. }))
             }
             _ => false,
         }
@@ -422,6 +452,10 @@ impl MacroDefId {
 
     pub fn is_attribute_derive(&self) -> bool {
         matches!(self.kind, MacroDefKind::BuiltInAttr(expander, ..) if expander.is_derive())
+    }
+
+    pub fn is_include(&self) -> bool {
+        matches!(self.kind, MacroDefKind::BuiltInEager(expander, ..) if expander.is_include())
     }
 }
 
@@ -569,6 +603,10 @@ impl MacroCallId {
     pub fn as_file(self) -> HirFileId {
         MacroFile { macro_call_id: self }.into()
     }
+
+    pub fn as_macro_file(self) -> MacroFile {
+        MacroFile { macro_call_id: self }
+    }
 }
 
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro
@@ -662,7 +700,7 @@ impl ExpansionInfo {
 
         let token_id = match token_id_in_attr_input {
             Some(token_id) => token_id,
-            // the token is not inside an attribute's input so do the lookup in the macro_arg as usual
+            // the token is not inside `an attribute's input so do the lookup in the macro_arg as usual
             None => {
                 let relative_range =
                     token.value.text_range().checked_sub(self.arg.value.text_range().start())?;
@@ -694,14 +732,18 @@ impl ExpansionInfo {
         let call_id = self.expanded.file_id.macro_file()?.macro_call_id;
         let loc = db.lookup_intern_macro_call(call_id);
 
-        if let Some((file, map)) = loc.eager.and_then(|e| e.included_file) {
-            // Special case: map tokens from `include!` expansions to the included file
-            let range = map.first_range_by_token(token_id, token.value.kind())?;
-            let source = db.parse(file);
+        // Special case: map tokens from `include!` expansions to the included file
+        if loc.def.is_include()
+            && matches!(loc.eager.as_deref(), Some(EagerCallInfo { arg_id: Some(_), .. }))
+        {
+            if let Ok((tt_and_map, file_id)) = db.include_expand(call_id) {
+                let range = tt_and_map.1.first_range_by_token(token_id, token.value.kind())?;
+                let source = db.parse(file_id);
 
-            let token = source.syntax_node().covering_element(range).into_token()?;
+                let token = source.syntax_node().covering_element(range).into_token()?;
 
-            return Some((InFile::new(file.into(), token), Origin::Call));
+                return Some((InFile::new(file_id.into(), token), Origin::Call));
+            }
         }
 
         // Attributes are a bit special for us, they have two inputs, the input tokentree and the annotated item.

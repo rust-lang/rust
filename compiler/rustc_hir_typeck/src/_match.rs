@@ -536,31 +536,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for ty in [first_ty, second_ty] {
-                    for (pred, _) in self
+                    for (clause, _) in self
                         .tcx
                         .explicit_item_bounds(rpit_def_id)
                         .subst_iter_copied(self.tcx, substs)
                     {
-                        let pred = pred.kind().rebind(match pred.kind().skip_binder() {
-                            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
+                        let pred = clause.kind().rebind(match clause.kind().skip_binder() {
+                            ty::ClauseKind::Trait(trait_pred) => {
                                 // FIXME(rpitit): This will need to be fixed when we move to associated types
                                 assert!(matches!(
                                     *trait_pred.trait_ref.self_ty().kind(),
                                     ty::Alias(_, ty::AliasTy { def_id, substs: alias_substs, .. })
                                     if def_id == rpit_def_id && substs == alias_substs
                                 ));
-                                ty::PredicateKind::Clause(ty::Clause::Trait(
-                                    trait_pred.with_self_ty(self.tcx, ty),
-                                ))
+                                ty::ClauseKind::Trait(trait_pred.with_self_ty(self.tcx, ty))
                             }
-                            ty::PredicateKind::Clause(ty::Clause::Projection(mut proj_pred)) => {
+                            ty::ClauseKind::Projection(mut proj_pred) => {
                                 assert!(matches!(
                                     *proj_pred.projection_ty.self_ty().kind(),
                                     ty::Alias(_, ty::AliasTy { def_id, substs: alias_substs, .. })
                                     if def_id == rpit_def_id && substs == alias_substs
                                 ));
                                 proj_pred = proj_pred.with_self_ty(self.tcx, ty);
-                                ty::PredicateKind::Clause(ty::Clause::Projection(proj_pred))
+                                ty::ClauseKind::Projection(proj_pred)
                             }
                             _ => continue,
                         });

@@ -565,7 +565,7 @@ RefType =
   '&' Lifetime? 'mut'? Type
 
 ArrayType =
-  '[' Type ';' Expr ']'
+  '[' Type ';' ConstArg ']'
 
 SliceType =
   '[' Type ']'

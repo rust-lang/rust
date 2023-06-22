@@ -16,9 +16,6 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "Apache-2.0/MIT",
-    "BSD-2-Clause",                                        // arrayref from Cargo
-    "CC0-1.0 OR Apache-2.0",                               // blake3 from Cargo
-    "CC0-1.0 OR MIT-0 OR Apache-2.0",                      // constant_time_eq from cargo
     "ISC",
     "MIT / Apache-2.0",
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros

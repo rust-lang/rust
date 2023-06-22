@@ -259,7 +259,7 @@ fn associated_type_for_impl_trait_in_trait(
     opaque_ty_def_id: LocalDefId,
 ) -> LocalDefId {
     let (hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) =
-        tcx.hir().expect_item(opaque_ty_def_id).expect_opaque_ty().origin
+        tcx.opaque_type_origin(opaque_ty_def_id)
     else {
         bug!("expected opaque for {opaque_ty_def_id:?}");
     };

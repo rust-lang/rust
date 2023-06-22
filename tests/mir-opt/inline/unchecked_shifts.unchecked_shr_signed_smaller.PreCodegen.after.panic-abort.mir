@@ -4,12 +4,28 @@ fn unchecked_shr_signed_smaller(_1: i16, _2: u32) -> i16 {
     debug a => _1;
     debug b => _2;
     let mut _0: i16;
-
-    bb0: {
-        _0 = core::num::<impl i16>::unchecked_shr(_1, _2) -> [return: bb1, unwind unreachable];
+    scope 1 (inlined core::num::<impl i16>::unchecked_shr) {
+        debug self => _1;
+        debug rhs => _2;
+        let mut _3: u32;
+        let mut _4: bool;
+        let mut _5: i16;
+        scope 2 {
+        }
     }
 
-    bb1: {
+    bb0: {
+        StorageLive(_5);
+        StorageLive(_4);
+        StorageLive(_3);
+        _3 = const 32767_u32;
+        _4 = Le(_2, move _3);
+        StorageDead(_3);
+        assume(move _4);
+        StorageDead(_4);
+        _5 = _2 as i16 (IntToInt);
+        _0 = ShrUnchecked(_1, move _5);
+        StorageDead(_5);
         return;
     }
 }

@@ -1,7 +1,9 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::errors::{self, AddAsNonDerive, MacroExpectedFound, RemoveSurroundingDerive};
+use crate::errors::{
+    self, AddAsNonDerive, CannotFindIdentInThisScope, MacroExpectedFound, RemoveSurroundingDerive,
+};
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -793,8 +795,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 Err(..) => {
                     let expected = kind.descr_expected();
-                    let msg = format!("cannot find {} `{}` in this scope", expected, ident);
-                    let mut err = self.tcx.sess.struct_span_err(ident.span, msg);
+
+                    let mut err = self.tcx.sess.create_err(CannotFindIdentInThisScope {
+                        span: ident.span,
+                        expected,
+                        ident,
+                    });
+
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident, krate);
                     err.emit();
                 }

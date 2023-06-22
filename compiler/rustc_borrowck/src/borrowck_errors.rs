@@ -278,7 +278,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         move_from_desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, move_from_span, E0507, "cannot move out of {}", move_from_desc,)
+        struct_span_err!(self, move_from_span, E0507, "cannot move out of {}", move_from_desc)
     }
 
     /// Signal an error due to an attempt to move out of the interior

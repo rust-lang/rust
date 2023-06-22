@@ -10,6 +10,7 @@ use crate::spec::Target;
 pub fn target() -> Target {
     let mut base = super::uefi_msvc_base::opts();
     base.cpu = "x86-64".into();
+    base.plt_by_default = false;
     base.max_atomic_width = Some(64);
 
     // We disable MMX and SSE for now, even though UEFI allows using them. Problem is, you have to

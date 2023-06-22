@@ -358,15 +358,15 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 impl Item {
     pub(crate) fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<Stability> {
-        self.item_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
+        self.def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
     pub(crate) fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<ConstStability> {
-        self.item_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
+        self.def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 
     pub(crate) fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
-        self.item_id.as_def_id().and_then(|did| tcx.lookup_deprecation(did))
+        self.def_id().and_then(|did| tcx.lookup_deprecation(did))
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
@@ -391,7 +391,7 @@ impl Item {
                     panic!("blanket impl item has non-blanket ID")
                 }
             }
-            _ => self.item_id.as_def_id().map(|did| rustc_span(did, tcx)),
+            _ => self.def_id().map(|did| rustc_span(did, tcx)),
         }
     }
 
@@ -501,7 +501,7 @@ impl Item {
     }
 
     pub(crate) fn is_crate(&self) -> bool {
-        self.is_mod() && self.item_id.as_def_id().map_or(false, |did| did.is_crate_root())
+        self.is_mod() && self.def_id().map_or(false, |did| did.is_crate_root())
     }
     pub(crate) fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -638,11 +638,11 @@ impl Item {
         }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
-                let def_id = self.item_id.as_def_id().unwrap();
+                let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
-                        intrinsic_operation_unsafety(tcx, self.item_id.as_def_id().unwrap())
+                        intrinsic_operation_unsafety(tcx, self.def_id().unwrap())
                     } else {
                         hir::Unsafety::Unsafe
                     },
@@ -659,7 +659,7 @@ impl Item {
                 }
             }
             ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) | ItemKind::TyMethodItem(_) => {
-                let def_id = self.item_id.as_def_id().unwrap();
+                let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
             _ => return None,
@@ -738,7 +738,7 @@ impl Item {
                 }
             })
             .collect();
-        if let Some(def_id) = self.item_id.as_def_id() &&
+        if let Some(def_id) = self.def_id() &&
             !def_id.is_local() &&
             // This check is needed because `adt_def` will panic if not a compatible type otherwise...
             matches!(self.type_(), ItemType::Struct | ItemType::Enum | ItemType::Union)
@@ -782,6 +782,14 @@ impl Item {
             attrs.push(format!("#[repr({})]", out.join(", ")));
         }
         attrs
+    }
+
+    pub fn is_doc_hidden(&self) -> bool {
+        self.attrs.is_doc_hidden()
+    }
+
+    pub fn def_id(&self) -> Option<DefId> {
+        self.item_id.as_def_id()
     }
 }
 
@@ -1127,6 +1135,10 @@ impl Attributes {
         }
 
         false
+    }
+
+    fn is_doc_hidden(&self) -> bool {
+        self.has_doc_flag(sym::hidden)
     }
 
     pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {

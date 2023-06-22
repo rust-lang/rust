@@ -1,0 +1,13 @@
+warning: return type notation is experimental
+  --> $DIR/feature-gate-return_type_notation.rs:17:17
+   |
+LL | fn foo<T: Trait<m(): Send>>() {}
+   |                 ^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = help: add `#![feature(return_type_notation)]` to the crate attributes to enable
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
+
+warning: 1 warning emitted
+

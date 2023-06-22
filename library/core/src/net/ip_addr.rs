@@ -1770,14 +1770,8 @@ impl fmt::Display for Ipv6Addr {
                 f.write_str("::")
             } else if self.is_loopback() {
                 f.write_str("::1")
-            } else if let Some(ipv4) = self.to_ipv4() {
-                match segments[5] {
-                    // IPv4 Compatible address
-                    0 => write!(f, "::{}", ipv4),
-                    // IPv4 Mapped address
-                    0xffff => write!(f, "::ffff:{}", ipv4),
-                    _ => unreachable!(),
-                }
+            } else if let Some(ipv4) = self.to_ipv4_mapped() {
+                write!(f, "::ffff:{}", ipv4)
             } else {
                 #[derive(Copy, Clone, Default)]
                 struct Span {

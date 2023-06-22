@@ -60,18 +60,19 @@ prepare:
 ## MSVC native builders
 
 # this intentionally doesn't use `$(BOOTSTRAP)` so we can test the shebang on Windows
-ci-msvc:
-	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2
+ci-msvc-py:
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 tidy
+ci-msvc-ps1:
+	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 --exclude tidy
+ci-msvc: ci-msvc-py ci-msvc-ps1
 
 ## MingW native builders
 
-TESTS_IN_MINGW_2 := \
-	tests/ui
-
-ci-mingw-subset-1:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)
-ci-mingw-subset-2:
-	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2)
-
+# test both x and bootstrap entrypoints
+ci-mingw-x:
+	$(Q)$(CFG_SRC_DIR)/x test --stage 2 tidy
+ci-mingw-bootstrap:
+	$(Q)$(BOOTSTRAP) test --stage 2 --exclude tidy
+ci-mingw: ci-mingw-x ci-mingw-bootstrap
 
 .PHONY: dist

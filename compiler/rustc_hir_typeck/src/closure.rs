@@ -174,7 +174,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
-                    self.tcx.explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
+                    self.tcx
+                        .explicit_item_bounds(def_id)
+                        .subst_iter_copied(self.tcx, substs)
+                        .map(|(c, s)| (c.as_predicate(), s)),
                 ),
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
@@ -222,7 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Given a Projection predicate, we can potentially infer
             // the complete signature.
             if expected_sig.is_none()
-                && let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) = bound_predicate.skip_binder()
+                && let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_predicate)) = bound_predicate.skip_binder()
             {
                 let inferred_sig = self.normalize(
                     span,
@@ -258,10 +261,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // like `F : Fn<A>`. Note that due to subtyping we could encounter
             // many viable options, so pick the most restrictive.
             let trait_def_id = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                     Some(data.projection_ty.trait_def_id(self.tcx))
                 }
-                ty::PredicateKind::Clause(ty::Clause::Trait(data)) => Some(data.def_id()),
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => Some(data.def_id()),
                 _ => None,
             };
             if let Some(closure_kind) =
@@ -695,7 +698,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // where R is the return type we are expecting. This type `T`
             // will be our output.
             let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) =
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_predicate)) =
                 bound_predicate.skip_binder()
             {
                 self.deduce_future_output_from_projection(
@@ -717,13 +720,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .explicit_item_bounds(def_id)
                 .subst_iter_copied(self.tcx, substs)
-                .find_map(|(p, s)| get_future_output(p, s))?,
+                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return None,
             ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
                 .tcx
                 .explicit_item_bounds(proj.def_id)
                 .subst_iter_copied(self.tcx, proj.substs)
-                .find_map(|(p, s)| get_future_output(p, s))?,
+                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable: {ret_ty}"

@@ -233,6 +233,7 @@ impl<'a> SymbolCollector<'a> {
             DefWithBodyId::VariantId(id) => {
                 Some(self.db.enum_data(id.parent).variants[id.local_id].name.to_smol_str())
             }
+            DefWithBodyId::InTypeConstId(_) => Some("in type const".into()),
         }
     }
 

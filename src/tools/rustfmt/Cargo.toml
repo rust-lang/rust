@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.5.2"
+version = "1.5.3"
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
 readme = "README.md"
@@ -36,33 +36,27 @@ generic-simd = ["bytecount/generic-simd"]
 annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0"
 bytecount = "0.6"
-cargo_metadata = "0.14"
-clap = { version = "3.1", features = ["derive"] }
-derive-new = "0.5"
+cargo_metadata = "0.15.4"
+clap = { version = "4.2.1", features = ["derive"] }
 diff = "0.1"
 dirs = "4.0"
-env_logger = "0.9"
+env_logger = "0.10.0"
 getopts = "0.2"
 ignore = "0.4"
 itertools = "0.10"
 lazy_static = "1.4"
 log = "0.4"
 regex = "1.5"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0"
 term = "0.7"
-thiserror = "1.0"
-toml = "0.5"
+thiserror = "1.0.40"
+toml = "0.7.4"
 unicode-segmentation = "1.9"
 unicode-width = "0.1"
 unicode_categories = "0.1"
 
 rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
-
-# A noop dependency that changes in the Rust repository, it's a bit of a hack.
-# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
-# for more information.
-rustc-workspace-hack = "1.0.0"
 
 # Rustc dependencies are loaded from the sysroot, Cargo doesn't know about them.
 

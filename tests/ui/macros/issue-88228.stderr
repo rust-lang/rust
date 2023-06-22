@@ -4,7 +4,7 @@ error: cannot find macro `bla` in this scope
 LL |     bla!();
    |     ^^^
    |
-help: consider importing this macro
+help: consider importing this macro through its public re-export
    |
 LL + use crate::hey::bla;
    |
@@ -23,7 +23,7 @@ error: cannot find derive macro `Bla` in this scope
 LL | #[derive(Bla)]
    |          ^^^
    |
-help: consider importing this derive macro
+help: consider importing this derive macro through its public re-export
    |
 LL + use crate::hey::Bla;
    |

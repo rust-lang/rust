@@ -1317,7 +1317,8 @@ impl<T> SizedTypeProperties for T {}
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
 /// ```
 #[unstable(feature = "offset_of", issue = "106655")]
-#[allow_internal_unstable(builtin_syntax)]
+#[allow_internal_unstable(builtin_syntax, hint_must_use)]
 pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {
-    builtin # offset_of($Container, $($fields).+)
+    // The `{}` is for better error messages
+    crate::hint::must_use({builtin # offset_of($Container, $($fields).+)})
 }

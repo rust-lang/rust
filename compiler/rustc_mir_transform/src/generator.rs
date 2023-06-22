@@ -230,7 +230,7 @@ struct TransformVisitor<'tcx> {
 
     // Mapping from Local to (type of local, generator struct index)
     // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
-    remap: FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
+    remap: FxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
     storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
@@ -295,11 +295,11 @@ impl<'tcx> TransformVisitor<'tcx> {
     }
 
     // Create a Place referencing a generator struct field
-    fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
+    fn make_field(&self, variant_index: VariantIdx, idx: FieldIdx, ty: Ty<'tcx>) -> Place<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
         let mut projection = base.projection.to_vec();
-        projection.push(ProjectionElem::Field(FieldIdx::new(idx), ty));
+        projection.push(ProjectionElem::Field(idx, ty));
 
         Place { local: base.local, projection: self.tcx.mk_place_elems(&projection) }
     }
@@ -904,7 +904,7 @@ fn compute_layout<'tcx>(
     liveness: LivenessInfo,
     body: &Body<'tcx>,
 ) -> (
-    FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
+    FxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
     GeneratorLayout<'tcx>,
     IndexVec<BasicBlock, Option<BitSet<Local>>>,
 ) {
@@ -982,6 +982,7 @@ fn compute_layout<'tcx>(
             // just use the first one here. That's fine; fields do not move
             // around inside generators, so it doesn't matter which variant
             // index we access them by.
+            let idx = FieldIdx::from_usize(idx);
             remap.entry(locals[saved_local]).or_insert((tys[saved_local].ty, variant_index, idx));
         }
         variant_fields.push(fields);
@@ -990,8 +991,23 @@ fn compute_layout<'tcx>(
     debug!("generator variant_fields = {:?}", variant_fields);
     debug!("generator storage_conflicts = {:#?}", storage_conflicts);
 
-    let layout =
-        GeneratorLayout { field_tys: tys, variant_fields, variant_source_info, storage_conflicts };
+    let mut field_names = IndexVec::from_elem(None, &tys);
+    for var in &body.var_debug_info {
+        let VarDebugInfoContents::Place(place) = &var.value else { continue };
+        let Some(local) = place.as_local() else { continue };
+        let Some(&(_, variant, field)) = remap.get(&local) else { continue };
+
+        let saved_local = variant_fields[variant][field];
+        field_names.get_or_insert_with(saved_local, || var.name);
+    }
+
+    let layout = GeneratorLayout {
+        field_tys: tys,
+        field_names,
+        variant_fields,
+        variant_source_info,
+        storage_conflicts,
+    };
     debug!(?layout);
 
     (remap, layout, storage_liveness)
@@ -1692,7 +1708,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 destination,
                 target: Some(_),
                 unwind: _,
-                from_hir_call: _,
+                call_source: _,
                 fn_span: _,
             } => {
                 self.check_assigned_place(*destination, |this| {
@@ -1808,7 +1824,7 @@ fn check_must_not_suspend_ty<'tcx>(
             let mut has_emitted = false;
             for &(predicate, _) in tcx.explicit_item_bounds(def).skip_binder() {
                 // We only look at the `DefId`, so it is safe to skip the binder here.
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(ref poly_trait_predicate)) =
+                if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
                     predicate.kind().skip_binder()
                 {
                     let def_id = poly_trait_predicate.trait_ref.def_id;

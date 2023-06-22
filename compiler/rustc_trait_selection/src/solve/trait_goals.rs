@@ -6,6 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
+use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
@@ -61,7 +62,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             },
         };
 
-        ecx.probe(|ecx| {
+        ecx.probe(|r| CandidateKind::Candidate { name: "impl".into(), result: *r }).enter(|ecx| {
             let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
@@ -81,24 +82,27 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-        assumption: ty::Binder<'tcx, ty::Clause<'tcx>>,
+        assumption: ty::Clause<'tcx>,
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
-        if let Some(trait_clause) = assumption.as_trait_clause()
-            && trait_clause.def_id() == goal.predicate.def_id()
-            && trait_clause.polarity() == goal.predicate.polarity
-        {
-            // FIXME: Constness
-            ecx.probe(|ecx| {
-                let assumption_trait_pred =
-                    ecx.instantiate_binder_with_infer(trait_clause);
-                ecx.eq(
-                    goal.param_env,
-                    goal.predicate.trait_ref,
-                    assumption_trait_pred.trait_ref,
-                )?;
-                then(ecx)
-            })
+        if let Some(trait_clause) = assumption.as_trait_clause() {
+            if trait_clause.def_id() == goal.predicate.def_id()
+                && trait_clause.polarity() == goal.predicate.polarity
+            {
+                // FIXME: Constness
+                ecx.probe(|r| CandidateKind::Candidate { name: "assumption".into(), result: *r })
+                    .enter(|ecx| {
+                        let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
+                        ecx.eq(
+                            goal.param_env,
+                            goal.predicate.trait_ref,
+                            assumption_trait_pred.trait_ref,
+                        )?;
+                        then(ecx)
+                    })
+            } else {
+                Err(NoSolution)
+            }
         } else {
             Err(NoSolution)
         }
@@ -132,13 +136,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let tcx = ecx.tcx();
 
-        ecx.probe(|ecx| {
-            let nested_obligations = tcx
-                .predicates_of(goal.predicate.def_id())
-                .instantiate(tcx, goal.predicate.trait_ref.substs);
-            ecx.add_goals(nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)));
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+        ecx.probe(|r| CandidateKind::Candidate { name: "trait alias".into(), result: *r }).enter(
+            |ecx| {
+                let nested_obligations = tcx
+                    .predicates_of(goal.predicate.def_id())
+                    .instantiate(tcx, goal.predicate.trait_ref.substs);
+                ecx.add_goals(nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)));
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            },
+        )
     }
 
     fn consider_builtin_sized_candidate(
@@ -344,109 +350,115 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         if b_ty.is_ty_var() {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
-        ecx.probe(|ecx| {
-            match (a_ty.kind(), b_ty.kind()) {
-                // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`
-                (&ty::Dynamic(_, _, ty::Dyn), &ty::Dynamic(_, _, ty::Dyn)) => {
-                    // Dyn upcasting is handled separately, since due to upcasting,
-                    // when there are two supertraits that differ by substs, we
-                    // may return more than one query response.
-                    Err(NoSolution)
-                }
-                // `T` -> `dyn Trait` unsizing
-                (_, &ty::Dynamic(data, region, ty::Dyn)) => {
-                    // Can only unsize to an object-safe type
-                    if data
-                        .principal_def_id()
-                        .is_some_and(|def_id| !tcx.check_is_object_safe(def_id))
-                    {
-                        return Err(NoSolution);
+        ecx.probe(|r| CandidateKind::Candidate { name: "builtin unsize".into(), result: *r }).enter(
+            |ecx| {
+                match (a_ty.kind(), b_ty.kind()) {
+                    // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`
+                    (&ty::Dynamic(_, _, ty::Dyn), &ty::Dynamic(_, _, ty::Dyn)) => {
+                        // Dyn upcasting is handled separately, since due to upcasting,
+                        // when there are two supertraits that differ by substs, we
+                        // may return more than one query response.
+                        Err(NoSolution)
                     }
+                    // `T` -> `dyn Trait` unsizing
+                    (_, &ty::Dynamic(data, region, ty::Dyn)) => {
+                        // Can only unsize to an object-safe type
+                        if data
+                            .principal_def_id()
+                            .is_some_and(|def_id| !tcx.check_is_object_safe(def_id))
+                        {
+                            return Err(NoSolution);
+                        }
 
-                    let Some(sized_def_id) = tcx.lang_items().sized_trait() else {
+                        let Some(sized_def_id) = tcx.lang_items().sized_trait() else {
                         return Err(NoSolution);
                     };
-                    // Check that the type implements all of the predicates of the def-id.
-                    // (i.e. the principal, all of the associated types match, and any auto traits)
-                    ecx.add_goals(
-                        data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
-                    );
-                    // The type must be Sized to be unsized.
-                    ecx.add_goal(goal.with(tcx, ty::TraitRef::new(tcx, sized_def_id, [a_ty])));
-                    // The type must outlive the lifetime of the `dyn` we're unsizing into.
-                    ecx.add_goal(
-                        goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
-                    );
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }
-                // `[T; n]` -> `[T]` unsizing
-                (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
-                    // We just require that the element type stays the same
-                    ecx.eq(goal.param_env, a_elem_ty, b_elem_ty)?;
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }
-                // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
-                (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
-                    if a_def.is_struct() && a_def.did() == b_def.did() =>
-                {
-                    let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
-                    // We must be unsizing some type parameters. This also implies
-                    // that the struct has a tail field.
-                    if unsizing_params.is_empty() {
-                        return Err(NoSolution);
+                        // Check that the type implements all of the predicates of the def-id.
+                        // (i.e. the principal, all of the associated types match, and any auto traits)
+                        ecx.add_goals(
+                            data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
+                        );
+                        // The type must be Sized to be unsized.
+                        ecx.add_goal(goal.with(tcx, ty::TraitRef::new(tcx, sized_def_id, [a_ty])));
+                        // The type must outlive the lifetime of the `dyn` we're unsizing into.
+                        ecx.add_goal(
+                            goal.with(tcx, ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region))),
+                        );
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     }
+                    // `[T; n]` -> `[T]` unsizing
+                    (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
+                        // We just require that the element type stays the same
+                        ecx.eq(goal.param_env, a_elem_ty, b_elem_ty)?;
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }
+                    // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
+                    (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
+                        if a_def.is_struct() && a_def.did() == b_def.did() =>
+                    {
+                        let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
+                        // We must be unsizing some type parameters. This also implies
+                        // that the struct has a tail field.
+                        if unsizing_params.is_empty() {
+                            return Err(NoSolution);
+                        }
 
-                    let tail_field = a_def
-                        .non_enum_variant()
-                        .fields
-                        .raw
-                        .last()
-                        .expect("expected unsized ADT to have a tail field");
-                    let tail_field_ty = tcx.type_of(tail_field.did);
+                        let tail_field = a_def
+                            .non_enum_variant()
+                            .fields
+                            .raw
+                            .last()
+                            .expect("expected unsized ADT to have a tail field");
+                        let tail_field_ty = tcx.type_of(tail_field.did);
 
-                    let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
-                    let b_tail_ty = tail_field_ty.subst(tcx, b_substs);
+                        let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
+                        let b_tail_ty = tail_field_ty.subst(tcx, b_substs);
 
-                    // Substitute just the unsizing params from B into A. The type after
-                    // this substitution must be equal to B. This is so we don't unsize
-                    // unrelated type parameters.
-                    let new_a_substs =
-                        tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
-                            if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
-                        }));
-                    let unsized_a_ty = tcx.mk_adt(a_def, new_a_substs);
+                        // Substitute just the unsizing params from B into A. The type after
+                        // this substitution must be equal to B. This is so we don't unsize
+                        // unrelated type parameters.
+                        let new_a_substs =
+                            tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
+                                if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
+                            }));
+                        let unsized_a_ty = tcx.mk_adt(a_def, new_a_substs);
 
-                    // Finally, we require that `TailA: Unsize<TailB>` for the tail field
-                    // types.
-                    ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
-                    ecx.add_goal(goal.with(
-                        tcx,
-                        ty::TraitRef::new(tcx, goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
-                    ));
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        // Finally, we require that `TailA: Unsize<TailB>` for the tail field
+                        // types.
+                        ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
+                        ecx.add_goal(goal.with(
+                            tcx,
+                            ty::TraitRef::new(tcx, goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
+                        ));
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }
+                    // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
+                    (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
+                        if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
+                    {
+                        let (a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
+                        let b_last_ty = b_tys.last().unwrap();
+
+                        // Substitute just the tail field of B., and require that they're equal.
+                        let unsized_a_ty =
+                            tcx.mk_tup_from_iter(a_rest_tys.iter().chain([b_last_ty]).copied());
+                        ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
+
+                        // Similar to ADTs, require that the rest of the fields are equal.
+                        ecx.add_goal(goal.with(
+                            tcx,
+                            ty::TraitRef::new(
+                                tcx,
+                                goal.predicate.def_id(),
+                                [*a_last_ty, *b_last_ty],
+                            ),
+                        ));
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }
+                    _ => Err(NoSolution),
                 }
-                // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
-                (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
-                    if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
-                {
-                    let (a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
-                    let b_last_ty = b_tys.last().unwrap();
-
-                    // Substitute just the tail field of B., and require that they're equal.
-                    let unsized_a_ty =
-                        tcx.mk_tup_from_iter(a_rest_tys.iter().chain([b_last_ty]).copied());
-                    ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
-
-                    // Similar to ADTs, require that the rest of the fields are equal.
-                    ecx.add_goal(goal.with(
-                        tcx,
-                        ty::TraitRef::new(tcx, goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
-                    ));
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }
-                _ => Err(NoSolution),
-            }
-        })
+            },
+        )
     }
 
     fn consider_builtin_dyn_upcast_candidates(
@@ -476,7 +488,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         let mut unsize_dyn_to_principal = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
-            ecx.probe(|ecx| -> Result<_, NoSolution> {
+            ecx.probe(|r| CandidateKind::Candidate {
+                name: "upcast dyn to principle".into(),
+                result: *r,
+            })
+            .enter(|ecx| -> Result<_, NoSolution> {
                 // Require that all of the trait predicates from A match B, except for
                 // the auto traits. We do this by constructing a new A type with B's
                 // auto traits, and equating these types.
@@ -698,20 +714,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
         constituent_tys: impl Fn(&EvalCtxt<'_, 'tcx>, Ty<'tcx>) -> Result<Vec<Ty<'tcx>>, NoSolution>,
     ) -> QueryResult<'tcx> {
-        self.probe(|ecx| {
-            ecx.add_goals(
-                constituent_tys(ecx, goal.predicate.self_ty())?
-                    .into_iter()
-                    .map(|ty| {
-                        goal.with(
-                            ecx.tcx(),
-                            ty::Binder::dummy(goal.predicate.with_self_ty(ecx.tcx(), ty)),
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+        self.probe(|r| CandidateKind::Candidate { name: "constituent tys".into(), result: *r })
+            .enter(|ecx| {
+                ecx.add_goals(
+                    constituent_tys(ecx, goal.predicate.self_ty())?
+                        .into_iter()
+                        .map(|ty| {
+                            goal.with(
+                                ecx.tcx(),
+                                ty::Binder::dummy(goal.predicate.with_self_ty(ecx.tcx(), ty)),
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                );
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            })
     }
 
     #[instrument(level = "debug", skip(self))]

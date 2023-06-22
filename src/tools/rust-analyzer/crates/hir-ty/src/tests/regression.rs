@@ -1955,3 +1955,26 @@ impl Inner<1> {
         "#,
     );
 }
+
+#[test]
+fn dont_crash_on_slice_unsizing() {
+    check_no_mismatches(
+        r#"
+//- minicore: slice, unsize, coerce_unsized
+trait Tr {
+    fn f(self);
+}
+
+impl Tr for [i32] {
+    fn f(self) {
+        let t;
+        x(t);
+    }
+}
+
+fn x(a: [i32; 4]) {
+    let b = a.f();
+}
+        "#,
+    );
+}

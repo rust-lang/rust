@@ -192,14 +192,14 @@ pub enum AttrInput {
     /// `#[attr = "string"]`
     Literal(SmolStr),
     /// `#[attr(subtree)]`
-    TokenTree(tt::Subtree, mbe::TokenMap),
+    TokenTree(Box<(tt::Subtree, mbe::TokenMap)>),
 }
 
 impl fmt::Display for AttrInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
-            AttrInput::TokenTree(subtree, _) => subtree.fmt(f),
+            AttrInput::TokenTree(tt) => tt.0.fmt(f),
         }
     }
 }
@@ -220,7 +220,7 @@ impl Attr {
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
             let (tree, map) = syntax_node_to_token_tree(tt.syntax());
-            Some(Interned::new(AttrInput::TokenTree(tree, map)))
+            Some(Interned::new(AttrInput::TokenTree(Box::new((tree, map)))))
         } else {
             None
         };
@@ -256,7 +256,7 @@ impl Attr {
     /// #[path(ident)]
     pub fn single_ident_value(&self) -> Option<&tt::Ident> {
         match self.input.as_deref()? {
-            AttrInput::TokenTree(subtree, _) => match &*subtree.token_trees {
+            AttrInput::TokenTree(tt) => match &*tt.0.token_trees {
                 [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] => Some(ident),
                 _ => None,
             },
@@ -267,7 +267,7 @@ impl Attr {
     /// #[path TokenTree]
     pub fn token_tree_value(&self) -> Option<&Subtree> {
         match self.input.as_deref()? {
-            AttrInput::TokenTree(subtree, _) => Some(subtree),
+            AttrInput::TokenTree(tt) => Some(&tt.0),
             _ => None,
         }
     }

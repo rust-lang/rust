@@ -10,6 +10,7 @@ pub fn target() -> Target {
         arch: "x86_64".into(),
         options: TargetOptions {
             cpu: "x86-64".into(),
+            plt_by_default: false,
             max_atomic_width: Some(64),
             pre_link_args: TargetOptions::link_args(
                 LinkerFlavor::Gnu(Cc::Yes, Lld::No),

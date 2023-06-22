@@ -1007,7 +1007,10 @@ impl BoundVariableKind {
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(HashStable, Lift)]
-pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>);
+pub struct Binder<'tcx, T> {
+    value: T,
+    bound_vars: &'tcx List<BoundVariableKind>,
+}
 
 impl<'tcx, T> Binder<'tcx, T>
 where
@@ -1023,15 +1026,15 @@ where
             !value.has_escaping_bound_vars(),
             "`{value:?}` has escaping bound vars, so it cannot be wrapped in a dummy binder."
         );
-        Binder(value, ty::List::empty())
+        Binder { value, bound_vars: ty::List::empty() }
     }
 
-    pub fn bind_with_vars(value: T, vars: &'tcx List<BoundVariableKind>) -> Binder<'tcx, T> {
+    pub fn bind_with_vars(value: T, bound_vars: &'tcx List<BoundVariableKind>) -> Binder<'tcx, T> {
         if cfg!(debug_assertions) {
-            let mut validator = ValidateBoundVars::new(vars);
+            let mut validator = ValidateBoundVars::new(bound_vars);
             value.visit_with(&mut validator);
         }
-        Binder(value, vars)
+        Binder { value, bound_vars }
     }
 }
 
@@ -1053,30 +1056,30 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// - comparing the self type of a PolyTraitRef to see if it is equal to
     ///   a type parameter `X`, since the type `X` does not reference any regions
     pub fn skip_binder(self) -> T {
-        self.0
+        self.value
     }
 
     pub fn bound_vars(&self) -> &'tcx List<BoundVariableKind> {
-        self.1
+        self.bound_vars
     }
 
     pub fn as_ref(&self) -> Binder<'tcx, &T> {
-        Binder(&self.0, self.1)
+        Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
     pub fn as_deref(&self) -> Binder<'tcx, &T::Target>
     where
         T: Deref,
     {
-        Binder(&self.0, self.1)
+        Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
     pub fn map_bound_ref_unchecked<F, U>(&self, f: F) -> Binder<'tcx, U>
     where
         F: FnOnce(&T) -> U,
     {
-        let value = f(&self.0);
-        Binder(value, self.1)
+        let value = f(&self.value);
+        Binder { value, bound_vars: self.bound_vars }
     }
 
     pub fn map_bound_ref<F, U: TypeVisitable<TyCtxt<'tcx>>>(&self, f: F) -> Binder<'tcx, U>
@@ -1090,12 +1093,13 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         F: FnOnce(T) -> U,
     {
-        let value = f(self.0);
+        let Binder { value, bound_vars } = self;
+        let value = f(value);
         if cfg!(debug_assertions) {
-            let mut validator = ValidateBoundVars::new(self.1);
+            let mut validator = ValidateBoundVars::new(bound_vars);
             value.visit_with(&mut validator);
         }
-        Binder(value, self.1)
+        Binder { value, bound_vars }
     }
 
     pub fn try_map_bound<F, U: TypeVisitable<TyCtxt<'tcx>>, E>(
@@ -1105,12 +1109,13 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         F: FnOnce(T) -> Result<U, E>,
     {
-        let value = f(self.0)?;
+        let Binder { value, bound_vars } = self;
+        let value = f(value)?;
         if cfg!(debug_assertions) {
-            let mut validator = ValidateBoundVars::new(self.1);
+            let mut validator = ValidateBoundVars::new(bound_vars);
             value.visit_with(&mut validator);
         }
-        Ok(Binder(value, self.1))
+        Ok(Binder { value, bound_vars })
     }
 
     /// Wraps a `value` in a binder, using the same bound variables as the
@@ -1126,11 +1131,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         U: TypeVisitable<TyCtxt<'tcx>>,
     {
-        if cfg!(debug_assertions) {
-            let mut validator = ValidateBoundVars::new(self.bound_vars());
-            value.visit_with(&mut validator);
-        }
-        Binder(value, self.1)
+        Binder::bind_with_vars(value, self.bound_vars)
     }
 
     /// Unwraps and returns the value within, but only if it contains
@@ -1147,7 +1148,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
+        if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 
     /// Splits the contents into two things that share the same binder
@@ -1160,22 +1161,23 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         F: FnOnce(T) -> (U, V),
     {
-        let (u, v) = f(self.0);
-        (Binder(u, self.1), Binder(v, self.1))
+        let Binder { value, bound_vars } = self;
+        let (u, v) = f(value);
+        (Binder { value: u, bound_vars }, Binder { value: v, bound_vars })
     }
 }
 
 impl<'tcx, T> Binder<'tcx, Option<T>> {
     pub fn transpose(self) -> Option<Binder<'tcx, T>> {
-        let bound_vars = self.1;
-        self.0.map(|v| Binder(v, bound_vars))
+        let Binder { value, bound_vars } = self;
+        value.map(|value| Binder { value, bound_vars })
     }
 }
 
 impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     pub fn iter(self) -> impl Iterator<Item = ty::Binder<'tcx, T::Item>> {
-        let bound_vars = self.1;
-        self.0.into_iter().map(|v| Binder(v, bound_vars))
+        let Binder { value, bound_vars } = self;
+        value.into_iter().map(|value| Binder { value, bound_vars })
     }
 }
 
@@ -1184,7 +1186,7 @@ where
     T: IntoDiagnosticArg,
 {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        self.0.into_diagnostic_arg()
+        self.value.into_diagnostic_arg()
     }
 }
 
@@ -1582,7 +1584,7 @@ pub struct EarlyBoundRegion {
 
 impl fmt::Debug for EarlyBoundRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.index, self.name)
+        write!(f, "{:?}, {}, {}", self.def_id, self.index, self.name)
     }
 }
 

@@ -3,7 +3,7 @@ use crate::errors;
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, attr};
+use rustc_ast::{self as ast, attr, GenericParamKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_expand::base::*;
@@ -122,11 +122,7 @@ pub fn expand_test_or_bench(
     let ast::ItemKind::Fn(fn_) = &item.kind else {
         not_testable_error(cx, attr_sp, Some(&item));
         return if is_stmt {
-            vec![Annotatable::Stmt(P(ast::Stmt {
-                id: ast::DUMMY_NODE_ID,
-                span: item.span,
-                kind: ast::StmtKind::Item(item),
-            }))]
+            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -138,7 +134,11 @@ pub fn expand_test_or_bench(
     if (!is_bench && !has_test_signature(cx, &item))
         || (is_bench && !has_bench_signature(cx, &item))
     {
-        return vec![Annotatable::Item(item)];
+        return if is_stmt {
+            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
+        } else {
+            vec![Annotatable::Item(item)]
+        };
     }
 
     let sp = cx.with_def_site_ctxt(item.span);
@@ -550,24 +550,21 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
                 return false;
             }
 
-            match (has_output, has_should_panic_attr) {
-                (true, true) => {
-                    sd.span_err(i.span, "functions using `#[should_panic]` must return `()`");
-                    false
-                }
-                (true, false) => {
-                    if !generics.params.is_empty() {
-                        sd.span_err(
-                            i.span,
-                            "functions used as tests must have signature fn() -> ()",
-                        );
-                        false
-                    } else {
-                        true
-                    }
-                }
-                (false, _) => true,
+            if has_should_panic_attr && has_output {
+                sd.span_err(i.span, "functions using `#[should_panic]` must return `()`");
+                return false;
             }
+
+            if generics.params.iter().any(|param| !matches!(param.kind, GenericParamKind::Lifetime))
+            {
+                sd.span_err(
+                    i.span,
+                    "functions used as tests can not have any non-lifetime generic parameters",
+                );
+                return false;
+            }
+
+            true
         }
         _ => {
             // should be unreachable because `is_test_fn_item` should catch all non-fn items

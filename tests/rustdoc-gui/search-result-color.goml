@@ -28,6 +28,12 @@ define-function: (
             ".result-" + |result_kind| + ":focus ." + |result_kind|,
             {"color": |hover_color|},
         )
+        // color of the typename (struct, module, method, ...) before search results
+        assert-css: (
+            ".result-name .typename",
+            {"color": |grey|},
+            ALL,
+        )
     },
 )
 
@@ -69,6 +75,7 @@ store-value: (entry_color, "#0096cf") // color of the search entry
 store-value: (hover_entry_color, "#fff") // color of the hovered/focused search entry
 store-value: (background_color, "transparent") // background color
 store-value: (hover_background_color, "#3c3c3c") // hover background color
+store-value: (grey, "#999")
 
 call-function: (
     "check-result-color", (
@@ -180,6 +187,7 @@ store-value: (entry_color, "#ddd") // color of the search entry
 store-value: (hover_entry_color, "#ddd") // color of the hovered/focused search entry
 store-value: (background_color, "transparent") // background color
 store-value: (hover_background_color, "#616161") // hover background color
+store-value: (grey, "#ccc")
 
 call-function: (
     "check-result-color", (
@@ -276,6 +284,7 @@ store-value: (entry_color, "#000") // color of the search entry
 store-value: (hover_entry_color, "#000") // color of the hovered/focused search entry
 store-value: (background_color, "transparent") // background color
 store-value: (hover_background_color, "#ccc") // hover background color
+store-value: (grey, "#999")
 
 call-function: (
     "check-result-color", (

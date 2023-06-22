@@ -54,7 +54,9 @@ impl<'tcx> RustIrDatabase<'tcx> {
             .tcx
             .explicit_item_bounds(def_id)
             .subst_iter_copied(self.interner.tcx, &bound_vars)
-            .filter_map(|(bound, _)| LowerInto::<Option<_>>::lower_into(bound, self.interner))
+            .filter_map(|(bound, _)| {
+                LowerInto::<Option<_>>::lower_into(bound.as_predicate(), self.interner)
+            })
             .collect()
     }
 }
@@ -520,7 +522,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 .filter_map(|bound| {
                     LowerInto::<
                     Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>
-                >::lower_into(bound, self.interner)
+                >::lower_into(bound.as_predicate(), self.interner)
                 })
                 .collect();
 

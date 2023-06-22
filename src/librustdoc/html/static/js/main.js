@@ -1050,9 +1050,10 @@ function preLoadCss(cssUrl) {
 
     function buildHelpMenu() {
         const book_info = document.createElement("span");
+        const channel = getVar("channel");
         book_info.className = "top";
-        book_info.innerHTML = "You can find more information in \
-            <a href=\"https://doc.rust-lang.org/rustdoc/\">the rustdoc book</a>.";
+        book_info.innerHTML = `You can find more information in \
+<a href="https://doc.rust-lang.org/${channel}/rustdoc/">the rustdoc book</a>.`;
 
         const shortcuts = [
             ["?", "Show this help dialog"],
@@ -1072,6 +1073,9 @@ function preLoadCss(cssUrl) {
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
 
         const infos = [
+            `For a full list of all search features, take a look <a \
+href="https://doc.rust-lang.org/${channel}/rustdoc/how-to-read-rustdoc.html\
+#the-search-interface">here</a>.`,
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \

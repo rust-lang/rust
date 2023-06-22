@@ -320,6 +320,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Underscore
             | ExprKind::While(_, _, _)
             | ExprKind::Yeet(_)
+            | ExprKind::Become(_)
             | ExprKind::Yield(_) => {}
         }
     }

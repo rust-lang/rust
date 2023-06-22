@@ -135,7 +135,7 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_thread_intent::<R>(ThreadIntent::Worker, f)
+        self.on_with_thread_intent::<true, R>(ThreadIntent::Worker, f)
     }
 
     /// Dispatches a latency-sensitive request onto the thread pool.
@@ -148,7 +148,22 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_thread_intent::<R>(ThreadIntent::LatencySensitive, f)
+        self.on_with_thread_intent::<true, R>(ThreadIntent::LatencySensitive, f)
+    }
+
+    /// Formatting requests should never block on waiting a for task thread to open up, editors will wait
+    /// on the response and a late formatting update might mess with the document and user.
+    /// We can't run this on the main thread though as we invoke rustfmt which may take arbitrary time to complete!
+    pub(crate) fn on_fmt_thread<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+        R::Result: Serialize,
+    {
+        self.on_with_thread_intent::<false, R>(ThreadIntent::LatencySensitive, f)
     }
 
     pub(crate) fn finish(&mut self) {
@@ -163,7 +178,7 @@ impl<'a> RequestDispatcher<'a> {
         }
     }
 
-    fn on_with_thread_intent<R>(
+    fn on_with_thread_intent<const MAIN_POOL: bool, R>(
         &mut self,
         intent: ThreadIntent,
         f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
@@ -178,17 +193,20 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn(intent, {
-            let world = self.global_state.snapshot();
-            move || {
-                let result = panic::catch_unwind(move || {
-                    let _pctx = stdx::panic_context::enter(panic_context);
-                    f(world, params)
-                });
-                match thread_result_to_response::<R>(req.id.clone(), result) {
-                    Ok(response) => Task::Response(response),
-                    Err(_) => Task::Retry(req),
-                }
+        let world = self.global_state.snapshot();
+        if MAIN_POOL {
+            &mut self.global_state.task_pool.handle
+        } else {
+            &mut self.global_state.fmt_pool.handle
+        }
+        .spawn(intent, move || {
+            let result = panic::catch_unwind(move || {
+                let _pctx = stdx::panic_context::enter(panic_context);
+                f(world, params)
+            });
+            match thread_result_to_response::<R>(req.id.clone(), result) {
+                Ok(response) => Task::Response(response),
+                Err(_) => Task::Retry(req),
             }
         });
 
@@ -289,7 +307,7 @@ pub(crate) struct NotificationDispatcher<'a> {
 }
 
 impl<'a> NotificationDispatcher<'a> {
-    pub(crate) fn on<N>(
+    pub(crate) fn on_sync_mut<N>(
         &mut self,
         f: fn(&mut GlobalState, N::Params) -> Result<()>,
     ) -> Result<&mut Self>

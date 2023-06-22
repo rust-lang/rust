@@ -18,12 +18,11 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeLens, CompletionItem, DocumentFormattingParams, FoldingRange, FoldingRangeParams,
-    HoverContents, InlayHint, InlayHintParams, Location, LocationLink, Position,
-    PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
-    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
-    TextDocumentIdentifier, Url, WorkspaceEdit,
+    CodeLens, CompletionItem, FoldingRange, FoldingRangeParams, HoverContents, InlayHint,
+    InlayHintParams, Location, LocationLink, Position, PrepareRenameResponse, Range, RenameParams,
+    SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
+    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
@@ -52,7 +51,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
     state.proc_macro_clients = Arc::from(Vec::new());
     state.proc_macro_changed = false;
 
-    state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), ());
+    state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), false);
     Ok(())
 }
 
@@ -115,13 +114,14 @@ pub(crate) fn handle_analyzer_status(
 
 pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> Result<String> {
     let _p = profile::span("handle_memory_usage");
-    let mut mem = state.analysis_host.per_query_memory_usage();
-    mem.push(("Remaining".into(), profile::memory_usage().allocated));
+    let mem = state.analysis_host.per_query_memory_usage();
 
     let mut out = String::new();
-    for (name, bytes) in mem {
-        format_to!(out, "{:>8} {}\n", bytes, name);
+    for (name, bytes, entries) in mem {
+        format_to!(out, "{:>8} {:>6} {}\n", bytes, entries, name);
     }
+    format_to!(out, "{:>8}        Remaining\n", profile::memory_usage().allocated);
+
     Ok(out)
 }
 
@@ -1076,7 +1076,7 @@ pub(crate) fn handle_references(
 
 pub(crate) fn handle_formatting(
     snap: GlobalStateSnapshot,
-    params: DocumentFormattingParams,
+    params: lsp_types::DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let _p = profile::span("handle_formatting");
 

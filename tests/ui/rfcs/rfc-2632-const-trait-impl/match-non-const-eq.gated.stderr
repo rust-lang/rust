@@ -1,0 +1,26 @@
+error[E0277]: can't compare `str` with `str` in const contexts
+  --> $DIR/match-non-const-eq.rs:6:9
+   |
+LL |         "a" => (),
+   |         ^^^ no implementation for `str == str`
+   |
+   = help: the trait `~const PartialEq` is not implemented for `str`
+note: the trait `PartialEq` is implemented for `str`, but that implementation is not `const`
+  --> $DIR/match-non-const-eq.rs:6:9
+   |
+LL |         "a" => (),
+   |         ^^^
+
+error[E0015]: cannot match on `str` in constant functions
+  --> $DIR/match-non-const-eq.rs:6:9
+   |
+LL |         "a" => (),
+   |         ^^^
+   |
+   = note: `str` cannot be compared in compile-time, and therefore cannot be used in `match`es
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

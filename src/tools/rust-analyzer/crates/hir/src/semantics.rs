@@ -483,10 +483,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.scope_at_offset(node, offset)
     }
 
-    pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
-        self.imp.scope_for_def(def)
-    }
-
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
         self.imp.assert_contains_node(node)
     }
@@ -1074,8 +1070,12 @@ impl<'db> SemanticsImpl<'db> {
     fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
         let ctx = LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
-        let ty = hir_ty::TyLoweringContext::new(self.db, &analyze.resolver)
-            .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
+        let ty = hir_ty::TyLoweringContext::new(
+            self.db,
+            &analyze.resolver,
+            analyze.resolver.module().into(),
+        )
+        .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))
     }
 
@@ -1305,12 +1305,6 @@ impl<'db> SemanticsImpl<'db> {
                 resolver,
             },
         )
-    }
-
-    fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
-        let file_id = self.db.lookup_intern_trait(def.id).id.file_id();
-        let resolver = def.id.resolver(self.db.upcast());
-        SemanticsScope { db: self.db, file_id, resolver }
     }
 
     fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>>

@@ -14,7 +14,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, Clause, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind,
+    self, Binder, BoundConstness, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind,
     TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -503,7 +503,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
 
     let ty_predicates = tcx.predicates_of(did).predicates;
     for (p, _) in ty_predicates {
-        if let PredicateKind::Clause(Clause::Trait(p)) = p.kind().skip_binder()
+        if let PredicateKind::Clause(ClauseKind::Trait(p)) = p.kind().skip_binder()
             && p.trait_ref.def_id == eq_trait_id
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && p.constness == BoundConstness::NotConst
@@ -516,7 +516,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     ParamEnv::new(
         tcx.mk_predicates_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-                tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Trait(TraitPredicate {
+                tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
                     trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
                     constness: BoundConstness::NotConst,
                     polarity: ImplPolarity::Positive,

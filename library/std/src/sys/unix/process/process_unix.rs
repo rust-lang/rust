@@ -15,6 +15,8 @@ use crate::sys::weak::raw_syscall;
 
 #[cfg(any(
     target_os = "macos",
+    target_os = "watchos",
+    target_os = "tvos",
     target_os = "freebsd",
     all(target_os = "linux", target_env = "gnu"),
     all(target_os = "linux", target_env = "musl"),
@@ -28,7 +30,12 @@ use libc::RTP_ID as pid_t;
 #[cfg(not(target_os = "vxworks"))]
 use libc::{c_int, pid_t};
 
-#[cfg(not(any(target_os = "vxworks", target_os = "l4re")))]
+#[cfg(not(any(
+    target_os = "vxworks",
+    target_os = "l4re",
+    target_os = "tvos",
+    target_os = "watchos",
+)))]
 use libc::{gid_t, uid_t};
 
 cfg_if::cfg_if! {
@@ -84,7 +91,6 @@ impl Command {
         if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
             return Ok((ret, ours));
         }
-
         let (input, output) = sys::pipe::anon_pipe()?;
 
         // Whatever happens after the fork is almost for sure going to touch or
@@ -166,9 +172,31 @@ impl Command {
         crate::sys_common::process::wait_with_output(proc, pipes)
     }
 
+    // WatchOS and TVOS headers mark the `fork`/`exec*` functions with
+    // `__WATCHOS_PROHIBITED __TVOS_PROHIBITED`, and indicate that the
+    // `posix_spawn*` functions should be used instead. It isn't entirely clear
+    // what `PROHIBITED` means here (e.g. if calls to these functions are
+    // allowed to exist in dead code), but it sounds bad, so we go out of our
+    // way to avoid that all-together.
+    #[cfg(any(target_os = "tvos", target_os = "watchos"))]
+    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
+        ErrorKind::Unsupported,
+        "`fork`+`exec`-based process spawning is not supported on this target",
+    );
+
+    #[cfg(any(target_os = "tvos", target_os = "watchos"))]
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+        return Err(Self::ERR_APPLE_TV_WATCH_NO_FORK_EXEC);
+    }
+
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
-    #[cfg(not(any(target_os = "linux", all(target_os = "nto", target_env = "nto71"))))]
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "watchos",
+        target_os = "tvos",
+        all(target_os = "nto", target_env = "nto71"),
+    )))]
     unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         cvt(libc::fork()).map(|res| (res, -1))
     }
@@ -339,6 +367,7 @@ impl Command {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
+    #[cfg(not(any(target_os = "tvos", target_os = "watchos")))]
     unsafe fn do_exec(
         &mut self,
         stdio: ChildPipes,
@@ -445,8 +474,19 @@ impl Command {
         Err(io::Error::last_os_error())
     }
 
+    #[cfg(any(target_os = "tvos", target_os = "watchos"))]
+    unsafe fn do_exec(
+        &mut self,
+        _stdio: ChildPipes,
+        _maybe_envp: Option<&CStringArray>,
+    ) -> Result<!, io::Error> {
+        return Err(Self::ERR_APPLE_TV_WATCH_NO_FORK_EXEC);
+    }
+
     #[cfg(not(any(
         target_os = "macos",
+        target_os = "tvos",
+        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
@@ -464,6 +504,9 @@ impl Command {
     // directly.
     #[cfg(any(
         target_os = "macos",
+        // FIXME: `target_os = "ios"`?
+        target_os = "tvos",
+        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
@@ -550,7 +593,7 @@ impl Command {
         }
         let addchdir = match self.get_cwd() {
             Some(cwd) => {
-                if cfg!(target_os = "macos") {
+                if cfg!(any(target_os = "macos", target_os = "tvos", target_os = "watchos")) {
                     // There is a bug in macOS where a relative executable
                     // path like "../myprogram" will cause `posix_spawn` to
                     // successfully launch the program, but erroneously return
