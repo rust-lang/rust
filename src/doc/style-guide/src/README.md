@@ -28,7 +28,7 @@ formatting, typically by using a formatting tool's default settings.
 * Each level of indentation must be four spaces (that is, all indentation
   outside of string literals and comments must be a multiple of four).
 * The maximum width for a line is 100 characters.
-* A tool should be configurable for all three of these variables.
+* A tool may choose to make some of these configurable.
 
 #### Block indent
 
@@ -87,11 +87,7 @@ fn bar() {}
 fn baz() {}
 ```
 
-Formatting tools should make the bounds on blank lines configurable: there
-should be separate minimum and maximum numbers of newlines between both
-statements and (top-level) items (i.e., four options). As described above, the
-defaults for both statements and items should be minimum: 1, maximum: 2.
-
+Formatting tools may wish to make the bounds on blank lines configurable.
 
 ### [Module-level items](items.md)
 ### [Statements](statements.md)
