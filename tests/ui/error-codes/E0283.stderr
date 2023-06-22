@@ -9,8 +9,8 @@ LL |     let cont: u32 = Generator::create();
    |
 help: use a fully-qualified path to a specific available implementation (2 found)
    |
-LL |     let cont: u32 = <Impl as Generator>::create();
-   |                     ++++++++          +
+LL |     let cont: u32 = </* self type */ as Generator>::create();
+   |                     +++++++++++++++++++          +
 
 error[E0283]: type annotations needed
   --> $DIR/E0283.rs:35:24
