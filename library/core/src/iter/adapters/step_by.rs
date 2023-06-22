@@ -395,6 +395,7 @@ macro_rules! spec_int_ranges {
                 }
             }
 
+            #[inline]
             fn spec_size_hint(&self) -> (usize, Option<usize>) {
                 let remaining = self.iter.end as usize;
                 (remaining, Some(remaining))
@@ -403,11 +404,13 @@ macro_rules! spec_int_ranges {
             // The methods below are all copied from the Iterator trait default impls.
             // We have to repeat them here so that the specialization overrides the StepByImpl defaults
 
+            #[inline]
             fn spec_nth(&mut self, n: usize) -> Option<Self::Item> {
                 self.advance_by(n).ok()?;
                 self.next()
             }
 
+            #[inline]
             fn spec_try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
                 where
                     F: FnMut(Acc, Self::Item) -> R,
@@ -449,6 +452,7 @@ macro_rules! spec_int_ranges_r {
 
         impl StepByBackImpl<Range<$t>> for StepBy<Range<$t>> {
 
+            #[inline]
             fn spec_next_back(&mut self) -> Option<Self::Item>
                 where Range<$t>: DoubleEndedIterator + ExactSizeIterator,
             {
@@ -466,6 +470,7 @@ macro_rules! spec_int_ranges_r {
             // The methods below are all copied from the Iterator trait default impls.
             // We have to repeat them here so that the specialization overrides the StepByImplBack defaults
 
+            #[inline]
             fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item>
                 where Self: DoubleEndedIterator,
             {
@@ -475,6 +480,7 @@ macro_rules! spec_int_ranges_r {
                 self.next_back()
             }
 
+            #[inline]
             fn spec_try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
                 where
                     Self: DoubleEndedIterator,
@@ -488,6 +494,7 @@ macro_rules! spec_int_ranges_r {
                 try { accum }
             }
 
+            #[inline]
             fn spec_rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
                 where
                     Self: DoubleEndedIterator,
