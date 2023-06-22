@@ -1121,7 +1121,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             err.eager_subdiagnostic(
                                 &self.infcx.tcx.sess.parse_sess.span_diagnostic,
                                 CaptureReasonSuggest::FreshReborrow {
-                                    span: fn_call_span.shrink_to_lo(),
+                                    span: move_span.shrink_to_hi(),
                                 });
                         }
                         if let Some(clone_trait) = tcx.lang_items().clone_trait()
