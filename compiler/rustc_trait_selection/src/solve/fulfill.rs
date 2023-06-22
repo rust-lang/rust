@@ -132,8 +132,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                             SelectionError::Unimplemented,
                                         )
                                     }
-                                    ty::PredicateKind::ConstEquate(..)
-                                    | ty::PredicateKind::TypeWellFormedFromEnv(_) => {
+                                    ty::PredicateKind::ConstEquate(..) => {
                                         bug!("unexpected goal: {goal:?}")
                                     }
                                 },

@@ -2883,6 +2883,9 @@ define_print_and_forward_display! {
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }
+            ty::ClauseKind::TypeWellFormedFromEnv(ty) => {
+                p!("the type `", print(ty), "` is found in the environment")
+            }
         }
     }
 
@@ -2903,9 +2906,6 @@ define_print_and_forward_display! {
             ),
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")
-            }
-            ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
-                p!("the type `", print(ty), "` is found in the environment")
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),

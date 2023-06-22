@@ -310,7 +310,8 @@ fn predicate_references_self<'tcx>(
         | ty::ClauseKind::TypeOutlives(..)
         | ty::ClauseKind::RegionOutlives(..)
         // FIXME(generic_const_exprs): this can mention `Self`
-        | ty::ClauseKind::ConstEvaluatable(..) => None,
+        | ty::ClauseKind::ConstEvaluatable(..)
+        | ty::ClauseKind::TypeWellFormedFromEnv(_) => None,
     }
 }
 
@@ -350,7 +351,8 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::ClauseKind::Projection(_)
         | ty::ClauseKind::ConstArgHasType(_, _)
         | ty::ClauseKind::WellFormed(_)
-        | ty::ClauseKind::ConstEvaluatable(_) => false,
+        | ty::ClauseKind::ConstEvaluatable(_)
+        | ty::ClauseKind::TypeWellFormedFromEnv(_) => false,
     })
 }
 

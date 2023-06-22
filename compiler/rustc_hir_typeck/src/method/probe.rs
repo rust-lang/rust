@@ -847,7 +847,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::ClauseKind::Projection(_)
                 | ty::ClauseKind::ConstArgHasType(_, _)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_) => None,
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::TypeWellFormedFromEnv(_) => None,
             }
         });
 

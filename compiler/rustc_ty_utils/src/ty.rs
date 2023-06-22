@@ -427,21 +427,18 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<ty::Cla
 
         NodeKind::Other => (),
     }
-    let input_clauses = inputs.into_iter().filter_map(|_arg| {
-        // TODO: FIXME
-        /*match arg.unpack() {
-            GenericArgKind::Type(ty) => {
-                let binder = Binder::dummy(PredicateKind::TypeWellFormedFromEnv(ty));
-                Some(tcx.mk_predicate(binder))
+    let input_clauses = inputs.into_iter().filter_map(|arg| {
+        match arg.unpack() {
+            ty::GenericArgKind::Type(ty) => {
+                Some(ty::ClauseKind::TypeWellFormedFromEnv(ty).to_predicate(tcx))
             }
 
             // FIXME(eddyb) no WF conditions from lifetimes?
-            GenericArgKind::Lifetime(_) => None,
+            ty::GenericArgKind::Lifetime(_) => None,
 
             // FIXME(eddyb) support const generics in Chalk
-            GenericArgKind::Const(_) => None,
-        }*/
-        None
+            ty::GenericArgKind::Const(_) => None,
+        }
     });
 
     tcx.mk_clauses_from_iter(clauses.chain(input_clauses))

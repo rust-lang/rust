@@ -93,10 +93,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
             let (predicate, binders, _named_regions) =
                 collect_bound_vars(interner, interner.tcx, predicate.kind());
             let consequence = match predicate {
-                // TODO: FIXME
-                /*ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
+                ty::ClauseKind::TypeWellFormedFromEnv(ty) => {
                     chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(ty.lower_into(interner)))
-                }*/
+                }
                 ty::ClauseKind::Trait(predicate) => chalk_ir::DomainGoal::FromEnv(
                     chalk_ir::FromEnv::Trait(predicate.trait_ref.lower_into(interner)),
                 ),
@@ -223,9 +222,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             | ty::PredicateKind::ConstEquate(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
             }
-            ty::PredicateKind::TypeWellFormedFromEnv(ty) => chalk_ir::GoalData::DomainGoal(
-                chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(ty.lower_into(interner))),
-            ),
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(ty)) => {
+                chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::FromEnv(
+                    chalk_ir::FromEnv::Ty(ty.lower_into(interner)),
+                ))
+            }
         };
 
         chalk_ir::GoalData::Quantified(
@@ -670,7 +671,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous
-            | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
                 bug!("unexpected predicate {self}")
             }
         };
@@ -806,7 +807,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous
-            | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
                 bug!("unexpected predicate {}", &self)
             }
         }

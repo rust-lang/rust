@@ -555,7 +555,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(_) => true,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(_)) => true,
         }
     }
 }
@@ -661,6 +661,11 @@ pub enum ClauseKind<'tcx> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(ty::Const<'tcx>),
+
+    /// Represents a type found in the environment that we can use for implied bounds.
+    ///
+    /// Only used for Chalk.
+    TypeWellFormedFromEnv(Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -696,11 +701,6 @@ pub enum PredicateKind<'tcx> {
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(Const<'tcx>, Const<'tcx>),
-
-    /// Represents a type found in the environment that we can use for implied bounds.
-    ///
-    /// Only used for Chalk.
-    TypeWellFormedFromEnv(Ty<'tcx>),
 
     /// A marker predicate that is always ambiguous.
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
@@ -1425,7 +1425,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
         }
     }
 
@@ -1446,7 +1446,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
         }
     }
 
@@ -1467,7 +1467,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
         }
     }
 
@@ -1483,7 +1483,7 @@ impl<'tcx> Predicate<'tcx> {
     pub fn expect_clause(self) -> Clause<'tcx> {
         match self.kind().skip_binder() {
             PredicateKind::Clause(..) => Clause(self.0),
-            _ => bug!(),
+            _ => bug!("{self} is not a clause"),
         }
     }
 }

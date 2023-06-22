@@ -1610,7 +1610,8 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Ignore bounds that a user can't type
                     | ClauseKind::WellFormed(..)
                     // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
-                    | ClauseKind::ConstEvaluatable(..)  => continue,
+                    | ClauseKind::ConstEvaluatable(..)
+                    | ClauseKind::TypeWellFormedFromEnv(_)  => continue,
                 };
                 if predicate.is_global() {
                     cx.emit_spanned_lint(

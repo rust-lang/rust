@@ -967,7 +967,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
                 ty::PredicateKind::AliasRelate(..) => {
