@@ -36,52 +36,18 @@ impl WasiFd {
         unsafe { wasi::fd_pread(self.as_raw_fd() as wasi::Fd, iovec(bufs), offset).map_err(err2io) }
     }
 
-    pub fn poll_pread(&self, cx: &mut crate::task::Context<'_>, bufs: &mut [IoSliceMut<'_>], offset: u64) -> crate::task::Poll<io::Result<usize>> {
-        super::asyncify(cx, |waker_id| {
-            let ret = unsafe {
-                wasi::fd_pread_poll(self.as_raw_fd() as wasi::Fd, iovec(bufs), offset, waker_id.into())?
-            };
-            Ok(ret)
-        })
-    }
-
     pub fn pwrite(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         unsafe {
             wasi::fd_pwrite(self.as_raw_fd() as wasi::Fd, ciovec(bufs), offset).map_err(err2io)
         }
     }
 
-    pub fn poll_pwrite(&self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>], offset: u64) -> crate::task::Poll<io::Result<usize>> {
-        super::asyncify(cx, |waker_id| {
-            let ret = unsafe {
-                wasi::fd_pwrite_poll(self.as_raw_fd() as wasi::Fd, ciovec(bufs), offset, waker_id.into())?
-            };
-            Ok(ret)
-        })
-    }
-
     pub fn read(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         unsafe { wasi::fd_read(self.as_raw_fd() as wasi::Fd, iovec(bufs)).map_err(err2io) }
     }
 
-    pub fn poll_read(&self, cx: &mut crate::task::Context<'_>, bufs: &mut [IoSliceMut<'_>]) -> crate::task::Poll<io::Result<usize>> {
-        super::asyncify(cx, |waker_id| {
-            let ret = unsafe { wasi::fd_read_poll(self.as_raw_fd() as wasi::Fd, iovec(bufs), waker_id.into())? };
-            Ok(ret)
-        })
-    }
-
     pub fn write(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         unsafe { wasi::fd_write(self.as_raw_fd() as wasi::Fd, ciovec(bufs)).map_err(err2io) }
-    }
-
-    pub fn poll_write(&self, cx: &mut crate::task::Context<'_>, bufs: &[IoSlice<'_>]) -> crate::task::Poll<io::Result<usize>> {
-        super::asyncify(cx, |waker_id| {
-            let ret = unsafe {
-                wasi::fd_write_poll(self.as_raw_fd() as wasi::Fd, ciovec(bufs), waker_id.into())?
-            };
-            Ok(ret)
-        })
     }
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {

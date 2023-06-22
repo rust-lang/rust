@@ -6044,9 +6044,9 @@ dependencies = [
 
 [[package]]
 name = "wasix"
-version = "0.12.20"
+version = "0.12.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59e62d573a0ca3745a5452824f65f8fd4a905f837ba501231105e329dbdba6ca"
+checksum = "c1fbb4ef9bbca0c1170e0b00dd28abc9e3b68669821600cad1caaed606583c6d"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
