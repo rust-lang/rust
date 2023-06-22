@@ -2018,6 +2018,57 @@ fn consts() {
     "#,
         6,
     );
+
+    check_number(
+        r#"
+    const F1: i32 = 2147483647;
+    const F2: i32 = F1 - 25;
+    const GOAL: i32 = F2;
+    "#,
+        2147483622,
+    );
+
+    check_number(
+        r#"
+    const F1: i32 = -2147483648;
+    const F2: i32 = F1 + 18;
+    const GOAL: i32 = F2;
+    "#,
+        -2147483630,
+    );
+
+    check_number(
+        r#"
+    const F1: i32 = 10;
+    const F2: i32 = F1 - 20;
+    const GOAL: i32 = F2;
+    "#,
+        -10,
+    );
+
+    check_number(
+        r#"
+    const F1: i32 = 25;
+    const F2: i32 = F1 - 25;
+    const GOAL: i32 = F2;
+    "#,
+        0,
+    );
+
+    check_number(
+        r#"
+    const A: i32 = -2147483648;
+    const GOAL: bool = A > 0;
+    "#,
+        0,
+    );
+
+    check_number(
+        r#"
+    const GOAL: i64 = (-2147483648_i32) as i64;
+    "#,
+        -2147483648,
+    );
 }
 
 #[test]
