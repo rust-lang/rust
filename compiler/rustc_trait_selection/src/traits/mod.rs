@@ -65,12 +65,12 @@ pub use self::specialize::{
 pub use self::structural_match::search_for_structural_match_violation;
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::elaborate;
+pub use self::util::{
+    check_substs_compatible, supertrait_def_ids, supertraits, transitive_bounds,
+    transitive_bounds_that_define_assoc_item, SupertraitDefIds,
+};
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{get_vtable_index_of_object_method, impl_item_is_final, upcast_choices};
-pub use self::util::{
-    supertrait_def_ids, supertraits, transitive_bounds, transitive_bounds_that_define_assoc_item,
-    SupertraitDefIds,
-};
 
 pub use self::chalk_fulfill::FulfillmentContext as ChalkFulfillmentContext;
 

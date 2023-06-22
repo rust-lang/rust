@@ -1584,7 +1584,7 @@ pub struct EarlyBoundRegion {
 
 impl fmt::Debug for EarlyBoundRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.index, self.name)
+        write!(f, "{:?}, {}, {}", self.def_id, self.index, self.name)
     }
 }
 
