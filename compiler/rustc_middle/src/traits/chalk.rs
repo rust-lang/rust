@@ -385,7 +385,7 @@ impl<'tcx> chalk_ir::interner::HasInterner for RustInterner<'tcx> {
 /// A chalk environment and goal.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ChalkEnvironmentAndGoal<'tcx> {
-    pub environment: &'tcx ty::List<ty::Predicate<'tcx>>,
+    pub environment: &'tcx ty::List<ty::Clause<'tcx>>,
     pub goal: ty::Predicate<'tcx>,
 }
 

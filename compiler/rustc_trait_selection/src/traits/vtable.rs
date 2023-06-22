@@ -115,7 +115,7 @@ pub fn prepare_vtable_segments<'tcx, T>(
                     .predicates
                     .into_iter()
                     .filter_map(move |(pred, _)| {
-                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_pred()
+                        pred.subst_supertrait(tcx, &inner_most_trait_ref).as_trait_clause()
                     });
 
                 'diving_in_skip_visited_traits: loop {

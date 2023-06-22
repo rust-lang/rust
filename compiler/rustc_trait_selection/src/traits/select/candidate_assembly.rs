@@ -181,7 +181,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .caller_bounds()
             .iter()
             .filter(|p| !p.references_error())
-            .filter_map(|p| p.to_opt_poly_trait_pred());
+            .filter_map(|p| p.as_trait_clause());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
@@ -402,7 +402,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         for &(predicate, _) in self.tcx().predicates_of(impl_def_id).predicates {
-            let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
+            let ty::ClauseKind::Trait(pred)
                 = predicate.kind().skip_binder() else { continue };
             if fn_ptr_trait != pred.trait_ref.def_id {
                 continue;

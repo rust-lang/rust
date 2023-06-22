@@ -83,9 +83,9 @@ macro_rules! arena_types {
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::FnSig<'tcx>>
                 >,
-            [] type_op_normalize_predicate:
+            [] type_op_normalize_clause:
                 rustc_middle::infer::canonical::Canonical<'tcx,
-                    rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Predicate<'tcx>>
+                    rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Clause<'tcx>>
                 >,
             [] type_op_normalize_ty:
                 rustc_middle::infer::canonical::Canonical<'tcx,
