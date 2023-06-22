@@ -47,7 +47,7 @@ msrv_aliases! {
     1,18,0 { HASH_MAP_RETAIN, HASH_SET_RETAIN }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT }
-    1,15,0 { COMBINED_MAYBE_BOUND }
+    1,15,0 { MAYBE_BOUND_IN_WHERE }
 }
 
 fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {

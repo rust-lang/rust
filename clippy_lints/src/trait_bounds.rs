@@ -232,7 +232,7 @@ impl TraitBounds {
     /// Is the given bound a `?Sized` bound, and is combining it (i.e. `T: X + ?Sized`) an error on
     /// this MSRV? See <https://github.com/rust-lang/rust-clippy/issues/8772> for details.
     fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
-        if !self.msrv.meets(msrvs::COMBINED_MAYBE_BOUND)
+        if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
             && let GenericBound::Trait(tr, TraitBoundModifier::Maybe) = bound
         {
             cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
