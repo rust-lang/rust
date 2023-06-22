@@ -1,5 +1,10 @@
 ## Items
 
+Items consist of the set of things permitted at the top level of a module.
+However, Rust also allows some items to appear within some other types of
+items, such as within a function. The same formatting conventions apply whether
+an item appears at module level or within another item.
+
 `extern crate` statements must be first in a file. They must be ordered
 alphabetically.
 
