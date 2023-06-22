@@ -19,6 +19,18 @@ Thus, there are productivity benefits to using a formatting tool (such as
 rustfmt), and even larger benefits by using a community-consistent formatting,
 typically by using a formatting tool's default settings.
 
+## The default Rust style
+
+The Rust Style Guide defines the default Rust style, and *recommends* that
+developers and tools follow the default Rust style. Tools such as `rustfmt` use
+the style guide as a reference for the default style. Everything in this style
+guide, whether or not it uses language such as "must" or the imperative mood
+such as "insert a space ..." or "break the line after ...", refers to the
+default style.
+
+This should not be interpreted as forbidding developers from following a
+non-default style, or forbidding tools from adding any particular configuration
+options.
 
 ## Formatting conventions
 
