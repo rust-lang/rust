@@ -20,17 +20,6 @@ help: there is a crate or module with a similar name
 LL | use bar::bar;
    |     ~~~
 
-error[E0433]: failed to resolve: use of undeclared crate or module `bar`
-  --> $DIR/crate-or-module-typo.rs:6:20
-   |
-LL |     pub fn bar() { bar::baz(); }
-   |                    ^^^ use of undeclared crate or module `bar`
-   |
-help: consider importing this module
-   |
-LL +     use crate::bar;
-   |
-
 error[E0433]: failed to resolve: use of undeclared crate or module `st`
   --> $DIR/crate-or-module-typo.rs:14:10
    |
@@ -41,16 +30,16 @@ help: there is a crate or module with a similar name
    |
 LL |     bar: std::cell::Cell<bool>
    |          ~~~
-help: consider importing one of these items
+
+error[E0433]: failed to resolve: use of undeclared crate or module `bar`
+  --> $DIR/crate-or-module-typo.rs:6:20
    |
-LL + use core::cell;
+LL |     pub fn bar() { bar::baz(); }
+   |                    ^^^ use of undeclared crate or module `bar`
    |
-LL + use std::cell;
+help: consider importing this module
    |
-help: if you import `cell`, refer to it directly
-   |
-LL -     bar: st::cell::Cell<bool>
-LL +     bar: cell::Cell<bool>
+LL +     use crate::bar;
    |
 
 error: aborting due to 4 previous errors

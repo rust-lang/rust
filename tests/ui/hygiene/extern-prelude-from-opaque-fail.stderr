@@ -24,8 +24,6 @@ LL |         fn f() { my_core::mem::drop(0); }
 LL | a!();
    | ---- in this macro invocation
    |
-   = help: consider importing this module:
-           my_core::mem
    = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
@@ -33,16 +31,6 @@ error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
    |
 LL |     fn f() { my_core::mem::drop(0); }
    |              ^^^^^^^ use of undeclared crate or module `my_core`
-   |
-help: consider importing this module
-   |
-LL +     use my_core::mem;
-   |
-help: if you import `mem`, refer to it directly
-   |
-LL -     fn f() { my_core::mem::drop(0); }
-LL +     fn f() { mem::drop(0); }
-   |
 
 error: aborting due to 4 previous errors
 
