@@ -1,10 +1,11 @@
 use ignore::DirEntry;
 
+use std::process::Command;
 use std::{ffi::OsStr, fs::File, io::Read, path::Path};
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
-    let skip = [
+    let skip = vec![
         "tidy-test-file",
         "compiler/rustc_codegen_cranelift",
         "compiler/rustc_codegen_gcc",
@@ -31,6 +32,17 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/bootstrap/target",
         "vendor",
     ];
+    let command =
+        Command::new("git").args(["ls-files", ".", "--exclude-standard", "--others"]).output();
+    if let Ok(output) = command {
+        let stdout: Vec<&str> =
+            String::from_utf8_lossy(&output.stdout).split('\n').into_iter().collect();
+        for line in stdout {
+            if skip.contains(&line) {
+                skip.remove(skip.iter().position(|x| **x = line))
+            }
+        }
+    }
     skip.iter().any(|p| path.ends_with(p))
 }
 
