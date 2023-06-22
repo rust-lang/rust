@@ -15,8 +15,8 @@ Tools should make the above ordering optional.
 
 ### Function definitions
 
-In Rust, one finds functions by searching for `fn [function-name]`; It's
-important that you style your code so that it's very searchable in this way.
+In Rust, people often find functions by searching for `fn [function-name]`, so
+the formatting of function definitions shold enable this.
 
 The proper ordering and spacing is:
 
