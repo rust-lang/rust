@@ -128,34 +128,42 @@ fn main() {
 
     match_guarded_arm!(0u8); //~ ERROR `_` not covered
                              //~| NOTE the matched value is of type
+                             //~| NOTE match arms with guards don't count towards exhaustivity
                              //~| NOTE pattern `_` not covered
                              //~| NOTE in this expansion of match_guarded_arm!
     match_guarded_arm!(NonEmptyStruct1); //~ ERROR `NonEmptyStruct1` not covered
                                          //~| NOTE pattern `NonEmptyStruct1` not covered
                                          //~| NOTE the matched value is of type
+                                         //~| NOTE match arms with guards don't count towards exhaustivity
                                          //~| NOTE in this expansion of match_guarded_arm!
     match_guarded_arm!(NonEmptyStruct2(true)); //~ ERROR `NonEmptyStruct2(_)` not covered
                                                //~| NOTE the matched value is of type
                                                //~| NOTE pattern `NonEmptyStruct2(_)` not covered
+                                               //~| NOTE match arms with guards don't count towards exhaustivity
                                                //~| NOTE in this expansion of match_guarded_arm!
     match_guarded_arm!((NonEmptyUnion1 { foo: () })); //~ ERROR `NonEmptyUnion1 { .. }` not covered
                                                       //~| NOTE the matched value is of type
                                                       //~| NOTE pattern `NonEmptyUnion1 { .. }` not covered
+                                                      //~| NOTE match arms with guards don't count towards exhaustivity
                                                       //~| NOTE in this expansion of match_guarded_arm!
     match_guarded_arm!((NonEmptyUnion2 { foo: () })); //~ ERROR `NonEmptyUnion2 { .. }` not covered
                                                       //~| NOTE the matched value is of type
                                                       //~| NOTE pattern `NonEmptyUnion2 { .. }` not covered
+                                                      //~| NOTE match arms with guards don't count towards exhaustivity
                                                       //~| NOTE in this expansion of match_guarded_arm!
     match_guarded_arm!(NonEmptyEnum1::Foo(true)); //~ ERROR `NonEmptyEnum1::Foo(_)` not covered
                                                   //~| NOTE the matched value is of type
                                                   //~| NOTE pattern `NonEmptyEnum1::Foo(_)` not covered
+                                                  //~| NOTE match arms with guards don't count towards exhaustivity
                                                   //~| NOTE in this expansion of match_guarded_arm!
     match_guarded_arm!(NonEmptyEnum2::Foo(true)); //~ ERROR `NonEmptyEnum2::Foo(_)` and `NonEmptyEnum2::Bar` not covered
                                                   //~| NOTE the matched value is of type
                                                   //~| NOTE patterns `NonEmptyEnum2::Foo(_)` and
+                                                  //~| NOTE match arms with guards don't count towards exhaustivity
                                                   //~| NOTE in this expansion of match_guarded_arm!
     match_guarded_arm!(NonEmptyEnum5::V1); //~ ERROR `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
                                            //~| NOTE the matched value is of type
                                            //~| NOTE patterns `NonEmptyEnum5::V1`,
+                                           //~| NOTE match arms with guards don't count towards exhaustivity
                                            //~| NOTE in this expansion of match_guarded_arm!
 }
