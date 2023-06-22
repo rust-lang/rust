@@ -1016,6 +1016,69 @@ impl Person {
 }
 
 #[test]
+fn doctest_generate_delegate_trait() {
+    check_doc_test(
+        "generate_delegate_trait",
+        r#####"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a$0: A,
+}
+"#####,
+        r#####"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a: A,
+}
+
+impl SomeTrait for B {
+    type T = <A as SomeTrait>::T;
+
+    fn fn_(arg: u32) -> u32 {
+        <A as SomeTrait>::fn_(arg)
+    }
+
+    fn method_(&mut self) -> bool {
+        <A as SomeTrait>::method_( &mut self.a )
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_deref() {
     check_doc_test(
         "generate_deref",

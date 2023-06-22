@@ -145,6 +145,7 @@ mod handlers {
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
+    mod generate_delegate_trait;
     mod generate_deref;
     mod generate_derive;
     mod generate_documentation_template;
@@ -251,6 +252,7 @@ mod handlers {
             generate_constant::generate_constant,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
+            generate_delegate_trait::generate_delegate_trait,
             generate_derive::generate_derive,
             generate_documentation_template::generate_documentation_template,
             generate_documentation_template::generate_doc_example,
