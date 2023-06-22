@@ -131,7 +131,9 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     if let Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
     | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) = tcx.opt_rpitit_info(def_id)
     {
-        predicates = tcx.predicates_of(fn_def_id).instantiate_identity(tcx).predicates;
+        // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): Should not need to add the predicates
+        // from the parent fn to our assumptions
+        predicates.extend(tcx.predicates_of(fn_def_id).instantiate_identity(tcx).predicates);
     }
 
     // Finally, we have to normalize the bounds in the environment, in
