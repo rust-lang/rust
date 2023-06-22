@@ -65,6 +65,7 @@ mod declared_lints;
 mod renamed_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
+mod absolute_paths;
 mod allow_attributes;
 mod almost_complete_range;
 mod approx_const;
@@ -1082,6 +1083,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(manual_float_methods::ManualFloatMethods));
     store.register_late_pass(|_| Box::new(four_forward_slashes::FourForwardSlashes));
     store.register_late_pass(|_| Box::new(error_impl_error::ErrorImplError));
+    let absolute_paths_max_segments = conf.absolute_paths_max_segments;
+    let absolute_paths_allowed_crates = conf.absolute_paths_allowed_crates.clone();
+    store.register_late_pass(move |_| {
+        Box::new(absolute_paths::AbsolutePaths {
+            absolute_paths_max_segments,
+            absolute_paths_allowed_crates: absolute_paths_allowed_crates.clone(),
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
