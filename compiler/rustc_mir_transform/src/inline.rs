@@ -399,13 +399,8 @@ impl<'tcx> Inliner<'tcx> {
         // exported function
         // * Later, we inline the exported function (which is now not exportable) into another crate
         // * Linker error (or ICE)
-        //
-        // So this is our heuristic for preventing that:
-        // If this function has any calls in it, that might reference an internal symbol.
-        // If this function contains a pointer constant, that might be a reference to an internal
-        // static.
-        // So if either of those conditions are met, we cannot inline this.
-        if !contains_pointer_constant(self.tcx, callee_body) {
+        // So we search the callee body for anything that might cause problems if exported.
+        if !may_contain_unexportable_constant(self.tcx, callee_body) {
             debug!("Has no pointer constants, must be exportable");
             return Ok(());
         }
@@ -1199,26 +1194,29 @@ fn try_instance_mir<'tcx>(
     }
 }
 
-fn contains_pointer_constant<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
-    let mut finder = ConstFinder { tcx, found: false };
+fn may_contain_unexportable_constant<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
+    let mut finder = UnexportableConstFinder { tcx, found: false };
     finder.visit_body(body);
     finder.found
 }
 
-struct ConstFinder<'tcx> {
+struct UnexportableConstFinder<'tcx> {
     tcx: TyCtxt<'tcx>,
     found: bool,
 }
 
-impl<'tcx> Visitor<'_> for ConstFinder<'tcx> {
+impl<'tcx> Visitor<'_> for UnexportableConstFinder<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'_>, location: Location) {
         debug!("Visiting constant: {:?}", constant.literal);
+        // Unevaluated constants could be anything. Ouch.
         if let ConstantKind::Unevaluated(..) = constant.literal {
             self.found = true;
             return;
         }
 
         if let ConstantKind::Val(val, ty) = constant.literal {
+            // Constants which contain a pointer to a static are mentions of a static. Since
+            // statics can be private, exporting this MIR may cause a linker error.
             if let ConstValue::Scalar(Scalar::Ptr(ptr, _size)) = val {
                 if let Some(GlobalAlloc::Static(_)) =
                     self.tcx.try_get_global_alloc(ptr.into_parts().0)
@@ -1227,10 +1225,13 @@ impl<'tcx> Visitor<'_> for ConstFinder<'tcx> {
                 }
             }
 
+            // fn constants are mentions of other functions; if those functions are not exportable,
+            // exporting this function would break compilation.
             if ty.is_fn() {
                 self.found = true;
             }
         }
+
         self.super_constant(constant, location);
     }
 }
