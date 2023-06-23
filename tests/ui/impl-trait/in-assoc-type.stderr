@@ -12,10 +12,10 @@ LL |     fn foo(&self) -> <Self as Foo<()>>::Bar {}
    = note: expected opaque type `<() as Foo<()>>::Bar`
                 found unit type `()`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/in-assoc-type.rs:17:5
+  --> $DIR/in-assoc-type.rs:17:8
    |
 LL |     fn foo(&self) -> <Self as Foo<()>>::Bar {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^
 
 error: aborting due to previous error
 

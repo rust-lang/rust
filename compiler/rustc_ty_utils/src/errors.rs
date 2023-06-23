@@ -113,7 +113,7 @@ pub struct DuplicateArg<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ty_utils_impl_trait_not_param)]
+#[diag(ty_utils_impl_trait_not_param, code = "E0792")]
 pub struct NotParam<'tcx> {
     pub arg: GenericArg<'tcx>,
     #[primary_span]

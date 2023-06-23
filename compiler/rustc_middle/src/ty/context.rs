@@ -1192,6 +1192,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn local_visibility(self, def_id: LocalDefId) -> Visibility {
         self.visibility(def_id).expect_local()
     }
+
+    /// Returns the origin of the opaque type `def_id`.
+    #[instrument(skip(self), level = "trace", ret)]
+    pub fn opaque_type_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin {
+        self.hir().expect_item(def_id).expect_opaque_ty().origin
+    }
 }
 
 /// A trait implemented for all `X<'a>` types that can be safely and

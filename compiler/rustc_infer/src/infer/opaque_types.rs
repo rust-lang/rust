@@ -378,7 +378,7 @@ impl<'tcx> InferCtxt<'tcx> {
             DefiningAnchor::Bind(bind) => bind,
         };
 
-        let origin = self.opaque_type_origin_unchecked(def_id);
+        let origin = self.tcx.opaque_type_origin(def_id);
         let in_definition_scope = match origin {
             // Async `impl Trait`
             hir::OpaqueTyOrigin::AsyncFn(parent) => parent == parent_def_id,
@@ -394,13 +394,6 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         };
         in_definition_scope.then_some(origin)
-    }
-
-    /// Returns the origin of the opaque type `def_id` even if we are not in its
-    /// defining scope.
-    #[instrument(skip(self), level = "trace", ret)]
-    fn opaque_type_origin_unchecked(&self, def_id: LocalDefId) -> OpaqueTyOrigin {
-        self.tcx.hir().expect_item(def_id).expect_opaque_ty().origin
     }
 }
 

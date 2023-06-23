@@ -1543,8 +1543,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
         if let ty::Alias(ty::Opaque, unshifted_opaque_ty) = *ty.kind()
             && self.seen.insert(unshifted_opaque_ty.def_id)
             && let Some(opaque_def_id) = unshifted_opaque_ty.def_id.as_local()
-            && let opaque = tcx.hir().expect_item(opaque_def_id).expect_opaque_ty()
-            && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = opaque.origin
+            && let origin = tcx.opaque_type_origin(opaque_def_id)
+            && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = origin
             && source == self.fn_def_id
         {
             let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, _depth| {
