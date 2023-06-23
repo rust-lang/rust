@@ -35,5 +35,13 @@ LL |     T: ?Sized,
    |
    = help: consider combining the bounds: `T: Clone + ?Sized`
 
-error: aborting due to 4 previous errors
+error: this type has already been used as a bound predicate
+  --> $DIR/type_repetition_in_bounds.rs:131:9
+   |
+LL |         T: Trait<Option<usize>, Box<[String]>, bool> + 'static,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider combining the bounds: `T: ?Sized + Trait<Option<usize>, Box<[String]>, bool>`
+
+error: aborting due to 5 previous errors
 
