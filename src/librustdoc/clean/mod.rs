@@ -1361,8 +1361,10 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
 
             if let ty::TraitContainer = assoc_item.container {
-                let bounds =
-                    tcx.explicit_item_bounds(assoc_item.def_id).subst_identity_iter_copied();
+                let bounds = tcx
+                    .explicit_item_bounds(assoc_item.def_id)
+                    .subst_identity_iter_copied()
+                    .map(|(c, s)| (c.as_predicate(), s));
                 let predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
                 let predicates =
                     tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
@@ -2117,7 +2119,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
 fn clean_middle_opaque_bounds<'tcx>(
     cx: &mut DocContext<'tcx>,
-    bounds: Vec<ty::Predicate<'tcx>>,
+    bounds: Vec<ty::Clause<'tcx>>,
 ) -> Type {
     let mut regions = vec![];
     let mut has_sized = false;
@@ -2126,13 +2128,8 @@ fn clean_middle_opaque_bounds<'tcx>(
         .filter_map(|bound| {
             let bound_predicate = bound.kind();
             let trait_ref = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => {
-                    bound_predicate.rebind(tr.trait_ref)
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                    _ty,
-                    reg,
-                ))) => {
+                ty::ClauseKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
+                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
                     if let Some(r) = clean_middle_region(reg) {
                         regions.push(GenericBound::Outlives(r));
                     }
@@ -2149,9 +2146,7 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bindings: ThinVec<_> = bounds
                 .iter()
                 .filter_map(|bound| {
-                    if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
-                        bound.kind().skip_binder()
-                    {
+                    if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
                         if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
                             Some(TypeBinding {
                                 assoc: projection_to_path_segment(
