@@ -107,7 +107,7 @@ impl Step for ToolBuild {
         );
 
         let mut cargo = Command::from(cargo);
-        let is_expected = builder.try_run(&mut cargo);
+        let is_expected = builder.try_run(&mut cargo).is_ok();
 
         builder.save_toolstate(
             tool,

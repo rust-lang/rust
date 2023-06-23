@@ -128,7 +128,7 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
                 }
             }
 
-            if !try_run(&mut cargo, config.verbose) {
+            if try_run(&mut cargo, config.verbose).is_err() {
                 eprintln!("failed to document `{}`", entry.path().display());
                 panic!("Cannot run rustdoc-gui tests");
             }
@@ -161,5 +161,5 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
 
     command.args(&config.test_args);
 
-    if try_run(&mut command, config.verbose) { Ok(()) } else { Err(()) }
+    try_run(&mut command, config.verbose)
 }
