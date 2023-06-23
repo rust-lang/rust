@@ -164,7 +164,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb6: {
         StorageDead(_17);
         StorageDead(_15);
-        drop(_2) -> bb7;
+        drop(_2) -> [return: bb7, unwind continue];
     }
 
     bb7: {

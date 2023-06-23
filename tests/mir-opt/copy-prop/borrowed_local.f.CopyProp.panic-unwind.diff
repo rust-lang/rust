@@ -13,11 +13,11 @@
           _2 = &_1;
           _3 = _1;
           _4 = &_3;
-          _0 = cmp_ref(_2, _4) -> bb1;
+          _0 = cmp_ref(_2, _4) -> [return: bb1, unwind continue];
       }
   
       bb1: {
-          _0 = opaque::<u8>(_3) -> bb2;
+          _0 = opaque::<u8>(_3) -> [return: bb2, unwind continue];
       }
   
       bb2: {

@@ -39,7 +39,7 @@
       }
   
       bb3: {
-          drop(_1) -> bb4;
+          drop(_1) -> [return: bb4, unwind continue];
       }
   
       bb4: {

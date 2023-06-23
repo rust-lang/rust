@@ -24,7 +24,7 @@
           StorageLive(_4);
           _4 = &_1;
           _3 = &(*_4);
-          _2 = escape::<i32>(move _3) -> bb1;
+          _2 = escape::<i32>(move _3) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -33,7 +33,7 @@
           StorageDead(_2);
           _1 = const 1_i32;
           StorageLive(_5);
-          _5 = some_function() -> bb2;
+          _5 = some_function() -> [return: bb2, unwind continue];
       }
   
       bb2: {

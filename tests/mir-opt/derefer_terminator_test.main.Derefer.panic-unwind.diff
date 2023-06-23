@@ -30,12 +30,12 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = foo() -> bb1;
+          _1 = foo() -> [return: bb1, unwind continue];
       }
   
       bb1: {
           StorageLive(_2);
-          _2 = foo() -> bb2;
+          _2 = foo() -> [return: bb2, unwind continue];
       }
   
       bb2: {

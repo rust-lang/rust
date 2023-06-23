@@ -11,6 +11,6 @@ fn main() -> () {
         StorageLive(_1);
         StorageLive(_2);
         _2 = ();
-        _1 = const_eval_select::<(), fn() -> ! {ow_ct}, fn() -> ! {ow_ct}, !>(move _2, ow_ct, ow_ct);
+        _1 = const_eval_select::<(), fn() -> ! {ow_ct}, fn() -> ! {ow_ct}, !>(move _2, ow_ct, ow_ct) -> unwind continue;
     }
 }

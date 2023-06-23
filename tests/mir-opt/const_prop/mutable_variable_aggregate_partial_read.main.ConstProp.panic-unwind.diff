@@ -14,7 +14,7 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = foo() -> bb1;
+          _1 = foo() -> [return: bb1, unwind continue];
       }
   
       bb1: {

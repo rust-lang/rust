@@ -14,7 +14,7 @@ fn main() -> () {
         StorageLive(_4);
         _4 = const "";
         _3 = &(*_4);
-        _2 = <str as ToString>::to_string(move _3) -> bb1;
+        _2 = <str as ToString>::to_string(move _3) -> [return: bb1, unwind continue];
     }
 
     bb1: {

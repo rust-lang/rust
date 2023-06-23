@@ -8,7 +8,7 @@ fn test(_1: &dyn X) -> u32 {
     bb0: {
         StorageLive(_2);
         _2 = &(*_1);
-        _0 = <dyn X as X>::y(move _2) -> bb1;
+        _0 = <dyn X as X>::y(move _2) -> [return: bb1, unwind continue];
     }
 
     bb1: {

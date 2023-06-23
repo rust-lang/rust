@@ -13,7 +13,7 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = <C as Call>::call() -> bb1;
+          _1 = <C as Call>::call() -> [return: bb1, unwind continue];
       }
   
       bb1: {

@@ -14,7 +14,7 @@
           StorageDead(_1);
           StorageLive(_1);
           _3 = (*_2);
-          _0 = opaque::<i32>(_3) -> bb1;
+          _0 = opaque::<i32>(_3) -> [return: bb1, unwind continue];
       }
   
       bb1: {

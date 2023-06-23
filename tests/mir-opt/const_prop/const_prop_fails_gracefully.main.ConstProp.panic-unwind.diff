@@ -24,7 +24,7 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = _1;
-          _4 = read(move _5) -> bb1;
+          _4 = read(move _5) -> [return: bb1, unwind continue];
       }
   
       bb1: {

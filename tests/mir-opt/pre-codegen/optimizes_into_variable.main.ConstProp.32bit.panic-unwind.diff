@@ -25,9 +25,9 @@
       bb0: {
           StorageLive(_1);
 -         _2 = CheckedAdd(const 2_i32, const 2_i32);
--         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1;
+-         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> [success: bb1, unwind continue];
 +         _2 = const (4_i32, false);
-+         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1;
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> [success: bb1, unwind continue];
       }
   
       bb1: {
@@ -40,9 +40,9 @@
           _5 = const 3_usize;
           _6 = const 6_usize;
 -         _7 = Lt(_5, _6);
--         assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, _5) -> bb2;
+-         assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, _5) -> [success: bb2, unwind continue];
 +         _7 = const true;
-+         assert(const true, "index out of bounds: the length is {} but the index is {}", const 6_usize, const 3_usize) -> bb2;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 6_usize, const 3_usize) -> [success: bb2, unwind continue];
       }
   
       bb2: {

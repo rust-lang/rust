@@ -30,7 +30,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     bb0: {
         StorageLive(_4);
         StorageLive(_3);
-        _3 = <impl Iterator<Item = T> as Iterator>::filter_map::<U, impl Fn(T) -> Option<U>>(move _1, move _2) -> bb1;
+        _3 = <impl Iterator<Item = T> as Iterator>::filter_map::<U, impl Fn(T) -> Option<U>>(move _1, move _2) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -60,7 +60,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
 
     bb4: {
         StorageDead(_9);
-        drop(_5) -> bb5;
+        drop(_5) -> [return: bb5, unwind continue];
     }
 
     bb5: {

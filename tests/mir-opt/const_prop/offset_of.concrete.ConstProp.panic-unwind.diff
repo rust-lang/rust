@@ -29,7 +29,7 @@
           StorageLive(_2);
 -         _2 = OffsetOf(Alpha, [0]);
 +         _2 = const 4_usize;
-          _1 = must_use::<usize>(move _2) -> bb1;
+          _1 = must_use::<usize>(move _2) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -38,7 +38,7 @@
           StorageLive(_4);
 -         _4 = OffsetOf(Alpha, [1]);
 +         _4 = const 0_usize;
-          _3 = must_use::<usize>(move _4) -> bb2;
+          _3 = must_use::<usize>(move _4) -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -47,7 +47,7 @@
           StorageLive(_6);
 -         _6 = OffsetOf(Alpha, [2, 0]);
 +         _6 = const 2_usize;
-          _5 = must_use::<usize>(move _6) -> bb3;
+          _5 = must_use::<usize>(move _6) -> [return: bb3, unwind continue];
       }
   
       bb3: {
@@ -56,7 +56,7 @@
           StorageLive(_8);
 -         _8 = OffsetOf(Alpha, [2, 1]);
 +         _8 = const 3_usize;
-          _7 = must_use::<usize>(move _8) -> bb4;
+          _7 = must_use::<usize>(move _8) -> [return: bb4, unwind continue];
       }
   
       bb4: {

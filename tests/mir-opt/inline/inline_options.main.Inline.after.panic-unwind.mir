@@ -12,7 +12,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = not_inlined() -> bb1;
+        _1 = not_inlined() -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -21,7 +21,7 @@ fn main() -> () {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
-        _3 = g() -> bb3;
+        _3 = g() -> [return: bb3, unwind continue];
     }
 
     bb2: {
@@ -34,10 +34,10 @@ fn main() -> () {
     }
 
     bb3: {
-        _4 = g() -> bb4;
+        _4 = g() -> [return: bb4, unwind continue];
     }
 
     bb4: {
-        _5 = g() -> bb2;
+        _5 = g() -> [return: bb2, unwind continue];
     }
 }

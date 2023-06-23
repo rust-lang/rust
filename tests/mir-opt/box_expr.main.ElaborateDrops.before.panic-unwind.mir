@@ -19,7 +19,7 @@ fn main() -> () {
         StorageLive(_1);
         _2 = SizeOf(S);
         _3 = AlignOf(S);
-        _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1;
+        _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -30,7 +30,7 @@ fn main() -> () {
 
     bb2: {
         _1 = move _5;
-        drop(_5) -> bb3;
+        drop(_5) -> [return: bb3, unwind continue];
     }
 
     bb3: {
@@ -45,7 +45,7 @@ fn main() -> () {
         StorageDead(_7);
         StorageDead(_6);
         _0 = const ();
-        drop(_1) -> bb5;
+        drop(_1) -> [return: bb5, unwind continue];
     }
 
     bb5: {

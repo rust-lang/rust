@@ -53,7 +53,7 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
     bb2: {
         _7 = ((*_1).0: u32);
         StorageLive(_8);
-        _8 = <u32 as Step>::forward_unchecked(_7, const 1_usize) -> bb3;
+        _8 = <u32 as Step>::forward_unchecked(_7, const 1_usize) -> [return: bb3, unwind continue];
     }
 
     bb3: {

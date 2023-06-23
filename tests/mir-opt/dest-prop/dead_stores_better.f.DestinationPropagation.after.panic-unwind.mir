@@ -19,7 +19,7 @@ fn f(_1: usize) -> usize {
         nop;
         nop;
         nop;
-        _0 = id::<usize>(move _1) -> bb1;
+        _0 = id::<usize>(move _1) -> [return: bb1, unwind continue];
     }
 
     bb1: {

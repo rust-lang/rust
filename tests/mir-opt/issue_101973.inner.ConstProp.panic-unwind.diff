@@ -45,10 +45,10 @@
           StorageLive(_8);
 -         _10 = const 8_i32 as u32 (IntToInt);
 -         _11 = Lt(move _10, const 32_u32);
--         assert(move _11, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1;
+-         assert(move _11, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> [success: bb1, unwind continue];
 +         _10 = const 8_u32;
 +         _11 = const true;
-+         assert(const true, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1;
++         assert(const true, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> [success: bb1, unwind continue];
       }
   
       bb1: {
@@ -57,10 +57,10 @@
           StorageDead(_8);
 -         _12 = const 1_i32 as u32 (IntToInt);
 -         _13 = Lt(move _12, const 32_u32);
--         assert(move _13, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2;
+-         assert(move _13, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> [success: bb2, unwind continue];
 +         _12 = const 1_u32;
 +         _13 = const true;
-+         assert(const true, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2;
++         assert(const true, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> [success: bb2, unwind continue];
       }
   
       bb2: {
