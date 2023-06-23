@@ -58,10 +58,7 @@ impl Tarballer {
         let buf = BufWriter::with_capacity(1024 * 1024, encoder);
         let mut builder = Builder::new(buf);
 
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(2)
-            .build()
-            .unwrap();
+        let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build().unwrap();
         pool.install(move || {
             for path in dirs {
                 let src = Path::new(&self.work_dir).join(&path);
@@ -122,11 +119,7 @@ where
     let name = name.as_ref();
 
     if !name.is_relative() && !name.starts_with(root) {
-        bail!(
-            "input '{}' is not in work dir '{}'",
-            name.display(),
-            root.display()
-        );
+        bail!("input '{}' is not in work dir '{}'", name.display(), root.display());
     }
 
     let mut dirs = vec![];
