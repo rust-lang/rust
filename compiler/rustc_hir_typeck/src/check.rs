@@ -92,10 +92,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.check_pat_top(&param.pat, param_ty, ty_span, None);
 
         // Check that argument is Sized.
-        // The check for a non-trivial pattern is a hack to avoid duplicate warnings
-        // for simple cases like `fn foo(x: Trait)`,
-        // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !params_can_be_unsized {
+        if !params_can_be_unsized {
             fcx.require_type_is_sized(
                 param_ty,
                 param.pat.span,
