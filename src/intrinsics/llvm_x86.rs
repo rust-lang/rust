@@ -66,17 +66,94 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let flt_cc = match kind
                 .try_to_bits(Size::from_bytes(1))
                 .unwrap_or_else(|| panic!("kind not scalar: {:?}", kind))
+                .try_into()
+                .unwrap()
             {
-                0 => FloatCC::Equal,
-                1 => FloatCC::LessThan,
-                2 => FloatCC::LessThanOrEqual,
-                7 => FloatCC::Ordered,
-                3 => FloatCC::Unordered,
-                4 => FloatCC::NotEqual,
-                5 => FloatCC::UnorderedOrGreaterThanOrEqual,
-                6 => FloatCC::UnorderedOrGreaterThan,
+                _CMP_EQ_OQ | _CMP_EQ_OS => FloatCC::Equal,
+                _CMP_LT_OS | _CMP_LT_OQ => FloatCC::LessThan,
+                _CMP_LE_OS | _CMP_LE_OQ => FloatCC::LessThanOrEqual,
+                _CMP_UNORD_Q | _CMP_UNORD_S => FloatCC::Unordered,
+                _CMP_NEQ_UQ | _CMP_NEQ_US => FloatCC::NotEqual,
+                _CMP_NLT_US | _CMP_NLT_UQ => FloatCC::UnorderedOrGreaterThanOrEqual,
+                _CMP_NLE_US | _CMP_NLE_UQ => FloatCC::UnorderedOrGreaterThan,
+                _CMP_ORD_Q | _CMP_ORD_S => FloatCC::Ordered,
+                _CMP_EQ_UQ | _CMP_EQ_US => FloatCC::UnorderedOrEqual,
+                _CMP_NGE_US | _CMP_NGE_UQ => FloatCC::UnorderedOrLessThan,
+                _CMP_NGT_US | _CMP_NGT_UQ => FloatCC::UnorderedOrLessThanOrEqual,
+                _CMP_FALSE_OQ | _CMP_FALSE_OS => todo!(),
+                _CMP_NEQ_OQ | _CMP_NEQ_OS => FloatCC::OrderedNotEqual,
+                _CMP_GE_OS | _CMP_GE_OQ => FloatCC::GreaterThanOrEqual,
+                _CMP_GT_OS | _CMP_GT_OQ => FloatCC::GreaterThan,
+                _CMP_TRUE_UQ | _CMP_TRUE_US => todo!(),
+
                 kind => unreachable!("kind {:?}", kind),
             };
+
+            // Copied from stdarch
+            /// Equal (ordered, non-signaling)
+            const _CMP_EQ_OQ: i32 = 0x00;
+            /// Less-than (ordered, signaling)
+            const _CMP_LT_OS: i32 = 0x01;
+            /// Less-than-or-equal (ordered, signaling)
+            const _CMP_LE_OS: i32 = 0x02;
+            /// Unordered (non-signaling)
+            const _CMP_UNORD_Q: i32 = 0x03;
+            /// Not-equal (unordered, non-signaling)
+            const _CMP_NEQ_UQ: i32 = 0x04;
+            /// Not-less-than (unordered, signaling)
+            const _CMP_NLT_US: i32 = 0x05;
+            /// Not-less-than-or-equal (unordered, signaling)
+            const _CMP_NLE_US: i32 = 0x06;
+            /// Ordered (non-signaling)
+            const _CMP_ORD_Q: i32 = 0x07;
+            /// Equal (unordered, non-signaling)
+            const _CMP_EQ_UQ: i32 = 0x08;
+            /// Not-greater-than-or-equal (unordered, signaling)
+            const _CMP_NGE_US: i32 = 0x09;
+            /// Not-greater-than (unordered, signaling)
+            const _CMP_NGT_US: i32 = 0x0a;
+            /// False (ordered, non-signaling)
+            const _CMP_FALSE_OQ: i32 = 0x0b;
+            /// Not-equal (ordered, non-signaling)
+            const _CMP_NEQ_OQ: i32 = 0x0c;
+            /// Greater-than-or-equal (ordered, signaling)
+            const _CMP_GE_OS: i32 = 0x0d;
+            /// Greater-than (ordered, signaling)
+            const _CMP_GT_OS: i32 = 0x0e;
+            /// True (unordered, non-signaling)
+            const _CMP_TRUE_UQ: i32 = 0x0f;
+            /// Equal (ordered, signaling)
+            const _CMP_EQ_OS: i32 = 0x10;
+            /// Less-than (ordered, non-signaling)
+            const _CMP_LT_OQ: i32 = 0x11;
+            /// Less-than-or-equal (ordered, non-signaling)
+            const _CMP_LE_OQ: i32 = 0x12;
+            /// Unordered (signaling)
+            const _CMP_UNORD_S: i32 = 0x13;
+            /// Not-equal (unordered, signaling)
+            const _CMP_NEQ_US: i32 = 0x14;
+            /// Not-less-than (unordered, non-signaling)
+            const _CMP_NLT_UQ: i32 = 0x15;
+            /// Not-less-than-or-equal (unordered, non-signaling)
+            const _CMP_NLE_UQ: i32 = 0x16;
+            /// Ordered (signaling)
+            const _CMP_ORD_S: i32 = 0x17;
+            /// Equal (unordered, signaling)
+            const _CMP_EQ_US: i32 = 0x18;
+            /// Not-greater-than-or-equal (unordered, non-signaling)
+            const _CMP_NGE_UQ: i32 = 0x19;
+            /// Not-greater-than (unordered, non-signaling)
+            const _CMP_NGT_UQ: i32 = 0x1a;
+            /// False (ordered, signaling)
+            const _CMP_FALSE_OS: i32 = 0x1b;
+            /// Not-equal (ordered, signaling)
+            const _CMP_NEQ_OS: i32 = 0x1c;
+            /// Greater-than-or-equal (ordered, non-signaling)
+            const _CMP_GE_OQ: i32 = 0x1d;
+            /// Greater-than (ordered, non-signaling)
+            const _CMP_GT_OQ: i32 = 0x1e;
+            /// True (unordered, signaling)
+            const _CMP_TRUE_US: i32 = 0x1f;
 
             simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, res_lane_ty, x_lane, y_lane| {
                 let res_lane = match lane_ty.kind() {
