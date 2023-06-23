@@ -690,7 +690,7 @@ Where it is possible to use a block form on the right-hand side and avoid
 breaking the left-hand side, do that. E.g.
 
 ```rust
-    // Assuming the following line does done fit in the max width
+    // Assuming the following line does not fit in the max width
     a_very_long_pattern | another_pattern => ALongStructName {
         ...
     },
