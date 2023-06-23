@@ -738,7 +738,7 @@ pub const _CMP_TRUE_US: i32 = 0x1f;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmp_pd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
     static_assert_uimm_bits!(IMM5, 5);
-    vcmppd(a, b, IMM5 as i8)
+    vcmppd(a, b, const { IMM5 as i8 })
 }
 
 /// Compares packed double-precision (64-bit) floating-point
@@ -768,7 +768,7 @@ pub unsafe fn _mm256_cmp_pd<const IMM5: i32>(a: __m256d, b: __m256d) -> __m256d 
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmp_ps<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(IMM5, 5);
-    vcmpps(a, b, IMM5 as i8)
+    vcmpps(a, b, const { IMM5 as i8 })
 }
 
 /// Compares packed single-precision (32-bit) floating-point
@@ -783,7 +783,7 @@ pub unsafe fn _mm_cmp_ps<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cmp_ps<const IMM5: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_uimm_bits!(IMM5, 5);
-    vcmpps256(a, b, IMM5 as u8)
+    vcmpps256(a, b, const { IMM5 as u8 })
 }
 
 /// Compares the lower double-precision (64-bit) floating-point element in
