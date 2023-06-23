@@ -3464,7 +3464,8 @@ declare_lint! {
     /// out an update in your own time.
     pub LONG_RUNNING_CONST_EVAL,
     Deny,
-    "detects long const eval operations"
+    "detects long const eval operations",
+    report_in_external_macro
 }
 
 declare_lint! {
