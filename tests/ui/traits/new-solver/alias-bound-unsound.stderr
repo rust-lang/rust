@@ -19,13 +19,13 @@ error: the type `<() as Foo>::Item` is not well-formed
 LL |     drop(<() as Foo>::copy_me(&x));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the type `_` is not well-formed
+error: the type `<() as Foo>::Item` is not well-formed
   --> $DIR/alias-bound-unsound.rs:23:5
    |
 LL |     drop(<() as Foo>::copy_me(&x));
    |     ^^^^
 
-error: the type `_` is not well-formed
+error: the type `<() as Foo>::Item` is not well-formed
   --> $DIR/alias-bound-unsound.rs:23:10
    |
 LL |     drop(<() as Foo>::copy_me(&x));

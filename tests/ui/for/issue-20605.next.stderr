@@ -14,7 +14,7 @@ LL |     for item in *things { *item = 0 }
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
 
-error: the type `<_ as IntoIterator>::IntoIter` is not well-formed
+error: the type `<dyn Iterator<Item = &'a mut u8> as IntoIterator>::IntoIter` is not well-formed
   --> $DIR/issue-20605.rs:5:17
    |
 LL |     for item in *things { *item = 0 }
