@@ -1216,6 +1216,52 @@ fn main() {
 }
 
 #[test]
+fn inherent_method_deref_raw() {
+    check_types(
+        r#"
+struct Val;
+
+impl Val {
+    pub fn method(self: *const Val) -> u32 {
+        0
+    }
+}
+
+fn main() {
+    let foo: *const Val;
+    foo.method();
+ // ^^^^^^^^^^^^ u32
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_deref_raw() {
+    check_types(
+        r#"
+trait Trait {
+    fn method(self: *const Self) -> u32;
+}
+
+struct Val;
+
+impl Trait for Val {
+    fn method(self: *const Self) -> u32 {
+        0
+    }
+}
+
+fn main() {
+    let foo: *const Val;
+    foo.method();
+ // ^^^^^^^^^^^^ u32
+}
+"#,
+    );
+}
+
+#[test]
 fn method_on_dyn_impl() {
     check_types(
         r#"
