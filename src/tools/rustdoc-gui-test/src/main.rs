@@ -67,7 +67,7 @@ fn find_librs<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
     None
 }
 
-fn main() {
+fn main() -> Result<(), ()> {
     let config = Arc::new(Config::from_args(env::args().collect()));
 
     // The goal here is to check if the necessary packages are installed, and if not, we
@@ -128,7 +128,10 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
                 }
             }
 
-            try_run(&mut cargo, config.verbose);
+            if try_run(&mut cargo, config.verbose).is_err() {
+                eprintln!("failed to document `{}`", entry.path().display());
+                panic!("Cannot run rustdoc-gui tests");
+            }
         }
     }
 
@@ -158,5 +161,5 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
 
     command.args(&config.test_args);
 
-    try_run(&mut command, config.verbose);
+    try_run(&mut command, config.verbose)
 }

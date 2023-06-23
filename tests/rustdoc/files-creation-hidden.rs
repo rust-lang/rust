@@ -1,5 +1,6 @@
 #![crate_name="foo"]
 
+// @files foo '["index.html", "all.html", "sidebar-items.js"]'
 // @!has "foo/struct.Foo.html"
 #[doc(hidden)]
 pub struct Foo;
