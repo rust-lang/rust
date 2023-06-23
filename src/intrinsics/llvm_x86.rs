@@ -514,6 +514,17 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let dest = CPlace::for_ptr(Pointer::new(mem_addr), a.layout());
             dest.write_cvalue(fx, a);
         }
+        "llvm.x86.ssse3.pabs.b.128" | "llvm.x86.ssse3.pabs.w.128" | "llvm.x86.ssse3.pabs.d.128" => {
+            let a = match args {
+                [a] => a,
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                fx.bcx.ins().iabs(lane)
+            });
+        }
         "llvm.x86.addcarry.32" | "llvm.x86.addcarry.64" => {
             intrinsic_args!(fx, args => (c_in, a, b); intrinsic);
             let c_in = c_in.load_scalar(fx);
