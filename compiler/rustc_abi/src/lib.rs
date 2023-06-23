@@ -354,6 +354,31 @@ impl TargetDataLayout {
         }
     }
 
+    /// Returns the theoretical maximum address.
+    ///
+    /// Note that this doesn't take into account target-specific limitations.
+    #[inline]
+    pub fn max_address(&self) -> u64 {
+        match self.pointer_size.bits() {
+            16 => u16::MAX.into(),
+            32 => u32::MAX.into(),
+            64 => u64::MAX,
+            bits => panic!("max_address: unknown pointer bit size {}", bits),
+        }
+    }
+
+    /// Returns the (inclusive) range of possible addresses for an allocation with
+    /// the given size and alignment.
+    ///
+    /// Note that this doesn't take into account target-specific limitations.
+    #[inline]
+    pub fn address_range_for(&self, size: Size, align: Align) -> (u64, u64) {
+        let end = Size::from_bytes(self.max_address());
+        let min = align.bytes();
+        let max = (end - size).align_down_to(align).bytes();
+        (min, max)
+    }
+
     #[inline]
     pub fn vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
         for &(size, align) in &self.vector_align {
@@ -479,6 +504,12 @@ impl Size {
     pub fn align_to(self, align: Align) -> Size {
         let mask = align.bytes() - 1;
         Size::from_bytes((self.bytes() + mask) & !mask)
+    }
+
+    #[inline]
+    pub fn align_down_to(self, align: Align) -> Size {
+        let mask = align.bytes() - 1;
+        Size::from_bytes(self.bytes() & !mask)
     }
 
     #[inline]

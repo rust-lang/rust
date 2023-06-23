@@ -30,10 +30,12 @@ pub fn provide(providers: &mut Providers) {
 
 #[instrument(skip(tcx), level = "debug")]
 fn reference_niches_policy<'tcx>(tcx: TyCtxt<'tcx>, _: LocalCrate) -> ReferenceNichePolicy {
-    const DEFAULT: ReferenceNichePolicy = ReferenceNichePolicy { size: false, align: false };
-
-    tcx.sess.opts.unstable_opts.reference_niches.unwrap_or(DEFAULT)
+    tcx.sess.opts.unstable_opts.reference_niches.unwrap_or(DEFAULT_REF_NICHES)
 }
+
+/// The reference niche policy for builtin types, and for types in
+/// crates not specifying `-Z reference-niches`.
+const DEFAULT_REF_NICHES: ReferenceNichePolicy = ReferenceNichePolicy { size: false, align: false };
 
 #[instrument(skip(tcx, query), level = "debug")]
 fn naive_layout_of<'tcx>(
@@ -163,7 +165,6 @@ fn naive_layout_of_uncached<'tcx>(
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
             let data_ptr = scalar(Pointer(AddressSpace::DATA));
-
             if let Some(metadata) = ptr_metadata_scalar(cx, pointee)? {
                 // Effectively a (ptr, meta) tuple.
                 data_ptr
@@ -322,15 +323,36 @@ fn layout_of_uncached<'tcx>(
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
             let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
             if !ty.is_unsafe_ptr() {
-                match cx.naive_layout_of(pointee) {
-                    // TODO(reference_niches): actually use the naive layout to set
-                    // reference niches; the query is still kept to for testing purposes.
-                    Ok(_) => (),
+                // Calling `layout_of` here would cause a query cycle for recursive types;
+                // so use a conservative estimate that doesn't look past references.
+                let naive = match cx.naive_layout_of(pointee) {
+                    Ok(n) => n.layout,
                     // This can happen when computing the `SizeSkeleton` of a generic type.
-                    Err(LayoutError::Unknown(_)) => (),
+                    Err(LayoutError::Unknown(_)) => {
+                        // TODO(reference_niches): this is *very* incorrect, but we can't
+                        // return an error here; this would break transmute checks.
+                        // We need some other solution.
+                        NaiveLayout::EMPTY
+                    }
                     Err(err) => return Err(err),
-                }
-                data_ptr.valid_range_mut().start = 1;
+                };
+
+                let niches = match *pointee.kind() {
+                    ty::FnDef(def, ..)
+                    | ty::Foreign(def)
+                    | ty::Generator(def, ..)
+                    | ty::Closure(def, ..) => tcx.reference_niches_policy(def.krate),
+                    ty::Adt(def, _) => tcx.reference_niches_policy(def.did().krate),
+                    _ => DEFAULT_REF_NICHES,
+                };
+
+                let (min_addr, max_addr) = dl.address_range_for(
+                    if niches.size { naive.min_size } else { Size::ZERO },
+                    if niches.align { naive.min_align } else { Align::ONE },
+                );
+
+                *data_ptr.valid_range_mut() =
+                    WrappingRange { start: min_addr.into(), end: max_addr.into() };
             }
 
             if let Some(metadata) = ptr_metadata_scalar(cx, pointee)? {
