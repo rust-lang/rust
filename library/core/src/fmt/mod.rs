@@ -112,9 +112,9 @@ pub trait Write {
     ///
     /// # Errors
     ///
-    /// This function will return an instance of [`Error`] on error.
+    /// This function will return an instance of [`std::fmt::Error`] on error.
     ///
-    /// The purpose of std::fmt::Error is to abort the formatting operation when the underlying
+    /// The purpose of that error is to abort the formatting operation when the underlying
     /// destination encounters some error preventing it from accepting more text; it should
     /// generally be propagated rather than handled, at least when implementing formatting traits.
     ///
