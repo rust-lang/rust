@@ -50,6 +50,7 @@ mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
+mod manual_try_fold;
 mod map_clone;
 mod map_collect_result_unit;
 mod map_err_ignore;
@@ -3286,6 +3287,30 @@ declare_clippy_lint! {
     "calling `.drain(..).collect()` to move all elements into a new collection"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `Iterator::fold` with a type that implements `Try`.
+    ///
+    /// ### Why is this bad?
+    /// This is better represented with `try_fold`, but this has one major difference: It will
+    /// short-circuit on failure. *This is almost always what you want*. This can also open the door
+    /// for additional optimizations as well, as rustc can guarantee the function is never
+    /// called on `None`, `Err`, etc., alleviating otherwise necessary checks.
+    ///
+    /// ### Example
+    /// ```rust
+    /// vec![1, 2, 3].iter().fold(Some(0i32), |sum, i| sum?.checked_add(*i));
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// vec![1, 2, 3].iter().try_fold(0i32, |sum, i| sum.checked_add(*i));
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub MANUAL_TRY_FOLD,
+    perf,
+    "checks for usage of `Iterator::fold` with a type that implements `Try`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3416,7 +3441,8 @@ impl_lint_pass!(Methods => [
     CLEAR_WITH_DRAIN,
     MANUAL_NEXT_BACK,
     UNNECESSARY_LITERAL_UNWRAP,
-    DRAIN_COLLECT
+    DRAIN_COLLECT,
+    MANUAL_TRY_FOLD,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3709,7 +3735,10 @@ impl Methods {
                     Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, true),
                     _ => {},
                 },
-                ("fold", [init, acc]) => unnecessary_fold::check(cx, expr, init, acc, span),
+                ("fold", [init, acc]) => {
+                    manual_try_fold::check(cx, expr, init, acc, call_span, &self.msrv);
+                    unnecessary_fold::check(cx, expr, init, acc, span);
+                },
                 ("for_each", [_]) => {
                     if let Some(("inspect", _, [_], span2, _)) = method_call(recv) {
                         inspect_for_each::check(cx, expr, span2);
