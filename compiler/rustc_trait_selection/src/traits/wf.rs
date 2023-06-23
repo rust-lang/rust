@@ -77,11 +77,18 @@ pub fn unnormalized_obligations<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
 ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+    debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
+
+    // However, if `arg` IS an unresolved inference variable, returns `None`,
+    // because we are not able to make any progress at all. This is to prevent
+    // "livelock" where we say "$0 is WF if $0 is WF".
+    if arg.is_non_region_infer() {
+        return None;
+    }
+
     if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
         return Some(vec![]);
     }
-
-    debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
 
     let mut wf = WfPredicates {
         infcx,
