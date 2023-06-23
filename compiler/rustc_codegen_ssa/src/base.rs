@@ -580,7 +580,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -631,14 +631,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         })
     });
 
-    let ongoing_codegen = start_async_codegen(
-        backend.clone(),
-        tcx,
-        target_cpu,
-        metadata,
-        metadata_module,
-        codegen_units.len(),
-    );
+    let ongoing_codegen =
+        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, metadata_module);
 
     // Codegen an allocator shim, if necessary.
     if let Some(kind) = allocator_kind_for_codegen(tcx) {
