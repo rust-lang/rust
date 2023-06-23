@@ -321,13 +321,13 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let dest = CPlace::for_ptr(Pointer::new(mem_addr), a.layout());
             dest.write_cvalue(fx, a);
         }
-        "llvm.x86.addcarry.64" => {
+        "llvm.x86.addcarry.32" | "llvm.x86.addcarry.64" => {
             intrinsic_args!(fx, args => (c_in, a, b); intrinsic);
             let c_in = c_in.load_scalar(fx);
 
             llvm_add_sub(fx, BinOp::Add, ret, c_in, a, b);
         }
-        "llvm.x86.subborrow.64" => {
+        "llvm.x86.subborrow.32" | "llvm.x86.subborrow.64" => {
             intrinsic_args!(fx, args => (b_in, a, b); intrinsic);
             let b_in = b_in.load_scalar(fx);
 
@@ -361,16 +361,7 @@ fn llvm_add_sub<'tcx>(
     a: CValue<'tcx>,
     b: CValue<'tcx>,
 ) {
-    assert_eq!(
-        a.layout().ty,
-        fx.tcx.types.u64,
-        "llvm.x86.addcarry.64/llvm.x86.subborrow.64 second operand must be u64"
-    );
-    assert_eq!(
-        b.layout().ty,
-        fx.tcx.types.u64,
-        "llvm.x86.addcarry.64/llvm.x86.subborrow.64 third operand must be u64"
-    );
+    assert_eq!(a.layout().ty, b.layout().ty);
 
     // c + carry -> c + first intermediate carry or borrow respectively
     let int0 = crate::num::codegen_checked_int_binop(fx, bin_op, a, b);
@@ -378,15 +369,16 @@ fn llvm_add_sub<'tcx>(
     let cb0 = int0.value_field(fx, FieldIdx::new(1)).load_scalar(fx);
 
     // c + carry -> c + second intermediate carry or borrow respectively
-    let cb_in_as_u64 = fx.bcx.ins().uextend(types::I64, cb_in);
-    let cb_in_as_u64 = CValue::by_val(cb_in_as_u64, fx.layout_of(fx.tcx.types.u64));
-    let int1 = crate::num::codegen_checked_int_binop(fx, bin_op, c, cb_in_as_u64);
+    let clif_ty = fx.clif_type(a.layout().ty).unwrap();
+    let cb_in_as_int = fx.bcx.ins().uextend(clif_ty, cb_in);
+    let cb_in_as_int = CValue::by_val(cb_in_as_int, fx.layout_of(a.layout().ty));
+    let int1 = crate::num::codegen_checked_int_binop(fx, bin_op, c, cb_in_as_int);
     let (c, cb1) = int1.load_scalar_pair(fx);
 
     // carry0 | carry1 -> carry or borrow respectively
     let cb_out = fx.bcx.ins().bor(cb0, cb1);
 
-    let layout = fx.layout_of(fx.tcx.mk_tup(&[fx.tcx.types.u8, fx.tcx.types.u64]));
+    let layout = fx.layout_of(fx.tcx.mk_tup(&[fx.tcx.types.u8, a.layout().ty]));
     let val = CValue::by_val_pair(cb_out, c, layout);
     ret.write_cvalue(fx, val);
 }
