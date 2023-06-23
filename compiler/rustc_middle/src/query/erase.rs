@@ -296,6 +296,7 @@ trivial! {
     rustc_span::Symbol,
     rustc_span::symbol::Ident,
     rustc_target::spec::PanicStrategy,
+    rustc_target::abi::ReferenceNichePolicy,
     rustc_type_ir::Variance,
     u32,
     usize,

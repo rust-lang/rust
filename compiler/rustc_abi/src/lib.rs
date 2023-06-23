@@ -49,6 +49,14 @@ bitflags! {
     }
 }
 
+/// Which niches (beyond the `null` niche) are available on references.
+#[derive(Default, Copy, Clone, Hash, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+pub struct ReferenceNichePolicy {
+    pub size: bool,
+    pub align: bool,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum IntegerType {

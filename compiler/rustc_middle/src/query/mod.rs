@@ -1480,6 +1480,11 @@ rustc_queries! {
         desc { "getting a crate's configured panic-in-drop strategy" }
         separate_provide_extern
     }
+    query reference_niches_policy(_: CrateNum) -> abi::ReferenceNichePolicy {
+        fatal_cycle
+        desc { "getting a crate's policy for size and alignment niches of references" }
+        separate_provide_extern
+    }
     query is_no_builtins(_: CrateNum) -> bool {
         fatal_cycle
         desc { "getting whether a crate has `#![no_builtins]`" }

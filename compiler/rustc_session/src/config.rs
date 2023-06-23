@@ -3076,6 +3076,7 @@ pub(crate) mod dep_tracking {
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
+    use rustc_target::abi::ReferenceNichePolicy;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
     use rustc_target::spec::{
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
@@ -3171,6 +3172,7 @@ pub(crate) mod dep_tracking {
         OomStrategy,
         LanguageIdentifier,
         TraitSolver,
+        ReferenceNichePolicy,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

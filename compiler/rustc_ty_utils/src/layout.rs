@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
-use rustc_middle::query::Providers;
+use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, NaiveLayout, TyAndLayout, TyAndNaiveLayout,
     MAX_SIMD_LANES,
@@ -25,7 +25,14 @@ use crate::errors::{
 use crate::layout_sanity_check::sanity_check_layout;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { layout_of, naive_layout_of, ..*providers };
+    *providers = Providers { layout_of, naive_layout_of, reference_niches_policy, ..*providers };
+}
+
+#[instrument(skip(tcx), level = "debug")]
+fn reference_niches_policy<'tcx>(tcx: TyCtxt<'tcx>, _: LocalCrate) -> ReferenceNichePolicy {
+    const DEFAULT: ReferenceNichePolicy = ReferenceNichePolicy { size: false, align: false };
+
+    tcx.sess.opts.unstable_opts.reference_niches.unwrap_or(DEFAULT)
 }
 
 #[instrument(skip(tcx, query), level = "debug")]
