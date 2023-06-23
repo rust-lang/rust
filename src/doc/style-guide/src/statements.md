@@ -1,7 +1,9 @@
+## Statements
+
 ### Let statements
 
 There should be spaces after the `:` and on both sides of the `=` (if they are
-present). No space before the semi-colon.
+present). No space before the semicolon.
 
 ```rust
 // A comment.
@@ -194,7 +196,7 @@ used to determine whether a let-else statement is *short*.
 ### Macros in statement position
 
 A macro use in statement position should use parentheses or square brackets as
-delimiters and should be terminated with a semi-colon. There should be no spaces
+delimiters and should be terminated with a semicolon. There should be no spaces
 between the name, `!`, the delimiters, or the `;`.
 
 ```rust
@@ -205,13 +207,13 @@ a_macro!(...);
 
 ### Expressions in statement position
 
-There should be no space between the expression and the semi-colon.
+There should be no space between the expression and the semicolon.
 
 ```
 <expr>;
 ```
 
-All expressions in statement position should be terminated with a semi-colon,
+All expressions in statement position should be terminated with a semicolon,
 unless they end with a block or are used as the value for a block.
 
 E.g.,
@@ -229,7 +231,7 @@ loop {
 }
 ```
 
-Use a semi-colon where an expression has void type, even if it could be
+Use a semicolon where an expression has void type, even if it could be
 propagated. E.g.,
 
 ```rust
