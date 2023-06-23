@@ -82,3 +82,19 @@ fn main() {
         [1, 2, 3].iter().try_fold(0i32, |sum, i| sum.checked_add(*i)).unwrap();
     }
 }
+
+#[clippy::msrv = "1.26.0"]
+fn msrv_too_low() {
+    [1, 2, 3]
+        .iter()
+        .fold(Some(0i32), |sum, i| sum?.checked_add(*i))
+        .unwrap();
+}
+
+#[clippy::msrv = "1.27.0"]
+fn msrv_juust_right() {
+    [1, 2, 3]
+        .iter()
+        .fold(Some(0i32), |sum, i| sum?.checked_add(*i))
+        .unwrap();
+}
