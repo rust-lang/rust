@@ -1,7 +1,7 @@
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
-use crate::gather_locals::Declaration;
+use crate::gather_locals::{DeclContext, Declaration};
 use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
@@ -1474,7 +1474,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.
-        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr);
+        let decl_ctxt = DeclContext { has_else: decl.els.is_some(), origin: decl.origin };
+        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr, Some(decl_ctxt));
         let pat_ty = self.node_ty(decl.pat.hir_id);
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 

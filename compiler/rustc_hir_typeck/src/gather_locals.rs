@@ -9,6 +9,24 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
+#[derive(Debug, Copy, Clone)]
+pub(super) enum DeclOrigin {
+    // from an `if let` expression
+    LetExpr,
+    // from `let x = ..`
+    LocalDecl,
+}
+
+/// Provides context for checking patterns in declarations. More specifically this
+/// allows us to infer array types if the pattern is irrefutable and allows us to infer
+/// the size of the array. See issue #76342.
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct DeclContext {
+    // whether we're in a let-else context
+    pub(super) has_else: bool,
+    pub(super) origin: DeclOrigin,
+}
+
 /// A declaration is an abstraction of [hir::Local] and [hir::Let].
 ///
 /// It must have a hir_id, as this is how we connect gather_locals to the check functions.
@@ -19,19 +37,28 @@ pub(super) struct Declaration<'a> {
     pub span: Span,
     pub init: Option<&'a hir::Expr<'a>>,
     pub els: Option<&'a hir::Block<'a>>,
+    pub origin: DeclOrigin,
 }
 
 impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
     fn from(local: &'a hir::Local<'a>) -> Self {
         let hir::Local { hir_id, pat, ty, span, init, els, source: _ } = *local;
-        Declaration { hir_id, pat, ty, span, init, els }
+        Declaration { hir_id, pat, ty, span, init, els, origin: DeclOrigin::LocalDecl }
     }
 }
 
 impl<'a> From<&'a hir::Let<'a>> for Declaration<'a> {
     fn from(let_expr: &'a hir::Let<'a>) -> Self {
         let hir::Let { hir_id, pat, ty, span, init } = *let_expr;
-        Declaration { hir_id, pat, ty, span, init: Some(init), els: None }
+        Declaration {
+            hir_id,
+            pat,
+            ty,
+            span,
+            init: Some(init),
+            els: None,
+            origin: DeclOrigin::LetExpr,
+        }
     }
 }
 
