@@ -501,13 +501,30 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (c_in, a, b); intrinsic);
             let c_in = c_in.load_scalar(fx);
 
-            llvm_add_sub(fx, BinOp::Add, ret, c_in, a, b);
+            let (cb_out, c) = llvm_add_sub(fx, BinOp::Add, c_in, a, b);
+
+            let layout = fx.layout_of(fx.tcx.mk_tup(&[fx.tcx.types.u8, a.layout().ty]));
+            let val = CValue::by_val_pair(cb_out, c, layout);
+            ret.write_cvalue(fx, val);
+        }
+        "llvm.x86.addcarryx.u32" | "llvm.x86.addcarryx.u64" => {
+            intrinsic_args!(fx, args => (c_in, a, b, out); intrinsic);
+            let c_in = c_in.load_scalar(fx);
+
+            let (cb_out, c) = llvm_add_sub(fx, BinOp::Add, c_in, a, b);
+
+            Pointer::new(out.load_scalar(fx)).store(fx, c, MemFlags::trusted());
+            ret.write_cvalue(fx, CValue::by_val(cb_out, fx.layout_of(fx.tcx.types.u8)));
         }
         "llvm.x86.subborrow.32" | "llvm.x86.subborrow.64" => {
             intrinsic_args!(fx, args => (b_in, a, b); intrinsic);
             let b_in = b_in.load_scalar(fx);
 
-            llvm_add_sub(fx, BinOp::Sub, ret, b_in, a, b);
+            let (cb_out, c) = llvm_add_sub(fx, BinOp::Sub, b_in, a, b);
+
+            let layout = fx.layout_of(fx.tcx.mk_tup(&[fx.tcx.types.u8, a.layout().ty]));
+            let val = CValue::by_val_pair(cb_out, c, layout);
+            ret.write_cvalue(fx, val);
         }
         _ => {
             fx.tcx
@@ -532,11 +549,10 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 fn llvm_add_sub<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
-    ret: CPlace<'tcx>,
     cb_in: Value,
     a: CValue<'tcx>,
     b: CValue<'tcx>,
-) {
+) -> (Value, Value) {
     assert_eq!(a.layout().ty, b.layout().ty);
 
     // c + carry -> c + first intermediate carry or borrow respectively
@@ -554,7 +570,5 @@ fn llvm_add_sub<'tcx>(
     // carry0 | carry1 -> carry or borrow respectively
     let cb_out = fx.bcx.ins().bor(cb0, cb1);
 
-    let layout = fx.layout_of(fx.tcx.mk_tup(&[fx.tcx.types.u8, a.layout().ty]));
-    let val = CValue::by_val_pair(cb_out, c, layout);
-    ret.write_cvalue(fx, val);
+    (cb_out, c)
 }
