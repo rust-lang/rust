@@ -242,11 +242,11 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
-        nonlexical_regioncx: &'a RegionInferenceContext<'tcx>,
+        regioncx: &'a RegionInferenceContext<'tcx>,
         borrow_set: &'a BorrowSet<'tcx>,
     ) -> Self {
         let borrows_out_of_scope_at_location =
-            calculate_borrows_out_of_scope_at_location(body, nonlexical_regioncx, borrow_set);
+            calculate_borrows_out_of_scope_at_location(body, regioncx, borrow_set);
         Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
     }
 
