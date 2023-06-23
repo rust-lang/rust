@@ -21,6 +21,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
+use std::sync::LazyLock as Lazy;
 use thin_vec::{thin_vec, ThinVec};
 
 #[cfg(test)]
@@ -582,6 +583,8 @@ pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
 pub(crate) const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
+pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
+    Lazy::new(|| DOC_RUST_LANG_ORG_CHANNEL.rsplit("/").filter(|c| !c.is_empty()).next().unwrap());
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.
