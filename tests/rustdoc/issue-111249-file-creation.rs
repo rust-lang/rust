@@ -2,6 +2,12 @@
 #![feature(no_core)]
 #![no_core]
 
+// @files "foo" "['all.html', 'visible', 'index.html', 'sidebar-items.js', 'hidden', \
+//        'struct.Bar.html']"
+// @files "foo/visible" "['trait.Foo.html', 'index.html', 'sidebar-items.js']"
+// @files "foo/hidden" "['inner']"
+// @files "foo/hidden/inner" "['trait.Foo.html']"
+
 // The following five should not fail!
 // @!has 'foo/hidden/index.html'
 // @!has 'foo/hidden/inner/index.html'
