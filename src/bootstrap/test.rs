@@ -48,17 +48,17 @@ const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
     // build for, so there is no entry for "aarch64-apple-darwin" here.
 ];
 
-fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
+fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> Result<(), ()> {
     if !builder.fail_fast {
-        if !builder.try_run(cmd) {
+        if let Err(e) = builder.try_run(cmd) {
             let mut failures = builder.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
-            return false;
+            return Err(e);
         }
     } else {
         builder.run(cmd);
     }
-    true
+    Ok(())
 }
 
 fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
@@ -187,7 +187,8 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
         try_run(
             builder,
             builder.tool_cmd(Tool::Linkchecker).arg(builder.out.join(host.triple).join("doc")),
-        );
+        )
+        .unwrap();
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -240,7 +241,8 @@ impl Step for HtmlCheck {
         builder.default_doc(&[]);
         builder.ensure(crate::doc::Rustc::new(builder.top_stage, self.target, builder));
 
-        try_run(builder, builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)));
+        try_run(builder, builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)))
+            .unwrap();
     }
 }
 
@@ -286,7 +288,8 @@ impl Step for Cargotest {
                 .args(builder.config.test_args())
                 .env("RUSTC", builder.rustc(compiler))
                 .env("RUSTDOC", builder.rustdoc(compiler)),
-        );
+        )
+        .unwrap();
     }
 }
 
@@ -785,7 +788,7 @@ impl Step for Clippy {
         cargo.add_rustc_lib_path(builder, compiler);
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
 
-        if builder.try_run(&mut cargo) {
+        if builder.try_run(&mut cargo).is_ok() {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -858,7 +861,7 @@ impl Step for RustdocTheme {
                 util::lld_flag_no_threads(self.compiler.host.contains("windows")),
             );
         }
-        try_run(builder, &mut cmd);
+        try_run(builder, &mut cmd).unwrap();
     }
 }
 
@@ -1109,7 +1112,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
         }
 
         builder.info("tidy check");
-        try_run(builder, &mut cmd);
+        try_run(builder, &mut cmd).unwrap();
 
         builder.ensure(ExpandYamlAnchors);
 
@@ -1157,7 +1160,8 @@ impl Step for ExpandYamlAnchors {
         try_run(
             builder,
             &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
-        );
+        )
+        .unwrap();
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1936,7 +1940,7 @@ impl BookTest {
             compiler.host,
         );
         let _time = util::timeit(&builder);
-        let toolstate = if try_run(builder, &mut rustbook_cmd) {
+        let toolstate = if try_run(builder, &mut rustbook_cmd).is_ok() {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2094,7 +2098,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     cmd.arg("--test-args").arg(test_args);
 
     if builder.config.verbose_tests {
-        try_run(builder, &mut cmd)
+        try_run(builder, &mut cmd).is_ok()
     } else {
         try_run_quiet(builder, &mut cmd)
     }
@@ -2122,7 +2126,7 @@ impl Step for RustcGuide {
 
         let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        let toolstate = if try_run(builder, rustbook_cmd.arg("linkcheck").arg(&src)) {
+        let toolstate = if try_run(builder, rustbook_cmd.arg("linkcheck").arg(&src)).is_ok() {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2661,7 +2665,7 @@ impl Step for Bootstrap {
     fn run(self, builder: &Builder<'_>) {
         let mut check_bootstrap = Command::new(&builder.python());
         check_bootstrap.arg("bootstrap_test.py").current_dir(builder.src.join("src/bootstrap/"));
-        try_run(builder, &mut check_bootstrap);
+        try_run(builder, &mut check_bootstrap).unwrap();
 
         let host = builder.config.build;
         let compiler = builder.compiler(0, host);
@@ -2733,7 +2737,7 @@ impl Step for TierCheck {
         }
 
         builder.info("platform support check");
-        try_run(builder, &mut cargo.into());
+        try_run(builder, &mut cargo.into()).unwrap();
     }
 }
 
@@ -2813,7 +2817,7 @@ impl Step for RustInstaller {
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.env("RUSTC", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
-        try_run(builder, &mut cmd);
+        try_run(builder, &mut cmd).unwrap();
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

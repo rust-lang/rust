@@ -54,9 +54,9 @@ impl Config {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
-    pub(crate) fn try_run(&self, cmd: &mut Command) -> bool {
+    pub(crate) fn try_run(&self, cmd: &mut Command) -> Result<(), ()> {
         if self.dry_run() {
-            return true;
+            return Ok(());
         }
         self.verbose(&format!("running: {:?}", cmd));
         try_run(cmd, self.is_verbose())
@@ -156,12 +156,14 @@ impl Config {
                 ];
             }
             ";
-            nix_build_succeeded = self.try_run(Command::new("nix-build").args(&[
-                Path::new("-E"),
-                Path::new(NIX_EXPR),
-                Path::new("-o"),
-                &nix_deps_dir,
-            ]));
+            nix_build_succeeded = self
+                .try_run(Command::new("nix-build").args(&[
+                    Path::new("-E"),
+                    Path::new(NIX_EXPR),
+                    Path::new("-o"),
+                    &nix_deps_dir,
+                ]))
+                .is_ok();
             nix_deps_dir
         });
         if !nix_build_succeeded {
@@ -186,7 +188,7 @@ impl Config {
             patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
-        self.try_run(patchelf.arg(fname));
+        self.try_run(patchelf.arg(fname)).unwrap();
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -237,7 +239,7 @@ impl Config {
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
                             url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
-                    ])) {
+                    ])).is_err() {
                         return;
                     }
                     eprintln!("\nspurious failure, trying again");
