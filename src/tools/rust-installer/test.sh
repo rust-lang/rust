@@ -458,7 +458,8 @@ uninstall_from_installed_script_with_args_fails() {
     --output-dir="$OUT_DIR/c1" \
     --component-name=rustc
     try "$WORK_DIR/c1/package/install.sh" --prefix="$PREFIX_DIR"
-    expect_output_fail "uninstall.sh does not take any arguments" sh "$PREFIX_DIR/lib/packagelib/uninstall.sh" --prefix=foo
+    expect_output_fail "uninstall.sh does not take any arguments" \
+    sh "$PREFIX_DIR/lib/packagelib/uninstall.sh" --prefix=foo
 }
 runtest uninstall_from_installed_script_with_args_fails
 
@@ -680,7 +681,8 @@ select_components_to_install() {
     try test -e "$PREFIX_DIR/bin/program"
     try test -e "$PREFIX_DIR/bin/cargo"
     try test ! -e "$PREFIX_DIR/baz"
-    try "$WORK_DIR/rust/install.sh --uninstall" --prefix="$PREFIX_DIR" --components=rustc,cargo,rust-docs
+    try "$WORK_DIR/rust/install.sh --uninstall" --prefix="$PREFIX_DIR" \
+    --components=rustc,cargo,rust-docs
     try test ! -e "$PREFIX_DIR/bin/program"
     try test ! -e "$PREFIX_DIR/bin/cargo"
     try test ! -e "$PREFIX_DIR/baz"
@@ -733,7 +735,8 @@ select_components_to_uninstall() {
     try test ! -e "$PREFIX_DIR/bin/cargo"
     try test -e "$PREFIX_DIR/baz"
     try "$WORK_DIR/rust/install.sh" --prefix="$PREFIX_DIR"
-    try "$WORK_DIR/rust/install.sh --uninstall" --prefix="$PREFIX_DIR" --components=rustc,cargo,rust-docs
+    try "$WORK_DIR/rust/install.sh --uninstall" --prefix="$PREFIX_DIR" \
+    --components=rustc,cargo,rust-docs
     try test ! -e "$PREFIX_DIR/bin/program"
     try test ! -e "$PREFIX_DIR/bin/cargo"
     try test ! -e "$PREFIX_DIR/baz"
@@ -765,7 +768,8 @@ invalid_component() {
     --output-dir="$OUT_DIR" \
     --package-name=rust \
     --input-tarballs="$OUT_DIR/rustc.tar.gz,$OUT_DIR/cargo.tar.gz,$OUT_DIR/rust-docs.tar.gz"
-    expect_output_fail "unknown component" "$WORK_DIR/rust/install.sh" --prefix="$PREFIX_DIR" --components=foo
+    expect_output_fail "unknown component" "$WORK_DIR/rust/install.sh" --prefix="$PREFIX_DIR" \
+    --components=foo
 }
 runtest invalid_component
 

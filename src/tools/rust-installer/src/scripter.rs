@@ -33,11 +33,11 @@ impl Scripter {
     /// Generates the actual installer script
     pub fn run(self) -> Result<()> {
         // Replace dashes in the success message with spaces (our arg handling botches spaces)
-        // TODO: still needed? Kept for compatibility for now.
+        // FIXME: still needed? Kept for compatibility for now.
         let product_name = self.product_name.replace('-', " ");
 
         // Replace dashes in the success message with spaces (our arg handling botches spaces)
-        // TODO: still needed? Kept for compatibility for now.
+        // FIXME: still needed? Kept for compatibility for now.
         let success_message = self.success_message.replace('-', " ");
 
         let script = TEMPLATE

@@ -468,7 +468,8 @@ uninstall_components() {
             verbose_msg "removing component manifest $_component_manifest"
             run rm "$_component_manifest"
             # This is a hard error because the installation is unrecoverable
-            critical_need_ok "failed to remove installed manifest for component '$_installed_component'"
+            local _err_cant_r_manifest="failed to remove installed manifest for component"
+            critical_need_ok "$_err_cant_r_manifest '$_installed_component'"
 
             # Update the installed component list
             local _modified_components="$(sed "/^$_installed_component\$/d" "$_md/components")"
@@ -692,7 +693,9 @@ maybe_configure_ld() {
     fi
     if [ $? -ne 0 ]
     then
-            warn "failed to run ldconfig. this may happen when not installing as root. run with --verbose to see the error"
+            local _warn_s="failed to run ldconfig. this may happen when \
+not installing as root. run with --verbose to see the error"
+            warn "$_warn_s"
     fi
     fi
 }
@@ -977,7 +980,9 @@ make_dir_recursive "$abs_libdir/$TEMPLATE_REL_MANIFEST_DIR"
 need_ok "failed to create $TEMPLATE_REL_MANIFEST_DIR"
 
 # Drop the version number into the manifest dir
-write_to_file "$TEMPLATE_RUST_INSTALLER_VERSION" "$abs_libdir/$TEMPLATE_REL_MANIFEST_DIR/rust-installer-version"
+write_to_file "$TEMPLATE_RUST_INSTALLER_VERSION" \
+"$abs_libdir/$TEMPLATE_REL_MANIFEST_DIR/rust-installer-version"
+
 critical_need_ok "failed to write installer version"
 
 # Install the uninstaller
@@ -992,5 +997,3 @@ maybe_configure_ld "$abs_libdir"
 echo
 echo "    $TEMPLATE_SUCCESS_MESSAGE"
 echo
-
-
