@@ -69,8 +69,6 @@ where
         make_query: fn(Qcx, K) -> QueryStackFrame<D>,
         jobs: &mut QueryMap<D>,
     ) -> Option<()> {
-        let mut active = Vec::new();
-
         #[cfg(parallel_compiler)]
         {
             // We use try_lock_shards here since we are called from the
@@ -79,7 +77,8 @@ where
             for shard in shards.iter() {
                 for (k, v) in shard.iter() {
                     if let QueryResult::Started(ref job) = *v {
-                        active.push((*k, job.clone()));
+                        let query = make_query(qcx, *k);
+                        jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                     }
                 }
             }
@@ -92,16 +91,10 @@ where
             // really hurt much.)
             for (k, v) in self.active.try_lock()?.iter() {
                 if let QueryResult::Started(ref job) = *v {
-                    active.push((*k, job.clone()));
+                    let query = make_query(qcx, *k);
+                    jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                 }
             }
-        }
-
-        // Call `make_query` while we're not holding a `self.active` lock as `make_query` may call
-        // queries leading to a deadlock.
-        for (key, job) in active {
-            let query = make_query(qcx, key);
-            jobs.insert(job.id, QueryJobInfo { query, job });
         }
 
         Some(())
