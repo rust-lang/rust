@@ -19,7 +19,7 @@ fn associated_type_bounds<'tcx>(
     assoc_item_def_id: LocalDefId,
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
-) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+) -> &'tcx [(ty::Clause<'tcx>, Span)] {
     let item_ty = tcx.mk_projection(
         assoc_item_def_id.to_def_id(),
         InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
@@ -33,8 +33,11 @@ fn associated_type_bounds<'tcx>(
     let trait_def_id = tcx.local_parent(assoc_item_def_id);
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
 
-    let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
-        match pred.kind().skip_binder() {
+    let bounds_from_parent = trait_predicates
+        .predicates
+        .iter()
+        .copied()
+        .filter(|(pred, _)| match pred.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => tr.self_ty() == item_ty,
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) => {
                 proj.projection_ty.self_ty() == item_ty
@@ -43,15 +46,10 @@ fn associated_type_bounds<'tcx>(
                 outlives.0 == item_ty
             }
             _ => false,
-        }
-    });
+        })
+        .map(|(pred, span)| (pred.expect_clause(), span));
 
-    let all_bounds = tcx.arena.alloc_from_iter(
-        bounds
-            .clauses()
-            .map(|(clause, span)| (clause.as_predicate(), span))
-            .chain(bounds_from_parent),
-    );
+    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
     debug!(
         "associated_type_bounds({}) = {:?}",
         tcx.def_path_str(assoc_item_def_id.to_def_id()),
@@ -71,7 +69,7 @@ fn opaque_type_bounds<'tcx>(
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     item_ty: Ty<'tcx>,
     span: Span,
-) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+) -> &'tcx [(ty::Clause<'tcx>, Span)] {
     ty::print::with_no_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = icx.astconv().compute_bounds(item_ty, ast_bounds, OnlySelfBounds(false));
@@ -79,15 +77,14 @@ fn opaque_type_bounds<'tcx>(
         icx.astconv().add_implicitly_sized(&mut bounds, item_ty, ast_bounds, None, span);
         debug!(?bounds);
 
-        tcx.arena
-            .alloc_from_iter(bounds.clauses().map(|(clause, span)| (clause.as_predicate(), span)))
+        tcx.arena.alloc_from_iter(bounds.clauses())
     })
 }
 
 pub(super) fn explicit_item_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> ty::EarlyBinder<&'_ [(ty::Predicate<'_>, Span)]> {
+) -> ty::EarlyBinder<&'_ [(ty::Clause<'_>, Span)]> {
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
@@ -139,11 +136,8 @@ pub(super) fn explicit_item_bounds(
 pub(super) fn item_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> ty::EarlyBinder<&'_ ty::List<ty::Predicate<'_>>> {
+) -> ty::EarlyBinder<&'_ ty::List<ty::Clause<'_>>> {
     tcx.explicit_item_bounds(def_id).map_bound(|bounds| {
-        tcx.mk_predicates_from_iter(util::elaborate(
-            tcx,
-            bounds.iter().map(|&(bound, _span)| bound),
-        ))
+        tcx.mk_clauses_from_iter(util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)))
     })
 }

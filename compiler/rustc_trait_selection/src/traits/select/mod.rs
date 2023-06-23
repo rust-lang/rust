@@ -1668,9 +1668,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .enumerate()
             .filter_map(|(idx, bound)| {
                 let bound_predicate = bound.kind();
-                if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
-                    bound_predicate.skip_binder()
-                {
+                if let ty::ClauseKind::Trait(pred) = bound_predicate.skip_binder() {
                     let bound = bound_predicate.rebind(pred.trait_ref);
                     if self.infcx.probe(|_| {
                         match self.match_normalize_trait_ref(

@@ -1585,7 +1585,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::TraitDef,
-        bounds.iter(),
+        bounds.iter().map(|clause| clause.as_predicate()),
         true,
     );
 }

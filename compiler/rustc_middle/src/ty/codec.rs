@@ -128,6 +128,12 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Predicate<'tcx> 
     }
 }
 
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Clause<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.as_predicate().encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Region<'tcx> {
     fn encode(&self, e: &mut E) {
         self.kind().encode(e);
@@ -238,6 +244,13 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Predicate<'tcx> 
     fn decode(decoder: &mut D) -> ty::Predicate<'tcx> {
         let predicate_kind = Decodable::decode(decoder);
         decoder.interner().mk_predicate(predicate_kind)
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Clause<'tcx> {
+    fn decode(decoder: &mut D) -> ty::Clause<'tcx> {
+        let pred: ty::Predicate<'tcx> = Decodable::decode(decoder);
+        pred.expect_clause()
     }
 }
 
@@ -365,9 +378,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
-    for [(ty::ClauseKind<'tcx>, Span)]
-{
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [(ty::Clause<'tcx>, Span)] {
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.interner().arena.alloc_from_iter(
             (0..decoder.read_usize()).map(|_| Decodable::decode(decoder)).collect::<Vec<_>>(),

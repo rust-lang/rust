@@ -346,7 +346,7 @@ rustc_queries! {
     /// `key` is the `DefId` of the associated type or opaque type.
     ///
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
-    query explicit_item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx [(ty::Predicate<'tcx>, Span)]> {
+    query explicit_item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -373,7 +373,7 @@ rustc_queries! {
     /// ```
     ///
     /// Bounds from the parent (e.g. with nested impl trait) are not included.
-    query item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Predicate<'tcx>>> {
+    query item_bounds(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<ty::Clause<'tcx>>> {
         desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
     }
 
@@ -647,7 +647,7 @@ rustc_queries! {
 
     /// Returns the inferred outlives predicates (e.g., for `struct
     /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::ClauseKind<'tcx>, Span)] {
+    query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
         desc { |tcx| "computing inferred outlives predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern

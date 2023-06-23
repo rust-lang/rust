@@ -353,7 +353,11 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
         // FIXME(associated_const_equality): Also add associated consts to
         // the requirements here.
         if item.kind == ty::AssocKind::Type {
-            requirements.extend(tcx.item_bounds(item.def_id).subst(tcx, trait_ref.substs));
+            requirements.extend(
+                tcx.item_bounds(item.def_id)
+                    .subst_iter(tcx, trait_ref.substs)
+                    .map(|clause| clause.as_predicate()),
+            );
         }
     }
 
