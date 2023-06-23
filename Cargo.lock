@@ -4099,6 +4099,7 @@ dependencies = [
  "rustc_hir",
  "rustc_middle",
  "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 
