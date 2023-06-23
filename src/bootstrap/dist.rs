@@ -106,7 +106,12 @@ impl Step for JsonDocs {
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.ensure(crate::doc::Std::new(builder.top_stage, host, DocumentationFormat::JSON));
+        builder.ensure(crate::doc::Std::new(
+            builder.top_stage,
+            host,
+            builder,
+            DocumentationFormat::JSON,
+        ));
 
         let dest = "share/doc/rust/json";
 
