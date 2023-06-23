@@ -333,7 +333,7 @@ forward! {
     create(path: &Path, s: &str),
     remove(f: &Path),
     tempdir() -> PathBuf,
-    try_run(cmd: &mut Command) -> bool,
+    try_run(cmd: &mut Command) -> Result<(), ()>,
     llvm_link_shared() -> bool,
     download_rustc() -> bool,
     initial_rustfmt() -> Option<PathBuf>,
@@ -614,11 +614,13 @@ impl Build {
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
-        let has_local_modifications = !self.try_run(
-            Command::new("git")
-                .args(&["diff-index", "--quiet", "HEAD"])
-                .current_dir(&absolute_path),
-        );
+        let has_local_modifications = self
+            .try_run(
+                Command::new("git")
+                    .args(&["diff-index", "--quiet", "HEAD"])
+                    .current_dir(&absolute_path),
+            )
+            .is_err();
         if has_local_modifications {
             self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
         }

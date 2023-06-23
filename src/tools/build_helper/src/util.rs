@@ -25,17 +25,21 @@ pub fn fail(s: &str) -> ! {
     detail_exit(1, cfg!(test));
 }
 
-pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
+pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> Result<(), ()> {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
     };
-    if !status.success() && print_cmd_on_fail {
-        println!(
-            "\n\ncommand did not execute successfully: {:?}\n\
-             expected success, got: {}\n\n",
-            cmd, status
-        );
+    if !status.success() {
+        if print_cmd_on_fail {
+            println!(
+                "\n\ncommand did not execute successfully: {:?}\n\
+                 expected success, got: {}\n\n",
+                cmd, status
+            );
+        }
+        Err(())
+    } else {
+        Ok(())
     }
-    status.success()
 }
