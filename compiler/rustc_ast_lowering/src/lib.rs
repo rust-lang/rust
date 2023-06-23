@@ -1568,7 +1568,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // This creates HIR lifetime arguments as `hir::GenericArg`, in the given example `type
         // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing `&['x]`.
-        let lifetime_mapping: Vec<_> = collected_lifetimes
+        let collected_lifetime_mapping: Vec<_> = collected_lifetimes
             .iter()
             .map(|(node_id, lifetime)| {
                 let id = self.next_node_id();
@@ -1577,7 +1577,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (lifetime, def_id)
             })
             .collect();
-        debug!(?lifetime_mapping);
+        debug!(?collected_lifetime_mapping);
 
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             // Install the remapping from old to new (if any):
@@ -1618,6 +1618,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let hir_bounds = lctx.lower_param_bounds(bounds, itctx);
                 debug!(?hir_bounds);
 
+                let lifetime_mapping = if in_trait {
+                    self.arena.alloc_from_iter(
+                        collected_lifetime_mapping
+                            .iter()
+                            .map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                    )
+                } else {
+                    &mut []
+                };
+
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: self.arena.alloc(hir::Generics {
                         params: lifetime_defs,
@@ -1628,9 +1638,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                     bounds: hir_bounds,
                     origin,
-                    lifetime_mapping: self.arena.alloc_from_iter(
-                        lifetime_mapping.iter().map(|(lifetime, def_id)| (**lifetime, *def_id)),
-                    ),
+                    lifetime_mapping,
                     in_trait,
                 };
                 debug!(?opaque_ty_item);
@@ -1643,7 +1651,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::TyKind::OpaqueDef(
             hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },
             self.arena.alloc_from_iter(
-                lifetime_mapping.iter().map(|(lifetime, _)| hir::GenericArg::Lifetime(*lifetime)),
+                collected_lifetime_mapping
+                    .iter()
+                    .map(|(lifetime, _)| hir::GenericArg::Lifetime(*lifetime)),
             ),
             in_trait,
         )
@@ -2010,7 +2020,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing the
         // new lifetime of the RPIT 'x and the def_id of the lifetime 'x corresponding to
         // `TestReturn`.
-        let lifetime_mapping: Vec<_> = collected_lifetimes
+        let collected_lifetime_mapping: Vec<_> = collected_lifetimes
             .iter()
             .map(|(node_id, lifetime, res)| {
                 let id = self.next_node_id();
@@ -2022,7 +2032,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (lifetime, def_id)
             })
             .collect();
-        debug!(?lifetime_mapping);
+        debug!(?collected_lifetime_mapping);
 
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // Install the remapping from old to new (if any):
@@ -2079,6 +2089,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ));
                 debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
+                let lifetime_mapping = if in_trait {
+                    self.arena.alloc_from_iter(
+                        collected_lifetime_mapping
+                            .iter()
+                            .map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                    )
+                } else {
+                    &mut []
+                };
+
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: this.arena.alloc(hir::Generics {
                         params: generic_params,
@@ -2089,9 +2109,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                     bounds: arena_vec![this; future_bound],
                     origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
-                    lifetime_mapping: self.arena.alloc_from_iter(
-                        lifetime_mapping.iter().map(|(lifetime, def_id)| (**lifetime, *def_id)),
-                    ),
+                    lifetime_mapping,
                     in_trait,
                 };
 
@@ -2116,7 +2134,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
         let generic_args = self.arena.alloc_from_iter(
-            lifetime_mapping.iter().map(|(lifetime, _)| hir::GenericArg::Lifetime(*lifetime)),
+            collected_lifetime_mapping
+                .iter()
+                .map(|(lifetime, _)| hir::GenericArg::Lifetime(*lifetime)),
         );
 
         // Create the `Foo<...>` reference itself. Note that the `type
