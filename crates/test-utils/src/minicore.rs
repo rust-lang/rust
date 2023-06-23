@@ -20,6 +20,7 @@
 //!     deref_mut: deref
 //!     deref: sized
 //!     derive:
+//!     discriminant:
 //!     drop:
 //!     eq: sized
 //!     error: fmt
@@ -129,6 +130,14 @@ pub mod marker {
     #[lang = "phantom_data"]
     pub struct PhantomData<T: ?Sized>;
     // endregion:phantom_data
+
+    // region:discriminant
+    #[lang = "discriminant_kind"]
+    pub trait DiscriminantKind {
+        #[lang = "discriminant_type"]
+        type Discriminant;
+    }
+    // endregion:discriminant
 }
 
 // region:default
