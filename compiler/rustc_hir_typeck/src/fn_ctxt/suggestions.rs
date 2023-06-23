@@ -1494,7 +1494,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
     ) {
-        let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else { return; };
+        let (segment, callee_expr, expr) = match expr.kind {
+            // When `expr` is `foo.clone()`, get `foo` and `clone`.
+            hir::ExprKind::MethodCall(segment, callee_expr, &[], _) => (segment, callee_expr, expr),
+            // When `expr` is `x` in `let x = foo.clone(); x`, get `foo` and `clone`.
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { segments: [_], res: crate::Res::Local(binding), .. },
+            )) => {
+                let Some(hir::Node::Pat(
+                    hir::Pat { hir_id, kind: hir::PatKind::Binding(_, _, _, _), .. }
+                )) = self.tcx.hir().find(*binding) else {
+                    return;
+                };
+                let parent = self.tcx.hir().parent_id(*hir_id);
+                let Some(hir::Node::Local(
+                    hir::Local { init: Some(init), .. }
+                )) = self.tcx.hir().find(parent) else {
+                    return;
+                };
+                let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = init.kind else {
+                    return;
+                };
+                (segment, callee_expr, *init)
+            }
+            _ => return,
+        };
         let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
         let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
         let results = self.typeck_results.borrow();
