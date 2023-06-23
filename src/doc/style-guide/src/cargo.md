@@ -1,4 +1,4 @@
-# Cargo.toml conventions
+# `Cargo.toml` conventions
 
 ## Formatting conventions
 
@@ -25,16 +25,17 @@ not indent any key names; start all key names at the start of a line.
 Use multi-line strings (rather than newline escape sequences) for any string
 values that include multiple lines, such as the crate description.
 
-For array values, such as a list of authors, put the entire list on the same
+For array values, such as a list of features, put the entire list on the same
 line as the key, if it fits. Otherwise, use block indentation: put a newline
 after the opening square bracket, indent each item by one indentation level,
 put a comma after each item (including the last), and put the closing square
 bracket at the start of a line by itself after the last item.
 
 ```rust
-authors = [
-    "A Uthor <a.uthor@example.org>",
-    "Another Author <author@example.net>",
+some_feature = [
+    "another_feature",
+    "yet_another_feature",
+    "some_dependency?/some_feature",
 ]
 ```
 
@@ -54,11 +55,11 @@ version = "4.5.6"
 
 ## Metadata conventions
 
-The authors list should consist of strings that each contain an author name
-followed by an email address in angle brackets: `Full Name <email@address>`.
-It should not contain bare email addresses, or names without email addresses.
-(The authors list may also include a mailing list address without an associated
-name.)
+The authors list, if present, should consist of strings that each contain an
+author name followed by an email address in angle brackets: `Full Name
+<email@address>`. It should not contain bare email addresses, or names without
+email addresses. (The authors list may also include a mailing list address
+without an associated name.)
 
 The license field must contain a valid [SPDX
 expression](https://spdx.org/spdx-specification-21-web-version#h.jxpfx0ykyb60),
