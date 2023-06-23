@@ -1049,57 +1049,8 @@ impl Evaluator<'_> {
             Rvalue::Discriminant(p) => {
                 let ty = self.place_ty(p, locals)?;
                 let bytes = self.eval_place(p, locals)?.get(&self)?;
-                let layout = self.layout(&ty)?;
-                let enum_id = 'b: {
-                    match ty.kind(Interner) {
-                        TyKind::Adt(e, _) => match e.0 {
-                            AdtId::EnumId(e) => break 'b e,
-                            _ => (),
-                        },
-                        _ => (),
-                    }
-                    return Ok(Owned(0u128.to_le_bytes().to_vec()));
-                };
-                match &layout.variants {
-                    Variants::Single { index } => {
-                        let r = self.const_eval_discriminant(EnumVariantId {
-                            parent: enum_id,
-                            local_id: index.0,
-                        })?;
-                        Owned(r.to_le_bytes().to_vec())
-                    }
-                    Variants::Multiple { tag, tag_encoding, variants, .. } => {
-                        let Some(target_data_layout) = self.db.target_data_layout(self.crate_id) else {
-                            not_supported!("missing target data layout");
-                        };
-                        let size = tag.size(&*target_data_layout).bytes_usize();
-                        let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
-                        match tag_encoding {
-                            TagEncoding::Direct => {
-                                let tag = &bytes[offset..offset + size];
-                                Owned(pad16(tag, false).to_vec())
-                            }
-                            TagEncoding::Niche { untagged_variant, niche_start, .. } => {
-                                let tag = &bytes[offset..offset + size];
-                                let candidate_tag = i128::from_le_bytes(pad16(tag, false))
-                                    .wrapping_sub(*niche_start as i128)
-                                    as usize;
-                                let variant = variants
-                                    .iter_enumerated()
-                                    .map(|(x, _)| x)
-                                    .filter(|x| x != untagged_variant)
-                                    .nth(candidate_tag)
-                                    .unwrap_or(*untagged_variant)
-                                    .0;
-                                let result = self.const_eval_discriminant(EnumVariantId {
-                                    parent: enum_id,
-                                    local_id: variant,
-                                })?;
-                                Owned(result.to_le_bytes().to_vec())
-                            }
-                        }
-                    }
-                }
+                let result = self.compute_discriminant(ty, bytes)?;
+                Owned(result.to_le_bytes().to_vec())
             }
             Rvalue::Repeat(x, len) => {
                 let len = match try_const_usize(self.db, &len) {
@@ -1227,6 +1178,60 @@ impl Evaluator<'_> {
                 CastKind::FnPtrToPtr => not_supported!("fn ptr to ptr cast"),
             },
         })
+    }
+
+    fn compute_discriminant(&self, ty: Ty, bytes: &[u8]) -> Result<i128> {
+        let layout = self.layout(&ty)?;
+        let enum_id = 'b: {
+            match ty.kind(Interner) {
+                TyKind::Adt(e, _) => match e.0 {
+                    AdtId::EnumId(e) => break 'b e,
+                    _ => (),
+                },
+                _ => (),
+            }
+            return Ok(0);
+        };
+        match &layout.variants {
+            Variants::Single { index } => {
+                let r = self.const_eval_discriminant(EnumVariantId {
+                    parent: enum_id,
+                    local_id: index.0,
+                })?;
+                Ok(r)
+            }
+            Variants::Multiple { tag, tag_encoding, variants, .. } => {
+                let Some(target_data_layout) = self.db.target_data_layout(self.crate_id) else {
+                            not_supported!("missing target data layout");
+                        };
+                let size = tag.size(&*target_data_layout).bytes_usize();
+                let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
+                match tag_encoding {
+                    TagEncoding::Direct => {
+                        let tag = &bytes[offset..offset + size];
+                        Ok(i128::from_le_bytes(pad16(tag, false)))
+                    }
+                    TagEncoding::Niche { untagged_variant, niche_start, .. } => {
+                        let tag = &bytes[offset..offset + size];
+                        let candidate_tag = i128::from_le_bytes(pad16(tag, false))
+                            .wrapping_sub(*niche_start as i128)
+                            as usize;
+                        let variant = variants
+                            .iter_enumerated()
+                            .map(|(x, _)| x)
+                            .filter(|x| x != untagged_variant)
+                            .nth(candidate_tag)
+                            .unwrap_or(*untagged_variant)
+                            .0;
+                        let result = self.const_eval_discriminant(EnumVariantId {
+                            parent: enum_id,
+                            local_id: variant,
+                        })?;
+                        Ok(result)
+                    }
+                }
+            }
+        }
     }
 
     fn coerce_unsized_look_through_fields<T>(

@@ -5,6 +5,8 @@ use std::cmp;
 
 use super::*;
 
+mod simd;
+
 macro_rules! from_bytes {
     ($ty:tt, $value:expr) => {
         ($ty::from_le_bytes(match ($value).try_into() {
@@ -44,6 +46,28 @@ impl Evaluator<'_> {
         };
         if is_intrinsic {
             self.exec_intrinsic(
+                function_data.name.as_text().unwrap_or_default().as_str(),
+                args,
+                generic_args,
+                destination,
+                &locals,
+                span,
+            )?;
+            return Ok(true);
+        }
+        let is_platform_intrinsic = match &function_data.abi {
+            Some(abi) => *abi == Interned::new_str("platform-intrinsic"),
+            None => match def.lookup(self.db.upcast()).container {
+                hir_def::ItemContainerId::ExternBlockId(block) => {
+                    let id = block.lookup(self.db.upcast()).id;
+                    id.item_tree(self.db.upcast())[id.value].abi.as_deref()
+                        == Some("platform-intrinsic")
+                }
+                _ => false,
+            },
+        };
+        if is_platform_intrinsic {
+            self.exec_platform_intrinsic(
                 function_data.name.as_text().unwrap_or_default().as_str(),
                 args,
                 generic_args,
@@ -330,6 +354,21 @@ impl Evaluator<'_> {
         }
     }
 
+    fn exec_platform_intrinsic(
+        &mut self,
+        name: &str,
+        args: &[IntervalAndTy],
+        generic_args: &Substitution,
+        destination: Interval,
+        locals: &Locals<'_>,
+        span: MirSpan,
+    ) -> Result<()> {
+        if let Some(name) = name.strip_prefix("simd_") {
+            return self.exec_simd_intrinsic(name, args, generic_args, destination, locals, span);
+        }
+        not_supported!("unknown platform intrinsic {name}");
+    }
+
     fn exec_intrinsic(
         &mut self,
         name: &str,
@@ -478,6 +517,33 @@ impl Evaluator<'_> {
                 let size = self.size_of_sized(ty, locals, "size_of arg")?;
                 destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
             }
+            "size_of_val" => {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                    return Err(MirEvalError::TypeError("size_of_val generic arg is not provided"));
+                };
+                let [arg] = args else {
+                    return Err(MirEvalError::TypeError("size_of_val args are not provided"));
+                };
+                let metadata = arg.interval.slice(self.ptr_size()..self.ptr_size() * 2);
+                let size = match ty.kind(Interner) {
+                    TyKind::Str => return destination.write_from_interval(self, metadata),
+                    TyKind::Slice(inner) => {
+                        let len = from_bytes!(usize, metadata.get(self)?);
+                        len * self.size_of_sized(inner, locals, "slice inner type")?
+                    }
+                    TyKind::Dyn(_) => self.size_of_sized(
+                        self.vtable_map.ty_of_bytes(metadata.get(self)?)?,
+                        locals,
+                        "dyn concrete type",
+                    )?,
+                    _ => self.size_of_sized(
+                        ty,
+                        locals,
+                        "unsized type other than str, slice, and dyn",
+                    )?,
+                };
+                destination.write_from_bytes(self, &size.to_le_bytes())
+            }
             "min_align_of" | "pref_align_of" => {
                 let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
                     return Err(MirEvalError::TypeError("align_of generic arg is not provided"));
@@ -501,13 +567,17 @@ impl Evaluator<'_> {
                 let ans = lhs.get(self)? == rhs.get(self)?;
                 destination.write_from_bytes(self, &[u8::from(ans)])
             }
-            "saturating_add" => {
+            "saturating_add" | "saturating_sub" => {
                 let [lhs, rhs] = args else {
                     return Err(MirEvalError::TypeError("saturating_add args are not provided"));
                 };
                 let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
                 let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
-                let ans = lhs.saturating_add(rhs);
+                let ans = match name {
+                    "saturating_add" => lhs.saturating_add(rhs),
+                    "saturating_sub" => lhs.saturating_sub(rhs),
+                    _ => unreachable!(),
+                };
                 let bits = destination.size * 8;
                 // FIXME: signed
                 let is_signed = false;
@@ -542,6 +612,26 @@ impl Evaluator<'_> {
                 let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
                 let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
                 let ans = lhs.wrapping_mul(rhs);
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "wrapping_shl" | "unchecked_shl" => {
+                // FIXME: signed
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("unchecked_shl args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.wrapping_shl(rhs as u32);
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "wrapping_shr" | "unchecked_shr" => {
+                // FIXME: signed
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("unchecked_shr args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.wrapping_shr(rhs as u32);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
             "unchecked_rem" => {
@@ -665,6 +755,79 @@ impl Evaluator<'_> {
                 let result = u128::from_le_bytes(pad16(arg.get(self)?, false)).trailing_zeros();
                 destination
                     .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
+            }
+            "rotate_left" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("rotate_left args are not provided"));
+                };
+                let lhs = &lhs.get(self)?[0..destination.size];
+                let rhs = rhs.get(self)?[0] as u32;
+                match destination.size {
+                    1 => {
+                        let r = from_bytes!(u8, lhs).rotate_left(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    2 => {
+                        let r = from_bytes!(u16, lhs).rotate_left(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    4 => {
+                        let r = from_bytes!(u32, lhs).rotate_left(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    8 => {
+                        let r = from_bytes!(u64, lhs).rotate_left(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    16 => {
+                        let r = from_bytes!(u128, lhs).rotate_left(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    s => not_supported!("destination with size {s} for rotate_left"),
+                }
+            }
+            "rotate_right" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("rotate_right args are not provided"));
+                };
+                let lhs = &lhs.get(self)?[0..destination.size];
+                let rhs = rhs.get(self)?[0] as u32;
+                match destination.size {
+                    1 => {
+                        let r = from_bytes!(u8, lhs).rotate_right(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    2 => {
+                        let r = from_bytes!(u16, lhs).rotate_right(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    4 => {
+                        let r = from_bytes!(u32, lhs).rotate_right(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    8 => {
+                        let r = from_bytes!(u64, lhs).rotate_right(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    16 => {
+                        let r = from_bytes!(u128, lhs).rotate_right(rhs);
+                        destination.write_from_bytes(self, &r.to_le_bytes())
+                    }
+                    s => not_supported!("destination with size {s} for rotate_right"),
+                }
+            }
+            "discriminant_value" => {
+                let [arg] = args else {
+                    return Err(MirEvalError::TypeError("discriminant_value arg is not provided"));
+                };
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                    return Err(MirEvalError::TypeError("discriminant_value generic arg is not provided"));
+                };
+                let addr = Address::from_bytes(arg.get(self)?)?;
+                let size = self.size_of_sized(ty, locals, "discriminant_value ptr type")?;
+                let interval = Interval { addr, size };
+                let r = self.compute_discriminant(ty.clone(), interval.get(self)?)?;
+                destination.write_from_bytes(self, &r.to_le_bytes()[0..destination.size])
             }
             "const_eval_select" => {
                 let [tuple, const_fn, _] = args else {
