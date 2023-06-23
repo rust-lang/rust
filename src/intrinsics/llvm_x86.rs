@@ -53,7 +53,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let res = CValue::by_val(res, fx.layout_of(fx.tcx.types.i32));
             ret.write_cvalue(fx, res);
         }
-        "llvm.x86.sse2.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
+        "llvm.x86.sse.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
             let (x, y, kind) = match args {
                 [x, y, kind] => (x, y, kind),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
