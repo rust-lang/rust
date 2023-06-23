@@ -3,6 +3,7 @@
 // compile-flags: --test -Cpanic=abort -Zpanic-abort-tests=no
 // run-flags: --test-threads=1
 
+// needs-unwind
 // ignore-wasm no panic or subprocess support
 // ignore-emscripten no panic or subprocess support
 

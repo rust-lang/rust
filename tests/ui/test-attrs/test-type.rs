@@ -1,9 +1,8 @@
-// compile-flags: --test
+// compile-flags: --test -Zpanic-abort-tests
 // run-flags: --test-threads=1
 // check-run-results
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 // ignore-emscripten no threads support
-// needs-unwind
 // run-pass
 
 #[test]
