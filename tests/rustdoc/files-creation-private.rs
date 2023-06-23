@@ -1,5 +1,9 @@
 #![crate_name="foo"]
 
+// @files "foo" \
+// '["index.html", "all.html", "sidebar-items.js", "foo", "bar", "private", "struct.Bar.html"]'
+// @files "foo/bar" '["index.html", "sidebar-items.js"]'
+
 // @!has "foo/priv/index.html"
 // @!has "foo/priv/struct.Foo.html"
 mod private {
