@@ -61,7 +61,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => {
                 // Estimate the size of a function based on how many statements
                 // it contains.
-                tcx.instance_def_size_estimate(instance.def)
+                1 + tcx.instance_def_size_estimate(instance.def)
             }
             // Conservatively estimate the size of a static declaration
             // or assembly to be 1.
