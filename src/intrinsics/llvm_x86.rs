@@ -18,6 +18,20 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             // Spin loop hint
         }
 
+        // Used by is_x86_feature_detected!();
+        "llvm.x86.xgetbv" => {
+            // FIXME use the actual xgetbv instruction
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            let v = v.load_scalar(fx);
+
+            // As of writing on XCR0 exists
+            fx.bcx.ins().trapnz(v, TrapCode::UnreachableCodeReached);
+
+            let res = fx.bcx.ins().iconst(types::I64, 1 /* bit 0 must be set */);
+            ret.write_cvalue(fx, CValue::by_val(res, fx.layout_of(fx.tcx.types.i64)));
+        }
+
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
         "llvm.x86.sse2.pmovmskb.128"
         | "llvm.x86.avx2.pmovmskb"
