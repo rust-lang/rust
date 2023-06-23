@@ -1417,6 +1417,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
 
+                    if let Some(hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Binary(_, left, right),
+                        ..
+                    })) = self.tcx.hir().find_parent(expr.hir_id) && mutability.is_mut() {
+                        let deref_expr = if expr.hir_id == left.hir_id { right } else { left };
+                        let sugg = vec![(deref_expr.span.shrink_to_lo(), "*".to_string())];
+                        return Some((
+                            sugg,
+                            format!("consider dereferencing here"),
+                            Applicability::MachineApplicable,
+                            true,
+                            false
+                        ))
+                    }
+
                     let sugg = mutability.ref_prefix_str();
                     let (sugg, verbose) = if needs_parens {
                         (
