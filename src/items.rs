@@ -156,7 +156,8 @@ impl Rewrite for ast::Local {
                     rewrite_let_else_block(block, allow_single_line, context, shape)?;
 
                 let single_line_else = !rw_else_block.contains('\n');
-                let else_block_exceeds_width = available_space <= rw_else_block.len();
+                // +1 for the trailing `;`
+                let else_block_exceeds_width = rw_else_block.len() + 1 > available_space;
 
                 if allow_single_line && single_line_else && else_block_exceeds_width {
                     // writing this on one line would exceed the available width
