@@ -272,7 +272,8 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
 
         let unwind = match self.unwind() {
             // Not needed or included in successors
-            None | Some(UnwindAction::Continue) | Some(UnwindAction::Cleanup(_)) => None,
+            None | Some(UnwindAction::Cleanup(_)) => None,
+            Some(UnwindAction::Continue) => Some("unwind continue"),
             Some(UnwindAction::Unreachable) => Some("unwind unreachable"),
             Some(UnwindAction::Terminate) => Some("unwind terminate"),
         };
