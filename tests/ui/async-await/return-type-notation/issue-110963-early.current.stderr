@@ -1,5 +1,5 @@
 warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-110963-early.rs:4:12
+  --> $DIR/issue-110963-early.rs:6:12
    |
 LL | #![feature(return_type_notation)]
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(return_type_notation)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: higher-ranked lifetime error
-  --> $DIR/issue-110963-early.rs:15:5
+  --> $DIR/issue-110963-early.rs:17:5
    |
 LL | /     spawn(async move {
 LL | |         let mut hc = hc;
@@ -18,10 +18,10 @@ LL | |         }
 LL | |     });
    | |______^
    |
-   = note: could not prove `[async block@$DIR/issue-110963-early.rs:15:11: 20:6]: Send`
+   = note: could not prove `[async block@$DIR/issue-110963-early.rs:17:11: 22:6]: Send`
 
 error: higher-ranked lifetime error
-  --> $DIR/issue-110963-early.rs:15:5
+  --> $DIR/issue-110963-early.rs:17:5
    |
 LL | /     spawn(async move {
 LL | |         let mut hc = hc;
@@ -31,7 +31,7 @@ LL | |         }
 LL | |     });
    | |______^
    |
-   = note: could not prove `[async block@$DIR/issue-110963-early.rs:15:11: 20:6]: Send`
+   = note: could not prove `[async block@$DIR/issue-110963-early.rs:17:11: 22:6]: Send`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

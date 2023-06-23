@@ -1,5 +1,5 @@
 warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/ty-or-ct-params.rs:3:31
+  --> $DIR/ty-or-ct-params.rs:5:31
    |
 LL | #![feature(async_fn_in_trait, return_type_notation)]
    |                               ^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(async_fn_in_trait, return_type_notation)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: return type notation is not allowed for functions that have type parameters
-  --> $DIR/ty-or-ct-params.rs:14:12
+  --> $DIR/ty-or-ct-params.rs:16:12
    |
 LL |     async fn bar<T>() {}
    |                  - type parameter declared here
@@ -17,7 +17,7 @@ LL |     T: Foo<bar(): Send, baz(): Send>,
    |            ^^^^^^^^^^^
 
 error: return type notation is not allowed for functions that have const parameters
-  --> $DIR/ty-or-ct-params.rs:14:25
+  --> $DIR/ty-or-ct-params.rs:16:25
    |
 LL |     async fn baz<const N: usize>() {}
    |                  -------------- const parameter declared here

@@ -412,7 +412,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
             let output = tcx.fn_sig(assoc_item.def_id).skip_binder().output();
             let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
-                && tcx.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
+                && tcx.is_impl_trait_in_trait(alias_ty.def_id)
             {
                 alias_ty
             } else {
