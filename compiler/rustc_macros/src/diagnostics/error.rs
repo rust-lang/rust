@@ -54,7 +54,7 @@ fn path_to_string(path: &syn::Path) -> String {
 
 /// Returns an error diagnostic on span `span` with msg `msg`.
 #[must_use]
-pub(crate) fn span_err(span: impl MultiSpan, msg: &str) -> Diagnostic {
+pub(crate) fn span_err<T: Into<String>>(span: impl MultiSpan, msg: T) -> Diagnostic {
     Diagnostic::spanned(span, Level::Error, msg)
 }
 
@@ -77,11 +77,9 @@ pub(crate) fn invalid_attr(attr: &Attribute) -> Diagnostic {
     let span = attr.span().unwrap();
     let path = path_to_string(attr.path());
     match attr.meta {
-        Meta::Path(_) => span_err(span, &format!("`#[{path}]` is not a valid attribute")),
-        Meta::NameValue(_) => {
-            span_err(span, &format!("`#[{path} = ...]` is not a valid attribute"))
-        }
-        Meta::List(_) => span_err(span, &format!("`#[{path}(...)]` is not a valid attribute")),
+        Meta::Path(_) => span_err(span, format!("`#[{path}]` is not a valid attribute")),
+        Meta::NameValue(_) => span_err(span, format!("`#[{path} = ...]` is not a valid attribute")),
+        Meta::List(_) => span_err(span, format!("`#[{path}(...)]` is not a valid attribute")),
     }
 }
 
