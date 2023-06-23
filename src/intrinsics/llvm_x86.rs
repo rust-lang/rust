@@ -180,6 +180,23 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 _ => fx.bcx.ins().iconst(types::I32, 0),
             });
         }
+        "llvm.x86.sse2.psrai.d" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.sse2.psrai.d imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 32 => fx.bcx.ins().sshr_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
         "llvm.x86.sse2.pslli.d" => {
             let (a, imm8) = match args {
                 [a, imm8] => (a, imm8),
@@ -211,6 +228,23 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
             {
                 imm8 if imm8 < 16 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.sse2.psrai.w" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.sse2.psrai.d imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 16 => fx.bcx.ins().sshr_imm(lane, i64::from(imm8 as u8)),
                 _ => fx.bcx.ins().iconst(types::I32, 0),
             });
         }
@@ -248,6 +282,23 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 _ => fx.bcx.ins().iconst(types::I32, 0),
             });
         }
+        "llvm.x86.avx.psrai.d" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.avx.psrai.d imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 32 => fx.bcx.ins().sshr_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
         "llvm.x86.avx.pslli.d" => {
             let (a, imm8) = match args {
                 [a, imm8] => (a, imm8),
@@ -279,6 +330,23 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
             {
                 imm8 if imm8 < 16 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
+                _ => fx.bcx.ins().iconst(types::I32, 0),
+            });
+        }
+        "llvm.x86.avx2.psrai.w" => {
+            let (a, imm8) = match args {
+                [a, imm8] => (a, imm8),
+                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
+            };
+            let a = codegen_operand(fx, a);
+            let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8)
+                .expect("llvm.x86.avx.psrai.w imm8 not const");
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| match imm8
+                .try_to_bits(Size::from_bytes(4))
+                .unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8))
+            {
+                imm8 if imm8 < 16 => fx.bcx.ins().sshr_imm(lane, i64::from(imm8 as u8)),
                 _ => fx.bcx.ins().iconst(types::I32, 0),
             });
         }
