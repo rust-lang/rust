@@ -228,7 +228,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 }
 
 pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
-    if !try_run(cmd, print_cmd_on_fail) {
+    if try_run(cmd, print_cmd_on_fail).is_err() {
         crate::detail_exit_macro!(1);
     }
 }
