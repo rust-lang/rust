@@ -280,12 +280,12 @@ Also see the https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/[rust-a
 
 Note the excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm] on how to set-up Emacs for Rust development with LSP mode and several other packages.
 
-=== Vim/NeoVim
+=== Vim/Neovim
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 Not needed if the extension can install/update it on its own, coc-rust-analyzer is one example.
 
-There are several LSP client implementations for vim or neovim:
+There are several LSP client implementations for Vim or Neovim:
 
 ==== coc-rust-analyzer
 
@@ -308,7 +308,7 @@ Note: for code actions, use `coc-codeaction-cursor` and `coc-codeaction-selected
    https://github.com/autozimu/LanguageClient-neovim[here]
    * The GitHub project wiki has extra tips on configuration
 
-2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
+2. Configure by adding this to your Vim/Neovim config file (replacing the existing Rust-specific line if it exists):
 +
 [source,vim]
 ----
@@ -335,7 +335,7 @@ let g:ale_linters = {'rust': ['analyzer']}
 
 ==== nvim-lsp
 
-NeoVim 0.5 has built-in language server support.
+Neovim 0.5 has built-in language server support.
 For a quick start configuration of rust-analyzer, use https://github.com/neovim/nvim-lspconfig#rust_analyzer[neovim/nvim-lspconfig].
 Once `neovim/nvim-lspconfig` is installed, use `+lua require'lspconfig'.rust_analyzer.setup({})+` in your `init.vim`.
 
@@ -376,7 +376,7 @@ EOF
 
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
-Check out https://github.com/simrat39/rust-tools.nvim for a batteries included rust-analyzer setup for neovim.
+Check out https://github.com/simrat39/rust-tools.nvim for a batteries included rust-analyzer setup for Neovim.
 
 ==== vim-lsp
 
