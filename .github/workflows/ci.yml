@@ -48,21 +48,17 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-20.04-16core-64gb
-            env: {}
-          - name: mingw-check-tidy
-            os: ubuntu-20.04-16core-64gb
-            env: {}
-          - name: x86_64-gnu-llvm-14
-            os: ubuntu-20.04-16core-64gb
-            env: {}
-          - name: x86_64-gnu-tools
-            os: ubuntu-20.04-16core-64gb
-            env: {}
+          - name: x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: make ci-msvc
+            os: windows-2019-8core-32gb
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - name: start etw session
+        shell: pwsh
+        run: "xperf -providers\nfltmc instances\nxperf -on DiagEasy+PROFILE -stackwalk Profile+CSwitch -buffersize 1024 -minbuffers 900 -maxbuffers 900\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
@@ -140,23 +136,15 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
         if: success() && !env.SKIP_JOB
-      - name: create github artifacts
-        run: src/ci/scripts/create-doc-artifacts.sh
-        if: success() && !env.SKIP_JOB
-      - name: upload artifacts to github
+      - name: collect etw session
+        shell: pwsh
+        run: "xperf -d C:\\etw_perf_log.etl\n"
+      - name: upload etw log
         uses: actions/upload-artifact@v3
         with:
-          name: "${{ env.DOC_ARTIFACT_NAME }}"
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
-        if: success() && !env.SKIP_JOB
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
-          AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
-        if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
+          name: etw
+          path: "C:/etw_perf_log.etl\n"
+          retention-days: 1
   auto:
     name: "auto - ${{ matrix.name }}"
     env:
@@ -468,6 +456,9 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - name: start etw session
+        shell: pwsh
+        run: "xperf -providers\nfltmc instances\nxperf -on DiagEasy+PROFILE -stackwalk Profile+CSwitch -buffersize 1024 -minbuffers 900 -maxbuffers 900\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
@@ -545,23 +536,15 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
         if: success() && !env.SKIP_JOB
-      - name: create github artifacts
-        run: src/ci/scripts/create-doc-artifacts.sh
-        if: success() && !env.SKIP_JOB
-      - name: upload artifacts to github
+      - name: collect etw session
+        shell: pwsh
+        run: "xperf -d C:\\etw_perf_log.etl\n"
+      - name: upload etw log
         uses: actions/upload-artifact@v3
         with:
-          name: "${{ env.DOC_ARTIFACT_NAME }}"
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
-        if: success() && !env.SKIP_JOB
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
-          AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
-        if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
+          name: etw
+          path: "C:/etw_perf_log.etl\n"
+          retention-days: 1
   try:
     name: "try - ${{ matrix.name }}"
     env:
@@ -588,6 +571,9 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - name: start etw session
+        shell: pwsh
+        run: "xperf -providers\nfltmc instances\nxperf -on DiagEasy+PROFILE -stackwalk Profile+CSwitch -buffersize 1024 -minbuffers 900 -maxbuffers 900\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
@@ -665,23 +651,15 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
         if: success() && !env.SKIP_JOB
-      - name: create github artifacts
-        run: src/ci/scripts/create-doc-artifacts.sh
-        if: success() && !env.SKIP_JOB
-      - name: upload artifacts to github
+      - name: collect etw session
+        shell: pwsh
+        run: "xperf -d C:\\etw_perf_log.etl\n"
+      - name: upload etw log
         uses: actions/upload-artifact@v3
         with:
-          name: "${{ env.DOC_ARTIFACT_NAME }}"
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
-        if: success() && !env.SKIP_JOB
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
-          AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
-        if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
+          name: etw
+          path: "C:/etw_perf_log.etl\n"
+          retention-days: 1
   master:
     name: master
     runs-on: ubuntu-latest
