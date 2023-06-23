@@ -145,17 +145,35 @@ fn layout_of_uncached<'tcx>(
                 return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
             }
 
-            let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
                 // Projection eagerly bails out when the pointee references errors,
                 // fall back to structurally deducing metadata.
                 && !pointee.references_error()
             {
-                let metadata_ty = tcx.normalize_erasing_regions(
+                let pointee_metadata = tcx.mk_projection(metadata_def_id, [pointee]);
+                let metadata_ty = match tcx.try_normalize_erasing_regions(
                     param_env,
-                    tcx.mk_projection(metadata_def_id, [pointee]),
-                );
+                    pointee_metadata,
+                ) {
+                    Ok(metadata_ty) => metadata_ty,
+                    Err(mut err) => {
+                        // Usually `<Ty as Pointee>::Metadata` can't be normalized because
+                        // its struct tail cannot be normalized either, so try to get a
+                        // more descriptive layout error here, which will lead to less confusing
+                        // diagnostics.
+                        match tcx.try_normalize_erasing_regions(
+                            param_env,
+                            tcx.struct_tail_without_normalization(pointee),
+                        ) {
+                            Ok(_) => {},
+                            Err(better_err) => {
+                                err = better_err;
+                            }
+                        }
+                        return Err(LayoutError::NormalizationFailure(pointee, err));
+                    },
+                };
+
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
                 if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
@@ -163,10 +181,13 @@ fn layout_of_uncached<'tcx>(
                 }
 
                 let Abi::Scalar(metadata) = metadata_layout.abi else {
-                    return Err(LayoutError::Unknown(unsized_part));
+                    return Err(LayoutError::Unknown(pointee));
                 };
+
                 metadata
             } else {
+                let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+
                 match unsized_part.kind() {
                     ty::Foreign(..) => {
                         return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
@@ -178,7 +199,7 @@ fn layout_of_uncached<'tcx>(
                         vtable
                     }
                     _ => {
-                        return Err(LayoutError::Unknown(unsized_part));
+                        return Err(LayoutError::Unknown(pointee));
                     }
                 }
             };
