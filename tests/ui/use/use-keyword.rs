@@ -1,4 +1,4 @@
-// Check that imports with nakes super and self don't fail during parsing
+// Check that imports with naked super and self don't fail during parsing
 // FIXME: this shouldn't fail during name resolution either
 
 mod a {
