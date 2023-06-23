@@ -1,5 +1,5 @@
 name: CI
-on: 
+on:
   push:
     branches:
       - '**'
@@ -26,7 +26,7 @@ jobs:
 
       - name: OS Setup (Ubuntu)
         run: |
-          sudo apt-get update 
+          sudo apt-get update
           sudo apt-get install -y build-essential curl wget xz-utils git python3
 
       - name: Install Rust
@@ -103,13 +103,13 @@ jobs:
 
       # We need the full history for the main repo so the build tooling can
       # determine the cached LLVM download.
-      - name: Fetch full branch history
-        shell: bash
-        run: |
-          cd wasix-rust
-          git fetch --unshallow origin $(git branch --show-current)
+      # - name: Fetch full branch history
+      #   shell: bash
+      #   run: |
+      #     cd wasix-rust
+      #     git fetch --unshallow origin $(git branch --show-current)
 
-          echo "Branch history fetched!"
+      #     echo "Branch history fetched!"
 
       # - name: Install Rust
       #   uses: dtolnay/rust-toolchain@stable
@@ -219,7 +219,7 @@ jobs:
       #   if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
       #   shell: bash
       #   run:
-      #     choco install -y git python3 visualstudio2019community cmake 
+      #     choco install -y git python3 visualstudio2019community cmake
 
       - name: Set up MinGW (Windows)
         if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
