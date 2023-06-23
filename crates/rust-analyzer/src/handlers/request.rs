@@ -549,7 +549,7 @@ pub(crate) fn handle_will_rename_files(
 ) -> anyhow::Result<Option<lsp_types::WorkspaceEdit>> {
     let _p = profile::span("handle_will_rename_files");
 
-    if let Err(err) = resource_ops_supported(&snap.config, &ResourceOperationKind::Rename) {
+    if let Err(err) = resource_ops_supported(&snap.config, ResourceOperationKind::Rename) {
         return Err(err);
     }
 
@@ -1043,14 +1043,9 @@ pub(crate) fn handle_rename(
     {
         for op in ops {
             if let lsp_types::DocumentChangeOperation::Op(doc_change_op) = op {
-                if let Err(err) = resource_ops_supported(
-                    &snap.config,
-                    match doc_change_op {
-                        ResourceOp::Create(_) => &ResourceOperationKind::Create,
-                        ResourceOp::Rename(_) => &ResourceOperationKind::Rename,
-                        ResourceOp::Delete(_) => &ResourceOperationKind::Delete,
-                    },
-                ) {
+                if let Err(err) =
+                    resource_ops_supported(&snap.config, resolve_resource_op(doc_change_op))
+                {
                     return Err(err);
                 }
             }
@@ -1168,14 +1163,9 @@ pub(crate) fn handle_code_action(
         if let Some(changes) = &code_action.edit.as_ref().unwrap().document_changes {
             for change in changes {
                 if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
-                    if let Err(err) = resource_ops_supported(
-                        &snap.config,
-                        match res_op {
-                            ResourceOp::Create(_) => &ResourceOperationKind::Create,
-                            ResourceOp::Rename(_) => &ResourceOperationKind::Rename,
-                            ResourceOp::Delete(_) => &ResourceOperationKind::Delete,
-                        },
-                    ) {
+                    if let Err(err) =
+                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
+                    {
                         return Err(err);
                     }
                 }
@@ -1269,14 +1259,9 @@ pub(crate) fn handle_code_action_resolve(
         if let Some(changes) = edit.document_changes.as_ref() {
             for change in changes {
                 if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
-                    if let Err(err) = resource_ops_supported(
-                        &snap.config,
-                        match res_op {
-                            ResourceOp::Create(_) => &ResourceOperationKind::Create,
-                            ResourceOp::Rename(_) => &ResourceOperationKind::Rename,
-                            ResourceOp::Delete(_) => &ResourceOperationKind::Delete,
-                        },
-                    ) {
+                    if let Err(err) =
+                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
+                    {
                         return Err(err);
                     }
                 }
@@ -2056,7 +2041,7 @@ fn to_url(path: VfsPath) -> Option<Url> {
     Url::from_file_path(str_path).ok()
 }
 
-fn resource_ops_supported(config: &Config, kind: &ResourceOperationKind) -> anyhow::Result<()> {
+fn resource_ops_supported(config: &Config, kind: ResourceOperationKind) -> anyhow::Result<()> {
     let ctn = config
         .caps()
         .workspace
@@ -2068,7 +2053,7 @@ fn resource_ops_supported(config: &Config, kind: &ResourceOperationKind) -> anyh
         .resource_operations
         .as_ref()
         .unwrap()
-        .contains(kind);
+        .contains(&kind);
 
     if !ctn {
         return Err(LspError::new(
@@ -2086,4 +2071,12 @@ fn resource_ops_supported(config: &Config, kind: &ResourceOperationKind) -> anyh
     }
 
     Ok(())
+}
+
+fn resolve_resource_op(op: &ResourceOp) -> ResourceOperationKind {
+    match op {
+        ResourceOp::Create(_) => ResourceOperationKind::Create,
+        ResourceOp::Rename(_) => ResourceOperationKind::Rename,
+        ResourceOp::Delete(_) => ResourceOperationKind::Delete,
+    }
 }
