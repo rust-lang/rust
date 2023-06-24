@@ -50,7 +50,6 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
-use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::MoveUnsized;
 use crate::{
     borrow_set::BorrowSet,
@@ -1040,9 +1039,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .collect();
 
         let renumbered_opaques = self.infcx.tcx.fold_regions(opaques, |_, _| {
-            self.infcx.next_nll_region_var(
+            self.infcx.next_nll_region_var_in_universe(
                 NllRegionVariableOrigin::Existential { from_forall: false },
-                || RegionCtxt::Unknown,
+                ty::UniverseIndex::ROOT,
             )
         });
 
