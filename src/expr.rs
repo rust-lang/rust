@@ -26,6 +26,7 @@ use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
+use crate::stmt;
 use crate::string::{rewrite_string, StringFormat};
 use crate::types::{rewrite_path, PathContext};
 use crate::utils::{
@@ -515,9 +516,9 @@ fn rewrite_single_line_block(
     label: Option<ast::Label>,
     shape: Shape,
 ) -> Option<String> {
-    if is_simple_block(context, block, attrs) {
+    if let Some(block_expr) = stmt::Stmt::from_simple_block(context, block, attrs) {
         let expr_shape = shape.offset_left(last_line_width(prefix))?;
-        let expr_str = block.stmts[0].rewrite(context, expr_shape)?;
+        let expr_str = block_expr.rewrite(context, expr_shape)?;
         let label_str = rewrite_label(label);
         let result = format!("{}{}{{ {} }}", prefix, label_str, expr_str);
         if result.len() <= shape.width && !result.contains('\n') {
@@ -799,19 +800,19 @@ impl<'a> ControlFlow<'a> {
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
         if let ast::ExprKind::Block(ref else_node, _) = else_block.kind {
-            if !is_simple_block(context, self.block, None)
-                || !is_simple_block(context, else_node, None)
-                || pat_expr_str.contains('\n')
-            {
-                return None;
-            }
+            let (if_expr, else_expr) = match (
+                stmt::Stmt::from_simple_block(context, self.block, None),
+                stmt::Stmt::from_simple_block(context, else_node, None),
+                pat_expr_str.contains('\n'),
+            ) {
+                (Some(if_expr), Some(else_expr), false) => (if_expr, else_expr),
+                _ => return None,
+            };
 
             let new_width = width.checked_sub(pat_expr_str.len() + fixed_cost)?;
-            let expr = &self.block.stmts[0];
-            let if_str = expr.rewrite(context, Shape::legacy(new_width, Indent::empty()))?;
+            let if_str = if_expr.rewrite(context, Shape::legacy(new_width, Indent::empty()))?;
 
             let new_width = new_width.checked_sub(if_str.len())?;
-            let else_expr = &else_node.stmts[0];
             let else_str = else_expr.rewrite(context, Shape::legacy(new_width, Indent::empty()))?;
 
             if if_str.contains('\n') || else_str.contains('\n') {
