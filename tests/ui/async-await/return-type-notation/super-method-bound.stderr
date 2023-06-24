@@ -1,0 +1,11 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/super-method-bound.rs:4:31
+   |
+LL | #![feature(async_fn_in_trait, return_type_notation)]
+   |                               ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/dont-project-to-rpitit-with-no-value.rs:8:1
+   |
+LL |     fn foo(&self) -> impl Sized;
+   |     ---------------------------- `foo` from trait
+...
+LL | impl MyTrait for i32 {
+   | ^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0046`.

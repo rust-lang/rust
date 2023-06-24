@@ -282,11 +282,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // If we're lowering to associated item, install the opaque type which is just
             // the `type_of` of the trait's associated item. If we're using the old lowering
             // strategy, then just reinterpret the associated type like an opaque :^)
-            let default_ty = if self.tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                self.tcx.type_of(shifted_alias_ty.def_id).subst(self.tcx, shifted_alias_ty.substs)
-            } else {
-                Ty::new_alias(self.tcx,ty::Opaque, shifted_alias_ty)
-            };
+            let default_ty = self.tcx.type_of(shifted_alias_ty.def_id).subst(self.tcx, shifted_alias_ty.substs);
 
             self.predicates.push(
                 ty::Binder::bind_with_vars(
@@ -408,9 +404,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
     };
 
     // The last field of the structure has to exist and contain type/const parameters.
-    let Some((tail_field, prefix_fields)) =
-        def.non_enum_variant().fields.raw.split_last() else
-    {
+    let Some((tail_field, prefix_fields)) = def.non_enum_variant().fields.raw.split_last() else {
         return BitSet::new_empty(num_params);
     };
 
