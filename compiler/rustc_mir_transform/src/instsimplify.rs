@@ -7,8 +7,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::FieldIdx;
-use rustc_target::abi::FIRST_VARIANT;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 
 pub struct InstSimplify;
 

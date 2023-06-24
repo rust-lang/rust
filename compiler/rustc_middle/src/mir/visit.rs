@@ -847,7 +847,7 @@ macro_rules! make_mir_visitor {
                     self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     for elem in projection {
                         match elem {
-                            ProjectionElem::Deref => {}
+                            ProjectionElem::Deref | ProjectionElem::ConstantIndex { .. } => {}
                             ProjectionElem::Field(_, ty) => {
                                 self.visit_ty($(& $mutability)? *ty, TyContext::Location(location))
                             }

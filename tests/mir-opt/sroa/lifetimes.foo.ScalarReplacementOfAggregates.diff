@@ -31,6 +31,9 @@
       let mut _30: isize;
 +     let _31: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>;
 +     let _32: u32;
++     let _33: &str;
++     let _34: &str;
++     let _35: &str;
       scope 1 {
 -         debug foo => _1;
 +         debug ((foo: Foo<T>).0: std::result::Result<std::boxed::Box<dyn std::fmt::Display>, <T as Err>::Err>) => _31;

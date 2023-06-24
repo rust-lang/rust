@@ -93,6 +93,7 @@ fn escaping_locals<'tcx>(
     set.insert_range(RETURN_PLACE..=Local::from_usize(body.arg_count));
     for (local, decl) in body.local_decls().iter_enumerated() {
         if excluded.contains(local) || is_excluded_ty(decl.ty) {
+            trace!(?local, "early exclusion");
             set.insert(local);
         }
     }
@@ -105,13 +106,17 @@ fn escaping_locals<'tcx>(
     }
 
     impl<'tcx> Visitor<'tcx> for EscapeVisitor {
-        fn visit_local(&mut self, local: Local, _: PlaceContext, _: Location) {
-            self.set.insert(local);
+        fn visit_local(&mut self, local: Local, _: PlaceContext, loc: Location) {
+            if self.set.insert(local) {
+                trace!(?local, "escapes at {loc:?}");
+            }
         }
 
         fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
             // Mirror the implementation in PreFlattenVisitor.
-            if let &[PlaceElem::Field(..), ..] = &place.projection[..] {
+            if let &[PlaceElem::Field(..) | PlaceElem::ConstantIndex { from_end: false, .. }, ..] =
+                &place.projection[..]
+            {
                 return;
             }
             self.super_place(place, context, location);
@@ -126,7 +131,7 @@ fn escaping_locals<'tcx>(
             if lvalue.as_local().is_some() {
                 match rvalue {
                     // Aggregate assignments are expanded in run_pass.
-                    Rvalue::Aggregate(..) | Rvalue::Use(..) => {
+                    Rvalue::Repeat(..) | Rvalue::Aggregate(..) | Rvalue::Use(..) => {
                         self.visit_rvalue(rvalue, location);
                         return;
                     }
@@ -152,32 +157,62 @@ fn escaping_locals<'tcx>(
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+enum LocalMode<'tcx> {
+    Field(Ty<'tcx>, Local),
+    Index(Local),
+}
+
+impl<'tcx> LocalMode<'tcx> {
+    fn local(self) -> Local {
+        match self {
+            LocalMode::Field(_, l) | LocalMode::Index(l) => l,
+        }
+    }
+
+    fn elem(self, field: FieldIdx) -> PlaceElem<'tcx> {
+        match self {
+            LocalMode::Field(ty, _) => PlaceElem::Field(field, ty),
+            LocalMode::Index(_) => PlaceElem::ConstantIndex {
+                offset: field.as_u32() as u64,
+                min_length: field.as_u32() as u64 + 1,
+                from_end: false,
+            },
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 struct ReplacementMap<'tcx> {
     /// Pre-computed list of all "new" locals for each "old" local. This is used to expand storage
     /// and deinit statement and debuginfo.
-    fragments: IndexVec<Local, Option<IndexVec<FieldIdx, Option<(Ty<'tcx>, Local)>>>>,
+    fragments: IndexVec<Local, Option<IndexVec<FieldIdx, Option<LocalMode<'tcx>>>>>,
 }
 
 impl<'tcx> ReplacementMap<'tcx> {
     fn replace_place(&self, tcx: TyCtxt<'tcx>, place: PlaceRef<'tcx>) -> Option<Place<'tcx>> {
-        let &[PlaceElem::Field(f, _), ref rest @ ..] = place.projection else {
+        let &[first, ref rest @ ..] = place.projection else {
             return None;
         };
+        let f = match first {
+            PlaceElem::Field(f, _) => f,
+            PlaceElem::ConstantIndex { offset, .. } => FieldIdx::from_u32(offset.try_into().ok()?),
+            _ => return None,
+        };
         let fields = self.fragments[place.local].as_ref()?;
-        let (_, new_local) = fields[f]?;
+        let new_local = fields[f]?.local();
         Some(Place { local: new_local, projection: tcx.mk_place_elems(rest) })
     }
 
     fn place_fragments(
         &self,
         place: Place<'tcx>,
-    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)> + '_> {
+    ) -> Option<impl Iterator<Item = (FieldIdx, LocalMode<'tcx>)> + '_> {
         let local = place.as_local()?;
         let fields = self.fragments[local].as_ref()?;
-        Some(fields.iter_enumerated().filter_map(|(field, &opt_ty_local)| {
-            let (ty, local) = opt_ty_local?;
-            Some((field, ty, local))
+        Some(fields.iter_enumerated().filter_map(|(field, &local)| {
+            let local = local?;
+            Some((field, local))
         }))
     }
 }
@@ -200,15 +235,32 @@ fn compute_flattening<'tcx>(
         }
         let decl = body.local_decls[local].clone();
         let ty = decl.ty;
-        iter_fields(ty, tcx, param_env, |variant, field, field_ty| {
-            if variant.is_some() {
-                // Downcasts are currently not supported.
-                return;
-            };
-            let new_local =
-                body.local_decls.push(LocalDecl { ty: field_ty, user_ty: None, ..decl.clone() });
-            fragments.get_or_insert_with(local, IndexVec::new).insert(field, (field_ty, new_local));
-        });
+        if let ty::Array(inner, count) = ty.kind()
+            && let Some(count) = count.try_eval_target_usize(tcx, param_env)
+            && count <= 64
+        {
+            let fragments = fragments.get_or_insert_with(local, IndexVec::new);
+            for field in 0..(count as u32) {
+                let new_local =
+                    body.local_decls.push(LocalDecl { ty: *inner, user_ty: None, ..decl.clone() });
+                fragments.insert(FieldIdx::from_u32(field), LocalMode::Index(new_local));
+            }
+        } else {
+            iter_fields(ty, tcx, param_env, |variant, field, field_ty| {
+                if variant.is_some() {
+                    // Downcasts are currently not supported.
+                    return;
+                };
+                let new_local = body.local_decls.push(LocalDecl {
+                    ty: field_ty,
+                    user_ty: None,
+                    ..decl.clone()
+                });
+                fragments
+                    .get_or_insert_with(local, IndexVec::new)
+                    .insert(field, LocalMode::Field(field_ty, new_local));
+            });
+        }
     }
     ReplacementMap { fragments }
 }
@@ -284,14 +336,16 @@ impl<'tcx> ReplacementVisitor<'tcx, '_> {
             let ty = place.ty(self.local_decls, self.tcx).ty;
 
             parts
-                .map(|(field, field_ty, replacement_local)| {
+                .map(|(field, replacement_local)| {
                     let mut var_debug_info = var_debug_info.clone();
                     let composite = var_debug_info.composite.get_or_insert_with(|| {
                         Box::new(VarDebugInfoFragment { ty, projection: Vec::new() })
                     });
-                    composite.projection.push(PlaceElem::Field(field, field_ty));
+                    let elem = replacement_local.elem(field);
+                    composite.projection.push(elem);
 
-                    var_debug_info.value = VarDebugInfoContents::Place(replacement_local.into());
+                    let local = replacement_local.local();
+                    var_debug_info.value = VarDebugInfoContents::Place(local.into());
                     var_debug_info
                 })
                 .collect()
@@ -318,7 +372,8 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // Duplicate storage and deinit statements, as they pretty much apply to all fields.
             StatementKind::StorageLive(l) => {
                 if let Some(final_locals) = self.replacements.place_fragments(l.into()) {
-                    for (_, _, fl) in final_locals {
+                    for (_, fl) in final_locals {
+                        let fl = fl.local();
                         self.patch.add_statement(location, StatementKind::StorageLive(fl));
                     }
                     statement.make_nop();
@@ -327,7 +382,8 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             }
             StatementKind::StorageDead(l) => {
                 if let Some(final_locals) = self.replacements.place_fragments(l.into()) {
-                    for (_, _, fl) in final_locals {
+                    for (_, fl) in final_locals {
+                        let fl = fl.local();
                         self.patch.add_statement(location, StatementKind::StorageDead(fl));
                     }
                     statement.make_nop();
@@ -336,9 +392,39 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             }
             StatementKind::Deinit(box place) => {
                 if let Some(final_locals) = self.replacements.place_fragments(place) {
-                    for (_, _, fl) in final_locals {
+                    for (_, fl) in final_locals {
+                        let fl = fl.local();
                         self.patch
                             .add_statement(location, StatementKind::Deinit(Box::new(fl.into())));
+                    }
+                    statement.make_nop();
+                    return;
+                }
+            }
+
+            // We have `a = [x; N]`
+            // We replace it by
+            // ```
+            // a_0 = x
+            // a_1 = x
+            // ...
+            // ```
+            StatementKind::Assign(box (place, Rvalue::Repeat(ref mut operand, _))) => {
+                if let Some(local) = place.as_local()
+                    && let Some(final_locals) = &self.replacements.fragments[local]
+                {
+                    // Replace mentions of SROA'd locals that appear in the operand.
+                    self.visit_operand(&mut *operand, location);
+
+                    for &new_local in final_locals.iter() {
+                        if let Some(new_local) = new_local {
+                            let new_local = new_local.local();
+                            let rvalue = Rvalue::Use(operand.to_copy());
+                            self.patch.add_statement(
+                                location,
+                                StatementKind::Assign(Box::new((new_local.into(), rvalue))),
+                            );
+                        }
                     }
                     statement.make_nop();
                     return;
@@ -358,8 +444,10 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 {
                     // This is ok as we delete the statement later.
                     let operands = std::mem::take(operands);
-                    for (&opt_ty_local, mut operand) in final_locals.iter().zip(operands) {
-                        if let Some((_, new_local)) = opt_ty_local {
+                    for (&new_local, mut operand) in final_locals.iter().zip(operands) {
+                        if let Some(new_local) = new_local {
+                            let new_local = new_local.local();
+
                             // Replace mentions of SROA'd locals that appear in the operand.
                             self.visit_operand(&mut operand, location);
 
@@ -387,8 +475,10 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 if let Some(final_locals) = self.replacements.place_fragments(place) {
                     // Put the deaggregated statements *after* the original one.
                     let location = location.successor_within_block();
-                    for (field, ty, new_local) in final_locals {
-                        let rplace = self.tcx.mk_place_field(place, field, ty);
+                    for (field, new_local) in final_locals {
+                        let elem = new_local.elem(field);
+                        let new_local = new_local.local();
+                        let rplace = self.tcx.mk_place_elem(place, elem);
                         let rvalue = Rvalue::Use(Operand::Move(rplace));
                         self.patch.add_statement(
                             location,
@@ -414,8 +504,10 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                     Operand::Constant(_) => bug!(),
                 };
                 if let Some(final_locals) = self.replacements.place_fragments(lhs) {
-                    for (field, ty, new_local) in final_locals {
-                        let rplace = self.tcx.mk_place_field(rplace, field, ty);
+                    for (field, new_local) in final_locals {
+                        let elem = new_local.elem(field);
+                        let new_local = new_local.local();
+                        let rplace = self.tcx.mk_place_elem(rplace, elem);
                         debug!(?rplace);
                         let rplace = self
                             .replacements
