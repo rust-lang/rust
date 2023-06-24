@@ -609,7 +609,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn throw_unresolved_import_error(&self, errors: Vec<(&Import<'_>, UnresolvedImportError)>) {
+    fn throw_unresolved_import_error(&mut self, errors: Vec<(&Import<'_>, UnresolvedImportError)>) {
         if errors.is_empty() {
             return;
         }
@@ -678,6 +678,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     _ => {}
                 }
+            }
+
+            match &import.kind {
+                ImportKind::Single { source, .. } => {
+                    if let Some(ModuleOrUniformRoot::Module(module)) = import.imported_module.get()
+                     && let Some(module) = module.opt_def_id()
+                    {
+                        self.find_cfg_stripped(&mut diag, &source.name, module)
+                    }
+                },
+                _ => {}
             }
         }
 

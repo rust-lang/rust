@@ -103,22 +103,69 @@ let Foo {
 
 #### else blocks (let-else statements)
 
-If a let statement contains an `else` component, also known as a let-else statement,
-then the `else` component should be formatted according to the same rules as the `else` block
-in [control flow expressions (i.e. if-else, and if-let-else expressions)](./expressions.md#control-flow-expressions).
-Apply the same formatting rules to the components preceding
-the `else` block (i.e. the `let pattern: Type = initializer_expr ...` portion)
-as described [above](#let-statements)
+A let statement can contain an `else` component, making it a let-else statement.
+In this case, always apply the same formatting rules to the components preceding
+the `else` block (i.e. the `let pattern: Type = initializer_expr` portion)
+as described [for other let statements](#let-statements).
 
-Similarly to if-else expressions, if the initializer
-expression is multi-lined, then the `else` keyword and opening brace of the block (i.e. `else {`)
-should be put on the same line as the end of the initializer
-expression with a preceding space if all the following are true:
+The entire let-else statement may be formatted on a single line if all the
+following are true:
+
+* the entire statement is *short*
+* the `else` block contains only a single-line expression and no statements
+* the `else` block contains no comments
+* the let statement components preceding the `else` block can be formatted on a single line
+
+```rust
+let Some(1) = opt else { return };
+```
+
+Formatters may allow users to configure the value of the threshold
+used to determine whether a let-else statement is *short*.
+
+Otherwise, the let-else statement requires some line breaks.
+
+If breaking a let-else statement across multiple lines, never break between the
+`else` and the `{`, and always break before the `}`.
+
+If the let statement components preceding the `else` can be formatted on a
+single line, but the let-else does not qualify to be placed entirely on a
+single line, put the `else {` on the same line as the initializer expression,
+with a space between them, then break the line after the `{`. Indent the
+closing `}` to match the `let`, and indent the contained block one step
+further.
+
+```rust
+let Some(1) = opt else {
+    return;
+};
+
+let Some(1) = opt else {
+    // nope
+    return
+};
+```
+
+If the let statement components preceding the `else` can be formatted on a
+single line, but the `else {` does not fit on the same line, break the line
+before the `else`.
+
+```rust
+    let Some(x) = some_really_really_really_really_really_really_really_really_really_long_name
+    else {
+        return;
+    };
+```
+
+If the initializer expression is multi-line, the `else` keyword and opening
+brace of the block (i.e. `else {`) should be put on the same line as the end of
+the initializer expression, with a space between them, if all the following are
+true:
 
 * The initializer expression ends with one or more closing
   parentheses, square brackets, and/or braces
 * There is nothing else on that line
-* That line is not indented beyond the indent of the first line containing the `let` keyword
+* That line has the same indentation level as the initial `let` keyword.
 
 For example:
 
@@ -135,7 +182,9 @@ let Some(x) = y.foo(
 }
 ```
 
-Otherwise, the `else` keyword and opening brace should be placed on the next line after the end of the initializer expression, and should not be indented (the `else` keyword should be aligned with the `let` keyword).
+Otherwise, the `else` keyword and opening brace should be placed on the next
+line after the end of the initializer expression, and the `else` keyword should
+have the same indentation level as the `let` keyword.
 
 For example:
 
@@ -155,11 +204,6 @@ fn main() {
         return
     };
 
-    let Some(x) = some_really_really_really_really_really_really_really_really_really_long_name
-    else {
-        return;
-    };
-
     let Some(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) =
         bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
     else {
@@ -167,31 +211,6 @@ fn main() {
     };
 }
 ```
-
-##### Single line let-else statements
-
-The entire let-else statement may be formatted on a single line if all the following are true:
-
-* the entire statement is *short*
-* the `else` block contains a single-line expression and no statements
-* the `else` block contains no comments
-* the let statement components preceding the `else` block can be formatted on a single line
-
-```rust
-let Some(1) = opt else { return };
-
-let Some(1) = opt else {
-    return;
-};
-
-let Some(1) = opt else {
-    // nope
-    return
-};
-```
-
-Formatters may allow users to configure the value of the threshold
-used to determine whether a let-else statement is *short*.
 
 ### Macros in statement position
 
