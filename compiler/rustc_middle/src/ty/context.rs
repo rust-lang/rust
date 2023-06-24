@@ -1036,7 +1036,9 @@ impl<'tcx> TyCtxt<'tcx> {
         scope_def_id: LocalDefId,
     ) -> Vec<&'tcx hir::Ty<'tcx>> {
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
-        let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id) else {
+        let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) =
+            self.hir().fn_decl_by_hir_id(hir_id)
+        else {
             return vec![];
         };
 
@@ -2002,16 +2004,8 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn lower_impl_trait_in_trait_to_assoc_ty(self) -> bool {
-        self.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty
-    }
-
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
-        if self.lower_impl_trait_in_trait_to_assoc_ty() {
-            self.opt_rpitit_info(def_id).is_some()
-        } else {
-            self.def_kind(def_id) == DefKind::ImplTraitPlaceholder
-        }
+        self.opt_rpitit_info(def_id).is_some()
     }
 
     /// Named module children from all kinds of items, including imports.

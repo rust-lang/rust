@@ -1,0 +1,17 @@
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/doesnt-satisfy.rs:9:17
+   |
+LL |     fn bar() -> () {}
+   |                 ^^ `()` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+note: required by a bound in `Foo::{opaque#0}`
+  --> $DIR/doesnt-satisfy.rs:5:22
+   |
+LL |     fn bar() -> impl std::fmt::Display;
+   |                      ^^^^^^^^^^^^^^^^^ required by this bound in `Foo::{opaque#0}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

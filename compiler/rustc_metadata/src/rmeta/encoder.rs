@@ -824,7 +824,6 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::Impl { .. }
         | DefKind::Closure
@@ -867,7 +866,6 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Generator => false,
@@ -902,7 +900,6 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
@@ -939,7 +936,6 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
         | DefKind::Closure
@@ -966,7 +962,6 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Enum
         | DefKind::Union
         | DefKind::Impl { .. }
@@ -1033,7 +1028,6 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Fn
         | DefKind::Ctor(..)
         | DefKind::AssocFn => true,
@@ -1083,7 +1077,6 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl { .. }
         | DefKind::Field
         | DefKind::TyParam
@@ -1134,19 +1127,6 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
             }
         }
 
-        DefKind::ImplTraitPlaceholder => {
-            let parent_def_id = tcx.impl_trait_in_trait_parent_fn(def_id.to_def_id());
-            let assoc_item = tcx.associated_item(parent_def_id);
-            match assoc_item.container {
-                // Always encode an RPIT in an impl fn, since it always has a body
-                ty::AssocItemContainer::ImplContainer => true,
-                ty::AssocItemContainer::TraitContainer => {
-                    // Encode an RPIT for a trait only if the trait has a default body
-                    assoc_item.defaultness(tcx).has_value()
-                }
-            }
-        }
-
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
@@ -1192,7 +1172,6 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Ctor(..)
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
         | DefKind::AssocConst
@@ -1235,7 +1214,6 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::Impl { of_trait: false }
-        | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
         | DefKind::Generator
         | DefKind::ConstParam
@@ -1268,7 +1246,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Static(..)
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
         | DefKind::AssocFn
@@ -1289,11 +1266,8 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-// We only encode impl trait in trait when using `lower-impl-trait-in-trait-to-assoc-ty` unstable
-// option.
 fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    if tcx.lower_impl_trait_in_trait_to_assoc_ty()
-        && let Some(assoc_item) = tcx.opt_associated_item(def_id)
+    if let Some(assoc_item) = tcx.opt_associated_item(def_id)
         && assoc_item.container == ty::AssocItemContainer::TraitContainer
         && assoc_item.kind == ty::AssocKind::Fn
     {
@@ -1446,9 +1420,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables
                     .is_type_alias_impl_trait
                     .set(def_id.index, self.tcx.is_type_alias_impl_trait(def_id));
-            }
-            if let DefKind::ImplTraitPlaceholder = def_kind {
-                self.encode_explicit_item_bounds(def_id);
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
