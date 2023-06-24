@@ -13,6 +13,7 @@ fn is_sync<T: Sync>(t: T) { }
 async fn bar() {
     let x = Foo;
     baz().await;
+    drop(x);
 }
 
 async fn baz() { }

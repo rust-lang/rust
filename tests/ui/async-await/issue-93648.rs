@@ -1,6 +1,5 @@
 // edition:2021
 // build-pass
-// compile-flags: -Zdrop-tracking
 
 fn main() {
     let _ = async {

@@ -1,6 +1,5 @@
 // Derived from an ICE found in tokio-xmpp during a crater run.
 // edition:2021
-// compile-flags: -Zdrop-tracking
 
 #![allow(dead_code)]
 

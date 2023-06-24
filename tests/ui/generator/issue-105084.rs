@@ -1,5 +1,3 @@
-// compile-flags: -Zdrop-tracking-mir
-
 #![feature(generators)]
 #![feature(generator_clone)]
 #![feature(generator_trait)]

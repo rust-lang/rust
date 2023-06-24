@@ -1,5 +1,5 @@
 // edition:2018
-// compile-flags: --crate-type lib -Zdrop-tracking
+// compile-flags: --crate-type lib
 
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 

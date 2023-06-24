@@ -1,5 +1,4 @@
-// compile-flags: -Zdrop-tracking
-
+// check-pass
 #![feature(negative_impls, generators)]
 
 struct Foo;
@@ -12,26 +11,19 @@ struct Bar {
 
 fn main() {
     assert_send(|| {
-        //~^ ERROR generator cannot be sent between threads safely
-        // FIXME: it would be nice to make this work.
         let guard = Bar { foo: Foo, x: 42 };
         drop(guard.foo);
         yield;
     });
 
     assert_send(|| {
-        //~^ ERROR generator cannot be sent between threads safely
-        // FIXME: it would be nice to make this work.
-        let guard = Bar { foo: Foo, x: 42 };
+        let mut guard = Bar { foo: Foo, x: 42 };
         drop(guard);
-        guard.foo = Foo;
-        guard.x = 23;
+        guard = Bar { foo: Foo, x: 23 };
         yield;
     });
 
     assert_send(|| {
-        //~^ ERROR generator cannot be sent between threads safely
-        // FIXME: it would be nice to make this work.
         let guard = Bar { foo: Foo, x: 42 };
         let Bar { foo, x } = guard;
         drop(foo);

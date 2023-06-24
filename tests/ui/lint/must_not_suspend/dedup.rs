@@ -13,7 +13,10 @@ async fn wheeee<T>(t: T) {
 }
 
 async fn yes() {
-    wheeee(&No {}).await; //~ ERROR `No` held across
+    let no = No {};
+    //~^ ERROR `No` held across
+    wheeee(&no).await;
+    drop(no);
 }
 
 fn main() {

@@ -19,6 +19,7 @@ async fn other() {}
 pub async fn uhoh() {
     let _guard = bar(); //~ ERROR `Umm` held across
     other().await;
+    drop(_guard);
 }
 
 fn main() {

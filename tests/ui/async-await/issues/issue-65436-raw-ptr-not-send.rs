@@ -1,6 +1,5 @@
 // edition:2018
 // check-pass
-// compile-flags: -Zdrop-tracking=yes
 
 struct Foo(*const u8);
 

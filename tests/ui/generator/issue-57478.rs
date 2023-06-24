@@ -1,5 +1,4 @@
 // check-pass
-// compile-flags: -Zdrop-tracking
 
 #![feature(negative_impls, generators)]
 

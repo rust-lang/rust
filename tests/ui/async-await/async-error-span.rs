@@ -10,7 +10,7 @@ fn get_future() -> impl Future<Output = ()> {
 }
 
 async fn foo() {
-    let a; //~ ERROR type inside `async fn` body must be known in this context
+    let a; //~ ERROR type annotations needed
     get_future().await;
 }
 

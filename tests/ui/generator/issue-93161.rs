@@ -1,6 +1,5 @@
 // edition:2021
 // run-pass
-// compile-flags: -Zdrop-tracking
 
 #![feature(never_type)]
 

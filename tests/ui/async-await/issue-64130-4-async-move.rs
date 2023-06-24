@@ -1,6 +1,5 @@
 // edition:2018
 // check-pass
-// compile-flags: -Zdrop-tracking=yes
 
 use std::any::Any;
 use std::future::Future;

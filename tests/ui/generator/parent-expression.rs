@@ -1,5 +1,3 @@
-// compile-flags: -Zdrop-tracking
-
 #![feature(generators, negative_impls, rustc_attrs)]
 
 macro_rules! type_combinations {

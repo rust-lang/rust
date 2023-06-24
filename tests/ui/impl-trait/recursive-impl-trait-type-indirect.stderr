@@ -112,16 +112,11 @@ LL |     (substs_change::<&T>(),)
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:72:24
    |
-LL |   fn generator_hold() -> impl Sized {
-   |                          ^^^^^^^^^^ recursive opaque type
-LL |
-LL | /     move || {
-LL | |         let x = generator_hold();
-   | |             - generator captures itself here
-LL | |         yield;
-LL | |         x;
-LL | |     }
-   | |_____- returning here with type `{generator@$DIR/recursive-impl-trait-type-indirect.rs:74:5: 74:12}`
+LL | fn generator_hold() -> impl Sized {
+   |                        ^^^^^^^^^^ recursive opaque type
+...
+LL |         let x = generator_hold();
+   |             - generator captures itself here
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:86:26

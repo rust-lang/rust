@@ -1,5 +1,4 @@
 // build-pass
-// compile-flags: -Zdrop-tracking
 #![feature(generators, negative_impls)]
 #![allow(dropping_references, dropping_copy_types)]
 

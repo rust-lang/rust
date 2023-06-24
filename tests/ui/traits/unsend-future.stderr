@@ -1,5 +1,5 @@
 error: future cannot be sent between threads safely
-  --> $DIR/unsend-future.rs:19:21
+  --> $DIR/unsend-future.rs:20:21
    |
 LL |     require_handler(handler)
    |                     ^^^^^^^ future returned by `handler` is not `Send`
@@ -12,8 +12,6 @@ LL |     let a = &1 as *const i32;
    |         - has type `*const i32` which is not `Send`
 LL |     async {}.await;
    |              ^^^^^ await occurs here, with `a` maybe used later
-LL | }
-   | - `a` is later dropped here
 note: required by a bound in `require_handler`
   --> $DIR/unsend-future.rs:11:23
    |

@@ -1,6 +1,5 @@
 // build-pass
 // edition:2018
-// compile-flags: -Zdrop-tracking
 
 #![feature(generators)]
 

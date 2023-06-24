@@ -5,17 +5,6 @@
 
 use std::ops::Generator;
 
-fn across() -> impl Generator {
-    move || {
-        let b: [u8] = *(Box::new([]) as Box<[u8]>);
-        //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
-
-        yield;
-
-        for elem in b.iter() {}
-    }
-}
-
 fn capture() -> impl Generator {
     let b: [u8] = *(Box::new([]) as Box<[u8]>);
     move || {
@@ -29,6 +18,5 @@ fn capture() -> impl Generator {
 }
 
 fn main() {
-    across();
     capture();
 }

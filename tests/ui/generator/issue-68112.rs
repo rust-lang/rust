@@ -8,7 +8,7 @@ use std::{
 };
 
 pub struct Ready<T>(Option<T>);
-impl<T> Generator<()> for Ready<T> {
+impl<T: Unpin> Generator<()> for Ready<T> {
     type Return = T;
     type Yield = ();
     fn resume(mut self: Pin<&mut Self>, _args: ()) -> GeneratorState<(), T> {
@@ -36,7 +36,7 @@ fn test1() {
         yield;
         //~^ NOTE yield occurs here
         //~| NOTE value is used across a yield
-    }; //~ NOTE later dropped here
+    };
     require_send(send_gen);
     //~^ ERROR generator cannot be sent between threads
     //~| NOTE not `Send`
@@ -65,7 +65,6 @@ fn test2() {
     //~^ ERROR `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE required for
-    //~| NOTE required by a bound introduced by this call
     //~| NOTE captures the following types
     //~| NOTE use `std::sync::RwLock` instead
 }

@@ -11,7 +11,7 @@ use std::{
 fn require_send(_: impl Send) {}
 
 struct Ready<T>(Option<T>);
-impl<T> Future for Ready<T> {
+impl<T: Unpin> Future for Ready<T> {
     type Output = T;
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
         Poll::Ready(self.0.take().unwrap())
