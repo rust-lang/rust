@@ -57,48 +57,54 @@ pub trait LayoutCalculator {
         // run and bias niches to the right and then check which one is closer to one of the struct's
         // edges.
         if let Some(layout) = &layout {
-            if let Some(niche) = layout.largest_niche {
-                let head_space = niche.offset.bytes();
-                let niche_length = niche.value.size(dl).bytes();
-                let tail_space = layout.size.bytes() - head_space - niche_length;
+            // Don't try to calculate an end-biased layout for unsizable structs,
+            // otherwise we could end up with different layouts for
+            // Foo<Type> and Foo<dyn Trait> which would break unsizing
+            if !matches!(kind, StructKind::MaybeUnsized) {
+                if let Some(niche) = layout.largest_niche {
+                    let head_space = niche.offset.bytes();
+                    let niche_length = niche.value.size(dl).bytes();
+                    let tail_space = layout.size.bytes() - head_space - niche_length;
 
-                // This may end up doing redundant work if the niche is already in the last field
-                // (e.g. a trailing bool) and there is tail padding. But it's non-trivial to get
-                // the unpadded size so we try anyway.
-                if fields.len() > 1 && head_space != 0 && tail_space > 0 {
-                    let alt_layout = univariant(self, dl, fields, repr, kind, NicheBias::End)
-                        .expect("alt layout should always work");
-                    let niche = alt_layout
-                        .largest_niche
-                        .expect("alt layout should have a niche like the regular one");
-                    let alt_head_space = niche.offset.bytes();
-                    let alt_niche_len = niche.value.size(dl).bytes();
-                    let alt_tail_space = alt_layout.size.bytes() - alt_head_space - alt_niche_len;
+                    // This may end up doing redundant work if the niche is already in the last field
+                    // (e.g. a trailing bool) and there is tail padding. But it's non-trivial to get
+                    // the unpadded size so we try anyway.
+                    if fields.len() > 1 && head_space != 0 && tail_space > 0 {
+                        let alt_layout = univariant(self, dl, fields, repr, kind, NicheBias::End)
+                            .expect("alt layout should always work");
+                        let niche = alt_layout
+                            .largest_niche
+                            .expect("alt layout should have a niche like the regular one");
+                        let alt_head_space = niche.offset.bytes();
+                        let alt_niche_len = niche.value.size(dl).bytes();
+                        let alt_tail_space =
+                            alt_layout.size.bytes() - alt_head_space - alt_niche_len;
 
-                    debug_assert_eq!(layout.size.bytes(), alt_layout.size.bytes());
+                        debug_assert_eq!(layout.size.bytes(), alt_layout.size.bytes());
 
-                    let prefer_alt_layout =
-                        alt_head_space > head_space && alt_head_space > tail_space;
+                        let prefer_alt_layout =
+                            alt_head_space > head_space && alt_head_space > tail_space;
 
-                    debug!(
-                        "sz: {}, default_niche_at: {}+{}, default_tail_space: {}, alt_niche_at/head_space: {}+{}, alt_tail: {}, num_fields: {}, better: {}\n\
-                        layout: {}\n\
-                        alt_layout: {}\n",
-                        layout.size.bytes(),
-                        head_space,
-                        niche_length,
-                        tail_space,
-                        alt_head_space,
-                        alt_niche_len,
-                        alt_tail_space,
-                        layout.fields.count(),
-                        prefer_alt_layout,
-                        format_field_niches(&layout, &fields, &dl),
-                        format_field_niches(&alt_layout, &fields, &dl),
-                    );
+                        debug!(
+                            "sz: {}, default_niche_at: {}+{}, default_tail_space: {}, alt_niche_at/head_space: {}+{}, alt_tail: {}, num_fields: {}, better: {}\n\
+                            layout: {}\n\
+                            alt_layout: {}\n",
+                            layout.size.bytes(),
+                            head_space,
+                            niche_length,
+                            tail_space,
+                            alt_head_space,
+                            alt_niche_len,
+                            alt_tail_space,
+                            layout.fields.count(),
+                            prefer_alt_layout,
+                            format_field_niches(&layout, &fields, &dl),
+                            format_field_niches(&alt_layout, &fields, &dl),
+                        );
 
-                    if prefer_alt_layout {
-                        return Some(alt_layout);
+                        if prefer_alt_layout {
+                            return Some(alt_layout);
+                        }
                     }
                 }
             }
@@ -828,6 +834,7 @@ fn univariant(
     if optimize && fields.len() > 1 {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index.raw[..end];
+        let fields_excluding_tail = &fields.raw[..end];
 
         // If `-Z randomize-layout` was enabled for the type definition we can shuffle
         // the field ordering to try and catch some code making assumptions about layouts
@@ -844,8 +851,11 @@ fn univariant(
             }
             // Otherwise we just leave things alone and actually optimize the type's fields
         } else {
-            let max_field_align = fields.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
-            let largest_niche_size = fields
+            // To allow unsizing `&Foo<Type>` -> `&Foo<dyn Trait>`, the layout of the struct must
+            // not depend on the layout of the tail.
+            let max_field_align =
+                fields_excluding_tail.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
+            let largest_niche_size = fields_excluding_tail
                 .iter()
                 .filter_map(|f| f.largest_niche())
                 .map(|n| n.available(dl))
