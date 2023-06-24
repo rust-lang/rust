@@ -1,18 +1,25 @@
-error[E0277]: `Sender<i32>` cannot be shared between threads safely
-  --> $DIR/issue-70935-complex-spans.rs:13:45
+error[E0277]: `*mut ()` cannot be shared between threads safely
+  --> $DIR/issue-70935-complex-spans.rs:18:23
    |
-LL | fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
-   |                                             ^^^^^^^^^^^^^^^^^^ `Sender<i32>` cannot be shared between threads safely
+LL | fn foo(x: NotSync) -> impl Future + Send {
+   |                       ^^^^^^^^^^^^^^^^^^ `*mut ()` cannot be shared between threads safely
    |
-   = help: the trait `Sync` is not implemented for `Sender<i32>`
-   = note: required for `&Sender<i32>` to implement `Send`
+   = help: within `NotSync`, the trait `Sync` is not implemented for `*mut ()`
+note: required because it appears within the type `PhantomData<*mut ()>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `NotSync`
+  --> $DIR/issue-70935-complex-spans.rs:12:8
+   |
+LL | struct NotSync(PhantomData<*mut ()>);
+   |        ^^^^^^^
+   = note: required for `&NotSync` to implement `Send`
 note: required because it's used within this closure
-  --> $DIR/issue-70935-complex-spans.rs:17:13
+  --> $DIR/issue-70935-complex-spans.rs:22:13
    |
-LL |         baz(|| async{
+LL |         baz(|| async {
    |             ^^
 note: required because it's used within this `async fn` body
-  --> $DIR/issue-70935-complex-spans.rs:10:67
+  --> $DIR/issue-70935-complex-spans.rs:15:67
    |
 LL |   async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
    |  ___________________________________________________________________^
@@ -20,11 +27,11 @@ LL | | }
    | |_^
    = note: required because it captures the following types: `impl Future<Output = ()>`
 note: required because it's used within this `async` block
-  --> $DIR/issue-70935-complex-spans.rs:16:5
+  --> $DIR/issue-70935-complex-spans.rs:21:5
    |
 LL | /     async move {
-LL | |         baz(|| async{
-LL | |             foo(tx.clone());
+LL | |         baz(|| async {
+LL | |             foo(x.clone());
 LL | |         }).await;
 LL | |     }
    | |_____^
