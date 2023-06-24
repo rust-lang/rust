@@ -19,6 +19,18 @@ error: the type `<() as Foo>::Item` is not well-formed
 LL |     drop(<() as Foo>::copy_me(&x));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: the type `<() as Foo>::Item` is not well-formed
+  --> $DIR/alias-bound-unsound.rs:23:5
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |     ^^^^
+
+error: the type `<() as Foo>::Item` is not well-formed
+  --> $DIR/alias-bound-unsound.rs:23:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
