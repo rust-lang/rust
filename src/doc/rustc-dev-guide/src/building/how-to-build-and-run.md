@@ -72,7 +72,8 @@ Some alternative ways are:
 # On a Unix shell if you don't have the necessary `python3` command
 ./x <subcommand> [flags]
 
-# On Windows (if powershell is configured to run scripts)
+# In Windows Powershell (if powershell is configured to run scripts)
+./x <subcommand> [flags]
 ./x.ps1 <subcommand> [flags]
 
 # On the Windows Command Prompt (if .py files are configured to run Python)
@@ -82,7 +83,24 @@ x.py <subcommand> [flags]
 python x.py <subcommand> [flags]
 ```
 
-### Running `x.py` slightly more conveniently
+On Windows, the Powershell commands may give you an error that looks like this:
+```
+PS C:\Users\vboxuser\rust> ./x
+./x : File C:\Users\vboxuser\rust\x.ps1 cannot be loaded because running scripts is disabled on this system. For more
+information, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170.
+At line:1 char:1
++ ./x
++ ~~~
+    + CategoryInfo          : SecurityError: (:) [], PSSecurityException
+    + FullyQualifiedErrorId : UnauthorizedAccess
+```
+
+You can avoid this error by allowing powershell to run local scripts:
+```
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+#### Running `x.py` slightly more conveniently
 
 There is a binary that wraps `x.py` called `x` in `src/tools/x`. All it does is
 run `x.py`, but it can be installed system-wide and run from any subdirectory
