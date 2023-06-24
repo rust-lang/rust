@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     # soft deprecation of old python versions
     skip_check = os.environ.get("RUST_IGNORE_OLD_PYTHON") == "1"
-    if major < 3 or (major == 3 and minor < 6):
+    if not skip_check and (major < 3 or (major == 3 and minor < 6)):
         msg = cleandoc("""
             Using python {}.{} but >= 3.6 is recommended. Your python version
             should continue to work for the near future, but this will
