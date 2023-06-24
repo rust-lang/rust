@@ -2171,7 +2171,6 @@ Windows.Win32.Networking.WinSock.WSARecv
 Windows.Win32.Networking.WinSock.WSASend
 Windows.Win32.Networking.WinSock.WSASERVICE_NOT_FOUND
 Windows.Win32.Networking.WinSock.WSASocketW
-Windows.Win32.Networking.WinSock.WSAStartup
 Windows.Win32.Networking.WinSock.WSASYSCALLFAILURE
 Windows.Win32.Networking.WinSock.WSASYSNOTREADY
 Windows.Win32.Networking.WinSock.WSATRY_AGAIN
@@ -2419,12 +2418,10 @@ Windows.Win32.System.Console.STD_HANDLE
 Windows.Win32.System.Console.STD_INPUT_HANDLE
 Windows.Win32.System.Console.STD_OUTPUT_HANDLE
 Windows.Win32.System.Console.WriteConsoleW
-Windows.Win32.System.Diagnostics.Debug.AddVectoredExceptionHandler
 Windows.Win32.System.Diagnostics.Debug.ARM64_NT_NEON128
 Windows.Win32.System.Diagnostics.Debug.CONTEXT
 Windows.Win32.System.Diagnostics.Debug.CONTEXT
 Windows.Win32.System.Diagnostics.Debug.CONTEXT
-Windows.Win32.System.Diagnostics.Debug.EXCEPTION_POINTERS
 Windows.Win32.System.Diagnostics.Debug.EXCEPTION_RECORD
 Windows.Win32.System.Diagnostics.Debug.FACILITY_CODE
 Windows.Win32.System.Diagnostics.Debug.FACILITY_NT_BIT
@@ -2437,7 +2434,6 @@ Windows.Win32.System.Diagnostics.Debug.FORMAT_MESSAGE_IGNORE_INSERTS
 Windows.Win32.System.Diagnostics.Debug.FORMAT_MESSAGE_OPTIONS
 Windows.Win32.System.Diagnostics.Debug.FormatMessageW
 Windows.Win32.System.Diagnostics.Debug.M128A
-Windows.Win32.System.Diagnostics.Debug.PVECTORED_EXCEPTION_HANDLER
 Windows.Win32.System.Diagnostics.Debug.XSAVE_FORMAT
 Windows.Win32.System.Diagnostics.Debug.XSAVE_FORMAT
 Windows.Win32.System.Environment.FreeEnvironmentStringsW
