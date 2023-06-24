@@ -1,6 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(generators, generator_trait, never_type)]
+#![allow(unreachable_code)]
 
 use std::fmt::Debug;
 use std::mem::ManuallyDrop;
@@ -104,14 +105,12 @@ fn basic() {
         }
         #[allow(unused)]
         let x = never();
-        #[allow(unreachable_code)]
         yield 2;
         drop(x);
     });
 
     finish(3, || {
         yield 1;
-        #[allow(unreachable_code)]
         let _x: (String, !) = (String::new(), {
             yield 2;
             return;
@@ -176,7 +175,6 @@ fn smoke_resume_arg() {
         )
     });
 
-    #[allow(unreachable_code)]
     expect_drops(2, || drain(&mut |a| yield return a, vec![(DropMe, Complete(DropMe))]));
 
     expect_drops(2, || {

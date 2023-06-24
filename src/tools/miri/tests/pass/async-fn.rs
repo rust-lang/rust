@@ -1,4 +1,5 @@
 #![feature(never_type)]
+#![allow(unreachable_code)]
 
 use std::future::Future;
 
@@ -41,7 +42,6 @@ async fn includes_never(crash: bool, x: u32) -> u32 {
 }
 
 async fn partial_init(x: u32) -> u32 {
-    #[allow(unreachable_code)]
     let _x: (String, !) = (String::new(), return async { x + x }.await);
 }
 
