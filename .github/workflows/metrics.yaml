@@ -63,7 +63,10 @@ jobs:
         path: target/build.json
         if-no-files-found: error
 
-  self_metrics:
+  other_metrics:
+    strategy:
+      matrix:
+        names: [self, ripgrep, webrender, diesel]
     runs-on: ubuntu-latest
     needs: [setup_cargo, build_metrics]
 
@@ -87,123 +90,19 @@ jobs:
         path: target/
         key: ${{ runner.os }}-target-${{ github.sha }}
 
-    - name: Collect build metrics
-      run: cargo xtask metrics self
+    - name: Collect metrics
+      run: cargo xtask metrics ${{ matrix.names }}
 
-    - name: Upload build metrics
+    - name: Upload metrics
       uses: actions/upload-artifact@v3
       with:
-        name: self-${{ github.sha }}
-        path: target/self.json
+        name: ${{ matrix.names }}-${{ github.sha }}
+        path: target/${{ matrix.names }}.json
         if-no-files-found: error
-
-  ripgrep_metrics:
-    runs-on: ubuntu-latest
-    needs: [setup_cargo, build_metrics]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Restore cargo cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-${{ github.sha }}
-
-    - name: Restore target cache
-      uses: actions/cache@v3
-      with:
-        path: target/
-        key: ${{ runner.os }}-target-${{ github.sha }}
-
-    - name: Collect build metrics
-      run: cargo xtask metrics ripgrep
-
-    - name: Upload ripgrep metrics
-      uses: actions/upload-artifact@v3
-      with:
-        name: ripgrep-${{ github.sha }}
-        path: target/ripgrep.json
-        if-no-files-found: error
-
-  webrender_metrics:
-    runs-on: ubuntu-latest
-    needs: [setup_cargo, build_metrics]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Restore cargo cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-${{ github.sha }}
-
-    - name: Restore target cache
-      uses: actions/cache@v3
-      with:
-        path: target/
-        key: ${{ runner.os }}-target-${{ github.sha }}
-
-    - name: Collect webrender metrics
-      run: cargo xtask metrics webrender
-
-    - name: Upload webrender metrics
-      uses: actions/upload-artifact@v3
-      with:
-        name: webrender-${{ github.sha }}
-        path: target/webrender.json
-        if-no-files-found: error
-
-  diesel_metrics:
-    runs-on: ubuntu-latest
-    needs: [setup_cargo, build_metrics]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Restore cargo cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ runner.os }}-cargo-${{ github.sha }}
-
-    - name: Restore target cache
-      uses: actions/cache@v3
-      with:
-        path: target/
-        key: ${{ runner.os }}-target-${{ github.sha }}
-
-    - name: Collect build metrics
-      run: cargo xtask metrics diesel
-
-    - name: Upload build metrics
-      uses: actions/upload-artifact@v3
-      with:
-        name: diesel-${{ github.sha }}
-        path: target/diesel.json
-        if-no-files-found: error
-
-
 
   generate_final_metrics:
     runs-on: ubuntu-latest
-    needs: [build_metrics, self_metrics, ripgrep_metrics, webrender_metrics, diesel_metrics]
+    needs: [build_metrics, other_metrics]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
