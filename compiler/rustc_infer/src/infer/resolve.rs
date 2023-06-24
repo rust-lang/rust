@@ -1,5 +1,6 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitableExt, TypeVisitor};
@@ -39,7 +40,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t = self.shallow_resolver.fold_ty(t);
-            t.super_fold_with(self)
+            ensure_sufficient_stack(|| t.super_fold_with(self))
         }
     }
 
