@@ -211,5 +211,5 @@ a new unstable feature:
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
 [here]: ./stabilization_guide.md
-[tracking issue]: #tracking-issue
+[tracking issue]: #tracking-issues
 [add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
