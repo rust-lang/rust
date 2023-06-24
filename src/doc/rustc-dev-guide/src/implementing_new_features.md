@@ -96,31 +96,16 @@ by being unstable and unchanged for a year.
 To keep track of the status of an unstable feature, the
 experience we get while using it on nightly, and of the
 concerns that block its stabilization, every feature-gate
-needs a tracking issue.
-
-General discussions about the feature should be done on
-the tracking issue.
+needs a tracking issue. General discussions about the feature should be done on the tracking issue.
 
 For features that have an RFC, you should use the RFC's
 tracking issue for the feature.
 
 For other features, you'll have to make a tracking issue
 for that feature. The issue title should be "Tracking issue
-for YOUR FEATURE".
+for YOUR FEATURE". Use the ["Tracking Issue" issue template][template].
 
-For tracking issues for features (as opposed to future-compat
-warnings), I don't think the description has to contain
-anything specific. Generally we put the list of items required
-for stabilization in a checklist, e.g.,
-
-```txt
-**Steps:**
-
-- [ ] Implement the RFC. (CC @rust-lang/compiler -- can anyone write
-      up mentoring instructions?)
-- [ ] Adjust the documentation. ([See instructions on rustc-dev-guide.](stabilization_guide.md#documentation-prs))
-- [ ] Stabilize the feature. ([See instructions on rustc-dev-guide.](stabilization_guide.md#stabilization-pr))
-```
+[template]: https://github.com/rust-lang/rust/issues/new?template=tracking_issue.md
 
 ##  Stability in code
 
