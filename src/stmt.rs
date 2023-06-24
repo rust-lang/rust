@@ -80,13 +80,19 @@ impl<'a> Rewrite for Stmt<'a> {
         } else {
             ExprType::Statement
         };
-        format_stmt(context, shape, self.as_ast_node(), expr_type)
+        format_stmt(
+            context,
+            shape,
+            self.as_ast_node(),
+            expr_type,
+            Some(self.is_last_expr()),
+        )
     }
 }
 
 impl Rewrite for ast::Stmt {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        format_stmt(context, shape, self, ExprType::Statement)
+        format_stmt(context, shape, self, ExprType::Statement, None)
     }
 }
 
@@ -95,13 +101,14 @@ fn format_stmt(
     shape: Shape,
     stmt: &ast::Stmt,
     expr_type: ExprType,
+    is_last_expr: Option<bool>,
 ) -> Option<String> {
     skip_out_of_file_lines_range!(context, stmt.span());
 
     let result = match stmt.kind {
         ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
         ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
-            let suffix = if semicolon_for_stmt(context, stmt) {
+            let suffix = if semicolon_for_stmt(context, stmt, is_last_expr) {
                 ";"
             } else {
                 ""
