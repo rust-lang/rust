@@ -5,6 +5,7 @@ use clippy_utils::{
     path_to_local,
 };
 use itertools::Itertools;
+use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind, Node, Pat};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{lint::in_external_macro, ty};
@@ -82,8 +83,9 @@ fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
 
     if let Some(elements) = elements
             .iter()
-            .map(|expr| {
-                if let ExprKind::Field(path, _) = expr.kind {
+            .enumerate()
+            .map(|(i, expr)| {
+                if let ExprKind::Field(path, field) = expr.kind && field.as_str() == i.to_string() {
                     return Some(path);
                 };
 
@@ -146,8 +148,13 @@ fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
 
     if let Some(elements) = elements
             .iter()
-            .map(|expr| {
-                if let ExprKind::Index(path, _) = expr.kind {
+            .enumerate()
+            .map(|(i, expr)| {
+                if let ExprKind::Index(path, index) = expr.kind
+                    && let ExprKind::Lit(lit) = index.kind
+                    && let LitKind::Int(val, _) = lit.node
+                    && val as usize == i
+                {
                     return Some(path);
                 };
 

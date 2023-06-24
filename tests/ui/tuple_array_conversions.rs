@@ -39,10 +39,8 @@ fn main() {
     let y = (1, 2);
     [x.0, y.0];
     [x.0, y.1];
-    // FP
     let x = [x.0, x.0];
     let x = (x[0], x[0]);
-    // How can this be fixed?
     external! {
         let t1: &[(u32, u32)] = &[(1, 2), (3, 4)];
         let v1: Vec<[u32; 2]> = t1.iter().map(|&(a, b)| [a, b]).collect();
