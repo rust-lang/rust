@@ -128,14 +128,48 @@ a new unstable feature:
    The tracking issue should be labeled with at least `C-tracking-issue`.
    For a language feature, a label `F-feature_name` should be added as well.
 
-2. Pick a name for the feature gate (for RFCs, use the name
+1. Pick a name for the feature gate (for RFCs, use the name
    in the RFC).
 
-3. Add a feature gate declaration to `rustc_feature/src/active.rs` in the active
-   `declare_features` block, and add the feature gate keyword to
-   `rustc_span/src/symbol.rs`. See [here][add-feature-gate] for detailed instructions.
+1. Add the feature name to `rustc_span/src/symbol.rs` in the `Symbols {...}` block.
 
-4. Prevent usage of the new feature unless the feature gate is set.
+1. Add a feature gate declaration to `rustc_feature/src/active.rs` in the active
+   `declare_features` block.
+
+   ```rust ignore
+   /// description of feature
+   (active, $feature_name, "CURRENT_RUSTC_VERSION", Some($tracking_issue_number), $edition)
+   ```
+
+   where `$edition` has the type `Option<Edition>`, and is typically just `None`. If you haven't yet
+   opened a tracking issue (e.g. because you want initial feedback on whether the feature is likely
+   to be accepted), you can temporarily use `None` - but make sure to update it before the PR is
+   merged!
+
+   For example:
+
+   ```rust ignore
+   /// Allows defining identifiers beyond ASCII.
+   (active, non_ascii_idents, "CURRENT_RUSTC_VERSION", Some(55467), None),
+   ```
+
+   Features can be marked as incomplete, and trigger the warn-by-default [`incomplete_features`
+   lint]
+   by setting their type to `incomplete`:
+
+   [`incomplete_features` lint]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#incomplete-features
+
+   ```rust ignore
+   /// Allows unsized rvalues at arguments and parameters.
+   (incomplete, unsized_locals, "CURRENT_RUSTC_VERSION", Some(48055), None),
+   ```
+
+   To avoid [semantic merge conflicts], please use `CURRENT_RUSTC_VERSION` instead of `1.70` or
+   another explicit version number.
+
+   [semantic merge conflicts]: https://bors.tech/essay/2017/02/02/pitch/
+
+1. Prevent usage of the new feature unless the feature gate is set.
    You can check it in most places in the compiler using the
    expression `tcx.features().$feature_name` (or
    `sess.features_untracked().$feature_name` if the
@@ -151,18 +185,18 @@ a new unstable feature:
    and then finally feature-gate all the spans in
    [`rustc_ast_passes::feature_gate::check_crate`].
 
-5. Add a test to ensure the feature cannot be used without
-   a feature gate, by creating `feature-gate-$feature_name.rs`
-   and `feature-gate-$feature_name.stderr` files under the
-   directory where the other tests for your feature reside.
+1. Add a test to ensure the feature cannot be used without
+   a feature gate, by creating `tests/ui/feature-gates/feature-gate-$feature_name.rs`.
+   You can generate the corresponding `.stderr` file by running `./x.py test tests/ui/feature-gates/
+   --bless`.
 
-6. Add a section to the unstable book, in
+1. Add a section to the unstable book, in
    `src/doc/unstable-book/src/language-features/$feature_name.md`.
 
-7. Write a lot of tests for the new feature.
+1. Write a lot of tests for the new feature, preferably in `tests/ui/$feature_name/`.
    PRs without tests will not be accepted!
 
-8. Get your PR reviewed and land it. You have now successfully
+1. Get your PR reviewed and land it. You have now successfully
    implemented a feature in Rust!
 
 [`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.GatedSpans.html

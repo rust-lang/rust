@@ -3,44 +3,16 @@
 This chapter is intended to provide basic help for adding, removing, and
 modifying feature gates.
 
+Note that this is specific to *language* feature gates; *library* feature gates use [a different
+mechanism][libs-gate].
+
+[libs-gate]: ./stability.md
 
 ## Adding a feature gate
 
-See ["Stability in code"] for help with adding a new feature; this section just
-covers how to add the feature gate *declaration*.
+See ["Stability in code"][adding] in the "Implementing new features" section for instructions.
 
-First, add the feature name to `rustc_span/src/symbol.rs` in the `Symbols {...}` block.
-
-Then, add a feature gate declaration to `rustc_feature/src/active.rs` in the active
-`declare_features` block:
-
-```rust,ignore
-/// description of feature
-(active, $feature_name, "$current_nightly_version", Some($tracking_issue_number), $edition)
-```
-
-where `$edition` has the type `Option<Edition>`, and is typically
-just `None`.
-
-For example:
-
-```rust,ignore
-/// Allows defining identifiers beyond ASCII.
-(active, non_ascii_idents, "1.0.0", Some(55467), None),
-```
-
-Features can be marked as incomplete, and trigger the warn-by-default [`incomplete_features` lint]
-by setting their type to `incomplete`:
-
-```rust,ignore
-/// Allows unsized rvalues at arguments and parameters.
-(incomplete, unsized_locals, "1.30.0", Some(48055), None),
-```
-
-When added, the current version should be the one for the current nightly.
-Once the feature is moved to `accepted.rs`, the version is changed to that
-nightly version.
-
+[adding]: ./implementing_new_features.md#stability-in-code
 
 ## Removing a feature gate
 
@@ -109,5 +81,4 @@ updating the declaration!
 
 
 ["Stability in code"]: ./implementing_new_features.md#stability-in-code
-[`incomplete_features` lint]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#incomplete-features
 ["Updating the feature-gate listing"]: ./stabilization_guide.md#updating-the-feature-gate-listing
