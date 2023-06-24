@@ -1,11 +1,11 @@
 error: return type notation uses `()` instead of `(..)` for elided arguments
-  --> $DIR/bad-inputs-and-output.rs:18:24
+  --> $DIR/bad-inputs-and-output.rs:20:24
    |
 LL | fn baz<T: Trait<method(..): Send>>() {}
    |                        ^^ help: remove the `..`
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/bad-inputs-and-output.rs:10:17
+  --> $DIR/bad-inputs-and-output.rs:12:17
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
    |                 ^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | fn foo<T: Trait<method(i32): Send>>() {}
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/bad-inputs-and-output.rs:14:17
+  --> $DIR/bad-inputs-and-output.rs:16:17
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
    |                 ^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | fn bar<T: Trait<method() -> (): Send>>() {}
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/bad-inputs-and-output.rs:3:12
+  --> $DIR/bad-inputs-and-output.rs:5:12
    |
 LL | #![feature(return_type_notation, async_fn_in_trait)]
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -32,13 +32,13 @@ LL | #![feature(return_type_notation, async_fn_in_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: argument types not allowed with return type notation
-  --> $DIR/bad-inputs-and-output.rs:10:23
+  --> $DIR/bad-inputs-and-output.rs:12:23
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
    |                       ^^^^^ help: remove the input types: `()`
 
 error: return type not allowed with return type notation
-  --> $DIR/bad-inputs-and-output.rs:14:25
+  --> $DIR/bad-inputs-and-output.rs:16:25
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
    |                         ^^^^^^ help: remove the return type
