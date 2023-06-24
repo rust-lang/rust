@@ -102,6 +102,7 @@ fn more_discriminant_overflow() {
         V4,
     }
 
+    #[allow(unreachable_patterns)]
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
         unreachable!()
     }
