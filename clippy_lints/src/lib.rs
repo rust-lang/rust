@@ -1073,7 +1073,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|_| Box::new(manual_range_patterns::ManualRangePatterns));
     store.register_early_pass(|| Box::new(visibility::Visibility));
-    store.register_late_pass(|_| Box::new(tuple_array_conversions::TupleArrayConversions));
+    store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions { msrv: msrv() }));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
