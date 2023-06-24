@@ -235,10 +235,11 @@ jobs:
 
     - name: Combine json
       run: |
-        git clone --depth 1 https://$METRICS_TOKEN@github.com/nanthR/metrics.git
+        git clone --depth 1 https://$METRICS_TOKEN@github.com/rust-analyzer/metrics.git
         jq -s ".[0] * .[1] * .[2] * .[3] * .[4]" build.json self.json ripgrep.json webrender.json diesel.json -c >> metrics/metrics.json
-        git -C metrics add .
-        git -C metrics -c user.name=Bot -c user.email=dummy@example.com commit --message 📈
-        git -C metrics push origin master
+        cd metrics
+        git add .
+        git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈
+        git push origin new
     env:
       METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
