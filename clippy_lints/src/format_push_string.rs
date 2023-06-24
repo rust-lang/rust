@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{match_def_path, paths, peel_hir_expr_refs};
-use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem};
+use clippy_utils::{higher, match_def_path, paths};
+use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -44,10 +44,24 @@ fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     is_type_lang_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), LangItem::String)
 }
 fn is_format(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    if let Some(macro_def_id) = e.span.ctxt().outer_expn_data().macro_def_id {
+    let e = e.peel_blocks().peel_borrows();
+
+    if e.span.from_expansion()
+        && let Some(macro_def_id) = e.span.ctxt().outer_expn_data().macro_def_id
+    {
         cx.tcx.get_diagnostic_name(macro_def_id) == Some(sym::format_macro)
+    } else if let Some(higher::If { then, r#else, .. }) = higher::If::hir(e) {
+        is_format(cx, then) || r#else.is_some_and(|e| is_format(cx, e))
     } else {
-        false
+        match higher::IfLetOrMatch::parse(cx, e) {
+            Some(higher::IfLetOrMatch::Match(_, arms, MatchSource::Normal)) => {
+                arms.iter().any(|arm| is_format(cx, arm.body))
+            },
+            Some(higher::IfLetOrMatch::IfLet(_, _, then, r#else)) => {
+                is_format(cx, then) ||r#else.is_some_and(|e| is_format(cx, e))
+            },
+            _ => false,
+        }
     }
 }
 
@@ -68,7 +82,6 @@ impl<'tcx> LateLintPass<'tcx> for FormatPushString {
             },
             _ => return,
         };
-        let (arg, _) = peel_hir_expr_refs(arg);
         if is_format(cx, arg) {
             span_lint_and_help(
                 cx,
