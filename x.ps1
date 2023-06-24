@@ -16,7 +16,13 @@ foreach ($arg in $args) {
 }
 
 function Get-Application($app) {
-    return Get-Command $app -ErrorAction SilentlyContinue -CommandType Application
+    $cmd = Get-Command $app -ErrorAction SilentlyContinue -CommandType Application | Select-Object -First 1
+    if ($cmd.source -match '.*AppData\\Local\\Microsoft\\WindowsApps\\.*exe') {
+        # Windows for some reason puts a `python3.exe` executable in PATH that just opens the windows store.
+        # Ignore it.
+        return $false
+    }
+    return $cmd
 }
 
 function Invoke-Application($application, $arguments) {
@@ -51,5 +57,7 @@ if (($null -ne $found) -and ($found.Length -ge 1)) {
     Invoke-Application $python $xpy_args
 }
 
-Write-Error "${PSCommandPath}: error: did not find python installed"
+$msg = "${PSCommandPath}: error: did not find python installed`n"
+$msg += "help: consider installing it from https://www.python.org/downloads/"
+Write-Error $msg -Category NotInstalled
 Exit 1
