@@ -57,6 +57,31 @@ if you want to learn more about `x.py`, [read this chapter][bootstrap].
 
 [bootstrap]: ./bootstrapping.md
 
+### Running `x.py`
+
+The `x.py` command can be run directly on most Unix systems in the following format:
+
+```sh
+./x.py <subcommand> [flags]
+```
+
+This is how the documentation and examples assume you are running `x.py`.
+Some alternative ways are:
+
+```sh
+# On a Unix shell if you don't have the necessary `python3` command
+./x <subcommand> [flags]
+
+# On Windows (if powershell is configured to run scripts)
+./x.ps1 <subcommand> [flags]
+
+# On the Windows Command Prompt (if .py files are configured to run Python)
+x.py <subcommand> [flags]
+
+# You can also run Python yourself, e.g.:
+python x.py <subcommand> [flags]
+```
+
 ### Running `x.py` slightly more conveniently
 
 There is a binary that wraps `x.py` called `x` in `src/tools/x`. All it does is
