@@ -62,6 +62,7 @@ pub mod marker {
     #[lang = "sized"]
     #[fundamental]
     #[rustc_specialization_trait]
+    #[rustc_coinductive]
     pub trait Sized {}
     // endregion:sized
 
