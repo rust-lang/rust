@@ -1,12 +1,12 @@
 # Stability attributes
 
-<!-- toc -->
-
 This section is about the stability attributes and schemes that allow stable
 APIs to use unstable APIs internally in the rustc standard library.
 
-For instructions on stabilizing a language feature see [Stabilizing
-Features](./stabilization_guide.md).
+**NOTE**: this section is for *library* features, not *language* features. For instructions on
+stabilizing a language feature see [Stabilizing Features](./stabilization_guide.md).
+
+<!-- toc -->
 
 ## unstable
 

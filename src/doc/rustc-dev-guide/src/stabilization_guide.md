@@ -1,6 +1,6 @@
 # Request for stabilization
 
-**NOTE**: this page is about stabilizing language features.
+**NOTE**: this page is about stabilizing *language* features.
 For stabilizing *library* features, see [Stabilizing a library feature].
 
 [Stabilizing a library feature]: ./stability.md#stabilizing-a-library-feature

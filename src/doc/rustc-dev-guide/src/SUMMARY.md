@@ -41,7 +41,7 @@
 - [Mastering @rustbot](./rustbot.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [Procedures for Breaking Changes](./bug-fix-procedure.md)
-- [Implementing new features](./implementing_new_features.md)
+- [Implementing new language features](./implementing_new_features.md)
 - [Stability attributes](./stability.md)
 - [Stabilizing Features](./stabilization_guide.md)
 - [Feature Gates](./feature-gates.md)
