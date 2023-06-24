@@ -10,5 +10,7 @@ type B = for<'a, 'b> fn(Inv<&'a &'b ()>, Inv<&'b &'a ()>, Inv<&'b ()>);
 fn main() {
     let x: A = |_, _, _| ();
     let y: B = x; //~ ERROR mismatched types
+    //~^ ERROR mismatched types
     let _: A = y; //~ ERROR mismatched types
+    //~^ ERROR mismatched types
 }

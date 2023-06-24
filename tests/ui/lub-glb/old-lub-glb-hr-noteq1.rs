@@ -12,7 +12,7 @@ fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8
     let z = match 22 {
         0 => x,
         _ => y,
-        //[leak]~^ ERROR `match` arms have incompatible types
+        //[leak]~^ ERROR mismatched types
         //[noleak]~^^ ERROR mismatched types
     };
 }

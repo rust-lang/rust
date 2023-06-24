@@ -1,0 +1,51 @@
+error[E0119]: conflicting implementations of trait `CoherenceTrait` for type `test1::Unique`
+  --> $DIR/leak-check.rs:27:9
+   |
+LL |   impl<T> CoherenceTrait for T {}
+   |   ---------------------------- first implementation here
+...
+LL |           impl<$($lt),*> $crate::CoherenceTrait for Unique<$($lt),*>
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `test1::Unique`
+...
+LL | /     assert_false_by_leak_check!(
+LL | |         exist<> (for<'a, 'b> Outlives<'a, 'b>)
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_false_by_leak_check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0119]: conflicting implementations of trait `CoherenceTrait` for type `test3::Unique`
+  --> $DIR/leak-check.rs:27:9
+   |
+LL |   impl<T> CoherenceTrait for T {}
+   |   ---------------------------- first implementation here
+...
+LL |           impl<$($lt),*> $crate::CoherenceTrait for Unique<$($lt),*>
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `test3::Unique`
+...
+LL | /     assert_false_by_leak_check!(
+LL | |         exist<> (for<'a> OutlivesPlaceholder<'a>)
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_false_by_leak_check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0119]: conflicting implementations of trait `CoherenceTrait` for type `test6::Unique`
+  --> $DIR/leak-check.rs:27:9
+   |
+LL |   impl<T> CoherenceTrait for T {}
+   |   ---------------------------- first implementation here
+...
+LL |           impl<$($lt),*> $crate::CoherenceTrait for Unique<$($lt),*>
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `test6::Unique`
+...
+LL | /     assert_false_by_leak_check!(
+LL | |         exist<> (for<'a, 'b> Equal<'a, 'b>)
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_false_by_leak_check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0119`.
