@@ -1,5 +1,36 @@
+error[E0432]: unresolved import `a::x`
+  --> $DIR/diagnostics-reexport.rs:12:9
+   |
+LL | pub use a::x;
+   |         ^^^^ no `x` in `a`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport.rs:18:12
+   |
+LL |     pub fn x() {}
+   |            ^
+
+error[E0432]: unresolved imports `b::x`, `b::y`
+  --> $DIR/diagnostics-reexport.rs:22:13
+   |
+LL | pub use b::{x, y};
+   |             ^  ^ no `y` in `b`
+   |             |
+   |             no `x` in `b`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport.rs:29:12
+   |
+LL |     pub fn x() {}
+   |            ^
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport.rs:32:12
+   |
+LL |     pub fn y() {}
+   |            ^
+
 error[E0425]: cannot find function `uwu` in module `inner`
-  --> $DIR/diagnostics-reexport.rs:14:12
+  --> $DIR/diagnostics-reexport.rs:38:12
    |
 LL |     inner::uwu();
    |            ^^^ not found in `inner`
@@ -10,6 +41,7 @@ note: found an item that was configured out
 LL |     pub use super::uwu;
    |                    ^^^
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0425`.
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.
