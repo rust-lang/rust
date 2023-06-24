@@ -4,9 +4,8 @@ use clippy_utils::{
     msrvs::{self, Msrv},
     path_to_local,
 };
-use itertools::Itertools;
 use rustc_ast::LitKind;
-use rustc_hir::{Expr, ExprKind, Node, Pat};
+use rustc_hir::{Expr, ExprKind, HirId, Node, Pat};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{lint::in_external_macro, ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -17,8 +16,8 @@ declare_clippy_lint! {
     /// Checks for tuple<=>array conversions that are not done with `.into()`.
     ///
     /// ### Why is this bad?
-    /// It's overly complex. `.into()` works for tuples<=>arrays with less than 13 elements and
-    /// conveys the intent a lot better, while also leaving less room for bugs!
+    /// It's unnecessary complexity. `.into()` works for tuples<=>arrays at or below 12 elements and
+    /// conveys the intent a lot better, while also leaving less room for hard to spot bugs!
     ///
     /// ### Example
     /// ```rust,ignore
@@ -45,26 +44,28 @@ pub struct TupleArrayConversions {
 impl LateLintPass<'_> for TupleArrayConversions {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if !in_external_macro(cx.sess(), expr.span) && self.msrv.meets(msrvs::TUPLE_ARRAY_CONVERSIONS) {
-            _ = check_array(cx, expr) || check_tuple(cx, expr);
+            match expr.kind {
+                ExprKind::Array(elements) if (1..=12).contains(&elements.len()) => check_array(cx, expr, elements),
+                ExprKind::Tup(elements) if (1..=12).contains(&elements.len()) => check_tuple(cx, expr, elements),
+                _ => {},
+            }
         }
     }
 
     extract_msrv_attr!(LateContext);
 }
 
-fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    let ExprKind::Array(elements) = expr.kind else {
-        return false;
-    };
-    if !(1..=12).contains(&elements.len()) {
-        return false;
-    }
-
-    if let Some(locals) = path_to_locals(cx, &elements.iter().collect_vec())
-        && let [first, rest @ ..] = &*locals
-        && let Node::Pat(first_pat) = first
-        && let first_id = parent_pat(cx, first_pat).hir_id
-        && rest.iter().chain(once(first)).all(|local| {
+#[expect(
+    clippy::blocks_in_if_conditions,
+    reason = "not a FP, but this is much easier to understand"
+)]
+fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
+    if should_lint(
+        cx,
+        elements,
+        // This is cursed.
+        Some,
+        |(first_id, local)| {
             if let Node::Pat(pat) = local
                 && let parent = parent_pat(cx, pat)
                 && parent.hir_id == first_id
@@ -76,27 +77,18 @@ fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
             }
 
             false
-        })
-    {
-        return emit_lint(cx, expr, ToType::Array);
-    }
+        },
+    ) || should_lint(
+        cx,
+        elements,
+        |(i, expr)| {
+            if let ExprKind::Field(path, field) = expr.kind && field.as_str() == i.to_string() {
+                return Some((i, path));
+            };
 
-    if let Some(elements) = elements
-            .iter()
-            .enumerate()
-            .map(|(i, expr)| {
-                if let ExprKind::Field(path, field) = expr.kind && field.as_str() == i.to_string() {
-                    return Some(path);
-                };
-
-                None
-            })
-            .collect::<Option<Vec<&Expr<'_>>>>()
-        && let Some(locals) = path_to_locals(cx, &elements)
-        && let [first, rest @ ..] = &*locals
-        && let Node::Pat(first_pat) = first
-        && let first_id = parent_pat(cx, first_pat).hir_id
-        && rest.iter().chain(once(first)).all(|local| {
+            None
+        },
+        |(first_id, local)| {
             if let Node::Pat(pat) = local
                 && let parent = parent_pat(cx, pat)
                 && parent.hir_id == first_id
@@ -108,28 +100,45 @@ fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
             }
 
             false
-        })
-    {
-        return emit_lint(cx, expr, ToType::Array);
+        },
+    ) {
+        emit_lint(cx, expr, ToType::Array);
     }
-
-    false
 }
 
+#[expect(
+    clippy::blocks_in_if_conditions,
+    reason = "not a FP, but this is much easier to understand"
+)]
 #[expect(clippy::cast_possible_truncation)]
-fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    let ExprKind::Tup(elements) = expr.kind else {
-        return false;
-    };
-    if !(1..=12).contains(&elements.len()) {
-        return false;
-    };
+fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
+    if should_lint(cx, elements, Some, |(first_id, local)| {
+        if let Node::Pat(pat) = local
+                && let parent = parent_pat(cx, pat)
+                && parent.hir_id == first_id
+            {
+                return matches!(
+                    cx.typeck_results().pat_ty(parent).peel_refs().kind(),
+                    ty::Array(_, len) if len.eval_target_usize(cx.tcx, cx.param_env) as usize == elements.len()
+                );
+            }
 
-    if let Some(locals) = path_to_locals(cx, &elements.iter().collect_vec())
-        && let [first, rest @ ..] = &*locals
-        && let Node::Pat(first_pat) = first
-        && let first_id = parent_pat(cx, first_pat).hir_id
-        && rest.iter().chain(once(first)).all(|local| {
+        false
+    }) || should_lint(
+        cx,
+        elements,
+        |(i, expr)| {
+            if let ExprKind::Index(path, index) = expr.kind
+                && let ExprKind::Lit(lit) = index.kind
+                && let LitKind::Int(val, _) = lit.node
+                && val as usize == i
+            {
+                return Some((i, path));
+            };
+
+            None
+        },
+        |(first_id, local)| {
             if let Node::Pat(pat) = local
                 && let parent = parent_pat(cx, pat)
                 && parent.hir_id == first_id
@@ -141,48 +150,10 @@ fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
             }
 
             false
-        })
-    {
-        return emit_lint(cx, expr, ToType::Tuple);
+        },
+    ) {
+        emit_lint(cx, expr, ToType::Tuple);
     }
-
-    if let Some(elements) = elements
-            .iter()
-            .enumerate()
-            .map(|(i, expr)| {
-                if let ExprKind::Index(path, index) = expr.kind
-                    && let ExprKind::Lit(lit) = index.kind
-                    && let LitKind::Int(val, _) = lit.node
-                    && val as usize == i
-                {
-                    return Some(path);
-                };
-
-                None
-            })
-            .collect::<Option<Vec<&Expr<'_>>>>()
-        && let Some(locals) = path_to_locals(cx, &elements)
-        && let [first, rest @ ..] = &*locals
-        && let Node::Pat(first_pat) = first
-        && let first_id = parent_pat(cx, first_pat).hir_id
-        && rest.iter().chain(once(first)).all(|local| {
-            if let Node::Pat(pat) = local
-                && let parent = parent_pat(cx, pat)
-                && parent.hir_id == first_id
-            {
-                return matches!(
-                    cx.typeck_results().pat_ty(parent).peel_refs().kind(),
-                    ty::Array(_, len) if len.eval_target_usize(cx.tcx, cx.param_env) as usize == elements.len()
-                );
-            }
-
-            false
-        })
-    {
-        return emit_lint(cx, expr, ToType::Tuple);
-    }
-
-    false
 }
 
 /// Walks up the `Pat` until it's reached the final containing `Pat`.
@@ -196,13 +167,6 @@ fn parent_pat<'tcx>(cx: &LateContext<'tcx>, start: &'tcx Pat<'tcx>) -> &'tcx Pat
         }
     }
     end
-}
-
-fn path_to_locals<'tcx>(cx: &LateContext<'tcx>, exprs: &[&'tcx Expr<'tcx>]) -> Option<Vec<Node<'tcx>>> {
-    exprs
-        .iter()
-        .map(|element| path_to_local(element).and_then(|local| cx.tcx.hir().find(local)))
-        .collect()
 }
 
 #[derive(Clone, Copy)]
@@ -238,6 +202,32 @@ fn emit_lint<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, to_type: ToTy
             to_type.help(),
         );
 
+        return true;
+    }
+
+    false
+}
+
+fn should_lint<'tcx>(
+    cx: &LateContext<'tcx>,
+    elements: &'tcx [Expr<'tcx>],
+    map: impl FnMut((usize, &'tcx Expr<'tcx>)) -> Option<(usize, &Expr<'_>)>,
+    predicate: impl FnMut((HirId, &Node<'tcx>)) -> bool,
+) -> bool {
+    if let Some(elements) = elements
+            .iter()
+            .enumerate()
+            .map(map)
+            .collect::<Option<Vec<_>>>()
+        && let Some(locals) = elements
+            .iter()
+            .map(|(_, element)| path_to_local(element).and_then(|local| cx.tcx.hir().find(local)))
+            .collect::<Option<Vec<_>>>()
+        && let [first, rest @ ..] = &*locals
+        && let Node::Pat(first_pat) = first
+        && let parent = parent_pat(cx, first_pat).hir_id
+        && rest.iter().chain(once(first)).map(|i| (parent, i)).all(predicate)
+    {
         return true;
     }
 
