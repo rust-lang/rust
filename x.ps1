@@ -5,7 +5,7 @@
 $ErrorActionPreference = "Stop"
 
 # syntax check
-Get-Command -syntax ${PSCommandPath}
+Get-Command -syntax ${PSCommandPath} >$null
 
 $xpy = Join-Path $PSScriptRoot x.py
 # Start-Process for some reason splits arguments on spaces. (Isn't powershell supposed to be simpler than bash?)
