@@ -120,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
             let arg_ty = cx.typeck_results().expr_ty(arg);
             let is_copy = is_copy(cx, arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
-            let (lint, msg) = match fn_name {
+            let (lint, msg, note_span) = match fn_name {
                 // early return for uplifted lints: dropping_references, dropping_copy_types, forgetting_references, forgetting_copy_types
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => return,
                 sym::mem_forget if arg_ty.is_ref() => return,
@@ -144,20 +144,24 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                         || drop_is_single_call_in_arm
                         ) =>
                 {
-                    (DROP_NON_DROP, DROP_NON_DROP_SUMMARY.into())
+                    (DROP_NON_DROP, DROP_NON_DROP_SUMMARY.into(), Some(arg.span))
                 },
                 sym::mem_forget => {
                     if arg_ty.needs_drop(cx.tcx, cx.param_env) {
-                        (MEM_FORGET, Cow::Owned(format!(
-                            "usage of `mem::forget` on {}",
-                            if arg_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {
-                                "`Drop` type"
-                            } else {
-                                "type with `Drop` fields"
-                            }
-                        )))
+                        (
+                            MEM_FORGET,
+                            Cow::Owned(format!(
+                                "usage of `mem::forget` on {}",
+                                if arg_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {
+                                    "`Drop` type"
+                                } else {
+                                    "type with `Drop` fields"
+                                }
+                            )),
+                            None,
+                        )
                     } else {
-                        (FORGET_NON_DROP, FORGET_NON_DROP_SUMMARY.into())
+                        (FORGET_NON_DROP, FORGET_NON_DROP_SUMMARY.into(), Some(arg.span))
                     }
                 }
                 _ => return,
@@ -167,7 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 lint,
                 expr.span,
                 &msg,
-                Some(arg.span),
+                note_span,
                 &format!("argument has type `{arg_ty}`"),
             );
         }
