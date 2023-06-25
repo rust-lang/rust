@@ -1832,11 +1832,13 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             builder,
         );
 
-        builder.info(&format!(
-            "Check compiletest suite={} mode={} ({} -> {})",
-            suite, mode, &compiler.host, target
-        ));
-        let _time = util::timeit(&builder);
+        let _group = builder.msg(
+            Kind::Test,
+            compiler.stage,
+            &format!("compiletest suite={suite} mode={mode}"),
+            compiler.host,
+            target,
+        );
         crate::render_tests::try_run_tests(builder, &mut cmd, false);
 
         if let Some(compare_mode) = compare_mode {
