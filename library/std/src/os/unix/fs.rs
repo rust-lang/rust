@@ -971,7 +971,6 @@ impl DirBuilderExt for fs::DirBuilder {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(unix_chown)]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -979,7 +978,7 @@ impl DirBuilderExt for fs::DirBuilder {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "unix_chown", issue = "88989")]
+#[stable(feature = "unix_chown", since = "CURRENT_RUSTC_VERSION")]
 pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::chown(dir.as_ref(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
 }
@@ -991,7 +990,6 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(unix_chown)]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -1000,7 +998,7 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "unix_chown", issue = "88989")]
+#[stable(feature = "unix_chown", since = "CURRENT_RUSTC_VERSION")]
 pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::fchown(fd.as_fd().as_raw_fd(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
 }
@@ -1013,7 +1011,6 @@ pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(unix_chown)]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -1021,7 +1018,7 @@ pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "unix_chown", issue = "88989")]
+#[stable(feature = "unix_chown", since = "CURRENT_RUSTC_VERSION")]
 pub fn lchown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::lchown(dir.as_ref(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
 }
