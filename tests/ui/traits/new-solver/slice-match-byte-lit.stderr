@@ -1,0 +1,11 @@
+error[E0271]: type mismatch resolving `[u8; 3] <: <Range<usize> as SliceIndex<[u8]>>::Output`
+  --> $DIR/slice-match-byte-lit.rs:6:9
+   |
+LL |     match &s[0..3] {
+   |           -------- this expression has type `&<std::ops::Range<usize> as SliceIndex<[u8]>>::Output`
+LL |         b"uwu" => {}
+   |         ^^^^^^ types differ
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.
