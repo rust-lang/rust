@@ -1,13 +1,18 @@
 use std::collections::HashSet;
 
 use hir::{self, HasCrate, HasSource, HasVisibility};
-use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility as _};
+use syntax::{
+    ast::{
+        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName,
+        HasVisibility as _,
+    },
+    ted,
+};
 
 use crate::{
-    utils::{convert_param_list_to_arg_list, find_struct_impl, render_snippet, Cursor},
+    utils::{convert_param_list_to_arg_list, find_struct_impl},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
-use syntax::ast::edit::AstNodeEdit;
 
 // Assist: generate_delegate_methods
 //
@@ -96,7 +101,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
             AssistId("generate_delegate_methods", AssistKind::Generate),
             format!("Generate delegate for `{field_name}.{name}()`",),
             target,
-            |builder| {
+            |edit| {
                 // Create the function
                 let method_source = match method.source(ctx.db()) {
                     Some(source) => source.value,
@@ -135,32 +140,25 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     is_const,
                     is_unsafe,
                 )
-                .indent(ast::edit::IndentLevel(1))
                 .clone_for_update();
-
-                let cursor = Cursor::Before(f.syntax());
+                f.reindent_to(IndentLevel(1));
 
                 // Create or update an impl block, attach the function to it,
                 // then insert into our code.
                 match impl_def {
                     Some(impl_def) => {
                         // Remember where in our source our `impl` block lives.
-                        let impl_def = impl_def.clone_for_update();
-                        let old_range = impl_def.syntax().text_range();
+                        let impl_def = edit.make_mut(impl_def);
 
-                        // Attach the function to the impl block
+                        // Attach the function to the impl block.
                         let assoc_items = impl_def.get_or_create_assoc_item_list();
                         assoc_items.add_item(f.clone().into());
 
                         // Update the impl block.
-                        match ctx.config.snippet_cap {
-                            Some(cap) => {
-                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                                builder.replace_snippet(cap, old_range, snippet);
-                            }
-                            None => {
-                                builder.replace(old_range, impl_def.syntax().to_string());
-                            }
+                        ted::replace(impl_def.syntax(), impl_def.syntax());
+
+                        if let Some(cap) = ctx.config.snippet_cap {
+                            edit.add_tabstop_before(cap, f);
                         }
                     }
                     None => {
@@ -178,22 +176,22 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                             None,
                         )
                         .clone_for_update();
+
                         let assoc_items = impl_def.get_or_create_assoc_item_list();
                         assoc_items.add_item(f.clone().into());
 
                         // Insert the impl block.
-                        match ctx.config.snippet_cap {
-                            Some(cap) => {
-                                let offset = strukt.syntax().text_range().end();
-                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                                let snippet = format!("\n\n{snippet}");
-                                builder.insert_snippet(cap, offset, snippet);
-                            }
-                            None => {
-                                let offset = strukt.syntax().text_range().end();
-                                let snippet = format!("\n\n{}", impl_def.syntax());
-                                builder.insert(offset, snippet);
-                            }
+                        let strukt = edit.make_mut(strukt.clone());
+                        ted::insert_all(
+                            ted::Position::after(strukt.syntax()),
+                            vec![
+                                make::tokens::blank_line().into(),
+                                impl_def.syntax().clone().into(),
+                            ],
+                        );
+
+                        if let Some(cap) = ctx.config.snippet_cap {
+                            edit.add_tabstop_before(cap, f)
                         }
                     }
                 }
