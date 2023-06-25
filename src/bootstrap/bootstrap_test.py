@@ -132,6 +132,7 @@ class BuildBootstrap(unittest.TestCase):
         parsed = bootstrap.parse_args(args)
         build = serialize_and_parse(configure_args, parsed)
         build.build_dir = os.environ["BUILD_DIR"]
+        build.build = os.environ["BUILD_PLATFORM"]
         return build.build_bootstrap_cmd(env), env
 
     def test_cargoflags(self):

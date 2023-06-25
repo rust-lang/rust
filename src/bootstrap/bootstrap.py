@@ -1046,6 +1046,8 @@ def bootstrap(args):
     if not using_default_path or os.path.exists(toml_path):
         with open(toml_path) as config:
             config_toml = config.read()
+    else:
+        config_toml = ''
 
     profile = RustBuild.get_toml_static(config_toml, 'profile')
     if profile is not None:

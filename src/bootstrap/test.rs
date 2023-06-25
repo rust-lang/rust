@@ -2667,6 +2667,7 @@ impl Step for Bootstrap {
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
             .env("BUILD_DIR", &builder.out)
+            .env("BUILD_PLATFORM", &builder.build.build.triple)
             .current_dir(builder.src.join("src/bootstrap/"))
             .args(builder.config.test_args());
         try_run(builder, &mut check_bootstrap).unwrap();
