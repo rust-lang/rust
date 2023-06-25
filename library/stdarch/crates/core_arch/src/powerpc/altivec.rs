@@ -318,6 +318,9 @@ extern "C" {
     fn vupkhsh(a: vector_signed_short) -> vector_signed_int;
     #[link_name = "llvm.ppc.altivec.vupklsh"]
     fn vupklsh(a: vector_signed_short) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.mfvscr"]
+    fn mfvscr() -> vector_unsigned_short;
 }
 
 macro_rules! s_t_l {
@@ -2735,6 +2738,14 @@ where
     T: sealed::VectorMax<U>,
 {
     a.vec_max(b)
+}
+
+/// Move From Vector Status and Control Register.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr(mfvscr))]
+pub unsafe fn vec_mfvscr() -> vector_unsigned_short {
+    mfvscr()
 }
 
 /// Vector add.
