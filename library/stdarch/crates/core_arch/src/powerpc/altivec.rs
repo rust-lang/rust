@@ -2566,7 +2566,7 @@ pub unsafe fn vec_cmpb(a: vector_float, b: vector_float) -> vector_signed_int {
     sealed::vec_vcmpbfp(a, b)
 }
 
-/// Vector cmpb.
+/// Vector ceil.
 #[inline]
 #[target_feature(enable = "altivec")]
 pub unsafe fn vec_ceil(a: vector_float) -> vector_float {
