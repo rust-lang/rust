@@ -1372,6 +1372,11 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
+        if self.config.rust_separate_debuginfo && mode == Mode::Rustc {
+            // Embed a build-id in the binary to enable integration with debuginfo tooling.
+            rustflags.arg("-Clink-arg=-Wl,--build-id");
+        }
+
         // Enable cfg checking of cargo features for everything but std and also enable cfg
         // checking of names and values.
         //

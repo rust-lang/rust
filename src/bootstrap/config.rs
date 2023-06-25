@@ -215,6 +215,7 @@ pub struct Config {
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
     pub rust_split_debuginfo: SplitDebuginfo,
+    pub rust_separate_debuginfo: bool,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
@@ -900,6 +901,7 @@ define_config! {
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
         split_debuginfo: Option<String> = "split-debuginfo",
+        separate_debuginfo: Option<bool> = "separate-debuginfo",
         run_dsymutil: Option<bool> = "run-dsymutil",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
@@ -1299,6 +1301,7 @@ impl Config {
                 .map(SplitDebuginfo::from_str)
                 .map(|v| v.expect("invalid value for rust.split_debuginfo"))
                 .unwrap_or(SplitDebuginfo::default_for_platform(&config.build.triple));
+            config.rust_separate_debuginfo = rust.separate_debuginfo.unwrap_or(false);
             optimize = rust.optimize;
             omit_git_hash = rust.omit_git_hash;
             config.rust_new_symbol_mangling = rust.new_symbol_mangling;

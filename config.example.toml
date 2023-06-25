@@ -526,6 +526,13 @@ changelog-seen = 2
 # producing a `.pdb` file.
 #split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
 
+# Should debuginfo be separated into additional .debug files in x dist.
+# This does not use split dwarf but objcopy. If this is enabled, all debuginfo
+# is stripped from the normal files. Also enables the .note.gnu.build-id section
+# to be generated for integration with debuginfo tooling.
+# Linux only.
+#separate-debuginfo = false
+
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 

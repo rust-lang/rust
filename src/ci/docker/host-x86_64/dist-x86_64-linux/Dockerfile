@@ -80,7 +80,9 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.ninja=false \
       --set rust.jemalloc \
       --set rust.use-lld=true \
-      --set rust.lto=thin
+      --set rust.lto=thin \
+      --set rust.separate-debuginfo=true \
+      --set rust.debuginfo-level=1
 ENV SCRIPT python3 ../src/ci/stage-build.py python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \

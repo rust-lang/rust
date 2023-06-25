@@ -1578,6 +1578,29 @@ impl Step for Assemble {
             let filename = f.file_name().into_string().unwrap();
             if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
             {
+                if builder.config.rust_separate_debuginfo && filename.starts_with("librustc_driver")
+                {
+                    let librustc_driver = f.path();
+                    let librustc_driver_debug = librustc_driver.with_extension("debug");
+
+                    builder.run(
+                        Command::new("objcopy")
+                            .arg("--only-keep-debug")
+                            .arg(&librustc_driver)
+                            .arg(&librustc_driver_debug),
+                    );
+                    builder.run(
+                        Command::new("objcopy")
+                            .arg("--strip-debug")
+                            .arg(&librustc_driver)
+                            .arg(&librustc_driver),
+                    );
+                    builder.copy(
+                        &librustc_driver_debug,
+                        &rustc_libdir.join(filename.replace(".so", ".debug")),
+                    );
+                }
+
                 builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }
         }

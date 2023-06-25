@@ -431,7 +431,7 @@ impl Step for Rustc {
                 for entry in builder.read_dir(&libdir) {
                     let name = entry.file_name();
                     if let Some(s) = name.to_str() {
-                        if is_dylib(s) {
+                        if is_dylib(s) || s.ends_with(".debug") {
                             // Don't use custom libdir here because ^lib/ will be resolved again
                             // with installer
                             builder.install(&entry.path(), &image.join("lib"), 0o644);

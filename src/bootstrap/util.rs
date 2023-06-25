@@ -62,7 +62,7 @@ pub fn is_dylib(name: &str) -> bool {
 /// Returns `true` if the file name given looks like a debug info file
 pub fn is_debug_info(name: &str) -> bool {
     // FIXME: consider split debug info on other platforms (e.g., Linux, macOS)
-    name.ends_with(".pdb")
+    name.ends_with(".pdb") || name.ends_with(".debug")
 }
 
 /// Returns the corresponding relative library directory that the compiler's
