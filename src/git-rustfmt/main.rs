@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use std::env;
 use std::io::stdout;
@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 use rustfmt_nightly as rustfmt;
+use tracing_subscriber::EnvFilter;
 
 use crate::rustfmt::{load_config, CliOptions, FormatReportFormatterBuilder, Input, Session};
 
@@ -170,7 +171,9 @@ impl Config {
 }
 
 fn main() {
-    env_logger::Builder::from_env("RUSTFMT_LOG").init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_env("RUSTFMT_LOG"))
+        .init();
 
     let opts = make_opts();
     let matches = opts

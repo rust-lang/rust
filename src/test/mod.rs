@@ -47,7 +47,7 @@ const FILE_SKIP_LIST: &[&str] = &[
 ];
 
 fn init_log() {
-    let _ = env_logger::builder().is_test(true).try_init();
+    let _ = tracing_subscriber::fmt().with_test_writer().try_init();
 }
 
 struct TestSetting {
