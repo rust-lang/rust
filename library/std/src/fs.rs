@@ -1755,8 +1755,14 @@ impl DirEntry {
         self.0.file_type().map(FileType)
     }
 
-    /// Returns the bare file name of this directory entry without any other
-    /// leading path component.
+    /// Returns the file name of this directory entry without any
+    /// leading path component(s).
+    ///
+    /// As an example,
+    /// the output of the function will result in "foo" for all the following paths:
+    /// - "./foo"
+    /// - "/the/foo"
+    /// - "../../foo"
     ///
     /// # Examples
     ///
