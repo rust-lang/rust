@@ -2664,7 +2664,12 @@ impl Step for Bootstrap {
     /// Tests the build system itself.
     fn run(self, builder: &Builder<'_>) {
         let mut check_bootstrap = Command::new(&builder.python());
-        check_bootstrap.arg("bootstrap_test.py").current_dir(builder.src.join("src/bootstrap/"));
+        check_bootstrap
+            .args(["-m", "unittest", "bootstrap_test.py"])
+            .env("BUILD_DIR", &builder.out)
+            .env("BUILD_PLATFORM", &builder.build.build.triple)
+            .current_dir(builder.src.join("src/bootstrap/"))
+            .args(builder.config.test_args());
         try_run(builder, &mut check_bootstrap).unwrap();
 
         let host = builder.config.build;
