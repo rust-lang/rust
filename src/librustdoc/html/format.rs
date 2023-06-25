@@ -281,11 +281,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
         }).map(|pred| {
             display_fn(move |f| {
-                if f.alternate() {
-                    f.write_str(" ")?;
-                } else {
-                    f.write_str("\n")?;
-                }
+                f.write_str("\n")?;
 
                 match pred {
                     clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
@@ -293,25 +289,13 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                         let generic_bounds = print_generic_bounds(bounds, cx);
 
                         if bound_params.is_empty() {
-                            if f.alternate() {
-                                write!(f, "{ty_cx:#}: {generic_bounds:#}")
-                            } else {
-                                write!(f, "{ty_cx}: {generic_bounds}")
-                            }
+                            write!(f, "{ty_cx}: {generic_bounds}")
                         } else {
-                            if f.alternate() {
-                                write!(
-                                    f,
-                                    "for<{:#}> {ty_cx:#}: {generic_bounds:#}",
-                                    comma_sep(bound_params.iter().map(|lt| lt.print(cx)), true)
-                                )
-                            } else {
-                                write!(
-                                    f,
-                                    "for&lt;{}&gt; {ty_cx}: {generic_bounds}",
-                                    comma_sep(bound_params.iter().map(|lt| lt.print(cx)), true)
-                                )
-                            }
+                            write!(
+                                f,
+                                "for&lt;{}&gt; {ty_cx}: {generic_bounds}",
+                                comma_sep(bound_params.iter().map(|lt| lt.print(cx)), true)
+                            )
                         }
                     }
                     clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
@@ -324,11 +308,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                     }
                     // FIXME(fmease): Render bound params.
                     clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
-                        if f.alternate() {
-                            write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
-                        } else {
-                            write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
-                        }
+                        write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
                     }
                 }
             })
@@ -339,45 +319,34 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
         }
 
         let where_preds = comma_sep(where_predicates, false);
-        let clause = if f.alternate() {
-            if ending == Ending::Newline {
-                format!(" where{where_preds},")
-            } else {
-                format!(" where{where_preds}")
-            }
+        let mut br_with_padding = String::with_capacity(6 * indent + 28);
+        br_with_padding.push('\n');
+        let where_indent = 3;
+        let padding_amount = if ending == Ending::Newline {
+            indent + 4
+        } else if indent == 0 {
+            4
         } else {
-            let mut br_with_padding = String::with_capacity(6 * indent + 28);
-            br_with_padding.push('\n');
-
-            let where_indent = 3;
-            let padding_amount = if ending == Ending::Newline {
-                indent + 4
-            } else if indent == 0 {
-                4
+            indent + where_indent + "where ".len()
+        };
+        for _ in 0..padding_amount {
+            br_with_padding.push(' ');
+        }
+        let where_preds = where_preds.to_string().replace('\n', &br_with_padding);
+        let clause = if ending == Ending::Newline {
+            let mut clause = " ".repeat(indent.saturating_sub(1));
+            write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
+            clause
+        } else {
+            // insert a newline after a single space but before multiple spaces at the start
+            if indent == 0 {
+                format!("\n<span class=\"where\">where{where_preds}</span>")
             } else {
-                indent + where_indent + "where ".len()
-            };
+                // put the first one on the same line as the 'where' keyword
+                let where_preds = where_preds.replacen(&br_with_padding, " ", 1);
 
-            for _ in 0..padding_amount {
-                br_with_padding.push(' ');
-            }
-            let where_preds = where_preds.to_string().replace('\n', &br_with_padding);
-
-            if ending == Ending::Newline {
-                let mut clause = " ".repeat(indent.saturating_sub(1));
-                write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
-                clause
-            } else {
-                // insert a newline after a single space but before multiple spaces at the start
-                if indent == 0 {
-                    format!("\n<span class=\"where\">where{where_preds}</span>")
-                } else {
-                    // put the first one on the same line as the 'where' keyword
-                    let where_preds = where_preds.replacen(&br_with_padding, " ", 1);
-
-                    write!(br_with_padding, "<span class=\"where\">where{where_preds}</span>")?;
-                    br_with_padding
-                }
+                write!(br_with_padding, "<span class=\"where\">where{where_preds}</span>")?;
+                br_with_padding
             }
         };
         write!(f, "{clause}")
