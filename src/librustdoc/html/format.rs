@@ -375,12 +375,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                     // put the first one on the same line as the 'where' keyword
                     let where_preds = where_preds.replacen(&br_with_padding, " ", 1);
 
-                    let mut clause = br_with_padding;
-                    // +1 is for `\n`.
-                    clause.truncate(indent + 1 + where_indent);
-
-                    write!(clause, "<span class=\"where\">where{where_preds}</span>")?;
-                    clause
+                    write!(br_with_padding, "<span class=\"where\">where{where_preds}</span>")?;
+                    br_with_padding
                 }
             }
         };
