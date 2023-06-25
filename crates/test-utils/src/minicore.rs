@@ -37,6 +37,7 @@
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     manually_drop: drop
+//!     non_null:
 //!     non_zero:
 //!     option: panic
 //!     ord: eq, option
@@ -386,6 +387,19 @@ pub mod ptr {
         type Metadata;
     }
     // endregion:pointee
+    // region:non_null
+    #[rustc_layout_scalar_valid_range_start(1)]
+    #[rustc_nonnull_optimization_guaranteed]
+    pub struct NonNull<T: ?Sized> {
+        pointer: *const T,
+    }
+    // region:coerce_unsized
+    impl<T: ?Sized, U: ?Sized> crate::ops::CoerceUnsized<NonNull<U>> for NonNull<T> where
+        T: crate::marker::Unsize<U>
+    {
+    }
+    // endregion:coerce_unsized
+    // endregion:non_null
 }
 
 pub mod ops {

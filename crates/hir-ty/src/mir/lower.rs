@@ -1742,17 +1742,17 @@ fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
         (TyKind::Raw(_, a) | TyKind::Ref(_, _, a), TyKind::Raw(_, b) | TyKind::Ref(_, _, b)) => {
             CastKind::Pointer(if a == b {
                 PointerCast::MutToConstPointer
-            } else if matches!(a.kind(Interner), TyKind::Slice(_) | TyKind::Str)
-                && matches!(b.kind(Interner), TyKind::Slice(_) | TyKind::Str)
+            } else if matches!(b.kind(Interner), TyKind::Slice(_))
+                && matches!(a.kind(Interner), TyKind::Array(_, _))
+                || matches!(b.kind(Interner), TyKind::Dyn(_))
             {
-                // slice to slice cast is no-op (metadata is not touched), so we use this
-                PointerCast::MutToConstPointer
-            } else if matches!(b.kind(Interner), TyKind::Slice(_) | TyKind::Dyn(_)) {
                 PointerCast::Unsize
             } else if matches!(a.kind(Interner), TyKind::Slice(s) if s == b) {
                 PointerCast::ArrayToPointer
             } else {
-                // cast between two sized pointer, like *const i32 to *const i8. There is no specific variant
+                // cast between two sized pointer, like *const i32 to *const i8, or two unsized pointer, like
+                // slice to slice, slice to str, ... . These are no-ops (even in the unsized case, no metadata
+                // will be touched) but there is no specific variant
                 // for it in `PointerCast` so we use `MutToConstPointer`
                 PointerCast::MutToConstPointer
             })
