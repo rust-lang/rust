@@ -220,7 +220,7 @@ dependencies = [
  "chalk-derive",
  "chalk-ir",
  "ena",
- "indexmap",
+ "indexmap 1.9.3",
  "itertools",
  "petgraph",
  "rustc-hash",
@@ -313,7 +313,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "907076dfda823b0b36d2a1bb5f90c96660a5bbcd7729e10727f07858f22c4edc"
 dependencies = [
  "cfg-if",
- "hashbrown",
+ "hashbrown 0.12.3",
  "lock_api",
  "once_cell",
  "parking_lot_core 0.9.6",
@@ -362,6 +362,12 @@ checksum = "c533630cf40e9caa44bd91aadc88a75d75a4c3a12b4cfde353cbed41daa1e1f1"
 dependencies = [
  "log",
 ]
+
+[[package]]
+name = "equivalent"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88bffebc5d80432c9b140ee17875ff173a8ab62faad5b257da912bd2f6c1c0a1"
 
 [[package]]
 name = "expect-test"
@@ -454,6 +460,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
+name = "hashbrown"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
+
+[[package]]
 name = "heck"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -517,11 +529,11 @@ dependencies = [
  "either",
  "expect-test",
  "fst",
- "hashbrown",
+ "hashbrown 0.12.3",
  "hir-expand",
  "hkalbasi-rustc-ap-rustc_abi",
  "hkalbasi-rustc-ap-rustc_index",
- "indexmap",
+ "indexmap 2.0.0",
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -548,7 +560,7 @@ dependencies = [
  "cov-mark",
  "either",
  "expect-test",
- "hashbrown",
+ "hashbrown 0.12.3",
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -715,7 +727,7 @@ dependencies = [
  "expect-test",
  "fst",
  "hir",
- "indexmap",
+ "indexmap 2.0.0",
  "itertools",
  "limit",
  "line-index 0.1.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -792,7 +804,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
 dependencies = [
  "autocfg",
- "hashbrown",
+ "hashbrown 0.12.3",
+]
+
+[[package]]
+name = "indexmap"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
+dependencies = [
+ "equivalent",
+ "hashbrown 0.14.0",
 ]
 
 [[package]]
@@ -829,7 +851,7 @@ name = "intern"
 version = "0.0.0"
 dependencies = [
  "dashmap",
- "hashbrown",
+ "hashbrown 0.12.3",
  "once_cell",
  "rustc-hash",
  "triomphe",
@@ -1282,7 +1304,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
 dependencies = [
  "fixedbitset",
- "indexmap",
+ "indexmap 1.9.3",
 ]
 
 [[package]]
@@ -1488,7 +1510,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64449cfef9483a475ed56ae30e2da5ee96448789fb2aa240a04beb6a055078bf"
 dependencies = [
  "countme",
- "hashbrown",
+ "hashbrown 0.12.3",
  "memoffset 0.8.0",
  "rustc-hash",
  "text-size",
@@ -1575,7 +1597,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b223dccb46c32753144d0b51290da7230bb4aedcd8379d6b4c9a474c18bf17a"
 dependencies = [
  "crossbeam-utils",
- "indexmap",
+ "indexmap 1.9.3",
  "lock_api",
  "log",
  "oorandom",
@@ -1662,7 +1684,7 @@ version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bdf3bf93142acad5821c99197022e170842cdbc1c30482b98750c688c640842a"
 dependencies = [
- "indexmap",
+ "indexmap 1.9.3",
  "itoa",
  "ryu",
  "serde",
@@ -1776,7 +1798,7 @@ dependencies = [
  "cov-mark",
  "either",
  "expect-test",
- "indexmap",
+ "indexmap 2.0.0",
  "itertools",
  "once_cell",
  "parser",
@@ -2127,7 +2149,7 @@ name = "vfs"
 version = "0.0.0"
 dependencies = [
  "fst",
- "indexmap",
+ "indexmap 2.0.0",
  "nohash-hasher",
  "paths",
  "rustc-hash",
