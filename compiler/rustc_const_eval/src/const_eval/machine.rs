@@ -57,7 +57,7 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// * Interning makes everything outside of statics immutable.
     /// * Pointers to allocations inside of statics can never leak outside, to a non-static global.
     /// This boolean here controls the second part.
-    pub(super) can_access_statics: bool,
+    pub(super) can_access_statics: CanAccessStatics,
 
     /// Whether to check alignment during evaluation.
     pub(super) check_alignment: CheckAlignment,
@@ -83,8 +83,23 @@ impl CheckAlignment {
     }
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum CanAccessStatics {
+    No,
+    Yes,
+}
+
+impl From<bool> for CanAccessStatics {
+    fn from(value: bool) -> Self {
+        if value { Self::Yes } else { Self::No }
+    }
+}
+
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(crate) fn new(can_access_statics: bool, check_alignment: CheckAlignment) -> Self {
+    pub(crate) fn new(
+        can_access_statics: CanAccessStatics,
+        check_alignment: CheckAlignment,
+    ) -> Self {
         CompileTimeInterpreter {
             num_evaluated_steps: 0,
             stack: Vec::new(),
@@ -699,7 +714,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         } else {
             // Read access. These are usually allowed, with some exceptions.
-            if machine.can_access_statics {
+            if machine.can_access_statics == CanAccessStatics::Yes {
                 // Machine configuration allows us read from anything (e.g., `static` initializer).
                 Ok(())
             } else if static_def_id.is_some() {

@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{self, Abi};
 
-use super::{CompileTimeEvalContext, CompileTimeInterpreter};
+use super::{CanAccessStatics, CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::errors;
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
@@ -93,7 +93,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
-    can_access_statics: bool,
+    can_access_statics: CanAccessStatics,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
@@ -207,7 +207,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
         key.param_env,
-        /*can_access_statics:*/ is_static,
+        CanAccessStatics::from(is_static),
     );
 
     let mplace = ecx.raw_const_to_mplace(constant).expect(
@@ -309,7 +309,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(
-            /*can_access_statics:*/ is_static,
+            CanAccessStatics::from(is_static),
             if tcx.sess.opts.unstable_opts.extra_const_ub_checks {
                 CheckAlignment::Error
             } else {
