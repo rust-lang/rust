@@ -369,11 +369,11 @@ fn tuple() {
 }
 
 #[test]
-fn non_zero() {
+fn non_zero_and_non_null() {
     size_and_align! {
-        minicore: non_zero, option;
-        use core::num::NonZeroU8;
-        struct Goal(Option<NonZeroU8>);
+        minicore: non_zero, non_null, option;
+        use core::{num::NonZeroU8, ptr::NonNull};
+        struct Goal(Option<NonZeroU8>, Option<NonNull<i32>>);
     }
 }
 

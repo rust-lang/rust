@@ -1263,50 +1263,81 @@ impl Evaluator<'_> {
         current_ty: &Ty,
         target_ty: &Ty,
     ) -> Result<IntervalOrOwned> {
-        use IntervalOrOwned::*;
         fn for_ptr(x: &TyKind) -> Option<Ty> {
             match x {
                 TyKind::Raw(_, ty) | TyKind::Ref(_, _, ty) => Some(ty.clone()),
                 _ => None,
             }
         }
-        Ok(match self.coerce_unsized_look_through_fields(target_ty, for_ptr)? {
-            ty => match &ty.data(Interner).kind {
-                TyKind::Slice(_) => {
-                    match self.coerce_unsized_look_through_fields(current_ty, for_ptr)? {
-                        ty => match &ty.data(Interner).kind {
-                            TyKind::Array(_, size) => {
-                                let len = match try_const_usize(self.db, size) {
-                                    None => not_supported!(
-                                        "unevaluatble len of array in coerce unsized"
-                                    ),
-                                    Some(x) => x as usize,
-                                };
-                                let mut r = Vec::with_capacity(16);
-                                let addr = addr.get(self)?;
-                                r.extend(addr.iter().copied());
-                                r.extend(len.to_le_bytes().into_iter());
-                                Owned(r)
-                            }
-                            t => {
-                                not_supported!("slice unsizing from non array type {t:?}")
-                            }
-                        },
-                    }
+        let target_ty = self.coerce_unsized_look_through_fields(target_ty, for_ptr)?;
+        let current_ty = self.coerce_unsized_look_through_fields(current_ty, for_ptr)?;
+
+        self.unsizing_ptr_from_addr(target_ty, current_ty, addr)
+    }
+
+    /// Adds metadata to the address and create the fat pointer result of the unsizing operation.
+    fn unsizing_ptr_from_addr(
+        &mut self,
+        target_ty: Ty,
+        current_ty: Ty,
+        addr: Interval,
+    ) -> Result<IntervalOrOwned> {
+        use IntervalOrOwned::*;
+        Ok(match &target_ty.data(Interner).kind {
+            TyKind::Slice(_) => match &current_ty.data(Interner).kind {
+                TyKind::Array(_, size) => {
+                    let len = match try_const_usize(self.db, size) {
+                        None => {
+                            not_supported!("unevaluatble len of array in coerce unsized")
+                        }
+                        Some(x) => x as usize,
+                    };
+                    let mut r = Vec::with_capacity(16);
+                    let addr = addr.get(self)?;
+                    r.extend(addr.iter().copied());
+                    r.extend(len.to_le_bytes().into_iter());
+                    Owned(r)
                 }
-                TyKind::Dyn(_) => match &current_ty.data(Interner).kind {
-                    TyKind::Raw(_, ty) | TyKind::Ref(_, _, ty) => {
-                        let vtable = self.vtable_map.id(ty.clone());
-                        let mut r = Vec::with_capacity(16);
-                        let addr = addr.get(self)?;
-                        r.extend(addr.iter().copied());
-                        r.extend(vtable.to_le_bytes().into_iter());
-                        Owned(r)
-                    }
-                    _ => not_supported!("dyn unsizing from non pointers"),
-                },
-                _ => not_supported!("unknown unsized cast"),
+                t => {
+                    not_supported!("slice unsizing from non array type {t:?}")
+                }
             },
+            TyKind::Dyn(_) => {
+                let vtable = self.vtable_map.id(current_ty.clone());
+                let mut r = Vec::with_capacity(16);
+                let addr = addr.get(self)?;
+                r.extend(addr.iter().copied());
+                r.extend(vtable.to_le_bytes().into_iter());
+                Owned(r)
+            }
+            TyKind::Adt(id, target_subst) => match &current_ty.data(Interner).kind {
+                TyKind::Adt(current_id, current_subst) => {
+                    if id != current_id {
+                        not_supported!("unsizing struct with different type");
+                    }
+                    let id = match id.0 {
+                        AdtId::StructId(s) => s,
+                        AdtId::UnionId(_) => not_supported!("unsizing unions"),
+                        AdtId::EnumId(_) => not_supported!("unsizing enums"),
+                    };
+                    let Some((last_field, _)) = self.db.struct_data(id).variant_data.fields().iter().rev().next() else {
+                        not_supported!("unsizing struct without field");
+                    };
+                    let target_last_field = self.db.field_types(id.into())[last_field]
+                        .clone()
+                        .substitute(Interner, target_subst);
+                    let current_last_field = self.db.field_types(id.into())[last_field]
+                        .clone()
+                        .substitute(Interner, current_subst);
+                    return self.unsizing_ptr_from_addr(
+                        target_last_field,
+                        current_last_field,
+                        addr,
+                    );
+                }
+                _ => not_supported!("unsizing struct with non adt type"),
+            },
+            _ => not_supported!("unknown unsized cast"),
         })
     }
 

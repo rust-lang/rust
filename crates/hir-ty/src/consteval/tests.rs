@@ -166,14 +166,21 @@ fn casts() {
     check_number(
         r#"
     //- minicore: coerce_unsized, index, slice
+    struct X {
+        unsize_field: [u8],
+    }
+
     const GOAL: usize = {
         let a = [10, 20, 3, 15];
         let x: &[i32] = &a;
-        let y: *const [i32] = x;
-        let z = y as *const [u8]; // slice fat pointer cast don't touch metadata
-        let q = z as *const str;
-        let p = q as *const [u8];
-        let w = unsafe { &*z };
+        let x: *const [i32] = x;
+        let x = x as *const [u8]; // slice fat pointer cast don't touch metadata
+        let x = x as *const str;
+        let x = x as *const X;
+        let x = x as *const [i16];
+        let x = x as *const X;
+        let x = x as *const [u8];
+        let w = unsafe { &*x };
         w.len()
     };
         "#,
@@ -1870,6 +1877,38 @@ fn dyn_trait() {
     };
         "#,
         900,
+    );
+}
+
+#[test]
+fn coerce_unsized() {
+    check_number(
+        r#"
+//- minicore: coerce_unsized, deref_mut, slice, index, transmute, non_null
+use core::ops::{Deref, DerefMut, CoerceUnsized};
+use core::{marker::Unsize, mem::transmute, ptr::NonNull};
+
+struct ArcInner<T: ?Sized> {
+    strong: usize,
+    weak: usize,
+    data: T,
+}
+
+pub struct Arc<T: ?Sized> {
+    inner: NonNull<ArcInner<T>>,
+}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
+
+const GOAL: usize = {
+    let x = transmute::<usize, Arc<[i32; 3]>>(12);
+    let y: Arc<[i32]> = x;
+    let z = transmute::<Arc<[i32]>, (usize, usize)>(y);
+    z.1
+};
+
+        "#,
+        3,
     );
 }
 
