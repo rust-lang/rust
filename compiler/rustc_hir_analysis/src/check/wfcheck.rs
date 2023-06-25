@@ -1549,7 +1549,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
         {
             let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, _depth| {
                 match re.kind() {
-                    ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReError(_) => re,
+                    ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReError(_) | ty::ReStatic => re,
                     r => bug!("unexpected region: {r:?}"),
                 }
             });
