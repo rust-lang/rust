@@ -791,10 +791,10 @@ fn clean_ty_generics<'tcx>(
         })
         .collect::<ThinVec<GenericParamDef>>();
 
-    // param index -> [(trait DefId, associated type name & generics, type, higher-ranked params)]
+    // param index -> [(trait DefId, associated type name & generics, term, higher-ranked params)]
     let mut impl_trait_proj = FxHashMap::<
         u32,
-        Vec<(DefId, PathSegment, ty::Binder<'_, Ty<'_>>, Vec<GenericParamDef>)>,
+        Vec<(DefId, PathSegment, ty::Binder<'_, ty::Term<'_>>, Vec<GenericParamDef>)>,
     >::default();
 
     let where_predicates = preds
@@ -852,11 +852,10 @@ fn clean_ty_generics<'tcx>(
                     .as_ref()
                     .and_then(|(lhs, rhs): &(Type, _)| Some((lhs.projection()?, rhs)))
                 {
-                    // FIXME(...): Remove this unwrap()
                     impl_trait_proj.entry(param_idx).or_default().push((
                         trait_did,
                         name,
-                        rhs.map_bound(|rhs| rhs.ty().unwrap()),
+                        *rhs,
                         p.get_bound_params()
                             .into_iter()
                             .flatten()
@@ -879,15 +878,8 @@ fn clean_ty_generics<'tcx>(
         let crate::core::ImplTraitParam::ParamIndex(idx) = param else { unreachable!() };
         if let Some(proj) = impl_trait_proj.remove(&idx) {
             for (trait_did, name, rhs, bound_params) in proj {
-                let rhs = clean_middle_ty(rhs, cx, None, None);
-                simplify::merge_bounds(
-                    cx,
-                    &mut bounds,
-                    bound_params,
-                    trait_did,
-                    name,
-                    &Term::Type(rhs),
-                );
+                let rhs = clean_middle_term(rhs, cx);
+                simplify::merge_bounds(cx, &mut bounds, bound_params, trait_did, name, &rhs);
             }
         }
 
