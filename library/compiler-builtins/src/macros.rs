@@ -419,7 +419,7 @@ macro_rules! intrinsics {
     (
         #[naked]
         $(#[$($attr:tt)*])*
-        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+        pub $(unsafe)? extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
