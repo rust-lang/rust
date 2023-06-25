@@ -1408,7 +1408,7 @@ impl clean::FnDecl {
         let amp = if f.alternate() { "&" } else { "&amp;" };
 
         write!(f, "(")?;
-        if let Some(n) = line_wrapping_indent {
+        if let Some(n) = line_wrapping_indent && !self.inputs.values.is_empty() {
             write!(f, "\n{}", Indent(n + 4))?;
         }
         for (i, input) in self.inputs.values.iter().enumerate() {
