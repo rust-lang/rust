@@ -14,7 +14,8 @@ set-window-size: (600, 100)
 assert-size: (".search-results div.desc", {"width": 566})
 
 // The result set is all on one line.
-assert-css: (".search-results .result-name > span", {"display": "inline"})
+assert-css: (".search-results .result-name > span:not(.typename)", {"display": "inline"})
+assert-css: (".search-results .result-name > span.typename", {"display": "inline-block"})
 
 // Check that the crate filter `<select>` is correctly handled when it goes to next line.
 // To do so we need to update the length of one of its `<option>`.

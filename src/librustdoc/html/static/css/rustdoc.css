@@ -891,8 +891,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--search-results-grey-color);
 }
 .search-results .result-name .typename {
+	display: inline-block;
 	color: var(--search-results-grey-color);
 	font-size: 0.875rem;
+	width: 6.25rem;
 }
 
 .popover {

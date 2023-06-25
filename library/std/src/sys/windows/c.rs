@@ -12,7 +12,6 @@ use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 use core::ffi::NonZero_c_ulong;
 
-#[path = "c/windows_sys.rs"] // c.rs is included from two places so we need to specify this
 mod windows_sys;
 pub use windows_sys::*;
 
