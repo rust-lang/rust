@@ -2512,6 +2512,7 @@ extern "C" {
         remark_all_passes: bool,
         remark_passes: *const *const c_char,
         remark_passes_len: usize,
+        remark_file: *const c_char,
     );
 
     #[allow(improper_ctypes)]

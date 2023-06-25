@@ -2583,6 +2583,10 @@ pub fn build_session_options(
         handler.early_warn("-C remark requires \"-C debuginfo=n\" to show source locations");
     }
 
+    if cg.remark.is_empty() && unstable_opts.remark_dir.is_some() {
+        handler.early_warn("using -Z remark-dir without enabling remarks using e.g. -C remark=all");
+    }
+
     let externs = parse_externs(handler, matches, &unstable_opts);
 
     let crate_name = matches.opt_str("crate-name");
