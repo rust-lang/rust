@@ -1,0 +1,18 @@
+error[E0275]: overflow evaluating the requirement `Cons<_, _>: Flat`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "4096"]` attribute to your crate (`write_long_type`)
+note: required for `Cons<Cons<_, _>, _>` to implement `Flat`
+  --> $DIR/write-long-type.rs:53:30
+   |
+LL | impl<HeadCar, HeadCdr, Tail> Flat for Cons<Cons<HeadCar, HeadCdr>, Tail>
+   |                              ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     (<Cons<HeadCar, HeadCdr> as Flat>::Output, <Tail as Flat>::Output): Concat,
+   |                                                                         ------ unsatisfied trait bound introduced here
+   = note: 2047 redundant requirements hidden
+   = note: required for `Cons<Cons<Cons<Cons<Cons<Cons<Cons<Cons<Cons<..., ...>, ...>, ...>, ...>, ...>, ...>, ...>, ...>, ...>` to implement `Flat`
+   = note: the full type name has been written to '$TEST_BUILD_DIR/infinite/write-long-type/write-long-type.long-type-hash.txt'
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.
