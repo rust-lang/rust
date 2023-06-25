@@ -431,3 +431,47 @@ compat_fn_with_fallback! {
         Status as u32
     }
 }
+
+// # Arm32 shim
+//
+// AddVectoredExceptionHandler and WSAStartup use platform-specific types.
+// However, Microsoft no longer supports thumbv7a so definitions for those targets
+// are not included in the win32 metadata. We work around that by defining them here.
+//
+// Where possible, these definitions should be kept in sync with https://docs.rs/windows-sys
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "uwp"))] {
+    #[link(name = "kernel32")]
+    extern "system" {
+        pub fn AddVectoredExceptionHandler(
+            first: u32,
+            handler: PVECTORED_EXCEPTION_HANDLER,
+        ) -> *mut c_void;
+    }
+    pub type PVECTORED_EXCEPTION_HANDLER = Option<
+        unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32,
+    >;
+    #[repr(C)]
+    pub struct EXCEPTION_POINTERS {
+        pub ExceptionRecord: *mut EXCEPTION_RECORD,
+        pub ContextRecord: *mut CONTEXT,
+    }
+    #[cfg(target_arch = "arm")]
+    pub enum CONTEXT {}
+}}
+
+#[link(name = "ws2_32")]
+extern "system" {
+    pub fn WSAStartup(wversionrequested: u16, lpwsadata: *mut WSADATA) -> i32;
+}
+#[cfg(target_arch = "arm")]
+#[repr(C)]
+pub struct WSADATA {
+    pub wVersion: u16,
+    pub wHighVersion: u16,
+    pub szDescription: [u8; 257],
+    pub szSystemStatus: [u8; 129],
+    pub iMaxSockets: u16,
+    pub iMaxUdpDg: u16,
+    pub lpVendorInfo: PSTR,
+}
