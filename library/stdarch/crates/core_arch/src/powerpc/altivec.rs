@@ -321,6 +321,9 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.mfvscr"]
     fn mfvscr() -> vector_unsigned_short;
+
+    #[link_name = "llvm.ppc.altivec.vlogefp"]
+    fn vlogefp(a: vector_float) -> vector_float;
 }
 
 macro_rules! s_t_l {
@@ -2502,6 +2505,14 @@ where
     T: sealed::VectorLde,
 {
     p.vec_lde(off)
+}
+
+/// Vector Base-2 Logarithm Estimate
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr(vlogefp))]
+pub unsafe fn vec_loge(a: vector_float) -> vector_float {
+    vlogefp(a)
 }
 
 /// Vector floor.
