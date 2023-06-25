@@ -19,9 +19,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{
-    Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
-};
+use rustc_target::abi::{Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants};
 
 use std::hash::Hash;
 
@@ -554,7 +552,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // FIXME: Check if the signature matches
                 } else {
                     // Otherwise (for standalone Miri), we have to still check it to be non-null.
-                    if self.ecx.scalar_may_be_null(value)? {
+                    if self.ecx.ptr_scalar_range(value)?.contains(&0) {
                         throw_validation_failure!(self.path, NullFnPtr);
                     }
                 }
@@ -595,46 +593,36 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     ) -> InterpResult<'tcx> {
         let size = scalar_layout.size(self.ecx);
         let valid_range = scalar_layout.valid_range(self.ecx);
-        let WrappingRange { start, end } = valid_range;
         let max_value = size.unsigned_int_max();
-        assert!(end <= max_value);
-        let bits = match scalar.try_to_int() {
-            Ok(int) => int.assert_bits(size),
+        assert!(valid_range.end <= max_value);
+        match scalar.try_to_int() {
+            Ok(int) => {
+                // We have an explicit int: check it against the valid range.
+                let bits = int.assert_bits(size);
+                if valid_range.contains(bits) {
+                    Ok(())
+                } else {
+                    throw_validation_failure!(
+                        self.path,
+                        OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
+                    )
+                }
+            }
             Err(_) => {
                 // So this is a pointer then, and casting to an int failed.
                 // Can only happen during CTFE.
-                // We support 2 kinds of ranges here: full range, and excluding zero.
-                if start == 1 && end == max_value {
-                    // Only null is the niche. So make sure the ptr is NOT null.
-                    if self.ecx.scalar_may_be_null(scalar)? {
-                        throw_validation_failure!(
-                            self.path,
-                            NullablePtrOutOfRange { range: valid_range, max_value }
-                        )
-                    } else {
-                        return Ok(());
-                    }
-                } else if scalar_layout.is_always_valid(self.ecx) {
-                    // Easy. (This is reachable if `enforce_number_validity` is set.)
-                    return Ok(());
+                // We check if the possible addresses are compatible with the valid range.
+                let range = self.ecx.ptr_scalar_range(scalar)?;
+                if valid_range.contains_range(range) {
+                    Ok(())
                 } else {
-                    // Conservatively, we reject, because the pointer *could* have a bad
-                    // value.
+                    // Reject conservatively, because the pointer *could* have a bad value.
                     throw_validation_failure!(
                         self.path,
                         PtrOutOfRange { range: valid_range, max_value }
                     )
                 }
             }
-        };
-        // Now compare.
-        if valid_range.contains(bits) {
-            Ok(())
-        } else {
-            throw_validation_failure!(
-                self.path,
-                OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
-            )
         }
     }
 }

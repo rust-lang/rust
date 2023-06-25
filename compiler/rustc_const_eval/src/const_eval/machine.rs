@@ -333,7 +333,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // Inequality with integers other than null can never be known for sure.
             (Scalar::Int(int), ptr @ Scalar::Ptr(..))
             | (ptr @ Scalar::Ptr(..), Scalar::Int(int))
-                if int.is_null() && !self.scalar_may_be_null(ptr)? =>
+                if int.is_null() && !self.ptr_scalar_range(ptr)?.contains(&0) =>
             {
                 0
             }

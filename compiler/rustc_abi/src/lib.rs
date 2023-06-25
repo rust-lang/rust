@@ -1006,6 +1006,43 @@ impl WrappingRange {
         }
     }
 
+    /// Returns `true` if `range` is contained in `self`.
+    #[inline(always)]
+    pub fn contains_range<I: Into<u128> + Ord>(&self, range: RangeInclusive<I>) -> bool {
+        if range.is_empty() {
+            return true;
+        }
+
+        let (vmin, vmax) = range.into_inner();
+        let (vmin, vmax) = (vmin.into(), vmax.into());
+
+        if self.start <= self.end {
+            self.start <= vmin && vmax <= self.end
+        } else {
+            // The last check is needed to cover the following case:
+            // `vmin ... start, end ... vmax`. In this special case there is no gap
+            // between `start` and `end` so we must return true.
+            self.start <= vmin || vmax <= self.end || self.start == self.end + 1
+        }
+    }
+
+    /// Returns `true` if `range` has an overlap with `self`.
+    #[inline(always)]
+    pub fn overlaps_range<I: Into<u128> + Ord>(&self, range: RangeInclusive<I>) -> bool {
+        if range.is_empty() {
+            return false;
+        }
+
+        let (vmin, vmax) = range.into_inner();
+        let (vmin, vmax) = (vmin.into(), vmax.into());
+
+        if self.start <= self.end {
+            self.start <= vmax && vmin <= self.end
+        } else {
+            self.start <= vmax || vmin <= self.end
+        }
+    }
+
     /// Returns `self` with replaced `start`
     #[inline(always)]
     pub fn with_start(mut self, start: u128) -> Self {
