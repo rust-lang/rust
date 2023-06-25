@@ -33,8 +33,8 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Path(qpath) = path.kind
         && let Res::Def(DefKind::Ctor(_, _), _) = cx.qpath_res(&qpath, path.hir_id)
         && let ExprKind::Closure(closure) = acc.kind
-        && let Some(args_snip) = closure.fn_arg_span.and_then(|fn_arg_span| snippet_opt(cx, fn_arg_span))
         && !is_from_proc_macro(cx, expr)
+        && let Some(args_snip) = closure.fn_arg_span.and_then(|fn_arg_span| snippet_opt(cx, fn_arg_span))
     {
         let init_snip = rest
             .is_empty()
@@ -48,7 +48,7 @@ pub(super) fn check<'tcx>(
             fold_span,
             "you seem to be using `Iterator::fold` on a type that implements `Try`",
             "use `try_fold` instead",
-            format!("try_fold({init_snip}, {args_snip}, ...)", ),
+            format!("try_fold({init_snip}, {args_snip} ...)", ),
             Applicability::HasPlaceholders,
         );
     }
