@@ -141,7 +141,7 @@ impl<T> SpecRangeSetup<T> for T {
 
 /// Specialization trait to optimize `StepBy<Range<{integer}>>` iteration.
 ///
-/// # Correctness
+/// # Safety
 ///
 /// Technically this is safe to implement (look ma, no unsafe!), but in reality
 /// a lot of unsafe code relies on ranges over integers being correct.
@@ -149,7 +149,7 @@ impl<T> SpecRangeSetup<T> for T {
 /// For correctness *all* public StepBy methods must be specialized
 /// because `setup` drastically alters the meaning of the struct fields so that mixing
 /// different implementations would lead to incorrect results.
-trait StepByImpl<I> {
+unsafe trait StepByImpl<I> {
     type Item;
 
     fn spec_next(&mut self) -> Option<Self::Item>;
@@ -172,13 +172,13 @@ trait StepByImpl<I> {
 ///
 /// See also: `StepByImpl`
 ///
-/// # Correctness
+/// # Safety
 ///
 /// The specializations must be implemented together with `StepByImpl`
 /// where applicable. I.e. if `StepBy` does support backwards iteration
 /// for a given iterator and that is specialized for forward iteration then
 /// it must also be specialized for backwards iteration.
-trait StepByBackImpl<I> {
+unsafe trait StepByBackImpl<I> {
     type Item;
 
     fn spec_next_back(&mut self) -> Option<Self::Item>
@@ -201,7 +201,7 @@ trait StepByBackImpl<I> {
         F: FnMut(Acc, Self::Item) -> Acc;
 }
 
-impl<I: Iterator> StepByImpl<I> for StepBy<I> {
+unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
     type Item = I::Item;
 
     #[inline]
@@ -319,7 +319,7 @@ impl<I: Iterator> StepByImpl<I> for StepBy<I> {
     }
 }
 
-impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for StepBy<I> {
+unsafe impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for StepBy<I> {
     type Item = I::Item;
 
     #[inline]
@@ -416,7 +416,7 @@ macro_rules! spec_int_ranges {
             }
         }
 
-        impl StepByImpl<Range<$t>> for StepBy<Range<$t>> {
+        unsafe impl StepByImpl<Range<$t>> for StepBy<Range<$t>> {
             #[inline]
             fn spec_next(&mut self) -> Option<$t> {
                 // if a step size larger than the type has been specified fall back to
@@ -497,7 +497,7 @@ macro_rules! spec_int_ranges_r {
     ($($t:ty)*) => ($(
         const _: () = assert!(usize::BITS >= <$t>::BITS);
 
-        impl StepByBackImpl<Range<$t>> for StepBy<Range<$t>> {
+        unsafe impl StepByBackImpl<Range<$t>> for StepBy<Range<$t>> {
 
             #[inline]
             fn spec_next_back(&mut self) -> Option<Self::Item>
