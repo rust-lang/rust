@@ -1,7 +1,7 @@
 use crate::convert::TryFrom;
 use crate::{
     intrinsics,
-    iter::from_fn,
+    iter::{from_fn, TrustedLen},
     ops::{Range, Try},
 };
 
@@ -484,6 +484,12 @@ macro_rules! spec_int_ranges {
                 acc
             }
         }
+
+        /// Safety: This macro is only applied to ranges over types <= usize
+        /// which means the inner length is guaranteed to fit into a usize and so
+        /// the outer length calculation won't encounter clamped values
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for StepBy<Range<$t>> {}
     )*)
 }
 
