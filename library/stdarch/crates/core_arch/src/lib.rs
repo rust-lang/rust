@@ -12,6 +12,7 @@
     proc_macro_hygiene,
     stmt_expr_attributes,
     core_intrinsics,
+    intrinsics,
     no_core,
     rustc_attrs,
     stdsimd,
