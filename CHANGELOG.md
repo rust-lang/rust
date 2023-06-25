@@ -12,7 +12,7 @@ document.
 
 Current stable, released 2023-06-01
 
-[149392b0...83e42a23](https://github.com/rust-lang/rust-clippy/compare/149392b0...83e42a23)
+[**View 85 PRs merged since 1.69**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2023-04-20..2023-06-01+base%3Amaster+sort%3Amerged-desc+)
 
 ### New Lints
 
@@ -137,7 +137,7 @@ Current stable, released 2023-06-01
 
 Released 2023-04-20
 
-[7f27e2e7...149392b0](https://github.com/rust-lang/rust-clippy/compare/7f27e2e7...149392b0)
+[**View 86 PRs merged since 1.68**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2023-03-09..2023-04-20+base%3Amaster+sort%3Amerged-desc+)
 
 ### New Lints
 
@@ -252,7 +252,7 @@ Released 2023-04-20
 
 Released 2023-03-09
 
-[d822110d...7f27e2e7](https://github.com/rust-lang/rust-clippy/compare/d822110d...7f27e2e7)
+[**View 85 PRs merged since 1.67**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2023-01-26..2023-03-09+base%3Amaster+sort%3Amerged-desc+)
 
 ### New Lints
 
@@ -399,7 +399,7 @@ Released 2023-03-09
 
 Released 2023-01-26
 
-[4f142aa1...d822110d](https://github.com/rust-lang/rust-clippy/compare/4f142aa1...d822110d)
+[**View 68 PRs merged since 1.66**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-12-15..2023-01-26+base%3Amaster+sort%3Amerged-desc+)
 
 ### New Lints
 
@@ -590,7 +590,8 @@ Released 2023-01-26
 
 Released 2022-12-15
 
-[b52fb523...4f142aa1](https://github.com/rust-lang/rust-clippy/compare/b52fb523...4f142aa1)
+[**View 93 PRs merged since 1.65**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-11-03..2022-12-15+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -761,7 +762,8 @@ Released 2022-12-15
 
 Released 2022-11-03
 
-[3c7e7dbc...b52fb523](https://github.com/rust-lang/rust-clippy/compare/3c7e7dbc...b52fb523)
+[**View 129 PRs merged since 1.64**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-09-22..2022-11-03+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### Important Changes
 
@@ -905,7 +907,8 @@ Released 2022-11-03
 
 Released 2022-09-22
 
-[d7b5cbf0...3c7e7dbc](https://github.com/rust-lang/rust-clippy/compare/d7b5cbf0...3c7e7dbc)
+[**View 92 PRs merged since 1.63**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-08-11..2022-09-22+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -1055,7 +1058,8 @@ Released 2022-09-22
 
 Released 2022-08-11
 
-[7c21f91b...d7b5cbf0](https://github.com/rust-lang/rust-clippy/compare/7c21f91b...d7b5cbf0)
+[**View 100 PRs merged since 1.62**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-06-30..2022-08-11+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -1201,7 +1205,8 @@ Released 2022-08-11
 
 Released 2022-06-30
 
-[d0cf3481...7c21f91b](https://github.com/rust-lang/rust-clippy/compare/d0cf3481...7c21f91b)
+[**View 104 PRs merged since 1.61**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-05-19..2022-06-30+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -1358,7 +1363,8 @@ Released 2022-06-30
 
 Released 2022-05-19
 
-[57b3c4b...d0cf3481](https://github.com/rust-lang/rust-clippy/compare/57b3c4b...d0cf3481)
+[**View 93 PRs merged since 1.60**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-04-07..2022-05-19+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -1459,7 +1465,8 @@ Released 2022-05-19
 
 Released 2022-04-07
 
-[0eff589...57b3c4b](https://github.com/rust-lang/rust-clippy/compare/0eff589...57b3c4b)
+[**View 75 PRs merged since 1.59**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-02-24..2022-04-07+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -1591,7 +1598,8 @@ Released 2022-04-07
 
 Released 2022-02-24
 
-[e181011...0eff589](https://github.com/rust-lang/rust-clippy/compare/e181011...0eff589)
+[**View 63 PRs merged since 1.58**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2022-01-13..2022-02-24+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -1755,7 +1763,8 @@ Released 2022-02-24
 
 Released 2022-01-13
 
-[00e31fa...e181011](https://github.com/rust-lang/rust-clippy/compare/00e31fa...e181011)
+[**View 73 PRs merged since 1.57**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-12-02..2022-01-13+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### Rust 1.58.1
 
@@ -1876,7 +1885,8 @@ Released 2022-01-13
 
 Released 2021-12-02
 
-[7bfc26e...00e31fa](https://github.com/rust-lang/rust-clippy/compare/7bfc26e...00e31fa)
+[**View 92 PRs merged since 1.56**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-10-21..2021-12-02+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -2027,7 +2037,7 @@ Released 2021-12-02
 
 Released 2021-10-21
 
-[74d1561...7bfc26e](https://github.com/rust-lang/rust-clippy/compare/74d1561...7bfc26e)
+[**View 92 PRs merged since 1.55**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-09-09..2021-10-21+base%3Amaster+sort%3Amerged-desc+)
 
 ### New Lints
 
@@ -2093,7 +2103,7 @@ Released 2021-10-21
 
 Released 2021-09-09
 
-[3ae8faf...74d1561](https://github.com/rust-lang/rust-clippy/compare/3ae8faf...74d1561)
+[**View 61 PRs merged since 1.54**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-07-29..2021-09-09+base%3Amaster+sort%3Amerged-desc+)
 
 ### Important Changes
 
@@ -2211,7 +2221,8 @@ Released 2021-09-09
 
 Released 2021-07-29
 
-[7c7683c...3ae8faf](https://github.com/rust-lang/rust-clippy/compare/7c7683c...3ae8faf)
+[**View 68 PRs merged since 1.53**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-06-17..2021-07-29+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -2339,7 +2350,7 @@ Released 2021-07-29
 
 Released 2021-06-17
 
-[6ed6f1e...7c7683c](https://github.com/rust-lang/rust-clippy/compare/6ed6f1e...7c7683c)
+[**View 80 PRs merged since 1.52**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-05-06..2021-06-17+base%3Amaster+sort%3Amerged-desc+)
 
 ### New Lints
 
@@ -2523,7 +2534,8 @@ Released 2021-06-17
 
 Released 2021-05-06
 
-[3e41797...6ed6f1e](https://github.com/rust-lang/rust-clippy/compare/3e41797...6ed6f1e)
+[**View 113 PRs merged since 1.51**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-03-25..2021-05-06+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -2658,7 +2670,8 @@ Released 2021-05-06
 
 Released 2021-03-25
 
-[4911ab1...3e41797](https://github.com/rust-lang/rust-clippy/compare/4911ab1...3e41797)
+[**View 117 PRs merged since 1.50**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2021-02-11..2021-03-25+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -2773,7 +2786,8 @@ Released 2021-03-25
 
 Released 2021-02-11
 
-[b20d4c1...4bd77a1](https://github.com/rust-lang/rust-clippy/compare/b20d4c1...4bd77a1)
+[**View 90 PRs merged since 1.49**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-12-31..2021-02-11+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -2902,7 +2916,8 @@ Released 2021-02-11
 
 Released 2020-12-31
 
-[e636b88...b20d4c1](https://github.com/rust-lang/rust-clippy/compare/e636b88...b20d4c1)
+[**View 85 PRs merged since 1.48**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-11-19..2020-12-31+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New Lints
 
@@ -3008,7 +3023,7 @@ Released 2020-12-31
 
 Released 2020-11-19
 
-[09bd400...e636b88](https://github.com/rust-lang/rust-clippy/compare/09bd400...e636b88)
+[**View 112 PRs merged since 1.47**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-10-08..2020-11-19+base%3Amaster+sort%3Amerged-desc+)
 
 ### New lints
 
@@ -3126,7 +3141,8 @@ Released 2020-11-19
 
 Released 2020-10-08
 
-[c2c07fa...09bd400](https://github.com/rust-lang/rust-clippy/compare/c2c07fa...09bd400)
+[**View 80 PRs merged since 1.46**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-08-27..2020-10-08+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New lints
 
@@ -3228,7 +3244,8 @@ Released 2020-10-08
 
 Released 2020-08-27
 
-[7ea7cd1...c2c07fa](https://github.com/rust-lang/rust-clippy/compare/7ea7cd1...c2c07fa)
+[**View 93 PRs merged since 1.45**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-07-16..2020-08-27+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New lints
 
@@ -3290,7 +3307,8 @@ Released 2020-08-27
 
 Released 2020-07-16
 
-[891e1a8...7ea7cd1](https://github.com/rust-lang/rust-clippy/compare/891e1a8...7ea7cd1)
+[**View 65 PRs merged since 1.44**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-06-04..2020-07-16+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New lints
 
@@ -3367,7 +3385,8 @@ and [`similar_names`]. [#5651](https://github.com/rust-lang/rust-clippy/pull/565
 
 Released 2020-06-04
 
-[204bb9b...891e1a8](https://github.com/rust-lang/rust-clippy/compare/204bb9b...891e1a8)
+[**View 88 PRs merged since 1.43**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-04-23..2020-06-04+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New lints
 
@@ -3450,7 +3469,8 @@ Released 2020-06-04
 
 Released 2020-04-23
 
-[4ee1206...204bb9b](https://github.com/rust-lang/rust-clippy/compare/4ee1206...204bb9b)
+[**View 121 PRs merged since 1.42**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-03-12..2020-04-23+base%3Amaster+sort%3Amerged-desc+)
+
 
 ### New lints
 
@@ -3508,7 +3528,7 @@ Released 2020-04-23
 
 Released 2020-03-12
 
-[69f99e7...4ee1206](https://github.com/rust-lang/rust-clippy/compare/69f99e7...4ee1206)
+[**View 106 PRs merged since 1.41**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2020-01-30..2020-03-12+base%3Amaster+sort%3Amerged-desc+)
 
 ### New lints
 
@@ -3575,7 +3595,7 @@ Released 2020-03-12
 
 Released 2020-01-30
 
-[c8e3cfb...69f99e7](https://github.com/rust-lang/rust-clippy/compare/c8e3cfb...69f99e7)
+[**View 107 PRs merged since 1.40**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-12-19..2020-01-30+base%3Amaster+sort%3Amerged-desc+)
 
 * New Lints:
   * [`exit`] [#4697](https://github.com/rust-lang/rust-clippy/pull/4697)
@@ -3620,7 +3640,8 @@ Released 2020-01-30
 
 Released 2019-12-19
 
-[4e7e71b...c8e3cfb](https://github.com/rust-lang/rust-clippy/compare/4e7e71b...c8e3cfb)
+[**View 69 😺 PRs merged since 1.39**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-11-07..2019-12-19+base%3Amaster+sort%3Amerged-desc+)
+
 
 * New Lints:
   * [`unneeded_wildcard_pattern`] [#4537](https://github.com/rust-lang/rust-clippy/pull/4537)
@@ -3662,7 +3683,7 @@ Released 2019-12-19
 
 Released 2019-11-07
 
-[3aea860...4e7e71b](https://github.com/rust-lang/rust-clippy/compare/3aea860...4e7e71b)
+[**View 84 PRs merged since 1.38**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-09-26..2019-11-07+base%3Amaster+sort%3Amerged-desc+)
 
 * New Lints:
   * [`uninit_assumed_init`] [#4479](https://github.com/rust-lang/rust-clippy/pull/4479)
@@ -3706,7 +3727,7 @@ Released 2019-11-07
 
 Released 2019-09-26
 
-[e3cb40e...3aea860](https://github.com/rust-lang/rust-clippy/compare/e3cb40e...3aea860)
+[**View 102 PRs merged since 1.37**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-08-15..2019-09-26+base%3Amaster+sort%3Amerged-desc+)
 
 * New Lints:
   * [`main_recursion`] [#4203](https://github.com/rust-lang/rust-clippy/pull/4203)
@@ -3736,7 +3757,7 @@ Released 2019-09-26
 
 Released 2019-08-15
 
-[082cfa7...e3cb40e](https://github.com/rust-lang/rust-clippy/compare/082cfa7...e3cb40e)
+[**View 83 PRs merged since 1.36**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-07-04..2019-08-15+base%3Amaster+sort%3Amerged-desc+)
 
 * New Lints:
   * [`checked_conversions`] [#4088](https://github.com/rust-lang/rust-clippy/pull/4088)
@@ -3760,7 +3781,8 @@ Released 2019-08-15
 
 Released 2019-07-04
 
-[eb9f9b1...082cfa7](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...082cfa7)
+[**View 75 PRs merged since 1.35**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-05-20..2019-07-04+base%3Amaster+sort%3Amerged-desc+)
+
 
 * New lints: [`find_map`], [`filter_map_next`] [#4039](https://github.com/rust-lang/rust-clippy/pull/4039)
 * New lint: [`path_buf_push_overwrite`] [#3954](https://github.com/rust-lang/rust-clippy/pull/3954)
@@ -3791,7 +3813,8 @@ Released 2019-07-04
 
 Released 2019-05-20
 
-[1fac380..37f5c1e](https://github.com/rust-lang/rust-clippy/compare/1fac380...37f5c1e)
+[**View 90 PRs merged since 1.34**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-04-10..2019-05-20+base%3Amaster+sort%3Amerged-desc+)
+
 
 * New lint: `drop_bounds` to detect `T: Drop` bounds
 * Split [`redundant_closure`] into [`redundant_closure`] and [`redundant_closure_for_method_calls`] [#4110](https://github.com/rust-lang/rust-clippy/pull/4101)
@@ -3819,7 +3842,8 @@ Released 2019-05-20
 
 Released 2019-04-10
 
-[1b89724...1fac380](https://github.com/rust-lang/rust-clippy/compare/1b89724...1fac380)
+[**View 66 PRs merged since 1.33**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-02-26..2019-04-10+base%3Amaster+sort%3Amerged-desc+)
+
 
 * New lint: [`assertions_on_constants`] to detect for example `assert!(true)`
 * New lint: [`dbg_macro`] to detect uses of the `dbg!` macro
@@ -3849,7 +3873,7 @@ Released 2019-04-10
 
 Released 2019-02-26
 
-[b2601be...1b89724](https://github.com/rust-lang/rust-clippy/compare/b2601be...1b89724)
+[**View 83 PRs merged since 1.32**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2019-01-17..2019-02-26+base%3Amaster+sort%3Amerged-desc+)
 
 * New lints: [`implicit_return`], [`vec_box`], [`cast_ref_to_mut`]
 * The `rust-clippy` repository is now part of the `rust-lang` org.
@@ -3882,7 +3906,7 @@ Released 2019-02-26
 
 Released 2019-01-17
 
-[2e26fdc2...b2601be](https://github.com/rust-lang/rust-clippy/compare/2e26fdc2...b2601be)
+[**View 106 PRs merged since 1.31**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2018-12-06..2019-01-17+base%3Amaster+sort%3Amerged-desc+)
 
 * New lints: [`slow_vector_initialization`], `mem_discriminant_non_enum`,
   [`redundant_clone`], [`wildcard_dependencies`],
@@ -3912,7 +3936,8 @@ Released 2019-01-17
 
 Released 2018-12-06
 
-[125907ad..2e26fdc2](https://github.com/rust-lang/rust-clippy/compare/125907ad..2e26fdc2)
+[**View 85 PRs merged since 1.30**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2018-10-25..2018-12-06+base%3Amaster+sort%3Amerged-desc+)
+
 
 * Clippy has been relicensed under a dual MIT / Apache license.
   See [#3093](https://github.com/rust-lang/rust-clippy/issues/3093) for more
@@ -3952,7 +3977,8 @@ Released 2018-12-06
 
 Released 2018-10-25
 
-[14207503...125907ad](https://github.com/rust-lang/rust-clippy/compare/14207503...125907ad)
+[**View 106 PRs merged since 1.29**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2018-09-13..2018-10-25+base%3Amaster+sort%3Amerged-desc+)
+
 
 * Deprecate `assign_ops` lint
 * New lints: [`mistyped_literal_suffixes`], [`ptr_offset_with_cast`],
