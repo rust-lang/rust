@@ -21,21 +21,12 @@ struct OpaqueTypeCollector<'tcx> {
     /// Avoid infinite recursion due to recursive declarations.
     seen: FxHashSet<LocalDefId>,
 
-    universes: Vec<Option<ty::UniverseIndex>>,
-
     span: Option<Span>,
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
-        Self {
-            tcx,
-            opaques: Vec::new(),
-            item,
-            seen: Default::default(),
-            universes: vec![],
-            span: None,
-        }
+        Self { tcx, opaques: Vec::new(), item, seen: Default::default(), span: None }
     }
 
     fn span(&self) -> Span {
@@ -109,16 +100,6 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<!> {
-        self.universes.push(None);
-        let t = t.super_visit_with(self);
-        self.universes.pop();
-        t
-    }
-
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
         t.super_visit_with(self)?;
