@@ -1,5 +1,5 @@
 error: large future with a size of 16385 bytes
-  --> $DIR/large_futures.rs:10:9
+  --> $DIR/large_futures.rs:11:9
    |
 LL |         big_fut([0u8; 1024 * 16]).await;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(big_fut([0u8; 1024 * 16]))`
@@ -7,37 +7,37 @@ LL |         big_fut([0u8; 1024 * 16]).await;
    = note: `-D clippy::large-futures` implied by `-D warnings`
 
 error: large future with a size of 16386 bytes
-  --> $DIR/large_futures.rs:12:5
+  --> $DIR/large_futures.rs:13:5
    |
 LL |     f.await
    |     ^ help: consider `Box::pin` on it: `Box::pin(f)`
 
 error: large future with a size of 16387 bytes
-  --> $DIR/large_futures.rs:16:9
+  --> $DIR/large_futures.rs:17:9
    |
 LL |         wait().await;
    |         ^^^^^^ help: consider `Box::pin` on it: `Box::pin(wait())`
 
 error: large future with a size of 16387 bytes
-  --> $DIR/large_futures.rs:20:13
+  --> $DIR/large_futures.rs:21:13
    |
 LL |             wait().await;
    |             ^^^^^^ help: consider `Box::pin` on it: `Box::pin(wait())`
 
 error: large future with a size of 65540 bytes
-  --> $DIR/large_futures.rs:27:5
+  --> $DIR/large_futures.rs:28:5
    |
 LL |     foo().await;
    |     ^^^^^ help: consider `Box::pin` on it: `Box::pin(foo())`
 
 error: large future with a size of 49159 bytes
-  --> $DIR/large_futures.rs:28:5
+  --> $DIR/large_futures.rs:29:5
    |
 LL |     calls_fut(fut).await;
    |     ^^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(calls_fut(fut))`
 
 error: large future with a size of 65540 bytes
-  --> $DIR/large_futures.rs:40:5
+  --> $DIR/large_futures.rs:41:5
    |
 LL | /     async {
 LL | |         let x = [0i32; 1024 * 16];
@@ -56,7 +56,7 @@ LL +     })
    |
 
 error: large future with a size of 65540 bytes
-  --> $DIR/large_futures.rs:51:13
+  --> $DIR/large_futures.rs:52:13
    |
 LL | /             async {
 LL | |                 let x = [0i32; 1024 * 16];
