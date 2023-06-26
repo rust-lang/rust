@@ -437,7 +437,7 @@ def parse_example_config(known_args, config):
         targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
 
     if 'profile' not in config:
-        set('profile', 'user', config)
+        set('profile', 'dist', config)
     configure_file(sections, top_level_keys, targets, config)
     return section_order, sections, targets
 

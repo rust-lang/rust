@@ -1052,7 +1052,13 @@ def bootstrap(args):
 
     profile = RustBuild.get_toml_static(config_toml, 'profile')
     if profile is not None:
-        include_file = 'config.{}.toml'.format(profile)
+        # Allows creating alias for profile names, allowing
+        # profiles to be renamed while maintaining back compatibility
+        # Keep in sync with `profile_aliases` in config.rs
+        profile_aliases = {
+            "user": "dist"
+        }
+        include_file = 'config.{}.toml'.format(profile_aliases.get(profile) or profile)
         include_dir = os.path.join(rust_root, 'src', 'bootstrap', 'defaults')
         include_path = os.path.join(include_dir, include_file)
         # HACK: This works because `self.get_toml()` returns the first match it finds for a
