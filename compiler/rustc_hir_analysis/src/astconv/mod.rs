@@ -2126,7 +2126,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             kind => bug!("unexpected definition kind {:?} for {:?}", kind, def_id),
         }
 
-        debug!("path_segs = {:?}", path_segs);
+        debug!(?path_segs);
 
         path_segs
     }

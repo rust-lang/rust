@@ -257,6 +257,9 @@
 #![feature(wasm_target_feature)]
 // tidy-alphabetical-end
 
+// TODO
+// #![cfg_attr(not(bootstrap), effects)]
+
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
 extern crate self as core;
