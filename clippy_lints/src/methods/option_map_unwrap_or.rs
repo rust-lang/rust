@@ -20,6 +20,7 @@ use rustc_span::sym;
 use super::MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or()` for `Option`s
+#[expect(clippy::too_many_arguments)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &rustc_hir::Expr<'_>,
