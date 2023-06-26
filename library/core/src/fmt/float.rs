@@ -1,4 +1,4 @@
-use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
+use crate::fmt::{Binary, Debug, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
 use crate::num::fmt as numfmt;
@@ -195,7 +195,7 @@ where
 }
 
 macro_rules! floating {
-    ($ty:ident) => {
+    ($ty:ident, $mask: literal, $significand: literal, $exponent: literal) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Debug for $ty {
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
@@ -223,8 +223,31 @@ macro_rules! floating {
                 float_to_exponential_common(fmt, self, true)
             }
         }
+
+		/// Note: This implementation of Binary is different from the rest (having some spaces in between), as per the standard [IEEE 754](https://en.wikipedia.org/w/index.php?title=IEEE_754&oldid=1161301604), float numbers are handled
+		/// **very** differently to integers.
+		/// 
+		/// The first two bits handle normality and sign, the following 11 bits in the case of [`f64`] or 8 in the case
+		/// of [`f32`] handle the exponent, and the remaining bits (53 for [`f64`], 24 for [`f32`]) handle the mantissa. 
+		/// 
+		/// These three sections are separated by spaces.
+        #[stable(feature = "binary_float_fmt", since = "CURRENT_RUSTC_VERSION")]
+		impl Binary for $ty {
+            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                let bits = self.to_bits();
+				write!(
+                    fmt,
+                    "{:b} {:b} {:b}",
+                    (bits & $mask) >> ($significand + $exponent), // Sign / Normality
+                    (bits << 2 >> ($significand + 1)), // Exponent
+                    (bits << ($exponent + 3)), // Mantissa / Significand
+                )
+            }
+        }
     };
 }
 
-floating! { f32 }
-floating! { f64 }
+// Checking IEEE 754 docs. it seems like it should be 24 and 53, but the first two bits are reversed for normality and sign respectively.
+
+floating! { f32, 0x80000000, 22, 8}
+floating! { f64, 0x8000000000000000, 51, 11}
