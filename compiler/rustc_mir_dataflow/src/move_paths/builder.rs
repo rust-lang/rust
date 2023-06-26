@@ -113,22 +113,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         // from `*(u.f: &_)` isn't allowed.
         let mut union_path = None;
 
-        for (i, elem) in place.projection.iter().enumerate() {
-            let proj_base = &place.projection[..i];
+        for (place_ref, elem) in place.as_ref().iter_projections() {
             let body = self.builder.body;
             let tcx = self.builder.tcx;
-            let place_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
+            let place_ty = place_ref.ty(body, tcx).ty;
+
             match place_ty.kind() {
                 ty::Ref(..) | ty::RawPtr(..) => {
-                    let proj = &place.projection[..i + 1];
                     return Err(MoveError::cannot_move_out_of(
                         self.loc,
-                        BorrowedContent {
-                            target_place: Place {
-                                local: place.local,
-                                projection: tcx.mk_place_elems(proj),
-                            },
-                        },
+                        BorrowedContent { target_place: place_ref.project_deeper(&[elem], tcx) },
                     ));
                 }
                 ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
@@ -163,10 +157,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             };
 
             if union_path.is_none() {
-                base = self.add_move_path(base, elem, |tcx| Place {
-                    local: place.local,
-                    projection: tcx.mk_place_elems(&place.projection[..i + 1]),
-                });
+                base = self.add_move_path(base, elem, |tcx| place_ref.project_deeper(&[elem], tcx));
             }
         }
 
