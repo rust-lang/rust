@@ -99,6 +99,20 @@ fn msrv_1_41() {
     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
 }
 
+#[clippy::msrv = "1.69"]
+fn msrv_1_69() {
+    let opt: Option<i32> = Some(1);
+
+    let _ = opt.map(|x| x > 5).unwrap_or(false);
+}
+
+#[clippy::msrv = "1.70"]
+fn msrv_1_70() {
+    let opt: Option<i32> = Some(1);
+
+    let _ = opt.map(|x| x > 5).unwrap_or(false);
+}
+
 mod issue_10579 {
     // Different variations of the same issue.
     fn v1() {

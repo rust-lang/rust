@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -27,6 +28,7 @@ pub(super) fn check<'tcx>(
     unwrap_recv: &rustc_hir::Expr<'_>,
     unwrap_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
+    msrv: &Msrv,
 ) {
     // lint if the caller of `map()` is an `Option`
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
@@ -75,10 +77,12 @@ pub(super) fn check<'tcx>(
         }
 
         let mut suggest_is_some_and = false;
-        // argument to `unwrap_or` is false; should suggest using `is_some_and`
-        if let ExprKind::Lit(unwrap_lit) = &unwrap_arg.kind {
-            if let rustc_ast::LitKind::Bool(false) = unwrap_lit.node {
-                suggest_is_some_and = true;
+        // argument to `unwrap_or` is false & is_some_and is stabilised; should suggest using `is_some_and`
+        if msrv.meets(msrvs::OPT_IS_SOME_AND) {
+            if let ExprKind::Lit(unwrap_lit) = &unwrap_arg.kind {
+                if let rustc_ast::LitKind::Bool(false) = unwrap_lit.node {
+                    suggest_is_some_and = true;
+                }
             }
         }
 
