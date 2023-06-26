@@ -646,3 +646,84 @@ pub(crate) struct ConsiderAddingADerive {
     pub(crate) span: Span,
     pub(crate) suggestion: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_determine_import_resolution)]
+pub(crate) struct CannotDetermineImportResolution {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_private, code = "E0364")]
+pub(crate) struct CannotBeReexportedPrivate {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_crate_public, code = "E0364")]
+pub(crate) struct CannotBeReexportedCratePublic {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_private, code = "E0365")]
+#[note(resolve_consider_declaring_with_pub)]
+pub(crate) struct CannotBeReexportedPrivateNS {
+    #[primary_span]
+    #[label(resolve_reexport_of_private)]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_crate_public, code = "E0365")]
+#[note(resolve_consider_declaring_with_pub)]
+pub(crate) struct CannotBeReexportedCratePublicNS {
+    #[primary_span]
+    #[label(resolve_reexport_of_crate_public)]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_consider_adding_macro_export)]
+pub(crate) struct ConsiderAddingMacroExport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_consider_marking_as_pub)]
+pub(crate) struct ConsiderMarkingAsPub {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_glob_import_possible_crates)]
+pub(crate) struct CannotGlobImportAllCrates {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_items_in_traits_are_not_importable)]
+pub(crate) struct ItemsInTraitsAreNotImportable {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_is_not_directly_importable, code = "E0253")]
+pub(crate) struct IsNotDirectlyImportable {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) target: Ident,
+}
