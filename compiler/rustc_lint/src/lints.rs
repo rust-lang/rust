@@ -828,6 +828,14 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
     }
 }
 
+// implicit_transmute_types.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_implicit_transmute_types)]
+pub struct ImplicitTransmuteTypesDiag {
+    #[suggestion(style = "verbose", code = "::<Src, Dst>", applicability = "has-placeholders")]
+    pub suggestion: Span,
+}
+
 // map_unit_fn.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_map_unit_fn)]

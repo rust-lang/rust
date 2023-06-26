@@ -248,6 +248,9 @@ lint_identifier_uncommon_codepoints = identifier contains uncommon Unicode codep
 
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 
+lint_implicit_transmute_types = `transmute` called without explicit type parameters
+    .suggestion = consider specifying the types intended to be transmuted
+
 lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here

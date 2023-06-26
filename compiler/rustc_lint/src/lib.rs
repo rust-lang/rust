@@ -60,6 +60,7 @@ mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
+mod implicit_transmute_types;
 mod internal;
 mod invalid_from_utf8;
 mod late;
@@ -104,6 +105,7 @@ use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
+use implicit_transmute_types::ImplicitTransmuteTypes;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
@@ -251,6 +253,7 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            ImplicitTransmuteTypes: ImplicitTransmuteTypes,
         ]
     ]
 );
