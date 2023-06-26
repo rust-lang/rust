@@ -345,11 +345,7 @@ fn print_where_pred<'a, 'tcx: 'a>(
                 }
             }
             clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
-                let mut bounds_display = String::new();
-                for bound in bounds.iter().map(|b| b.print(cx)) {
-                    write!(bounds_display, "{bound} + ")?;
-                }
-                bounds_display.truncate(bounds_display.len() - " + ".len());
+                let bounds_display = bounds.iter().map(|b| b.print(cx)).join(" + ");
                 write!(f, "{}: {bounds_display}", lifetime.print())
             }
             // FIXME(fmease): Render bound params.
