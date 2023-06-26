@@ -13,10 +13,12 @@ Targets for the [ESP-IDF](https://github.com/espressif/esp-idf) development fram
 
 The target names follow this format: `$ARCH-esp-espidf`, where `$ARCH` specifies the target processor architecture. The following targets are currently defined:
 
-|          Target name           | Target CPU(s)         | Minimum ESP-IDF version |
-|--------------------------------|-----------------------|-------------------------|
-| `riscv32imc-esp-espidf`        |  [ESP32-C3](https://www.espressif.com/en/products/socs/esp32-c3)             | `v4.3`                |
-| `riscv32imac-esp-espidf`       |  [ESP32-C6](https://www.espressif.com/en/products/socs/esp32-c6)             | `v5.1`                |
+| Target name              | Target CPU(s)                                                   | Minimum ESP-IDF version |
+| ------------------------ | --------------------------------------------------------------- | ----------------------- |
+| `riscv32imc-esp-espidf`  | [ESP32-C2](https://www.espressif.com/en/products/socs/esp32-c2) | `v5.0`                  |
+| `riscv32imc-esp-espidf`  | [ESP32-C3](https://www.espressif.com/en/products/socs/esp32-c3) | `v4.3`                  |
+| `riscv32imac-esp-espidf` | [ESP32-C6](https://www.espressif.com/en/products/socs/esp32-c6) | `v5.1`                  |
+| `riscv32imac-esp-espidf` | [ESP32-H2](https://www.espressif.com/en/products/socs/esp32-h2) | `v5.1`                  |
 
 It is recommended to use the latest ESP-IDF stable release if possible.
 

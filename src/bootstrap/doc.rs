@@ -222,7 +222,7 @@ impl Step for TheBook {
         let shared_assets = builder.ensure(SharedAssets { target });
 
         // build the redirect pages
-        builder.info(&format!("Documenting book redirect pages ({})", target));
+        builder.msg_doc(compiler, "book redirect pages", target);
         for file in t!(fs::read_dir(builder.src.join(&relative_path).join("redirects"))) {
             let file = t!(file);
             let path = file.path();
@@ -306,7 +306,7 @@ impl Step for Standalone {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
-        builder.info(&format!("Documenting standalone ({})", target));
+        builder.msg_doc(compiler, "standalone", target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -562,7 +562,7 @@ fn doc_std(
 
     let description =
         format!("library{} in {} format", crate_description(&requested_crates), format.as_str());
-    let _guard = builder.msg(Kind::Doc, stage, &description, compiler.host, target);
+    let _guard = builder.msg_doc(compiler, &description, target);
 
     let target_doc_dir_name = if format == DocumentationFormat::JSON { "json-doc" } else { "doc" };
     let target_dir =
@@ -804,14 +804,7 @@ macro_rules! tool_doc {
                     SourceType::Submodule
                 };
 
-                builder.info(
-                    &format!(
-                        "Documenting stage{} {} ({})",
-                        stage,
-                        stringify!($tool).to_lowercase(),
-                        target,
-                    ),
-                );
+                builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
 
                 // Symlink compiler docs to the output directory of rustdoc documentation.
                 let out_dirs = [
