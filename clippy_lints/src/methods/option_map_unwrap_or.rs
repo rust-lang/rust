@@ -25,11 +25,11 @@ pub(super) fn check<'tcx>(
     expr: &rustc_hir::Expr<'_>,
     recv: &rustc_hir::Expr<'_>,
     map_arg: &'tcx rustc_hir::Expr<'_>,
-    unwrap: (&rustc_hir::Expr<'_>, &'tcx rustc_hir::Expr<'_>),
+    unwrap_recv: &rustc_hir::Expr<'_>,
+    unwrap_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
     msrv: &Msrv,
 ) {
-    let (unwrap_recv, unwrap_arg) = unwrap;
     // lint if the caller of `map()` is an `Option`
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
         if !is_copy(cx, cx.typeck_results().expr_ty(unwrap_arg)) {
