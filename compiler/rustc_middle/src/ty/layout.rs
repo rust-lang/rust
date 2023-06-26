@@ -1036,6 +1036,9 @@ where
         this: TyAndLayout<'tcx>,
         cx: &C,
         offset: Size,
+        // If true, assume that pointers are either null or valid (according to their type),
+        // enabling extra optimizations.
+        mut assume_valid_ptr: bool,
     ) -> Option<PointeeInfo> {
         let tcx = cx.tcx();
         let param_env = cx.param_env();
@@ -1058,19 +1061,19 @@ where
                 // Freeze/Unpin queries, and can save time in the codegen backend (noalias
                 // attributes in LLVM have compile-time cost even in unoptimized builds).
                 let optimize = tcx.sess.opts.optimize != OptLevel::No;
-                let kind = match mt {
-                    hir::Mutability::Not => PointerKind::SharedRef {
+                let safe = match (assume_valid_ptr, mt) {
+                    (true, hir::Mutability::Not) => Some(PointerKind::SharedRef {
                         frozen: optimize && ty.is_freeze(tcx, cx.param_env()),
-                    },
-                    hir::Mutability::Mut => PointerKind::MutableRef {
+                    }),
+                    (true, hir::Mutability::Mut) => Some(PointerKind::MutableRef {
                         unpin: optimize && ty.is_unpin(tcx, cx.param_env()),
-                    },
+                    }),
+                    (false, _) => None,
                 };
-
                 tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
-                    safe: Some(kind),
+                    safe,
                 })
             }
 
@@ -1079,20 +1082,21 @@ where
                     // Within the discriminant field, only the niche itself is
                     // always initialized, so we only check for a pointer at its
                     // offset.
-                    //
-                    // If the niche is a pointer, it's either valid (according
-                    // to its type), or null (which the niche field's scalar
-                    // validity range encodes). This allows using
-                    // `dereferenceable_or_null` for e.g., `Option<&T>`, and
-                    // this will continue to work as long as we don't start
-                    // using more niches than just null (e.g., the first page of
-                    // the address space, or unaligned pointers).
-                    // FIXME(reference_niches): well, the day has come...
                     Variants::Multiple {
-                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                        tag_encoding:
+                            TagEncoding::Niche {
+                                untagged_variant,
+                                niche_variants: ref variants,
+                                niche_start,
+                            },
                         tag_field,
                         ..
                     } if this.fields.offset(tag_field) == offset => {
+                        // We can only continue assuming pointer validity if the only possible
+                        // discriminant value is null. The null special-case is permitted by LLVM's
+                        // `dereferenceable_or_null`, and allow types like `Option<&T>` to benefit
+                        // from optimizations.
+                        assume_valid_ptr &= niche_start == 0 && variants.start() == variants.end();
                         Some(this.for_variant(cx, untagged_variant))
                     }
                     _ => Some(this),
@@ -1118,9 +1122,12 @@ where
                             result = field.to_result().ok().and_then(|field| {
                                 if ptr_end <= field_start + field.size {
                                     // We found the right field, look inside it.
-                                    let field_info =
-                                        field.pointee_info_at(cx, offset - field_start);
-                                    field_info
+                                    Self::ty_and_layout_pointee_info_at(
+                                        field,
+                                        cx,
+                                        offset - field_start,
+                                        assume_valid_ptr,
+                                    )
                                 } else {
                                     None
                                 }
@@ -1135,7 +1142,7 @@ where
                 // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
                 if let Some(ref mut pointee) = result {
                     if let ty::Adt(def, _) = this.ty.kind() {
-                        if def.is_box() && offset.bytes() == 0 {
+                        if assume_valid_ptr && def.is_box() && offset.bytes() == 0 {
                             let optimize = tcx.sess.opts.optimize != OptLevel::No;
                             pointee.safe = Some(PointerKind::Box {
                                 unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
