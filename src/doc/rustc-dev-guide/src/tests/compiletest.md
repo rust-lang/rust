@@ -363,7 +363,7 @@ your test, causing separate files to be generated for 32bit and 64bit systems.
 [`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/master/tests/mir-opt
 
 
-### Run-make tests
+### `run-make` tests
 
 The tests in [`tests/run-make`] are general-purpose tests using Makefiles
 which provide the ultimate in flexibility.
@@ -371,8 +371,8 @@ These should be used as a last resort.
 If possible, you should use one of the other test suites.
 If there is some minor feature missing which you need for your test,
 consider extending compiletest to add a header command for what you need.
-However, sometimes just running a bunch of commands is really what you
-need, `run-make` is here to the rescue!
+However, if running a bunch of commands is really what you need,
+`run-make` is here to the rescue!
 
 Each test should be in a separate directory with a `Makefile` indicating the
 commands to run.
