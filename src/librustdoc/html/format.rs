@@ -276,14 +276,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     indent: usize,
     ending: Ending,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
-    let where_indent = 3;
-    let padding_amount = if ending == Ending::Newline {
-        indent + 4
-    } else if indent == 0 {
-        4
-    } else {
-        indent + where_indent + "where ".len()
-    };
+    let padding_amount = indent + "where ".len();
 
     display_fn(move |f| {
         let where_preds: String = gens
@@ -294,7 +287,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             })
             .enumerate()
             .map(|(i, pred)| {
-                let (padding_amount, add_newline) = if i == 0 && ending == Ending::NoNewline && indent > 0 {
+                let (padding_amount, add_newline) = if i == 0 && ending == Ending::NoNewline {
                     // put the first one on the same line as the 'where' keyword
                     (1, false)
                 } else {
@@ -309,17 +302,10 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
         }
 
         if ending == Ending::Newline {
-            let indent_str = " ".repeat(indent.saturating_sub(1));
-            write!(f, "{indent_str}<span class=\"where fmt-newline\">where{where_preds},</span>")
+            write!(f, "<span class=\"where fmt-newline\">where{where_preds},</span>")
         } else {
-            // insert a newline after a single space but before multiple spaces at the start
-            if indent == 0 {
-                write!(f, "\n<span class=\"where\">where{where_preds}</span>")
-            } else {
-                let padding_str: String =
-                    iter::once("\n").chain(iter::repeat(" ").take(padding_amount)).collect();
-                write!(f, "\n{padding_str}<span class=\"where\">where{where_preds}</span>")
-            }
+            let indent_str = " ".repeat(indent);
+            write!(f, "\n{indent_str}<span class=\"where\">where{where_preds}</span>")
         }
     })
 }
