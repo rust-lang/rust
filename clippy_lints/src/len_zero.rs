@@ -7,11 +7,10 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
-    ImplicitSelfKind, Item, ItemKind, Mutability, Node, PathSegment, PrimTy, QPath, TraitItemRef, TyKind,
-    TypeBindingKind,
+    ImplicitSelfKind, Item, ItemKind, LangItem, Mutability, Node, PatKind, PathSegment, PrimTy, QPath, TraitItemRef,
+    TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -166,6 +165,31 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
+        }
+
+        if let ExprKind::Let(lt) = expr.kind
+            && has_is_empty(cx, lt.init)
+            && match lt.pat.kind {
+                PatKind::Slice([], _, []) => true,
+                PatKind::Lit(lit) if is_empty_string(lit) => true,
+                _ => false,
+            }
+        {
+            let mut applicability = Applicability::MachineApplicable;
+
+            let lit1 = peel_ref_operators(cx, lt.init);
+            let lit_str =
+                Sugg::hir_with_context(cx, lit1, lt.span.ctxt(), "_", &mut applicability).maybe_par();
+
+            span_lint_and_sugg(
+                cx,
+                COMPARISON_TO_EMPTY,
+                lt.span,
+                "comparison to empty slice using `if let`",
+                "using `is_empty` is clearer and more explicit",
+                format!("{lit_str}.is_empty()"),
+                applicability,
+            );
         }
 
         if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind {
