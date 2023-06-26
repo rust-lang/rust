@@ -845,6 +845,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
+            ExprKind::Become(f) => {
+                self.hash_expr(f);
+            },
             ExprKind::Path(ref qpath) => {
                 self.hash_qpath(qpath);
             },

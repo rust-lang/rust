@@ -206,6 +206,12 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
                 NeverLoopResult::AlwaysBreak,
             )
         }),
+        ExprKind::Become(e) => {
+            combine_seq(
+                never_loop_expr(e, ignore_ids, main_loop_id),
+                NeverLoopResult::AlwaysBreak,
+            )
+        }
         ExprKind::InlineAsm(asm) => asm
             .operands
             .iter()
