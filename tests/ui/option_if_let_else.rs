@@ -239,6 +239,8 @@ fn main() {
         Ok(a) => a + 1,
     };
     let _ = if let Ok(a) = res { a + 1 } else { 5 };
+    issue10729::reproduce(&None);
+    issue10729::reproduce2(&mut None);
 }
 
 #[allow(dead_code)]
@@ -248,4 +250,26 @@ fn issue9742() -> Option<&'static str> {
         Some(name) if name.starts_with("foo") => Some(name.trim()),
         _ => None,
     }
+}
+
+mod issue10729 {
+    #![allow(clippy::unit_arg)]
+
+    pub fn reproduce(initial: &Option<String>) {
+        // 👇 needs `.as_ref()` because initial is an `&Option<_>`
+        match initial {
+            Some(value) => do_something(value),
+            None => {},
+        }
+    }
+
+    pub fn reproduce2(initial: &mut Option<String>) {
+        match initial {
+            Some(value) => do_something2(value),
+            None => {},
+        }
+    }
+
+    fn do_something(_value: &str) {}
+    fn do_something2(_value: &mut str) {}
 }
