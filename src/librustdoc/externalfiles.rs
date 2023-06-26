@@ -1,3 +1,4 @@
+use crate::errors::{LoadStringErrorBadUtf8, LoadStringErrorReadFail};
 use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};
 use crate::rustc_span::edition::Edition;
 use std::fs;
@@ -83,14 +84,14 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     let contents = match fs::read(file_path) {
         Ok(bytes) => bytes,
         Err(e) => {
-            diag.struct_err(format!("error reading `{}`: {}", file_path.display(), e)).emit();
+            diag.emit_err(LoadStringErrorReadFail { file_path, err: e });
             return Err(LoadStringError::ReadFail);
         }
     };
     match str::from_utf8(&contents) {
         Ok(s) => Ok(s.to_string()),
         Err(_) => {
-            diag.struct_err(format!("error reading `{}`: not UTF-8", file_path.display())).emit();
+            diag.emit_err(LoadStringErrorBadUtf8 { file_path });
             Err(LoadStringError::BadUtf8)
         }
     }

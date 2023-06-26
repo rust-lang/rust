@@ -298,6 +298,8 @@ pub(crate) fn create_config(
     }
 }
 
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 pub(crate) fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     show_coverage: bool,

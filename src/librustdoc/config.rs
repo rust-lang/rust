@@ -19,6 +19,15 @@ use rustc_span::edition::Edition;
 use rustc_target::spec::TargetTriple;
 
 use crate::core::new_handler;
+use crate::errors::{
+    ArgumentsToThemeMustBeFiles, ArgumentsToThemeMustHaveACssExtension,
+    CannotUseBothOutDirAndOutputAtOnce, ErrorLoadingThemeFile, ExtendCssArgMustBeAFile,
+    FlagIsDeprecated, FlagNoLongerFunctions,
+    GenerateLinkToDefinitionOptionCanOnlyBeUsedWithHtmlOutputFormat,
+    HtmlOutputFormatUnsupportedForShowCoverageOption, IndexPageArgMustBeAFile, MissingFileOperand,
+    TestFlagMustBePassedToEnableNoRun, ThemeFileMissingCssRulesFromDefaultTheme,
+    TooManyFileOperands, UnknownCrateType, UnknownInputFormat, UnrecognizedEmissionType,
+};
 use crate::externalfiles::ExternalHtml;
 use crate::html;
 use crate::html::markdown::IdMap;
@@ -381,7 +390,7 @@ impl Options {
                 match kind.parse() {
                     Ok(kind) => emit.push(kind),
                     Err(()) => {
-                        diag.err(format!("unrecognized emission type: {}", kind));
+                        diag.emit_err(UnrecognizedEmissionType { kind });
                         return Err(1);
                     }
                 }
@@ -406,6 +415,8 @@ impl Options {
             ) {
                 Ok(p) => p,
                 Err(e) => {
+                    #[allow(rustc::untranslatable_diagnostic)]
+                    #[allow(rustc::diagnostic_outside_of_impl)]
                     diag.struct_err(e).emit();
                     return Err(1);
                 }
@@ -437,10 +448,10 @@ impl Options {
         let input = PathBuf::from(if describe_lints {
             "" // dummy, this won't be used
         } else if matches.free.is_empty() {
-            diag.struct_err("missing file operand").emit();
+            diag.emit_err(MissingFileOperand);
             return Err(1);
         } else if matches.free.len() > 1 {
-            diag.struct_err("too many file operands").emit();
+            diag.emit_err(TooManyFileOperands);
             return Err(1);
         } else {
             &matches.free[0]
@@ -455,6 +466,8 @@ impl Options {
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
+                #[allow(rustc::untranslatable_diagnostic)]
+                #[allow(rustc::diagnostic_outside_of_impl)]
                 diag.struct_err(err).emit();
                 return Err(1);
             }
@@ -514,7 +527,7 @@ impl Options {
         let no_run = matches.opt_present("no-run");
 
         if !should_test && no_run {
-            diag.err("the `--test` flag must be passed to enable `--no-run`");
+            diag.emit_err(TestFlagMustBePassedToEnableNoRun);
             return Err(1);
         }
 
@@ -522,7 +535,7 @@ impl Options {
         let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
         let output = match (out_dir, output) {
             (Some(_), Some(_)) => {
-                diag.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
+                diag.emit_err(CannotUseBothOutDirAndOutputAtOnce);
                 return Err(1);
             }
             (Some(out_dir), None) => out_dir,
@@ -537,7 +550,7 @@ impl Options {
 
         if let Some(ref p) = extension_css {
             if !p.is_file() {
-                diag.struct_err("option --extend-css argument must be a file").emit();
+                diag.emit_err(ExtendCssArgMustBeAFile);
                 return Err(1);
             }
         }
@@ -549,6 +562,8 @@ impl Options {
             ) {
                 Ok(p) => p,
                 Err(e) => {
+                    #[allow(rustc::untranslatable_diagnostic)]
+                    #[allow(rustc::diagnostic_outside_of_impl)]
                     diag.struct_err(e).emit();
                     return Err(1);
                 }
@@ -558,32 +573,19 @@ impl Options {
                 matches.opt_strs("theme").iter().map(|s| (PathBuf::from(&s), s.to_owned()))
             {
                 if !theme_file.is_file() {
-                    diag.struct_err(format!("invalid argument: \"{}\"", theme_s))
-                        .help("arguments to --theme must be files")
-                        .emit();
+                    diag.emit_err(ArgumentsToThemeMustBeFiles { theme: theme_s });
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
-                    diag.struct_err(format!("invalid argument: \"{}\"", theme_s))
-                        .help("arguments to --theme must have a .css extension")
-                        .emit();
+                    diag.emit_err(ArgumentsToThemeMustHaveACssExtension { theme: theme_s });
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
                 if !success {
-                    diag.struct_err(format!("error loading theme file: \"{}\"", theme_s)).emit();
+                    diag.emit_err(ErrorLoadingThemeFile { theme: theme_s });
                     return Err(1);
                 } else if !ret.is_empty() {
-                    diag.struct_warn(format!(
-                        "theme file \"{}\" is missing CSS rules from the default theme",
-                        theme_s
-                    ))
-                    .warn("the theme may appear incorrect when loaded")
-                    .help(format!(
-                        "to see what rules are missing, call `rustdoc --check-theme \"{}\"`",
-                        theme_s
-                    ))
-                    .emit();
+                    diag.emit_warning(ThemeFileMissingCssRulesFromDefaultTheme { theme: theme_s });
                 }
                 themes.push(StylePath { path: theme_file });
             }
@@ -610,7 +612,7 @@ impl Options {
         match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
-                diag.struct_err(format!("unknown input format: {}", s)).emit();
+                diag.emit_err(UnknownInputFormat { format: s });
                 return Err(1);
             }
         }
@@ -618,7 +620,7 @@ impl Options {
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
         if let Some(ref index_page) = index_page {
             if !index_page.is_file() {
-                diag.struct_err("option `--index-page` argument must be a file").emit();
+                diag.emit_err(IndexPageArgMustBeAFile);
                 return Err(1);
             }
         }
@@ -630,7 +632,7 @@ impl Options {
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
-                diag.struct_err(format!("unknown crate type: {}", e)).emit();
+                diag.emit_err(UnknownCrateType { err: e });
                 return Err(1);
             }
         };
@@ -639,15 +641,14 @@ impl Options {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(out_fmt) => {
                     if !out_fmt.is_json() && show_coverage {
-                        diag.struct_err(
-                            "html output format isn't supported for the --show-coverage option",
-                        )
-                        .emit();
+                        diag.emit_err(HtmlOutputFormatUnsupportedForShowCoverageOption);
                         return Err(1);
                     }
                     out_fmt
                 }
                 Err(e) => {
+                    #[allow(rustc::untranslatable_diagnostic)]
+                    #[allow(rustc::diagnostic_outside_of_impl)]
                     diag.struct_err(e).emit();
                     return Err(1);
                 }
@@ -692,10 +693,7 @@ impl Options {
             matches.opt_present("extern-html-root-takes-precedence");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
-            diag.struct_err(
-                "--generate-link-to-definition option can only be used with HTML output format",
-            )
-            .emit();
+            diag.emit_err(GenerateLinkToDefinitionOptionCanOnlyBeUsedWithHtmlOutputFormat);
             return Err(1);
         }
 
@@ -789,12 +787,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for &flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            diag.struct_warn(format!("the `{}` flag is deprecated", flag))
-                .note(
-                    "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                    for more information",
-                )
-                .emit();
+            diag.emit_warning(FlagIsDeprecated { flag });
         }
     }
 
@@ -802,19 +795,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for &flag in removed_flags.iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(format!("the `{}` flag no longer functions", flag));
-            err.note(
-                "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                for more information",
-            );
-
-            if flag == "no-defaults" || flag == "passes" {
-                err.help("you may want to use --document-private-items");
-            } else if flag == "plugins" || flag == "plugin-path" {
-                err.warn("see CVE-2018-1000622");
-            }
-
-            err.emit();
+            diag.emit_warning(FlagNoLongerFunctions::new(flag));
         }
     }
 }

@@ -230,6 +230,8 @@ pub(crate) fn get_differences(
     }
 }
 
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 pub(crate) fn test_theme_against<P: AsRef<Path>>(
     f: &P,
     origin: &FxHashMap<String, CssPath>,

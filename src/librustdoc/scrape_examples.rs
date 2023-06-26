@@ -2,6 +2,9 @@
 
 use crate::clean;
 use crate::config;
+use crate::errors::LoadExamplesFailed;
+use crate::errors::ScrapeExamplesMustUseOutputPathAndTargetCrateTogether;
+use crate::errors::ScrapeExamplesMustUseOutputPathAndTargetCrateWithScrapeTests;
 use crate::formats;
 use crate::formats::renderer::FormatRenderer;
 use crate::html::render::Context;
@@ -52,11 +55,11 @@ impl ScrapeExamplesOptions {
                 scrape_tests,
             })),
             (Some(_), false, _) | (None, true, _) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
+                diag.emit_err(ScrapeExamplesMustUseOutputPathAndTargetCrateTogether);
                 Err(1)
             }
             (None, false, true) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
+                diag.emit_err(ScrapeExamplesMustUseOutputPathAndTargetCrateWithScrapeTests);
                 Err(1)
             }
             (None, false, false) => Ok(None),
@@ -272,6 +275,8 @@ where
     }
 }
 
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 pub(crate) fn run(
     krate: clean::Crate,
     mut renderopts: config::RenderOptions,
@@ -358,7 +363,7 @@ pub(crate) fn load_call_locations(
     };
 
     inner().map_err(|e: String| {
-        diag.err(format!("failed to load examples: {}", e));
+        diag.emit_err(LoadExamplesFailed { err: e });
         1
     })
 }

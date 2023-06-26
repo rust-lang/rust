@@ -183,8 +183,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .unwrap_or(&[])
                     .iter()
                     .filter_map(|attr| {
+                        #[allow(rustc::untranslatable_diagnostic)]
+                        #[allow(rustc::diagnostic_outside_of_impl)]
                         Cfg::parse(attr.meta_item()?)
-                            .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
+                            .map_err(|e| self.cx.sess().span_err(e.span, e.msg))
                             .ok()
                     })
                     .collect::<Vec<_>>()

@@ -77,7 +77,7 @@ use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::process;
 
-use errors::{CouldntGenerateDocumentation, MainError};
+use errors::{CouldntGenerateDocumentation, FailedToCreateOrModifyFile};
 use rustc_driver::abort_on_err;
 use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
@@ -689,10 +689,15 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
     match res {
         Ok(()) => diag.has_errors().map_or(Ok(()), Err),
-        Err(error) => Err(diag.emit_err(MainError { error })),
+        Err(err) => {
+            let reported = diag.struct_err(err).emit();
+            Err(reported)
+        }
     }
 }
 
@@ -704,10 +709,12 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, cache, tcx) {
         Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
-        Err(e) => Err(tcx.sess.emit_err(CouldntGenerateDocumentation {
-            error: e.error,
-            file: e.file.display().to_string(),
-        })),
+        Err(e) => {
+            let file = e.file.display().to_string();
+            let file =
+                if file.is_empty() { None } else { Some(FailedToCreateOrModifyFile { file }) };
+            Err(tcx.sess.emit_err(CouldntGenerateDocumentation { error: e.error, file }))
+        }
     }
 }
 

@@ -439,7 +439,7 @@ impl<'a> fmt::Display for Display<'a> {
                             write!(fmt, "`{}`", feat)?;
                         }
                     } else {
-                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
+                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(&sub_cfg, self.1))?;
                     }
                 }
                 Ok(())
@@ -476,7 +476,7 @@ impl<'a> fmt::Display for Display<'a> {
                             write!(fmt, "`{}`", feat)?;
                         }
                     } else {
-                        write_with_opt_paren(fmt, !sub_cfg.is_simple(), Display(sub_cfg, self.1))?;
+                        write_with_opt_paren(fmt, !sub_cfg.is_simple(), Display(&sub_cfg, self.1))?;
                     }
                 }
                 Ok(())
