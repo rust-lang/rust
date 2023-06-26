@@ -49,8 +49,8 @@ jobs:
           cargo workspaces rename --from project-model project_model
           cargo workspaces rename --from test-utils test_utils
           cargo workspaces rename --from text-edit text_edit
-          cargo workspaces rename ra_ap_%n
           # Remove library crates from the workspaces so we don't auto-publish them as well
           sed -i 's/ "lib\/\*",//' ./Cargo.toml
+          cargo workspaces rename ra_ap_%n
           find crates/rust-analyzer -type f -name '*.rs' -exec sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' {} +
           cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$(($RUN_NUMBER + 133))
