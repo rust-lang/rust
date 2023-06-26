@@ -301,7 +301,7 @@ defaults:
 concurrency:
   # For a given workflow, if we push to the same PR, cancel all previous builds on that PR.
   # If the push is not attached to a PR, we will cancel all builds related to the same commit SHA.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
