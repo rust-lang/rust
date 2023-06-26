@@ -276,32 +276,39 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     indent: usize,
     ending: Ending,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
+    let where_indent = 3;
+    let padding_amount = if ending == Ending::Newline {
+        indent + 4
+    } else if indent == 0 {
+        4
+    } else {
+        indent + where_indent + "where ".len()
+    };
+
     display_fn(move |f| {
-        let mut where_predicates = gens.where_predicates.iter().filter(|pred| {
-            !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
-        }).map(|pred|
-            print_where_pred(cx,pred)
-        ).peekable();
+        let mut where_predicates = gens
+            .where_predicates
+            .iter()
+            .filter(|pred| {
+                !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
+            })
+            .enumerate()
+            .map(|(i, pred)| {
+                let (padding_amount, add_newline) = if i == 0 && ending == Ending::NoNewline && indent > 0 {
+                    // put the first one on the same line as the 'where' keyword
+                    (1, false)
+                } else {
+                    (padding_amount, true)
+                };
+                print_where_pred_helper(cx, pred, padding_amount, add_newline)
+            })
+            .peekable();
 
         if where_predicates.peek().is_none() {
             return Ok(());
         }
 
-        let where_preds = comma_sep(where_predicates, false);
-        let mut br_with_padding = String::with_capacity(6 * indent + 28);
-        br_with_padding.push('\n');
-        let where_indent = 3;
-        let padding_amount = if ending == Ending::Newline {
-            indent + 4
-        } else if indent == 0 {
-            4
-        } else {
-            indent + where_indent + "where ".len()
-        };
-        for _ in 0..padding_amount {
-            br_with_padding.push(' ');
-        }
-        let where_preds = where_preds.to_string().replace('\n', &br_with_padding);
+        let where_preds = comma_sep(where_predicates, false).to_string();
         let clause = if ending == Ending::Newline {
             let mut clause = " ".repeat(indent.saturating_sub(1));
             write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
@@ -311,23 +318,26 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             if indent == 0 {
                 format!("\n<span class=\"where\">where{where_preds}</span>")
             } else {
-                // put the first one on the same line as the 'where' keyword
-                let where_preds = where_preds.replacen(&br_with_padding, " ", 1);
-
-                write!(br_with_padding, "<span class=\"where\">where{where_preds}</span>")?;
-                br_with_padding
+                let padding_str: String =
+                    iter::once("\n").chain(iter::repeat(" ").take(padding_amount)).collect();
+                format!("\n{padding_str}<span class=\"where\">where{where_preds}</span>")
             }
         };
         write!(f, "{clause}")
     })
 }
 
-fn print_where_pred<'a, 'tcx: 'a>(
+fn print_where_pred_helper<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
     pred: &'a clean::WherePredicate,
+    indent_len: usize,
+    add_newline: bool,
 ) -> impl Display + Captures<'a> + Captures<'tcx> {
     display_fn(move |f| {
-        f.write_str("\n")?;
+        if add_newline {
+            f.write_str("\n")?;
+        }
+        f.write_str(&" ".repeat(indent_len))?;
 
         match pred {
             clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
