@@ -9,7 +9,7 @@
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::fmt::{self, Write};
+use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
 use rustc_ast as ast;
@@ -279,40 +279,9 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     display_fn(move |f| {
         let mut where_predicates = gens.where_predicates.iter().filter(|pred| {
             !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
-        }).map(|pred| {
-            display_fn(move |f| {
-                f.write_str("\n")?;
-
-                match pred {
-                    clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                        let ty_cx = ty.print(cx);
-                        let generic_bounds = print_generic_bounds(bounds, cx);
-
-                        if bound_params.is_empty() {
-                            write!(f, "{ty_cx}: {generic_bounds}")
-                        } else {
-                            write!(
-                                f,
-                                "for&lt;{}&gt; {ty_cx}: {generic_bounds}",
-                                comma_sep(bound_params.iter().map(|lt| lt.print(cx)), true)
-                            )
-                        }
-                    }
-                    clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
-                        let mut bounds_display = String::new();
-                        for bound in bounds.iter().map(|b| b.print(cx)) {
-                            write!(bounds_display, "{bound} + ")?;
-                        }
-                        bounds_display.truncate(bounds_display.len() - " + ".len());
-                        write!(f, "{}: {bounds_display}", lifetime.print())
-                    }
-                    // FIXME(fmease): Render bound params.
-                    clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
-                        write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
-                    }
-                }
-            })
-        }).peekable();
+        }).map(|pred|
+            print_where_pred(cx,pred)
+        ).peekable();
 
         if where_predicates.peek().is_none() {
             return Ok(());
@@ -350,6 +319,44 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             }
         };
         write!(f, "{clause}")
+    })
+}
+
+fn print_where_pred<'a, 'tcx: 'a>(
+    cx: &'a Context<'tcx>,
+    pred: &'a clean::WherePredicate,
+) -> impl Display + Captures<'a> + Captures<'tcx> {
+    display_fn(move |f| {
+        f.write_str("\n")?;
+
+        match pred {
+            clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
+                let ty_cx = ty.print(cx);
+                let generic_bounds = print_generic_bounds(bounds, cx);
+
+                if bound_params.is_empty() {
+                    write!(f, "{ty_cx}: {generic_bounds}")
+                } else {
+                    write!(
+                        f,
+                        "for&lt;{}&gt; {ty_cx}: {generic_bounds}",
+                        comma_sep(bound_params.iter().map(|lt| lt.print(cx)), true)
+                    )
+                }
+            }
+            clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
+                let mut bounds_display = String::new();
+                for bound in bounds.iter().map(|b| b.print(cx)) {
+                    write!(bounds_display, "{bound} + ")?;
+                }
+                bounds_display.truncate(bounds_display.len() - " + ".len());
+                write!(f, "{}: {bounds_display}", lifetime.print())
+            }
+            // FIXME(fmease): Render bound params.
+            clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
+                write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
+            }
+        }
     })
 }
 
