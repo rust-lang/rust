@@ -1147,6 +1147,13 @@ extern "rust-intrinsic" {
     /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
+    /// It is suggested that you specify the `Src` and `Dst` types explicitly
+    /// (using turbofish syntax) so that if a change in surrounding code causes the types being
+    /// transmuted to change, then typechecking will fail and you will be directed to update
+    /// the specified types and reassess the soundness of the transmute between the new types.
+    /// You may wish to use `#![deny(implicit_transmute_types)]` and have the compiler enforce
+    /// this for you.
+    ///
     /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
     /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
     /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
