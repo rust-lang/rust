@@ -640,13 +640,16 @@ pre, .rustdoc.source .example-wrap {
 	background: var(--table-alt-row-background-color);
 }
 
+.where {
+	font-size: 0.875rem;
+}
+
 /* Shift "where ..." part of method or fn definition down a line */
 .method .where,
 .fn .where,
 .where.fmt-newline {
 	display: block;
 	white-space: pre-wrap;
-	font-size: 0.875rem;
 }
 
 .item-info {
