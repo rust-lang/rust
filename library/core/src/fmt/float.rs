@@ -224,23 +224,23 @@ macro_rules! floating {
             }
         }
 
-		/// Note: This implementation of Binary is different from the rest (having some spaces in between), as per the standard [IEEE 754](https://en.wikipedia.org/w/index.php?title=IEEE_754&oldid=1161301604), float numbers are handled
-		/// **very** differently to integers.
-		/// 
-		/// The first two bits handle normality and sign, the following 11 bits in the case of [`f64`] or 8 in the case
-		/// of [`f32`] handle the exponent, and the remaining bits (53 for [`f64`], 24 for [`f32`]) handle the mantissa. 
-		/// 
-		/// These three sections are separated by spaces.
+        /// Note: This implementation of Binary is different from the rest (having some spaces in between), as per the standard [IEEE 754](https://en.wikipedia.org/w/index.php?title=IEEE_754&oldid=1161301604), float numbers are handled
+        /// **very** differently to integers.
+        ///
+        /// The first two bits handle normality and sign, the following 11 bits in the case of [`f64`] or 8 in the case
+        /// of [`f32`] handle the exponent, and the remaining bits (53 for [`f64`], 24 for [`f32`]) handle the mantissa.
+        ///
+        /// These three sections are separated by spaces.
         #[stable(feature = "binary_float_fmt", since = "CURRENT_RUSTC_VERSION")]
-		impl Binary for $ty {
+        impl Binary for $ty {
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 let bits = self.to_bits();
-				write!(
+                write!(
                     fmt,
                     "{:b} {:b} {:b}",
                     (bits & $mask) >> ($significand + $exponent), // Sign / Normality
-                    (bits << 2 >> ($significand + 1)), // Exponent
-                    (bits << ($exponent + 3)), // Mantissa / Significand
+                    (bits << 2 >> ($significand + 1)),            // Exponent
+                    (bits << ($exponent + 3)),                    // Mantissa / Significand
                 )
             }
         }
