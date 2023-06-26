@@ -956,6 +956,8 @@ pub(crate) trait AttributesExt {
                     .filter_map(|attr| Cfg::parse(attr.meta_item()?).ok())
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             } else if doc_auto_cfg_active {
+                // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
+                // `doc(cfg())` overrides `cfg()`).
                 self.iter()
                     .filter(|attr| attr.has_name(sym::cfg))
                     .filter_map(|attr| single(attr.meta_item_list()?))
@@ -2387,6 +2389,7 @@ impl ImplKind {
 #[derive(Clone, Debug)]
 pub(crate) struct Import {
     pub(crate) kind: ImportKind,
+    /// The item being re-exported.
     pub(crate) source: ImportSource,
     pub(crate) should_be_displayed: bool,
 }
