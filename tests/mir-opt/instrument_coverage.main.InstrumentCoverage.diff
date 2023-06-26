@@ -13,7 +13,7 @@
       }
   
       bb1: {
-+         Coverage::Expression(4294967295) = 1 + 2 for /the/src/instrument_coverage.rs:12:5 - 13:17;
++         Coverage::Expression(4294967295) = Counter(1) + Counter(2) for /the/src/instrument_coverage.rs:12:5 - 13:17;
           falseUnwind -> [real: bb2, unwind: bb6];
       }
   
@@ -27,8 +27,8 @@
       }
   
       bb4: {
-+         Coverage::Expression(4294967293) = 4294967294 + 0 for /the/src/instrument_coverage.rs:17:1 - 17:2;
-+         Coverage::Expression(4294967294) = 4294967295 - 2 for /the/src/instrument_coverage.rs:14:13 - 14:18;
++         Coverage::Expression(4294967293) = Expression(4294967294) + Zero for /the/src/instrument_coverage.rs:17:1 - 17:2;
++         Coverage::Expression(4294967294) = Expression(4294967295) - Counter(2) for /the/src/instrument_coverage.rs:14:13 - 14:18;
           _0 = const ();
           StorageDead(_2);
           return;

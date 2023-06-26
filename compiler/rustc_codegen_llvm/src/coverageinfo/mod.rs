@@ -17,7 +17,7 @@ use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, CoverageKind, ExpressionOperandId, InjectedExpressionId, Op,
+    CodeRegion, CounterValueReference, CoverageKind, InjectedExpressionId, Op, Operand,
 };
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
@@ -203,9 +203,9 @@ impl<'tcx> Builder<'_, '_, 'tcx> {
         &mut self,
         instance: Instance<'tcx>,
         id: InjectedExpressionId,
-        lhs: ExpressionOperandId,
+        lhs: Operand,
         op: Op,
-        rhs: ExpressionOperandId,
+        rhs: Operand,
         region: Option<CodeRegion>,
     ) -> bool {
         if let Some(coverage_context) = self.coverage_context() {

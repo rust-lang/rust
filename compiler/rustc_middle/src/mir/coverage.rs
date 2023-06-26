@@ -6,32 +6,6 @@ use rustc_span::Symbol;
 use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
-    /// An ExpressionOperandId value is assigned directly from either a
-    /// CounterValueReference.as_u32() (which ascend from 1) or an ExpressionOperandId.as_u32()
-    /// (which _*descend*_ from u32::MAX). Id value `0` (zero) represents a virtual counter with a
-    /// constant value of `0`.
-    #[derive(HashStable)]
-    #[max = 0xFFFF_FFFF]
-    #[debug_format = "ExpressionOperandId({})"]
-    pub struct ExpressionOperandId {
-    }
-}
-
-impl ExpressionOperandId {
-    /// An expression operand for a "zero counter", as described in the following references:
-    ///
-    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#counter>
-    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#tag>
-    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#counter-expressions>
-    ///
-    /// This operand can be used to count two or more separate code regions with a single counter,
-    /// if they run sequentially with no branches, by injecting the `Counter` in a `BasicBlock` for
-    /// one of the code regions, and inserting `CounterExpression`s ("add ZERO to the counter") in
-    /// the coverage map for the other code regions.
-    pub const ZERO: Self = Self::from_u32(0);
-}
-
-rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "CounterValueReference({})"]
@@ -39,7 +13,7 @@ rustc_index::newtype_index! {
 }
 
 impl CounterValueReference {
-    /// Counters start at 1 to reserve 0 for ExpressionOperandId::ZERO.
+    /// Counters start at 1 for historical reasons.
     pub const START: Self = Self::from_u32(1);
 
     /// Returns explicitly-requested zero-based version of the counter id, used
@@ -52,8 +26,6 @@ impl CounterValueReference {
 }
 
 rustc_index::newtype_index! {
-    /// InjectedExpressionId.as_u32() converts to ExpressionOperandId.as_u32()
-    ///
     /// Values descend from u32::MAX.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
@@ -62,8 +34,6 @@ rustc_index::newtype_index! {
 }
 
 rustc_index::newtype_index! {
-    /// InjectedExpressionIndex.as_u32() translates to u32::MAX - ExpressionOperandId.as_u32()
-    ///
     /// Values ascend from 0.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
@@ -81,17 +51,25 @@ rustc_index::newtype_index! {
     pub struct MappedExpressionIndex {}
 }
 
-impl From<CounterValueReference> for ExpressionOperandId {
-    #[inline]
-    fn from(v: CounterValueReference) -> ExpressionOperandId {
-        ExpressionOperandId::from(v.as_u32())
-    }
+/// Operand of a coverage-counter expression.
+///
+/// Operands can be a constant zero value, an actual coverage counter, or another
+/// expression. Counter/expression operands are referred to by ID.
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub enum Operand {
+    Zero,
+    Counter(CounterValueReference),
+    Expression(InjectedExpressionId),
 }
 
-impl From<InjectedExpressionId> for ExpressionOperandId {
-    #[inline]
-    fn from(v: InjectedExpressionId) -> ExpressionOperandId {
-        ExpressionOperandId::from(v.as_u32())
+impl Debug for Operand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Zero => write!(f, "Zero"),
+            Self::Counter(id) => f.debug_tuple("Counter").field(&id.as_u32()).finish(),
+            Self::Expression(id) => f.debug_tuple("Expression").field(&id.as_u32()).finish(),
+        }
     }
 }
 
@@ -107,19 +85,19 @@ pub enum CoverageKind {
         /// ID of this coverage-counter expression within its enclosing function.
         /// Other expressions in the same function can refer to it as an operand.
         id: InjectedExpressionId,
-        lhs: ExpressionOperandId,
+        lhs: Operand,
         op: Op,
-        rhs: ExpressionOperandId,
+        rhs: Operand,
     },
     Unreachable,
 }
 
 impl CoverageKind {
-    pub fn as_operand_id(&self) -> ExpressionOperandId {
+    pub fn as_operand(&self) -> Operand {
         use CoverageKind::*;
         match *self {
-            Counter { id, .. } => ExpressionOperandId::from(id),
-            Expression { id, .. } => ExpressionOperandId::from(id),
+            Counter { id, .. } => Operand::Counter(id),
+            Expression { id, .. } => Operand::Expression(id),
             Unreachable => bug!("Unreachable coverage cannot be part of an expression"),
         }
     }
@@ -136,14 +114,14 @@ impl Debug for CoverageKind {
             Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
             Expression { id, lhs, op, rhs } => write!(
                 fmt,
-                "Expression({:?}) = {} {} {}",
+                "Expression({:?}) = {:?} {} {:?}",
                 id.index(),
-                lhs.index(),
+                lhs,
                 match op {
                     Op::Add => "+",
                     Op::Subtract => "-",
                 },
-                rhs.index(),
+                rhs,
             ),
             Unreachable => write!(fmt, "Unreachable"),
         }

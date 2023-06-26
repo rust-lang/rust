@@ -470,7 +470,6 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::Unsafety,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
     ::rustc_target::spec::abi::Abi,
-    crate::mir::coverage::ExpressionOperandId,
     crate::mir::coverage::CounterValueReference,
     crate::mir::coverage::InjectedExpressionId,
     crate::mir::coverage::InjectedExpressionIndex,
