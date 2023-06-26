@@ -1182,6 +1182,7 @@ symbols! {
         read_struct,
         read_struct_field,
         read_via_copy,
+        read_via_move,
         readonly,
         realloc,
         reason,

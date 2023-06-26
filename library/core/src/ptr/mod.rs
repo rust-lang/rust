@@ -1180,6 +1180,37 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     }
 }
 
+/// Reads the value from `src` by moving it.
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `src` must be [valid] for reads.
+///
+/// * `src` must be properly aligned.
+///
+/// * `src` must point to a properly initialized value of type `T`.
+///
+/// * `src` must not be read or written while the return value exists.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
+///
+/// [valid]: self#safety
+#[inline]
+#[rustc_const_unstable(feature = "read_move", issue = "0")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+pub const unsafe fn read_move<T>(src: *mut T) -> T {
+    // SAFETY: the caller must guarantee that `src` is valid for reads.
+    unsafe {
+        assert_unsafe_precondition!(
+            "ptr::read_move requires that the pointer argument is aligned and non-null",
+            [T](src: *mut T) => is_aligned_and_not_null(src)
+        );
+        crate::intrinsics::read_via_move(src)
+    }
+}
+
 /// Reads the value from `src` without moving it. This leaves the
 /// memory in `src` unchanged.
 ///

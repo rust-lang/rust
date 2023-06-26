@@ -2272,6 +2272,15 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn read_via_copy<T>(ptr: *const T) -> T;
 
+    /// This is an implementation detail of [`crate::ptr::read_move`] and should
+    /// not be used anywhere else.
+    ///
+    /// This intrinsic can *only* be called where the pointer is a local without
+    /// projections (`read_via_move(ptr)`, not `read_via_move(*ptr)`) so that it
+    /// trivially obeys runtime-MIR rules about derefs in operands.
+    #[rustc_nounwind]
+    pub fn read_via_move<T>(ptr: *mut T) -> T;
+
     /// This is an implementation detail of [`crate::ptr::write`] and should
     /// not be used anywhere else.  See its comments for why this exists.
     ///
