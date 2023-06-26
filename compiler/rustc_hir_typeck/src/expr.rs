@@ -5,6 +5,7 @@
 use crate::cast;
 use crate::coercion::CoerceMany;
 use crate::coercion::DynamicCoerceMany;
+use crate::errors::ReturnLikeStatementKind;
 use crate::errors::TypeMismatchFruTypo;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
@@ -324,6 +325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
+            ExprKind::Become(call) => self.check_expr_become(call, expr),
             ExprKind::Let(let_expr) => self.check_expr_let(let_expr),
             ExprKind::Loop(body, _, source, _) => {
                 self.check_expr_loop(body, source, expected, expr)
@@ -735,47 +737,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         if self.ret_coercion.is_none() {
-            let mut err = ReturnStmtOutsideOfFnBody {
-                span: expr.span,
-                encl_body_span: None,
-                encl_fn_span: None,
-            };
-
-            let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
-
-            if let Some(hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn(..),
-                span: encl_fn_span,
-                ..
-            }))
-            | Some(hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
-                span: encl_fn_span,
-                ..
-            }))
-            | Some(hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(..),
-                span: encl_fn_span,
-                ..
-            })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
-            {
-                // We are inside a function body, so reporting "return statement
-                // outside of function body" needs an explanation.
-
-                let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
-
-                // If this didn't hold, we would not have to report an error in
-                // the first place.
-                assert_ne!(encl_item_id.def_id, encl_body_owner_id);
-
-                let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
-                let encl_body = self.tcx.hir().body(encl_body_id);
-
-                err.encl_body_span = Some(encl_body.value.span);
-                err.encl_fn_span = Some(*encl_fn_span);
-            }
-
-            self.tcx.sess.emit_err(err);
+            self.emit_return_outside_of_fn_body(expr, ReturnLikeStatementKind::Return);
 
             if let Some(e) = expr_opt {
                 // We still have to type-check `e` (issue #86188), but calling
@@ -815,6 +777,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.types.never
     }
 
+    fn check_expr_become(
+        &self,
+        call: &'tcx hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
+        match &self.ret_coercion {
+            Some(ret_coercion) => {
+                let ret_ty = ret_coercion.borrow().expected_ty();
+                let call_expr_ty = self.check_expr_with_hint(call, ret_ty);
+
+                // N.B. don't coerce here, as tail calls can't support most/all coercions
+                // FIXME(explicit_tail_calls): add a diagnostic note that `become` doesn't allow coercions
+                self.demand_suptype(expr.span, ret_ty, call_expr_ty);
+            }
+            None => {
+                self.emit_return_outside_of_fn_body(expr, ReturnLikeStatementKind::Become);
+
+                // Fallback to simply type checking `call` without hint/demanding the right types.
+                // Best effort to highlight more errors.
+                self.check_expr(call);
+            }
+        }
+
+        self.tcx.types.never
+    }
+
+    /// Check an expression that _is being returned_.
+    /// For example, this is called with `return_expr: $expr` when `return $expr`
+    /// is encountered.
+    ///
+    /// Note that this function must only be called in function bodies.
+    ///
     /// `explicit_return` is `true` if we're checking an explicit `return expr`,
     /// and `false` if we're checking a trailing expression.
     pub(super) fn check_return_expr(
@@ -831,10 +825,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut span = return_expr.span;
         // Use the span of the trailing expression for our cause,
         // not the span of the entire function
-        if !explicit_return {
-            if let ExprKind::Block(body, _) = return_expr.kind && let Some(last_expr) = body.expr {
+        if !explicit_return
+            && let ExprKind::Block(body, _) = return_expr.kind
+            && let Some(last_expr) = body.expr
+        {
                 span = last_expr.span;
-            }
         }
         ret_coercion.borrow_mut().coerce(
             self,
@@ -852,6 +847,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty, return_expr.span);
             });
         }
+    }
+
+    /// Emit an error because `return` or `become` is used outside of a function body.
+    ///
+    /// `expr` is the `return` (`become`) "statement", `kind` is the kind of the statement
+    /// either `Return` or `Become`.
+    fn emit_return_outside_of_fn_body(&self, expr: &hir::Expr<'_>, kind: ReturnLikeStatementKind) {
+        let mut err = ReturnStmtOutsideOfFnBody {
+            span: expr.span,
+            encl_body_span: None,
+            encl_fn_span: None,
+            statement_kind: kind,
+        };
+
+        let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
+
+        if let Some(hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Fn(..),
+            span: encl_fn_span,
+            ..
+        }))
+        | Some(hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
+            span: encl_fn_span,
+            ..
+        }))
+        | Some(hir::Node::ImplItem(hir::ImplItem {
+            kind: hir::ImplItemKind::Fn(..),
+            span: encl_fn_span,
+            ..
+        })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
+        {
+            // We are inside a function body, so reporting "return statement
+            // outside of function body" needs an explanation.
+
+            let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+
+            // If this didn't hold, we would not have to report an error in
+            // the first place.
+            assert_ne!(encl_item_id.def_id, encl_body_owner_id);
+
+            let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
+            let encl_body = self.tcx.hir().body(encl_body_id);
+
+            err.encl_body_span = Some(encl_body.value.span);
+            err.encl_fn_span = Some(*encl_fn_span);
+        }
+
+        self.tcx.sess.emit_err(err);
     }
 
     fn point_at_return_for_opaque_ty_error(

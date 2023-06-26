@@ -1,8 +1,8 @@
-// > Suggest `return`ing tail expressions that match return type
+// > Suggest returning tail expressions that match return type
 // >
 // > Some newcomers are confused by the behavior of tail expressions,
 // > interpreting that "leaving out the `;` makes it the return value".
-// > To help them go in the right direction, suggest using `return` instead
+// > To help them go in the right direction, suggest using return instead
 // > when applicable.
 // (original commit description for this test)
 //
