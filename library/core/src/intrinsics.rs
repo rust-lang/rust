@@ -2279,6 +2279,7 @@ extern "rust-intrinsic" {
     /// projections (`read_via_move(ptr)`, not `read_via_move(*ptr)`) so that it
     /// trivially obeys runtime-MIR rules about derefs in operands.
     #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
     pub fn read_via_move<T>(ptr: *mut T) -> T;
 
     /// This is an implementation detail of [`crate::ptr::write`] and should
