@@ -204,7 +204,7 @@ macro_rules! intrinsics {
     (
         #[maybe_use_optimized_c_shim]
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+        pub $(unsafe $(@ $empty:tt)? )? extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
@@ -212,7 +212,7 @@ macro_rules! intrinsics {
     ) => (
         #[cfg($name = "optimized-c")]
         #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
-        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+        pub $(unsafe $($empty)? )? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             extern $abi {
                 fn $name($($argname: $ty),*) $(-> $ret)?;
             }
@@ -224,7 +224,7 @@ macro_rules! intrinsics {
         #[cfg(not($name = "optimized-c"))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            pub $(unsafe $($empty)? )? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -419,7 +419,7 @@ macro_rules! intrinsics {
     (
         #[naked]
         $(#[$($attr:tt)*])*
-        pub $(unsafe)? extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 

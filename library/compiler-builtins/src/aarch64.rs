@@ -131,7 +131,7 @@ macro_rules! compare_and_swap {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
             #[naked]
-            pub extern "C" fn $name (
+            pub unsafe extern "C" fn $name (
                 expected: int_ty!($bytes), desired: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
                 // We can't use `AtomicI8::compare_and_swap`; we *are* compare_and_swap.
@@ -162,7 +162,7 @@ macro_rules! compare_and_swap_i128 {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
             #[naked]
-            pub extern "C" fn $name (
+            pub unsafe extern "C" fn $name (
                 expected: i128, desired: i128, ptr: *mut i128
             ) -> i128 {
                 unsafe { core::arch::asm! {
@@ -192,7 +192,7 @@ macro_rules! swap {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
             #[naked]
-            pub extern "C" fn $name (
+            pub unsafe extern "C" fn $name (
                 left: int_ty!($bytes), right_ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
                 unsafe { core::arch::asm! {
@@ -218,7 +218,7 @@ macro_rules! fetch_op {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
             #[naked]
-            pub extern "C" fn $name (
+            pub unsafe extern "C" fn $name (
                 val: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
                 unsafe { core::arch::asm! {
