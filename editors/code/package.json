@@ -298,11 +298,6 @@
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
-                "command": "rust-analyzer.matchingBrace",
-                "key": "ctrl+shift+m",
-                "when": "editorTextFocus && editorLangId == rust"
-            },
-            {
                 "command": "rust-analyzer.joinLines",
                 "key": "ctrl+shift+j",
                 "when": "editorTextFocus && editorLangId == rust"
