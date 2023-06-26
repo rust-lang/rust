@@ -3906,7 +3906,7 @@ impl Methods {
                             manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
                         },
                         Some(("map", m_recv, [m_arg], span, _)) => {
-                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
+                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, (recv, u_arg), span, &self.msrv);
                         },
                         Some(("then_some", t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
