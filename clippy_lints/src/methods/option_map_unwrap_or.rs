@@ -74,16 +74,32 @@ pub(super) fn check<'tcx>(
             return;
         }
 
+        let mut suggest_is_some_and = false;
+        // argument to `unwrap_or` is false; should suggest using `is_some_and`
+        if let ExprKind::Lit(unwrap_lit) = &unwrap_arg.kind {
+            if let rustc_ast::LitKind::Bool(false) = unwrap_lit.node {
+                suggest_is_some_and = true;
+            }
+        }
+
         let mut applicability = Applicability::MachineApplicable;
         // get snippet for unwrap_or()
         let unwrap_snippet = snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability);
         // lint message
         // comparing the snippet from source to raw text ("None") below is safe
         // because we already have checked the type.
-        let arg = if unwrap_snippet == "None" { "None" } else { "<a>" };
+        let arg = if unwrap_snippet == "None" {
+            "None"
+        } else if suggest_is_some_and {
+            "false"
+        } else {
+            "<a>"
+        };
         let unwrap_snippet_none = unwrap_snippet == "None";
         let suggest = if unwrap_snippet_none {
             "and_then(<f>)"
+        } else if suggest_is_some_and {
+            "is_some_and(<f>)"
         } else {
             "map_or(<a>, <f>)"
         };
@@ -98,12 +114,18 @@ pub(super) fn check<'tcx>(
             let mut suggestion = vec![
                 (
                     map_span,
-                    String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
+                    String::from(if unwrap_snippet_none {
+                        "and_then"
+                    } else if suggest_is_some_and {
+                        "is_some_and"
+                    } else {
+                        "map_or"
+                    }),
                 ),
                 (expr.span.with_lo(unwrap_recv.span.hi()), String::new()),
             ];
 
-            if !unwrap_snippet_none {
+            if !unwrap_snippet_none && !suggest_is_some_and {
                 suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
             }
 

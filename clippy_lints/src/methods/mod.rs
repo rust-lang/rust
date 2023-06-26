@@ -513,6 +513,7 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map(|a| a + 1).unwrap_or(0);
+    /// option.map(|a| a > 10).unwrap_or(false);
     /// result.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     ///
@@ -522,6 +523,7 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map_or(0, |a| a + 1);
+    /// option.is_some_and(|a| a > 10);
     /// result.map_or_else(some_function, |a| a + 1);
     /// ```
     #[clippy::version = "1.45.0"]

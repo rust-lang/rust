@@ -56,6 +56,10 @@ fn option_methods() {
         .unwrap_or_else(||
             0
         );
+
+    // Check for `map(f).unwrap_or(false)` use.
+    let _ = opt.map(|x| x > 5).unwrap_or(false);
+
 }
 
 #[rustfmt::skip]
