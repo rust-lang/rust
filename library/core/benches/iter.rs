@@ -2,6 +2,7 @@ use core::borrow::Borrow;
 use core::iter::*;
 use core::mem;
 use core::num::Wrapping;
+use core::ops::Range;
 use test::{black_box, Bencher};
 
 #[bench]
@@ -66,6 +67,57 @@ fn bench_max(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
         it.map(black_box).map(scatter).max()
+    })
+}
+
+#[bench]
+fn bench_range_step_by_sum_reducible(b: &mut Bencher) {
+    let r = 0u32..1024;
+    b.iter(|| {
+        let r = black_box(r.clone()).step_by(8);
+
+        let mut sum: u32 = 0;
+        for i in r {
+            sum += i;
+        }
+
+        sum
+    })
+}
+
+#[bench]
+fn bench_range_step_by_loop_u32(b: &mut Bencher) {
+    let r = 0..(u16::MAX as u32);
+    b.iter(|| {
+        let r = black_box(r.clone()).step_by(64);
+
+        let mut sum: u32 = 0;
+        for i in r {
+            let i = i ^ i.wrapping_sub(1);
+            sum = sum.wrapping_add(i);
+        }
+
+        sum
+    })
+}
+
+#[bench]
+fn bench_range_step_by_fold_usize(b: &mut Bencher) {
+    let r: Range<usize> = 0..(u16::MAX as usize);
+    b.iter(|| {
+        let r = black_box(r.clone());
+        r.step_by(64)
+            .map(|x: usize| x ^ (x.wrapping_sub(1)))
+            .fold(0usize, |acc, i| acc.wrapping_add(i))
+    })
+}
+
+#[bench]
+fn bench_range_step_by_fold_u16(b: &mut Bencher) {
+    let r: Range<u16> = 0..u16::MAX;
+    b.iter(|| {
+        let r = black_box(r.clone());
+        r.step_by(64).map(|x: u16| x ^ (x.wrapping_sub(1))).fold(0u16, |acc, i| acc.wrapping_add(i))
     })
 }
 
