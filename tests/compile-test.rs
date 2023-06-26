@@ -161,7 +161,8 @@ fn run_ui_cargo() {
     }
 
     let mut config = base_config("ui-cargo");
-    config.program = CommandBuilder::cargo();
+    config.program.input_file_flag = CommandBuilder::cargo().input_file_flag;
+    config.program.out_dir_flag = CommandBuilder::cargo().out_dir_flag;
     config.program.args = vec!["clippy".into(), "--color".into(), "never".into(), "--quiet".into()];
     config
         .program
