@@ -224,13 +224,14 @@ target | std | host | notes
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ✓ |  | ARM64 HermitCore
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
-`aarch64-unknown-netbsd` | ✓ | ✓ |
+[`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
 `aarch64-uwp-windows-msvc` | ? |  |
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
+[`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
 [`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
 `armv4t-none-eabi` | * |  | ARMv4T A32
@@ -238,7 +239,7 @@ target | std | host | notes
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | ARMv5TE A32
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
-`armv6-unknown-netbsd-eabihf` | ? |  |
+[`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ? |  | ARM Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
@@ -246,7 +247,7 @@ target | std | host | notes
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7 Linux with uClibc, softfloat
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7 Linux with uClibc, hardfloat
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7 FreeBSD
-`armv7-unknown-netbsd-eabihf` | ✓ | ✓ |
+[`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv7 NetBSD w/hard-float
 `armv7-wrs-vxworks-eabihf` | ? |  |
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
@@ -262,7 +263,7 @@ target | std | host | notes
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
-`i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
+[`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
 `i686-uwp-windows-gnu` | ? |  |
 `i686-uwp-windows-msvc` | ? |  |
@@ -283,7 +284,7 @@ target | std | host | notes
 `msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  |
-`powerpc-unknown-netbsd` | ✓ | ✓ |
+[`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
 `powerpc-unknown-openbsd` | ? |  |
 `powerpc-wrs-vxworks-spe` | ? |  |
 `powerpc-wrs-vxworks` | ? |  |
@@ -307,7 +308,7 @@ target | std | host | notes
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 `s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 3.2, MUSL)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
-`sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
+[`sparc64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/sparc64
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | ARMv5TE T32
