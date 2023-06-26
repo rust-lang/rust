@@ -1417,9 +1417,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
                 record!(self.tables.implied_predicates_of[def_id] <- self.tcx.implied_predicates_of(def_id));
             }
-            if let DefKind::Generator = def_kind {
-                self.encode_info_for_generator(local_id);
-            }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
                 record_array!(self.tables.associated_item_or_field_def_ids[def_id] <-
@@ -1432,8 +1429,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.encode_info_for_assoc_item(def_id);
                 }
             }
-            if let DefKind::Impl { of_trait } = def_kind {
-                self.encode_info_for_impl(def_id, of_trait)
+            if let DefKind::Generator = def_kind {
+                self.encode_info_for_generator(local_id);
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
@@ -1706,33 +1703,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn encode_info_for_impl(&mut self, def_id: DefId, of_trait: bool) {
-        let tcx = self.tcx;
-
-        self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
-        self.tables.impl_polarity.set_some(def_id.index, tcx.impl_polarity(def_id));
-
-        if of_trait && let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
-            record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
-
-            let trait_def_id = trait_ref.skip_binder().def_id;
-            let trait_def = tcx.trait_def(trait_def_id);
-            if let Some(mut an) = trait_def.ancestors(tcx, def_id).ok() {
-                if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
-                    self.tables.impl_parent.set_some(def_id.index, parent.into());
-                }
-            }
-
-            // if this is an impl of `CoerceUnsized`, create its
-            // "unsized info", else just store None
-            if Some(trait_def_id) == tcx.lang_items().coerce_unsized_trait() {
-                let coerce_unsized_info = tcx.coerce_unsized_info(def_id);
-                record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
-            }
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
     fn encode_info_for_generator(&mut self, def_id: LocalDefId) {
         let typeck_result: &'tcx ty::TypeckResults<'tcx> = self.tcx.typeck(def_id);
         let data = self.tcx.generator_kind(def_id).unwrap();
@@ -1967,20 +1937,35 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             FxHashMap::default();
 
         for id in tcx.hir().items() {
-            if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
-                if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
-                    let trait_ref = trait_ref.subst_identity();
+            let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else { continue; };
+            let def_id = id.owner_id.to_def_id();
 
-                    let simplified_self_ty = fast_reject::simplify_type(
-                        self.tcx,
-                        trait_ref.self_ty(),
-                        TreatParams::AsCandidateKey,
-                    );
+            self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
+            self.tables.impl_polarity.set_some(def_id.index, tcx.impl_polarity(def_id));
 
-                    fx_hash_map
-                        .entry(trait_ref.def_id)
-                        .or_default()
-                        .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
+            if of_trait && let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
+                record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
+
+                let trait_ref = trait_ref.subst_identity();
+                let simplified_self_ty =
+                    fast_reject::simplify_type(self.tcx, trait_ref.self_ty(), TreatParams::AsCandidateKey);
+                fx_hash_map
+                    .entry(trait_ref.def_id)
+                    .or_default()
+                    .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
+
+                let trait_def = tcx.trait_def(trait_ref.def_id);
+                if let Some(mut an) = trait_def.ancestors(tcx, def_id).ok() {
+                    if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
+                        self.tables.impl_parent.set_some(def_id.index, parent.into());
+                    }
+                }
+
+                // if this is an impl of `CoerceUnsized`, create its
+                // "unsized info", else just store None
+                if Some(trait_ref.def_id) == tcx.lang_items().coerce_unsized_trait() {
+                    let coerce_unsized_info = tcx.coerce_unsized_info(def_id);
+                    record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
                 }
             }
         }
