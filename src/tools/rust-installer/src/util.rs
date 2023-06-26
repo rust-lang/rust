@@ -117,7 +117,7 @@ where
         } else {
             copy(entry.path(), dst)?;
         }
-        callback(&path, file_type)?;
+        callback(path, file_type)?;
     }
     Ok(())
 }
@@ -135,7 +135,7 @@ macro_rules! actor {
         $( #[ $attr ] )+
         #[derive(clap::Args)]
         pub struct $name {
-            $( $( #[ $field_attr ] )+ #[clap(long, $(default_value = $default)*)] $field : $type, )*
+            $( $( #[ $field_attr ] )+ #[arg(long, $(default_value = $default)*)] $field : $type, )*
         }
 
         impl Default for $name {
