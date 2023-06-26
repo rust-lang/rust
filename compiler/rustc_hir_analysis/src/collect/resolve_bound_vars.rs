@@ -1344,12 +1344,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    let mut err = self.tcx.sess.struct_span_err(
-                        lifetime_ref.ident.span,
-                        "`impl Trait` can only mention lifetimes bound at the fn or impl level",
-                    );
-                    err.span_note(self.tcx.def_span(region_def_id), "lifetime declared here");
-                    err.emit();
+                    self.tcx.sess.emit_err(errors::LateBoundInApit::Lifetime {
+                        span: lifetime_ref.ident.span,
+                        param_span: self.tcx.def_span(region_def_id),
+                    });
                     return;
                 }
                 Scope::Root { .. } => break,

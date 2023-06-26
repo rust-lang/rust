@@ -892,4 +892,11 @@ pub(crate) enum LateBoundInApit {
         #[label]
         param_span: Span,
     },
+    #[diag(hir_analysis_late_bound_lifetime_in_apit)]
+    Lifetime {
+        #[primary_span]
+        span: Span,
+        #[label]
+        param_span: Span,
+    },
 }
