@@ -47,9 +47,10 @@ assert-css: (".mobile-topbar h2", {"overflow-x": "hidden"})
 // On desktop, they wrap when too big.
 set-window-size: (1100, 800)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
-compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+store-position: (".main-heading .out-of-band", {"y": out_of_band_long_y})
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-compare-elements-position: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+store-position: (".main-heading .out-of-band", {"y": out_of_band_lib2_y})
+assert: |out_of_band_long_y| > |out_of_band_lib2_y|
 // make sure there is a gap between them
 compare-elements-position-near-false: (".main-heading h1", ".main-heading .out-of-band", {"x": 550})
 

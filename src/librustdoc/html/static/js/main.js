@@ -879,7 +879,7 @@ function preLoadCss(cssUrl) {
             }
         });
         innerToggle.title = "collapse all docs";
-        innerToggle.children[0].innerText = "\u2212"; // "\u2212" is "−" minus sign
+        innerToggle.innerText = "\u2212"; // "\u2212" is "−" minus sign
     }
 
     function collapseAllDocs() {
@@ -894,7 +894,7 @@ function preLoadCss(cssUrl) {
             }
         });
         innerToggle.title = "expand all docs";
-        innerToggle.children[0].innerText = "+";
+        innerToggle.innerText = "+";
     }
 
     function toggleAllDocs() {

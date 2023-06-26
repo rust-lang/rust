@@ -138,7 +138,7 @@ h1, h2, h3, h4 {
 	margin-top: 0;
 }
 .main-heading h1 {
-	margin: 0;
+	margin: 9px 0 0 0;
 	padding: 0;
 	flex-grow: 1;
 	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
@@ -292,15 +292,6 @@ button {
 }
 
 /* end tweaks for normalize.css 8 */
-
-button#toggle-all-docs {
-	padding: 0;
-	background: none;
-	border: none;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
-}
 
 .rustdoc {
 	display: flex;
@@ -725,7 +716,7 @@ div.where {
 nav.sub {
 	flex-grow: 1;
 	flex-flow: row nowrap;
-	margin: 4px 0 25px 0;
+	margin: 4px 0 16px 0;
 	display: flex;
 	align-items: center;
 }
@@ -1471,11 +1462,11 @@ a.tooltip:hover::after {
 	opacity: 1;
 }
 
-#settings-menu, #help-button {
+#settings-menu, #help-button, button#toggle-all-docs {
 	margin-left: 4px;
 	display: flex;
 }
-#settings-menu > a, #help-button > a {
+#settings-menu > a, #help-button > a, button#toggle-all-docs {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1487,11 +1478,21 @@ a.tooltip:hover::after {
 	   as an icon, it's okay to specify their sizes in pixels. */
 	font-size: 20px;
 	width: 33px;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
+#help-button > a:hover, #help-button > a:focus,
+button#toggle-all-docs:hover, button#toggle-all-docs:focus {
 	border-color: var(--settings-button-border-focus);
+}
+
+button#toggle-all-docs {
+	height: 34px;
+	margin-left: 16px;
+	float: right;
 }
 
 #copy-path {
@@ -1593,9 +1594,9 @@ details.toggle > summary.hideme > span {
 
 details.toggle > summary::before {
 	/* toggle plus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7M8.5 12V8.625v0V5"/></svg>') no-repeat top left;
+	background: url('data:image/svg+xml,<svg width="17" height="17" stroke="black" fill="none" \
+xmlns="http://www.w3.org/2000/svg"><path d="M2.5 2.5h12v12h-12v-12.5" \
+shape-rendering="crispEdges"/><path d="M6 8.5h5M8.5 11.5V5.5"/></svg>') no-repeat top left;
 	content: "";
 	cursor: pointer;
 	width: 16px;
@@ -1626,7 +1627,7 @@ details.toggle > summary.hideme::after {
 	content: "";
 }
 
-details.toggle > summary:focus::before,
+details.toggle > summary:focus-visible::before,
 details.toggle > summary:hover::before {
 	opacity: 1;
 }
@@ -1676,7 +1677,7 @@ details.toggle[open] > summary::before {
 	/* toggle minus */
 	background: url('data:image/svg+xml,<svg width="17" height="17" \
 shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7"/></svg>') no-repeat top left;
+d="M2.5 2.5h12v12h-12v-12.5" stroke="%23999"/><path d="M6 8.5h5"/></svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {
@@ -1732,6 +1733,10 @@ in src-script.js
 
 	.main-heading {
 		flex-direction: column;
+	}
+
+	button#toggle-all-docs {
+		margin-top: -8px;
 	}
 
 	.out-of-band {
