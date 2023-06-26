@@ -569,6 +569,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::return_self_not_must_use::RETURN_SELF_NOT_MUST_USE_INFO,
     crate::returns::LET_AND_RETURN_INFO,
     crate::returns::NEEDLESS_RETURN_INFO,
+    crate::returns::NEEDLESS_RETURN_WITH_TRY_INFO,
     crate::same_name_method::SAME_NAME_METHOD_INFO,
     crate::self_named_constructors::SELF_NAMED_CONSTRUCTORS_INFO,
     crate::semicolon_block::SEMICOLON_INSIDE_BLOCK_INFO,
