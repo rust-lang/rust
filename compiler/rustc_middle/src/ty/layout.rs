@@ -1087,6 +1087,7 @@ where
                     // this will continue to work as long as we don't start
                     // using more niches than just null (e.g., the first page of
                     // the address space, or unaligned pointers).
+                    // FIXME(reference_niches): well, the day has come...
                     Variants::Multiple {
                         tag_encoding: TagEncoding::Niche { untagged_variant, .. },
                         tag_field,

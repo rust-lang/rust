@@ -1503,16 +1503,21 @@ impl Niche {
 
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
+        if count > self.available(cx) {
+            return None;
+        }
 
         let Self { value, valid_range: v, .. } = *self;
-        let size = value.size(cx);
-        assert!(size.bits() <= 128);
-        let max_value = size.unsigned_int_max();
+        let max_value = value.size(cx).unsigned_int_max();
+        let distance_end_zero = max_value - v.end;
 
-        let niche = v.end.wrapping_add(1)..v.start;
-        let available = niche.end.wrapping_sub(niche.start) & max_value;
-        if count > available {
-            return None;
+        // Null-pointer optimization. This is guaranteed by Rust (at least for `Option<_>`),
+        // and offers better codegen opportunities.
+        if count == 1 && matches!(value, Pointer(_)) && !v.contains(0) {
+            // Select which bound to move to minimize the number of lost niches.
+            let valid_range =
+                if v.start - 1 > distance_end_zero { v.with_end(0) } else { v.with_start(0) };
+            return Some((0, Scalar::Initialized { value, valid_range }));
         }
 
         // Extend the range of valid values being reserved by moving either `v.start` or `v.end` bound.
@@ -1535,7 +1540,6 @@ impl Niche {
             let end = v.end.wrapping_add(count) & max_value;
             Some((start, Scalar::Initialized { value, valid_range: v.with_end(end) }))
         };
-        let distance_end_zero = max_value - v.end;
         if v.start > v.end {
             // zero is unavailable because wrapping occurs
             move_end(v)
