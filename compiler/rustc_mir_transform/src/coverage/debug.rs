@@ -277,14 +277,7 @@ impl DebugCounters {
 
     pub fn add_counter(&mut self, counter_kind: &CoverageKind, some_block_label: Option<String>) {
         if let Some(counters) = &mut self.some_counters {
-            let id: ExpressionOperandId = match *counter_kind {
-                CoverageKind::Counter { id, .. } => id.into(),
-                CoverageKind::Expression { id, .. } => id.into(),
-                _ => bug!(
-                    "the given `CoverageKind` is not an counter or expression: {:?}",
-                    counter_kind
-                ),
-            };
+            let id = counter_kind.as_operand_id();
             counters
                 .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
                 .expect("attempt to add the same counter_kind to DebugCounters more than once");
@@ -330,13 +323,7 @@ impl DebugCounters {
             }
         }
 
-        let id: ExpressionOperandId = match *counter_kind {
-            CoverageKind::Counter { id, .. } => id.into(),
-            CoverageKind::Expression { id, .. } => id.into(),
-            _ => {
-                bug!("the given `CoverageKind` is not an counter or expression: {:?}", counter_kind)
-            }
-        };
+        let id = counter_kind.as_operand_id();
         if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
             let counters = self.some_counters.as_ref().unwrap();
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
