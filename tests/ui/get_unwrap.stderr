@@ -188,19 +188,19 @@ LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:79:24
+  --> $DIR/get_unwrap.rs:80:24
    |
 LL |         let _x: &i32 = f.get(1 + 2).unwrap();
    |                        ^^^^^^^^^^^^^^^^^^^^^ help: try this: `&f[1 + 2]`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:82:18
+  --> $DIR/get_unwrap.rs:83:18
    |
 LL |         let _x = f.get(1 + 2).unwrap().to_string();
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: try this: `f[1 + 2]`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/get_unwrap.rs:85:18
+  --> $DIR/get_unwrap.rs:86:18
    |
 LL |         let _x = f.get(1 + 2).unwrap().abs();
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: try this: `f[1 + 2]`

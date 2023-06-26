@@ -88,7 +88,7 @@ error: regex parse error:
        error: unrecognized escape sequence
   --> $DIR/regex.rs:42:42
    |
-LL |     let escaped_string_span = Regex::new("/b/c");
+LL |     let escaped_string_span = Regex::new("//b//c");
    |                                          ^^^^^^^^
    |
    = help: consider using a raw string literal: `r".."`
@@ -156,7 +156,7 @@ LL |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
 error: trivial regex
   --> $DIR/regex.rs:65:40
    |
-LL |     let trivial_backslash = Regex::new("a/.b");
+LL |     let trivial_backslash = Regex::new("a//.b");
    |                                        ^^^^^^^
    |
    = help: consider using `str::contains`

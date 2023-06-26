@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![allow(unused)]
 #![allow(deref_nullptr)]
 #![allow(clippy::unnecessary_operation)]

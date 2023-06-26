@@ -1,4 +1,4 @@
-//@ignore-x86
+//@ignore-target-x86
 
 #![warn(clippy::enum_clike_unportable_variant)]
 #![allow(unused, non_upper_case_globals)]

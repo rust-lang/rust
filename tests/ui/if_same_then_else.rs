@@ -21,6 +21,7 @@ fn foo() -> bool {
 
 fn if_same_then_else() {
     if true {
+        //~^ ERROR: this `if` has identical blocks
         Foo { bar: 42 };
         0..10;
         ..;
@@ -29,7 +30,6 @@ fn if_same_then_else() {
         0..=10;
         foo();
     } else {
-        //~ ERROR same body as `if` block
         Foo { bar: 42 };
         0..10;
         ..;
@@ -65,16 +65,16 @@ fn if_same_then_else() {
     }
 
     let _ = if true {
+        //~^ ERROR: this `if` has identical blocks
         0.0
     } else {
-        //~ ERROR same body as `if` block
         0.0
     };
 
     let _ = if true {
+        //~^ ERROR: this `if` has identical blocks
         -0.0
     } else {
-        //~ ERROR same body as `if` block
         -0.0
     };
 
@@ -88,13 +88,14 @@ fn if_same_then_else() {
     }
 
     let _ = if true {
+        //~^ ERROR: this `if` has identical blocks
         42
     } else {
-        //~ ERROR same body as `if` block
         42
     };
 
     if true {
+        //~^ ERROR: this `if` has identical blocks
         let bar = if true { 42 } else { 43 };
 
         while foo() {
@@ -102,7 +103,6 @@ fn if_same_then_else() {
         }
         bar + 1;
     } else {
-        //~ ERROR same body as `if` block
         let bar = if true { 42 } else { 43 };
 
         while foo() {

@@ -62,13 +62,13 @@ LL +     println!();
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:31:5
    |
-LL |     print!("//n"); // should fail
+LL |     print!("///n"); // should fail
    |     ^^^^^^^^^^^^^^
    |
 help: use `println!` instead
    |
-LL -     print!("//n"); // should fail
-LL +     println!("/"); // should fail
+LL -     print!("///n"); // should fail
+LL +     println!("//"); // should fail
    |
 
 error: using `print!()` with a format string that ends in a single newline
@@ -104,13 +104,13 @@ LL ~
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:50:5
    |
-LL |     print!("/r/n"); //~ ERROR
+LL |     print!("//r/n"); // should fail
    |     ^^^^^^^^^^^^^^^
    |
 help: use `println!` instead
    |
-LL -     print!("/r/n"); //~ ERROR
-LL +     println!("/r"); //~ ERROR
+LL -     print!("//r/n"); // should fail
+LL +     println!("//r"); // should fail
    |
 
 error: aborting due to 9 previous errors

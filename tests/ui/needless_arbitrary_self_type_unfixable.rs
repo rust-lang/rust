@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_attr.rs
+//@aux-build:proc_macro_attr.rs:proc-macro
 
 #![warn(clippy::needless_arbitrary_self_type)]
 

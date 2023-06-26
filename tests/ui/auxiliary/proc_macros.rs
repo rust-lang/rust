@@ -1,7 +1,3 @@
-//@compile-flags: --emit=link
-//@no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![feature(let_chains)]
 #![feature(proc_macro_span)]
 #![allow(clippy::needless_if, dead_code)]

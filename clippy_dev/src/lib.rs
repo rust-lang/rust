@@ -14,7 +14,6 @@ use std::io;
 use std::path::PathBuf;
 use std::process::{self, ExitStatus};
 
-pub mod bless;
 pub mod dogfood;
 pub mod fmt;
 pub mod lint;

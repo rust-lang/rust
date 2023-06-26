@@ -1,7 +1,7 @@
 error: expected `,`, found `a`
   --> $DIR/issue-3145.rs:2:19
    |
-LL |     println!("{}" a); //~ERROR expected `,`, found `a`
+LL |     println!("{}" a);
    |                   ^ expected `,`
 
 error: aborting due to previous error

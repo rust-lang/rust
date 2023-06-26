@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![warn(clippy::mut_mut)]
 #![allow(unused)]
 #![allow(clippy::no_effect, clippy::uninlined_format_args, clippy::unnecessary_operation)]

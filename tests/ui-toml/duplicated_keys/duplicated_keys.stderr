@@ -1,5 +1,5 @@
 error: error reading Clippy's configuration file: duplicate key `cognitive-complexity-threshold` in document root
-  --> $DIR/clippy.toml:2:1
+  --> $DIR/$DIR/clippy.toml:2:1
    |
 LL | cognitive-complexity-threshold = 4
    | ^

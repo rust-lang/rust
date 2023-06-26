@@ -107,8 +107,8 @@ LL |             use super::*;
 error: usage of wildcard import
   --> $DIR/wildcard_imports.rs:215:13
    |
-LL |         use super_imports::*;
-   |             ^^^^^^^^^^^^^^^^ help: try: `super_imports::foofoo`
+LL |         use crate::super_imports::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::super_imports::foofoo`
 
 error: usage of wildcard import
   --> $DIR/wildcard_imports.rs:224:17

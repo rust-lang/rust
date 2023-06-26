@@ -1,4 +1,4 @@
-//@aux-build: proc_macros.rs
+//@aux-build: proc_macros.rs:proc-macro
 
 #![allow(unused)]
 #![warn(clippy::let_underscore_untyped)]

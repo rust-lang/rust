@@ -3,22 +3,22 @@ error: this `if` has identical blocks
    |
 LL |       if true {
    |  _____________^
+LL | |
 LL | |         Foo { bar: 42 };
 LL | |         0..10;
-LL | |         ..;
 ...  |
 LL | |         foo();
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:31:12
+  --> $DIR/if_same_then_else.rs:32:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         Foo { bar: 42 };
 LL | |         0..10;
+LL | |         ..;
 ...  |
 LL | |         foo();
 LL | |     }
@@ -30,16 +30,16 @@ error: this `if` has identical blocks
    |
 LL |       let _ = if true {
    |  _____________________^
+LL | |
 LL | |         0.0
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:69:12
+  --> $DIR/if_same_then_else.rs:70:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         0.0
 LL | |     };
    | |_____^
@@ -49,16 +49,16 @@ error: this `if` has identical blocks
    |
 LL |       let _ = if true {
    |  _____________________^
+LL | |
 LL | |         -0.0
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:76:12
+  --> $DIR/if_same_then_else.rs:77:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         -0.0
 LL | |     };
    | |_____^
@@ -68,16 +68,16 @@ error: this `if` has identical blocks
    |
 LL |       let _ = if true {
    |  _____________________^
+LL | |
 LL | |         42
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:92:12
+  --> $DIR/if_same_then_else.rs:93:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         42
 LL | |     };
    | |_____^
@@ -87,22 +87,22 @@ error: this `if` has identical blocks
    |
 LL |       if true {
    |  _____________^
+LL | |
 LL | |         let bar = if true { 42 } else { 43 };
 LL | |
-LL | |         while foo() {
 ...  |
 LL | |         bar + 1;
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:104:12
+  --> $DIR/if_same_then_else.rs:105:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         let bar = if true { 42 } else { 43 };
 LL | |
+LL | |         while foo() {
 ...  |
 LL | |         bar + 1;
 LL | |     }
