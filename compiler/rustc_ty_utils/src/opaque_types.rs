@@ -2,16 +2,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
 use rustc_hir::{intravisit, CRATE_HIR_ID};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::Span;
 use rustc_trait_selection::traits::check_substs_compatible;
-use rustc_trait_selection::traits::ObligationCtxt;
 use std::ops::ControlFlow;
 
 use crate::errors::{DuplicateArg, NotParam};
@@ -139,20 +135,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     rustc_hir::OpaqueTyOrigin::FnReturn(_)
                     | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
                     rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
-                        if in_assoc_ty {
-                            // Only associated items can be defining for opaque types in associated types.
-                            if let Some(parent) = self.parent() {
-                                let mut current = alias_ty.def_id.expect_local();
-                                while current != parent && current != CRATE_DEF_ID {
-                                    current = self.tcx.local_parent(current);
-                                }
-                                if current != parent {
-                                    return ControlFlow::Continue(());
-                                }
-                            } else {
-                                return ControlFlow::Continue(());
-                            }
-                        } else {
+                        if !in_assoc_ty {
                             if !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
                                 return ControlFlow::Continue(());
                             }
@@ -245,28 +228,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                             }
                         }
                     }
-                }
-
-                // Normalize trivial projections.
-                let mut infcx = self.tcx.infer_ctxt();
-                let infcx = infcx.build();
-                let t = if t.has_escaping_bound_vars() {
-                    let (t, _mapped_regions, _mapped_types, _mapped_consts) =
-                        rustc_trait_selection::traits::project::BoundVarReplacer::replace_bound_vars(
-                            &infcx,
-                            &mut self.universes,
-                            t,
-                        );
-                    t
-                } else {
-                    t
-                };
-                let ocx = ObligationCtxt::new(&infcx);
-                let cause = ObligationCause::dummy_with_span(self.span());
-                let normalized = ocx.normalize(&cause, self.tcx.param_env(self.item), t);
-                trace!(?normalized);
-                if normalized != t {
-                    normalized.visit_with(self)?;
                 }
             }
             ty::Adt(def, _) if def.did().is_local() => {

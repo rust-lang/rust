@@ -3,8 +3,6 @@
 
 // edition: 2021
 
-// check-pass
-
 #![feature(type_alias_impl_trait)]
 
 trait B {
@@ -26,6 +24,7 @@ type Successors<'a> = impl std::fmt::Debug + 'a;
 impl Terminator {
     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
         f = g;
+        //~^ ERROR item constrains opaque type that is not in its signature
     }
 }
 

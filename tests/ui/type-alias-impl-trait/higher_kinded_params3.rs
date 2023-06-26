@@ -23,9 +23,9 @@ type Successors<'a> = impl std::fmt::Debug + 'a;
 
 impl Terminator {
     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
-        //~^ ERROR non-defining opaque type use in defining scope
         f = g;
         //~^ ERROR mismatched types
+        //~| ERROR item constrains opaque type that is not in its signature
     }
 }
 
