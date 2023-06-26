@@ -22,7 +22,7 @@ use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, FnVal, Frame, ImmTy, InterpCx,
+    self, compile_time_machine, AllocId, AllocKind, ConstAllocation, FnVal, Frame, ImmTy, InterpCx,
     InterpResult, OpTy, PlaceTy, Pointer, Scalar,
 };
 use crate::{errors, fluent_generated as fluent};
@@ -322,13 +322,27 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             }
             // Equality with integers can never be known for sure.
             (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => 2,
-            // FIXME: return a `1` for when both sides are the same pointer, *except* that
-            // some things (like functions and vtables) do not have stable addresses
-            // so we need to be careful around them (see e.g. #73722).
-            // FIXME: return `0` for at least some comparisons where we can reliably
-            // determine the result of runtime inequality tests at compile-time.
-            // Examples include comparison of addresses in different static items.
-            (Scalar::Ptr(..), Scalar::Ptr(..)) => 2,
+            // Comparisons between data pointers are known if they point
+            // to the same allocation. Function pointers and vtables do not
+            // have stable addresses (see #73722), so the result of comparisons
+            // cannot be known during CTFE.
+
+            // FIXME: return `0` for in-bounds pointers from different allocations
+            // when we can reliably tell that they do not overlap.
+            (Scalar::Ptr(a, _), Scalar::Ptr(b, _))
+                if a.provenance == b.provenance
+                    && matches!(
+                        self.get_alloc_info(a.provenance).2,
+                        AllocKind::LiveData | AllocKind::Dead
+                    ) =>
+            {
+                if a == b {
+                    1
+                } else {
+                    0
+                }
+            }
+            _ => 2,
         })
     }
 }

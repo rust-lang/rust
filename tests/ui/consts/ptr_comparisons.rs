@@ -10,6 +10,10 @@
 )]
 
 const FOO: &usize = &42;
+const BAR: &usize = &43;
+
+fn foo() {}
+fn bar() {}
 
 macro_rules! check {
     (eq, $a:expr, $b:expr) => {
@@ -31,13 +35,24 @@ check!(ne, 0, 1);
 check!(ne, FOO as *const _, 0);
 check!(ne, unsafe { (FOO as *const usize).offset(1) }, 0);
 check!(ne, unsafe { (FOO as *const usize as *const u8).offset(3) }, 0);
+check!(eq, FOO as *const _, FOO as *const _);
+check!(ne, unsafe { (FOO as *const usize).offset(1) }, FOO as *const _);
 
-// We want pointers to be equal to themselves, but aren't checking this yet because
-// there are some open questions (e.g. whether function pointers to the same function
-// compare equal, they don't necessarily at runtime).
-// The case tested here should work eventually, but does not work yet.
-check!(!, FOO as *const _, FOO as *const _);
+// Comparisons of pointers to different allocations cannot be computed in the
+// general case, but some more cases could be implemented eventually:
 
+// This could be known, because FOO points to different data than BAR, so the
+// two pointers must be unequal.
+check!(!, FOO as *const _, BAR as *const _);
+// Function pointer addresses could overlap with the addresses of one-past-end-pointers
+// so this check would need to be extra precise.
+check!(!, foo as *const usize, FOO as *const _);
+
+// This comparison cannot be known until the whole memory layout is,
+// so it cannot be performed in CTFE.
+check!(!, unsafe { (FOO as *const usize).offset(1) }, BAR as *const _);
+// Function pointer comparions are flaky even at runtime.
+check!(!, foo as *const usize, bar as *const usize);
 
 ///////////////////////////////////////////////////////////////////////////////
 // If any of the below start compiling, make sure to add a `check` test for it.
