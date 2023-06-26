@@ -12,31 +12,21 @@
 //! Ported from `aarch64/lse.S` in LLVM's compiler-rt.
 //!
 //! Generate functions for each of the following symbols:
+//!  __aarch64_casM_ORDER
 //!  __aarch64_swpN_ORDER
 //!  __aarch64_ldaddN_ORDER
 //!  __aarch64_ldclrN_ORDER
 //!  __aarch64_ldeorN_ORDER
 //!  __aarch64_ldsetN_ORDER
-//! for N = {1, 2, 4, 8}, M = {1, 2, 4, 8}, ORDER = { relax, acq, rel, acq_rel }
-//!
-//! TODO: M = 16
+//! for N = {1, 2, 4, 8}, M = {1, 2, 4, 8, 16}, ORDER = { relax, acq, rel, acq_rel }
 //!
 //! The original `lse.S` has some truly horrifying code that expects to be compiled multiple times with different constants.
 //! We do something similar, but with macro arguments.
 
-/// We don't do runtime dispatch so we don't have to worry about the global ctor.
-/// Apparently MacOS uses a different number of underscores in the symbol name (???)
-// #[cfg(target_vendor = "apple")]
-// macro_rules! have_lse {
-//     () => { ___aarch64_have_lse_atomics }
-// }
-
-// #[cfg(not(target_vendor = "apple"))]
-// macro_rules! have_lse {
-//     () => { __aarch64_have_lse_atomics }
-// }
+// We don't do runtime dispatch so we don't have to worry about the `__aarch64_have_lse_atomics` global ctor.
 
 /// Translate a byte size to a Rust type.
+#[rustfmt::skip]
 macro_rules! int_ty {
     (1) => { i8 };
     (2) => { i16 };
@@ -48,6 +38,7 @@ macro_rules! int_ty {
 /// Given a byte size and a register number, return a register of the appropriate size.
 ///
 /// See <https://developer.arm.com/documentation/102374/0101/Registers-in-AArch64---general-purpose-registers>.
+#[rustfmt::skip]
 macro_rules! reg {
     (1, $num:literal) => { concat!("w", $num) };
     (2, $num:literal) => { concat!("w", $num) };
@@ -56,6 +47,7 @@ macro_rules! reg {
 }
 
 /// Given an atomic ordering, translate it to the acquire suffix for the lxdr aarch64 ASM instruction.
+#[rustfmt::skip]
 macro_rules! acquire {
     (Relaxed) => { "" };
     (Acquire) => { "a" };
@@ -64,6 +56,7 @@ macro_rules! acquire {
 }
 
 /// Given an atomic ordering, translate it to the release suffix for the stxr aarch64 ASM instruction.
+#[rustfmt::skip]
 macro_rules! release {
     (Relaxed) => { "" };
     (Acquire) => { "" };
@@ -72,6 +65,7 @@ macro_rules! release {
 }
 
 /// Given a size in bytes, translate it to the byte suffix for an aarch64 ASM instruction.
+#[rustfmt::skip]
 macro_rules! size {
     (1) => { "b" };
     (2) => { "h" };
@@ -84,6 +78,7 @@ macro_rules! size {
 /// with the correct semantics.
 ///
 /// See <https://developer.arm.com/documentation/ddi0596/2020-12/Base-Instructions/UXTB--Unsigned-Extend-Byte--an-alias-of-UBFM->
+#[rustfmt::skip]
 macro_rules! uxt {
     (1) => { "uxtb" };
     (2) => { "uxth" };
@@ -95,7 +90,9 @@ macro_rules! uxt {
 ///
 /// See <https://developer.arm.com/documentation/ddi0596/2020-12/Base-Instructions/LDXR--Load-Exclusive-Register->.
 macro_rules! ldxr {
-    ($ordering:ident, $bytes:tt) => { concat!("ld", acquire!($ordering), "xr", size!($bytes)) }
+    ($ordering:ident, $bytes:tt) => {
+        concat!("ld", acquire!($ordering), "xr", size!($bytes))
+    };
 }
 
 /// Given an atomic ordering and byte size, translate it to a STore eXclusive Register instruction
@@ -103,7 +100,29 @@ macro_rules! ldxr {
 ///
 /// See <https://developer.arm.com/documentation/ddi0596/2020-12/Base-Instructions/STXR--Store-Exclusive-Register->.
 macro_rules! stxr {
-    ($ordering:ident, $bytes:tt) => { concat!("st", release!($ordering), "xr", size!($bytes)) }
+    ($ordering:ident, $bytes:tt) => {
+        concat!("st", release!($ordering), "xr", size!($bytes))
+    };
+}
+
+/// Given an atomic ordering and byte size, translate it to a LoaD eXclusive Pair of registers instruction
+/// with the correct semantics.
+///
+/// See <https://developer.arm.com/documentation/ddi0596/2020-12/Base-Instructions/LDXP--Load-Exclusive-Pair-of-Registers->
+macro_rules! ldxp {
+    ($ordering:ident) => {
+        concat!("ld", acquire!($ordering), "xp")
+    };
+}
+
+/// Given an atomic ordering and byte size, translate it to a STore eXclusive Pair of registers instruction
+/// with the correct semantics.
+///
+/// See <https://developer.arm.com/documentation/ddi0596/2020-12/Base-Instructions/STXP--Store-Exclusive-Pair-of-registers->.
+macro_rules! stxp {
+    ($ordering:ident) => {
+        concat!("st", release!($ordering), "xp")
+    };
 }
 
 /// See <https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicI8.html#method.compare_and_swap>.
@@ -134,9 +153,38 @@ macro_rules! compare_and_swap {
                 } }
             }
         }
-    }
+    };
 }
 
+// i128 uses a completely different impl, so it has its own macro.
+macro_rules! compare_and_swap_i128 {
+    ($ordering:ident, $name:ident) => {
+        intrinsics! {
+            #[maybe_use_optimized_c_shim]
+            #[naked]
+            pub extern "C" fn $name (
+                expected: i128, desired: i128, ptr: *mut i128
+            ) -> i128 {
+                unsafe { core::arch::asm! {
+                    "mov    x16, x0",
+                    "mov    x17, x1",
+                    "0:",
+                    // LDXP   x0, x1, [x4]
+                    concat!(ldxp!($ordering), " x0, x1, [x4]"),
+                    "cmp    x0, x16",
+                    "ccmp   x1, x17, #0, eq",
+                    "bne    1f",
+                    // STXP   w(tmp2), x2, x3, [x4]
+                    concat!(stxp!($ordering), " w15, x2, x3, [x4]"),
+                    "cbnz   w15, 0b",
+                    "1:",
+                    "ret",
+                    options(noreturn)
+                } }
+            }
+        }
+    };
+}
 
 /// See <https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicI8.html#method.swap>.
 macro_rules! swap {
@@ -161,7 +209,7 @@ macro_rules! swap {
                 } }
             }
         }
-    }
+    };
 }
 
 /// See (e.g.) <https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicI8.html#method.fetch_add>.
@@ -194,28 +242,35 @@ macro_rules! fetch_op {
 
 // We need a single macro to pass to `foreach_ldadd`.
 macro_rules! add {
-    ($ordering:ident, $bytes:tt, $name:ident) => { fetch_op! { $ordering, $bytes, $name, "add" } }
+    ($ordering:ident, $bytes:tt, $name:ident) => {
+        fetch_op! { $ordering, $bytes, $name, "add" }
+    };
 }
 
 macro_rules! and {
-    ($ordering:ident, $bytes:tt, $name:ident) => { fetch_op! { $ordering, $bytes, $name, "bic" } }
+    ($ordering:ident, $bytes:tt, $name:ident) => {
+        fetch_op! { $ordering, $bytes, $name, "bic" }
+    };
 }
 
 macro_rules! xor {
-    ($ordering:ident, $bytes:tt, $name:ident) => { fetch_op! { $ordering, $bytes, $name, "eor" } }
+    ($ordering:ident, $bytes:tt, $name:ident) => {
+        fetch_op! { $ordering, $bytes, $name, "eor" }
+    };
 }
 
 macro_rules! or {
-    ($ordering:ident, $bytes:tt, $name:ident) => { fetch_op! { $ordering, $bytes, $name, "orr" } }
+    ($ordering:ident, $bytes:tt, $name:ident) => {
+        fetch_op! { $ordering, $bytes, $name, "orr" }
+    };
 }
 
 // See `generate_aarch64_outlined_atomics` in build.rs.
 include!(concat!(env!("OUT_DIR"), "/outlined_atomics.rs"));
 foreach_cas!(compare_and_swap);
+foreach_cas16!(compare_and_swap_i128);
 foreach_swp!(swap);
 foreach_ldadd!(add);
 foreach_ldclr!(and);
 foreach_ldeor!(xor);
 foreach_ldset!(or);
-
-// TODO: CAS 16

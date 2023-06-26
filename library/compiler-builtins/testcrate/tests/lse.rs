@@ -1,5 +1,5 @@
-#![cfg(target_arch = "aarch64")]
 #![feature(decl_macro)] // so we can use pub(super)
+#![cfg(all(target_arch = "aarch64", not(feature = "no-asm")))]
 
 /// Translate a byte size to a Rust type.
 macro int_ty {
@@ -36,6 +36,10 @@ mod cas {
             });
         }
     }
+}
+
+macro test_cas16($_ordering:ident, $name:ident) {
+    cas::test!($_ordering, 16, $name);
 }
 
 mod swap {
@@ -81,6 +85,7 @@ test_op!(xor, std::ops::BitXor::bitxor);
 test_op!(or, std::ops::BitOr::bitor);
 
 compiler_builtins::foreach_cas!(cas::test);
+compiler_builtins::foreach_cas16!(test_cas16);
 compiler_builtins::foreach_swp!(swap::test);
 compiler_builtins::foreach_ldadd!(add::test);
 compiler_builtins::foreach_ldclr!(clr::test);

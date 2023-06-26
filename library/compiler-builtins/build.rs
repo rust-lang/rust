@@ -122,6 +122,9 @@ fn generate_aarch64_outlined_atomics() {
         macros.insert(sym, gen_macro(sym));
     }
 
+    // Only CAS supports 16 bytes, and it has a different implementation that uses a different macro.
+    let mut cas16 = gen_macro("cas16");
+
     for ordering in [
         Ordering::Relaxed,
         Ordering::Acquire,
@@ -129,17 +132,18 @@ fn generate_aarch64_outlined_atomics() {
         Ordering::AcqRel,
     ] {
         let sym_ordering = aarch64_symbol(ordering);
-        // TODO: support CAS 16
-        for size in [1, 2, 4, 8 /* , 16*/] {
+        for size in [1, 2, 4, 8] {
             for (sym, macro_) in &mut macros {
                 let name = format!("__aarch64_{sym}{size}_{sym_ordering}");
                 writeln!(macro_, "$macro!( {ordering:?}, {size}, {name} );").unwrap();
             }
         }
+        let name = format!("__aarch64_cas16_{sym_ordering}");
+        writeln!(cas16, "$macro!( {ordering:?}, {name} );").unwrap();
     }
 
     let mut buf = String::new();
-    for macro_def in macros.values() {
+    for macro_def in macros.values().chain(std::iter::once(&cas16)) {
         buf += macro_def;
         buf += "}; }";
     }
