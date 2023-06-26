@@ -276,7 +276,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     indent: usize,
     ending: Ending,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
-    let padding_amount = indent + "where ".len();
+    let padding_amount = indent + 4;
 
     display_fn(move |f| {
         let where_preds: String = gens
@@ -285,15 +285,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             .filter(|pred| {
                 !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
             })
-            .enumerate()
-            .map(|(i, pred)| {
-                let (padding_amount, add_newline) = if i == 0 && ending == Ending::NoNewline {
-                    // put the first one on the same line as the 'where' keyword
-                    (1, false)
-                } else {
-                    (padding_amount, true)
-                };
-                print_where_pred_helper(cx, pred, padding_amount, add_newline)
+            .map(|pred| {
+                print_where_pred_helper(cx, pred, padding_amount)
             })
             .join(",");
 
@@ -314,12 +307,9 @@ fn print_where_pred_helper<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
     pred: &'a clean::WherePredicate,
     indent_len: usize,
-    add_newline: bool,
 ) -> impl Display + Captures<'a> + Captures<'tcx> {
     display_fn(move |f| {
-        if add_newline {
-            f.write_str("\n")?;
-        }
+        f.write_str("\n")?;
         f.write_str(&" ".repeat(indent_len))?;
 
         match pred {
