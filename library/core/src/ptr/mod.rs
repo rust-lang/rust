@@ -1198,7 +1198,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// [valid]: self#safety
 #[inline]
-#[rustc_const_unstable(feature = "read_move", issue = "0")]
+#[rustc_const_unstable(feature = "read_move", issue = "none")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn read_move<T>(src: *mut T) -> T {
     // SAFETY: the caller must guarantee that `src` is valid for reads.
