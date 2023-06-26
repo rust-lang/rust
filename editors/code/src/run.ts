@@ -140,7 +140,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         command: args[0], // run, test, etc...
         args: args.slice(1),
         cwd: runnable.args.workspaceRoot || ".",
-        env: prepareEnv(runnable, config.runnableEnv),
+        env: prepareEnv(runnable, config.runnablesExtraEnv),
         overrideCargo: runnable.args.overrideCargo,
     };
 
