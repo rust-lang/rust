@@ -362,7 +362,10 @@ impl<'a> Parser<'a> {
             let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
             let new_tokens = vec![(FlatToken::AttrTarget(attr_data), Spacing::Alone)];
 
-            assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
+            if !(self.token.kind == TokenKind::Gt && self.unmatched_angle_bracket_count > 0) {
+                assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
+            }
+
             let range: Range<u32> = (start_pos.try_into().unwrap())..(end_pos.try_into().unwrap());
             self.capture_state.replace_ranges.push((range, new_tokens));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
