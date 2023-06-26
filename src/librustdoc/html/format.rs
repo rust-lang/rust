@@ -286,7 +286,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     };
 
     display_fn(move |f| {
-        let mut where_predicates = gens
+        let where_preds: String = gens
             .where_predicates
             .iter()
             .filter(|pred| {
@@ -302,28 +302,25 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                 };
                 print_where_pred_helper(cx, pred, padding_amount, add_newline)
             })
-            .peekable();
+            .join(",");
 
-        if where_predicates.peek().is_none() {
+        if where_preds.is_empty() {
             return Ok(());
         }
 
-        let where_preds = comma_sep(where_predicates, false).to_string();
-        let clause = if ending == Ending::Newline {
-            let mut clause = " ".repeat(indent.saturating_sub(1));
-            write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
-            clause
+        if ending == Ending::Newline {
+            let indent_str = " ".repeat(indent.saturating_sub(1));
+            write!(f, "{indent_str}<span class=\"where fmt-newline\">where{where_preds},</span>")
         } else {
             // insert a newline after a single space but before multiple spaces at the start
             if indent == 0 {
-                format!("\n<span class=\"where\">where{where_preds}</span>")
+                write!(f, "\n<span class=\"where\">where{where_preds}</span>")
             } else {
                 let padding_str: String =
                     iter::once("\n").chain(iter::repeat(" ").take(padding_amount)).collect();
-                format!("\n{padding_str}<span class=\"where\">where{where_preds}</span>")
+                write!(f, "\n{padding_str}<span class=\"where\">where{where_preds}</span>")
             }
-        };
-        write!(f, "{clause}")
+        }
     })
 }
 
