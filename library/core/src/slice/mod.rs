@@ -851,6 +851,8 @@ impl<T> [T] {
 
     /// Swaps two elements in the slice.
     ///
+    /// If `a` equals to `b`, it's guaranteed that elements won't change value.
+    ///
     /// # Arguments
     ///
     /// * a - The index of the first element
