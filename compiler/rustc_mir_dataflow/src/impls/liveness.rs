@@ -43,6 +43,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     type Idx = Local;
 
+    #[instrument(skip(self, trans), level = "debug")]
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -52,6 +53,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         TransferFunction(trans).visit_statement(statement, location);
     }
 
+    #[instrument(skip(self, trans), level = "debug")]
     fn terminator_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -61,6 +63,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         TransferFunction(trans).visit_terminator(terminator, location);
     }
 
+    #[instrument(skip(self, trans, return_places), level = "debug")]
     fn call_return_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -69,6 +72,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     ) {
         return_places.for_each(|place| {
             if let Some(local) = place.as_local() {
+                debug!("killing {:?}", local);
                 trans.kill(local);
             }
         });
@@ -94,6 +98,7 @@ impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
 where
     T: GenKill<Local>,
 {
+    #[instrument(skip(self), level = "debug")]
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
             // The resume place is evaluated and assigned to only after generator resumes, so its
@@ -115,13 +120,17 @@ where
                     self.0.kill(place.local);
                 }
             }
-            Some(DefUse::Use) => self.0.gen(place.local),
+            Some(DefUse::Use) => {
+                debug!("gen {:?}", place.local);
+                self.0.gen(place.local);
+            }
             None => {}
         }
 
         self.visit_projection(place.as_ref(), context, location);
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         DefUse::apply(self.0, local.into(), context);
     }
@@ -133,11 +142,13 @@ impl<'tcx, T> Visitor<'tcx> for YieldResumeEffect<'_, T>
 where
     T: GenKill<Local>,
 {
+    #[instrument(skip(self), level = "debug")]
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         DefUse::apply(self.0, *place, context);
         self.visit_projection(place.as_ref(), context, location);
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         DefUse::apply(self.0, local.into(), context);
     }
@@ -150,14 +161,22 @@ enum DefUse {
 }
 
 impl DefUse {
+    #[instrument(skip(trans), level = "debug")]
     fn apply(trans: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
-            Some(DefUse::Def) => trans.kill(place.local),
-            Some(DefUse::Use) => trans.gen(place.local),
+            Some(DefUse::Def) => {
+                debug!("killing {:?}", place.local);
+                trans.kill(place.local)
+            }
+            Some(DefUse::Use) => {
+                debug!("gen {:?}", place.local);
+                trans.gen(place.local);
+            }
             None => {}
         }
     }
 
+    #[instrument(skip(), level = "debug")]
     fn for_place(place: Place<'_>, context: PlaceContext) -> Option<DefUse> {
         match context {
             PlaceContext::NonUse(_) => None,

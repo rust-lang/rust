@@ -584,6 +584,7 @@ fn locals_live_across_suspend_points<'tcx>(
     always_live_locals: &BitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
+    debug!("body: {:#?}", body);
     let body_ref: &Body<'_> = &body;
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
@@ -597,6 +598,8 @@ fn locals_live_across_suspend_points<'tcx>(
         MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
     let borrowed_locals_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
+
+    let mut blc = rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
 
     // Calculate the locals that are live due to outstanding references or pointers.
     let live_borrows_results = get_borrowed_locals_results(body_ref, tcx, borrowed_locals_cursor);
@@ -643,6 +646,8 @@ fn locals_live_across_suspend_points<'tcx>(
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
                 let live_borrowed_locals = live_borrows_cursor.get(loc);
+                blc.seek_before_primary_effect(loc);
+                let old_borrowed_locals = blc.get();
 
                 let mut live_locals_stmt: BitSet<_> = BitSet::new_empty(body.local_decls.len());
                 liveness.seek_before_primary_effect(loc);
@@ -653,6 +658,7 @@ fn locals_live_across_suspend_points<'tcx>(
                 storage_req.union(requires_storage_cursor.get());
 
                 debug!(?live_borrowed_locals);
+                debug!(?old_borrowed_locals);
                 debug!(?live_locals_stmt);
                 debug!(?storage_req);
 
