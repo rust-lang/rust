@@ -184,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
         let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
-            let tuple_type = self.structurally_resolved_type(call_span, formal_input_tys[0]);
+            let tuple_type = self.structurally_resolve_type(call_span, formal_input_tys[0]);
             match tuple_type.kind() {
                 // We expected a tuple and got a tuple
                 ty::Tuple(arg_types) => {
@@ -412,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
-                let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
+                let arg_ty = self.structurally_resolve_type(arg.span, arg_ty);
                 match arg_ty.kind() {
                     ty::Float(ty::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");

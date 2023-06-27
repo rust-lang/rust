@@ -451,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Ended up encountering a type variable when doing autoderef,
                 // but it may not be a type variable after processing obligations
-                // in our local `FnCtxt`, so don't call `structurally_resolved_type`.
+                // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
                 let ty = &bad_ty.ty;
                 let ty = self
                     .probe_instantiate_query_response(span, &orig_values, ty)

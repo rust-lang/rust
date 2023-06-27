@@ -179,7 +179,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = self.adjust_steps(&autoderef);
-        let mut target = self.structurally_resolved_type(autoderef.span(), ty);
+        let mut target = self.structurally_resolve_type(autoderef.span(), ty);
 
         match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {

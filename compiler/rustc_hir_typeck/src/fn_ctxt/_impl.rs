@@ -1473,7 +1473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
-    pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let mut ty = self.resolve_vars_with_obligations(ty);
 
         if self.next_trait_solver()
