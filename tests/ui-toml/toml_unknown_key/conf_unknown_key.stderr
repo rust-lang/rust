@@ -4,6 +4,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
+           allow-one-hash-in-raw-strings
            allow-print-in-tests
            allow-private-module-inception
            allow-unwrap-in-tests
@@ -72,6 +73,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
+           allow-one-hash-in-raw-strings
            allow-print-in-tests
            allow-private-module-inception
            allow-unwrap-in-tests

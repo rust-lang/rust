@@ -1,0 +1,16 @@
+//@run-rustfix
+#![allow(clippy::needless_raw_string_hashes, clippy::no_effect, unused)]
+#![warn(clippy::needless_raw_strings)]
+#![feature(c_str_literals)]
+
+fn main() {
+    "aaa";
+    r#""aaa""#;
+    r#"\s"#;
+    b"aaa";
+    br#""aaa""#;
+    br#"\s"#;
+    c"aaa";
+    cr#""aaa""#;
+    cr#"\s"#;
+}

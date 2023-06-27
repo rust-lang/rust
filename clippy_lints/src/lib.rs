@@ -262,6 +262,7 @@ mod pub_use;
 mod question_mark;
 mod question_mark_used;
 mod ranges;
+mod raw_strings;
 mod rc_clone_in_vec_init;
 mod read_zero_byte_vec;
 mod redundant_async_block;
@@ -1059,6 +1060,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         Box::new(single_call_fn::SingleCallFn {
             avoid_breaking_exported_api,
             def_id_to_usage: rustc_data_structures::fx::FxHashMap::default(),
+        })
+    });
+    let needless_raw_string_hashes_allow_one = conf.allow_one_hash_in_raw_strings;
+    store.register_early_pass(move || {
+        Box::new(raw_strings::RawStrings {
+            needless_raw_string_hashes_allow_one,
         })
     });
     // add lints here, do not remove this comment, it's used in `new_lint`

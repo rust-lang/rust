@@ -1,4 +1,9 @@
-#![allow(unused, clippy::needless_borrow)]
+#![allow(
+    unused,
+    clippy::needless_raw_strings,
+    clippy::needless_raw_string_hashes,
+    clippy::needless_borrow
+)]
 #![warn(clippy::invalid_regex, clippy::trivial_regex)]
 
 extern crate regex;

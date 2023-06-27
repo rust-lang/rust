@@ -35,7 +35,7 @@ struct StandardFormulations<'a> {
 impl AlmostStandardFormulation {
     pub fn new() -> Self {
         let standard_formulations = vec![StandardFormulations {
-            wrong_pattern: Regex::new(r"^(Check for|Detects? uses?)").unwrap(),
+            wrong_pattern: Regex::new("^(Check for|Detects? uses?)").unwrap(),
             correction: "Checks for",
         }];
         Self { standard_formulations }
