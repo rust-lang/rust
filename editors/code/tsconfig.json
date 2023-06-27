@@ -14,8 +14,7 @@
         // to update typescript version without any code change.
         "useUnknownInCatchVariables": false,
         "exactOptionalPropertyTypes": false,
-        "noPropertyAccessFromIndexSignature": false,
-        "noUncheckedIndexedAccess": false
+        "noPropertyAccessFromIndexSignature": false
     },
     "exclude": ["node_modules", ".vscode-test"],
     "include": ["src", "tests"]

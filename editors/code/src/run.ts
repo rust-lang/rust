@@ -6,6 +6,7 @@ import * as tasks from "./tasks";
 import { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import { Config, RunnableEnvCfg } from "./config";
+import { unwrapUndefinable } from "./undefinable";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -68,12 +69,14 @@ export async function selectRunnable(
             quickPick.onDidHide(() => close()),
             quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
             quickPick.onDidTriggerButton(async (_button) => {
-                await makeDebugConfig(ctx, quickPick.activeItems[0].runnable);
+                const runnable = unwrapUndefinable(quickPick.activeItems[0]).runnable;
+                await makeDebugConfig(ctx, runnable);
                 close();
             }),
-            quickPick.onDidChangeActive((active) => {
-                if (showButtons && active.length > 0) {
-                    if (active[0].label.startsWith("cargo")) {
+            quickPick.onDidChangeActive((activeList) => {
+                if (showButtons && activeList.length > 0) {
+                    const active = unwrapUndefinable(activeList[0]);
+                    if (active.label.startsWith("cargo")) {
                         // save button makes no sense for `cargo test` or `cargo check`
                         quickPick.buttons = [];
                     } else if (quickPick.buttons.length === 0) {

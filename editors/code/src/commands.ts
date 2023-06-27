@@ -20,6 +20,7 @@ import { startDebugSession, makeDebugConfig } from "./debug";
 import { LanguageClient } from "vscode-languageclient/node";
 import { LINKED_COMMANDS } from "./client";
 import { DependencyId } from "./dependencies_provider";
+import { unwrapUndefinable } from "./undefinable";
 
 export * from "./ast_inspector";
 export * from "./run";
@@ -129,7 +130,8 @@ export function matchingBrace(ctx: CtxInit): Cmd {
             ),
         });
         editor.selections = editor.selections.map((sel, idx) => {
-            const active = client.protocol2CodeConverter.asPosition(response[idx]);
+            const position = unwrapUndefinable(response[idx]);
+            const active = client.protocol2CodeConverter.asPosition(position);
             const anchor = sel.isEmpty ? active : sel.anchor;
             return new vscode.Selection(anchor, active);
         });
@@ -231,7 +233,7 @@ export function parentModule(ctx: CtxInit): Cmd {
         if (!locations) return;
 
         if (locations.length === 1) {
-            const loc = locations[0];
+            const loc = unwrapUndefinable(locations[0]);
 
             const uri = client.protocol2CodeConverter.asUri(loc.targetUri);
             const range = client.protocol2CodeConverter.asRange(loc.targetRange);
@@ -331,7 +333,13 @@ async function revealParentChain(document: RustDocument, ctx: CtxInit) {
     } while (!ctx.dependencies?.contains(documentPath));
     parentChain.reverse();
     for (const idx in parentChain) {
-        await ctx.treeView?.reveal(parentChain[idx], { select: true, expand: true });
+        const treeView = ctx.treeView;
+        if (!treeView) {
+            continue;
+        }
+
+        const dependency = unwrapUndefinable(parentChain[idx]);
+        await treeView.reveal(dependency, { select: true, expand: true });
     }
 }
 

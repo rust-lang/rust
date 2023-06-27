@@ -1,10 +1,11 @@
 import * as vscode from "vscode";
 
 import { assert } from "./util";
+import { unwrapUndefinable } from "./undefinable";
 
 export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
     if (edit.entries().length === 1) {
-        const [uri, edits] = edit.entries()[0];
+        const [uri, edits] = unwrapUndefinable(edit.entries()[0]);
         const editor = await editorFromUri(uri);
         if (editor) await applySnippetTextEdits(editor, edits);
         return;
@@ -68,7 +69,8 @@ export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vs
     });
     if (selections.length > 0) editor.selections = selections;
     if (selections.length === 1) {
-        editor.revealRange(selections[0], vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        const selection = unwrapUndefinable(selections[0]);
+        editor.revealRange(selection, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     }
 }
 

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { Env } from "./client";
 import { log } from "./util";
+import { expectNotUndefined, unwrapUndefinable } from "./undefinable";
 
 export type RunnableEnvCfg =
     | undefined
@@ -338,7 +339,7 @@ export function substituteVariablesInEnv(env: Env): Env {
             const depRe = new RegExp(/\${(?<depName>.+?)}/g);
             let match = undefined;
             while ((match = depRe.exec(value))) {
-                const depName = match.groups!.depName;
+                const depName = unwrapUndefinable(match.groups?.depName);
                 deps.add(depName);
                 // `depName` at this point can have a form of `expression` or
                 // `prefix:expression`
@@ -356,7 +357,7 @@ export function substituteVariablesInEnv(env: Env): Env {
         if (match) {
             const { prefix, body } = match.groups!;
             if (prefix === "env") {
-                const envName = body;
+                const envName = unwrapUndefinable(body);
                 envWithDeps[dep] = {
                     value: process.env[envName] ?? "",
                     deps: [],
@@ -384,13 +385,12 @@ export function substituteVariablesInEnv(env: Env): Env {
     do {
         leftToResolveSize = toResolve.size;
         for (const key of toResolve) {
-            if (envWithDeps[key].deps.every((dep) => resolved.has(dep))) {
-                envWithDeps[key].value = envWithDeps[key].value.replace(
-                    /\${(?<depName>.+?)}/g,
-                    (_wholeMatch, depName) => {
-                        return envWithDeps[depName].value;
-                    }
-                );
+            const item = unwrapUndefinable(envWithDeps[key]);
+            if (item.deps.every((dep) => resolved.has(dep))) {
+                item.value = item.value.replace(/\${(?<depName>.+?)}/g, (_wholeMatch, depName) => {
+                    const item = unwrapUndefinable(envWithDeps[depName]);
+                    return item.value;
+                });
                 resolved.add(key);
                 toResolve.delete(key);
             }
@@ -399,7 +399,8 @@ export function substituteVariablesInEnv(env: Env): Env {
 
     const resolvedEnv: Env = {};
     for (const key of Object.keys(env)) {
-        resolvedEnv[key] = envWithDeps[`env:${key}`].value;
+        const item = unwrapUndefinable(envWithDeps[`env:${key}`]);
+        resolvedEnv[key] = item.value;
     }
     return resolvedEnv;
 }
@@ -418,20 +419,19 @@ function substituteVSCodeVariableInString(val: string): string {
 function computeVscodeVar(varName: string): string | null {
     const workspaceFolder = () => {
         const folders = vscode.workspace.workspaceFolders ?? [];
-        if (folders.length === 1) {
-            // TODO: support for remote workspaces?
-            return folders[0].uri.fsPath;
-        } else if (folders.length > 1) {
-            // could use currently opened document to detect the correct
-            // workspace. However, that would be determined by the document
-            // user has opened on Editor startup. Could lead to
-            // unpredictable workspace selection in practice.
-            // It's better to pick the first one
-            return folders[0].uri.fsPath;
-        } else {
-            // no workspace opened
-            return "";
-        }
+        const folder = folders[0];
+        // TODO: support for remote workspaces?
+        const fsPath: string =
+            folder === undefined
+                ? // no workspace opened
+                  ""
+                : // could use currently opened document to detect the correct
+                  // workspace. However, that would be determined by the document
+                  // user has opened on Editor startup. Could lead to
+                  // unpredictable workspace selection in practice.
+                  // It's better to pick the first one
+                  folder.uri.fsPath;
+        return fsPath;
     };
     // https://code.visualstudio.com/docs/editor/variables-reference
     const supportedVariables: { [k: string]: () => string } = {
@@ -454,7 +454,11 @@ function computeVscodeVar(varName: string): string | null {
     };
 
     if (varName in supportedVariables) {
-        return supportedVariables[varName]();
+        const fn = expectNotUndefined(
+            supportedVariables[varName],
+            `${varName} should not be undefined here`
+        );
+        return fn();
     } else {
         // return "${" + varName + "}";
         return null;
