@@ -26,13 +26,13 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        _Self = "std::ops::RangeTo<Idx>",
+        any(_Self = "core::ops::RangeTo<Idx>", _Self = "std::ops::RangeTo<Idx>"),
         label = "if you meant to iterate until a value, add a starting value",
         note = "`..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a \
               bounded `Range`: `0..end`"
     ),
     on(
-        _Self = "std::ops::RangeToInclusive<Idx>",
+        any(_Self = "core::ops::RangeToInclusive<Idx>", _Self = "std::ops::RangeToInclusive<Idx>"),
         label = "if you meant to iterate until a value (including it), add a starting value",
         note = "`..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant \
               to have a bounded `RangeInclusive`: `0..=end`"
@@ -43,7 +43,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     ),
     on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
     on(
-        _Self = "std::vec::Vec<T, A>",
+        any(_Self = "alloc::vec::Vec<T, A>", _Self = "std::vec::Vec<T, A>"),
         label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
     ),
     on(
@@ -51,7 +51,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
-        _Self = "std::string::String",
+        any(_Self = "alloc::string::String", _Self = "std::string::String"),
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
