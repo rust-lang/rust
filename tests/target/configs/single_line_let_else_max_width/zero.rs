@@ -30,7 +30,8 @@ fn main() {
         upper,
         step,
         range: _,
-    }) = slice.as_ref() else {
+    }) = slice.as_ref()
+    else {
         return;
     };
 

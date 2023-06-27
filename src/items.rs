@@ -127,8 +127,8 @@ impl Rewrite for ast::Local {
 
             if let Some(block) = else_block {
                 let else_kw_span = init.span.between(block.span);
-                let force_newline_else =
-                    !same_line_else_kw_and_brace(&result, context, else_kw_span, nested_shape);
+                let force_newline_else = pat_str.contains('\n')
+                    || !same_line_else_kw_and_brace(&result, context, else_kw_span, nested_shape);
                 let else_kw = rewrite_else_kw_with_comments(
                     force_newline_else,
                     true,
