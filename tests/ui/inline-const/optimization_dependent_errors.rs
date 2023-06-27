@@ -1,15 +1,14 @@
 // revisions: opt debug
 //[opt] compile-flags: -O
 
-//[opt] build-pass
-//[debug] build-fail
+// build-fail
 
 struct Foo<T>(T);
 
 impl<T> Foo<T> {
     const BAR: () = if std::mem::size_of::<T>() == 0 {
         panic!()
-        //[debug]~^ ERROR evaluation of `Foo::<()>::BAR` failed
+        //~^ ERROR evaluation of `Foo::<()>::BAR` failed
     };
 }
 

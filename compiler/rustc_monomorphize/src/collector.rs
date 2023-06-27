@@ -264,6 +264,7 @@ pub fn collect_crate_mono_items(
 
     let mut visited = MTLock::new(FxHashSet::default());
     let mut usage_map = MTLock::new(UsageMap::new());
+    let mut all_items = MTLock::new(vec![]);
     let recursion_limit = tcx.recursion_limit();
 
     {
@@ -273,14 +274,23 @@ pub fn collect_crate_mono_items(
         tcx.sess.time("monomorphization_collector_graph_walk", || {
             par_for_each_in(roots, |root| {
                 let mut recursion_depths = DefIdMap::default();
+                let mut all_thread_items = vec![];
                 collect_items_rec(
                     tcx,
                     dummy_spanned(root),
                     visited,
+                    &mut all_thread_items,
                     &mut recursion_depths,
                     recursion_limit,
                     usage_map,
                 );
+                all_thread_items.retain(|item| !visited.lock().contains(&item.node));
+                all_items.lock_mut().extend(all_thread_items);
+            });
+            let visited = &mut MTLock::new(visited.get_mut().clone());
+            par_for_each_in(all_items.into_inner(), |root| {
+                let mut recursion_depths = DefIdMap::default();
+                collect_all_items_rec(tcx, root, visited, &mut recursion_depths, recursion_limit);
             });
         });
     }
@@ -333,6 +343,7 @@ fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_item: Spanned<MonoItem<'tcx>>,
     visited: MTLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
+    all_items: &mut Vec<Spanned<MonoItem<'tcx>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
     usage_map: MTLockRef<'_, UsageMap<'tcx>>,
@@ -388,6 +399,9 @@ fn collect_items_rec<'tcx>(
                 }
             }
 
+            let body = tcx.mir_for_ctfe(def_id);
+            collect_mono_items(tcx, instance, body, all_items);
+
             if tcx.needs_thread_local_shim(def_id) {
                 used_items.push(respan(
                     starting_item.span,
@@ -413,7 +427,7 @@ fn collect_items_rec<'tcx>(
             check_type_length_limit(tcx, instance);
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                collect_used_items(tcx, instance, &mut used_items);
+                collect_used_items(tcx, instance, &mut used_items, all_items);
             });
         }
         MonoItem::GlobalAsm(item_id) => {
@@ -469,7 +483,79 @@ fn collect_items_rec<'tcx>(
     usage_map.lock_mut().record_used(starting_item.node, &used_items);
 
     for used_item in used_items {
-        collect_items_rec(tcx, used_item, visited, recursion_depths, recursion_limit, usage_map);
+        collect_items_rec(
+            tcx,
+            used_item,
+            visited,
+            all_items,
+            recursion_depths,
+            recursion_limit,
+            usage_map,
+        );
+    }
+
+    if let Some((def_id, depth)) = recursion_depth_reset {
+        recursion_depths.insert(def_id, depth);
+    }
+}
+
+#[instrument(skip(tcx, visited, recursion_depths, recursion_limit), level = "debug")]
+fn collect_all_items_rec<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    starting_item: Spanned<MonoItem<'tcx>>,
+    visited: MTLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
+    recursion_depths: &mut DefIdMap<usize>,
+    recursion_limit: Limit,
+) {
+    if !visited.lock_mut().insert(starting_item.node) {
+        // We've been here already, no need to search again.
+        return;
+    }
+
+    let mut all_items = Vec::new();
+    let recursion_depth_reset;
+    let error_count = tcx.sess.diagnostic().err_count();
+
+    match starting_item.node {
+        MonoItem::Static(def_id) => {
+            let instance = Instance::mono(tcx, def_id);
+
+            recursion_depth_reset = None;
+
+            let body = tcx.mir_for_ctfe(def_id);
+            collect_mono_items(tcx, instance, body, &mut all_items);
+        }
+        MonoItem::Fn(instance) => {
+            // Keep track of the monomorphization recursion depth
+            recursion_depth_reset = Some(check_recursion_limit(
+                tcx,
+                instance,
+                starting_item.span,
+                recursion_depths,
+                recursion_limit,
+            ));
+            check_type_length_limit(tcx, instance);
+            let body = tcx.instance_mir(instance.def);
+            collect_mono_items(tcx, instance, body, &mut all_items);
+        }
+        MonoItem::GlobalAsm(_) => unreachable!(),
+    }
+
+    // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
+    // mono item graph.
+    if tcx.sess.diagnostic().err_count() > error_count
+        && starting_item.node.is_generic_fn()
+        && starting_item.node.is_user_defined()
+    {
+        let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
+        tcx.sess.emit_note(EncounteredErrorWhileInstantiating {
+            span: starting_item.span,
+            formatted_item,
+        });
+    }
+
+    for item in all_items {
+        collect_all_items_rec(tcx, item, visited, recursion_depths, recursion_limit);
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -1364,14 +1450,67 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
     }
 }
 
+/// Monomorphizes all items, even those in dead code.
+#[instrument(skip(tcx, output), level = "debug")]
+fn collect_mono_items<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: &mir::Body<'tcx>,
+    output: &mut MonoItems<'tcx>,
+) {
+    let body = tcx.instance_mir(instance.def);
+
+    // We collect into a separate collector to avoid codegenning things
+    // from dead code.
+    let mut col = MirUsedCollector { tcx, body, output, instance };
+    for (item, span) in &body.required_items {
+        match *item {
+            mir::MonoItem::Fn(def_id, substs, is_direct_call) => {
+                let callee_ty = tcx.mk_fn_def(def_id, substs);
+                let callee_ty = col.monomorphize(callee_ty);
+                visit_fn_use(tcx, callee_ty, is_direct_call, *span, col.output)
+            }
+            mir::MonoItem::Static(def_id) => {
+                let instance = Instance::mono(tcx, def_id);
+                if should_codegen_locally(tcx, &instance) {
+                    col.output.push(respan(*span, MonoItem::Static(def_id)));
+                }
+            }
+            mir::MonoItem::Vtable { source_ty, target_ty } => {
+                let source_ty = col.monomorphize(source_ty);
+                let target_ty = col.monomorphize(target_ty);
+                create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, *span, col.output)
+            }
+            mir::MonoItem::Const(ref constant) => col.visit_constant(constant, Location::START),
+            mir::MonoItem::Drop(ty) => {
+                let ty = col.monomorphize(ty);
+                visit_drop_use(tcx, ty, true, *span, col.output)
+            }
+            mir::MonoItem::Closure(def_id, substs) => {
+                let substs = col.monomorphize(substs);
+                let instance =
+                    Instance::resolve_closure(tcx, def_id, substs, ty::ClosureKind::FnOnce)
+                        .expect("failed to normalize and resolve closure during codegen");
+                if should_codegen_locally(tcx, &instance) {
+                    col.output.push(create_fn_mono_item(tcx, instance, *span));
+                }
+            }
+        }
+    }
+}
+
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 #[instrument(skip(tcx, output), level = "debug")]
 fn collect_used_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     output: &mut MonoItems<'tcx>,
+    all_mono_items: &mut MonoItems<'tcx>,
 ) {
     let body = tcx.instance_mir(instance.def);
+
+    collect_mono_items(tcx, instance, body, all_mono_items);
+
     MirUsedCollector { tcx, body: &body, output, instance }.visit_body(&body);
 }
 
