@@ -452,6 +452,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             fn_sig.inputs(),
         );
+        // FIXME(callable_trait): make this work automatically with `check_callable`
         self.check_argument_types(
             call_expr.span,
             call_expr,
@@ -758,6 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.inputs(),
         );
 
+        // FIXME(callable_trait): make this work just with `check_callable`
         self.check_argument_types(
             call_expr.span,
             call_expr,
@@ -833,6 +835,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
 
                 debug!("attempt_resolution: method_callee={:?}", method_callee);
 
+                // FIXME(callable_trait): this argument check is now unnecessary
                 for (method_arg_ty, self_arg_ty) in
                     iter::zip(method_sig.inputs().iter().skip(1), self.fn_sig.inputs())
                 {
