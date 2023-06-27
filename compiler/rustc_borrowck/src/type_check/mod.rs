@@ -2502,7 +2502,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             location, borrow_region, borrowed_place
         );
 
-        let mut cursor = borrowed_place.projection.as_ref();
         let tcx = self.infcx.tcx;
         let field = path_utils::is_upvar_field_projection(
             tcx,
@@ -2516,14 +2515,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             ConstraintCategory::Boring
         };
 
-        while let [proj_base @ .., elem] = cursor {
-            cursor = proj_base;
-
+        for (base, elem) in borrowed_place.as_ref().iter_projections().rev() {
             debug!("add_reborrow_constraint - iteration {:?}", elem);
 
             match elem {
                 ProjectionElem::Deref => {
-                    let base_ty = Place::ty_from(borrowed_place.local, proj_base, body, tcx).ty;
+                    let base_ty = base.ty(body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind() {

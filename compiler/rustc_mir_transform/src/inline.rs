@@ -839,15 +839,13 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     /// to normalization failure.
     fn visit_projection_elem(
         &mut self,
-        local: Local,
-        proj_base: &[PlaceElem<'tcx>],
+        place_ref: PlaceRef<'tcx>,
         elem: PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {
         if let ProjectionElem::Field(f, ty) = elem {
-            let parent = Place { local, projection: self.tcx.mk_place_elems(proj_base) };
-            let parent_ty = parent.ty(&self.callee_body.local_decls, self.tcx);
+            let parent_ty = place_ref.ty(&self.callee_body.local_decls, self.tcx);
             let check_equal = |this: &mut Self, f_ty| {
                 if !util::is_equal_up_to_subtyping(this.tcx, this.param_env, ty, f_ty) {
                     trace!(?ty, ?f_ty);
@@ -926,7 +924,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             }
         }
 
-        self.super_projection_elem(local, proj_base, elem, context, location);
+        self.super_projection_elem(place_ref, elem, context, location);
     }
 }
 

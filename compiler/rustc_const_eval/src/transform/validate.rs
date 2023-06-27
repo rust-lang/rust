@@ -318,8 +318,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_projection_elem(
         &mut self,
-        local: Local,
-        proj_base: &[PlaceElem<'tcx>],
+        place_ref: PlaceRef<'tcx>,
         elem: PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
@@ -334,7 +333,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             ProjectionElem::Deref
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::PostCleanup) =>
             {
-                let base_ty = Place::ty_from(local, proj_base, &self.body.local_decls, self.tcx).ty;
+                let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
 
                 if base_ty.is_box() {
                     self.fail(
@@ -344,8 +343,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::Field(f, ty) => {
-                let parent = Place { local, projection: self.tcx.mk_place_elems(proj_base) };
-                let parent_ty = parent.ty(&self.body.local_decls, self.tcx);
+                let parent_ty = place_ref.ty(&self.body.local_decls, self.tcx);
                 let fail_out_of_bounds = |this: &Self, location| {
                     this.fail(location, format!("Out of bounds field {:?} for {:?}", f, parent_ty));
                 };
@@ -355,7 +353,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             location,
                             format!(
                                 "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
-                                parent, f, ty, f_ty
+                                place_ref, f, ty, f_ty
                             )
                         )
                     }
@@ -434,7 +432,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             _ => {}
         }
-        self.super_projection_elem(local, proj_base, elem, context, location);
+        self.super_projection_elem(place_ref, elem, context, location);
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {

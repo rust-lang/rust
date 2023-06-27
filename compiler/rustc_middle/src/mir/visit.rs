@@ -1133,13 +1133,12 @@ macro_rules! visit_place_fns {
 
         fn visit_projection_elem(
             &mut self,
-            local: Local,
-            proj_base: &[PlaceElem<'tcx>],
+            place_ref: PlaceRef<'tcx>,
             elem: PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            self.super_projection_elem(local, proj_base, elem, context, location);
+            self.super_projection_elem(place_ref, elem, context, location);
         }
 
         fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
@@ -1168,15 +1167,13 @@ macro_rules! visit_place_fns {
             location: Location,
         ) {
             for (base, elem) in place_ref.iter_projections().rev() {
-                let base_proj = base.projection;
-                self.visit_projection_elem(place_ref.local, base_proj, elem, context, location);
+                self.visit_projection_elem(base, elem, context, location);
             }
         }
 
         fn super_projection_elem(
             &mut self,
-            _local: Local,
-            _proj_base: &[PlaceElem<'tcx>],
+            _place_ref: PlaceRef<'tcx>,
             elem: PlaceElem<'tcx>,
             _context: PlaceContext,
             location: Location,
