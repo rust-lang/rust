@@ -493,7 +493,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
 
-            ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Return { .. } => {
+            ExprKind::Continue { .. }
+            | ExprKind::Break { .. }
+            | ExprKind::Return { .. }
+            | ExprKind::Become { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
                 // No assign, as these have type `!`.
                 block.unit()
