@@ -3,6 +3,7 @@
     "compilerOptions": {
         "esModuleInterop": false,
         "module": "commonjs",
+        "moduleResolution": "node16",
         "target": "es2021",
         "outDir": "out",
         "lib": ["es2021"],
