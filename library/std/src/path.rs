@@ -2608,9 +2608,27 @@ impl Path {
     }
 
     fn _with_extension(&self, extension: &OsStr) -> PathBuf {
-        let mut buf = self.to_path_buf();
-        buf.set_extension(extension);
-        buf
+        let self_len = self.as_os_str().len();
+        let self_bytes = self.as_os_str().as_os_str_bytes();
+
+        let (new_capacity, slice_to_copy) = match self.extension() {
+            None => {
+                // Enough capacity for the extension and the dot
+                let capacity = self_len + extension.len() + 1;
+                let whole_path = self_bytes.iter();
+                (capacity, whole_path)
+            }
+            Some(previous_extension) => {
+                let capacity = self_len + extension.len() - previous_extension.len();
+                let path_till_dot = self_bytes[..self_len - previous_extension.len()].iter();
+                (capacity, path_till_dot)
+            }
+        };
+
+        let mut new_path = PathBuf::with_capacity(new_capacity);
+        new_path.as_mut_vec().extend(slice_to_copy);
+        new_path.set_extension(extension);
+        new_path
     }
 
     /// Produces an iterator over the [`Component`]s of the path.
