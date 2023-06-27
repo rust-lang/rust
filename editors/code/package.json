@@ -54,7 +54,7 @@
         "@typescript-eslint/parser": "^5.60.1",
         "@vscode/test-electron": "^2.3.3",
         "cross-env": "^7.0.3",
-        "esbuild": "^0.14.48",
+        "esbuild": "^0.18.10",
         "eslint": "^8.43.0",
         "eslint-config-prettier": "^8.8.0",
         "ovsx": "^0.8.1",
