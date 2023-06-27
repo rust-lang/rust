@@ -9,7 +9,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = target_feature() -> bb1;
+-         _1 = target_feature() -> [return: bb1, unwind continue];
 -     }
 - 
 -     bb1: {

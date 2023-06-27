@@ -8,7 +8,7 @@ fn range_inclusive_iter_next(_1: &mut RangeInclusive<u32>) -> Option<u32> {
     }
 
     bb0: {
-        _0 = <RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(_1) -> bb1;
+        _0 = <RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(_1) -> [return: bb1, unwind continue];
     }
 
     bb1: {

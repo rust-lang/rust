@@ -22,7 +22,7 @@
           _3 = _1;
           StorageLive(_4);
           _4 = _2;
--         _0 = core::num::<impl i16>::unchecked_shr(move _3, move _4) -> bb1;
+-         _0 = core::num::<impl i16>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind continue];
 -     }
 - 
 -     bb1: {

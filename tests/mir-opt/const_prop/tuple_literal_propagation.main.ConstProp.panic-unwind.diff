@@ -18,7 +18,7 @@
           StorageLive(_3);
 -         _3 = _1;
 +         _3 = const (1_u32, 2_u32);
-          _2 = consume(move _3) -> bb1;
+          _2 = consume(move _3) -> [return: bb1, unwind continue];
       }
   
       bb1: {

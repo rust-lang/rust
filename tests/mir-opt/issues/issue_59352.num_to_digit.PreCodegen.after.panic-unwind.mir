@@ -26,7 +26,7 @@ fn num_to_digit(_1: char) -> u32 {
     bb0: {
         StorageLive(_3);
         StorageLive(_2);
-        _2 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> bb1;
+        _2 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -39,7 +39,7 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb2: {
         StorageLive(_5);
-        _5 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> bb3;
+        _5 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> [return: bb3, unwind continue];
     }
 
     bb3: {
@@ -48,7 +48,7 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb4: {
-        _7 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value");
+        _7 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value") -> unwind continue;
     }
 
     bb5: {

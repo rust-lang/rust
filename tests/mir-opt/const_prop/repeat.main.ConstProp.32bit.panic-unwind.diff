@@ -22,10 +22,10 @@
           _4 = const 2_usize;
 -         _5 = Len(_3);
 -         _6 = Lt(_4, _5);
--         assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> bb1;
+-         assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind continue];
 +         _5 = const 8_usize;
 +         _6 = const true;
-+         assert(const true, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> bb1;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind continue];
       }
   
       bb1: {

@@ -22,7 +22,7 @@
   
       bb2: {
           _5 = (*_2);
-          _0 = opaque::<i32>(_5) -> bb3;
+          _0 = opaque::<i32>(_5) -> [return: bb3, unwind continue];
       }
   
       bb3: {

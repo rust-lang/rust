@@ -42,7 +42,7 @@
           _8 = _1;
           _9 = Len((*_2));
           _10 = Lt(_8, _9);
-          assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> bb3;
+          assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> [success: bb3, unwind continue];
       }
   
       bb3: {

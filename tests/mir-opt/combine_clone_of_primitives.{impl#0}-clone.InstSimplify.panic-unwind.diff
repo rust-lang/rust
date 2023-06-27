@@ -21,7 +21,7 @@
           _4 = &((*_1).0: T);
 -         _3 = &(*_4);
 +         _3 = _4;
-          _2 = <T as Clone>::clone(move _3) -> bb1;
+          _2 = <T as Clone>::clone(move _3) -> [return: bb1, unwind continue];
       }
   
       bb1: {

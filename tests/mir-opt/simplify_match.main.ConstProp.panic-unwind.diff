@@ -20,7 +20,7 @@
       }
   
       bb2: {
-          _0 = noop() -> bb3;
+          _0 = noop() -> [return: bb3, unwind continue];
       }
   
       bb3: {

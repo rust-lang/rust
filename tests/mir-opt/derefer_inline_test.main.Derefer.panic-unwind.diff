@@ -9,7 +9,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = f() -> bb1;
+          _2 = f() -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -18,7 +18,7 @@
   
       bb2: {
           StorageDead(_2);
-          drop(_1) -> bb3;
+          drop(_1) -> [return: bb3, unwind continue];
       }
   
       bb3: {

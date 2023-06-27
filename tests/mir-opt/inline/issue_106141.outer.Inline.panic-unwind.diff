@@ -16,16 +16,16 @@
 +     }
   
       bb0: {
--         _0 = inner() -> bb1;
+-         _0 = inner() -> [return: bb1, unwind continue];
 +         StorageLive(_1);
 +         _1 = const _;
-+         _0 = index() -> bb1;
++         _0 = index() -> [return: bb1, unwind continue];
       }
   
       bb1: {
 +         StorageLive(_3);
 +         _2 = Lt(_0, const 1_usize);
-+         assert(move _2, "index out of bounds: the length is {} but the index is {}", const 1_usize, _0) -> bb2;
++         assert(move _2, "index out of bounds: the length is {} but the index is {}", const 1_usize, _0) -> [success: bb2, unwind continue];
 +     }
 + 
 +     bb2: {

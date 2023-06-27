@@ -14,7 +14,7 @@
 +         _3 = const (1_u8, 2_u8);
           _2 = (move _3,);
           StorageDead(_3);
-          _1 = test(move _2) -> bb1;
+          _1 = test(move _2) -> [return: bb1, unwind continue];
       }
   
       bb1: {

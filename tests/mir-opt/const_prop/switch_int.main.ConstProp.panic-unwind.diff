@@ -13,11 +13,11 @@
       }
   
       bb1: {
-          _0 = foo(const -1_i32) -> bb3;
+          _0 = foo(const -1_i32) -> [return: bb3, unwind continue];
       }
   
       bb2: {
-          _0 = foo(const 0_i32) -> bb3;
+          _0 = foo(const 0_i32) -> [return: bb3, unwind continue];
       }
   
       bb3: {

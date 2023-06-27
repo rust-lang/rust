@@ -4,7 +4,7 @@ fn std::ops::Fn::call(_1: *const fn(), _2: ()) -> <fn() as FnOnce<()>>::Output {
     let mut _0: <fn() as std::ops::FnOnce<()>>::Output;
 
     bb0: {
-        _0 = move (*_1)() -> bb1;
+        _0 = move (*_1)() -> [return: bb1, unwind continue];
     }
 
     bb1: {

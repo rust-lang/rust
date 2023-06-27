@@ -76,7 +76,7 @@ fn array_casts() -> () {
         StorageLive(_6);
         StorageLive(_7);
         _7 = _2;
-        _6 = ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> bb1;
+        _6 = ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -102,7 +102,7 @@ fn array_casts() -> () {
         StorageLive(_16);
         StorageLive(_17);
         _17 = _9;
-        _16 = ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> bb2;
+        _16 = ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> [return: bb2, unwind continue];
     }
 
     bb2: {
@@ -154,7 +154,7 @@ fn array_casts() -> () {
         StorageLive(_34);
         _34 = Option::<Arguments<'_>>::None;
         Retag(_34);
-        _28 = core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34);
+        _28 = core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34) -> unwind continue;
     }
 
     bb4: {

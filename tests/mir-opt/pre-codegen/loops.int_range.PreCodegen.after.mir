@@ -79,7 +79,7 @@ fn int_range(_1: usize, _2: usize) -> () {
     bb3: {
         _12 = ((*_5).0: usize);
         StorageLive(_13);
-        _13 = <usize as Step>::forward_unchecked(_12, const 1_usize) -> bb4;
+        _13 = <usize as Step>::forward_unchecked(_12, const 1_usize) -> [return: bb4, unwind continue];
     }
 
     bb4: {
@@ -104,7 +104,7 @@ fn int_range(_1: usize, _2: usize) -> () {
 
     bb7: {
         _15 = ((_11 as Some).0: usize);
-        _16 = opaque::<usize>(_15) -> bb8;
+        _16 = opaque::<usize>(_15) -> [return: bb8, unwind continue];
     }
 
     bb8: {

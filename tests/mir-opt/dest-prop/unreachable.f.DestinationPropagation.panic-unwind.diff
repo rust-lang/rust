@@ -34,7 +34,7 @@
 -         _5 = _1;
 -         StorageLive(_6);
 -         _6 = _2;
--         _4 = g::<T>(move _5, move _6) -> bb2;
+-         _4 = g::<T>(move _5, move _6) -> [return: bb2, unwind continue];
 -     }
 - 
 -     bb2: {
@@ -53,9 +53,9 @@
 +         nop;
           StorageLive(_9);
 -         _9 = _2;
--         _7 = g::<T>(move _8, move _9) -> bb4;
+-         _7 = g::<T>(move _8, move _9) -> [return: bb4, unwind continue];
 +         _9 = _1;
-+         _7 = g::<T>(move _1, move _9) -> bb2;
++         _7 = g::<T>(move _1, move _9) -> [return: bb2, unwind continue];
       }
   
 -     bb4: {
