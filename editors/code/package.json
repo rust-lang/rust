@@ -55,7 +55,7 @@
         "@vscode/test-electron": "^2.3.3",
         "cross-env": "^7.0.3",
         "esbuild": "^0.14.48",
-        "eslint": "^8.19.0",
+        "eslint": "^8.43.0",
         "eslint-config-prettier": "^8.8.0",
         "ovsx": "^0.5.2",
         "prettier": "^2.8.8",
