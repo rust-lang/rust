@@ -955,9 +955,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         //   - f(0, 1,)
                         //   + f()
                         if only_extras_so_far
-                            && errors
+                            && !errors
                                 .peek()
-                                .map_or(true, |next_error| !matches!(next_error, Error::Extra(_)))
+                                .is_some_and(|next_error| matches!(next_error, Error::Extra(_)))
                         {
                             let next = provided_arg_tys
                                 .get(arg_idx + 1)

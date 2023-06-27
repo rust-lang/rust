@@ -61,8 +61,8 @@ impl AttrWrapper {
         self.attrs.is_empty()
     }
 
-    pub fn maybe_needs_tokens(&self) -> bool {
-        crate::parser::attr::maybe_needs_tokens(&self.attrs)
+    pub fn is_complete(&self) -> bool {
+        crate::parser::attr::is_complete(&self.attrs)
     }
 }
 
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
         //    by definition
         if matches!(force_collect, ForceCollect::No)
             // None of our outer attributes can require tokens (e.g. a proc-macro)
-            && !attrs.maybe_needs_tokens()
+            && attrs.is_complete()
             // If our target supports custom inner attributes, then we cannot bail
             // out early, since we may need to capture tokens for a custom inner attribute
             // invocation.
@@ -244,9 +244,9 @@ impl<'a> Parser<'a> {
         // Now that we've parsed an AST node, we have more information available.
         if matches!(force_collect, ForceCollect::No)
             // We now have inner attributes available, so this check is more precise
-            // than `attrs.maybe_needs_tokens()` at the start of the function.
+            // than `attrs.is_complete()` at the start of the function.
             // As a result, we don't need to check `R::SUPPORTS_CUSTOM_INNER_ATTRS`
-            && !crate::parser::attr::maybe_needs_tokens(ret.attrs())
+            && crate::parser::attr::is_complete(ret.attrs())
             // Subtle: We call `has_cfg_or_cfg_attr` with the attrs from `ret`.
             // This ensures that we consider inner attributes (e.g. `#![cfg]`),
             // which require us to have tokens available
