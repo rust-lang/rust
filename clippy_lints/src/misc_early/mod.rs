@@ -2,8 +2,8 @@ mod builtin_type_shadow;
 mod double_neg;
 mod literal_suffix;
 mod mixed_case_hex_literals;
+mod redundant_at_rest_pattern;
 mod redundant_pattern;
-mod redundant_rest_pattern;
 mod unneeded_field_pattern;
 mod unneeded_wildcard_pattern;
 mod zero_prefixed_literal;
@@ -342,7 +342,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.72.0"]
-    pub REDUNDANT_REST_PATTERN,
+    pub REDUNDANT_AT_REST_PATTERN,
     complexity,
     "checks for `[all @ ..]` where `all` would suffice"
 }
@@ -358,7 +358,7 @@ declare_lint_pass!(MiscEarlyLints => [
     BUILTIN_TYPE_SHADOW,
     REDUNDANT_PATTERN,
     UNNEEDED_WILDCARD_PATTERN,
-    REDUNDANT_REST_PATTERN,
+    REDUNDANT_AT_REST_PATTERN,
 ]);
 
 impl EarlyLintPass for MiscEarlyLints {
@@ -375,7 +375,7 @@ impl EarlyLintPass for MiscEarlyLints {
 
         unneeded_field_pattern::check(cx, pat);
         redundant_pattern::check(cx, pat);
-        redundant_rest_pattern::check(cx, pat);
+        redundant_at_rest_pattern::check(cx, pat);
         unneeded_wildcard_pattern::check(cx, pat);
     }
 
