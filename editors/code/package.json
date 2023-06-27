@@ -26,7 +26,7 @@
         }
     },
     "engines": {
-        "vscode": "^1.66.0"
+        "vscode": "^1.78.0"
     },
     "enabledApiProposals": [],
     "scripts": {
@@ -49,7 +49,7 @@
     },
     "devDependencies": {
         "@types/node": "~16.11.7",
-        "@types/vscode": "~1.66.0",
+        "@types/vscode": "~1.78.1",
         "@typescript-eslint/eslint-plugin": "^5.60.1",
         "@typescript-eslint/parser": "^5.60.1",
         "@vscode/test-electron": "^2.3.3",
