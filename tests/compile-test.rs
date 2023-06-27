@@ -212,6 +212,15 @@ fn run_ui_cargo() {
 }
 
 fn main() {
+    // Support being run by cargo nextest - https://nexte.st/book/custom-test-harnesses.html
+    if env::args().any(|arg| arg == "--list") {
+        if !env::args().any(|arg| arg == "--ignored") {
+            println!("compile_test: test");
+        }
+
+        return;
+    }
+
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
     run_ui();
     run_ui_toml();
