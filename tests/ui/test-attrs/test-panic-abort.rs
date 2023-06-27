@@ -11,9 +11,13 @@
 // ignore-sgx no subprocess support
 
 #![cfg(test)]
+#![feature(test)]
+
+extern crate test;
 
 use std::io::Write;
 use std::env;
+use test::Bencher;
 
 #[test]
 fn it_works() {
@@ -47,4 +51,9 @@ fn no_residual_environment() {
             panic!("shouldn't have '{}' in environment", key);
         }
     }
+}
+
+#[bench]
+fn benchmark(b: &mut Bencher) {
+    b.iter(|| assert_eq!(1 + 1, 2));
 }
