@@ -481,9 +481,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.require_type_is_sized(ty, sp, traits::RustCall);
             } else {
                 self.tcx.sess.span_err(
-                        sp,
-                        "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
-                    );
+                    sp,
+                    "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+                );
             }
         }
 
