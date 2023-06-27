@@ -466,7 +466,8 @@ function preLoadCss(cssUrl) {
             const ul = document.createElement("ul");
             ul.className = "block " + shortty;
 
-            for (const name of filtered) {
+            for (const entry of filtered) {
+                const name = entry.name;
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
@@ -479,7 +480,13 @@ function preLoadCss(cssUrl) {
                 if (path === current_page) {
                     link.className = "current";
                 }
-                link.textContent = name;
+                if (entry.is_deprecated) {
+                    const s = document.createElement("s");
+                    s.textContent = name;
+                    link.appendChild(s);
+                } else {
+                    link.textContent = name;
+                }
                 const li = document.createElement("li");
                 li.appendChild(link);
                 ul.appendChild(li);

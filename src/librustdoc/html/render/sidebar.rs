@@ -64,14 +64,20 @@ pub(crate) struct Link<'a> {
     name: Cow<'a, str>,
     /// The id of an anchor within the page (without a `#` prefix)
     href: Cow<'a, str>,
+    /// Whether the item is deprecated
+    is_deprecated: bool,
 }
 
 impl<'a> Link<'a> {
-    pub fn new(href: impl Into<Cow<'a, str>>, name: impl Into<Cow<'a, str>>) -> Self {
-        Self { href: href.into(), name: name.into() }
+    pub fn new(
+        href: impl Into<Cow<'a, str>>,
+        name: impl Into<Cow<'a, str>>,
+        deprecated: bool,
+    ) -> Self {
+        Self { href: href.into(), name: name.into(), is_deprecated: deprecated }
     }
     pub fn empty() -> Link<'static> {
-        Link::new("", "")
+        Link::new("", "", false)
     }
 }
 
@@ -124,12 +130,14 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     sidebar.render_into(buffer).unwrap();
 }
 
-fn get_struct_fields_name<'a>(fields: &'a [clean::Item]) -> Vec<Link<'a>> {
+fn get_struct_fields_name<'a>(fields: &'a [clean::Item], tcx: TyCtxt<'_>) -> Vec<Link<'a>> {
     let mut fields = fields
         .iter()
         .filter(|f| matches!(*f.kind, clean::StructFieldItem(..)))
         .filter_map(|f| {
-            f.name.as_ref().map(|name| Link::new(format!("structfield.{name}"), name.as_str()))
+            f.name.as_ref().map(|name| {
+                Link::new(format!("structfield.{name}"), name.as_str(), f.is_deprecated(tcx))
+            })
         })
         .collect::<Vec<Link<'a>>>();
     fields.sort();
@@ -141,7 +149,7 @@ fn sidebar_struct<'a>(
     it: &'a clean::Item,
     s: &'a clean::Struct,
 ) -> Vec<LinkBlock<'a>> {
-    let fields = get_struct_fields_name(&s.fields);
+    let fields = get_struct_fields_name(&s.fields, cx.tcx());
     let field_name = match s.ctor_kind {
         Some(CtorKind::Fn) => Some("Tuple Fields"),
         None => Some("Fields"),
@@ -149,7 +157,7 @@ fn sidebar_struct<'a>(
     };
     let mut items = vec![];
     if let Some(name) = field_name {
-        items.push(LinkBlock::new(Link::new("fields", name), fields));
+        items.push(LinkBlock::new(Link::new("fields", name, false), fields));
     }
     sidebar_assoc_items(cx, it, &mut items);
     items
@@ -164,11 +172,14 @@ fn sidebar_trait<'a>(
         items: &'a [clean::Item],
         filt: impl Fn(&clean::Item) -> bool,
         ty: &str,
+        tcx: TyCtxt<'_>,
     ) -> Vec<Link<'a>> {
         let mut res = items
             .iter()
             .filter_map(|m: &clean::Item| match m.name {
-                Some(ref name) if filt(m) => Some(Link::new(format!("{ty}.{name}"), name.as_str())),
+                Some(ref name) if filt(m) => {
+                    Some(Link::new(format!("{ty}.{name}"), name.as_str(), m.is_deprecated(tcx)))
+                }
                 _ => None,
             })
             .collect::<Vec<Link<'a>>>();
@@ -176,23 +187,24 @@ fn sidebar_trait<'a>(
         res
     }
 
-    let req_assoc = filter_items(&t.items, |m| m.is_ty_associated_type(), "associatedtype");
-    let prov_assoc = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
+    let tcx = cx.tcx();
+
+    let req_assoc = filter_items(&t.items, |m| m.is_ty_associated_type(), "associatedtype", tcx);
+    let prov_assoc = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype", tcx);
     let req_assoc_const =
-        filter_items(&t.items, |m| m.is_ty_associated_const(), "associatedconstant");
+        filter_items(&t.items, |m| m.is_ty_associated_const(), "associatedconstant", tcx);
     let prov_assoc_const =
-        filter_items(&t.items, |m| m.is_associated_const(), "associatedconstant");
-    let req_method = filter_items(&t.items, |m| m.is_ty_method(), "tymethod");
-    let prov_method = filter_items(&t.items, |m| m.is_method(), "method");
+        filter_items(&t.items, |m| m.is_associated_const(), "associatedconstant", tcx);
+    let req_method = filter_items(&t.items, |m| m.is_ty_method(), "tymethod", tcx);
+    let prov_method = filter_items(&t.items, |m| m.is_method(), "method", tcx);
     let mut foreign_impls = vec![];
     if let Some(implementors) = cx.cache().implementors.get(&it.item_id.expect_def_id()) {
-        foreign_impls.extend(
-            implementors
-                .iter()
-                .filter(|i| !i.is_on_local_type(cx))
-                .filter_map(|i| super::extract_for_impl_name(&i.impl_item, cx))
-                .map(|(name, id)| Link::new(id, name)),
-        );
+        foreign_impls.extend(implementors.iter().filter(|i| !i.is_on_local_type(cx)).filter_map(
+            |i| {
+                super::extract_for_impl_name(&i.impl_item, cx)
+                    .map(|(name, id)| Link::new(id, name, i.impl_item.is_deprecated(tcx)))
+            },
+        ));
         foreign_impls.sort();
     }
 
@@ -206,12 +218,16 @@ fn sidebar_trait<'a>(
         ("foreign-impls", "Implementations on Foreign Types", foreign_impls),
     ]
     .into_iter()
-    .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), items))
+    .map(|(id, title, items)| LinkBlock::new(Link::new(id, title, false), items))
     .collect();
     sidebar_assoc_items(cx, it, &mut blocks);
-    blocks.push(LinkBlock::forced(Link::new("implementors", "Implementors")));
+    blocks.push(LinkBlock::forced(Link::new("implementors", "Implementors", false)));
     if t.is_auto(cx.tcx()) {
-        blocks.push(LinkBlock::forced(Link::new("synthetic-implementors", "Auto Implementors")));
+        blocks.push(LinkBlock::forced(Link::new(
+            "synthetic-implementors",
+            "Auto Implementors",
+            false,
+        )));
     }
     blocks
 }
@@ -241,8 +257,8 @@ fn sidebar_union<'a>(
     it: &'a clean::Item,
     u: &'a clean::Union,
 ) -> Vec<LinkBlock<'a>> {
-    let fields = get_struct_fields_name(&u.fields);
-    let mut items = vec![LinkBlock::new(Link::new("fields", "Fields"), fields)];
+    let fields = get_struct_fields_name(&u.fields, cx.tcx());
+    let mut items = vec![LinkBlock::new(Link::new("fields", "Fields", false), fields)];
     sidebar_assoc_items(cx, it, &mut items);
     items
 }
@@ -253,6 +269,7 @@ fn sidebar_assoc_items<'a>(
     it: &'a clean::Item,
     links: &mut Vec<LinkBlock<'a>>,
 ) {
+    let tcx = cx.tcx();
     let did = it.item_id.expect_def_id();
     let cache = cx.cache();
 
@@ -267,7 +284,7 @@ fn sidebar_assoc_items<'a>(
             assoc_consts.extend(
                 v.iter()
                     .filter(|i| i.inner_impl().trait_.is_none())
-                    .flat_map(|i| get_associated_constants(i.inner_impl(), used_links_bor)),
+                    .flat_map(|i| get_associated_constants(i.inner_impl(), used_links_bor, tcx)),
             );
             // We want links' order to be reproducible so we don't use unstable sort.
             assoc_consts.sort();
@@ -311,8 +328,11 @@ fn sidebar_assoc_items<'a>(
         };
 
         let mut blocks = vec![
-            LinkBlock::new(Link::new("implementations", "Associated Constants"), assoc_consts),
-            LinkBlock::new(Link::new("implementations", "Methods"), methods),
+            LinkBlock::new(
+                Link::new("implementations", "Associated Constants", false),
+                assoc_consts,
+            ),
+            LinkBlock::new(Link::new("implementations", "Methods", false), methods),
         ];
         blocks.append(&mut deref_methods);
         blocks.extend([concrete, synthetic, blanket]);
@@ -329,13 +349,16 @@ fn sidebar_deref_methods<'a>(
     used_links: &mut FxHashSet<String>,
 ) {
     let c = cx.cache();
+    let tcx = cx.tcx();
 
     debug!("found Deref: {:?}", impl_);
-    if let Some((target, real_target)) =
+    if let Some((target, real_target, target_is_deprecated)) =
         impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
             clean::AssocTypeItem(box ref t, _) => Some(match *t {
-                clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
-                _ => (&t.type_, &t.type_),
+                clean::Typedef { item_type: Some(ref type_), .. } => {
+                    (type_, &t.type_, item.is_deprecated(tcx))
+                }
+                _ => (&t.type_, &t.type_, item.is_deprecated(tcx)),
             }),
             _ => None,
         })
@@ -349,7 +372,7 @@ fn sidebar_deref_methods<'a>(
             // Avoid infinite cycles
             return;
         }
-        let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+        let deref_mut = v.iter().any(|i| i.trait_did() == tcx.lang_items().deref_mut_trait());
         let inner_impl = target
             .def_id(c)
             .or_else(|| {
@@ -361,7 +384,7 @@ fn sidebar_deref_methods<'a>(
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(|i| get_methods(i.inner_impl(), true, used_links, deref_mut, cx.tcx()))
+                .flat_map(|i| get_methods(i.inner_impl(), true, used_links, deref_mut, tcx))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 let id = if let Some(target_def_id) = real_target.def_id(c) {
@@ -381,7 +404,7 @@ fn sidebar_deref_methods<'a>(
                 );
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
-                out.push(LinkBlock::new(Link::new(id, title), ret));
+                out.push(LinkBlock::new(Link::new(id, title, target_is_deprecated), ret));
             }
         }
 
@@ -392,7 +415,7 @@ fn sidebar_deref_methods<'a>(
                 i.inner_impl()
                     .trait_
                     .as_ref()
-                    .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
+                    .map(|t| Some(t.def_id()) == tcx.lang_items().deref_trait())
                     .unwrap_or(false)
             })
         {
@@ -413,14 +436,18 @@ fn sidebar_enum<'a>(
     it: &'a clean::Item,
     e: &'a clean::Enum,
 ) -> Vec<LinkBlock<'a>> {
+    let tcx = cx.tcx();
     let mut variants = e
         .variants()
-        .filter_map(|v| v.name)
-        .map(|name| Link::new(format!("variant.{name}"), name.to_string()))
+        .filter_map(|v| {
+            v.name.map(|name| {
+                Link::new(format!("variant.{name}"), name.to_string(), v.is_deprecated(tcx))
+            })
+        })
         .collect::<Vec<_>>();
     variants.sort_unstable();
 
-    let mut items = vec![LinkBlock::new(Link::new("variants", "Variants"), variants)];
+    let mut items = vec![LinkBlock::new(Link::new("variants", "Variants", false), variants)];
     sidebar_assoc_items(cx, it, &mut items);
     items
 }
@@ -432,7 +459,7 @@ pub(crate) fn sidebar_module_like(
         .iter()
         .copied()
         .filter(|sec| item_sections_in_use.contains(sec))
-        .map(|sec| Link::new(sec.id(), sec.name()))
+        .map(|sec| Link::new(sec.id(), sec.name(), false))
         .collect();
     LinkBlock::new(Link::empty(), item_sections)
 }
@@ -470,6 +497,7 @@ fn sidebar_render_assoc_items(
     synthetic: Vec<&Impl>,
     blanket_impl: Vec<&Impl>,
 ) -> [LinkBlock<'static>; 3] {
+    let tcx = cx.tcx();
     let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
         let mut links = FxHashSet::default();
 
@@ -484,7 +512,11 @@ fn sidebar_render_assoc_items(
                     ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
                     ty::ImplPolarity::Negative => "!",
                 };
-                let generated = Link::new(encoded, format!("{prefix}{:#}", trait_.print(cx)));
+                let generated = Link::new(
+                    encoded,
+                    format!("{prefix}{:#}", trait_.print(cx)),
+                    it.impl_item.is_deprecated(tcx),
+                );
                 if links.insert(generated.clone()) { Some(generated) } else { None }
             })
             .collect::<Vec<Link<'static>>>();
@@ -496,12 +528,18 @@ fn sidebar_render_assoc_items(
     let synthetic = format_impls(synthetic, id_map);
     let blanket = format_impls(blanket_impl, id_map);
     [
-        LinkBlock::new(Link::new("trait-implementations", "Trait Implementations"), concrete),
         LinkBlock::new(
-            Link::new("synthetic-implementations", "Auto Trait Implementations"),
+            Link::new("trait-implementations", "Trait Implementations", false),
+            concrete,
+        ),
+        LinkBlock::new(
+            Link::new("synthetic-implementations", "Auto Trait Implementations", false),
             synthetic,
         ),
-        LinkBlock::new(Link::new("blanket-implementations", "Blanket Implementations"), blanket),
+        LinkBlock::new(
+            Link::new("blanket-implementations", "Blanket Implementations", false),
+            blanket,
+        ),
     ]
 }
 
@@ -531,6 +569,7 @@ fn get_methods<'a>(
                     Some(Link::new(
                         get_next_url(used_links, format!("{}.{}", ItemType::Method, name)),
                         name.as_str(),
+                        item.is_deprecated(tcx),
                     ))
                 } else {
                     None
@@ -544,6 +583,7 @@ fn get_methods<'a>(
 fn get_associated_constants<'a>(
     i: &'a clean::Impl,
     used_links: &mut FxHashSet<String>,
+    tcx: TyCtxt<'_>,
 ) -> Vec<Link<'a>> {
     i.items
         .iter()
@@ -551,6 +591,7 @@ fn get_associated_constants<'a>(
             Some(ref name) if !name.is_empty() && item.is_associated_const() => Some(Link::new(
                 get_next_url(used_links, format!("{}.{}", ItemType::AssocConst, name)),
                 name.as_str(),
+                item.is_deprecated(tcx),
             )),
             _ => None,
         })

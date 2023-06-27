@@ -22,6 +22,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::IndexVec;
+use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
@@ -367,6 +368,13 @@ impl Item {
 
     pub(crate) fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
         self.def_id().and_then(|did| tcx.lookup_deprecation(did))
+    }
+
+    pub(crate) fn is_deprecated(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.deprecation(tcx) {
+            Some(depr) => stability::deprecation_in_effect(&depr),
+            None => false,
+        }
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {

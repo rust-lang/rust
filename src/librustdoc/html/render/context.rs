@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
+use serde::Serialize;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
@@ -149,6 +151,13 @@ impl SharedContext<'_> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+struct SidebarEntry {
+    name: String,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    is_deprecated: bool,
+}
+
 impl<'tcx> Context<'tcx> {
     pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.shared.tcx
@@ -273,7 +282,9 @@ impl<'tcx> Context<'tcx> {
     }
 
     /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
-    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<String>> {
+    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<SidebarEntry>> {
+        let tcx = self.tcx();
+
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
@@ -291,7 +302,9 @@ impl<'tcx> Context<'tcx> {
             if inserted.entry(short).or_default().insert(myname) {
                 let short = short.to_string();
                 let myname = myname.to_string();
-                map.entry(short).or_default().push(myname);
+                map.entry(short)
+                    .or_default()
+                    .push(SidebarEntry { name: myname, is_deprecated: item.is_deprecated(tcx) });
             }
         }
 
