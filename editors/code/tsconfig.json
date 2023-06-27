@@ -1,18 +1,21 @@
 {
+    "extends": "@tsconfig/strictest/tsconfig.json",
     "compilerOptions": {
+        "esModuleInterop": false,
         "module": "commonjs",
         "target": "es2021",
         "outDir": "out",
         "lib": ["es2021"],
         "sourceMap": true,
         "rootDir": ".",
-        "strict": true,
+        "newLine": "LF",
+        // These disables some enhancement type checking options
+        // to update typescript version without any code change.
         "useUnknownInCatchVariables": false,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "newLine": "LF"
+        "exactOptionalPropertyTypes": false,
+        "noImplicitOverride": false,
+        "noPropertyAccessFromIndexSignature": false,
+        "noUncheckedIndexedAccess": false
     },
     "exclude": ["node_modules", ".vscode-test"],
     "include": ["src", "tests"]

@@ -48,6 +48,7 @@
         "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
+        "@tsconfig/strictest": "^2.0.1",
         "@types/node": "~16.11.7",
         "@types/vscode": "~1.78.1",
         "@typescript-eslint/eslint-plugin": "^5.60.1",
