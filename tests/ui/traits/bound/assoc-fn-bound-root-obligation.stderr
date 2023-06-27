@@ -6,13 +6,13 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
    |
    = help: the trait `FnMut<(char,)>` is not implemented for `u8`
    = help: the following other types implement trait `Pattern<'a>`:
+             char
+             [char; N]
              &'b String
              &'b [char; N]
              &'b [char]
-             &'b str
              &'c &'b str
-             [char; N]
-             char
+             &'b str
    = note: required for `u8` to implement `Pattern<'_>`
 
 error: aborting due to previous error

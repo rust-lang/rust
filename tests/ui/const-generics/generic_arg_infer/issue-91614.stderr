@@ -6,11 +6,11 @@ LL |     let y = Mask::<_, _>::splat(false);
    |
    = note: cannot satisfy `_: MaskElement`
    = help: the following types implement trait `MaskElement`:
+             isize
+             i8
              i16
              i32
              i64
-             i8
-             isize
 note: required by a bound in `Mask::<T, LANES>::splat`
   --> $SRC_DIR/core/src/../../portable-simd/crates/core_simd/src/masks.rs:LL:COL
 help: consider giving `y` an explicit type, where the type for type parameter `T` is specified

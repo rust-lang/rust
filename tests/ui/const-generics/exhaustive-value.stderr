@@ -6,13 +6,13 @@ LL |     <() as Foo<N>>::test()
    |
    = help: the following other types implement trait `Foo<N>`:
              <() as Foo<0>>
-             <() as Foo<100>>
-             <() as Foo<101>>
-             <() as Foo<102>>
-             <() as Foo<103>>
-             <() as Foo<104>>
-             <() as Foo<105>>
-             <() as Foo<106>>
+             <() as Foo<1>>
+             <() as Foo<2>>
+             <() as Foo<3>>
+             <() as Foo<4>>
+             <() as Foo<5>>
+             <() as Foo<6>>
+             <() as Foo<7>>
            and 248 others
 
 error: aborting due to previous error

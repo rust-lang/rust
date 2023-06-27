@@ -6,8 +6,8 @@ LL |     let x = Some(()).iter().map(|()| 1).sum::<f32>();
    |
    = help: the trait `Sum<{integer}>` is not implemented for `f32`
    = help: the following other types implement trait `Sum<A>`:
-             <f32 as Sum<&'a f32>>
              <f32 as Sum>
+             <f32 as Sum<&'a f32>>
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain-with-int-infer.rs:2:29
    |

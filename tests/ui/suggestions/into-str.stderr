@@ -8,12 +8,12 @@ LL |     foo(String::new());
    |
    = note: to coerce a `String` into a `&str`, use `&*` as a prefix
    = help: the following other types implement trait `From<T>`:
-             <String as From<&String>>
-             <String as From<&mut str>>
-             <String as From<&str>>
+             <String as From<char>>
              <String as From<Box<str>>>
              <String as From<Cow<'a, str>>>
-             <String as From<char>>
+             <String as From<&str>>
+             <String as From<&mut str>>
+             <String as From<&String>>
    = note: required for `String` to implement `Into<&str>`
 note: required by a bound in `foo`
   --> $DIR/into-str.rs:1:31

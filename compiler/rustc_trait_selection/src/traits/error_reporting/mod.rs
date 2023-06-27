@@ -1926,10 +1926,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         other: bool,
     ) -> bool {
         let other = if other { "other " } else { "" };
-        let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
-            candidates.sort();
-            candidates.dedup();
-            let len = candidates.len();
+        let report = |candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             if candidates.is_empty() {
                 return false;
             }
@@ -1958,11 +1955,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 candidates.iter().map(|c| c.print_only_trait_path().to_string()).collect();
             traits.sort();
             traits.dedup();
+            // FIXME: this could use a better heuristic, like just checking
+            // that substs[1..] is the same.
+            let all_traits_equal = traits.len() == 1;
 
-            let mut candidates: Vec<String> = candidates
+            let candidates: Vec<String> = candidates
                 .into_iter()
                 .map(|c| {
-                    if traits.len() == 1 {
+                    if all_traits_equal {
                         format!("\n  {}", c.self_ty())
                     } else {
                         format!("\n  {}", c)
@@ -1970,14 +1970,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 })
                 .collect();
 
-            candidates.sort();
-            candidates.dedup();
             let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
             err.help(format!(
                 "the following {other}types implement trait `{}`:{}{}",
                 trait_ref.print_only_trait_path(),
                 candidates[..end].join(""),
-                if len > 9 { format!("\nand {} others", len - 8) } else { String::new() }
+                if candidates.len() > 9 {
+                    format!("\nand {} others", candidates.len() - 8)
+                } else {
+                    String::new()
+                }
             ));
             true
         };
@@ -1991,7 +1993,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Mentioning implementers of `Copy`, `Debug` and friends is not useful.
                 return false;
             }
-            let impl_candidates: Vec<_> = self
+            let mut impl_candidates: Vec<_> = self
                 .tcx
                 .all_impls(def_id)
                 // Ignore automatically derived impls and `!Trait` impls.
@@ -2018,6 +2020,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 })
                 .collect();
+
+            impl_candidates.sort();
+            impl_candidates.dedup();
             return report(impl_candidates, err);
         }
 
@@ -2027,26 +2032,25 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         //
         // Prefer more similar candidates first, then sort lexicographically
         // by their normalized string representation.
-        let mut impl_candidates = impl_candidates.to_vec();
+        let mut impl_candidates: Vec<_> = impl_candidates
+            .iter()
+            .cloned()
+            .map(|mut cand| {
+                // Fold the consts so that they shows up as, e.g., `10`
+                // instead of `core::::array::{impl#30}::{constant#0}`.
+                cand.trait_ref = cand.trait_ref.fold_with(&mut BottomUpFolder {
+                    tcx: self.tcx,
+                    ty_op: |ty| ty,
+                    lt_op: |lt| lt,
+                    ct_op: |ct| ct.eval(self.tcx, ty::ParamEnv::empty()),
+                });
+                cand
+            })
+            .collect();
         impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref));
         impl_candidates.dedup();
 
-        report(
-            impl_candidates
-                .into_iter()
-                .map(|cand| {
-                    // Fold the const so that it shows up as, e.g., `10`
-                    // instead of `core::::array::{impl#30}::{constant#0}`.
-                    cand.trait_ref.fold_with(&mut BottomUpFolder {
-                        tcx: self.tcx,
-                        ty_op: |ty| ty,
-                        lt_op: |lt| lt,
-                        ct_op: |ct| ct.eval(self.tcx, ty::ParamEnv::empty()),
-                    })
-                })
-                .collect(),
-            err,
-        )
+        report(impl_candidates.into_iter().map(|cand| cand.trait_ref).collect(), err)
     }
 
     fn report_similar_impl_candidates_for_root_obligation(

@@ -6,14 +6,14 @@ LL |     22 >> p.char;
    |
    = help: the trait `Shr<char>` is not implemented for `{integer}`
    = help: the following other types implement trait `Shr<Rhs>`:
-             <&'a i128 as Shr<i128>>
-             <&'a i128 as Shr<i16>>
-             <&'a i128 as Shr<i32>>
-             <&'a i128 as Shr<i64>>
-             <&'a i128 as Shr<i8>>
-             <&'a i128 as Shr<isize>>
-             <&'a i128 as Shr<u128>>
-             <&'a i128 as Shr<u16>>
+             <isize as Shr>
+             <isize as Shr<i8>>
+             <isize as Shr<i16>>
+             <isize as Shr<i32>>
+             <isize as Shr<i64>>
+             <isize as Shr<i128>>
+             <isize as Shr<usize>>
+             <isize as Shr<u8>>
            and 568 others
 
 error[E0277]: no implementation for `{integer} >> &str`
@@ -24,14 +24,14 @@ LL |     22 >> p.str;
    |
    = help: the trait `Shr<&str>` is not implemented for `{integer}`
    = help: the following other types implement trait `Shr<Rhs>`:
-             <&'a i128 as Shr<i128>>
-             <&'a i128 as Shr<i16>>
-             <&'a i128 as Shr<i32>>
-             <&'a i128 as Shr<i64>>
-             <&'a i128 as Shr<i8>>
-             <&'a i128 as Shr<isize>>
-             <&'a i128 as Shr<u128>>
-             <&'a i128 as Shr<u16>>
+             <isize as Shr>
+             <isize as Shr<i8>>
+             <isize as Shr<i16>>
+             <isize as Shr<i32>>
+             <isize as Shr<i64>>
+             <isize as Shr<i128>>
+             <isize as Shr<usize>>
+             <isize as Shr<u8>>
            and 568 others
 
 error[E0277]: no implementation for `{integer} >> &Panolpy`
@@ -42,14 +42,14 @@ LL |     22 >> p;
    |
    = help: the trait `Shr<&Panolpy>` is not implemented for `{integer}`
    = help: the following other types implement trait `Shr<Rhs>`:
-             <&'a i128 as Shr<i128>>
-             <&'a i128 as Shr<i16>>
-             <&'a i128 as Shr<i32>>
-             <&'a i128 as Shr<i64>>
-             <&'a i128 as Shr<i8>>
-             <&'a i128 as Shr<isize>>
-             <&'a i128 as Shr<u128>>
-             <&'a i128 as Shr<u16>>
+             <isize as Shr>
+             <isize as Shr<i8>>
+             <isize as Shr<i16>>
+             <isize as Shr<i32>>
+             <isize as Shr<i64>>
+             <isize as Shr<i128>>
+             <isize as Shr<usize>>
+             <isize as Shr<u8>>
            and 568 others
 
 error[E0308]: mismatched types

@@ -8,10 +8,10 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
+             <i32 as Add>
+             <i32 as Add<&i32>>
              <&'a i32 as Add<i32>>
              <&i32 as Add<&i32>>
-             <i32 as Add<&i32>>
-             <i32 as Add>
 
 error[E0308]: mismatched types
   --> $DIR/ufcs-qpath-self-mismatch.rs:7:28
@@ -65,10 +65,10 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
+             <i32 as Add>
+             <i32 as Add<&i32>>
              <&'a i32 as Add<i32>>
              <&i32 as Add<&i32>>
-             <i32 as Add<&i32>>
-             <i32 as Add>
 
 error: aborting due to 4 previous errors
 

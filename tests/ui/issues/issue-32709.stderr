@@ -8,6 +8,7 @@ LL |     Err(5)?;
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
+             <(T,) as From<[T; 1]>>
              <(T, T) as From<[T; 2]>>
              <(T, T, T) as From<[T; 3]>>
              <(T, T, T, T) as From<[T; 4]>>
@@ -15,7 +16,6 @@ LL |     Err(5)?;
              <(T, T, T, T, T, T) as From<[T; 6]>>
              <(T, T, T, T, T, T, T) as From<[T; 7]>>
              <(T, T, T, T, T, T, T, T) as From<[T; 8]>>
-             <(T, T, T, T, T, T, T, T, T) as From<[T; 9]>>
            and 4 others
    = note: required for `Result<i32, ()>` to implement `FromResidual<Result<Infallible, {integer}>>`
 

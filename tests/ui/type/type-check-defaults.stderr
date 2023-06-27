@@ -66,10 +66,10 @@ LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
    |
    = help: the trait `Add<u8>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
+             <i32 as Add>
+             <i32 as Add<&i32>>
              <&'a i32 as Add<i32>>
              <&i32 as Add<&i32>>
-             <i32 as Add<&i32>>
-             <i32 as Add>
 
 error: aborting due to 7 previous errors
 
