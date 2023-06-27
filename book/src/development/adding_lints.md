@@ -414,7 +414,7 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 
 Now we should also run the full test suite with `cargo test`. At this point
 running `cargo test` should produce the expected output. Remember to run `cargo
-dev bless` to update the `.stderr` file.
+bless` to update the `.stderr` file.
 
 `cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
 implementation is not violating any Clippy lints itself.
