@@ -20,6 +20,7 @@ use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
+use crate::traits::TraitEngineExt as _;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
@@ -28,7 +29,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::traits::FulfillmentError;
 use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::TraitEngine;
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
@@ -53,14 +57,48 @@ pub trait NormalizeExt<'tcx> {
     /// This normalization should be used when the type contains inference variables or the
     /// projection may be fallible.
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> InferOk<'tcx, T>;
+
+    /// Deeply normalizes `value`, replacing all aliases which can by normalized in
+    /// the current environment. Unlike other normalization routines, this errors
+    /// in case normalization fails or is ambiguous.
+    ///
+    /// In the old solver this simply uses `normalize` and errors in
+    /// case of ambiguity. The new solver only normalizes in this function and
+    /// `normalize` is a noop.
+    ///
+    /// This only normalize opaque types with `Reveal::All`.
+    fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        self,
+        value: T,
+    ) -> Result<T, Vec<FulfillmentError<'tcx>>>;
 }
 
 impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
-        let mut selcx = SelectionContext::new(self.infcx);
-        let Normalized { value, obligations } =
-            normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
-        InferOk { value, obligations }
+        if self.infcx.next_trait_solver() {
+            InferOk { value, obligations: Vec::new() }
+        } else {
+            let mut selcx = SelectionContext::new(self.infcx);
+            let Normalized { value, obligations } =
+                normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
+            InferOk { value, obligations }
+        }
+    }
+
+    fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        self,
+        value: T,
+    ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+        if self.infcx.next_trait_solver() {
+            crate::solve::deeply_normalize(self, value)
+        } else {
+            let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&self.infcx);
+            let value = self
+                .normalize(value)
+                .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
+            let errors = fulfill_cx.select_all_or_error(self.infcx);
+            if errors.is_empty() { Ok(value) } else { Err(errors) }
+        }
     }
 }
 

@@ -40,6 +40,7 @@ pub enum DefineOpaqueTypes {
     No,
 }
 
+#[derive(Clone, Copy)]
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,

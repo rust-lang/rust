@@ -40,6 +40,8 @@ use rustc_span::Span;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
 
+pub(crate) use self::project::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
+
 pub use self::FulfillmentErrorCode::*;
 pub use self::ImplSource::*;
 pub use self::ObligationCauseCode::*;
