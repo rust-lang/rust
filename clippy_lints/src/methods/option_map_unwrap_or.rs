@@ -77,15 +77,10 @@ pub(super) fn check<'tcx>(
             return;
         }
 
-        let mut suggest_is_some_and = false;
-        // argument to `unwrap_or` is false & is_some_and is stabilised; should suggest using `is_some_and`
-        if msrv.meets(msrvs::OPT_IS_SOME_AND) {
-            if let ExprKind::Lit(unwrap_lit) = &unwrap_arg.kind {
-                if let rustc_ast::LitKind::Bool(false) = unwrap_lit.node {
-                    suggest_is_some_and = true;
-                }
-            }
-        }
+        // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
+        let suggest_is_some_and = msrv.meets(msrvs::OPTION_IS_SOME_AND)
+            && matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
+            if matches!(lit.node, rustc_ast::LitKind::Bool(false)));
 
         let mut applicability = Applicability::MachineApplicable;
         // get snippet for unwrap_or()
