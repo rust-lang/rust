@@ -81,7 +81,7 @@ impl DebugContext {
 
         match tcx.sess.source_map().lookup_line(span.lo()) {
             Ok(SourceFileAndLine { sf: file, line }) => {
-                let line_pos = file.line_begin_pos(span.lo());
+                let line_pos = file.lines(|lines| lines[line]);
 
                 (
                     file,
