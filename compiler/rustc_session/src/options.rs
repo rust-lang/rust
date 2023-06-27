@@ -1,9 +1,8 @@
 use crate::config::*;
 
-use crate::early_error;
-use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
+use crate::{lint, EarlyErrorHandler};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
@@ -245,10 +244,10 @@ macro_rules! options {
 
     impl $struct_name {
         pub fn build(
+            handler: &EarlyErrorHandler,
             matches: &getopts::Matches,
-            error_format: ErrorOutputType,
         ) -> $struct_name {
-            build_options(matches, $stat, $prefix, $outputname, error_format)
+            build_options(handler, matches, $stat, $prefix, $outputname)
         }
 
         fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
@@ -309,11 +308,11 @@ type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
 type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
 
 fn build_options<O: Default>(
+    handler: &EarlyErrorHandler,
     matches: &getopts::Matches,
     descrs: OptionDescrs<O>,
     prefix: &str,
     outputname: &str,
-    error_format: ErrorOutputType,
 ) -> O {
     let mut op = O::default();
     for option in matches.opt_strs(prefix) {
@@ -327,15 +326,13 @@ fn build_options<O: Default>(
             Some((_, setter, type_desc, _)) => {
                 if !setter(&mut op, value) {
                     match value {
-                        None => early_error(
-                            error_format,
+                        None => handler.early_error(
                             format!(
                                 "{0} option `{1}` requires {2} ({3} {1}=<value>)",
                                 outputname, key, type_desc, prefix
                             ),
                         ),
-                        Some(value) => early_error(
-                            error_format,
+                        Some(value) => handler.early_error(
                             format!(
                                 "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
                             ),
@@ -343,7 +340,7 @@ fn build_options<O: Default>(
                     }
                 }
             }
-            None => early_error(error_format, format!("unknown {outputname} option: `{key}`")),
+            None => handler.early_error(format!("unknown {outputname} option: `{key}`")),
         }
     }
     return op;

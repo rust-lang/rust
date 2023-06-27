@@ -79,8 +79,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
-use rustc_session::getopts;
-use rustc_session::{early_error, early_warn};
+use rustc_session::{getopts, EarlyErrorHandler};
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 
@@ -155,6 +154,8 @@ pub fn main() {
         }
     }
 
+    let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+
     rustc_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md",
@@ -170,11 +171,12 @@ pub fn main() {
     // NOTE: The reason this doesn't show double logging when `download-rustc = false` and
     // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
-    init_logging();
-    rustc_driver::init_env_logger("RUSTDOC_LOG");
 
-    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
-        Some(args) => main_args(&args),
+    init_logging(&handler);
+    rustc_driver::init_env_logger(&handler, "RUSTDOC_LOG");
+
+    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&handler) {
+        Some(args) => main_args(&mut handler, &args),
         _ =>
         {
             #[allow(deprecated)]
@@ -184,22 +186,19 @@ pub fn main() {
     process::exit(exit_code);
 }
 
-fn init_logging() {
+fn init_logging(handler: &EarlyErrorHandler) {
     let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
-        Ok(value) => early_error(
-            ErrorOutputType::default(),
-            format!("invalid log color value '{}': expected one of always, never, or auto", value),
-        ),
-        Err(VarError::NotUnicode(value)) => early_error(
-            ErrorOutputType::default(),
-            format!(
-                "invalid log color value '{}': expected one of always, never, or auto",
-                value.to_string_lossy()
-            ),
-        ),
+        Ok(value) => handler.early_error(format!(
+            "invalid log color value '{}': expected one of always, never, or auto",
+            value
+        )),
+        Err(VarError::NotUnicode(value)) => handler.early_error(format!(
+            "invalid log color value '{}': expected one of always, never, or auto",
+            value.to_string_lossy()
+        )),
     };
     let filter = tracing_subscriber::EnvFilter::from_env("RUSTDOC_LOG");
     let layer = tracing_tree::HierarchicalLayer::default()
@@ -219,16 +218,13 @@ fn init_logging() {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
-fn get_args() -> Option<Vec<String>> {
+fn get_args(handler: &EarlyErrorHandler) -> Option<Vec<String>> {
     env::args_os()
         .enumerate()
         .map(|(i, arg)| {
             arg.into_string()
                 .map_err(|arg| {
-                    early_warn(
-                        ErrorOutputType::default(),
-                        format!("Argument {} is not valid Unicode: {:?}", i, arg),
-                    );
+                    handler.early_warn(format!("Argument {} is not valid Unicode: {:?}", i, arg));
                 })
                 .ok()
         })
@@ -710,7 +706,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     }
 }
 
-fn main_args(at_args: &[String]) -> MainResult {
+fn main_args(handler: &mut EarlyErrorHandler, at_args: &[String]) -> MainResult {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
     // passing empty argument array to execve under some platforms,
@@ -721,7 +717,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = rustc_driver::args::arg_expand_all(at_args);
+    let args = rustc_driver::args::arg_expand_all(handler, at_args);
 
     let mut options = getopts::Options::new();
     for option in opts() {
@@ -730,13 +726,13 @@ fn main_args(at_args: &[String]) -> MainResult {
     let matches = match options.parse(&args) {
         Ok(m) => m,
         Err(err) => {
-            early_error(ErrorOutputType::default(), err.to_string());
+            handler.early_error(err.to_string());
         }
     };
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (options, render_options) = match config::Options::from_matches(&matches, args) {
+    let (options, render_options) = match config::Options::from_matches(handler, &matches, args) {
         Ok(opts) => opts,
         Err(code) => {
             return if code == 0 {
@@ -764,7 +760,7 @@ fn main_args(at_args: &[String]) -> MainResult {
         (false, true) => {
             let input = options.input.clone();
             let edition = options.edition;
-            let config = core::create_config(options, &render_options);
+            let config = core::create_config(handler, options, &render_options);
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
@@ -797,7 +793,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
-    let config = core::create_config(options, &render_options);
+    let config = core::create_config(handler, options, &render_options);
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
