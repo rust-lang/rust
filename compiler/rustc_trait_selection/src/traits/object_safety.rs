@@ -271,22 +271,22 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Type)
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id).subst_identity_iter_copied())
-        .filter_map(|(clause, span)| predicate_references_self(tcx, (clause.as_predicate(), span)))
+        .filter_map(|c| predicate_references_self(tcx, c))
         .collect()
 }
 
 fn predicate_references_self<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (predicate, sp): (ty::Predicate<'tcx>, Span),
+    (predicate, sp): (ty::Clause<'tcx>, Span),
 ) -> Option<Span> {
     let self_ty = tcx.types.self_param;
     let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ref data)) => {
+        ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
             data.trait_ref.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(ref data)) => {
+        ty::ClauseKind::Projection(ref data) => {
             // And similarly for projections. This should be redundant with
             // the previous check because any projection should have a
             // matching `Trait` predicate with the same inputs, but we do
@@ -304,24 +304,14 @@ fn predicate_references_self<'tcx>(
             // possible alternatives.
             data.projection_ty.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(_ct, ty)) => {
-            has_self_ty(&ty.into()).then_some(sp)
-        }
+        ty::ClauseKind::ConstArgHasType(_ct, ty) => has_self_ty(&ty.into()).then_some(sp),
 
-        ty::PredicateKind::AliasRelate(..) => bug!("`AliasRelate` not allowed as assumption"),
-
-        ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-        | ty::PredicateKind::ObjectSafe(..)
-        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
-        | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
-        | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::Coerce(..)
+        ty::ClauseKind::WellFormed(..)
+        | ty::ClauseKind::TypeOutlives(..)
+        | ty::ClauseKind::RegionOutlives(..)
         // FIXME(generic_const_exprs): this can mention `Self`
-        | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-        | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+        | ty::ClauseKind::ConstEvaluatable(..)
+        | ty::ClauseKind::TypeWellFormedFromEnv(_) => None,
     }
 }
 
@@ -353,23 +343,16 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate(tcx, predicates.into_iter()).any(|pred| match pred.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Trait(ref trait_pred)) => {
+        ty::ClauseKind::Trait(ref trait_pred) => {
             trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
-        | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
-        | ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::Coerce(..)
-        | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
-        | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-        | ty::PredicateKind::ObjectSafe(..)
-        | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
-        | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-        | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::AliasRelate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
+        ty::ClauseKind::RegionOutlives(_)
+        | ty::ClauseKind::TypeOutlives(_)
+        | ty::ClauseKind::Projection(_)
+        | ty::ClauseKind::ConstArgHasType(_, _)
+        | ty::ClauseKind::WellFormed(_)
+        | ty::ClauseKind::ConstEvaluatable(_)
+        | ty::ClauseKind::TypeWellFormedFromEnv(_) => false,
     })
 }
 
@@ -575,7 +558,7 @@ fn virtual_call_violation_for_method<'tcx>(
         // because a trait object can't claim to live longer than the concrete
         // type. If the lifetime bound holds on dyn Trait then it's guaranteed
         // to hold as well on the concrete type.
-        if pred.to_opt_type_outlives().is_some() {
+        if pred.as_type_outlives_clause().is_some() {
             return false;
         }
 
@@ -592,11 +575,11 @@ fn virtual_call_violation_for_method<'tcx>(
         // only if the autotrait is one of the trait object's trait bounds, like
         // in `dyn Trait + AutoTrait`. This guarantees that trait objects only
         // implement auto traits if the underlying type does as well.
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
+        if let ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref: pred_trait_ref,
             constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Positive,
-        })) = pred.kind().skip_binder()
+        }) = pred.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)
         {
@@ -764,7 +747,6 @@ fn receiver_is_dispatchable<'tcx>(
         // Self: Unsize<U>
         let unsize_predicate =
             ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty])
-                .without_const()
                 .to_predicate(tcx);
 
         // U: Trait<Arg1, ..., ArgN>
@@ -781,7 +763,7 @@ fn receiver_is_dispatchable<'tcx>(
             param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
 
         ty::ParamEnv::new(
-            tcx.mk_predicates_from_iter(caller_bounds),
+            tcx.mk_clauses_from_iter(caller_bounds),
             param_env.reveal(),
             param_env.constness(),
         )

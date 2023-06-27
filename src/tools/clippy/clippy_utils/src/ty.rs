@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
     self, layout::ValidityRequirement, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv,
-    Predicate, PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
@@ -563,7 +563,7 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
 }
 
 /// Gets an iterator over all predicates which apply to the given item.
-pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(Predicate<'_>, Span)> {
+pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(ty::Clause<'_>, Span)> {
     let mut next_id = Some(id);
     iter::from_fn(move || {
         next_id.take().map(|id| {
@@ -665,7 +665,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => sig_from_bounds(
             cx,
             ty,
-            cx.tcx.item_bounds(def_id).subst_iter(cx.tcx, substs).map(|c| c.as_predicate()),
+            cx.tcx.item_bounds(def_id).subst_iter(cx.tcx, substs),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
@@ -698,7 +698,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
 fn sig_from_bounds<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
-    predicates: impl IntoIterator<Item = Predicate<'tcx>>,
+    predicates: impl IntoIterator<Item = ty::Clause<'tcx>>,
     predicates_id: Option<DefId>,
 ) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
@@ -707,7 +707,7 @@ fn sig_from_bounds<'tcx>(
 
     for pred in predicates {
         match pred.kind().skip_binder() {
-            PredicateKind::Clause(ty::ClauseKind::Trait(p))
+            ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id()))
@@ -720,7 +720,7 @@ fn sig_from_bounds<'tcx>(
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Clause(ty::ClauseKind::Projection(p))
+            ty::ClauseKind::Projection(p)
                 if Some(p.projection_ty.def_id) == lang_items.fn_once_output() && p.projection_ty.self_ty() == ty =>
             {
                 if output.is_some() {
@@ -937,7 +937,7 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
 }
 
 /// Checks if the type is a type parameter implementing `FnOnce`, but not `FnMut`.
-pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tcx [Predicate<'_>]) -> bool {
+pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tcx [ty::Clause<'_>]) -> bool {
     let ty::Param(ty) = *ty.kind() else {
         return false;
     };
@@ -950,7 +950,7 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
     predicates
         .iter()
         .try_fold(false, |found, p| {
-            if let PredicateKind::Clause(ty::ClauseKind::Trait(p)) = p.kind().skip_binder()
+            if let ty::ClauseKind::Trait(p) = p.kind().skip_binder()
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && ty.index == self_ty.index
         {

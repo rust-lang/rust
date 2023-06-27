@@ -555,12 +555,18 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(_) => true,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(_)) => true,
         }
     }
 }
 
 impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
+    }
+}
+
+impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
     fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
         rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
     }
@@ -620,6 +626,10 @@ impl<'tcx> Clause<'tcx> {
             None
         }
     }
+
+    pub fn without_const(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        self.as_predicate().without_const(tcx).expect_clause()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -651,6 +661,11 @@ pub enum ClauseKind<'tcx> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(ty::Const<'tcx>),
+
+    /// Represents a type found in the environment that we can use for implied bounds.
+    ///
+    /// Only used for Chalk.
+    TypeWellFormedFromEnv(Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -686,11 +701,6 @@ pub enum PredicateKind<'tcx> {
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(Const<'tcx>, Const<'tcx>),
-
-    /// Represents a type found in the environment that we can use for implied bounds.
-    ///
-    /// Only used for Chalk.
-    TypeWellFormedFromEnv(Ty<'tcx>),
 
     /// A marker predicate that is always ambiguous.
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
@@ -730,11 +740,10 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    // FIXME(clause): should this be a `Clause`?
     pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
 }
 
-impl<'tcx> Predicate<'tcx> {
+impl<'tcx> Clause<'tcx> {
     /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
     /// poly-trait-ref holds. This is slightly different from a normal
@@ -744,7 +753,7 @@ impl<'tcx> Predicate<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
-    ) -> Predicate<'tcx> {
+    ) -> Clause<'tcx> {
         // The interaction between HRTB and supertraits is not entirely
         // obvious. Let me walk you (and myself) through an example.
         //
@@ -830,7 +839,13 @@ impl<'tcx> Predicate<'tcx> {
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
             tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
-        tcx.reuse_or_mk_predicate(self, ty::Binder::bind_with_vars(new, bound_vars))
+
+        // FIXME: Is it really perf sensitive to use reuse_or_mk_predicate here?
+        tcx.reuse_or_mk_predicate(
+            self.as_predicate(),
+            ty::Binder::bind_with_vars(PredicateKind::Clause(new), bound_vars),
+        )
+        .expect_clause()
     }
 }
 
@@ -1301,6 +1316,14 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitPredicate<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        p.expect_clause()
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, TraitRef<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
@@ -1402,7 +1425,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
         }
     }
 
@@ -1423,7 +1446,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
         }
     }
 
@@ -1444,7 +1467,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
         }
     }
 
@@ -1456,12 +1479,11 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
-    /// Turns a predicate into a clause without checking that it is a `PredicateKind::Clause`
-    /// first. This will ICE when methods are called on `Clause`.
+    /// Assert that the predicate is a clause.
     pub fn expect_clause(self) -> Clause<'tcx> {
         match self.kind().skip_binder() {
             PredicateKind::Clause(..) => Clause(self.0),
-            _ => bug!(),
+            _ => bug!("{self} is not a clause"),
         }
     }
 }
@@ -1487,7 +1509,7 @@ impl<'tcx> Predicate<'tcx> {
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: Vec<Predicate<'tcx>>,
+    pub predicates: Vec<Clause<'tcx>>,
     pub spans: Vec<Span>,
 }
 
@@ -1506,9 +1528,9 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 }
 
 impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
-    type Item = (Predicate<'tcx>, Span);
+    type Item = (Clause<'tcx>, Span);
 
-    type IntoIter = std::iter::Zip<std::vec::IntoIter<Predicate<'tcx>>, std::vec::IntoIter<Span>>;
+    type IntoIter = std::iter::Zip<std::vec::IntoIter<Clause<'tcx>>, std::vec::IntoIter<Span>>;
 
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
@@ -1517,10 +1539,10 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
 }
 
 impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
-    type Item = (Predicate<'tcx>, Span);
+    type Item = (Clause<'tcx>, Span);
 
     type IntoIter = std::iter::Zip<
-        std::iter::Copied<std::slice::Iter<'a, Predicate<'tcx>>>,
+        std::iter::Copied<std::slice::Iter<'a, Clause<'tcx>>>,
         std::iter::Copied<std::slice::Iter<'a, Span>>,
     >;
 
@@ -1670,7 +1692,7 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All`.
     ///
     /// Note: This is packed, use the reveal() method to access it.
-    packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, ParamTag, true>,
+    packed: CopyTaggedPtr<&'tcx List<Clause<'tcx>>, ParamTag, true>,
 }
 
 #[derive(Copy, Clone)]
@@ -1736,7 +1758,7 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> &'tcx List<Predicate<'tcx>> {
+    pub fn caller_bounds(self) -> &'tcx List<Clause<'tcx>> {
         self.packed.pointer()
     }
 
@@ -1770,7 +1792,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Construct a trait environment with the given set of predicates.
     #[inline]
     pub fn new(
-        caller_bounds: &'tcx List<Predicate<'tcx>>,
+        caller_bounds: &'tcx List<Clause<'tcx>>,
         reveal: Reveal,
         constness: hir::Constness,
     ) -> Self {

@@ -112,13 +112,13 @@ trait DefIdVisitor<'tcx> {
         &mut self,
         predicates: ty::GenericPredicates<'tcx>,
     ) -> ControlFlow<Self::BreakTy> {
-        self.skeleton().visit_predicates(predicates)
+        self.skeleton().visit_clauses(predicates.predicates)
     }
     fn visit_clauses(
         &mut self,
-        predicates: &[(ty::Clause<'tcx>, Span)],
+        clauses: &[(ty::Clause<'tcx>, Span)],
     ) -> ControlFlow<Self::BreakTy> {
-        self.skeleton().visit_clauses(predicates)
+        self.skeleton().visit_clauses(clauses)
     }
 }
 
@@ -182,24 +182,12 @@ where
             }
             ty::ClauseKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::ClauseKind::WellFormed(arg) => arg.visit_with(self),
+            ty::ClauseKind::TypeWellFormedFromEnv(_) => bug!("unexpected clause: {clause}"),
         }
     }
 
-    fn visit_predicates(
-        &mut self,
-        predicates: ty::GenericPredicates<'tcx>,
-    ) -> ControlFlow<V::BreakTy> {
-        let ty::GenericPredicates { parent: _, predicates } = predicates;
-        predicates.iter().try_for_each(|&(predicate, _span)| {
-            let clause = predicate
-                .as_clause()
-                .unwrap_or_else(|| bug!("unexpected predicate: {:?}", predicate));
-            self.visit_clause(clause)
-        })
-    }
-
     fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> ControlFlow<V::BreakTy> {
-        clauses.iter().try_for_each(|&(clause, _span)| self.visit_clause(clause))
+        clauses.into_iter().try_for_each(|&(clause, _span)| self.visit_clause(clause))
     }
 }
 

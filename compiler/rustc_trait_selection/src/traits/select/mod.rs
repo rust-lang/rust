@@ -967,7 +967,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
                 ty::PredicateKind::AliasRelate(..) => {
@@ -2657,7 +2657,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         }))
                     })
                 };
-            let predicate = normalize_with_depth_to(
+            let clause = normalize_with_depth_to(
                 self,
                 param_env,
                 cause.clone(),
@@ -2665,7 +2665,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 predicate,
                 &mut obligations,
             );
-            obligations.push(Obligation { cause, recursion_depth, param_env, predicate });
+            obligations.push(Obligation {
+                cause,
+                recursion_depth,
+                param_env,
+                predicate: clause.as_predicate(),
+            });
         }
 
         obligations

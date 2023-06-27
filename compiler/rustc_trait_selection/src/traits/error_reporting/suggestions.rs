@@ -1201,7 +1201,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         DefIdOrName::Name("type parameter")
                     };
                     param_env.caller_bounds().iter().find_map(|pred| {
-                        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) = pred.kind().skip_binder()
+                        if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         && proj.projection_ty.self_ty() == found
                         // args tuple will always be substs[1]
@@ -2001,7 +2001,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
-            && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) = pred.kind().skip_binder()
+            && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
             let expected_self =
@@ -2015,7 +2015,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let other_pred = predicates.into_iter()
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred))
+                    ty::ClauseKind::Trait(trait_pred)
                         if self.tcx.is_fn_trait(trait_pred.def_id())
                             && other_idx != idx
                             // Make sure that the self type matches
@@ -3526,7 +3526,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
                 && let Some(where_pred) = where_clauses.predicates.get(*idx)
             {
-                if let Some(where_pred) = where_pred.to_opt_poly_trait_pred()
+                if let Some(where_pred) = where_pred.as_trait_clause()
                     && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
                 {
                     let where_pred = self.instantiate_binder_with_placeholders(where_pred);
@@ -3549,7 +3549,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             }
                         })
                     };
-                } else if let Some(where_pred) = where_pred.to_opt_poly_projection_pred()
+                } else if let Some(where_pred) = where_pred.as_projection_clause()
                     && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
                     && let Some(found) = failed_pred.skip_binder().term.ty()
                 {

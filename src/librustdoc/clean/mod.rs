@@ -326,36 +326,24 @@ fn clean_where_predicate<'tcx>(
 }
 
 pub(crate) fn clean_predicate<'tcx>(
-    predicate: ty::Predicate<'tcx>,
+    predicate: ty::Clause<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
     let bound_predicate = predicate.kind();
     match bound_predicate.skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-            clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
-        }
-        ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(pred)) => {
-            clean_region_outlives_predicate(pred)
-        }
-        ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(pred)) => {
+        ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_predicate.rebind(pred), cx),
+        ty::ClauseKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
+        ty::ClauseKind::TypeOutlives(pred) => {
             clean_type_outlives_predicate(bound_predicate.rebind(pred), cx)
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
+        ty::ClauseKind::Projection(pred) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
         }
         // FIXME(generic_const_exprs): should this do something?
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..)) => None,
-        ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..)) => None,
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..)) => None,
-
-        ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::AliasRelate(..)
-        | ty::PredicateKind::Coerce(..)
-        | ty::PredicateKind::ObjectSafe(..)
-        | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
+        ty::ClauseKind::ConstEvaluatable(..)
+        | ty::ClauseKind::WellFormed(..)
+        | ty::ClauseKind::ConstArgHasType(..)
+        | ty::ClauseKind::TypeWellFormedFromEnv(..) => None,
     }
 }
 
@@ -805,19 +793,17 @@ fn clean_ty_generics<'tcx>(
             let param_idx = (|| {
                 let bound_p = p.kind();
                 match bound_p.skip_binder() {
-                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                    ty::ClauseKind::Trait(pred) => {
                         if let ty::Param(param) = pred.self_ty().kind() {
                             return Some(param.index);
                         }
                     }
-                    ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                        ty::OutlivesPredicate(ty, _reg),
-                    )) => {
+                    ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
                         if let ty::Param(param) = ty.kind() {
                             return Some(param.index);
                         }
                     }
-                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(p)) => {
+                    ty::ClauseKind::Projection(p) => {
                         if let ty::Param(param) = p.projection_ty.self_ty().kind() {
                             projection = Some(bound_p.rebind(p));
                             return Some(param.index);
@@ -1354,10 +1340,8 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 
             let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
             if let ty::TraitContainer = assoc_item.container {
-                let bounds = tcx
-                    .explicit_item_bounds(assoc_item.def_id)
-                    .subst_identity_iter_copied()
-                    .map(|(c, s)| (c.as_predicate(), s));
+                let bounds =
+                    tcx.explicit_item_bounds(assoc_item.def_id).subst_identity_iter_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
             let mut generics = clean_ty_generics(

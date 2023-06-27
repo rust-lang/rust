@@ -1593,33 +1593,25 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::ClauseKind;
-        use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
             let predicates = cx.tcx.predicates_of(item.owner_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
-                    Clause(ClauseKind::Trait(..)) => "trait",
-                    Clause(ClauseKind::TypeOutlives(..)) |
-                    Clause(ClauseKind::RegionOutlives(..)) => "lifetime",
+                    ClauseKind::Trait(..) => "trait",
+                    ClauseKind::TypeOutlives(..) |
+                    ClauseKind::RegionOutlives(..) => "lifetime",
 
                     // `ConstArgHasType` is never global as `ct` is always a param
-                    Clause(ClauseKind::ConstArgHasType(..)) |
+                    ClauseKind::ConstArgHasType(..)
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
-                    Clause(ClauseKind::Projection(..)) |
+                    | ClauseKind::Projection(..)
                     // Ignore bounds that a user can't type
-                    Clause(ClauseKind::WellFormed(..)) |
+                    | ClauseKind::WellFormed(..)
                     // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
-                    Clause(ClauseKind::ConstEvaluatable(..)) |
-                    AliasRelate(..) |
-                    ObjectSafe(..) |
-                    ClosureKind(..) |
-                    Subtype(..) |
-                    Coerce(..) |
-                    ConstEquate(..) |
-                    Ambiguous |
-                    TypeWellFormedFromEnv(..) => continue,
+                    | ClauseKind::ConstEvaluatable(..)
+                    | ClauseKind::TypeWellFormedFromEnv(_)  => continue,
                 };
                 if predicate.is_global() {
                     cx.emit_spanned_lint(

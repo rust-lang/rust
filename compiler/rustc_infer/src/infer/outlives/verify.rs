@@ -223,7 +223,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // parameter environments are already elaborated, so we don't
         // have to worry about that.
         let c_b = self.param_env.caller_bounds();
-        let param_bounds = self.collect_outlives_from_predicate_list(erased_ty, c_b.into_iter());
+        let param_bounds = self.collect_outlives_from_clause_list(erased_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -307,15 +307,15 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// when comparing `ty` for equality, so `ty` must be something
     /// that does not involve inference variables and where you
     /// otherwise want a precise match.
-    fn collect_outlives_from_predicate_list(
+    fn collect_outlives_from_clause_list(
         &self,
         erased_ty: Ty<'tcx>,
-        predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
+        clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     ) -> impl Iterator<Item = ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>>
     {
         let tcx = self.tcx;
         let param_env = self.param_env;
-        predicates.filter_map(|p| p.to_opt_type_outlives()).filter(move |outlives_predicate| {
+        clauses.filter_map(|p| p.as_type_outlives_clause()).filter(move |outlives_predicate| {
             super::test_type_match::can_match_erased_ty(
                 tcx,
                 param_env,

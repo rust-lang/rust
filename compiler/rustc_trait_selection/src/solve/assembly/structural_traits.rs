@@ -343,7 +343,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-) -> Vec<ty::Predicate<'tcx>> {
+) -> Vec<ty::Clause<'tcx>> {
     let tcx = ecx.tcx();
     let mut requirements = vec![];
     requirements.extend(
@@ -353,11 +353,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
         // FIXME(associated_const_equality): Also add associated consts to
         // the requirements here.
         if item.kind == ty::AssocKind::Type {
-            requirements.extend(
-                tcx.item_bounds(item.def_id)
-                    .subst_iter(tcx, trait_ref.substs)
-                    .map(|clause| clause.as_predicate()),
-            );
+            requirements.extend(tcx.item_bounds(item.def_id).subst_iter(tcx, trait_ref.substs));
         }
     }
 

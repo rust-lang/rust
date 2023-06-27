@@ -42,7 +42,7 @@ impl<'tcx> RustIrDatabase<'tcx> {
             .tcx
             .predicates_defined_on(def_id)
             .instantiate_own(self.interner.tcx, bound_vars)
-            .filter_map(|(wc, _)| LowerInto::lower_into(wc, self.interner))
+            .filter_map(|(wc, _)| LowerInto::lower_into(wc.as_predicate(), self.interner))
             .collect()
     }
 
