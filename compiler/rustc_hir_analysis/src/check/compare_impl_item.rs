@@ -2121,7 +2121,7 @@ pub(super) fn check_type_bounds<'tcx>(
             _ => bug!(),
         }
     };
-    let assumed_wf_types = ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty_def_id);
+    let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl_ty_def_id)?;
 
     let normalize_cause = ObligationCause::new(
         impl_ty_span,
