@@ -130,6 +130,11 @@ pub(super) fn handle_needs(
             condition: config.git_hash,
             ignore_reason: "ignored when git hashes have been omitted for building",
         },
+        Need {
+            name: "needs-dynamic-linking",
+            condition: config.target_cfg().dynamic_linking,
+            ignore_reason: "ignored on targets without dynamic linking",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {
