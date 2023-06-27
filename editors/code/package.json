@@ -50,8 +50,8 @@
     "devDependencies": {
         "@types/node": "~16.11.7",
         "@types/vscode": "~1.66.0",
-        "@typescript-eslint/eslint-plugin": "^5.30.5",
-        "@typescript-eslint/parser": "^5.30.5",
+        "@typescript-eslint/eslint-plugin": "^5.60.1",
+        "@typescript-eslint/parser": "^5.60.1",
         "@vscode/test-electron": "^2.1.5",
         "cross-env": "^7.0.3",
         "esbuild": "^0.14.48",
