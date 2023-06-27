@@ -64,11 +64,6 @@
         "vsce": "^2.9.2"
     },
     "activationEvents": [
-        "onLanguage:rust",
-        "onCommand:rust-analyzer.analyzerStatus",
-        "onCommand:rust-analyzer.memoryUsage",
-        "onCommand:rust-analyzer.reloadWorkspace",
-        "onCommand:rust-analyzer.startServer",
         "workspaceContains:*/Cargo.toml",
         "workspaceContains:*/rust-project.json"
     ],
