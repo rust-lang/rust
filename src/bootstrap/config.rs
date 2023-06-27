@@ -1129,6 +1129,14 @@ impl Config {
         };
 
         if let Some(include) = &toml.profile {
+            // Allows creating alias for profile names, allowing
+            // profiles to be renamed while maintaining back compatibility
+            // Keep in sync with `profile_aliases` in bootstrap.py
+            let profile_aliases = HashMap::from([("user", "dist")]);
+            let include = match profile_aliases.get(include.as_str()) {
+                Some(alias) => alias,
+                None => include.as_str(),
+            };
             let mut include_path = config.src.clone();
             include_path.push("src");
             include_path.push("bootstrap");

@@ -1013,9 +1013,15 @@ impl<'a> Parser<'a> {
     }
 
     fn error_unexpected_after_dot(&self) {
-        // FIXME Could factor this out into non_fatal_unexpected or something.
         let actual = pprust::token_to_string(&self.token);
-        self.sess.emit_err(errors::UnexpectedTokenAfterDot { span: self.token.span, actual });
+        let span = self.token.span;
+        let sm = self.sess.source_map();
+        let (span, actual) = match (&self.token.kind, self.subparser_name) {
+            (token::Eof, Some(_)) if let Ok(actual) = sm.span_to_snippet(sm.next_point(span)) =>
+                (span.shrink_to_hi(), actual.into()),
+            _ => (span, actual),
+        };
+        self.sess.emit_err(errors::UnexpectedTokenAfterDot { span, actual });
     }
 
     // We need an identifier or integer, but the next token is a float.
@@ -2186,6 +2192,10 @@ impl<'a> Parser<'a> {
             self.sess.emit_err(errors::InvalidBlockMacroSegment {
                 span: self.token.span,
                 context: lo.to(self.token.span),
+                wrap: errors::WrapInExplicitBlock {
+                    lo: self.token.span.shrink_to_lo(),
+                    hi: self.token.span.shrink_to_hi(),
+                },
             });
         }
 

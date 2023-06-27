@@ -421,6 +421,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 print_indented!(self, "}", depth_lvl);
             }
+            Become { value } => {
+                print_indented!(self, "Become {", depth_lvl);
+                print_indented!(self, "value:", depth_lvl + 1);
+                self.print_expr(*value, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
             ConstBlock { did, substs } => {
                 print_indented!(self, "ConstBlock {", depth_lvl);
                 print_indented!(self, format!("did: {:?}", did), depth_lvl + 1);

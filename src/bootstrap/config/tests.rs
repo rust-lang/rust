@@ -1,5 +1,8 @@
+use crate::config::TomlConfig;
+
 use super::{Config, Flags};
 use clap::CommandFactory;
+use serde::Deserialize;
 use std::{env, path::Path};
 
 fn parse(config: &str) -> Config {
@@ -158,4 +161,20 @@ fn override_toml_duplicate() {
         ],
         |&_| toml::from_str("changelog-seen = 0").unwrap(),
     );
+}
+
+#[test]
+fn profile_user_dist() {
+    fn get_toml(file: &Path) -> TomlConfig {
+        let contents = if file.ends_with("config.toml") {
+            "profile = \"user\"".to_owned()
+        } else {
+            assert!(file.ends_with("config.dist.toml"));
+            std::fs::read_to_string(dbg!(file)).unwrap()
+        };
+        toml::from_str(&contents)
+            .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            .unwrap()
+    }
+    Config::parse_inner(&["check".to_owned()], get_toml);
 }
