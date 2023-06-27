@@ -104,8 +104,8 @@ and `src/tools` directories. So, you can simply run `x.py test tidy` instead of
 
 [rust-analyzer]: suggested.html#configuring-rust-analyzer-for-rustc
 
-See the chapters on [building](how-to-build-and-run),
-[testing](../tests/intro), and [rustdoc](../rustdoc) for more details.
+See the chapters on
+[testing](../tests/running.md) and [rustdoc](../rustdoc.md) for more details.
 
 ### Building the compiler
 

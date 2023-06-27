@@ -45,7 +45,7 @@ optimizes it, and returns the improved MIR.
 4. Implement a new optimization in [`compiler/rustc_mir_transform/src`].
    The fastest and easiest way to do this is to
 
-   1. pick a small optimization (such as [`no_landing_pads`]) and copy it
+   1. pick a small optimization (such as [`remove_storage_markers`]) and copy it
       to a new file,
    2. add your optimization to one of the lists in the
       [`run_optimization_passes()`] function,
@@ -72,8 +72,7 @@ If you have any questions along the way, feel free to ask in
 
 [mir-opt-test-readme]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/README.md
 [`compiler/rustc_mir_transform/src`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir_transform/src
-<!--- TODO: Change NoLandingPads. [#1232](https://github.com/rust-lang/rustc-dev-guide/issues/1232) -->
-[`no_landing_pads`]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/no_landing_pads.rs
+[`remove_storage_markers`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/remove_storage_markers.rs
 [`run_optimization_passes()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.run_optimization_passes.html
 
 ## Defining optimization passes

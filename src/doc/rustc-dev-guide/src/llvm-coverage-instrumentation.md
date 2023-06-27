@@ -466,7 +466,7 @@ function--[`bcb_from_bb()`][bcb-from-bb]--to look up a `BasicCoverageBlock` from
 [graph-traits]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/index.html#traits
 [mir-dev-guide]: mir/index.md
 [compute-basic-coverage-blocks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.CoverageGraph.html#method.compute_basic_coverage_blocks
-[simplify-cfg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/simplify/struct.SimplifyCfg.html
+[simplify-cfg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/simplify/enum.SimplifyCfg.html
 [rust-lang/rust#78544]: https://github.com/rust-lang/rust/issues/78544
 [mir-debugging]: mir/debugging.md
 [bcb-from-bb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.CoverageGraph.html#method.bcb_from_bb

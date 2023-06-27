@@ -195,11 +195,8 @@ These include:
   run a lot of tests on a lot of platforms.
 - [`src/doc`]: Various documentation, including submodules for a few books.
 - [`src/etc`]: Miscellaneous utilities.
-- [`src/tools/rustc-workspace-hack`], and others: Various workarounds to make
-  cargo work with bootstrapping.
 - And more...
 
 [`src/ci`]: https://github.com/rust-lang/rust/tree/master/src/ci
 [`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
 [`src/etc`]: https://github.com/rust-lang/rust/tree/master/src/etc
-[`src/tools/rustc-workspace-hack`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustc-workspace-hack

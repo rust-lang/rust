@@ -173,6 +173,8 @@ running the Markdown parser. There's also a function in here
 (`find_testable_code`) that specifically scans for Rust code blocks so the
 test-runner code can find all the doctests in the crate.
 
+[Askama]: https://docs.rs/askama/latest/askama/
+
 ### From soup to nuts
 
 (alternate title: ["An unbroken thread that stretches from those first `Cell`s

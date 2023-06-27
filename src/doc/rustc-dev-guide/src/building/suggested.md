@@ -79,7 +79,7 @@ opened when this file is detected.
 
 If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
 `.vim/coc-settings.json` and copy the settings from 
-[this file](https://github.com/rust-lang/rust/blob/master/src/etc/vscode_settings.json).
+[this file](https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_settings.json).
 
 Another way is without a plugin, and creating your own logic in your configuration. To do this you 
 must translate the JSON to Lua yourself. The translation is 1:1 and fairly straight-forward. It 

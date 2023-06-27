@@ -181,6 +181,8 @@ below][break]) for some PRs.
 [r?]: https://github.com/rust-lang/rust/pull/78133#issuecomment-712692371
 [#t-release/triage]: https://rust-lang.zulipchat.com/#narrow/stream/242269-t-release.2Ftriage
 [break]: #breaking-changes
+[crater]: tests/crater.md
+
 ### CI
 
 In addition to being reviewed by a human, pull requests are automatically tested

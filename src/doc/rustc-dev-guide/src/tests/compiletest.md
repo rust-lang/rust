@@ -380,7 +380,7 @@ There is a [`tools.mk`] Makefile which you can include which provides a bunch of
 utilities to make it easier to run commands and compare outputs.
 Take a look at some of the other tests for some examples on how to get started.
 
-[`tools.mk`]: https://github.com/rust-lang/rust/blob/master/tests/run-make-fulldeps/tools.mk
+[`tools.mk`]: https://github.com/rust-lang/rust/blob/master/tests/run-make/tools.mk
 [`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
 
 
