@@ -271,7 +271,8 @@ pub fn collect_crate_mono_items(
         let visited: MTLockRef<'_, _> = &mut visited;
         let usage_map: MTLockRef<'_, _> = &mut usage_map;
 
-        tcx.sess.time("monomorphization_collector_graph_walk", || {
+        tcx.sess.time("monomorphization_collector_graph_walk", move || {
+            let all_items_ref: MTLockRef<'_, _> = &mut all_items;
             par_for_each_in(roots, |root| {
                 let mut recursion_depths = DefIdMap::default();
                 let mut all_thread_items = vec![];
@@ -285,9 +286,9 @@ pub fn collect_crate_mono_items(
                     usage_map,
                 );
                 all_thread_items.retain(|item| !visited.lock().contains(&item.node));
-                all_items.lock_mut().extend(all_thread_items);
+                all_items_ref.lock_mut().extend(all_thread_items);
             });
-            let visited = &mut MTLock::new(visited.get_mut().clone());
+            let visited = &mut MTLock::new(visited.lock().clone());
             par_for_each_in(all_items.into_inner(), |root| {
                 let mut recursion_depths = DefIdMap::default();
                 collect_all_items_rec(tcx, root, visited, &mut recursion_depths, recursion_limit);
