@@ -1,6 +1,6 @@
 #![cfg(not(test))]
 
-use libc::{c_double, c_float};
+use libc::{c_double, c_float, c_int};
 
 extern "C" {
     pub fn acos(n: c_double) -> c_double;
@@ -23,6 +23,10 @@ extern "C" {
     pub fn sinh(n: c_double) -> c_double;
     pub fn tan(n: c_double) -> c_double;
     pub fn tanh(n: c_double) -> c_double;
+    pub fn tgamma(n: c_double) -> c_double;
+    pub fn tgammaf(n: c_float) -> c_float;
+    pub fn lgamma_r(n: c_double, s: &mut c_int) -> c_double;
+    pub fn lgammaf_r(n: c_float, s: &mut c_int) -> c_float;
 }
 
 pub use self::shims::*;
