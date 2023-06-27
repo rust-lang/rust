@@ -108,7 +108,7 @@ function getCurrentValue(name) {
 // Get a value from the rustdoc-vars div, which is used to convey data from
 // Rust to the JS. If there is no such element, return null.
 const getVar = (function getVar(name) {
-    const el = document.getElementById("rustdoc-vars");
+    const el = document.querySelector("head > meta[name='rustdoc-vars']");
     return el ? el.attributes["data-" + name].value : null;
 });
 
