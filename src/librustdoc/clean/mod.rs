@@ -2371,7 +2371,7 @@ fn filter_tokens_from_list(
     tokens
 }
 
-/// When inlining items, we merge its attributes (and all the reexports attributes too) with the
+/// When inlining items, we merge their attributes (and all the reexports attributes too) with the
 /// final reexport. For example:
 ///
 /// ```ignore (just an example)
