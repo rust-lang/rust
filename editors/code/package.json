@@ -41,11 +41,11 @@
         "test": "cross-env TEST_VARIABLE=test node ./out/tests/runTests.js"
     },
     "dependencies": {
+        "@hpcc-js/wasm": "^2.13.0",
         "anser": "^2.1.1",
         "d3": "^7.6.1",
         "d3-graphviz": "^5.0.2",
-        "vscode-languageclient": "^8.1.0",
-        "@hpcc-js/wasm": "2.5.0"
+        "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
         "@types/node": "~16.11.7",
