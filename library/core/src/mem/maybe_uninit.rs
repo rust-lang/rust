@@ -1294,25 +1294,3 @@ impl<T, const N: usize> [MaybeUninit<T>; N] {
         unsafe { intrinsics::transmute_unchecked(self) }
     }
 }
-
-impl<T> *const MaybeUninit<T> {
-    /// Converts a MaybeUninit pointer to its underlying type.
-    ///
-    /// See [`MaybeUninit::as_ptr`] for caveats.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    pub const fn into_inner(self) -> *const T {
-        self.cast()
-    }
-}
-
-impl<T> *mut MaybeUninit<T> {
-    /// Converts mutable a MaybeUninit pointer to its underlying type.
-    ///
-    /// See [`MaybeUninit::as_mut_ptr`] for caveats.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    pub const fn into_inner(self) -> *mut T {
-        self.cast()
-    }
-}

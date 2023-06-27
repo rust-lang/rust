@@ -182,7 +182,7 @@ impl FileEncoder {
             // room to write the input to the buffer.
             unsafe {
                 let src = buf.as_ptr();
-                let dst = self.buf.as_mut_ptr().add(buffered).into_inner();
+                let dst = self.buf.as_mut_ptr().add(buffered).cast::<u8>();
                 ptr::copy_nonoverlapping(src, dst, buf_len);
             }
 

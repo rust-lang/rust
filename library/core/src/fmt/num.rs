@@ -106,7 +106,7 @@ unsafe trait GenericRadix: Sized {
         // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
         // valid UTF-8
         let buf = unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(buf.as_ptr().into_inner(), buf.len()))
+            str::from_utf8_unchecked(slice::from_raw_parts(buf.as_ptr().cast::<u8>(), buf.len()))
         };
         f.pad_integral(is_nonnegative, Self::PREFIX, buf)
     }
@@ -213,7 +213,7 @@ macro_rules! impl_Display {
             // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len();
-            let buf_ptr = buf.as_mut_ptr().into_inner();
+            let buf_ptr = buf.as_mut_ptr().cast::<u8>();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
@@ -341,7 +341,7 @@ macro_rules! impl_Exp {
             // that `curr >= 0`.
             let mut buf = [MaybeUninit::<u8>::uninit(); 40];
             let mut curr = buf.len(); //index for buf
-            let buf_ptr = buf.as_mut_ptr().into_inner();
+            let buf_ptr = buf.as_mut_ptr().cast::<u8>();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // decode 2 chars at a time
@@ -397,11 +397,11 @@ macro_rules! impl_Exp {
                 } else {
                     let off = exponent << 1;
                     // SAFETY: 1 + 2 <= 3
-                    unsafe { ptr::copy_nonoverlapping(lut_ptr.add(off), exp_buf.as_mut_ptr().into_inner().add(1), 2); }
+                    unsafe { ptr::copy_nonoverlapping(lut_ptr.add(off), exp_buf.as_mut_ptr().add(1).cast::<u8>(), 2); }
                     3
                 };
                 // SAFETY: max(2, 3) <= 3
-                unsafe { slice::from_raw_parts(exp_buf.as_mut_ptr().into_inner(), len) }
+                unsafe { slice::from_raw_parts(exp_buf.as_mut_ptr().cast::<u8>(), len) }
             };
 
             let parts = &[
@@ -481,7 +481,7 @@ impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
 fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut usize) {
-    let buf_ptr = buf.as_mut_ptr().into_inner();
+    let buf_ptr = buf.as_mut_ptr().cast::<u8>();
     let lut_ptr = DEC_DIGITS_LUT.as_ptr();
     assert!(*curr > 19);
 
@@ -628,7 +628,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
     // UTF-8 since `DEC_DIGITS_LUT` is
     let buf_slice = unsafe {
         str::from_utf8_unchecked(slice::from_raw_parts(
-            buf.as_mut_ptr().add(curr).into_inner(),
+            buf.as_mut_ptr().add(curr).cast::<u8>(),
             buf.len() - curr,
         ))
     };
