@@ -44,7 +44,7 @@
         "anser": "^2.1.1",
         "d3": "^7.6.1",
         "d3-graphviz": "^5.0.2",
-        "vscode-languageclient": "^8.0.2",
+        "vscode-languageclient": "^8.1.0",
         "@hpcc-js/wasm": "2.5.0"
     },
     "devDependencies": {
