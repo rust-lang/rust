@@ -62,7 +62,7 @@ attribute or on the command-line, it will link a dynamic library if available,
 otherwise it will use a static library. If the kind is specified on the
 command-line, it will override the kind specified in a `link` attribute.
 
-Note that if you don't specify the `KIND`, the default linkage modifiers won't be applied.
+If you don't specify `KIND`, no linkage modifiers will be applied.
 For instance, [`+bundle` linkage modifier][bundle-modifier] won't be used in conjunction with static library by default.
 
 The name used in a `link` attribute may be overridden using the form `-l
