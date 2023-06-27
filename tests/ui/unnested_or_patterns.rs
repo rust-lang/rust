@@ -6,7 +6,8 @@
     clippy::cognitive_complexity,
     clippy::match_ref_pats,
     clippy::upper_case_acronyms,
-    clippy::needless_if
+    clippy::needless_if,
+    clippy::manual_range_patterns
 )]
 #![allow(unreachable_patterns, irrefutable_let_patterns, unused)]
 

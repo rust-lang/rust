@@ -188,6 +188,7 @@ mod manual_is_ascii_check;
 mod manual_let_else;
 mod manual_main_separator_str;
 mod manual_non_exhaustive;
+mod manual_range_patterns;
 mod manual_rem_euclid;
 mod manual_retain;
 mod manual_slice_size_calculation;
@@ -1068,6 +1069,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             needless_raw_string_hashes_allow_one,
         })
     });
+    store.register_late_pass(|_| Box::new(manual_range_patterns::ManualRangePatterns));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
