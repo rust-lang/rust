@@ -196,6 +196,10 @@ impl BlockRelativeModuleId {
     fn into_module(self, krate: CrateId) -> ModuleId {
         ModuleId { krate, block: self.block, local_id: self.local_id }
     }
+
+    fn is_block_module(self) -> bool {
+        self.block.is_some() && self.local_id == DefMap::ROOT
+    }
 }
 
 impl std::ops::Index<LocalModuleId> for DefMap {
@@ -278,7 +282,9 @@ pub struct ModuleData {
     pub origin: ModuleOrigin,
     /// Declared visibility of this module.
     pub visibility: Visibility,
-    /// Always [`None`] for block modules
+    /// Parent module in the same `DefMap`.
+    ///
+    /// [`None`] for block modules because they are always its `DefMap`'s root.
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
     pub scope: ItemScope,
