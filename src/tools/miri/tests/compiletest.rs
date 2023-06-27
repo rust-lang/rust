@@ -3,8 +3,8 @@ use regex::bytes::Regex;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
-use ui_test::CommandBuilder;
 use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
+use ui_test::{status_emitter, CommandBuilder};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -149,8 +149,15 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| None,
         (
-            ui_test::status_emitter::Text,
-            ui_test::status_emitter::Gha::<false> { name: format!("{mode:?} {path} ({target})") },
+            if quiet {
+                Box::<status_emitter::Quiet>::default()
+                    as Box<dyn status_emitter::StatusEmitter + Send>
+            } else {
+                Box::new(status_emitter::Text)
+            },
+            status_emitter::Gha::</* GHA Actions groups*/ false> {
+                name: format!("{mode:?} {path} ({target})"),
+            },
         ),
     )
 }
