@@ -24,7 +24,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
         mode: TestMode::Yolo,
         stderr_filters: vec![],
         stdout_filters: vec![],
-        output_conflict_handling: if std::env::args().any(|arg| arg == "--bless") {
+        output_conflict_handling: if var_os("BLESS").is_some() || env::args().any(|arg| arg == "--bless") {
             compiletest::OutputConflictHandling::Bless
         } else {
             compiletest::OutputConflictHandling::Error("cargo test -- -- --bless".into())
@@ -304,7 +304,6 @@ fn rustfix_coverage_known_exceptions_accuracy() {
         let rs_path = Path::new("tests/ui").join(filename);
         assert!(rs_path.exists(), "`{}` does not exist", rs_path.display());
         let fixed_path = rs_path.with_extension("fixed");
-        println!("{}", fixed_path.display());
         assert!(!fixed_path.exists(), "`{}` exists", fixed_path.display());
     }
 }
