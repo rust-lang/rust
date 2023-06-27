@@ -808,11 +808,8 @@ impl DefCollector<'_> {
                 }
             }
 
-            // Check whether all namespace is resolved
-            if def.take_types().is_some()
-                && def.take_values().is_some()
-                && def.take_macros().is_some()
-            {
+            // Check whether all namespaces are resolved.
+            if def.is_full() {
                 PartialResolvedImport::Resolved(def)
             } else {
                 PartialResolvedImport::Indeterminate(def)
@@ -821,7 +818,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_extern_crate(&self, name: &Name) -> Option<CrateRootModuleId> {
-        if *name == name!(self) {
+        if *name == name![self] {
             cov_mark::hit!(extern_crate_self_as);
             Some(self.def_map.crate_root())
         } else {

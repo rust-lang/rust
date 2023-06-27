@@ -192,7 +192,7 @@ impl DefMap {
         ));
 
         let mut segments = path.segments().iter().enumerate();
-        let mut curr_per_ns: PerNs = match path.kind {
+        let mut curr_per_ns = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
                     cov_mark::hit!(macro_dollar_crate_self);
