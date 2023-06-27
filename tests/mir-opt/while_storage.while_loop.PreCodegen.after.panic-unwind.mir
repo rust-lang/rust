@@ -12,7 +12,7 @@ fn while_loop(_1: bool) -> () {
 
     bb1: {
         StorageLive(_2);
-        _2 = get_bool(_1) -> bb2;
+        _2 = get_bool(_1) -> [return: bb2, unwind continue];
     }
 
     bb2: {
@@ -21,7 +21,7 @@ fn while_loop(_1: bool) -> () {
 
     bb3: {
         StorageLive(_3);
-        _3 = get_bool(_1) -> bb4;
+        _3 = get_bool(_1) -> [return: bb4, unwind continue];
     }
 
     bb4: {

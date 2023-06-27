@@ -623,13 +623,12 @@ impl<'a> AstValidator<'a> {
     fn maybe_lint_missing_abi(&mut self, span: Span, id: NodeId) {
         // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
         // call site which do not have a macro backtrace. See #61963.
-        let is_macro_callsite = self
+        if self
             .session
             .source_map()
             .span_to_snippet(span)
-            .map(|snippet| snippet.starts_with("#["))
-            .unwrap_or(true);
-        if !is_macro_callsite {
+            .is_ok_and(|snippet| !snippet.starts_with("#["))
+        {
             self.lint_buffer.buffer_lint_with_diagnostic(
                 MISSING_ABI,
                 id,

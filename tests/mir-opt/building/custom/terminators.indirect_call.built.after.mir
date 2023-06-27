@@ -4,7 +4,7 @@ fn indirect_call(_1: i32, _2: fn(i32) -> i32) -> i32 {
     let mut _0: i32;
 
     bb0: {
-        _0 = _2(_1) -> bb1;
+        _0 = _2(_1) -> [return: bb1, unwind continue];
     }
 
     bb1: {

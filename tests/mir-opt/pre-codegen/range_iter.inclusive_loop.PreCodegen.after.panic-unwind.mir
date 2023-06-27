@@ -52,7 +52,7 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb3: {
         StorageDead(_7);
         StorageDead(_5);
-        drop(_3) -> bb4;
+        drop(_3) -> [return: bb4, unwind continue];
     }
 
     bb4: {

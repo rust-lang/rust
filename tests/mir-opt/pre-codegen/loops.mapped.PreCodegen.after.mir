@@ -25,7 +25,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     bb0: {
         StorageLive(_4);
         StorageLive(_3);
-        _3 = <impl Iterator<Item = T> as Iterator>::map::<U, impl Fn(T) -> U>(move _1, move _2) -> bb1;
+        _3 = <impl Iterator<Item = T> as Iterator>::map::<U, impl Fn(T) -> U>(move _1, move _2) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -49,7 +49,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
 
     bb4: {
         StorageDead(_7);
-        drop(_5) -> bb5;
+        drop(_5) -> [return: bb5, unwind continue];
     }
 
     bb5: {

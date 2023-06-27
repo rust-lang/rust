@@ -11,16 +11,16 @@ use rustc_parse::validate_attr;
 use rustc_session as session;
 use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
-use rustc_session::config::{ErrorOutputType, OutFileName, OutputFilenames, OutputTypes};
+use rustc_session::config::{OutFileName, OutputFilenames, OutputTypes};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
-use rustc_session::{early_error, filesearch, output, Session};
+use rustc_session::{filesearch, output, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
-use session::CompilerIO;
+use session::{CompilerIO, EarlyErrorHandler};
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::mem;
@@ -58,6 +58,7 @@ pub fn add_configuration(
 }
 
 pub fn create_session(
+    handler: &EarlyErrorHandler,
     sopts: config::Options,
     cfg: FxHashSet<(String, Option<String>)>,
     check_cfg: CheckCfg,
@@ -73,7 +74,11 @@ pub fn create_session(
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
     } else {
-        get_codegen_backend(&sopts.maybe_sysroot, sopts.unstable_opts.codegen_backend.as_deref())
+        get_codegen_backend(
+            handler,
+            &sopts.maybe_sysroot,
+            sopts.unstable_opts.codegen_backend.as_deref(),
+        )
     };
 
     // target_override is documented to be called before init(), so this is okay
@@ -88,7 +93,7 @@ pub fn create_session(
     ) {
         Ok(bundle) => bundle,
         Err(e) => {
-            early_error(sopts.error_format, format!("failed to load fluent bundle: {e}"));
+            handler.early_error(format!("failed to load fluent bundle: {e}"));
         }
     };
 
@@ -96,6 +101,7 @@ pub fn create_session(
     locale_resources.push(codegen_backend.locale_resource());
 
     let mut sess = session::build_session(
+        handler,
         sopts,
         io,
         bundle,
@@ -218,16 +224,16 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
-fn load_backend_from_dylib(path: &Path) -> MakeBackendFn {
+fn load_backend_from_dylib(handler: &EarlyErrorHandler, path: &Path) -> MakeBackendFn {
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {path:?}: {err}");
-        early_error(ErrorOutputType::default(), err);
+        handler.early_error(err);
     });
 
     let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
         .unwrap_or_else(|e| {
             let err = format!("couldn't load codegen backend: {e}");
-            early_error(ErrorOutputType::default(), err);
+            handler.early_error(err);
         });
 
     // Intentionally leak the dynamic library. We can't ever unload it
@@ -242,6 +248,7 @@ fn load_backend_from_dylib(path: &Path) -> MakeBackendFn {
 ///
 /// A name of `None` indicates that the default backend should be used.
 pub fn get_codegen_backend(
+    handler: &EarlyErrorHandler,
     maybe_sysroot: &Option<PathBuf>,
     backend_name: Option<&str>,
 ) -> Box<dyn CodegenBackend> {
@@ -251,10 +258,12 @@ pub fn get_codegen_backend(
         let default_codegen_backend = option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("llvm");
 
         match backend_name.unwrap_or(default_codegen_backend) {
-            filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
+            filename if filename.contains('.') => {
+                load_backend_from_dylib(handler, filename.as_ref())
+            }
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
-            backend_name => get_codegen_sysroot(maybe_sysroot, backend_name),
+            backend_name => get_codegen_sysroot(handler, maybe_sysroot, backend_name),
         }
     });
 
@@ -286,7 +295,11 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
     })
 }
 
-fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> MakeBackendFn {
+fn get_codegen_sysroot(
+    handler: &EarlyErrorHandler,
+    maybe_sysroot: &Option<PathBuf>,
+    backend_name: &str,
+) -> MakeBackendFn {
     // For now we only allow this function to be called once as it'll dlopen a
     // few things, which seems to work best if we only do that once. In
     // general this assertion never trips due to the once guard in `get_codegen_backend`,
@@ -321,7 +334,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
             "failed to find a `codegen-backends` folder \
                            in the sysroot candidates:\n* {candidates}"
         );
-        early_error(ErrorOutputType::default(), err);
+        handler.early_error(err);
     });
     info!("probing {} for a codegen backend", sysroot.display());
 
@@ -332,7 +345,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
             sysroot.display(),
             e
         );
-        early_error(ErrorOutputType::default(), err);
+        handler.early_error(err);
     });
 
     let mut file: Option<PathBuf> = None;
@@ -360,16 +373,16 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
                 prev.display(),
                 path.display()
             );
-            early_error(ErrorOutputType::default(), err);
+            handler.early_error(err);
         }
         file = Some(path.clone());
     }
 
     match file {
-        Some(ref s) => load_backend_from_dylib(s),
+        Some(ref s) => load_backend_from_dylib(handler, s),
         None => {
             let err = format!("unsupported builtin codegen backend `{backend_name}`");
-            early_error(ErrorOutputType::default(), err);
+            handler.early_error(err);
         }
     }
 }

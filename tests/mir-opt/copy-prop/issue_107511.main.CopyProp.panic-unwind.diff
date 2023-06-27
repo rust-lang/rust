@@ -49,14 +49,14 @@
           _7 = &_2;
           _6 = move _7 as &[i32] (Pointer(Unsize));
           StorageDead(_7);
-          _5 = core::slice::<impl [i32]>::len(move _6) -> bb1;
+          _5 = core::slice::<impl [i32]>::len(move _6) -> [return: bb1, unwind continue];
       }
   
       bb1: {
           StorageDead(_6);
           _4 = std::ops::Range::<usize> { start: const 0_usize, end: move _5 };
           StorageDead(_5);
-          _3 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _4) -> bb2;
+          _3 = <std::ops::Range<usize> as IntoIterator>::into_iter(move _4) -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -73,7 +73,7 @@
           StorageLive(_13);
           _13 = &mut _8;
           _12 = &mut (*_13);
-          _11 = <std::ops::Range<usize> as Iterator>::next(move _12) -> bb4;
+          _11 = <std::ops::Range<usize> as Iterator>::next(move _12) -> [return: bb4, unwind continue];
       }
   
       bb4: {
@@ -90,9 +90,9 @@
 -         _18 = _16;
           _19 = Len(_2);
 -         _20 = Lt(_18, _19);
--         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, _18) -> bb8;
+-         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, _18) -> [success: bb8, unwind continue];
 +         _20 = Lt(_16, _19);
-+         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, _16) -> bb8;
++         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, _16) -> [success: bb8, unwind continue];
       }
   
       bb6: {

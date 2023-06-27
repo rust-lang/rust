@@ -201,7 +201,7 @@
           StorageLive(_7);
           StorageLive(_8);
           _8 = ();
-          _7 = opaque::<()>(move _8) -> bb1;
+          _7 = opaque::<()>(move _8) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -232,7 +232,7 @@
           StorageLive(_16);
           StorageLive(_17);
           _17 = ();
-          _16 = opaque::<()>(move _17) -> bb2;
+          _16 = opaque::<()>(move _17) -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -256,7 +256,7 @@
           StorageLive(_23);
           StorageLive(_24);
           _24 = _21;
-          _23 = opaque::<&&usize>(move _24) -> bb3;
+          _23 = opaque::<&&usize>(move _24) -> [return: bb3, unwind continue];
       }
   
       bb3: {
@@ -280,7 +280,7 @@
           StorageLive(_30);
           StorageLive(_31);
           _31 = _28;
-          _30 = opaque::<*mut &usize>(move _31) -> bb4;
+          _30 = opaque::<*mut &usize>(move _31) -> [return: bb4, unwind continue];
       }
   
       bb4: {
@@ -303,7 +303,7 @@
           StorageLive(_36);
           StorageLive(_37);
           _37 = _34;
-          _36 = opaque::<&usize>(move _37) -> bb5;
+          _36 = opaque::<&usize>(move _37) -> [return: bb5, unwind continue];
       }
   
       bb5: {
@@ -332,7 +332,7 @@
           StorageLive(_45);
           StorageLive(_46);
           _46 = _44;
-          _45 = opaque::<&usize>(move _46) -> bb6;
+          _45 = opaque::<&usize>(move _46) -> [return: bb6, unwind continue];
       }
   
       bb6: {
@@ -355,7 +355,7 @@
           StorageLive(_50);
           StorageLive(_51);
           _51 = ();
-          _50 = opaque::<()>(move _51) -> bb7;
+          _50 = opaque::<()>(move _51) -> [return: bb7, unwind continue];
       }
   
       bb7: {
@@ -381,7 +381,7 @@
           StorageLive(_57);
           StorageLive(_58);
           _58 = ();
-          _57 = opaque::<()>(move _58) -> bb8;
+          _57 = opaque::<()>(move _58) -> [return: bb8, unwind continue];
       }
   
       bb8: {
@@ -404,7 +404,7 @@
           StorageLive(_64);
           StorageLive(_65);
           _65 = ();
-          _64 = opaque::<()>(move _65) -> bb9;
+          _64 = opaque::<()>(move _65) -> [return: bb9, unwind continue];
       }
   
       bb9: {
@@ -428,7 +428,7 @@
           StorageLive(_70);
           StorageLive(_71);
           _71 = ();
-          _70 = opaque::<()>(move _71) -> bb10;
+          _70 = opaque::<()>(move _71) -> [return: bb10, unwind continue];
       }
   
       bb10: {

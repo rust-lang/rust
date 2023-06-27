@@ -21,8 +21,8 @@
 -         _4 = _1;
 -         StorageLive(_5);
 -         _5 = _2;
--         _3 = g::<T>(move _4, move _5) -> bb1;
-+         _3 = g::<T>(_1, _1) -> bb1;
+-         _3 = g::<T>(move _4, move _5) -> [return: bb1, unwind continue];
++         _3 = g::<T>(_1, _1) -> [return: bb1, unwind continue];
       }
   
       bb1: {

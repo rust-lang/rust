@@ -9,7 +9,7 @@
       bb0: {
           StorageLive(_2);
           _2 = (const (), const 0_u8, const 0_u8);
-          _1 = encode(move _2) -> bb1;
+          _1 = encode(move _2) -> [return: bb1, unwind continue];
       }
   
       bb1: {

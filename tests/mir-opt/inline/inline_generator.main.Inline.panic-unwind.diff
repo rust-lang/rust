@@ -35,7 +35,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
--         _4 = g() -> bb1;
+-         _4 = g() -> [return: bb1, unwind continue];
 -     }
 - 
 -     bb1: {

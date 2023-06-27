@@ -28,9 +28,9 @@
   
       bb1: {
 -         StorageLive(_5);
--         _5 = cond() -> bb2;
+-         _5 = cond() -> [return: bb2, unwind continue];
 +         StorageLive(_4);
-+         _4 = cond() -> bb2;
++         _4 = cond() -> [return: bb2, unwind continue];
       }
   
       bb2: {

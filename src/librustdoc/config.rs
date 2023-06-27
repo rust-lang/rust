@@ -15,6 +15,7 @@ use rustc_session::config::{
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
+use rustc_session::EarlyErrorHandler;
 use rustc_span::edition::Edition;
 use rustc_target::spec::TargetTriple;
 
@@ -311,32 +312,33 @@ impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
     pub(crate) fn from_matches(
+        handler: &mut EarlyErrorHandler,
         matches: &getopts::Matches,
         args: Vec<String>,
     ) -> Result<(Options, RenderOptions), i32> {
         // Check for unstable options.
-        nightly_options::check_nightly_options(matches, &opts());
+        nightly_options::check_nightly_options(handler, matches, &opts());
 
         if args.is_empty() || matches.opt_present("h") || matches.opt_present("help") {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
-            rustc_driver::version!("rustdoc", matches);
+            rustc_driver::version!(&handler, "rustdoc", matches);
             return Err(0);
         }
 
-        if rustc_driver::describe_flag_categories(&matches) {
+        if rustc_driver::describe_flag_categories(handler, &matches) {
             return Err(0);
         }
 
-        let color = config::parse_color(matches);
+        let color = config::parse_color(handler, matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
-            config::parse_json(matches);
-        let error_format = config::parse_error_format(matches, color, json_rendered);
+            config::parse_json(handler, matches);
+        let error_format = config::parse_error_format(handler, matches, color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
-        let codegen_options = CodegenOptions::build(matches, error_format);
-        let unstable_opts = UnstableOptions::build(matches, error_format);
+        let codegen_options = CodegenOptions::build(handler, matches);
+        let unstable_opts = UnstableOptions::build(handler, matches);
 
         let diag = new_handler(error_format, None, diagnostic_width, &unstable_opts);
 
@@ -393,8 +395,7 @@ impl Options {
             && !matches.opt_present("show-coverage")
             && !nightly_options::is_unstable_enabled(matches)
         {
-            rustc_session::early_error(
-                error_format,
+            handler.early_error(
                 "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
             );
         }
@@ -432,7 +433,7 @@ impl Options {
             return Err(0);
         }
 
-        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
+        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(handler, matches);
 
         let input = PathBuf::from(if describe_lints {
             "" // dummy, this won't be used
@@ -446,12 +447,9 @@ impl Options {
             &matches.free[0]
         });
 
-        let libs = matches
-            .opt_strs("L")
-            .iter()
-            .map(|s| SearchPath::from_cli_opt(s, error_format))
-            .collect();
-        let externs = parse_externs(matches, &unstable_opts, error_format);
+        let libs =
+            matches.opt_strs("L").iter().map(|s| SearchPath::from_cli_opt(handler, s)).collect();
+        let externs = parse_externs(handler, matches, &unstable_opts);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
@@ -589,7 +587,7 @@ impl Options {
             }
         }
 
-        let edition = config::parse_crate_edition(matches);
+        let edition = config::parse_crate_edition(handler, matches);
 
         let mut id_map = html::markdown::IdMap::new();
         let Some(external_html) = ExternalHtml::load(
@@ -623,7 +621,7 @@ impl Options {
             }
         }
 
-        let target = parse_target_triple(matches, error_format);
+        let target = parse_target_triple(handler, matches);
 
         let show_coverage = matches.opt_present("show-coverage");
 

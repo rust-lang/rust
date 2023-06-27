@@ -12,8 +12,8 @@
 +         nop;
           StorageLive(_3);
           _3 = _1;
--         _2 = dummy(move _3) -> bb1;
-+         _1 = dummy(move _3) -> bb1;
+-         _2 = dummy(move _3) -> [return: bb1, unwind continue];
++         _1 = dummy(move _3) -> [return: bb1, unwind continue];
       }
   
       bb1: {

@@ -14,7 +14,7 @@
       }
   
       bb1: {
-          _2 = noop() -> bb2;
+          _2 = noop() -> [return: bb2, unwind continue];
       }
   
       bb2: {

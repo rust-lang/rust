@@ -15,7 +15,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = foo() -> bb1;
+-         _1 = foo() -> [return: bb1, unwind continue];
 +         StorageLive(_2);
 +         asm!("", options(MAY_UNWIND)) -> [return: bb2, unwind: bb3];
       }
@@ -28,7 +28,7 @@
 +     }
 + 
 +     bb2: {
-+         drop(_2) -> bb1;
++         drop(_2) -> [return: bb1, unwind continue];
 +     }
 + 
 +     bb3 (cleanup): {

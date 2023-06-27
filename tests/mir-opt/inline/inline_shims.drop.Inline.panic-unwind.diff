@@ -21,7 +21,7 @@
           StorageLive(_3);
           StorageLive(_4);
           _4 = _1;
-          _3 = std::ptr::drop_in_place::<Vec<A>>(move _4) -> bb1;
+          _3 = std::ptr::drop_in_place::<Vec<A>>(move _4) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -29,7 +29,7 @@
           StorageDead(_3);
           StorageLive(_5);
           _5 = _2;
--         _0 = std::ptr::drop_in_place::<Option<B>>(move _5) -> bb2;
+-         _0 = std::ptr::drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind continue];
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         _6 = discriminant((*_5));
@@ -44,7 +44,7 @@
 +     }
 + 
 +     bb3: {
-+         drop((((*_5) as Some).0: B)) -> bb2;
++         drop((((*_5) as Some).0: B)) -> [return: bb2, unwind continue];
       }
   }
   

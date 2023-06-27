@@ -32,8 +32,8 @@
           StorageLive(_5);
 -         StorageLive(_6);
 -         _6 = _4;
--         _5 = opaque::<*mut u8>(move _6) -> bb1;
-+         _5 = opaque::<*mut u8>(_2) -> bb1;
+-         _5 = opaque::<*mut u8>(move _6) -> [return: bb1, unwind continue];
++         _5 = opaque::<*mut u8>(_2) -> [return: bb1, unwind continue];
       }
   
       bb1: {

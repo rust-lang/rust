@@ -453,7 +453,7 @@ impl TargetCfgs {
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
 
-        for (target, cfg) in targets.into_iter() {
+        for (target, cfg) in targets.iter() {
             all_archs.insert(cfg.arch.clone());
             all_oses.insert(cfg.os.clone());
             all_oses_and_envs.insert(cfg.os_and_env());
@@ -464,11 +464,11 @@ impl TargetCfgs {
             }
             all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
 
-            all_targets.insert(target.into());
+            all_targets.insert(target.clone());
         }
 
         Self {
-            current: Self::get_current_target_config(config),
+            current: Self::get_current_target_config(config, &targets),
             all_targets,
             all_archs,
             all_oses,
@@ -480,16 +480,20 @@ impl TargetCfgs {
         }
     }
 
-    fn get_current_target_config(config: &Config) -> TargetCfg {
-        let mut arch = None;
-        let mut os = None;
-        let mut env = None;
-        let mut abi = None;
-        let mut families = Vec::new();
-        let mut pointer_width = None;
-        let mut endian = None;
-        let mut panic = None;
+    fn get_current_target_config(
+        config: &Config,
+        targets: &HashMap<String, TargetCfg>,
+    ) -> TargetCfg {
+        let mut cfg = targets[&config.target].clone();
 
+        // To get the target information for the current target, we take the target spec obtained
+        // from `--print=all-target-specs-json`, and then we enrich it with the information
+        // gathered from `--print=cfg --target=$target`.
+        //
+        // This is done because some parts of the target spec can be overridden with `-C` flags,
+        // which are respected for `--print=cfg` but not for `--print=all-target-specs-json`. The
+        // code below extracts them from `--print=cfg`: make sure to only override fields that can
+        // actually be changed with `-C` flags.
         for config in
             rustc_output(config, &["--print=cfg", "--target", &config.target]).trim().lines()
         {
@@ -507,60 +511,16 @@ impl TargetCfgs {
                 })
                 .unwrap_or_else(|| (config, None));
 
-            match name {
-                "target_arch" => {
-                    arch = Some(value.expect("target_arch should be a key-value pair").to_string());
-                }
-                "target_os" => {
-                    os = Some(value.expect("target_os sould be a key-value pair").to_string());
-                }
-                "target_env" => {
-                    env = Some(value.expect("target_env should be a key-value pair").to_string());
-                }
-                "target_abi" => {
-                    abi = Some(value.expect("target_abi should be a key-value pair").to_string());
-                }
-                "target_family" => {
-                    families
-                        .push(value.expect("target_family should be a key-value pair").to_string());
-                }
-                "target_pointer_width" => {
-                    pointer_width = Some(
-                        value
-                            .expect("target_pointer_width should be a key-value pair")
-                            .parse::<u32>()
-                            .expect("target_pointer_width should be a valid u32"),
-                    );
-                }
-                "target_endian" => {
-                    endian = Some(match value.expect("target_endian should be a key-value pair") {
-                        "big" => Endian::Big,
-                        "little" => Endian::Little,
-                        _ => panic!("target_endian should be either 'big' or 'little'"),
-                    });
-                }
-                "panic" => {
-                    panic = Some(match value.expect("panic should be a key-value pair") {
-                        "abort" => PanicStrategy::Abort,
-                        "unwind" => PanicStrategy::Unwind,
-                        _ => panic!("panic should be either 'abort' or 'unwind'"),
-                    });
-                }
-                _ => (),
+            match (name, value) {
+                // Can be overridden with `-C panic=$strategy`.
+                ("panic", Some("abort")) => cfg.panic = PanicStrategy::Abort,
+                ("panic", Some("unwind")) => cfg.panic = PanicStrategy::Unwind,
+                ("panic", other) => panic!("unexpected value for panic cfg: {other:?}"),
+                _ => {}
             }
         }
 
-        TargetCfg {
-            arch: arch.expect("target configuration should specify target_arch"),
-            os: os.expect("target configuration should specify target_os"),
-            env: env.expect("target configuration should specify target_env"),
-            abi: abi.expect("target configuration should specify target_abi"),
-            families,
-            pointer_width: pointer_width
-                .expect("target configuration should specify target_pointer_width"),
-            endian: endian.expect("target configuration should specify target_endian"),
-            panic: panic.expect("target configuration should specify panic"),
-        }
+        cfg
     }
 }
 
@@ -582,6 +542,8 @@ pub struct TargetCfg {
     endian: Endian,
     #[serde(rename = "panic-strategy", default)]
     pub(crate) panic: PanicStrategy,
+    #[serde(default)]
+    pub(crate) dynamic_linking: bool,
 }
 
 impl TargetCfg {

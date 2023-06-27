@@ -24,7 +24,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = f::<fn() {g}>(g) -> bb1;
+-         _1 = f::<fn() {g}>(g) -> [return: bb1, unwind continue];
 +         StorageLive(_2);
 +         _2 = g;
 +         StorageLive(_4);
@@ -56,7 +56,7 @@
 +         StorageDead(_6);
 +         StorageDead(_5);
 +         StorageDead(_3);
-+         drop(_2) -> bb1;
++         drop(_2) -> [return: bb1, unwind continue];
       }
   }
   

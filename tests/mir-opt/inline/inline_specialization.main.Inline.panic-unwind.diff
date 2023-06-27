@@ -12,7 +12,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = <Vec<()> as Foo>::bar() -> bb1;
+-         _1 = <Vec<()> as Foo>::bar() -> [return: bb1, unwind continue];
 -     }
 - 
 -     bb1: {

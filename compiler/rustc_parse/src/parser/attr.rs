@@ -422,15 +422,12 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn maybe_needs_tokens(attrs: &[ast::Attribute]) -> bool {
-    // One of the attributes may either itself be a macro,
-    // or expand to macro attributes (`cfg_attr`).
-    attrs.iter().any(|attr| {
-        if attr.is_doc_comment() {
-            return false;
-        }
-        attr.ident().map_or(true, |ident| {
-            ident.name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(ident.name)
-        })
+/// The attributes are complete if all attributes are either a doc comment or a builtin attribute other than `cfg_attr`
+pub fn is_complete(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().all(|attr| {
+        attr.is_doc_comment()
+            || attr.ident().is_some_and(|ident| {
+                ident.name != sym::cfg_attr && rustc_feature::is_builtin_attr_name(ident.name)
+            })
     })
 }

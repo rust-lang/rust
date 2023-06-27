@@ -16,8 +16,8 @@
           _3 = &(*_1);
           _2 = move _3 as &dyn Cache<V = <C as Cache>::V> (Pointer(Unsize));
           StorageDead(_3);
--         _0 = mk_cycle::<<C as Cache>::V>(move _2) -> bb1;
-+         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(_2) -> bb1;
+-         _0 = mk_cycle::<<C as Cache>::V>(move _2) -> [return: bb1, unwind continue];
++         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(_2) -> [return: bb1, unwind continue];
       }
   
       bb1: {

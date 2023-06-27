@@ -1319,39 +1319,56 @@ impl Clone for Box<str> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for Box<T, A> {
+impl<T, A1, A2> PartialEq<Box<T, A2>> for Box<T, A1>
+where
+    T: ?Sized + PartialEq,
+    A1: Allocator,
+    A2: Allocator,
+{
     #[inline]
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Box<T, A2>) -> bool {
         PartialEq::eq(&**self, &**other)
     }
+
     #[inline]
-    fn ne(&self, other: &Self) -> bool {
+    fn ne(&self, other: &Box<T, A2>) -> bool {
         PartialEq::ne(&**self, &**other)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Box<T, A> {
+impl<T, A1, A2> PartialOrd<Box<T, A2>> for Box<T, A1>
+where
+    T: ?Sized + PartialOrd,
+    A1: Allocator,
+    A2: Allocator,
+{
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Box<T, A2>) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
     }
+
     #[inline]
-    fn lt(&self, other: &Self) -> bool {
+    fn lt(&self, other: &Box<T, A2>) -> bool {
         PartialOrd::lt(&**self, &**other)
     }
+
     #[inline]
-    fn le(&self, other: &Self) -> bool {
+    fn le(&self, other: &Box<T, A2>) -> bool {
         PartialOrd::le(&**self, &**other)
     }
+
     #[inline]
-    fn ge(&self, other: &Self) -> bool {
+    fn ge(&self, other: &Box<T, A2>) -> bool {
         PartialOrd::ge(&**self, &**other)
     }
+
     #[inline]
-    fn gt(&self, other: &Self) -> bool {
+    fn gt(&self, other: &Box<T, A2>) -> bool {
         PartialOrd::gt(&**self, &**other)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Ord, A: Allocator> Ord for Box<T, A> {
     #[inline]
