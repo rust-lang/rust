@@ -1,5 +1,5 @@
 //@run-rustfix
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
 #![warn(clippy::needless_pub_self)]

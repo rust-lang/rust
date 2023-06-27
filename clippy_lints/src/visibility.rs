@@ -23,15 +23,17 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.72.0"]
     pub NEEDLESS_PUB_SELF,
-    complexity,
+    style,
     "checks for usage of `pub(self)` and `pub(in self)`."
 }
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for missing usage of the `pub(in <loc>)` shorthand.
+    /// Checks for usage of `pub(<loc>)` with `in`.
     ///
     /// ### Why is this bad?
     /// Consistency. Use it or don't, just be consistent about it.
+    ///
+    /// Also see the `pub_without_shorthand` lint for an alternative.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -44,17 +46,19 @@ declare_clippy_lint! {
     #[clippy::version = "1.72.0"]
     pub PUB_WITH_SHORTHAND,
     restriction,
-    "disallows usage of the `pub(<loc>)`, suggesting use of the `in` shorthand"
+    "disallows usage of `pub(<loc>)`, without `in`"
 }
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of the `pub(in <loc>)` shorthand.
+    /// Checks for usage of `pub(<loc>)` without `in`.
     ///
     /// Note: As you cannot write a module's path in `pub(<loc>)`, this will only trigger on
     /// `pub(super)` and the like.
     ///
     /// ### Why is this bad?
     /// Consistency. Use it or don't, just be consistent about it.
+    ///
+    /// Also see the `pub_with_shorthand` lint for an alternative.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -67,7 +71,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.72.0"]
     pub PUB_WITHOUT_SHORTHAND,
     restriction,
-    "disallows usage of the `pub(in <loc>)` shorthand wherever possible"
+    "disallows usage of `pub(in <loc>)` with `in`"
 }
 declare_lint_pass!(Visibility => [NEEDLESS_PUB_SELF, PUB_WITH_SHORTHAND, PUB_WITHOUT_SHORTHAND]);
 
