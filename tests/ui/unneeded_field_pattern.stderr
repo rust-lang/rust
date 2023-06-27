@@ -1,5 +1,5 @@
 error: you matched a field with a wildcard pattern, consider using `..` instead
-  --> $DIR/unneeded_field_pattern.rs:14:15
+  --> $DIR/unneeded_field_pattern.rs:18:15
    |
 LL |         Foo { a: _, b: 0, .. } => {},
    |               ^^^^
@@ -8,7 +8,7 @@ LL |         Foo { a: _, b: 0, .. } => {},
    = note: `-D clippy::unneeded-field-pattern` implied by `-D warnings`
 
 error: all the struct fields are matched to a wildcard pattern, consider using `..`
-  --> $DIR/unneeded_field_pattern.rs:16:9
+  --> $DIR/unneeded_field_pattern.rs:20:9
    |
 LL |         Foo { a: _, b: _, c: _ } => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^^

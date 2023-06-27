@@ -1,5 +1,5 @@
 error: the `y @ _` pattern can be written as just `y`
-  --> $DIR/patterns.rs:11:9
+  --> $DIR/patterns.rs:15:9
    |
 LL |         y @ _ => (),
    |         ^^^^^ help: try: `y`
@@ -7,13 +7,13 @@ LL |         y @ _ => (),
    = note: `-D clippy::redundant-pattern` implied by `-D warnings`
 
 error: the `x @ _` pattern can be written as just `x`
-  --> $DIR/patterns.rs:26:9
+  --> $DIR/patterns.rs:30:9
    |
 LL |         ref mut x @ _ => {
    |         ^^^^^^^^^^^^^ help: try: `ref mut x`
 
 error: the `x @ _` pattern can be written as just `x`
-  --> $DIR/patterns.rs:34:9
+  --> $DIR/patterns.rs:38:9
    |
 LL |         ref x @ _ => println!("vec: {:?}", x),
    |         ^^^^^^^^^ help: try: `ref x`
