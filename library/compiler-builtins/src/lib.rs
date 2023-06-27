@@ -57,11 +57,7 @@ pub mod mem;
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
-#[cfg(all(
-    target_arch = "aarch64",
-    not(feature = "no-asm"),
-    not(feature = "optimized-c")
-))]
+#[cfg(all(target_arch = "aarch64", not(feature = "no-asm"),))]
 pub mod aarch64;
 
 #[cfg(all(

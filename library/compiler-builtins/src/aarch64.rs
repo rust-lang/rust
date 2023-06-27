@@ -22,6 +22,7 @@
 //!
 //! The original `lse.S` has some truly horrifying code that expects to be compiled multiple times with different constants.
 //! We do something similar, but with macro arguments.
+#![cfg_attr(feature = "c", allow(unused_macros))] // avoid putting the macros into a submodule
 
 // We don't do runtime dispatch so we don't have to worry about the `__aarch64_have_lse_atomics` global ctor.
 
