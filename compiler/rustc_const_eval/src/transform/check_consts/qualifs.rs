@@ -344,8 +344,6 @@ where
     };
 
     // Check the qualifs of the value of `const` items.
-    // FIXME(valtrees): check whether const qualifs should behave the same
-    // way for type and mir constants.
     let uneval = match constant.literal {
         ConstantKind::Ty(ct)
             if matches!(
