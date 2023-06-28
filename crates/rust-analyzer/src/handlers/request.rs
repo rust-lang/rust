@@ -549,10 +549,6 @@ pub(crate) fn handle_will_rename_files(
 ) -> anyhow::Result<Option<lsp_types::WorkspaceEdit>> {
     let _p = profile::span("handle_will_rename_files");
 
-    if let Err(err) = resource_ops_supported(&snap.config, ResourceOperationKind::Rename) {
-        return Err(err);
-    }
-
     let source_changes: Vec<SourceChange> = params
         .files
         .into_iter()
