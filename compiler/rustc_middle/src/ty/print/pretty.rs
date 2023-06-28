@@ -3004,7 +3004,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 ///
 /// The implementation uses similar import discovery logic to that of 'use' suggestions.
 ///
-/// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths`].
+/// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths!`].
 fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     let mut map: FxHashMap<DefId, Symbol> = FxHashMap::default();
 
