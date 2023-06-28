@@ -8,6 +8,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
 use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::Reveal;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
@@ -118,6 +119,32 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
             return result;
+        }
+
+        // Don't call `type_of` on a local TAIT that's in the defining scope,
+        // since that may require calling `typeck` on the same item we're
+        // currently type checking, which will result in a fatal cycle that
+        // ideally we want to avoid, since we can make progress on this goal
+        // via an alias bound or a locally-inferred hidden type instead.
+        //
+        // Also, don't call `type_of` on a TAIT in `Reveal::All` mode, since
+        // we already normalize the self type in
+        // `assemble_candidates_after_normalizing_self_ty`, and we'd
+        // just be registering an identical candidate here.
+        //
+        // Returning `Err(NoSolution)` here is ok in `SolverMode::Coherence`
+        // since we'll always be registering an ambiguous candidate in
+        // `assemble_candidates_after_normalizing_self_ty` due to normalizing
+        // the TAIT.
+        if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
+            if matches!(goal.param_env.reveal(), Reveal::All)
+                || opaque_ty
+                    .def_id
+                    .as_local()
+                    .is_some_and(|def_id| ecx.can_define_opaque_ty(def_id))
+            {
+                return Err(NoSolution);
+            }
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
