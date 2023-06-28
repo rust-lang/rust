@@ -138,12 +138,12 @@ impl ops::Deref for CrateName {
     }
 }
 
-/// Origin of the crates. It is used in emitting monikers.
+/// Origin of the crates.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CrateOrigin {
-    /// Crates that are from the rustc workspace
+    /// Crates that are from the rustc workspace.
     Rustc { name: String },
-    /// Crates that are workspace members,
+    /// Crates that are workspace members.
     Local { repo: Option<String>, name: Option<String> },
     /// Crates that are non member libraries.
     Library { repo: Option<String>, name: String },
