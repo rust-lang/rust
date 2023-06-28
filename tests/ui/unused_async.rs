@@ -1,4 +1,6 @@
 #![warn(clippy::unused_async)]
+#![feature(async_fn_in_trait)]
+#![allow(incomplete_features)]
 
 use std::future::Future;
 use std::pin::Pin;
@@ -19,6 +21,18 @@ mod issue10800 {
             {
                 ready(()).await;
             }
+        }
+    }
+}
+
+mod issue10459 {
+    trait HasAsyncMethod {
+        async fn do_something() -> u32;
+    }
+
+    impl HasAsyncMethod for () {
+        async fn do_something() -> u32 {
+            1
         }
     }
 }

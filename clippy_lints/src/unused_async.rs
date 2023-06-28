@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_def_id_trait_method;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
@@ -91,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         span: Span,
         def_id: LocalDefId,
     ) {
-        if !span.from_expansion() && fn_kind.asyncness().is_async() {
+        if !span.from_expansion() && fn_kind.asyncness().is_async() && !is_def_id_trait_method(cx, def_id) {
             let mut visitor = AsyncFnVisitor {
                 cx,
                 found_await: false,
