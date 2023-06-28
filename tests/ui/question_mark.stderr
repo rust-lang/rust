@@ -130,5 +130,15 @@ LL | |         return Err(err);
 LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
-error: aborting due to 15 previous errors
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:281:13
+   |
+LL | /             if a.is_none() {
+LL | |                 return None;
+LL | |                 // do lint here, the outer `try` is not relevant here
+LL | |                 // https://github.com/rust-lang/rust-clippy/pull/11001#issuecomment-1610636867
+LL | |             }
+   | |_____________^ help: replace it with: `a?;`
+
+error: aborting due to 16 previous errors
 

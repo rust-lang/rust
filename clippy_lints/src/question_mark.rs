@@ -49,7 +49,7 @@ pub struct QuestionMark {
     /// very quickly, without having to walk up the parent chain, by simply checking
     /// if it is greater than zero.
     /// As for why we need this in the first place: <https://github.com/rust-lang/rust-clippy/issues/8628>
-    try_block_depth: u32,
+    try_block_depth_stack: Vec<u32>,
 }
 impl_lint_pass!(QuestionMark => [QUESTION_MARK]);
 
@@ -150,7 +150,7 @@ fn expr_return_none_or_err(
 
 impl QuestionMark {
     fn inside_try_block(&self) -> bool {
-        self.try_block_depth > 0
+        self.try_block_depth_stack.last() > Some(&0)
     }
 
     /// Checks if the given expression on the given context matches the following structure:
@@ -268,13 +268,27 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx rustc_hir::Block<'tcx>) {
         if is_try_block(cx, block) {
-            self.try_block_depth += 1;
+            *self
+                .try_block_depth_stack
+                .last_mut()
+                .expect("blocks are always part of bodies and must have a depth") += 1;
         }
+    }
+
+    fn check_body(&mut self, _: &LateContext<'tcx>, _: &'tcx rustc_hir::Body<'tcx>) {
+        self.try_block_depth_stack.push(0);
+    }
+
+    fn check_body_post(&mut self, _: &LateContext<'tcx>, _: &'tcx rustc_hir::Body<'tcx>) {
+        self.try_block_depth_stack.pop();
     }
 
     fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx rustc_hir::Block<'tcx>) {
         if is_try_block(cx, block) {
-            self.try_block_depth -= 1;
+            *self
+                .try_block_depth_stack
+                .last_mut()
+                .expect("blocks are always part of bodies and must have a depth") -= 1;
         }
     }
 }
