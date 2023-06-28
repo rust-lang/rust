@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    env, fs,
+    fs,
     io::Write as _,
     path::Path,
     time::{Instant, SystemTime, UNIX_EPOCH},
@@ -9,16 +9,13 @@ use std::{
 use anyhow::{bail, format_err};
 use xshell::{cmd, Shell};
 
-use crate::flags;
+use crate::flags::{self, MeasurementType};
 
 type Unit = String;
 
 impl flags::Metrics {
     pub(crate) fn run(self, sh: &Shell) -> anyhow::Result<()> {
         let mut metrics = Metrics::new(sh)?;
-        if !self.dry_run {
-            sh.remove_path("./target/release")?;
-        }
         if !Path::new("./target/rustc-perf").exists() {
             sh.create_dir("./target/rustc-perf")?;
             cmd!(sh, "git clone https://github.com/rust-lang/rustc-perf.git ./target/rustc-perf")
@@ -32,38 +29,47 @@ impl flags::Metrics {
 
         let _env = sh.push_env("RA_METRICS", "1");
 
-        {
-            // https://github.com/rust-lang/rust-analyzer/issues/9997
-            let _d = sh.push_dir("target/rustc-perf/collector/benchmarks/webrender");
-            cmd!(sh, "cargo update -p url --precise 1.6.1").run()?;
-        }
-        metrics.measure_build(sh)?;
-        metrics.measure_analysis_stats_self(sh)?;
-        metrics.measure_analysis_stats(sh, "ripgrep")?;
-        metrics.measure_analysis_stats(sh, "webrender")?;
-        metrics.measure_analysis_stats(sh, "diesel/diesel")?;
-
-        if !self.dry_run {
-            let _d = sh.push_dir("target");
-            let metrics_token = env::var("METRICS_TOKEN").unwrap();
-            cmd!(
-                sh,
-                "git clone --depth 1 https://{metrics_token}@github.com/rust-analyzer/metrics.git"
-            )
-            .run()?;
-
-            {
-                let mut file =
-                    fs::File::options().append(true).open("target/metrics/metrics.json")?;
-                writeln!(file, "{}", metrics.json())?;
+        let filename = match self.measurement_type {
+            Some(ms) => match ms {
+                MeasurementType::Build => {
+                    metrics.measure_build(sh)?;
+                    "build.json"
+                }
+                MeasurementType::AnalyzeSelf => {
+                    metrics.measure_analysis_stats_self(sh)?;
+                    "self.json"
+                }
+                MeasurementType::AnalyzeRipgrep => {
+                    metrics.measure_analysis_stats(sh, "ripgrep")?;
+                    "ripgrep.json"
+                }
+                MeasurementType::AnalyzeWebRender => {
+                    {
+                        // https://github.com/rust-lang/rust-analyzer/issues/9997
+                        let _d = sh.push_dir("target/rustc-perf/collector/benchmarks/webrender");
+                        cmd!(sh, "cargo update -p url --precise 1.6.1").run()?;
+                    }
+                    metrics.measure_analysis_stats(sh, "webrender")?;
+                    "webrender.json"
+                }
+                MeasurementType::AnalyzeDiesel => {
+                    metrics.measure_analysis_stats(sh, "diesel/diesel")?;
+                    "diesel.json"
+                }
+            },
+            None => {
+                metrics.measure_build(sh)?;
+                metrics.measure_analysis_stats_self(sh)?;
+                metrics.measure_analysis_stats(sh, "ripgrep")?;
+                metrics.measure_analysis_stats(sh, "webrender")?;
+                metrics.measure_analysis_stats(sh, "diesel/diesel")?;
+                "all.json"
             }
+        };
 
-            let _d = sh.push_dir("metrics");
-            cmd!(sh, "git add .").run()?;
-            cmd!(sh, "git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")
-                .run()?;
-            cmd!(sh, "git push origin master").run()?;
-        }
+        let mut file =
+            fs::File::options().write(true).create(true).open(format!("target/{}", filename))?;
+        writeln!(file, "{}", metrics.json())?;
         eprintln!("{metrics:#?}");
         Ok(())
     }

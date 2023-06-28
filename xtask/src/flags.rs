@@ -1,5 +1,7 @@
 #![allow(unreachable_pub)]
 
+use std::str::FromStr;
+
 use crate::install::{ClientOpt, Malloc, ServerOpt};
 
 xflags::xflags! {
@@ -42,7 +44,7 @@ xflags::xflags! {
             required changelog: String
         }
         cmd metrics {
-            optional --dry-run
+            optional measurement_type: MeasurementType
         }
         /// Builds a benchmark version of rust-analyzer and puts it into `./target`.
         cmd bb {
@@ -106,8 +108,31 @@ pub struct PublishReleaseNotes {
 }
 
 #[derive(Debug)]
+pub enum MeasurementType {
+    Build,
+    AnalyzeSelf,
+    AnalyzeRipgrep,
+    AnalyzeWebRender,
+    AnalyzeDiesel,
+}
+
+impl FromStr for MeasurementType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "build" => Ok(Self::Build),
+            "self" => Ok(Self::AnalyzeSelf),
+            "ripgrep" => Ok(Self::AnalyzeRipgrep),
+            "webrender" => Ok(Self::AnalyzeWebRender),
+            "diesel" => Ok(Self::AnalyzeDiesel),
+            _ => Err("Invalid option".to_string()),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Metrics {
-    pub dry_run: bool,
+    pub measurement_type: Option<MeasurementType>,
 }
 
 #[derive(Debug)]
