@@ -7,10 +7,11 @@ LL |         box NodeKind::Element(ed) => match ed.kind {
 note: `Box<ElementKind>` defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    = note: the matched value is of type `Box<ElementKind>`
+   = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~             box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => { true },
-LL +             box _ => todo!()
+LL ~             box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => true,
+LL ~             box _ => todo!(),
    |
 
 error: aborting due to previous error
