@@ -140,6 +140,6 @@ jobs:
         cd metrics
         git add .
         git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈
-        git push origin new
+        git push origin master
     env:
       METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
