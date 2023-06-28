@@ -108,10 +108,10 @@ export class RustDependenciesProvider
 
 export class Dependency extends vscode.TreeItem {
     constructor(
-        public readonly label: string,
+        public override readonly label: string,
         private version: string,
         readonly dependencyPath: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState
+        public override readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(label, collapsibleState);
         this.resourceUri = vscode.Uri.file(dependencyPath);
@@ -127,10 +127,10 @@ export class Dependency extends vscode.TreeItem {
 
 export class DependencyFile extends vscode.TreeItem {
     constructor(
-        readonly label: string,
+        override readonly label: string,
         readonly dependencyPath: string,
         readonly parent: Dependency | DependencyFile,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState
+        public override readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(vscode.Uri.file(dependencyPath), collapsibleState);
         this.id = this.resourceUri!.fsPath.toLowerCase();

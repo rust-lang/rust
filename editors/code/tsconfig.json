@@ -13,7 +13,6 @@
         // to update typescript version without any code change.
         "useUnknownInCatchVariables": false,
         "exactOptionalPropertyTypes": false,
-        "noImplicitOverride": false,
         "noPropertyAccessFromIndexSignature": false,
         "noUncheckedIndexedAccess": false
     },
