@@ -47,13 +47,10 @@
 //! ```
 //!
 //! Metadata allows specifying all settings and variables
-//! that are available in a real rust project:
-//! - crate names via `crate:cratename`
-//! - dependencies via `deps:dep1,dep2`
-//! - configuration settings via `cfg:dbg=false,opt_level=2`
-//! - environment variables via `env:PATH=/bin,RUST_LOG=debug`
+//! that are available in a real rust project. See [`Fixture`]
+//! for the syntax.
 //!
-//! Example using all available metadata:
+//! Example using some available metadata:
 //! ```
 //! "
 //! //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
@@ -68,17 +65,74 @@ use stdx::trim_indent;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Fixture {
+    /// Specifies the path for this file. It must start with "/".
     pub path: String,
-    pub text: String,
+    /// Defines a new crate and make this file its root module.
+    ///
+    /// Version and repository URL of the crate can optionally be specified; if
+    /// either one is specified, the other must also be specified.
+    ///
+    /// Syntax:
+    /// - `crate:my_awesome_lib`
+    /// - `crate:my_awesome_lib@0.0.1,https://example.com/repo.git`
     pub krate: Option<String>,
+    /// Specifies dependencies of this crate. This must be used with `crate` meta.
+    ///
+    /// Syntax: `deps:hir-def,ide-assists`
     pub deps: Vec<String>,
+    /// Limits crates in the extern prelude. The set of crate names must be a
+    /// subset of `deps`. This must be used with `crate` meta.
+    ///
+    /// If this is not specified, all the dependencies will be in the extern prelude.
+    ///
+    /// Syntax: `extern-prelude:hir-def,ide-assists`
     pub extern_prelude: Option<Vec<String>>,
-    pub cfg_atoms: Vec<String>,
-    pub cfg_key_values: Vec<(String, String)>,
+    /// Specifies configuration options to be enabled. Options may have associated
+    /// values.
+    ///
+    /// Syntax: `cfg:test,dbg=false,opt_level=2`
+    pub cfgs: Vec<(String, Option<String>)>,
+    /// Specifies the edition of this crate. This must be used with `crate` meta. If
+    /// this is not specified, ([`base_db::input::Edition::CURRENT`]) will be used.
+    /// This must be used with `crate` meta.
+    ///
+    /// Syntax: `edition:2021`
     pub edition: Option<String>,
+    /// Specifies environment variables.
+    ///
+    /// Syntax: `env:PATH=/bin,RUST_LOG=debug`
     pub env: FxHashMap<String, String>,
+    /// Introduces a new [source root](base_db::input::SourceRoot). This file **and
+    /// the following files** will belong the new source root. This must be used
+    /// with `crate` meta.
+    ///
+    /// Use this if you want to test something that uses `SourceRoot::is_library()`
+    /// to check editability.
+    ///
+    /// Note that files before the first fixture with `new_source_root` meta will
+    /// belong to an implicitly defined local source root.
+    ///
+    /// Syntax:
+    /// - `new_source_root:library`
+    /// - `new_source_root:local`
     pub introduce_new_source_root: Option<String>,
+    /// Explicitly declares this crate as a library outside current workspace. This
+    /// must be used with `crate` meta.
+    ///
+    /// This is implied if this file belongs to a library source root.
+    ///
+    /// Use this if you want to test something that checks if a crate is a workspace
+    /// member via [`CrateOrigin`](base_db::input::CrateOrigin).
+    ///
+    /// Syntax: `library`
+    pub library: bool,
+    /// Specifies LLVM data layout to be used.
+    ///
+    /// You probably don't want to manually specify this. See LLVM manual for the
+    /// syntax, if you must: https://llvm.org/docs/LangRef.html#data-layout
     pub target_data_layout: Option<String>,
+    /// Actual file contents. All meta comments are stripped.
+    pub text: String,
 }
 
 pub struct MiniCore {
@@ -178,23 +232,28 @@ impl FixtureWithProjectMeta {
     fn parse_meta_line(meta: &str) -> Fixture {
         assert!(meta.starts_with("//-"));
         let meta = meta["//-".len()..].trim();
-        let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
+        let mut components = meta.split_ascii_whitespace();
 
-        let path = components[0].to_string();
+        let path = components.next().expect("fixture meta must start with a path").to_string();
         assert!(path.starts_with('/'), "fixture path does not start with `/`: {path:?}");
 
         let mut krate = None;
         let mut deps = Vec::new();
         let mut extern_prelude = None;
         let mut edition = None;
-        let mut cfg_atoms = Vec::new();
-        let mut cfg_key_values = Vec::new();
+        let mut cfgs = Vec::new();
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = None;
+        let mut library = false;
         let mut target_data_layout = Some(
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_string(),
         );
-        for component in components[1..].iter() {
+        for component in components {
+            if component == "library" {
+                library = true;
+                continue;
+            }
+
             let (key, value) =
                 component.split_once(':').unwrap_or_else(|| panic!("invalid meta line: {meta:?}"));
             match key {
@@ -212,8 +271,8 @@ impl FixtureWithProjectMeta {
                 "cfg" => {
                     for entry in value.split(',') {
                         match entry.split_once('=') {
-                            Some((k, v)) => cfg_key_values.push((k.to_string(), v.to_string())),
-                            None => cfg_atoms.push(entry.to_string()),
+                            Some((k, v)) => cfgs.push((k.to_string(), Some(v.to_string()))),
+                            None => cfgs.push((entry.to_string(), None)),
                         }
                     }
                 }
@@ -243,11 +302,11 @@ impl FixtureWithProjectMeta {
             krate,
             deps,
             extern_prelude,
-            cfg_atoms,
-            cfg_key_values,
+            cfgs,
             edition,
             env,
             introduce_new_source_root,
+            library,
             target_data_layout,
         }
     }

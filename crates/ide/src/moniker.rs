@@ -320,7 +320,7 @@ use foo::module::func;
 fn main() {
     func$0();
 }
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub mod module {
     pub fn func() {}
 }
@@ -336,7 +336,7 @@ use foo::module::func;
 fn main() {
     func();
 }
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub mod module {
     pub fn func$0() {}
 }
@@ -351,7 +351,7 @@ pub mod module {
     fn moniker_for_trait() {
         check_moniker(
             r#"
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub mod module {
     pub trait MyTrait {
         pub fn func$0() {}
@@ -368,7 +368,7 @@ pub mod module {
     fn moniker_for_trait_constant() {
         check_moniker(
             r#"
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub mod module {
     pub trait MyTrait {
         const MY_CONST$0: u8;
@@ -385,7 +385,7 @@ pub mod module {
     fn moniker_for_trait_type() {
         check_moniker(
             r#"
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub mod module {
     pub trait MyTrait {
         type MyType$0;
@@ -402,7 +402,7 @@ pub mod module {
     fn moniker_for_trait_impl_function() {
         check_moniker(
             r#"
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub mod module {
     pub trait MyTrait {
         pub fn func() {}
@@ -430,7 +430,7 @@ use foo::St;
 fn main() {
     let x = St { a$0: 2 };
 }
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub struct St {
     pub a: i32,
 }
@@ -450,7 +450,7 @@ use foo::module::func;
 fn main() {
     func();
 }
-//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+//- /foo/lib.rs crate:foo@0.1.0,https://a.b/foo.git library
 pub mod module {
     pub fn func() {
         let x$0 = 2;
