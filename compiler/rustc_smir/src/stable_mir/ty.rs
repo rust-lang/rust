@@ -10,6 +10,10 @@ impl Ty {
 }
 
 pub enum TyKind {
+    RigidTy(RigidTy),
+}
+
+pub enum RigidTy {
     Bool,
     Tuple(Vec<Ty>),
 }

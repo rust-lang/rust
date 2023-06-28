@@ -7,7 +7,8 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::stable_mir::{self, ty::TyKind, Context};
+use crate::stable_mir::ty::{RigidTy, TyKind};
+use crate::stable_mir::{self, Context};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -69,7 +70,7 @@ pub struct Tables<'tcx> {
 impl<'tcx> Tables<'tcx> {
     fn rustc_ty_to_ty(&mut self, ty: Ty<'tcx>) -> TyKind {
         match ty.kind() {
-            ty::Bool => TyKind::Bool,
+            ty::Bool => TyKind::RigidTy(RigidTy::Bool),
             ty::Char => todo!(),
             ty::Int(_) => todo!(),
             ty::Uint(_) => todo!(),
@@ -90,9 +91,9 @@ impl<'tcx> Tables<'tcx> {
             ty::GeneratorWitness(_) => todo!(),
             ty::GeneratorWitnessMIR(_, _) => todo!(),
             ty::Never => todo!(),
-            ty::Tuple(fields) => {
-                TyKind::Tuple(fields.iter().map(|ty| self.intern_ty(ty)).collect())
-            }
+            ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
+                fields.iter().map(|ty| self.intern_ty(ty)).collect(),
+            )),
             ty::Alias(_, _) => todo!(),
             ty::Param(_) => todo!(),
             ty::Bound(_, _) => todo!(),
