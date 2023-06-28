@@ -17,8 +17,6 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
                 write!(f, "ImplSourceParamData({:?}, {:?})", n, ct)
             }
 
-            super::ImplSource::TraitAlias(ref d) => write!(f, "{:?}", d),
-
             super::ImplSource::TraitUpcasting(ref d) => write!(f, "{:?}", d),
         }
     }
@@ -48,18 +46,8 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceObjectData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ImplSourceObjectData(upcast={:?}, vtable_base={}, nested={:?})",
-            self.upcast_trait_def_id, self.vtable_base, self.nested
-        )
-    }
-}
-
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitAliasData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "ImplSourceTraitAliasData(alias_def_id={:?}, substs={:?}, nested={:?})",
-            self.alias_def_id, self.substs, self.nested
+            "ImplSourceObjectData(vtable_base={}, nested={:?})",
+            self.vtable_base, self.nested
         )
     }
 }
