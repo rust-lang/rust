@@ -6,7 +6,7 @@ use crate::interpret::{
 };
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
 mod error;
@@ -89,14 +89,15 @@ pub(crate) fn eval_to_valtree<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    val: mir::ConstantKind<'tcx>,
+    val: ConstValue<'tcx>,
+    ty: Ty<'tcx>,
 ) -> InterpResult<'tcx, mir::DestructuredConstant<'tcx>> {
+    let param_env = ty::ParamEnv::reveal_all();
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
-    let op = ecx.eval_mir_constant(&val, None, None)?;
+    let op = ecx.const_val_to_op(val, ty, None)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
-    let (field_count, variant, down) = match val.ty().kind() {
+    let (field_count, variant, down) = match ty.kind() {
         ty::Array(_, len) => (len.eval_target_usize(tcx, param_env) as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             throw_ub!(Unreachable)

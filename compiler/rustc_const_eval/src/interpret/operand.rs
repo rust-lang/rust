@@ -633,7 +633,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn const_val_to_op(
+    pub(crate) fn const_val_to_op(
         &self,
         val_val: ConstValue<'tcx>,
         ty: Ty<'tcx>,

@@ -2882,15 +2882,10 @@ fn pretty_print_const_value<'tcx>(
             // introducing ICEs (e.g. via `layout_of`) from missing bounds.
             // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
             // to be able to destructure the tuple into `(0u8, *mut T)`
-            //
-            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
-            // correct `ty::ParamEnv` to allow printing *all* constant values.
             (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
                 let ct = tcx.lift(ct).unwrap();
                 let ty = tcx.lift(ty).unwrap();
-                if let Some(contents) = tcx.try_destructure_mir_constant(
-                    ty::ParamEnv::reveal_all().and(ConstantKind::Val(ct, ty)),
-                ) {
+                if let Some(contents) = tcx.try_destructure_mir_constant((ct, ty)) {
                     let fields = contents.fields.to_vec();
                     match *ty.kind() {
                         ty::Array(..) => {
