@@ -198,8 +198,6 @@ fn main() {
     let _ = res.map_or(1, |a| a + 1);
     let _ = res.map_or(1, |a| a + 1);
     let _ = res.map_or(5, |a| a + 1);
-    issue10729::reproduce(&None);
-    issue10729::reproduce2(&mut None);
 }
 
 #[allow(dead_code)]
@@ -212,7 +210,7 @@ fn issue9742() -> Option<&'static str> {
 }
 
 mod issue10729 {
-    #![allow(clippy::unit_arg)]
+    #![allow(clippy::unit_arg, dead_code)]
 
     pub fn reproduce(initial: &Option<String>) {
         // 👇 needs `.as_ref()` because initial is an `&Option<_>`

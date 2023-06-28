@@ -239,8 +239,6 @@ fn main() {
         Ok(a) => a + 1,
     };
     let _ = if let Ok(a) = res { a + 1 } else { 5 };
-    issue10729::reproduce(&None);
-    issue10729::reproduce2(&mut None);
 }
 
 #[allow(dead_code)]
@@ -253,7 +251,7 @@ fn issue9742() -> Option<&'static str> {
 }
 
 mod issue10729 {
-    #![allow(clippy::unit_arg)]
+    #![allow(clippy::unit_arg, dead_code)]
 
     pub fn reproduce(initial: &Option<String>) {
         // 👇 needs `.as_ref()` because initial is an `&Option<_>`
