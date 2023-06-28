@@ -1,4 +1,4 @@
-use std::env;
+use std::{collections::HashMap, env, sync::atomic::Ordering};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -90,6 +90,65 @@ fn main() {
     {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
+
+    if llvm_target[0] == "aarch64" {
+        generate_aarch64_outlined_atomics();
+    }
+}
+
+fn aarch64_symbol(ordering: Ordering) -> &'static str {
+    match ordering {
+        Ordering::Relaxed => "relax",
+        Ordering::Acquire => "acq",
+        Ordering::Release => "rel",
+        Ordering::AcqRel => "acq_rel",
+        _ => panic!("unknown symbol for {:?}", ordering),
+    }
+}
+
+/// The `concat_idents` macro is extremely annoying and doesn't allow us to define new items.
+/// Define them from the build script instead.
+/// Note that the majority of the code is still defined in `aarch64.rs` through inline macros.
+fn generate_aarch64_outlined_atomics() {
+    use std::fmt::Write;
+    // #[macro_export] so that we can use this in tests
+    let gen_macro =
+        |name| format!("#[macro_export] macro_rules! foreach_{name} {{ ($macro:path) => {{\n");
+
+    // Generate different macros for add/clr/eor/set so that we can test them separately.
+    let sym_names = ["cas", "ldadd", "ldclr", "ldeor", "ldset", "swp"];
+    let mut macros = HashMap::new();
+    for sym in sym_names {
+        macros.insert(sym, gen_macro(sym));
+    }
+
+    // Only CAS supports 16 bytes, and it has a different implementation that uses a different macro.
+    let mut cas16 = gen_macro("cas16");
+
+    for ordering in [
+        Ordering::Relaxed,
+        Ordering::Acquire,
+        Ordering::Release,
+        Ordering::AcqRel,
+    ] {
+        let sym_ordering = aarch64_symbol(ordering);
+        for size in [1, 2, 4, 8] {
+            for (sym, macro_) in &mut macros {
+                let name = format!("__aarch64_{sym}{size}_{sym_ordering}");
+                writeln!(macro_, "$macro!( {ordering:?}, {size}, {name} );").unwrap();
+            }
+        }
+        let name = format!("__aarch64_cas16_{sym_ordering}");
+        writeln!(cas16, "$macro!( {ordering:?}, {name} );").unwrap();
+    }
+
+    let mut buf = String::new();
+    for macro_def in macros.values().chain(std::iter::once(&cas16)) {
+        buf += macro_def;
+        buf += "}; }";
+    }
+    let dst = std::env::var("OUT_DIR").unwrap() + "/outlined_atomics.rs";
+    std::fs::write(dst, buf).unwrap();
 }
 
 #[cfg(feature = "c")]
