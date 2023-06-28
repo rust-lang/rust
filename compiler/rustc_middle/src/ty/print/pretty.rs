@@ -1393,11 +1393,10 @@ pub trait PrettyPrinter<'tcx>:
         self,
         scalar: Scalar,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         match scalar {
-            Scalar::Ptr(ptr, _size) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
-            Scalar::Int(int) => self.pretty_print_const_scalar_int(int, ty, print_ty),
+            Scalar::Ptr(ptr, _size) => self.pretty_print_const_scalar_ptr(ptr, ty),
+            Scalar::Int(int) => self.pretty_print_const_scalar_int(int, ty, true),
         }
     }
 
@@ -1405,7 +1404,6 @@ pub trait PrettyPrinter<'tcx>:
         mut self,
         ptr: Pointer,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
@@ -1459,7 +1457,7 @@ pub trait PrettyPrinter<'tcx>:
             _ => {}
         }
         // Any pointer values not covered by a branch above
-        self = self.pretty_print_const_pointer(ptr, ty, print_ty)?;
+        self = self.pretty_print_const_pointer(ptr, ty)?;
         Ok(self)
     }
 
@@ -1527,24 +1525,18 @@ pub trait PrettyPrinter<'tcx>:
     /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
     /// from MIR where it is actually useful.
     fn pretty_print_const_pointer<Prov: Provenance>(
-        mut self,
+        self,
         _: Pointer<Prov>,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
-        if print_ty {
-            self.typed_value(
-                |mut this| {
-                    this.write_str("&_")?;
-                    Ok(this)
-                },
-                |this| this.print_type(ty),
-                ": ",
-            )
-        } else {
-            self.write_str("&_")?;
-            Ok(self)
-        }
+        self.typed_value(
+            |mut this| {
+                this.write_str("&_")?;
+                Ok(this)
+            },
+            |this| this.print_type(ty),
+            ": ",
+        )
     }
 
     fn pretty_print_byte_str(mut self, byte_str: &'tcx [u8]) -> Result<Self::Const, Self::Error> {
@@ -2156,7 +2148,6 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         self,
         p: Pointer<Prov>,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         let print = |mut this: Self| {
             define_scoped_cx!(this);
@@ -2167,11 +2158,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             }
             Ok(this)
         };
-        if print_ty {
-            self.typed_value(print, |this| this.print_type(ty), ": ")
-        } else {
-            print(self)
-        }
+        self.typed_value(print, |this| this.print_type(ty), ": ")
     }
 }
 
