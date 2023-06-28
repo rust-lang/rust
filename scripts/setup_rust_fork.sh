@@ -51,7 +51,7 @@ popd
 # FIXME remove once inline asm is fully supported
 export RUSTFLAGS="$RUSTFLAGS --cfg=rustix_use_libc"
 
-export CFG_VIRTUAL_RUST_SOURCE_BASE_DIR="$(cd download/sysroot/sysroot_src; pwd)"
+export CFG_VIRTUAL_RUST_SOURCE_BASE_DIR="$(cd build/stdlib; pwd)"
 
 # Allow the testsuite to use llvm tools
 host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
