@@ -227,7 +227,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
-        if funclet_bundle.is_some() {
+        if let Some(funclet_bundle) = funclet_bundle {
             bundles.push(funclet_bundle);
         }
 
@@ -237,7 +237,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn);
         let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
-        if kcfi_bundle.is_some() {
+        if let Some(kcfi_bundle) = kcfi_bundle {
             bundles.push(kcfi_bundle);
         }
 
@@ -1195,7 +1195,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
-        if funclet_bundle.is_some() {
+        if let Some(funclet_bundle) = funclet_bundle {
             bundles.push(funclet_bundle);
         }
 
@@ -1205,7 +1205,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, llfn);
         let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
-        if kcfi_bundle.is_some() {
+        if let Some(kcfi_bundle) = kcfi_bundle {
             bundles.push(kcfi_bundle);
         }
 
