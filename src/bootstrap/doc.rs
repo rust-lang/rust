@@ -594,18 +594,20 @@ fn doc_std(
 
     // HACK: because we use `--manifest-path library/sysroot/Cargo.toml`, cargo thinks we only want to document that specific crate, not its dependencies.
     // Override its default.
-    let built_crates = if requested_crates.is_empty() {
-        builder
-            .in_tree_crates("sysroot", None)
-            .into_iter()
-            .map(|krate| krate.name.to_string())
-            .collect()
+    if requested_crates.is_empty() {
+        for krate in
+            builder.in_tree_crates("sysroot", None).into_iter().map(|krate| krate.name.to_string())
+        {
+            cargo.arg("-p").arg(krate);
+        }
     } else {
-        requested_crates.to_vec()
-    };
-
-    for krate in built_crates {
-        cargo.arg("-p").arg(krate);
+        for krate in STD_PUBLIC_CRATES {
+            cargo.arg("-p").arg(krate);
+            if requested_crates.iter().any(|p| p == krate) {
+                // No need to document more of the libraries if we have the one we want.
+                break;
+            }
+        }
     }
 
     builder.run(&mut cargo.into());
