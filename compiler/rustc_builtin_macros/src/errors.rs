@@ -815,8 +815,8 @@ pub(crate) struct TestRunnerNargs {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_expected_register_class_or_explict_register)]
-pub(crate) struct ExpectedRegisterClassOrExplictRegister {
+#[diag(builtin_macros_expected_register_class_or_explicit_register)]
+pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
 }

@@ -116,7 +116,7 @@ builtin_macros_env_takes_args = `env!()` takes 1 or 2 arguments
 
 builtin_macros_expected_one_cfg_pattern = expected 1 cfg-pattern
 
-builtin_macros_expected_register_class_or_explict_register = expected register class or explicit register
+builtin_macros_expected_register_class_or_explicit_register = expected register class or explicit register
 
 builtin_macros_export_macro_rules = cannot export macro_rules! macros from a `proc-macro` crate type currently
 

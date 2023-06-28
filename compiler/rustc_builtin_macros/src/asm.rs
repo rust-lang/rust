@@ -424,7 +424,7 @@ fn parse_reg<'a>(
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }
         _ => {
-            return Err(p.sess.create_err(errors::ExpectedRegisterClassOrExplictRegister {
+            return Err(p.sess.create_err(errors::ExpectedRegisterClassOrExplicitRegister {
                 span: p.token.span,
             }));
         }
