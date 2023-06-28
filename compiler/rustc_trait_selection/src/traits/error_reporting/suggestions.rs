@@ -5,6 +5,7 @@ use super::{
     PredicateObligation,
 };
 
+use crate::errors;
 use crate::infer::InferCtxt;
 use crate::traits::{NormalizeExt, ObligationCtxt};
 
@@ -4032,19 +4033,11 @@ fn hint_missing_borrow<'tcx>(
     }
 
     if !to_borrow.is_empty() {
-        err.multipart_suggestion_verbose(
-            "consider adjusting the signature so it borrows its argument",
-            to_borrow,
-            Applicability::MaybeIncorrect,
-        );
+        err.subdiagnostic(errors::AdjustSignatureBorrow::Borrow { to_borrow });
     }
 
     if !remove_borrow.is_empty() {
-        err.multipart_suggestion_verbose(
-            "consider adjusting the signature so it does not borrow its argument",
-            remove_borrow,
-            Applicability::MaybeIncorrect,
-        );
+        err.subdiagnostic(errors::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
     }
 }
 
