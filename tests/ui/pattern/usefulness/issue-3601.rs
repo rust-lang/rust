@@ -25,6 +25,7 @@ fn main() {
     let ed = ElementData { kind: Box::new(ElementKind::HTMLImageElement(id)) };
     let n = NodeData { kind: Box::new(NodeKind::Element(ed)) };
 
+    // n.b. span could be better
     match n.kind {
         box NodeKind::Element(ed) => match ed.kind {
             //~^ ERROR non-exhaustive patterns
