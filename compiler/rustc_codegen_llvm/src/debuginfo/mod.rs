@@ -331,7 +331,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
         };
 
-        let mut name = String::new();
+        let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
 
         // Find the enclosing function, in case this is a closure.
