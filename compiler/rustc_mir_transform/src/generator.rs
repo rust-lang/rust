@@ -50,8 +50,10 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+use crate::abort_unwinding_calls;
 use crate::deref_separator::deref_finder;
 use crate::errors;
+use crate::pass_manager as pm;
 use crate::simplify;
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -64,6 +66,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_middle::ty::{GeneratorArgs, GenericArgsRef};
 use rustc_mir_dataflow::impls::{
@@ -1147,6 +1150,17 @@ fn create_generator_drop_shim<'tcx>(
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(tcx, &mut body);
 
+    // Update the body's def to become the drop glue.
+    let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
+    body.source.instance = InstanceDef::DropGlue(drop_in_place, Some(gen_ty));
+
+    pm::run_passes_no_validate(
+        tcx,
+        &mut body,
+        &[&abort_unwinding_calls::AbortUnwindingCalls],
+        None,
+    );
+
     dump_mir(tcx, false, "generator_drop", &0, &body, |_, _| Ok(()));
 
     body
@@ -1316,6 +1330,8 @@ fn create_generator_resume_function<'tcx>(
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
     simplify::remove_dead_blocks(tcx, body);
+
+    pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
 
     dump_mir(tcx, false, "generator_resume", &0, body, |_, _| Ok(()));
 }
