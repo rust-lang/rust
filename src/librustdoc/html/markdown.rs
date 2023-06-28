@@ -1525,7 +1525,6 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);
     map.insert("default-settings".into(), 1);
-    map.insert("rustdoc-vars".into(), 1);
     map.insert("sidebar-vars".into(), 1);
     map.insert("copy-path".into(), 1);
     map.insert("TOC".into(), 1);
