@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_def_id_trait_method;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_fn, FnKind, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, ItemKind, Node, YieldSource};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -81,20 +82,6 @@ impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
     }
 }
 
-/// Checks if the `def_id` belongs to a function and that function is part of a trait impl,
-/// in which case we shouldn't lint because `async` is part of the trait definition and therefore
-/// can't be removed.
-fn is_in_trait_impl(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
-    if let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(def_id)
-        && let Node::Item(item) = cx.tcx.hir().get_parent(hir_id)
-        && let ItemKind::Impl(imp) = item.kind
-    {
-        imp.of_trait.is_some()
-    } else {
-        false
-    }
-}
-
 impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
     fn check_fn(
         &mut self,
@@ -105,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         span: Span,
         def_id: LocalDefId,
     ) {
-        if !span.from_expansion() && fn_kind.asyncness().is_async() && !is_in_trait_impl(cx, def_id) {
+        if !span.from_expansion() && fn_kind.asyncness().is_async() && !is_def_id_trait_method(cx, def_id) {
             let mut visitor = AsyncFnVisitor {
                 cx,
                 found_await: false,

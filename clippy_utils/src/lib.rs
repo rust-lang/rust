@@ -327,6 +327,18 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
         .map_or(false, |did| is_diag_trait_item(cx, did, diag_item))
 }
 
+/// Checks if the `def_id` belongs to a function that is part of a trait impl.
+pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
+    if let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(def_id)
+        && let Node::Item(item) = cx.tcx.hir().get_parent(hir_id)
+        && let ItemKind::Impl(imp) = item.kind
+    {
+        imp.of_trait.is_some()
+    } else {
+        false
+    }
+}
+
 /// Checks if the given expression is a path referring an item on the trait
 /// that is marked with the given diagnostic item.
 ///
