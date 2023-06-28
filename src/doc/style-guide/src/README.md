@@ -40,7 +40,6 @@ options.
 * Each level of indentation must be four spaces (that is, all indentation
   outside of string literals and comments must be a multiple of four).
 * The maximum width for a line is 100 characters.
-* A tool may choose to make some of these configurable.
 
 #### Block indent
 
@@ -98,8 +97,6 @@ fn foo() {
 fn bar() {}
 fn baz() {}
 ```
-
-Formatting tools may wish to make the bounds on blank lines configurable.
 
 ### [Module-level items](items.md)
 ### [Statements](statements.md)
@@ -230,10 +227,6 @@ Some suitable heuristics are the size of the item (in characters) or the
 complexity of an item (for example, that all components must be simple names,
 not more complex sub-expressions). For more discussion on suitable heuristics,
 see [this issue](https://github.com/rust-lang-nursery/fmt-rfcs/issues/47).
-
-Tools should give the user an option to ignore such heuristics and always use
-the normal formatting.
-
 
 ## [Non-formatting conventions](advice.md)
 

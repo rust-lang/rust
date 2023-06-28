@@ -15,9 +15,6 @@ alphabetically. When sorting, `self` and `super` must come before any other
 names. Module declarations should not be moved if they are annotated with
 `#[macro_use]`, since that may be semantics changing.
 
-Tools should make the above ordering optional.
-
-
 ### Function definitions
 
 In Rust, people often find functions by searching for `fn [function-name]`, so
@@ -372,33 +369,6 @@ where
         + Index<RangeToInclusive<Idx>, Output = Self::Output> + Index<RangeFull>
 ```
 
-#### Option - `where_single_line`
-
-`where_single_line` is `false` by default. If `true`, then a where clause with
-exactly one component may be formatted on a single line if the rest of the
-item's signature is also kept on one line. In this case, there is no need for a
-trailing comma and if followed by a block, no need for a newline before the
-block. E.g.,
-
-```rust
-// May be single-lined.
-fn foo<T>(args) -> ReturnType
-where T: Bound {
-    body
-}
-
-// Must be multi-lined.
-fn foo<T>(
-    args
-) -> ReturnType
-where
-    T: Bound,
-{
-    body
-}
-```
-
-
 ### Type aliases
 
 Type aliases should generally be kept on one line. If necessary to break the
@@ -458,7 +428,7 @@ use a::b::{foo, bar, baz};
 #### Large list imports
 
 Prefer to use multiple imports rather than a multi-line import. However, tools
-should not split imports by default (they may offer this as an option).
+should not split imports by default.
 
 If an import does require multiple lines (either because a list of single names
 does not fit within the max width, or because of the rules for nested imports

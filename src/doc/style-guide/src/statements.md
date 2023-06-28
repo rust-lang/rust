@@ -120,9 +120,6 @@ following are true:
 let Some(1) = opt else { return };
 ```
 
-Formatters may allow users to configure the value of the threshold
-used to determine whether a let-else statement is *short*.
-
 Otherwise, the let-else statement requires some line breaks.
 
 If breaking a let-else statement across multiple lines, never break between the

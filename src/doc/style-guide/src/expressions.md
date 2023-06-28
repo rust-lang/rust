@@ -814,8 +814,7 @@ let arr = [combinable(
 )];
 ```
 
-Such behaviour should extend recursively, however, tools may choose to limit the
-depth of nesting.
+Such behaviour should extend recursively.
 
 Only where the multi-line sub-expression is a closure with an explicit block,
 this combining behaviour may be used where there are other arguments, as long as
@@ -852,9 +851,6 @@ compound expression, then use parentheses around it, e.g., `..(x + 1)`,
 Hexadecimal literals may use upper- or lower-case letters, but they must not be
 mixed within the same literal. Projects should use the same case for all
 literals, but we do not make a recommendation for either lower- or upper-case.
-Tools should have an option to convert mixed case literals to upper-case, and
-may have an option to convert all literals to either lower- or upper-case.
-
 
 ## Patterns
 
