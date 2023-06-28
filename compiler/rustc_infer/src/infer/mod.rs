@@ -1474,6 +1474,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// universes. Updates `self.universe` to that new universe.
     pub fn create_next_universe(&self) -> ty::UniverseIndex {
         let u = self.universe.get().next_universe();
+        debug!("create_next_universe {u:?}");
         self.universe.set(u);
         u
     }

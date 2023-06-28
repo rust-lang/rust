@@ -388,10 +388,11 @@ pub fn struct_lint_level(
             // it'll become a hard error, so we have to emit *something*. Also,
             // if this lint occurs in the expansion of a macro from an external crate,
             // allow individual lints to opt-out from being reported.
-            let not_future_incompatible =
-                future_incompatible.map(|f| f.reason.edition().is_some()).unwrap_or(true);
-            if not_future_incompatible && !lint.report_in_external_macro {
+            let incompatible = future_incompatible.is_some_and(|f| f.reason.edition().is_none());
+
+            if !incompatible && !lint.report_in_external_macro {
                 err.cancel();
+
                 // Don't continue further, since we don't want to have
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
                 return;

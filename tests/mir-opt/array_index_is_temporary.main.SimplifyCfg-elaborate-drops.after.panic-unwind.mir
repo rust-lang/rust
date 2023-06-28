@@ -36,7 +36,7 @@ fn main() -> () {
         StorageLive(_5);
         StorageLive(_6);
         _6 = _3;
-        _5 = foo(move _6) -> bb1;
+        _5 = foo(move _6) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -45,7 +45,7 @@ fn main() -> () {
         _7 = _2;
         _8 = Len(_1);
         _9 = Lt(_7, _8);
-        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> bb2;
+        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb2, unwind continue];
     }
 
     bb2: {

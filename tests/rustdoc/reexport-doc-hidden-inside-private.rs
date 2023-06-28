@@ -1,4 +1,4 @@
-// This test ensures that a re-export of  `#[doc(hidden)]` item inside a private
+// This test ensures that a re-export of `#[doc(hidden)]` item inside a private
 // module will still be displayed (the re-export, not the item).
 
 #![crate_name = "foo"]

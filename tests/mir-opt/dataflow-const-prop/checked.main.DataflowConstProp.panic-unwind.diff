@@ -41,10 +41,10 @@
           StorageLive(_5);
 -         _5 = _2;
 -         _6 = CheckedAdd(_4, _5);
--         assert(!move (_6.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, move _5) -> bb1;
+-         assert(!move (_6.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, move _5) -> [success: bb1, unwind continue];
 +         _5 = const 2_i32;
 +         _6 = CheckedAdd(const 1_i32, const 2_i32);
-+         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_i32, const 2_i32) -> bb1;
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_i32, const 2_i32) -> [success: bb1, unwind continue];
       }
   
       bb1: {
@@ -58,10 +58,10 @@
           StorageLive(_9);
 -         _9 = _7;
 -         _10 = CheckedAdd(_9, const 1_i32);
--         assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", move _9, const 1_i32) -> bb2;
+-         assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", move _9, const 1_i32) -> [success: bb2, unwind continue];
 +         _9 = const i32::MAX;
 +         _10 = CheckedAdd(const i32::MAX, const 1_i32);
-+         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const i32::MAX, const 1_i32) -> bb2;
++         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const i32::MAX, const 1_i32) -> [success: bb2, unwind continue];
       }
   
       bb2: {

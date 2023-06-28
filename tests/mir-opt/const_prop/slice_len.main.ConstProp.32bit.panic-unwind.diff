@@ -27,10 +27,10 @@
           _6 = const 1_usize;
 -         _7 = Len((*_2));
 -         _8 = Lt(_6, _7);
--         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1;
+-         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb1, unwind continue];
 +         _7 = const 3_usize;
 +         _8 = const true;
-+         assert(const true, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb1, unwind continue];
       }
   
       bb1: {

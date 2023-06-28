@@ -33,9 +33,9 @@
   
       bb2: {
           StorageLive(_6);
--         _6 = panic();
+-         _6 = panic() -> unwind continue;
 +         StorageLive(_7);
-+         _7 = begin_panic::<&str>(const "explicit panic");
++         _7 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
       }
   }
   

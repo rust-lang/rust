@@ -945,40 +945,30 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (clause, span) in bounds.clauses() {
-            let pred: ty::Predicate<'tcx> = clause.as_predicate();
+        for (pred, span) in bounds.clauses() {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
-                ty::PredicateKind::Clause(clause) => match clause {
-                    ty::ClauseKind::Trait(trait_pred) => {
-                        assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
-                        trait_bounds.push((
-                            bound_pred.rebind(trait_pred.trait_ref),
-                            span,
-                            trait_pred.constness,
-                        ));
-                    }
-                    ty::ClauseKind::Projection(proj) => {
-                        projection_bounds.push((bound_pred.rebind(proj), span));
-                    }
-                    ty::ClauseKind::TypeOutlives(_) => {
-                        // Do nothing, we deal with regions separately
-                    }
-                    ty::ClauseKind::RegionOutlives(_)
-                    | ty::ClauseKind::ConstArgHasType(..)
-                    | ty::ClauseKind::WellFormed(_)
-                    | ty::ClauseKind::ConstEvaluatable(_) => {
-                        bug!()
-                    }
-                },
-                ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::ObjectSafe(_)
-                | ty::PredicateKind::ClosureKind(_, _, _)
-                | ty::PredicateKind::Subtype(_)
-                | ty::PredicateKind::Coerce(_)
-                | ty::PredicateKind::ConstEquate(_, _)
-                | ty::PredicateKind::TypeWellFormedFromEnv(_)
-                | ty::PredicateKind::Ambiguous => bug!(),
+                ty::ClauseKind::Trait(trait_pred) => {
+                    assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
+                    trait_bounds.push((
+                        bound_pred.rebind(trait_pred.trait_ref),
+                        span,
+                        trait_pred.constness,
+                    ));
+                }
+                ty::ClauseKind::Projection(proj) => {
+                    projection_bounds.push((bound_pred.rebind(proj), span));
+                }
+                ty::ClauseKind::TypeOutlives(_) => {
+                    // Do nothing, we deal with regions separately
+                }
+                ty::ClauseKind::RegionOutlives(_)
+                | ty::ClauseKind::ConstArgHasType(..)
+                | ty::ClauseKind::WellFormed(_)
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::TypeWellFormedFromEnv(_) => {
+                    bug!()
+                }
             }
         }
 
@@ -1425,9 +1415,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             || {
                 traits::transitive_bounds_that_define_assoc_item(
                     tcx,
-                    predicates.iter().filter_map(|(p, _)| {
-                        Some(p.to_opt_poly_trait_pred()?.map_bound(|t| t.trait_ref))
-                    }),
+                    predicates
+                        .iter()
+                        .filter_map(|(p, _)| Some(p.as_trait_clause()?.map_bound(|t| t.trait_ref))),
                     assoc_name,
                 )
             },

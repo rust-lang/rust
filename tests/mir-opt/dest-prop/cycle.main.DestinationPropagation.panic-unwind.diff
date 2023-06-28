@@ -24,9 +24,9 @@
   
       bb0: {
 -         StorageLive(_1);
--         _1 = val() -> bb1;
+-         _1 = val() -> [return: bb1, unwind continue];
 +         nop;
-+         _6 = val() -> bb1;
++         _6 = val() -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -51,7 +51,7 @@
 -         _6 = _1;
 +         nop;
 +         nop;
-          _5 = std::mem::drop::<i32>(move _6) -> bb2;
+          _5 = std::mem::drop::<i32>(move _6) -> [return: bb2, unwind continue];
       }
   
       bb2: {

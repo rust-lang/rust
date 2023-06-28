@@ -1,13 +1,13 @@
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:6:14
+  --> $DIR/issue-51714.rs:6:13
    |
 LL | / fn main() {
 LL | |
 LL | |
 LL | |
 LL | |
-LL | |     |_:  [_; return || {}] | {};
-   | |              ^^^^^^^^^^^^ the return is part of this body...
+LL | |     |_: [_; return || {}]| {};
+   | |             ^^^^^^^^^^^^ the return is part of this body...
 ...  |
 LL | |
 LL | | }

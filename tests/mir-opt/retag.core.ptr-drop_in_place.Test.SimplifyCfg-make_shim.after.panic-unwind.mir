@@ -10,7 +10,7 @@ fn std::ptr::drop_in_place(_1: *mut Test) -> () {
         _2 = &mut (*_1);
         Retag([fn entry] _2);
         _3 = &mut (*_2);
-        _4 = <Test as Drop>::drop(move _3) -> bb1;
+        _4 = <Test as Drop>::drop(move _3) -> [return: bb1, unwind continue];
     }
 
     bb1: {

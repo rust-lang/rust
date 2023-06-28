@@ -12,9 +12,9 @@
       bb0: {
           StorageLive(_1);
 -         _2 = CheckedAdd(const 1_u32, const 1_u32);
--         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> bb1;
+-         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> [success: bb1, unwind continue];
 +         _2 = const (2_u32, false);
-+         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> bb1;
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> [success: bb1, unwind continue];
       }
   
       bb1: {

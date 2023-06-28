@@ -33,24 +33,13 @@ format:
 ```
 
 This is how the documentation and examples assume you are running `x.py`.
-Some alternative ways are:
-
-```sh
-# On a Unix shell if you don't have the necessary `python3` command
-./x <subcommand> [flags]
-
-# On the Windows Command Prompt (if .py files are configured to run Python)
-x.py <subcommand> [flags]
-
-# You can also run Python yourself, e.g.:
-python x.py <subcommand> [flags]
-```
+See the [rustc dev guide][rustcguidebuild] if this does not work on your platform.
 
 More information about `x.py` can be found by running it with the `--help` flag
 or reading the [rustc dev guide][rustcguidebuild].
 
 [gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
-[rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
+[rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#what-is-xpy
 
 ### Dependencies
 

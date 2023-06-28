@@ -1,6 +1,7 @@
 use super::eval_queries::{mk_eval_cx, op_to_const};
 use super::machine::CompileTimeEvalContext;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
+use crate::const_eval::CanAccessStatics;
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
     MemoryKind, PlaceTy, Scalar,
@@ -263,7 +264,11 @@ pub fn valtree_to_const_value<'tcx>(
     // FIXME Does this need an example?
 
     let (param_env, ty) = param_env_ty.into_parts();
-    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let mut ecx: crate::interpret::InterpCx<
+        '_,
+        '_,
+        crate::const_eval::CompileTimeInterpreter<'_, '_>,
+    > = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
 
     match ty.kind() {
         ty::FnDef(..) => {

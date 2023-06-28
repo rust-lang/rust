@@ -8,7 +8,7 @@ use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 
 pub(crate) struct Expander(pub bool);
 
@@ -22,7 +22,7 @@ impl MultiItemModifier for Expander {
         _: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let sess = ecx.sess;
-        if report_bad_target(sess, &item, span) {
+        if report_bad_target(sess, &item, span).is_err() {
             // We don't want to pass inappropriate targets to derive macros to avoid
             // follow up errors, all other errors below are recoverable.
             return ExpandResult::Ready(vec![item]);
@@ -103,7 +103,11 @@ fn dummy_annotatable() -> Annotatable {
     })
 }
 
-fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
+fn report_bad_target(
+    sess: &Session,
+    item: &Annotatable,
+    span: Span,
+) -> Result<(), ErrorGuaranteed> {
     let item_kind = match item {
         Annotatable::Item(item) => Some(&item.kind),
         Annotatable::Stmt(stmt) => match &stmt.kind {
@@ -116,9 +120,9 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
     let bad_target =
         !matches!(item_kind, Some(ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)));
     if bad_target {
-        sess.emit_err(errors::BadDeriveTarget { span, item: item.span() });
+        return Err(sess.emit_err(errors::BadDeriveTarget { span, item: item.span() }));
     }
-    bad_target
+    Ok(())
 }
 
 fn report_unexpected_meta_item_lit(sess: &Session, lit: &ast::MetaItemLit) {

@@ -480,9 +480,10 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
     fn check_invoked_macro_name_span(&mut self) {
         if let Some(visible_macro) = self.curr().visible_macro(self.body_span) {
-            if self.prev_expn_span.map_or(true, |prev_expn_span| {
-                self.curr().expn_span.ctxt() != prev_expn_span.ctxt()
-            }) {
+            if !self
+                .prev_expn_span
+                .is_some_and(|prev_expn_span| self.curr().expn_span.ctxt() == prev_expn_span.ctxt())
+            {
                 let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
                 let after_macro_bang =
                     merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);

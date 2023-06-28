@@ -280,7 +280,7 @@ def parse_args(args):
 
     config = {}
 
-    set('build.configure-args', sys.argv[1:], config)
+    set('build.configure-args', args, config)
     apply_args(known_args, option_checking, config)
     return parse_example_config(known_args, config)
 
@@ -400,7 +400,9 @@ def parse_example_config(known_args, config):
     targets = {}
     top_level_keys = []
 
-    for line in open(rust_dir + '/config.example.toml').read().split("\n"):
+    with open(rust_dir + '/config.example.toml') as example_config:
+        example_lines = example_config.read().split("\n")
+    for line in example_lines:
         if cur_section is None:
             if line.count('=') == 1:
                 top_level_key = line.split('=')[0]
@@ -435,7 +437,7 @@ def parse_example_config(known_args, config):
         targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
 
     if 'profile' not in config:
-        set('profile', 'user', config)
+        set('profile', 'dist', config)
     configure_file(sections, top_level_keys, targets, config)
     return section_order, sections, targets
 

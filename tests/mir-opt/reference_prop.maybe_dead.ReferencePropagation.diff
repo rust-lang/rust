@@ -27,17 +27,17 @@
       bb1: {
           StorageDead(_2);
           StorageDead(_3);
-          _0 = opaque::<i32>(_6) -> bb2;
+          _0 = opaque::<i32>(_6) -> [return: bb2, unwind continue];
       }
   
       bb2: {
           _7 = (*_4);
-          _0 = opaque::<i32>(_7) -> bb3;
+          _0 = opaque::<i32>(_7) -> [return: bb3, unwind continue];
       }
   
       bb3: {
           _8 = (*_5);
-          _0 = opaque::<i32>(_8) -> bb4;
+          _0 = opaque::<i32>(_8) -> [return: bb4, unwind continue];
       }
   
       bb4: {

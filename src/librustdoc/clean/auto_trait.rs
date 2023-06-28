@@ -317,14 +317,14 @@ where
         lifetime_predicates
     }
 
-    fn extract_for_generics(&self, pred: ty::Predicate<'tcx>) -> FxHashSet<GenericParamDef> {
+    fn extract_for_generics(&self, pred: ty::Clause<'tcx>) -> FxHashSet<GenericParamDef> {
         let bound_predicate = pred.kind();
         let tcx = self.cx.tcx;
         let regions = match bound_predicate.skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_pred)) => {
+            ty::ClauseKind::Trait(poly_trait_pred) => {
                 tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_trait_pred))
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::Projection(poly_proj_pred)) => {
+            ty::ClauseKind::Projection(poly_proj_pred) => {
                 tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_proj_pred))
             }
             _ => return FxHashSet::default(),
@@ -449,9 +449,7 @@ where
             .filter(|p| {
                 !orig_bounds.contains(p)
                     || match p.kind().skip_binder() {
-                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                            pred.def_id() == sized_trait
-                        }
+                        ty::ClauseKind::Trait(pred) => pred.def_id() == sized_trait,
                         _ => false,
                     }
             })

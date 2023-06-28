@@ -28,9 +28,9 @@ While the integer base ABI is implied by the machine field, the floating po
 
 ## Target maintainers
 
-- [ZHAI Xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`
 - [WANG Rui](https://github.com/heiher) `wangrui@loongson.cn`
 - [ZHAI Xiang](https://github.com/xiangzhai) `zhaixiang@loongson.cn`
+- [ZHAI Xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`
 - [WANG Xuerui](https://github.com/xen0n) `git@xen0n.name`
 
 ## Requirements

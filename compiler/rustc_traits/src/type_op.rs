@@ -2,8 +2,8 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::{Clause, ParamEnvAnd};
 use rustc_middle::ty::{FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
-use rustc_middle::ty::{ParamEnvAnd, Predicate};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::type_op::ascribe_user_type::{
@@ -23,7 +23,7 @@ pub(crate) fn provide(p: &mut Providers) {
         type_op_prove_predicate,
         type_op_subtype,
         type_op_normalize_ty,
-        type_op_normalize_predicate,
+        type_op_normalize_clause,
         type_op_normalize_fn_sig,
         type_op_normalize_poly_fn_sig,
         ..*p
@@ -70,10 +70,10 @@ fn type_op_normalize_ty<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
-fn type_op_normalize_predicate<'tcx>(
+fn type_op_normalize_clause<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Predicate<'tcx>>>>,
-) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Predicate<'tcx>>>, NoSolution> {
+    canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Clause<'tcx>>>>,
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Clause<'tcx>>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 

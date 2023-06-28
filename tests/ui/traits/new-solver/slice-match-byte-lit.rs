@@ -1,5 +1,5 @@
 // compile-flags: -Ztrait-solver=next
-// check-pass
+// known-bug: rust-lang/trait-system-refactor-initiative#38
 
 fn test(s: &[u8]) {
     match &s[0..3] {

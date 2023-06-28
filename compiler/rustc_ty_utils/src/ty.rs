@@ -4,8 +4,8 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, Binder, EarlyBinder, ImplTraitInTraitData, Predicate, PredicateKind, ToPredicate, Ty,
-    TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, EarlyBinder, ImplTraitInTraitData, ToPredicate, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -245,7 +245,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     };
 
     let unnormalized_env =
-        ty::ParamEnv::new(tcx.mk_predicates(&predicates), traits::Reveal::UserFacing, constness);
+        ty::ParamEnv::new(tcx.mk_clauses(&predicates), traits::Reveal::UserFacing, constness);
 
     let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
@@ -258,7 +258,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 /// its corresponding opaque within the body of a default-body trait method.
 struct ImplTraitInTraitFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    predicates: &'a mut Vec<Predicate<'tcx>>,
+    predicates: &'a mut Vec<ty::Clause<'tcx>>,
     fn_def_id: DefId,
     bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
     seen: FxHashSet<DefId>,
@@ -340,9 +340,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 /// that are assumed to be well-formed (because they come from the environment).
 ///
 /// Used only in chalk mode.
-fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predicate<'_>> {
+fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<ty::Clause<'_>> {
     use rustc_hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
-    use rustc_middle::ty::subst::GenericArgKind;
 
     debug!("environment(def_id = {:?})", def_id);
 
@@ -430,20 +429,19 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
     }
     let input_clauses = inputs.into_iter().filter_map(|arg| {
         match arg.unpack() {
-            GenericArgKind::Type(ty) => {
-                let binder = Binder::dummy(PredicateKind::TypeWellFormedFromEnv(ty));
-                Some(tcx.mk_predicate(binder))
+            ty::GenericArgKind::Type(ty) => {
+                Some(ty::ClauseKind::TypeWellFormedFromEnv(ty).to_predicate(tcx))
             }
 
             // FIXME(eddyb) no WF conditions from lifetimes?
-            GenericArgKind::Lifetime(_) => None,
+            ty::GenericArgKind::Lifetime(_) => None,
 
             // FIXME(eddyb) support const generics in Chalk
-            GenericArgKind::Const(_) => None,
+            ty::GenericArgKind::Const(_) => None,
         }
     });
 
-    tcx.mk_predicates_from_iter(clauses.chain(input_clauses))
+    tcx.mk_clauses_from_iter(clauses.chain(input_clauses))
 }
 
 fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {

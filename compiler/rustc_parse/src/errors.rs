@@ -333,6 +333,17 @@ pub(crate) struct InvalidBlockMacroSegment {
     pub span: Span,
     #[label]
     pub context: Span,
+    #[subdiagnostic]
+    pub wrap: WrapInExplicitBlock,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct WrapInExplicitBlock {
+    #[suggestion_part(code = "{{ ")]
+    pub lo: Span,
+    #[suggestion_part(code = " }}")]
+    pub hi: Span,
 }
 
 #[derive(Diagnostic)]

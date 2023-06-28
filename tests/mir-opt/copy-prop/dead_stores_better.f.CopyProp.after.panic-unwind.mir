@@ -16,7 +16,7 @@ fn f(_1: usize) -> usize {
         _1 = _2;
         StorageLive(_4);
         _4 = _1;
-        _0 = id::<usize>(move _4) -> bb1;
+        _0 = id::<usize>(move _4) -> [return: bb1, unwind continue];
     }
 
     bb1: {

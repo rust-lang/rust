@@ -16,13 +16,13 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = val() -> bb1;
+          _1 = val() -> [return: bb1, unwind continue];
       }
   
       bb1: {
           StorageLive(_2);
           StorageLive(_3);
-          _3 = cond() -> bb2;
+          _3 = cond() -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -36,7 +36,7 @@
   
       bb4: {
           StorageLive(_4);
-          _4 = val() -> bb5;
+          _4 = val() -> [return: bb5, unwind continue];
       }
   
       bb5: {

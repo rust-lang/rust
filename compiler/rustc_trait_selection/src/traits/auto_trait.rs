@@ -255,7 +255,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
         for predicate in param_env.caller_bounds() {
-            fresh_preds.insert(self.clean_pred(infcx, predicate));
+            fresh_preds.insert(self.clean_pred(infcx, predicate.as_predicate()));
         }
 
         let mut select = SelectionContext::new(&infcx);
@@ -270,8 +270,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             polarity: ty::ImplPolarity::Positive,
         }));
 
-        let computed_preds = param_env.caller_bounds().iter();
-        let mut user_computed_preds: FxIndexSet<_> = user_env.caller_bounds().iter().collect();
+        let computed_preds = param_env.caller_bounds().iter().map(|c| c.as_predicate());
+        let mut user_computed_preds: FxIndexSet<_> =
+            user_env.caller_bounds().iter().map(|c| c.as_predicate()).collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -349,14 +350,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let normalized_preds =
                 elaborate(tcx, computed_preds.clone().chain(user_computed_preds.iter().cloned()));
             new_env = ty::ParamEnv::new(
-                tcx.mk_predicates_from_iter(normalized_preds),
+                tcx.mk_clauses_from_iter(normalized_preds.filter_map(|p| p.as_clause())),
                 param_env.reveal(),
                 param_env.constness(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
-            tcx.mk_predicates_from_iter(user_computed_preds.into_iter()),
+            tcx.mk_clauses_from_iter(user_computed_preds.into_iter().filter_map(|p| p.as_clause())),
             user_env.reveal(),
             user_env.constness(),
         );
@@ -835,7 +836,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::Coerce(..) => {}
-                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
                     bug!("predicate should only exist in the environment: {bound_predicate:?}")
                 }
                 ty::PredicateKind::Ambiguous => return false,

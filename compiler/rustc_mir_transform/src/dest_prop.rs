@@ -37,6 +37,10 @@
 //!   if they do not consistently refer to the same place in memory. This is satisfied if they do
 //!   not contain any indirection through a pointer or any indexing projections.
 //!
+//! * `p` and `q` must have the **same type**. If we replace a local with a subtype or supertype,
+//!   we may end up with a differnet vtable for that local. See the `subtyping-impacts-selection`
+//!   tests for an example where that causes issues.
+//!
 //! * We need to make sure that the goal of "merging the memory" is actually structurally possible
 //!   in MIR. For example, even if all the other conditions are satisfied, there is no way to
 //!   "merge" `_5.foo` and `_6.bar`. For now, we ensure this by requiring that both `p` and `q` are
@@ -134,6 +138,7 @@ use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::HasLocalDecls;
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
     traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, Rvalue,
@@ -763,9 +768,19 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
                 return;
             };
 
-            // As described at the top of the file, we do not go near things that have their address
-            // taken.
+            // As described at the top of the file, we do not go near things that have
+            // their address taken.
             if self.borrowed.contains(src) || self.borrowed.contains(dest) {
+                return;
+            }
+
+            // As described at the top of this file, we do not touch locals which have
+            // different types.
+            let src_ty = self.body.local_decls()[src].ty;
+            let dest_ty = self.body.local_decls()[dest].ty;
+            if src_ty != dest_ty {
+                // FIXME(#112651): This can be removed afterwards. Also update the module description.
+                trace!("skipped `{src:?} = {dest:?}` due to subtyping: {src_ty} != {dest_ty}");
                 return;
             }
 

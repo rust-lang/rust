@@ -2,7 +2,10 @@
 use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
-use rustc_errors::{AddToDiagnostic, Applicability, Diagnostic, MultiSpan, SubdiagnosticMessage};
+use rustc_errors::{
+    AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg, MultiSpan,
+    SubdiagnosticMessage,
+};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{
@@ -31,6 +34,24 @@ pub struct ReturnStmtOutsideOfFnBody {
     pub encl_body_span: Option<Span>,
     #[label(hir_typeck_encl_fn_label)]
     pub encl_fn_span: Option<Span>,
+    pub statement_kind: ReturnLikeStatementKind,
+}
+
+pub enum ReturnLikeStatementKind {
+    Return,
+    Become,
+}
+
+impl IntoDiagnosticArg for ReturnLikeStatementKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        let kind = match self {
+            Self::Return => "return",
+            Self::Become => "become",
+        }
+        .into();
+
+        DiagnosticArgValue::Str(kind)
+    }
 }
 
 #[derive(Diagnostic)]

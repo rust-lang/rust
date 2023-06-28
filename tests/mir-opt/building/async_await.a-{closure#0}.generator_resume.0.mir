@@ -30,7 +30,7 @@ fn a::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:11:14: 11:16]>
     }
 
     bb2: {
-        assert(const false, "`async fn` resumed after completion") -> bb2;
+        assert(const false, "`async fn` resumed after completion") -> [success: bb2, unwind continue];
     }
 
     bb3: {

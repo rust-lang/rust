@@ -6,7 +6,7 @@ fn add() -> u32 {
 
     bb0: {
         _1 = const (4_u32, false);
-        assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_u32, const 2_u32) -> bb1;
+        assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_u32, const 2_u32) -> [success: bb1, unwind continue];
     }
 
     bb1: {

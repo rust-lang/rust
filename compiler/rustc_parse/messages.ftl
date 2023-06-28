@@ -353,6 +353,7 @@ parse_int_literal_too_large = integer literal is too large
 
 parse_invalid_block_macro_segment = cannot use a `block` macro fragment here
     .label = the `block` fragment is within this context
+    .suggestion = wrap this in another block
 
 parse_invalid_char_in_escape = {parse_invalid_char_in_escape_msg}: `{$ch}`
     .label = {parse_invalid_char_in_escape_msg}

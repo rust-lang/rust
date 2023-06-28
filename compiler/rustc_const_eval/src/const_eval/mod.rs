@@ -26,7 +26,7 @@ pub(crate) fn const_caller_location(
     (file, line, col): (Symbol, u32, u32),
 ) -> ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
-    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
 
     let loc_place = ecx.alloc_caller_location(file, line, col);
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
@@ -55,10 +55,12 @@ pub(crate) fn eval_to_valtree<'tcx>(
 
     // FIXME Need to provide a span to `eval_to_valtree`
     let ecx = mk_eval_cx(
-        tcx, DUMMY_SP, param_env,
+        tcx,
+        DUMMY_SP,
+        param_env,
         // It is absolutely crucial for soundness that
         // we do not read from static items or other mutable memory.
-        false,
+        CanAccessStatics::No,
     );
     let place = ecx.raw_const_to_mplace(const_alloc).unwrap();
     debug!(?place);
@@ -91,7 +93,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
     val: mir::ConstantKind<'tcx>,
 ) -> InterpResult<'tcx, mir::DestructuredConstant<'tcx>> {
     trace!("destructure_mir_constant: {:?}", val);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
     let op = ecx.eval_mir_constant(&val, None, None)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.

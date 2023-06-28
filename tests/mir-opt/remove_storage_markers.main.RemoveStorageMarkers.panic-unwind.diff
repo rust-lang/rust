@@ -32,7 +32,7 @@
 -         StorageLive(_2);
 -         StorageLive(_3);
           _3 = std::ops::Range::<i32> { start: const 0_i32, end: const 10_i32 };
-          _2 = <std::ops::Range<i32> as IntoIterator>::into_iter(move _3) -> bb1;
+          _2 = <std::ops::Range<i32> as IntoIterator>::into_iter(move _3) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -49,7 +49,7 @@
 -         StorageLive(_9);
           _9 = &mut _4;
           _8 = &mut (*_9);
-          _7 = <std::ops::Range<i32> as Iterator>::next(move _8) -> bb3;
+          _7 = <std::ops::Range<i32> as Iterator>::next(move _8) -> [return: bb3, unwind continue];
       }
   
       bb3: {

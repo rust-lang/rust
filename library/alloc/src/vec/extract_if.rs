@@ -37,12 +37,6 @@ pub struct ExtractIf<
     pub(super) old_len: usize,
     /// The filter test predicate.
     pub(super) pred: F,
-    /// A flag that indicates a panic has occurred in the filter test predicate.
-    /// This is used as a hint in the drop implementation to prevent consumption
-    /// of the remainder of the `ExtractIf`. Any unprocessed items will be
-    /// backshifted in the `vec`, but no further items will be dropped or
-    /// tested by the filter predicate.
-    pub(super) panic_flag: bool,
 }
 
 impl<T, F, A: Allocator> ExtractIf<'_, T, F, A>
@@ -69,9 +63,7 @@ where
             while self.idx < self.old_len {
                 let i = self.idx;
                 let v = slice::from_raw_parts_mut(self.vec.as_mut_ptr(), self.old_len);
-                self.panic_flag = true;
                 let drained = (self.pred)(&mut v[i]);
-                self.panic_flag = false;
                 // Update the index *after* the predicate is called. If the index
                 // is updated prior and the predicate panics, the element at this
                 // index would be leaked.

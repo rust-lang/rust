@@ -42,3 +42,15 @@ pub use aux::Main;
 // @has main/trait.Aid.html
 // @has - '//*[@id="associatedtype.Result"]' "type Result<'inter: 'src>"
 pub use aux::Aid;
+
+// Below, ensure that we correctly display generic parameters and where-clauses on
+// associated types inside trait *impls*. More particularly, check that we don't render
+// any bounds (here `Self::Alias<T>: ...`) as item bounds unlike all the trait test cases above.
+
+// @has main/struct.Implementor.html
+// @has - '//*[@id="associatedtype.Alias"]' \
+// "type Alias<T: Eq> = T \
+// where \
+//     String: From<T>, \
+//     <Implementor as Implementee>::Alias<T>: From<<Implementor as Implementee>::Alias<T>>"
+pub use aux::Implementor;

@@ -30,7 +30,7 @@
           StorageLive(_2);
           _14 = const _;
           _2 = &(*_14);
-          _1 = <&[i32; 2] as IntoIterator>::into_iter(move _2) -> bb1;
+          _1 = <&[i32; 2] as IntoIterator>::into_iter(move _2) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -47,7 +47,7 @@
           StorageLive(_9);
           _9 = &mut _4;
           _8 = &mut (*_9);
-          _7 = <std::slice::Iter<'_, i32> as Iterator>::next(move _8) -> bb3;
+          _7 = <std::slice::Iter<'_, i32> as Iterator>::next(move _8) -> [return: bb3, unwind continue];
       }
   
       bb3: {
@@ -63,7 +63,7 @@
 +         _12 = (*_15);
           StorageLive(_13);
           _13 = _12;
-          _6 = std::mem::drop::<i32>(move _13) -> bb7;
+          _6 = std::mem::drop::<i32>(move _13) -> [return: bb7, unwind continue];
       }
   
       bb5: {

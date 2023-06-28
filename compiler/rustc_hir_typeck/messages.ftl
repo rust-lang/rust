@@ -78,8 +78,8 @@ hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang
 hir_typeck_op_trait_generic_params = `{$method_name}` must not have any generic parameters
 
 hir_typeck_return_stmt_outside_of_fn_body =
-    return statement outside of function body
-    .encl_body_label = the return is part of this body...
+    {$statement_kind} statement outside of function body
+    .encl_body_label = the {$statement_kind} is part of this body...
     .encl_fn_label = ...not the enclosing function body
 
 hir_typeck_struct_expr_non_exhaustive =

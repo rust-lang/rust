@@ -2031,10 +2031,10 @@ rustc_queries! {
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
-    query type_op_normalize_predicate(
-        goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>
+    query type_op_normalize_clause(
+        goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::Clause<'tcx>>
     ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>,
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Clause<'tcx>>>,
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal.value.value.value }
@@ -2125,7 +2125,7 @@ rustc_queries! {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
     }
 
-    query reveal_opaque_types_in_bounds(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+    query reveal_opaque_types_in_bounds(key: &'tcx ty::List<ty::Clause<'tcx>>) -> &'tcx ty::List<ty::Clause<'tcx>> {
         desc { "revealing opaque types in `{:?}`", key }
     }
 

@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use super::{EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Predicate, TyCtxt};
+use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, TyCtxt};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -323,7 +323,7 @@ impl<'tcx> Generics {
 #[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: &'tcx [(Predicate<'tcx>, Span)],
+    pub predicates: &'tcx [(Clause<'tcx>, Span)],
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
@@ -341,8 +341,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
-    ) -> impl Iterator<Item = (Predicate<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
-    {
+    ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
         EarlyBinder::bind(self.predicates).subst_iter_copied(tcx, substs)
     }
 

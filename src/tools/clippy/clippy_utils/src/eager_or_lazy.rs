@@ -15,7 +15,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{def_id::DefId, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, PredicateKind};
+use rustc_middle::ty;
 use rustc_span::{sym, Symbol};
 use std::cmp;
 use std::ops;
@@ -73,7 +73,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
             .flat_map(|v| v.fields.iter())
             .any(|x| matches!(cx.tcx.type_of(x.did).subst_identity().peel_refs().kind(), ty::Param(_)))
             && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
-                PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
+                ty::ClauseKind::Trait(pred) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
                 _ => true,
             })
             && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
@@ -191,6 +191,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::Break(..)
                 | ExprKind::Continue(_)
                 | ExprKind::Ret(_)
+                | ExprKind::Become(_)
                 | ExprKind::InlineAsm(_)
                 | ExprKind::Yield(..)
                 | ExprKind::Err(_) => {

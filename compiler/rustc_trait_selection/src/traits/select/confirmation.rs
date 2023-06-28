@@ -1108,12 +1108,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.span,
                     [source],
                 );
-                nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
+                nested.push(predicate_to_obligation(tr.to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
                 // being cast to `Foo + 'a` outlives `'a`:
                 let outlives = ty::OutlivesPredicate(source, r);
-                nested.push(predicate_to_obligation(ty::Binder::dummy(outlives).to_predicate(tcx)));
+                nested.push(predicate_to_obligation(
+                    ty::Binder::dummy(ty::ClauseKind::TypeOutlives(outlives)).to_predicate(tcx),
+                ));
             }
 
             // `[T; n]` -> `[T]`

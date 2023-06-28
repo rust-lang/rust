@@ -612,30 +612,28 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
     }
     fn visit_projection_elem(
         &mut self,
-        place_local: Local,
-        proj_base: &[PlaceElem<'tcx>],
+        place_ref: PlaceRef<'tcx>,
         elem: PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {
         trace!(
-            "visit_projection_elem: place_local={:?} proj_base={:?} elem={:?} \
+            "visit_projection_elem: place_ref={:?} elem={:?} \
             context={:?} location={:?}",
-            place_local,
-            proj_base,
+            place_ref,
             elem,
             context,
             location,
         );
 
-        self.super_projection_elem(place_local, proj_base, elem, context, location);
+        self.super_projection_elem(place_ref, elem, context, location);
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
+                let base_ty = place_ref.ty(self.body, self.tcx).ty;
                 if base_ty.is_unsafe_ptr() {
-                    if proj_base.is_empty() {
-                        let decl = &self.body.local_decls[place_local];
+                    if place_ref.projection.is_empty() {
+                        let decl = &self.body.local_decls[place_ref.local];
                         if let LocalInfo::StaticRef { def_id, .. } = *decl.local_info() {
                             let span = decl.source_info.span;
                             self.check_static(def_id, span);

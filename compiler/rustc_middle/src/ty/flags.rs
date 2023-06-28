@@ -287,7 +287,7 @@ impl FlagComputation {
                 self.add_const(expected);
                 self.add_const(found);
             }
-            ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(ty)) => {
                 self.add_ty(ty);
             }
             ty::PredicateKind::Ambiguous => {}

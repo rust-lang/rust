@@ -395,7 +395,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::ConstEquate(_, _) => {
                     bug!("ConstEquate should not be emitted when `-Ztrait-solver=next` is active")
                 }
-                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
                 ty::PredicateKind::AliasRelate(lhs, rhs, direction) => self

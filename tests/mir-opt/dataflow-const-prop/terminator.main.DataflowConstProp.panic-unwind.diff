@@ -22,8 +22,8 @@
 +         _4 = const 1_i32;
 +         _3 = const 2_i32;
           StorageDead(_4);
--         _2 = foo(move _3) -> bb1;
-+         _2 = foo(const 2_i32) -> bb1;
+-         _2 = foo(move _3) -> [return: bb1, unwind continue];
++         _2 = foo(const 2_i32) -> [return: bb1, unwind continue];
       }
   
       bb1: {

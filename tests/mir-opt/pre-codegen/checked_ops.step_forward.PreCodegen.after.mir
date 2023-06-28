@@ -31,7 +31,7 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
         StorageLive(_7);
         StorageLive(_4);
         StorageLive(_3);
-        _3 = <u32 as Step>::forward_checked(_1, _2) -> bb1;
+        _3 = <u32 as Step>::forward_checked(_1, _2) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -47,7 +47,7 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
     }
 
     bb2: {
-        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const _, const 1_u32) -> bb3;
+        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const _, const 1_u32) -> [success: bb3, unwind continue];
     }
 
     bb3: {

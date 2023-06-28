@@ -235,10 +235,8 @@ fn unconstrained_parent_impl_substs<'tcx>(
     // what we want here. We want only a list of constrained parameters while
     // the functions in `cgp` add the constrained parameters to a list of
     // unconstrained parameters.
-    for (predicate, _) in impl_generic_predicates.predicates.iter() {
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
-            predicate.kind().skip_binder()
-        {
+    for (clause, _) in impl_generic_predicates.predicates.iter() {
+        if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder() {
             let projection_ty = proj.projection_ty;
             let projected_ty = proj.term;
 
@@ -340,8 +338,11 @@ fn check_predicates<'tcx>(
     impl2_substs: SubstsRef<'tcx>,
     span: Span,
 ) {
-    let instantiated = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
-    let impl1_predicates: Vec<_> = traits::elaborate(tcx, instantiated.into_iter()).collect();
+    let impl1_predicates: Vec<_> = traits::elaborate(
+        tcx,
+        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs).into_iter(),
+    )
+    .collect();
 
     let mut impl2_predicates = if impl2_node.is_from_trait() {
         // Always applicable traits have to be always applicable without any
@@ -352,8 +353,8 @@ fn check_predicates<'tcx>(
             tcx,
             tcx.predicates_of(impl2_node.def_id())
                 .instantiate(tcx, impl2_substs)
-                .predicates
-                .into_iter(),
+                .into_iter()
+                .map(|(c, _s)| c.as_predicate()),
         )
         .collect()
     };
@@ -377,13 +378,13 @@ fn check_predicates<'tcx>(
     let always_applicable_traits = impl1_predicates
         .iter()
         .copied()
-        .filter(|&(predicate, _)| {
+        .filter(|(clause, _span)| {
             matches!(
-                trait_predicate_kind(tcx, predicate),
+                trait_predicate_kind(tcx, clause.as_predicate()),
                 Some(TraitSpecializationKind::AlwaysApplicable)
             )
         })
-        .map(|(pred, _span)| pred);
+        .map(|(c, _span)| c.as_predicate());
 
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().subst_identity().substs {
@@ -398,9 +399,12 @@ fn check_predicates<'tcx>(
     }
     impl2_predicates.extend(traits::elaborate(tcx, always_applicable_traits));
 
-    for (predicate, span) in impl1_predicates {
-        if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(tcx, predicate, *pred2, span)) {
-            check_specialization_on(tcx, predicate, span)
+    for (clause, span) in impl1_predicates {
+        if !impl2_predicates
+            .iter()
+            .any(|pred2| trait_predicates_eq(tcx, clause.as_predicate(), *pred2, span))
+        {
+            check_specialization_on(tcx, clause.as_predicate(), span)
         }
     }
 }
@@ -550,6 +554,6 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+        | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => None,
     }
 }

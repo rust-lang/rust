@@ -4,7 +4,7 @@
 // aux-build:issue-12133-dylib2.rs
 // ignore-emscripten no dylib support
 // ignore-musl
-// ignore-sgx no dylib support
+// needs-dynamic-linking
 
 // pretty-expanded FIXME #23616
 

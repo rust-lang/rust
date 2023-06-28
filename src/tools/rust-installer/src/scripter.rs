@@ -2,29 +2,29 @@ use crate::util::*;
 use anyhow::{Context, Result};
 use std::io::Write;
 
-const TEMPLATE: &'static str = include_str!("../install-template.sh");
+const TEMPLATE: &str = include_str!("../install-template.sh");
 
 actor! {
     #[derive(Debug)]
     pub struct Scripter {
         /// The name of the product, for display
-        #[clap(value_name = "NAME")]
+        #[arg(value_name = "NAME")]
         product_name: String = "Product",
 
         /// The directory under lib/ where the manifest lives
-        #[clap(value_name = "DIR")]
+        #[arg(value_name = "DIR")]
         rel_manifest_dir: String = "manifestlib",
 
         /// The string to print after successful installation
-        #[clap(value_name = "MESSAGE")]
+        #[arg(value_name = "MESSAGE")]
         success_message: String = "Installed.",
 
         /// Places to look for legacy manifests to uninstall
-        #[clap(value_name = "DIRS")]
+        #[arg(value_name = "DIRS")]
         legacy_manifest_dirs: String = "",
 
         /// The name of the output script
-        #[clap(value_name = "FILE")]
+        #[arg(value_name = "FILE")]
         output_script: String = "install.sh",
     }
 }

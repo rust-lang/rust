@@ -27,7 +27,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep);
+-         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind continue;
 +         StorageLive(_2);
 +         _2 = sleep;
 +         StorageLive(_6);

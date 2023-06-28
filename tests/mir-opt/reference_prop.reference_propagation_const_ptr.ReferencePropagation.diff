@@ -242,7 +242,7 @@
           StorageLive(_7);
           StorageLive(_8);
           _8 = ();
-          _7 = opaque::<()>(move _8) -> bb1;
+          _7 = opaque::<()>(move _8) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -269,7 +269,7 @@
           StorageLive(_15);
           StorageLive(_16);
           _16 = ();
-          _15 = opaque::<()>(move _16) -> bb2;
+          _15 = opaque::<()>(move _16) -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -293,7 +293,7 @@
           StorageLive(_22);
           StorageLive(_23);
           _23 = _20;
-          _22 = opaque::<&*const usize>(move _23) -> bb3;
+          _22 = opaque::<&*const usize>(move _23) -> [return: bb3, unwind continue];
       }
   
       bb3: {
@@ -317,7 +317,7 @@
           StorageLive(_29);
           StorageLive(_30);
           _30 = _27;
-          _29 = opaque::<*mut *const usize>(move _30) -> bb4;
+          _29 = opaque::<*mut *const usize>(move _30) -> [return: bb4, unwind continue];
       }
   
       bb4: {
@@ -340,7 +340,7 @@
           StorageLive(_35);
           StorageLive(_36);
           _36 = _33;
-          _35 = opaque::<*const usize>(move _36) -> bb5;
+          _35 = opaque::<*const usize>(move _36) -> [return: bb5, unwind continue];
       }
   
       bb5: {
@@ -369,7 +369,7 @@
           StorageLive(_44);
           StorageLive(_45);
           _45 = _43;
-          _44 = opaque::<*const usize>(move _45) -> bb6;
+          _44 = opaque::<*const usize>(move _45) -> [return: bb6, unwind continue];
       }
   
       bb6: {
@@ -392,7 +392,7 @@
           StorageLive(_49);
           StorageLive(_50);
           _50 = ();
-          _49 = opaque::<()>(move _50) -> bb7;
+          _49 = opaque::<()>(move _50) -> [return: bb7, unwind continue];
       }
   
       bb7: {
@@ -414,7 +414,7 @@
           StorageLive(_55);
           StorageLive(_56);
           _56 = ();
-          _55 = opaque::<()>(move _56) -> bb8;
+          _55 = opaque::<()>(move _56) -> [return: bb8, unwind continue];
       }
   
       bb8: {
@@ -437,7 +437,7 @@
           StorageLive(_62);
           StorageLive(_63);
           _63 = ();
-          _62 = opaque::<()>(move _63) -> bb9;
+          _62 = opaque::<()>(move _63) -> [return: bb9, unwind continue];
       }
   
       bb9: {
@@ -462,7 +462,7 @@
           StorageLive(_69);
           StorageLive(_70);
           _70 = ();
-          _69 = opaque::<()>(move _70) -> bb10;
+          _69 = opaque::<()>(move _70) -> [return: bb10, unwind continue];
       }
   
       bb10: {
@@ -486,7 +486,7 @@
           StorageLive(_75);
           StorageLive(_76);
           _76 = ();
-          _75 = opaque::<()>(move _76) -> bb11;
+          _75 = opaque::<()>(move _76) -> [return: bb11, unwind continue];
       }
   
       bb11: {

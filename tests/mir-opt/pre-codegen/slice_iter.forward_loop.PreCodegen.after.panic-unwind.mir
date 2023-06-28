@@ -152,7 +152,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb6: {
         StorageDead(_16);
         StorageDead(_14);
-        drop(_2) -> bb7;
+        drop(_2) -> [return: bb7, unwind continue];
     }
 
     bb7: {
