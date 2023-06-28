@@ -8,6 +8,7 @@ use std::{
 };
 
 use anyhow::Context;
+
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
     HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
@@ -20,9 +21,9 @@ use lsp_types::{
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeLens, CompletionItem, FoldingRange, FoldingRangeParams, HoverContents, InlayHint,
     InlayHintParams, Location, LocationLink, Position, PrepareRenameResponse, Range, RenameParams,
-    SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    ResourceOp, ResourceOperationKind, SemanticTokensDeltaParams, SemanticTokensFullDeltaResult,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
@@ -33,7 +34,7 @@ use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
-    config::{RustfmtConfig, WorkspaceSymbolConfig},
+    config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diff::diff,
     from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
@@ -1030,7 +1031,23 @@ pub(crate) fn handle_rename(
     if !change.file_system_edits.is_empty() && snap.config.will_rename() {
         change.source_file_edits.clear();
     }
+
     let workspace_edit = to_proto::workspace_edit(&snap, change)?;
+
+    if let Some(lsp_types::DocumentChanges::Operations(ops)) =
+        workspace_edit.document_changes.as_ref()
+    {
+        for op in ops {
+            if let lsp_types::DocumentChangeOperation::Op(doc_change_op) = op {
+                if let Err(err) =
+                    resource_ops_supported(&snap.config, resolve_resource_op(doc_change_op))
+                {
+                    return Err(err);
+                }
+            }
+        }
+    }
+
     Ok(Some(workspace_edit))
 }
 
@@ -1137,6 +1154,20 @@ pub(crate) fn handle_code_action(
         let resolve_data =
             if code_action_resolve_cap { Some((index, params.clone())) } else { None };
         let code_action = to_proto::code_action(&snap, assist, resolve_data)?;
+
+        // Check if the client supports the necessary `ResourceOperation`s.
+        if let Some(changes) = &code_action.edit.as_ref().unwrap().document_changes {
+            for change in changes {
+                if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
+                    if let Err(err) =
+                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
+                    {
+                        return Err(err);
+                    }
+                }
+            }
+        }
+
         res.push(code_action)
     }
 
@@ -1219,6 +1250,21 @@ pub(crate) fn handle_code_action_resolve(
     let ca = to_proto::code_action(&snap, assist.clone(), None)?;
     code_action.edit = ca.edit;
     code_action.command = ca.command;
+
+    if let Some(edit) = code_action.edit.as_ref() {
+        if let Some(changes) = edit.document_changes.as_ref() {
+            for change in changes {
+                if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
+                    if let Err(err) =
+                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
+                    {
+                        return Err(err);
+                    }
+                }
+            }
+        }
+    }
+
     Ok(code_action)
 }
 
@@ -1989,4 +2035,44 @@ fn to_url(path: VfsPath) -> Option<Url> {
     let path = path.as_path()?;
     let str_path = path.as_os_str().to_str()?;
     Url::from_file_path(str_path).ok()
+}
+
+fn resource_ops_supported(config: &Config, kind: ResourceOperationKind) -> anyhow::Result<()> {
+    let ctn = config
+        .caps()
+        .workspace
+        .as_ref()
+        .unwrap()
+        .workspace_edit
+        .as_ref()
+        .unwrap()
+        .resource_operations
+        .as_ref()
+        .unwrap()
+        .contains(&kind);
+
+    if !ctn {
+        return Err(LspError::new(
+            ErrorCode::RequestFailed as i32,
+            format!(
+                "Client does not support {} capability.",
+                match kind {
+                    ResourceOperationKind::Create => "create",
+                    ResourceOperationKind::Rename => "rename",
+                    ResourceOperationKind::Delete => "delete",
+                }
+            ),
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
+fn resolve_resource_op(op: &ResourceOp) -> ResourceOperationKind {
+    match op {
+        ResourceOp::Create(_) => ResourceOperationKind::Create,
+        ResourceOp::Rename(_) => ResourceOperationKind::Rename,
+        ResourceOp::Delete(_) => ResourceOperationKind::Delete,
+    }
 }

@@ -113,6 +113,14 @@ impl<'a> Project<'a> {
                             relative_pattern_support: None,
                         },
                     ),
+                    workspace_edit: Some(lsp_types::WorkspaceEditClientCapabilities {
+                        resource_operations: Some(vec![
+                            lsp_types::ResourceOperationKind::Create,
+                            lsp_types::ResourceOperationKind::Delete,
+                            lsp_types::ResourceOperationKind::Rename,
+                        ]),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 text_document: Some(lsp_types::TextDocumentClientCapabilities {
