@@ -104,7 +104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let err = self.tcx.ty_error_misc();
             let callee_ty = method.map_or(err, |method| self.tcx.mk_fn_def(method.def_id, method.substs));
-            
+
             // FIXME(callable_trait): make this work automatically with `check_callable`
             self.check_argument_types(
                 sp,
