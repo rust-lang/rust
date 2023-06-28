@@ -1483,9 +1483,9 @@ a.tooltip:hover::after {
 	opacity: 1;
 }
 
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus,
-button#toggle-all-docs:hover, button#toggle-all-docs:focus {
+#settings-menu > a:hover, #settings-menu > a:focus-visible,
+#help-button > a:hover, #help-button > a:focus-visible,
+button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	border-color: var(--settings-button-border-focus);
 }
 
@@ -1677,7 +1677,7 @@ details.toggle[open] > summary::before {
 	/* toggle minus */
 	background: url('data:image/svg+xml,<svg width="17" height="17" \
 shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M2.5 2.5h12v12h-12v-12.5" stroke="%23999"/><path d="M6 8.5h5"/></svg>') no-repeat top left;
+d="M2.5 2.5h12v12h-12v-12.5"/><path d="M6 8.5h5"/></svg>') no-repeat top left;
 }
 
 details.toggle[open] > summary::after {
@@ -2381,6 +2381,14 @@ in src-script.js
 	--scrape-example-help-hover-color: #fff;
 	--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
+}
+
+/* Other themes give the toggle-all-docs button the same color as the rest of
+	the toolbar buttons. Dark theme makes it less bright and noticeable. */
+:root[data-theme="dark"] button#toggle-all-docs {
+	background-color: transparent;
+	border-color: grey;
+	color: #ddd;
 }
 /* End theme: dark */
 

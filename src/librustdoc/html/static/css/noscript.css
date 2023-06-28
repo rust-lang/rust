@@ -239,5 +239,13 @@ nav.sub {
 		--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 	}
+
+	/* Other themes give the toggle-all-docs button the same color as the rest of
+		the toolbar buttons. Dark theme makes it less bright and noticeable. */
+	:root button#toggle-all-docs {
+		background-color: transparent;
+		border-color: grey;
+		color: #ddd;
+	}
 /* End theme: dark */
 }

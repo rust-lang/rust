@@ -103,7 +103,7 @@ call-function: (
         "main_heading_type_color": "#2dbfb8",
         "src_link_color": "#d2991d",
         "sidebar_link_color": "#fdbf35",
-        "button_color": "#000",
+        "button_color": "#ddd",
     },
 )
 call-function: (
