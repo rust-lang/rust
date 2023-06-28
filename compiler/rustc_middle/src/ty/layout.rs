@@ -15,7 +15,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
-use std::cmp;
+use std::cmp::{self, Ordering};
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
@@ -313,7 +313,16 @@ impl<'tcx> SizeSkeleton<'tcx> {
     ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
 
-        // First try computing a static layout.
+        // First, try computing an exact naive layout (this covers simple types with generic
+        // references, where a full static layout would fail).
+        if let Ok(layout) = tcx.naive_layout_of(param_env.and(ty)) {
+            if layout.is_exact {
+                return Ok(SizeSkeleton::Known(layout.min_size));
+            }
+        }
+
+        // Second, try computing a full static layout (this covers cases when the naive layout
+        // wasn't smart enough, but cannot deal with generic references).
         let err = match tcx.layout_of(param_env.and(ty)) {
             Ok(layout) => {
                 return Ok(SizeSkeleton::Known(layout.size));
@@ -327,6 +336,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ) => return Err(e),
         };
 
+        // Third, fall back to ad-hoc cases.
         match *ty.kind() {
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
@@ -645,18 +655,28 @@ impl std::ops::DerefMut for TyAndNaiveLayout<'_> {
 pub struct NaiveLayout {
     pub min_size: Size,
     pub min_align: Align,
+    // If `true`, `min_size` and `min_align` are guaranteed to be exact.
+    pub is_exact: bool,
 }
 
 impl NaiveLayout {
-    pub const EMPTY: Self = Self { min_size: Size::ZERO, min_align: Align::ONE };
+    pub const UNKNOWN: Self = Self { min_size: Size::ZERO, min_align: Align::ONE, is_exact: false };
+    pub const EMPTY: Self = Self { min_size: Size::ZERO, min_align: Align::ONE, is_exact: true };
 
-    pub fn is_underestimate_of(&self, layout: Layout<'_>) -> bool {
-        self.min_size <= layout.size() && self.min_align <= layout.align().abi
+    pub fn is_compatible_with(&self, layout: Layout<'_>) -> bool {
+        let cmp = |cmp: Ordering| match (cmp, self.is_exact) {
+            (Ordering::Less | Ordering::Equal, false) => true,
+            (Ordering::Equal, true) => true,
+            (_, _) => false,
+        };
+
+        cmp(self.min_size.cmp(&layout.size())) && cmp(self.min_align.cmp(&layout.align().abi))
     }
 
     #[must_use]
-    pub fn pad_to_align(self) -> Self {
-        Self { min_size: self.min_size.align_to(self.min_align), min_align: self.min_align }
+    pub fn pad_to_align(mut self) -> Self {
+        self.min_size = self.min_size.align_to(self.min_align);
+        self
     }
 
     #[must_use]
@@ -664,6 +684,7 @@ impl NaiveLayout {
         Some(Self {
             min_size: self.min_size.checked_add(other.min_size, cx)?,
             min_align: std::cmp::max(self.min_align, other.min_align),
+            is_exact: self.is_exact && other.is_exact,
         })
     }
 
@@ -672,6 +693,7 @@ impl NaiveLayout {
         Self {
             min_size: std::cmp::max(self.min_size, other.min_size),
             min_align: std::cmp::max(self.min_align, other.min_align),
+            is_exact: self.is_exact && other.is_exact,
         }
     }
 }

@@ -90,9 +90,9 @@ fn layout_of<'tcx>(
     let cx = LayoutCx { tcx, param_env };
     let layout = layout_of_uncached(&cx, ty)?;
 
-    if !naive.is_underestimate_of(layout) {
+    if !naive.is_compatible_with(layout) {
         bug!(
-            "the estimated naive layout is bigger than the actual layout:\n{:#?}\n{:#?}",
+            "the naive layout isn't compatible with the actual layout:\n{:#?}\n{:#?}",
             naive,
             layout,
         );
@@ -119,15 +119,23 @@ fn naive_layout_of_uncached<'tcx>(
     let tcx = cx.tcx;
     let dl = cx.data_layout();
 
-    let scalar =
-        |value: Primitive| NaiveLayout { min_size: value.size(dl), min_align: value.align(dl).abi };
+    let scalar = |value: Primitive| NaiveLayout {
+        min_size: value.size(dl),
+        min_align: value.align(dl).abi,
+        is_exact: true,
+    };
 
     let univariant = |fields: &mut dyn Iterator<Item = Ty<'tcx>>,
                       repr: &ReprOptions|
      -> Result<NaiveLayout, &'tcx LayoutError<'tcx>> {
+        if repr.pack.is_some() && repr.align.is_some() {
+            cx.tcx.sess.delay_span_bug(DUMMY_SP, "struct cannot be packed and aligned");
+            return Err(error(cx, LayoutError::Unknown(ty)));
+        }
+
         // For simplicity, ignore inter-field padding; this may underestimate the size.
         // FIXME(reference_niches): Be smarter and implement something closer to the real layout logic.
-        let mut layout = NaiveLayout::EMPTY;
+        let mut layout = NaiveLayout::UNKNOWN;
         for field in fields {
             let field = cx.naive_layout_of(field)?;
             layout = layout
@@ -192,12 +200,14 @@ fn naive_layout_of_uncached<'tcx>(
                     .min_size
                     .checked_mul(count, cx)
                     .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?,
-                min_align: element.min_align,
+                ..*element
             }
         }
-        ty::Slice(element) => {
-            NaiveLayout { min_size: Size::ZERO, min_align: cx.naive_layout_of(element)?.min_align }
-        }
+        ty::Slice(element) => NaiveLayout {
+            min_size: Size::ZERO,
+            // NOTE: this could be unconditionally exact if `NaiveLayout` guaranteed exact align.
+            ..*cx.naive_layout_of(element)?
+        },
         ty::Str => NaiveLayout::EMPTY,
 
         // Odd unit types.
@@ -205,7 +215,7 @@ fn naive_layout_of_uncached<'tcx>(
 
         // FIXME(reference_niches): try to actually compute a reasonable layout estimate,
         // without duplicating too much code from `generator_layout`.
-        ty::Generator(..) => NaiveLayout::EMPTY,
+        ty::Generator(..) => NaiveLayout::UNKNOWN,
 
         ty::Closure(_, ref substs) => {
             univariant(&mut substs.as_closure().upvar_tys(), &ReprOptions::default())?
@@ -223,12 +233,21 @@ fn naive_layout_of_uncached<'tcx>(
         }
 
         ty::Adt(def, substs) => {
-            // For simplicity, assume that any discriminant field (if it exists)
-            // gets niched inside one of the variants; this will underestimate the size
-            // (and sometimes alignment) of enums.
-            // FIXME(reference_niches): Be smarter and actually take into accoount the discriminant.
             let repr = def.repr();
-            def.variants().iter().try_fold(NaiveLayout::EMPTY, |layout, v| {
+            let base = if def.is_struct() && !repr.simd() {
+                // FIXME(reference_niches): compute proper alignment for SIMD types.
+                NaiveLayout::EMPTY
+            } else {
+                // For simplicity, assume that any discriminant field (if it exists)
+                // gets niched inside one of the variants; this will underestimate the size
+                // (and sometimes alignment) of enums.
+                // FIXME(reference_niches): Be smarter and actually take into accoount the discriminant.
+                // Also consider adding a special case for null-optimized enums, so that we can have
+                // `Option<&T>: PointerLike` in generic contexts.
+                NaiveLayout::UNKNOWN
+            };
+
+            def.variants().iter().try_fold(base, |layout, v| {
                 let mut fields = v.fields.iter().map(|f| f.ty(tcx, substs));
                 let vlayout = univariant(&mut fields, &repr)?;
                 Ok(layout.union(&vlayout))
@@ -260,12 +279,10 @@ fn univariant_uninterned<'tcx>(
     kind: StructKind,
 ) -> Result<LayoutS, &'tcx LayoutError<'tcx>> {
     let dl = cx.data_layout();
-    let pack = repr.pack;
-    if pack.is_some() && repr.align.is_some() {
-        cx.tcx.sess.delay_span_bug(DUMMY_SP, "struct cannot be packed and aligned");
-        return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
-    }
-
+    assert!(
+        !(repr.pack.is_some() && repr.align.is_some()),
+        "already rejected by `naive_layout_of`"
+    );
     cx.univariant(dl, fields, repr, kind).ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))
 }
 
@@ -325,17 +342,7 @@ fn layout_of_uncached<'tcx>(
             if !ty.is_unsafe_ptr() {
                 // Calling `layout_of` here would cause a query cycle for recursive types;
                 // so use a conservative estimate that doesn't look past references.
-                let naive = match cx.naive_layout_of(pointee) {
-                    Ok(n) => n.layout,
-                    // This can happen when computing the `SizeSkeleton` of a generic type.
-                    Err(LayoutError::Unknown(_)) => {
-                        // TODO(reference_niches): this is *very* incorrect, but we can't
-                        // return an error here; this would break transmute checks.
-                        // We need some other solution.
-                        NaiveLayout::EMPTY
-                    }
-                    Err(err) => return Err(err),
-                };
+                let naive = cx.naive_layout_of(pointee)?.layout;
 
                 let niches = match *pointee.kind() {
                     ty::FnDef(def, ..)
