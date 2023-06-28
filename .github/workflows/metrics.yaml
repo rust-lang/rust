@@ -12,6 +12,7 @@ env:
 
 jobs:
   setup_cargo:
+    if: github.repository == 'rust-lang/rust-analyzer'
     runs-on: ubuntu-latest
     steps:
       - name: Install Rust toolchain
