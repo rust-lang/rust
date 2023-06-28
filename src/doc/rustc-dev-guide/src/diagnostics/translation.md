@@ -86,10 +86,10 @@ excellent examples of translating messages into different locales and the
 information that needs to be provided by the code to do so.
 
 ### Compile-time validation and typed identifiers
-rustc's Fluent resources for the default locale (`en-US`) are in the
-[`compiler/rustc_error_messages/messages.ftl`] file. Currently, each crate
-which defines translatable diagnostics has its own Fluent resource in
-a file named `messages.ftl`.
+Currently, each crate which defines translatable diagnostics has its own
+Fluent resource in a file named `messages.ftl`, such as
+[`compiler/rustc_borrowck/messages.ftl`] and
+[`compiler/rustc_parse/messages.ftl`].
 
 rustc's `fluent_messages` macro performs compile-time validation of Fluent
 resources and generates code to make it easier to refer to Fluent messages in
@@ -240,5 +240,6 @@ won't fail. Bundle loading can fail if a requested locale is missing, Fluent
 files are malformed, or a message is duplicated in multiple resources.
 
 [Fluent]: https://projectfluent.org
-[`compiler/rustc_error_messages/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_error_messages/messages.ftl
+[`compiler/rustc_borrowck/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_borrowck/messages.ftl
+[`compiler/rustc_parse/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/messages.ftl
 [`rustc_error_messages::DiagnosticMessage`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_messages/enum.DiagnosticMessage.html
