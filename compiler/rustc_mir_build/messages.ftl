@@ -214,6 +214,9 @@ mir_build_mutation_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsa
 
 mir_build_non_const_path = runtime values cannot be referenced in patterns
 
+mir_build_non_exhaustive_match_all_arms_guarded =
+    match arms with guards don't count towards exhaustivity
+
 mir_build_non_exhaustive_omitted_pattern = some variants are not matched explicitly
     .help = ensure that all variants are matched explicitly by adding the suggested match arms
     .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
