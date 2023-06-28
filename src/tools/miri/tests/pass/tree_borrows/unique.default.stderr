@@ -1,0 +1,21 @@
+──────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  1
+| Act|    └─┬──<TAG=root of the allocation>
+| Res|      └─┬──<TAG=base>
+| Res|        └────<TAG=raw, uniq, uniq>
+──────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  1
+| Act|    └─┬──<TAG=root of the allocation>
+| Act|      └─┬──<TAG=base>
+| Act|        └────<TAG=raw, uniq, uniq>
+──────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  1
+| Act|    └─┬──<TAG=root of the allocation>
+| Act|      └─┬──<TAG=base>
+| Act|        └────<TAG=raw, uniq, uniq>
+──────────────────────────────────────────────────────────────────────

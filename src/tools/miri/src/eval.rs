@@ -90,6 +90,10 @@ pub struct MiriConfig {
     pub validate: bool,
     /// Determines if Stacked Borrows or Tree Borrows is enabled.
     pub borrow_tracker: Option<BorrowTrackerMethod>,
+    /// Whether `core::ptr::Unique` receives special treatment.
+    /// If `true` then `Unique` is reborrowed with its own new tag and permission,
+    /// otherwise `Unique` is just another raw pointer.
+    pub unique_is_unique: bool,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
     /// Controls function [ABI](Abi) checking.
@@ -156,6 +160,7 @@ impl Default for MiriConfig {
             env: vec![],
             validate: true,
             borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
+            unique_is_unique: false,
             check_alignment: AlignmentCheck::Int,
             check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),

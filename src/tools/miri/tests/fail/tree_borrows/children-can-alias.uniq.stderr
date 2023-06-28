@@ -1,0 +1,37 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> $DIR/children-can-alias.rs:LL:CC
+   |
+LL |     child2.write(2);
+   |     ^^^^^^^^^^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Disabled which forbids this child write access
+help: the accessed tag <TAG> was created here
+  --> $DIR/children-can-alias.rs:LL:CC
+   |
+LL |     let child2 = x.as_ptr();
+   |                  ^^^^^^^^^^
+help: the conflicting tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/children-can-alias.rs:LL:CC
+   |
+LL |     let child2 = x.as_ptr();
+   |                  ^
+help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x1]
+  --> $DIR/children-can-alias.rs:LL:CC
+   |
+LL |     child1.write(1);
+   |     ^^^^^^^^^^^^^^^
+   = help: this transition corresponds to a loss of read and write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `raw_children_of_unique_can_alias` at $DIR/children-can-alias.rs:LL:CC
+note: inside `main`
+  --> $DIR/children-can-alias.rs:LL:CC
+   |
+LL |         raw_children_of_unique_can_alias(Unique::new_unchecked(raw));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -17,6 +17,7 @@ fn main() {
 unsafe fn alignment_check() {
     let data: &mut [u8] = &mut [0; 1024];
     name!(data.as_ptr()=>2, "data");
+    name!(data.as_ptr()=>2, "data");
     let alloc_id = alloc_id!(data.as_ptr());
     let x = &mut data[1];
     name!(x as *mut _, "data[1]");

@@ -435,6 +435,9 @@ to Miri failing to detect cases of undefined behavior in a program.
   so with this flag.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
+* `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure
+  that it could theoretically be considered `noalias`. This flag is experimental and has
+  an effect only when used with `-Zmiri-tree-borrows`.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
