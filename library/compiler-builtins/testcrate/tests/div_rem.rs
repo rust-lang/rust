@@ -109,7 +109,16 @@ macro_rules! float {
             fuzz_float_2(N, |x: $i, y: $i| {
                 let quo0 = x / y;
                 let quo1: $i = $fn(x, y);
-                // division of subnormals is not currently handled
+                #[cfg(not(target_arch = "arm"))]
+                if !Float::eq_repr(quo0, quo1) {
+                    panic!(
+                        "{}({}, {}): std: {}, builtins: {}",
+                        stringify!($fn), x, y, quo0, quo1
+                    );
+                }
+
+                // ARM SIMD instructions always flush subnormals to zero
+                #[cfg(target_arch = "arm")]
                 if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
