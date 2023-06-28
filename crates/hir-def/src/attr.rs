@@ -273,7 +273,14 @@ impl Attrs {
     }
 
     pub fn is_test(&self) -> bool {
-        self.by_key("test").exists()
+        self.iter().any(|x| {
+            x.path()
+                .segments()
+                .iter()
+                .rev()
+                .zip(["core", "prelude", "v1", "test"].iter().rev())
+                .all(|x| x.0.as_str() == Some(x.1))
+        })
     }
 
     pub fn is_ignore(&self) -> bool {

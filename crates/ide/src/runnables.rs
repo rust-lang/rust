@@ -589,6 +589,9 @@ fn main() {}
 #[test]
 fn test_foo() {}
 
+#[::core::prelude::v1::test]
+fn test_full_path() {}
+
 #[test]
 #[ignore]
 fn test_foo() {}
@@ -600,7 +603,7 @@ mod not_a_root {
     fn main() {}
 }
 "#,
-            &[TestMod, Bin, Test, Test, Bench],
+            &[TestMod, Bin, Test, Test, Test, Bench],
             expect![[r#"
                 [
                     Runnable {
@@ -609,7 +612,7 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 0..137,
+                            full_range: 0..190,
                             name: "",
                             kind: Module,
                         },
@@ -659,8 +662,29 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 41..75,
-                            focus_range: 62..70,
+                            full_range: 41..92,
+                            focus_range: 73..87,
+                            name: "test_full_path",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_full_path",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 94..128,
+                            focus_range: 115..123,
                             name: "test_foo",
                             kind: Function,
                         },
@@ -680,8 +704,8 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 77..99,
-                            focus_range: 89..94,
+                            full_range: 130..152,
+                            focus_range: 142..147,
                             name: "bench",
                             kind: Function,
                         },
