@@ -1,7 +1,6 @@
 //! Set and unset common attributes on LLVM values.
 
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::small_str::SmallStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::{self, TyCtxt};
@@ -481,8 +480,8 @@ pub fn from_fn_attrs<'ll, 'tcx>(
 
     let global_features = cx.tcx.global_backend_features(()).iter().map(|s| s.as_str());
     let function_features = function_features.iter().map(|s| s.as_str());
-    let target_features =
-        global_features.chain(function_features).intersperse(",").collect::<SmallStr<1024>>();
+    let target_features: String =
+        global_features.chain(function_features).intersperse(",").collect();
     if !target_features.is_empty() {
         to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
     }
