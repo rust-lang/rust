@@ -2656,6 +2656,8 @@ fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
     }
 }
 
+/// Remove attributes from `normal` that should not be inherited by `use` re-export.
+/// Before calling this function, make sure `normal` is a `#[doc]` attribute.
 fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
     match normal.item.args {
         ast::AttrArgs::Delimited(ref mut args) => {
