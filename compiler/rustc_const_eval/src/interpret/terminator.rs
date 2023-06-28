@@ -172,7 +172,77 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            TailCall { func: _, args: _, fn_span: _ } => todo!(),
+            TailCall { ref func, ref args, fn_span: _ } => {
+                // FIXME(explicit_tail_calls): a lot of code here is duplicated with normal calls, can we refactor this?
+                let old_frame_idx = self.frame_idx();
+                let func = self.eval_operand(func, None)?;
+                let args = self.eval_fn_call_arguments(args)?;
+
+                let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
+                let fn_sig =
+                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+                let extra_args = &args[fn_sig.inputs().len()..];
+                let extra_args =
+                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
+
+                let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+                    ty::FnPtr(_sig) => {
+                        let fn_ptr = self.read_pointer(&func)?;
+                        let fn_val = self.get_ptr_fn(fn_ptr)?;
+                        (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
+                    }
+                    ty::FnDef(def_id, substs) => {
+                        let instance = self.resolve(def_id, substs)?;
+                        (
+                            FnVal::Instance(instance),
+                            self.fn_abi_of_instance(instance, extra_args)?,
+                            instance.def.requires_caller_location(*self.tcx),
+                        )
+                    }
+                    _ => span_bug!(
+                        terminator.source_info.span,
+                        "invalid callee of type {:?}",
+                        func.layout.ty
+                    ),
+                };
+
+                // This is the "canonical" implementation of tails calls,
+                // a pop of the current stack frame, followed by a normal call
+                // which pushes a new stack frame, with the return address from
+                // the popped stack frame.
+                //
+                // Note that we can't use `pop_stack_frame` as it "executes"
+                // the goto to the return block, but we don't want to,
+                // only the tail called function should return to the current
+                // return block.
+                let Some(prev_frame) = self.stack_mut().pop() else {
+                    span_bug!(
+                        terminator.source_info.span,
+                        "empty stack while evaluating this tail call"
+                    )
+                };
+
+                let StackPopCleanup::Goto { ret, unwind } = prev_frame.return_to_block else {
+                    span_bug!(terminator.source_info.span, "tail call with the root stack frame")
+                };
+
+                self.eval_fn_call(
+                    fn_val,
+                    (fn_sig.abi, fn_abi),
+                    &args,
+                    with_caller_location,
+                    &prev_frame.return_place,
+                    ret,
+                    unwind,
+                )?;
+
+                if self.frame_idx() != old_frame_idx {
+                    span_bug!(
+                        terminator.source_info.span,
+                        "evaluating this tail call pushed a new stack frame"
+                    );
+                }
+            }
 
             Drop { place, target, unwind, replace: _ } => {
                 let place = self.eval_place(place)?;
