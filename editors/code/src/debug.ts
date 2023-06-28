@@ -147,8 +147,9 @@ async function getDebugConfiguration(
         debugConfig.name = `run ${path.basename(executable)}`;
     }
 
-    if (debugConfig.cwd) {
-        debugConfig.cwd = simplifyPath(debugConfig.cwd);
+    const cwd = debugConfig["cwd"];
+    if (cwd) {
+        debugConfig["cwd"] = simplifyPath(cwd);
     }
 
     return debugConfig;

@@ -176,7 +176,7 @@ export const getPathForExecutable = memoizeAsync(
 );
 
 async function lookupInPath(exec: string): Promise<boolean> {
-    const paths = process.env.PATH ?? "";
+    const paths = process.env["PATH"] ?? "";
 
     const candidates = paths.split(path.delimiter).flatMap((dirInPath) => {
         const candidate = path.join(dirInPath, exec);

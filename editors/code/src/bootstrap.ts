@@ -36,7 +36,7 @@ async function getServer(
     config: Config,
     state: PersistentState
 ): Promise<string | undefined> {
-    const explicitPath = process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
+    const explicitPath = process.env["__RA_LSP_SERVER_DEBUG"] ?? config.serverPath;
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
             return os.homedir() + explicitPath.slice("~".length);

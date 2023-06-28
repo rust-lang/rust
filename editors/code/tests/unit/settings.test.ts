@@ -57,7 +57,7 @@ export async function getTests(ctx: Context) {
                 USING_VSCODE_VAR: "${workspaceFolderBasename}",
             };
             const actualEnv = await substituteVariablesInEnv(envJson);
-            assert.deepStrictEqual(actualEnv.USING_VSCODE_VAR, "code");
+            assert.deepStrictEqual(actualEnv["USING_VSCODE_VAR"], "code");
         });
     });
 }
