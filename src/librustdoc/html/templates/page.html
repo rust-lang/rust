@@ -24,7 +24,7 @@
       {% endfor %}
     ></script> {# #}
     {% endif %}
-    <div id="rustdoc-vars" {#+ #}
+    <meta name="rustdoc-vars" {#+ #}
          data-root-path="{{page.root_path|safe}}" {#+ #}
          data-static-root-path="{{static_root_path|safe}}" {#+ #}
          data-current-crate="{{layout.krate}}" {#+ #}
@@ -39,7 +39,6 @@
          data-theme-dark-css="{{files.theme_dark_css}}" {#+ #}
          data-theme-ayu-css="{{files.theme_ayu_css}}" {#+ #}
     > {# #}
-    </div> {# #}
     <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {# #}
     {% if page.css_class.contains("crate") %}
     <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {# #}
