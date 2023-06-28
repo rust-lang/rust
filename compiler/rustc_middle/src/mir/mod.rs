@@ -2806,13 +2806,16 @@ fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Resul
     write!(fmt, "b\"{}\"", byte_str.escape_ascii())
 }
 
-fn comma_sep<'tcx>(fmt: &mut Formatter<'_>, elems: Vec<ConstantKind<'tcx>>) -> fmt::Result {
+fn comma_sep<'tcx>(
+    fmt: &mut Formatter<'_>,
+    elems: Vec<(ConstValue<'tcx>, Ty<'tcx>)>,
+) -> fmt::Result {
     let mut first = true;
-    for elem in elems {
+    for (ct, ty) in elems {
         if !first {
             fmt.write_str(", ")?;
         }
-        fmt.write_str(&format!("{}", elem))?;
+        pretty_print_const_value(ct, ty, fmt, true)?;
         first = false;
     }
     Ok(())
@@ -2925,12 +2928,14 @@ fn pretty_print_const_value<'tcx>(
                                 None => {
                                     fmt.write_str(" {{ ")?;
                                     let mut first = true;
-                                    for (field_def, field) in iter::zip(&variant_def.fields, fields)
+                                    for (field_def, (ct, ty)) in
+                                        iter::zip(&variant_def.fields, fields)
                                     {
                                         if !first {
                                             fmt.write_str(", ")?;
                                         }
-                                        fmt.write_str(&format!("{}: {}", field_def.name, field))?;
+                                        write!(fmt, "{}: ", field_def.name)?;
+                                        pretty_print_const_value(ct, ty, fmt, true)?;
                                         first = false;
                                     }
                                     fmt.write_str(" }}")?;
