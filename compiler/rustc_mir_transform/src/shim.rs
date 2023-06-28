@@ -71,8 +71,17 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             // of this function. Is this intentional?
             if let Some(ty::Generator(gen_def_id, args, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
-                let body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
+                let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
                 debug!("make_shim({:?}) = {:?}", instance, body);
+
+                // Run empty passes to mark phase change and perform validation.
+                pm::run_passes(
+                    tcx,
+                    &mut body,
+                    &[],
+                    Some(MirPhase::Runtime(RuntimePhase::Optimized)),
+                );
+
                 return body;
             }
 
