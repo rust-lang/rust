@@ -97,7 +97,7 @@ all free regions during codegen we must not rely on them during typeck. A notewo
 is special behavior for `'static`.
 
 We also have to be careful with relying on equality of regions in the trait solver.
-This is fine for codegen, as we treat all erased regions are equal. We can however
+This is fine for codegen, as we treat all erased regions as equal. We can however
 lose equality information from HIR to MIR typeck.
 
 ### 7. Removing ambiguity makes strictly more things compile
