@@ -73,13 +73,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
         return None;
     }
 
-    let assoc_items = impl_ast.assoc_item_list();
-    if assoc_items.is_none() {
-        // Also do not do anything if no assoc item is there.
-        return None;
-    }
-
-    let assoc_items = assoc_items.unwrap();
+    let assoc_items = impl_ast.assoc_item_list()?;
     let first_element = assoc_items.assoc_items().next();
     if first_element.is_none() {
         // No reason for an assist.
