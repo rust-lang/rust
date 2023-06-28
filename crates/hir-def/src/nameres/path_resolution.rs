@@ -12,11 +12,12 @@
 
 use base_db::Edition;
 use hir_expand::name::Name;
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,
     item_scope::BUILTIN_SCOPE,
-    nameres::{sub_namespace_match, BuiltinShadowMode, DefMap, MacroSubNs},
+    nameres::{sub_namespace_match, BlockInfo, BuiltinShadowMode, DefMap, MacroSubNs},
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
@@ -159,13 +160,15 @@ impl DefMap {
                 (None, new) => new,
             };
 
-            match &current_map.block {
-                Some(block) => {
+            match current_map.block {
+                Some(block) if original_module == Self::ROOT => {
+                    // Block modules "inherit" names from its parent module.
                     original_module = block.parent.local_id;
                     arc = block.parent.def_map(db, current_map.krate);
-                    current_map = &*arc;
+                    current_map = &arc;
                 }
-                None => return result,
+                // Proper (non-block) modules, including those in block `DefMap`s, don't.
+                _ => return result,
             }
         }
     }
@@ -189,7 +192,7 @@ impl DefMap {
         ));
 
         let mut segments = path.segments().iter().enumerate();
-        let mut curr_per_ns: PerNs = match path.kind {
+        let mut curr_per_ns = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
                     cov_mark::hit!(macro_dollar_crate_self);
@@ -241,51 +244,54 @@ impl DefMap {
                 )
             }
             PathKind::Super(lvl) => {
-                let mut module = original_module;
-                for i in 0..lvl {
-                    match self.modules[module].parent {
-                        Some(it) => module = it,
-                        None => match &self.block {
-                            Some(block) => {
-                                // Look up remaining path in parent `DefMap`
-                                let new_path = ModPath::from_segments(
-                                    PathKind::Super(lvl - i),
-                                    path.segments().to_vec(),
-                                );
-                                tracing::debug!(
-                                    "`super` path: {} -> {} in parent map",
-                                    path.display(db.upcast()),
-                                    new_path.display(db.upcast())
-                                );
-                                return block
-                                    .parent
-                                    .def_map(db, self.krate)
-                                    .resolve_path_fp_with_macro(
-                                        db,
-                                        mode,
-                                        block.parent.local_id,
-                                        &new_path,
-                                        shadow,
-                                        expected_macro_subns,
-                                    );
-                            }
-                            None => {
-                                tracing::debug!("super path in root module");
-                                return ResolvePathResult::empty(ReachedFixedPoint::Yes);
-                            }
-                        },
+                let mut local_id = original_module;
+                let mut ext;
+                let mut def_map = self;
+
+                // Adjust `local_id` to `self`, i.e. the nearest non-block module.
+                if def_map.module_id(local_id).is_block_module() {
+                    (ext, local_id) = adjust_to_nearest_non_block_module(db, def_map, local_id);
+                    def_map = &ext;
+                }
+
+                // Go up the module tree but skip block modules as `super` always refers to the
+                // nearest non-block module.
+                for _ in 0..lvl {
+                    // Loop invariant: at the beginning of each loop, `local_id` must refer to a
+                    // non-block module.
+                    if let Some(parent) = def_map.modules[local_id].parent {
+                        local_id = parent;
+                        if def_map.module_id(local_id).is_block_module() {
+                            (ext, local_id) =
+                                adjust_to_nearest_non_block_module(db, def_map, local_id);
+                            def_map = &ext;
+                        }
+                    } else {
+                        stdx::always!(def_map.block.is_none());
+                        tracing::debug!("super path in root module");
+                        return ResolvePathResult::empty(ReachedFixedPoint::Yes);
                     }
                 }
 
-                // Resolve `self` to the containing crate-rooted module if we're a block
-                self.with_ancestor_maps(db, module, &mut |def_map, module| {
-                    if def_map.block.is_some() {
-                        None // keep ascending
-                    } else {
-                        Some(PerNs::types(def_map.module_id(module).into(), Visibility::Public))
-                    }
-                })
-                .expect("block DefMap not rooted in crate DefMap")
+                let module = def_map.module_id(local_id);
+                stdx::never!(module.is_block_module());
+
+                if self.block != def_map.block {
+                    // If we have a different `DefMap` from `self` (the orignal `DefMap` we started
+                    // with), resolve the remaining path segments in that `DefMap`.
+                    let path =
+                        ModPath::from_segments(PathKind::Super(0), path.segments().iter().cloned());
+                    return def_map.resolve_path_fp_with_macro(
+                        db,
+                        mode,
+                        local_id,
+                        &path,
+                        shadow,
+                        expected_macro_subns,
+                    );
+                }
+
+                PerNs::types(module.into(), Visibility::Public)
             }
             PathKind::Abs => {
                 // 2018-style absolute path -- only extern prelude
@@ -505,6 +511,30 @@ impl DefMap {
             def_map[prelude.local_id].scope.get(name)
         } else {
             PerNs::none()
+        }
+    }
+}
+
+/// Given a block module, returns its nearest non-block module and the `DefMap` it blongs to.
+fn adjust_to_nearest_non_block_module(
+    db: &dyn DefDatabase,
+    def_map: &DefMap,
+    mut local_id: LocalModuleId,
+) -> (Arc<DefMap>, LocalModuleId) {
+    // INVARIANT: `local_id` in `def_map` must be a block module.
+    stdx::always!(def_map.module_id(local_id).is_block_module());
+
+    let mut ext;
+    // This needs to be a local variable due to our mighty lifetime.
+    let mut def_map = def_map;
+    loop {
+        let BlockInfo { parent, .. } = def_map.block.expect("block module without parent module");
+
+        ext = parent.def_map(db, def_map.krate);
+        def_map = &ext;
+        local_id = parent.local_id;
+        if !parent.is_block_module() {
+            return (ext, local_id);
         }
     }
 }

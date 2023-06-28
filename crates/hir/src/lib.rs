@@ -47,7 +47,7 @@ use hir_def::{
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     macro_id_to_def_id,
-    nameres::{self, diagnostics::DefDiagnostic, ModuleOrigin},
+    nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
@@ -505,15 +505,10 @@ impl Module {
     /// Finds nearest non-block ancestor `Module` (`self` included).
     pub fn nearest_non_block_module(self, db: &dyn HirDatabase) -> Module {
         let mut id = self.id;
-        loop {
-            let def_map = id.def_map(db.upcast());
-            let origin = def_map[id.local_id].origin;
-            if matches!(origin, ModuleOrigin::BlockExpr { .. }) {
-                id = id.containing_module(db.upcast()).expect("block without parent module")
-            } else {
-                return Module { id };
-            }
+        while id.is_block_module() {
+            id = id.containing_module(db.upcast()).expect("block without parent module");
         }
+        Module { id }
     }
 
     pub fn path_to_root(self, db: &dyn HirDatabase) -> Vec<Module> {

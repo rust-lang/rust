@@ -145,23 +145,27 @@ pub struct ModuleId {
 }
 
 impl ModuleId {
-    pub fn def_map(&self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
+    pub fn def_map(self, db: &dyn db::DefDatabase) -> Arc<DefMap> {
         match self.block {
             Some(block) => db.block_def_map(block),
             None => db.crate_def_map(self.krate),
         }
     }
 
-    pub fn krate(&self) -> CrateId {
+    pub fn krate(self) -> CrateId {
         self.krate
     }
 
-    pub fn containing_module(&self, db: &dyn db::DefDatabase) -> Option<ModuleId> {
+    pub fn containing_module(self, db: &dyn db::DefDatabase) -> Option<ModuleId> {
         self.def_map(db).containing_module(self.local_id)
     }
 
-    pub fn containing_block(&self) -> Option<BlockId> {
+    pub fn containing_block(self) -> Option<BlockId> {
         self.block
+    }
+
+    pub fn is_block_module(self) -> bool {
+        self.block.is_some() && self.local_id == DefMap::ROOT
     }
 }
 
