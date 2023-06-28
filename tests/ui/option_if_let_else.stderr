@@ -271,5 +271,23 @@ error: use Option::map_or instead of an if let/else
 LL |     let _ = if let Ok(a) = res { a + 1 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or(5, |a| a + 1)`
 
-error: aborting due to 21 previous errors
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:258:9
+   |
+LL | /         match initial {
+LL | |             Some(value) => do_something(value),
+LL | |             None => {},
+LL | |         }
+   | |_________^ help: try: `initial.as_ref().map_or({}, |value| do_something(value))`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:265:9
+   |
+LL | /         match initial {
+LL | |             Some(value) => do_something2(value),
+LL | |             None => {},
+LL | |         }
+   | |_________^ help: try: `initial.as_mut().map_or({}, |value| do_something2(value))`
+
+error: aborting due to 23 previous errors
 

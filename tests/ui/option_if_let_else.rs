@@ -249,3 +249,25 @@ fn issue9742() -> Option<&'static str> {
         _ => None,
     }
 }
+
+mod issue10729 {
+    #![allow(clippy::unit_arg, dead_code)]
+
+    pub fn reproduce(initial: &Option<String>) {
+        // 👇 needs `.as_ref()` because initial is an `&Option<_>`
+        match initial {
+            Some(value) => do_something(value),
+            None => {},
+        }
+    }
+
+    pub fn reproduce2(initial: &mut Option<String>) {
+        match initial {
+            Some(value) => do_something2(value),
+            None => {},
+        }
+    }
+
+    fn do_something(_value: &str) {}
+    fn do_something2(_value: &mut str) {}
+}
