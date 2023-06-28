@@ -156,13 +156,13 @@ jobs:
       - name: mark the job as a failure
         run: exit 1
 
-  # Send a Zulip notification when a cron job fails
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
     needs: [build, style]
     if: github.event_name == 'schedule' && (failure() || cancelled())
     steps:
+      # Send a Zulip notification
       - name: Install zulip-send
         run: pip3 install zulip
       - name: Send Zulip notification
@@ -185,3 +185,27 @@ jobs:
           Sincerely,
           The Miri Cronjobs Bot' \
             --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com
+      # Attempt to auto-sync with rustc
+      - name: install josh-proxy
+        run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
+      - name: start josh-proxy
+        run: josh-proxy --local=$HOME/.cache/josh --remote=https://github.com --no-background &
+      - name: setup bot git name and email
+        run: |
+          git config --global user.name 'The Miri Conjob Bot'
+          git config --global user.email 'miri@cron.bot'
+      - name: get changes from rustc
+        run: ./miri rustc-pull
+      - name: format changes (if any)
+        run: |
+          ./miri toolchain
+          ./miri fmt --check || (./miri fmt && git commit -am "fmt")
+      - name: Push changes to a branch
+        run: |
+          git switch -c "rustup$(date -u +%Y-%m)"
+          git push
+      - name: Create Pull Request
+        run: gh pr create -B master --title 'Automatic sync from rustc' --body ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
