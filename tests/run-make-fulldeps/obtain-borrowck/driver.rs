@@ -27,7 +27,7 @@ use rustc_interface::{Config, Queries};
 use rustc_middle::query::queries::mir_borrowck::ProvidedValue;
 use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
+use rustc_session::{Session, EarlyErrorHandler};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::thread_local;
@@ -58,6 +58,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
     // the result.
     fn after_analysis<'tcx>(
         &mut self,
+        _handler: &EarlyErrorHandler,
         compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {

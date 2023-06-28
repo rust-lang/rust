@@ -14,7 +14,7 @@
 -         nop;
           StorageLive(_3);
           _3 = _1;
--         drop(_3) -> bb1;
+-         drop(_3) -> [return: bb1, unwind continue];
 -     }
 - 
 -     bb1: {

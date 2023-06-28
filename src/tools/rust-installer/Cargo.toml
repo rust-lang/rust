@@ -2,7 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "installer"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 doc = false
@@ -20,4 +20,4 @@ num_cpus = "1"
 
 [dependencies.clap]
 features = ["derive"]
-version = "3.1"
+version = "4.2"

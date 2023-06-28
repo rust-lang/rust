@@ -296,7 +296,7 @@ fn default_body_is_unstable(
 /// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.
 fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: impl IntoIterator<Item = (ty::Predicate<'tcx>, Span)>,
+    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
 ) -> (String, String) {
     let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
     let mut projections = vec![];
@@ -304,7 +304,7 @@ fn bounds_from_generic_predicates<'tcx>(
         debug!("predicate {:?}", predicate);
         let bound_predicate = predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
+            ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
                 if Some(def_id) != tcx.lang_items().sized_trait() {
@@ -313,7 +313,7 @@ fn bounds_from_generic_predicates<'tcx>(
                     entry.push(trait_predicate.def_id());
                 }
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection_pred)) => {
+            ty::ClauseKind::Projection(projection_pred) => {
                 projections.push(bound_predicate.rebind(projection_pred));
             }
             _ => {}
@@ -362,7 +362,7 @@ fn fn_sig_suggestion<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: ty::FnSig<'tcx>,
     ident: Ident,
-    predicates: impl IntoIterator<Item = (ty::Predicate<'tcx>, Span)>,
+    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
     assoc: ty::AssocItem,
 ) -> String {
     let args = sig

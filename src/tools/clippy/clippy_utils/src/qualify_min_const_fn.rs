@@ -21,35 +21,6 @@ type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
 pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) -> McfResult {
     let def_id = body.source.def_id();
-    let mut current = def_id;
-    loop {
-        let predicates = tcx.predicates_of(current);
-        for (predicate, _) in predicates.predicates {
-            match predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(
-                    ty::ClauseKind::RegionOutlives(_)
-                    | ty::ClauseKind::TypeOutlives(_)
-                    | ty::ClauseKind::Projection(_)
-                    | ty::ClauseKind::Trait(..)
-                    | ty::ClauseKind::ConstArgHasType(..),
-                )
-                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::AliasRelate(..) => panic!("alias relate predicate on function: {predicate:#?}"),
-                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
-                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Ambiguous => panic!("ambiguous predicate on function: {predicate:#?}"),
-            }
-        }
-        match predicates.parent {
-            Some(parent) => current = parent,
-            None => break,
-        }
-    }
 
     for local in &body.local_decls {
         check_ty(tcx, local.ty, local.source_info.span)?;

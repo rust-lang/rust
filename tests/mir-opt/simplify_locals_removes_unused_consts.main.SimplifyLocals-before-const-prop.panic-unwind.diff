@@ -36,7 +36,7 @@
 +         _2 = (move _3, move _4);
 +         StorageDead(_4);
           StorageDead(_3);
-+         _1 = use_zst(move _2) -> bb1;
++         _1 = use_zst(move _2) -> [return: bb1, unwind continue];
 +     }
 + 
 +     bb1: {
@@ -55,8 +55,8 @@
 +         _6 = Add(move _7, const 2_u8);
           StorageDead(_7);
 -         StorageDead(_6);
--         _4 = use_zst(move _5) -> bb1;
-+         _5 = use_u8(move _6) -> bb2;
+-         _4 = use_zst(move _5) -> [return: bb1, unwind continue];
++         _5 = use_u8(move _6) -> [return: bb2, unwind continue];
       }
   
 -     bb1: {
@@ -70,7 +70,7 @@
 -         _10 = (_11.0: u8);
 -         _9 = Add(move _10, const 2_u8);
 -         StorageDead(_10);
--         _8 = use_u8(move _9) -> bb2;
+-         _8 = use_u8(move _9) -> [return: bb2, unwind continue];
 -     }
 - 
       bb2: {

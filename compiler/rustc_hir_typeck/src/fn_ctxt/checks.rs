@@ -955,9 +955,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         //   - f(0, 1,)
                         //   + f()
                         if only_extras_so_far
-                            && errors
+                            && !errors
                                 .peek()
-                                .map_or(true, |next_error| !matches!(next_error, Error::Extra(_)))
+                                .is_some_and(|next_error| matches!(next_error, Error::Extra(_)))
                         {
                             let next = provided_arg_tys
                                 .get(arg_idx + 1)
@@ -1948,7 +1948,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // do that, so it's OK.
                         for (predicate, span) in instantiated
                         {
-                            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) = predicate.kind().skip_binder()
+                            if let ty::ClauseKind::Trait(pred) = predicate.kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty
                                 && self.tcx.is_fn_trait(pred.def_id())
                             {

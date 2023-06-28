@@ -102,7 +102,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb6: {
         StorageDead(_12);
         StorageDead(_5);
-        drop(_3) -> bb7;
+        drop(_3) -> [return: bb7, unwind continue];
     }
 
     bb7: {

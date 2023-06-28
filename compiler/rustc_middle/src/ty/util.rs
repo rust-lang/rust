@@ -1419,8 +1419,8 @@ pub struct AlwaysRequiresDrop;
 /// with their underlying types.
 pub fn reveal_opaque_types_in_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    val: &'tcx ty::List<ty::Predicate<'tcx>>,
-) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+    val: &'tcx ty::List<ty::Clause<'tcx>>,
+) -> &'tcx ty::List<ty::Clause<'tcx>> {
     let mut visitor = OpaqueTypeExpander {
         seen_opaque_tys: FxHashSet::default(),
         expanded_cache: FxHashMap::default(),

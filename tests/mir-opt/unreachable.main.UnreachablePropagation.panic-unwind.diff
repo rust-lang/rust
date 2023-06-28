@@ -19,7 +19,7 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = empty() -> bb1;
+          _1 = empty() -> [return: bb1, unwind continue];
       }
   
       bb1: {

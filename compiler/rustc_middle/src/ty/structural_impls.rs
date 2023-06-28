@@ -189,6 +189,9 @@ impl<'tcx> fmt::Debug for ty::ClauseKind<'tcx> {
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
+            ty::ClauseKind::TypeWellFormedFromEnv(ty) => {
+                write!(f, "TypeWellFormedFromEnv({:?})", ty)
+            }
         }
     }
 }
@@ -206,9 +209,6 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
-            ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
-                write!(f, "TypeWellFormedFromEnv({:?})", ty)
-            }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => {
                 write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")
@@ -698,15 +698,6 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
         self.kind().visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Predicate<'tcx>> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_predicates(v))
     }
 }
 

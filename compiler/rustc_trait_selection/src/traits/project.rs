@@ -1585,7 +1585,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::TraitDef,
-        bounds.iter().map(|clause| clause.as_predicate()),
+        bounds.iter(),
         true,
     );
 }
@@ -1648,15 +1648,13 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
-    env_predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
+    env_predicates: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
     let infcx = selcx.infcx;
     for predicate in env_predicates {
         let bound_predicate = predicate.kind();
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) =
-            predicate.kind().skip_binder()
-        {
+        if let ty::ClauseKind::Projection(data) = predicate.kind().skip_binder() {
             let data = bound_predicate.rebind(data);
             if data.projection_def_id() != obligation.predicate.def_id {
                 continue;

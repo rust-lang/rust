@@ -5,7 +5,9 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::env;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::{env, fs, process};
 
 #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use bootstrap::t;
@@ -20,22 +22,32 @@ fn main() {
     #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     let _build_lock_guard;
     #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
+    // Display PID of process holding the lock
+    // PID will be stored in a lock file
     {
         let path = config.out.join("lock");
-        build_lock = fd_lock::RwLock::new(t!(std::fs::File::create(&path)));
+        let pid = match fs::read_to_string(&path) {
+            Ok(contents) => contents,
+            Err(_) => String::new(),
+        };
+
+        build_lock =
+            fd_lock::RwLock::new(t!(OpenOptions::new().write(true).create(true).open(&path)));
         _build_lock_guard = match build_lock.try_write() {
-            Ok(lock) => lock,
+            Ok(mut lock) => {
+                t!(lock.write(&process::id().to_string().as_ref()));
+                lock
+            }
             err => {
                 drop(err);
-                if let Some(pid) = get_lock_owner(&path) {
-                    println!("warning: build directory locked by process {pid}, waiting for lock");
-                } else {
-                    println!("warning: build directory locked, waiting for lock");
-                }
-                t!(build_lock.write())
+                println!("warning: build directory locked by process {pid}, waiting for lock");
+                let mut lock = t!(build_lock.write());
+                t!(lock.write(&process::id().to_string().as_ref()));
+                lock
             }
         };
     }
+
     #[cfg(any(not(any(unix, windows)), target_os = "solaris"))]
     println!("warning: file locking not supported for target, not locking build directory");
 
@@ -107,31 +119,4 @@ fn check_version(config: &Config) -> Option<String> {
     msg.push_str(&suggestion);
 
     Some(msg)
-}
-
-/// Get the PID of the process which took the write lock by
-/// parsing `/proc/locks`.
-#[cfg(target_os = "linux")]
-fn get_lock_owner(f: &std::path::Path) -> Option<u64> {
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
-    use std::os::unix::fs::MetadataExt;
-
-    let lock_inode = std::fs::metadata(f).ok()?.ino();
-    let lockfile = File::open("/proc/locks").ok()?;
-    BufReader::new(lockfile).lines().find_map(|line| {
-        //                       pid--vvvvvv       vvvvvvv--- inode
-        // 21: FLOCK  ADVISORY  WRITE 359238 08:02:3719774 0 EOF
-        let line = line.ok()?;
-        let parts = line.split_whitespace().collect::<Vec<_>>();
-        let (pid, inode) = (parts[4].parse::<u64>().ok()?, &parts[5]);
-        let inode = inode.rsplit_once(':')?.1.parse::<u64>().ok()?;
-        if inode == lock_inode { Some(pid) } else { None }
-    })
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "solaris")))]
-fn get_lock_owner(_: &std::path::Path) -> Option<u64> {
-    // FIXME: Implement on other OS's
-    None
 }

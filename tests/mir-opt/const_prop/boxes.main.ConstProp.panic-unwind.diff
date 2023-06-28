@@ -26,7 +26,7 @@
 -         _5 = AlignOf(i32);
 +         _4 = const 4_usize;
 +         _5 = const 4_usize;
-          _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> bb1;
+          _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> [return: bb1, unwind continue];
       }
   
       bb1: {

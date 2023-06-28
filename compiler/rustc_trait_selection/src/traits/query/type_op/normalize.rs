@@ -50,12 +50,12 @@ impl<'tcx> Normalizable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> Normalizable<'tcx> for ty::Predicate<'tcx> {
+impl<'tcx> Normalizable<'tcx> for ty::Clause<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self>, NoSolution> {
-        tcx.type_op_normalize_predicate(canonicalized)
+        tcx.type_op_normalize_clause(canonicalized)
     }
 }
 

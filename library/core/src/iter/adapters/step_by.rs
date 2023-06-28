@@ -1,4 +1,9 @@
-use crate::{intrinsics, iter::from_fn, ops::Try};
+use crate::convert::TryFrom;
+use crate::{
+    intrinsics,
+    iter::{from_fn, TrustedLen},
+    ops::{Range, Try},
+};
 
 /// An iterator for stepping iterators by a custom amount.
 ///
@@ -11,14 +16,22 @@ use crate::{intrinsics, iter::from_fn, ops::Try};
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 #[derive(Clone, Debug)]
 pub struct StepBy<I> {
+    /// This field is guaranteed to be preprocessed by the specialized `SpecRangeSetup::setup`
+    /// in the constructor.
+    /// For most iterators that processing is a no-op, but for Range<{integer}> types it is lossy
+    /// which means the inner iterator cannot be returned to user code.
+    /// Additionally this type-dependent preprocessing means specialized implementations
+    /// cannot be used interchangeably.
     iter: I,
     step: usize,
     first_take: bool,
 }
 
 impl<I> StepBy<I> {
+    #[inline]
     pub(in crate::iter) fn new(iter: I, step: usize) -> StepBy<I> {
         assert!(step != 0);
+        let iter = <I as SpecRangeSetup<I>>::setup(iter, step);
         StepBy { iter, step: step - 1, first_take: true }
     }
 }
@@ -32,16 +45,174 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.first_take {
-            self.first_take = false;
-            self.iter.next()
-        } else {
-            self.iter.nth(self.step)
-        }
+        self.spec_next()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        self.spec_size_hint()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.spec_nth(n)
+    }
+
+    fn try_fold<Acc, F, R>(&mut self, acc: Acc, f: F) -> R
+    where
+        F: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        self.spec_try_fold(acc, f)
+    }
+
+    #[inline]
+    fn fold<Acc, F>(self, acc: Acc, f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.spec_fold(acc, f)
+    }
+}
+
+impl<I> StepBy<I>
+where
+    I: ExactSizeIterator,
+{
+    // The zero-based index starting from the end of the iterator of the
+    // last element. Used in the `DoubleEndedIterator` implementation.
+    fn next_back_index(&self) -> usize {
+        let rem = self.iter.len() % (self.step + 1);
+        if self.first_take {
+            if rem == 0 { self.step } else { rem - 1 }
+        } else {
+            rem
+        }
+    }
+}
+
+#[stable(feature = "double_ended_step_by_iterator", since = "1.38.0")]
+impl<I> DoubleEndedIterator for StepBy<I>
+where
+    I: DoubleEndedIterator + ExactSizeIterator,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.spec_next_back()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.spec_nth_back(n)
+    }
+
+    fn try_rfold<Acc, F, R>(&mut self, init: Acc, f: F) -> R
+    where
+        F: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        self.spec_try_rfold(init, f)
+    }
+
+    #[inline]
+    fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
+    where
+        Self: Sized,
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.spec_rfold(init, f)
+    }
+}
+
+// StepBy can only make the iterator shorter, so the len will still fit.
+#[stable(feature = "iterator_step_by", since = "1.28.0")]
+impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+
+trait SpecRangeSetup<T> {
+    fn setup(inner: T, step: usize) -> T;
+}
+
+impl<T> SpecRangeSetup<T> for T {
+    #[inline]
+    default fn setup(inner: T, _step: usize) -> T {
+        inner
+    }
+}
+
+/// Specialization trait to optimize `StepBy<Range<{integer}>>` iteration.
+///
+/// # Safety
+///
+/// Technically this is safe to implement (look ma, no unsafe!), but in reality
+/// a lot of unsafe code relies on ranges over integers being correct.
+///
+/// For correctness *all* public StepBy methods must be specialized
+/// because `setup` drastically alters the meaning of the struct fields so that mixing
+/// different implementations would lead to incorrect results.
+unsafe trait StepByImpl<I> {
+    type Item;
+
+    fn spec_next(&mut self) -> Option<Self::Item>;
+
+    fn spec_size_hint(&self) -> (usize, Option<usize>);
+
+    fn spec_nth(&mut self, n: usize) -> Option<Self::Item>;
+
+    fn spec_try_fold<Acc, F, R>(&mut self, acc: Acc, f: F) -> R
+    where
+        F: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>;
+
+    fn spec_fold<Acc, F>(self, acc: Acc, f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc;
+}
+
+/// Specialization trait for double-ended iteration.
+///
+/// See also: `StepByImpl`
+///
+/// # Safety
+///
+/// The specializations must be implemented together with `StepByImpl`
+/// where applicable. I.e. if `StepBy` does support backwards iteration
+/// for a given iterator and that is specialized for forward iteration then
+/// it must also be specialized for backwards iteration.
+unsafe trait StepByBackImpl<I> {
+    type Item;
+
+    fn spec_next_back(&mut self) -> Option<Self::Item>
+    where
+        I: DoubleEndedIterator + ExactSizeIterator;
+
+    fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item>
+    where
+        I: DoubleEndedIterator + ExactSizeIterator;
+
+    fn spec_try_rfold<Acc, F, R>(&mut self, init: Acc, f: F) -> R
+    where
+        I: DoubleEndedIterator + ExactSizeIterator,
+        F: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>;
+
+    fn spec_rfold<Acc, F>(self, init: Acc, f: F) -> Acc
+    where
+        I: DoubleEndedIterator + ExactSizeIterator,
+        F: FnMut(Acc, Self::Item) -> Acc;
+}
+
+unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
+    type Item = I::Item;
+
+    #[inline]
+    default fn spec_next(&mut self) -> Option<I::Item> {
+        let step_size = if self.first_take { 0 } else { self.step };
+        self.first_take = false;
+        self.iter.nth(step_size)
+    }
+
+    #[inline]
+    default fn spec_size_hint(&self) -> (usize, Option<usize>) {
         #[inline]
         fn first_size(step: usize) -> impl Fn(usize) -> usize {
             move |n| if n == 0 { 0 } else { 1 + (n - 1) / (step + 1) }
@@ -64,7 +235,7 @@ where
     }
 
     #[inline]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+    default fn spec_nth(&mut self, mut n: usize) -> Option<I::Item> {
         if self.first_take {
             self.first_take = false;
             let first = self.iter.next();
@@ -108,7 +279,7 @@ where
         }
     }
 
-    fn try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
+    default fn spec_try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
     where
         F: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
@@ -128,7 +299,7 @@ where
         from_fn(nth(&mut self.iter, self.step)).try_fold(acc, f)
     }
 
-    fn fold<Acc, F>(mut self, mut acc: Acc, mut f: F) -> Acc
+    default fn spec_fold<Acc, F>(mut self, mut acc: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
@@ -148,34 +319,16 @@ where
     }
 }
 
-impl<I> StepBy<I>
-where
-    I: ExactSizeIterator,
-{
-    // The zero-based index starting from the end of the iterator of the
-    // last element. Used in the `DoubleEndedIterator` implementation.
-    fn next_back_index(&self) -> usize {
-        let rem = self.iter.len() % (self.step + 1);
-        if self.first_take {
-            if rem == 0 { self.step } else { rem - 1 }
-        } else {
-            rem
-        }
-    }
-}
+unsafe impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for StepBy<I> {
+    type Item = I::Item;
 
-#[stable(feature = "double_ended_step_by_iterator", since = "1.38.0")]
-impl<I> DoubleEndedIterator for StepBy<I>
-where
-    I: DoubleEndedIterator + ExactSizeIterator,
-{
     #[inline]
-    fn next_back(&mut self) -> Option<Self::Item> {
+    default fn spec_next_back(&mut self) -> Option<Self::Item> {
         self.iter.nth_back(self.next_back_index())
     }
 
     #[inline]
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+    default fn spec_nth_back(&mut self, n: usize) -> Option<I::Item> {
         // `self.iter.nth_back(usize::MAX)` does the right thing here when `n`
         // is out of bounds because the length of `self.iter` does not exceed
         // `usize::MAX` (because `I: ExactSizeIterator`) and `nth_back` is
@@ -184,7 +337,7 @@ where
         self.iter.nth_back(n)
     }
 
-    fn try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+    default fn spec_try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
     where
         F: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
@@ -207,10 +360,10 @@ where
     }
 
     #[inline]
-    fn rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+    default fn spec_rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
     where
         Self: Sized,
-        F: FnMut(Acc, Self::Item) -> Acc,
+        F: FnMut(Acc, I::Item) -> Acc,
     {
         #[inline]
         fn nth_back<I: DoubleEndedIterator>(
@@ -230,6 +383,192 @@ where
     }
 }
 
-// StepBy can only make the iterator shorter, so the len will still fit.
-#[stable(feature = "iterator_step_by", since = "1.28.0")]
-impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+/// For these implementations, `SpecRangeSetup` calculates the number
+/// of iterations that will be needed and stores that in `iter.end`.
+///
+/// The various iterator implementations then rely on that to not need
+/// overflow checking, letting loops just be counted instead.
+///
+/// These only work for unsigned types, and will need to be reworked
+/// if you want to use it to specialize on signed types.
+///
+/// Currently these are only implemented for integers up to usize due to
+/// correctness issues around ExactSizeIterator impls on 16bit platforms.
+/// And since ExactSizeIterator is a prerequisite for backwards iteration
+/// and we must consistently specialize backwards and forwards iteration
+/// that makes the situation complicated enough that it's not covered
+/// for now.
+macro_rules! spec_int_ranges {
+    ($($t:ty)*) => ($(
+
+        const _: () = assert!(usize::BITS >= <$t>::BITS);
+
+        impl SpecRangeSetup<Range<$t>> for Range<$t> {
+            #[inline]
+            fn setup(mut r: Range<$t>, step: usize) -> Range<$t> {
+                let inner_len = r.size_hint().0;
+                // If step exceeds $t::MAX, then the count will be at most 1 and
+                // thus always fit into $t.
+                let yield_count = inner_len.div_ceil(step);
+                // Turn the range end into an iteration counter
+                r.end = yield_count as $t;
+                r
+            }
+        }
+
+        unsafe impl StepByImpl<Range<$t>> for StepBy<Range<$t>> {
+            #[inline]
+            fn spec_next(&mut self) -> Option<$t> {
+                // if a step size larger than the type has been specified fall back to
+                // t::MAX, in which case remaining will be at most 1.
+                // The `+ 1` can't overflow since the constructor substracted 1 from the original value.
+                let step = <$t>::try_from(self.step + 1).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.end;
+                if remaining > 0 {
+                    let val = self.iter.start;
+                    // this can only overflow during the last step, after which the value
+                    // will not be used
+                    self.iter.start = val.wrapping_add(step);
+                    self.iter.end = remaining - 1;
+                    Some(val)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn spec_size_hint(&self) -> (usize, Option<usize>) {
+                let remaining = self.iter.end as usize;
+                (remaining, Some(remaining))
+            }
+
+            // The methods below are all copied from the Iterator trait default impls.
+            // We have to repeat them here so that the specialization overrides the StepByImpl defaults
+
+            #[inline]
+            fn spec_nth(&mut self, n: usize) -> Option<Self::Item> {
+                self.advance_by(n).ok()?;
+                self.next()
+            }
+
+            #[inline]
+            fn spec_try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+                where
+                    F: FnMut(Acc, Self::Item) -> R,
+                    R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+                where
+                    F: FnMut(Acc, Self::Item) -> Acc
+            {
+                // if a step size larger than the type has been specified fall back to
+                // t::MAX, in which case remaining will be at most 1.
+                let step = <$t>::try_from(self.step + 1).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.end;
+                let mut acc = init;
+                let mut val = self.iter.start;
+                for _ in 0..remaining {
+                    acc = f(acc, val);
+                    // this can only overflow during the last step, after which the value
+                    // will no longer be used
+                    val = val.wrapping_add(step);
+                }
+                acc
+            }
+        }
+
+        /// Safety: This macro is only applied to ranges over types <= usize
+        /// which means the inner length is guaranteed to fit into a usize and so
+        /// the outer length calculation won't encounter clamped values
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for StepBy<Range<$t>> {}
+    )*)
+}
+
+macro_rules! spec_int_ranges_r {
+    ($($t:ty)*) => ($(
+        const _: () = assert!(usize::BITS >= <$t>::BITS);
+
+        unsafe impl StepByBackImpl<Range<$t>> for StepBy<Range<$t>> {
+
+            #[inline]
+            fn spec_next_back(&mut self) -> Option<Self::Item>
+                where Range<$t>: DoubleEndedIterator + ExactSizeIterator,
+            {
+                let step = (self.step + 1) as $t;
+                let remaining = self.iter.end;
+                if remaining > 0 {
+                    let start = self.iter.start;
+                    self.iter.end = remaining - 1;
+                    Some(start + step * (remaining - 1))
+                } else {
+                    None
+                }
+            }
+
+            // The methods below are all copied from the Iterator trait default impls.
+            // We have to repeat them here so that the specialization overrides the StepByImplBack defaults
+
+            #[inline]
+            fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item>
+                where Self: DoubleEndedIterator,
+            {
+                if self.advance_back_by(n).is_err() {
+                    return None;
+                }
+                self.next_back()
+            }
+
+            #[inline]
+            fn spec_try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+                where
+                    Self: DoubleEndedIterator,
+                    F: FnMut(Acc, Self::Item) -> R,
+                    R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+                where
+                    Self: DoubleEndedIterator,
+                    F: FnMut(Acc, Self::Item) -> Acc
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x);
+                }
+                accum
+            }
+        }
+    )*)
+}
+
+#[cfg(target_pointer_width = "64")]
+spec_int_ranges!(u8 u16 u32 u64 usize);
+// DoubleEndedIterator requires ExactSizeIterator, which isn't implemented for Range<u64>
+#[cfg(target_pointer_width = "64")]
+spec_int_ranges_r!(u8 u16 u32 usize);
+
+#[cfg(target_pointer_width = "32")]
+spec_int_ranges!(u8 u16 u32 usize);
+#[cfg(target_pointer_width = "32")]
+spec_int_ranges_r!(u8 u16 u32 usize);
+
+#[cfg(target_pointer_width = "16")]
+spec_int_ranges!(u8 u16 usize);
+#[cfg(target_pointer_width = "16")]
+spec_int_ranges_r!(u8 u16 usize);

@@ -14,7 +14,7 @@
       }
   
       bb1: {
-          _2 = begin_panic::<&str>(const "explicit panic");
+          _2 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
       }
   
       bb2: {

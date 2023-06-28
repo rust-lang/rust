@@ -104,7 +104,7 @@
           _13 = &(*_26);
           StorageLive(_15);
           _15 = RangeFull;
-          _12 = <[i32; 10] as Index<RangeFull>>::index(move _13, move _15) -> bb5;
+          _12 = <[i32; 10] as Index<RangeFull>>::index(move _13, move _15) -> [return: bb5, unwind continue];
       }
   
       bb5: {

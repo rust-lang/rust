@@ -18,7 +18,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = val() -> bb1;
+          _2 = val() -> [return: bb1, unwind continue];
       }
   
       bb1: {

@@ -21,7 +21,7 @@
           StorageLive(_1);
           _1 = const true;
           StorageLive(_2);
-          _2 = empty() -> bb1;
+          _2 = empty() -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -39,7 +39,7 @@
       }
   
       bb3: {
-          _5 = loop_forever() -> bb5;
+          _5 = loop_forever() -> [return: bb5, unwind continue];
       }
   
       bb4: {

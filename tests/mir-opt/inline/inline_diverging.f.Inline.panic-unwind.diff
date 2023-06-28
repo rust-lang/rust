@@ -10,7 +10,7 @@
   
       bb0: {
           StorageLive(_2);
--         _2 = sleep();
+-         _2 = sleep() -> unwind continue;
 +         goto -> bb1;
 +     }
 + 

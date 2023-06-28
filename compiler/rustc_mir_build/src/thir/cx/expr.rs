@@ -694,7 +694,8 @@ impl<'tcx> Cx<'tcx> {
 
                 ExprKind::Repeat { value: self.mirror_expr(v), count: *count }
             }
-            hir::ExprKind::Ret(ref v) => ExprKind::Return { value: v.map(|v| self.mirror_expr(v)) },
+            hir::ExprKind::Ret(v) => ExprKind::Return { value: v.map(|v| self.mirror_expr(v)) },
+            hir::ExprKind::Become(call) => ExprKind::Become { value: self.mirror_expr(call) },
             hir::ExprKind::Break(dest, ref value) => match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope { id: target_id.local_id, data: region::ScopeData::Node },

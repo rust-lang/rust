@@ -78,13 +78,6 @@ pub struct ForbiddenLifetimeBound {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_forbidden_non_lifetime_param)]
-pub struct ForbiddenNonLifetimeParam {
-    #[primary_span]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_fn_param_too_many)]
 pub struct FnParamTooMany {
     #[primary_span]

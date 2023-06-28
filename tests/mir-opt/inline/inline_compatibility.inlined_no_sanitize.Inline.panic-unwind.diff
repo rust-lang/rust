@@ -9,7 +9,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = no_sanitize() -> bb1;
+-         _1 = no_sanitize() -> [return: bb1, unwind continue];
 -     }
 - 
 -     bb1: {

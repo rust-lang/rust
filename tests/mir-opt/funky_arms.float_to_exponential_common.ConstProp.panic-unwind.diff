@@ -38,7 +38,7 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = &(*_1);
-          _4 = Formatter::<'_>::sign_plus(move _5) -> bb1;
+          _4 = Formatter::<'_>::sign_plus(move _5) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -63,7 +63,7 @@
           StorageLive(_7);
           StorageLive(_8);
           _8 = &(*_1);
-          _7 = Formatter::<'_>::precision(move _8) -> bb5;
+          _7 = Formatter::<'_>::precision(move _8) -> [return: bb5, unwind continue];
       }
   
       bb5: {
@@ -81,7 +81,7 @@
           _15 = _10 as u32 (IntToInt);
           _14 = Add(move _15, const 1_u32);
           StorageDead(_15);
-          _0 = float_to_exponential_common_exact::<T>(_1, _2, move _13, move _14, _3) -> bb7;
+          _0 = float_to_exponential_common_exact::<T>(_1, _2, move _13, move _14, _3) -> [return: bb7, unwind continue];
       }
   
       bb7: {
@@ -93,7 +93,7 @@
       bb8: {
           StorageLive(_20);
           _20 = _6;
-          _0 = float_to_exponential_common_shortest::<T>(_1, _2, move _20, _3) -> bb9;
+          _0 = float_to_exponential_common_shortest::<T>(_1, _2, move _20, _3) -> [return: bb9, unwind continue];
       }
   
       bb9: {

@@ -834,7 +834,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
+                ty::ClauseKind::Trait(trait_predicate) => {
                     match *trait_predicate.trait_ref.self_ty().kind() {
                         ty::Param(p) if p == param_ty => {
                             Some(bound_predicate.rebind(trait_predicate.trait_ref))
@@ -842,20 +842,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         _ => None,
                     }
                 }
-                ty::PredicateKind::Subtype(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
-                | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-                | ty::PredicateKind::ObjectSafe(..)
-                | ty::PredicateKind::ClosureKind(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Ambiguous
-                | ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+                ty::ClauseKind::RegionOutlives(_)
+                | ty::ClauseKind::TypeOutlives(_)
+                | ty::ClauseKind::Projection(_)
+                | ty::ClauseKind::ConstArgHasType(_, _)
+                | ty::ClauseKind::WellFormed(_)
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::TypeWellFormedFromEnv(_) => None,
             }
         });
 

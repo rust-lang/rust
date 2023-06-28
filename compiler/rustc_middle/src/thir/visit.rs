@@ -100,6 +100,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[value])
             }
         }
+        Become { value } => visitor.visit_expr(&visitor.thir()[value]),
         ConstBlock { did: _, substs: _ } => {}
         Repeat { value, count: _ } => {
             visitor.visit_expr(&visitor.thir()[value]);

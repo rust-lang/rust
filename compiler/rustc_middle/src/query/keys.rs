@@ -420,7 +420,7 @@ impl<'tcx> Key for (Ty<'tcx>, Ty<'tcx>) {
     }
 }
 
-impl<'tcx> Key for &'tcx ty::List<ty::Predicate<'tcx>> {
+impl<'tcx> Key for &'tcx ty::List<ty::Clause<'tcx>> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

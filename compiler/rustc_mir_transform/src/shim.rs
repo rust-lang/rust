@@ -32,13 +32,15 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
         ty::InstanceDef::VTableShim(def_id) => {
-            build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id))
+            let adjustment = Adjustment::Deref { source: DerefSource::MutPtr };
+            build_call_shim(tcx, instance, Some(adjustment), CallKind::Direct(def_id))
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.fn_trait_kind_from_def_id(trait_) {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
-                Some(ty::ClosureKind::FnMut | ty::ClosureKind::Fn) => Adjustment::Deref,
+                Some(ty::ClosureKind::Fn) => Adjustment::Deref { source: DerefSource::ImmRef },
+                Some(ty::ClosureKind::FnMut) => Adjustment::Deref { source: DerefSource::MutRef },
                 None => bug!("fn pointer {:?} is not an fn", ty),
             };
 
@@ -108,15 +110,25 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+enum DerefSource {
+    /// `fn shim(&self) { inner(*self )}`.
+    ImmRef,
+    /// `fn shim(&mut self) { inner(*self )}`.
+    MutRef,
+    /// `fn shim(*mut self) { inner(*self )}`.
+    MutPtr,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum Adjustment {
     /// Pass the receiver as-is.
     Identity,
 
-    /// We get passed `&[mut] self` and call the target with `*self`.
+    /// We get passed a reference or a raw pointer to `self` and call the target with `*self`.
     ///
     /// This either copies `self` (if `Self: Copy`, eg. for function items), or moves out of it
     /// (for `VTableShim`, which effectively is passed `&own Self`).
-    Deref,
+    Deref { source: DerefSource },
 
     /// We get passed `self: Self` and call the target with `&mut self`.
     ///
@@ -667,8 +679,12 @@ fn build_call_shim<'tcx>(
         let self_arg = &mut inputs_and_output[0];
         *self_arg = match rcvr_adjustment.unwrap() {
             Adjustment::Identity => fnty,
-            Adjustment::Deref => tcx.mk_imm_ptr(fnty),
-            Adjustment::RefMut => tcx.mk_mut_ptr(fnty),
+            Adjustment::Deref { source } => match source {
+                DerefSource::ImmRef => tcx.mk_imm_ref(tcx.lifetimes.re_erased, fnty),
+                DerefSource::MutRef => tcx.mk_mut_ref(tcx.lifetimes.re_erased, fnty),
+                DerefSource::MutPtr => tcx.mk_mut_ptr(fnty),
+            },
+            Adjustment::RefMut => bug!("`RefMut` is never used with indirect calls: {instance:?}"),
         };
         sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
@@ -699,7 +715,7 @@ fn build_call_shim<'tcx>(
 
     let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_place()),
-        Adjustment::Deref => Operand::Move(tcx.mk_place_deref(rcvr_place())),
+        Adjustment::Deref { source: _ } => Operand::Move(tcx.mk_place_deref(rcvr_place())),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(

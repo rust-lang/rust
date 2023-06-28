@@ -410,6 +410,10 @@ pub enum ExprKind<'tcx> {
     Return {
         value: Option<ExprId>,
     },
+    /// A `become` expression.
+    Become {
+        value: ExprId,
+    },
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
         did: DefId,

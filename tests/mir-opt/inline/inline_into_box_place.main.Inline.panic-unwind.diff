@@ -117,7 +117,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
--         _2 = Vec::<u32>::new() -> bb1;
+-         _2 = Vec::<u32>::new() -> [return: bb1, unwind continue];
 +         StorageLive(_3);
 +         _3 = const _;
 +         _2 = Vec::<u32> { buf: move _3, len: const 0_usize };

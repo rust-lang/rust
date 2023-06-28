@@ -9,13 +9,13 @@
       bb0: {
 -         _2 = _1;
 -         _3 = move (_2.0: u8);
--         _0 = opaque::<Foo>(move _1) -> bb1;
+-         _0 = opaque::<Foo>(move _1) -> [return: bb1, unwind continue];
 +         _3 = (_1.0: u8);
-+         _0 = opaque::<Foo>(_1) -> bb1;
++         _0 = opaque::<Foo>(_1) -> [return: bb1, unwind continue];
       }
   
       bb1: {
-          _0 = opaque::<u8>(move _3) -> bb2;
+          _0 = opaque::<u8>(move _3) -> [return: bb2, unwind continue];
       }
   
       bb2: {

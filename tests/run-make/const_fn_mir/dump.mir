@@ -6,7 +6,7 @@ fn foo() -> i32 {
 
     bb0: {
         _1 = CheckedAdd(const 5_i32, const 6_i32);
-        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> bb1;
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> [success: bb1, unwind continue];
     }
 
     bb1: {
@@ -22,7 +22,7 @@ fn foo() -> i32 {
 
     bb0: {
         _1 = CheckedAdd(const 5_i32, const 6_i32);
-        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> bb1;
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> [success: bb1, unwind continue];
     }
 
     bb1: {
@@ -36,7 +36,7 @@ fn main() -> () {
     let _1: i32;
 
     bb0: {
-        _1 = foo() -> bb1;
+        _1 = foo() -> [return: bb1, unwind continue];
     }
 
     bb1: {

@@ -23,14 +23,14 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = call::<fn() {f}>(f) -> bb1;
+-         _1 = call::<fn() {f}>(f) -> [return: bb1, unwind continue];
 +         StorageLive(_2);
 +         _2 = f;
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         _4 = const ();
 +         StorageLive(_5);
-+         _5 = f() -> bb1;
++         _5 = f() -> [return: bb1, unwind continue];
       }
   
       bb1: {

@@ -51,13 +51,6 @@ impl GatedSpans {
         debug_assert_eq!(span, removed_span);
     }
 
-    /// Is the provided `feature` gate ungated currently?
-    ///
-    /// Using this is discouraged unless you have a really good reason to.
-    pub fn is_ungated(&self, feature: Symbol) -> bool {
-        self.spans.borrow().get(&feature).map_or(true, |spans| spans.is_empty())
-    }
-
     /// Prepend the given set of `spans` onto the set in `self`.
     pub fn merge(&self, mut spans: FxHashMap<Symbol, Vec<Span>>) {
         let mut inner = self.spans.borrow_mut();

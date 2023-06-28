@@ -220,7 +220,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.mk_predicates(&hybrid_preds.predicates),
+        tcx.mk_clauses(&hybrid_preds.predicates),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
@@ -1835,7 +1835,7 @@ fn compare_type_predicate_entailment<'tcx>(
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.mk_predicates(&hybrid_preds.predicates),
+        tcx.mk_clauses(&hybrid_preds.predicates),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
@@ -2011,7 +2011,7 @@ pub(super) fn check_type_bounds<'tcx>(
                 .to_predicate(tcx),
             ),
         };
-        ty::ParamEnv::new(tcx.mk_predicates(&predicates), Reveal::UserFacing, param_env.constness())
+        ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing, param_env.constness())
     };
     debug!(?normalize_param_env);
 

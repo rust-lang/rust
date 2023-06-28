@@ -31,7 +31,7 @@ fn test() -> Option<Box<u32>> {
         StorageLive(_1);
         _2 = SizeOf(u32);
         _3 = AlignOf(u32);
-        _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1;
+        _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> [return: bb1, unwind continue];
     }
 
     bb1: {
@@ -73,13 +73,13 @@ fn test() -> Option<Box<u32>> {
     bb6: {
         StorageDead(_11);
         StorageDead(_9);
-        drop(_5) -> bb9;
+        drop(_5) -> [return: bb9, unwind continue];
     }
 
     bb7: {
         StorageDead(_5);
         _0 = Option::<Box<u32>>::Some(move _1);
-        drop(_1) -> bb8;
+        drop(_1) -> [return: bb8, unwind continue];
     }
 
     bb8: {

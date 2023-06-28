@@ -185,7 +185,7 @@ pub fn predicate_obligations<'tcx>(
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::AliasRelate(..)
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+        | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
             bug!("We should only wf check where clauses, unexpected predicate: {predicate:?}")
         }
     }
@@ -976,7 +976,7 @@ pub fn object_region_bounds<'tcx>(
 pub(crate) fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,
-    predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
+    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
     assert!(!erased_self_ty.has_escaping_bound_vars());
 
@@ -984,24 +984,7 @@ pub(crate) fn required_region_bounds<'tcx>(
         .filter_map(|pred| {
             debug!(?pred);
             match pred.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
-                | ty::PredicateKind::Subtype(..)
-                | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
-                | ty::PredicateKind::ObjectSafe(..)
-                | ty::PredicateKind::ClosureKind(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
-                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Ambiguous
-                | ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                    ref t,
-                    ref r,
-                ))) => {
+                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a
@@ -1017,6 +1000,13 @@ pub(crate) fn required_region_bounds<'tcx>(
                         None
                     }
                 }
+                ty::ClauseKind::Trait(_)
+                | ty::ClauseKind::RegionOutlives(_)
+                | ty::ClauseKind::Projection(_)
+                | ty::ClauseKind::ConstArgHasType(_, _)
+                | ty::ClauseKind::WellFormed(_)
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::TypeWellFormedFromEnv(_) => None,
             }
         })
         .collect()

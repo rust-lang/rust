@@ -258,7 +258,8 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                             pred = pred.without_const(tcx);
                         }
                         elaboratable.child_with_derived_cause(
-                            pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
+                            pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref))
+                                .as_predicate(),
                             span,
                             bound_predicate.rebind(data),
                             index,
@@ -367,7 +368,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                         .map(|predicate| elaboratable.child(predicate)),
                 );
             }
-            ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
                 // Nothing to elaborate
             }
             ty::PredicateKind::Ambiguous => {}
@@ -440,7 +441,7 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
                     tcx.super_predicates_that_define_assoc_item((trait_ref.def_id(), assoc_name));
                 for (super_predicate, _) in super_predicates.predicates {
                     let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
-                    if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {
+                    if let Some(binder) = subst_predicate.as_trait_clause() {
                         stack.push(binder.map_bound(|t| t.trait_ref));
                     }
                 }

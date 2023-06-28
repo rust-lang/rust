@@ -58,7 +58,7 @@
   
       bb5: {
           StorageDead(_2);
--         drop(_1) -> bb6;
+-         drop(_1) -> [return: bb6, unwind continue];
 +         goto -> bb6;
       }
   

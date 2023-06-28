@@ -10,7 +10,7 @@ use rustc_errors::{
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{
-    inhabitedness::InhabitedPredicate, PolyExistentialTraitRef, Predicate, Ty, TyCtxt,
+    inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
@@ -352,7 +352,7 @@ impl AddToDiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
 #[diag(lint_builtin_trivial_bounds)]
 pub struct BuiltinTrivialBounds<'a> {
     pub predicate_kind_name: &'a str,
-    pub predicate: Predicate<'a>,
+    pub predicate: Clause<'a>,
 }
 
 #[derive(LintDiagnostic)]
@@ -1262,7 +1262,7 @@ pub struct RedundantSemicolonsDiag {
 
 // traits.rs
 pub struct DropTraitConstraintsDiag<'a> {
-    pub predicate: Predicate<'a>,
+    pub predicate: Clause<'a>,
     pub tcx: TyCtxt<'a>,
     pub def_id: DefId,
 }

@@ -387,7 +387,7 @@ impl BasicCoverageBlockData {
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
             // `BasicCoverageBlock`).
-            if !self.counter_kind.as_ref().map_or(true, |c| c.is_expression()) {
+            if self.counter_kind.as_ref().is_some_and(|c| !c.is_expression()) {
                 return Error::from_string(format!(
                     "attempt to add an incoming edge counter from {:?} when the target BCB already \
                     has a `Counter`",

@@ -62,7 +62,18 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 Some(1..) => Ok(false),
             },
             Self::NotInModule(id) => in_module(id).map(|in_mod| !in_mod),
-            Self::GenericType(_) => Ok(true),
+            // `t` may be a projection, for which `inhabited_predicate` returns a `GenericType`. As
+            // we have a param_env available, we can do better.
+            Self::GenericType(t) => {
+                let normalized_pred = tcx
+                    .try_normalize_erasing_regions(param_env, t)
+                    .map_or(self, |t| t.inhabited_predicate(tcx));
+                match normalized_pred {
+                    // We don't have more information than we started with, so consider inhabited.
+                    Self::GenericType(_) => Ok(true),
+                    pred => pred.apply_inner(tcx, param_env, in_module),
+                }
+            }
             Self::And([a, b]) => try_and(a, b, |x| x.apply_inner(tcx, param_env, in_module)),
             Self::Or([a, b]) => try_or(a, b, |x| x.apply_inner(tcx, param_env, in_module)),
         }

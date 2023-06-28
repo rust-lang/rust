@@ -21,8 +21,8 @@ use rustc_session::config::{InstrumentCoverage, Passes};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::CompilerIO;
 use rustc_session::{build_session, getopts, Session};
+use rustc_session::{CompilerIO, EarlyErrorHandler};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -36,15 +36,18 @@ use std::path::{Path, PathBuf};
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 
-fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options, CfgSpecs) {
-    let sessopts = build_session_options(&matches);
-    let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
+fn build_session_options_and_crate_config(
+    handler: &mut EarlyErrorHandler,
+    matches: getopts::Matches,
+) -> (Options, CfgSpecs) {
+    let sessopts = build_session_options(handler, &matches);
+    let cfg = parse_cfgspecs(handler, matches.opt_strs("cfg"));
     (sessopts, cfg)
 }
 
-fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
+fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
-    let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+    let (sessopts, cfg) = build_session_options_and_crate_config(handler, matches);
     let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
     let io = CompilerIO {
         input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -52,8 +55,18 @@ fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
         output_file: None,
         temps_dir,
     };
-    let sess =
-        build_session(sessopts, io, None, registry, vec![], Default::default(), None, None, "");
+    let sess = build_session(
+        handler,
+        sessopts,
+        io,
+        None,
+        registry,
+        vec![],
+        Default::default(),
+        None,
+        None,
+        "",
+    );
     (sess, cfg)
 }
 
@@ -120,7 +133,8 @@ fn assert_non_crate_hash_different(x: &Options, y: &Options) {
 fn test_switch_implies_cfg_test() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["--test".to_string()]).unwrap();
-        let (sess, cfg) = mk_session(matches);
+        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+        let (sess, cfg) = mk_session(&mut handler, matches);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
         assert!(cfg.contains(&(sym::test, None)));
     });
@@ -131,7 +145,8 @@ fn test_switch_implies_cfg_test() {
 fn test_switch_implies_cfg_test_unless_cfg_test() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]).unwrap();
-        let (sess, cfg) = mk_session(matches);
+        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+        let (sess, cfg) = mk_session(&mut handler, matches);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == sym::test);
         assert!(test_items.next().is_some());
@@ -143,20 +158,23 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 fn test_can_print_warnings() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+        let (sess, _) = mk_session(&mut handler, matches);
         assert!(!sess.diagnostic().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches =
             optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+        let (sess, _) = mk_session(&mut handler, matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
+        let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+        let (sess, _) = mk_session(&mut handler, matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
 }
@@ -302,35 +320,36 @@ fn test_search_paths_tracking_hash_different_order() {
     let mut v3 = Options::default();
     let mut v4 = Options::default();
 
+    let handler = EarlyErrorHandler::new(JSON);
     const JSON: ErrorOutputType = ErrorOutputType::Json {
         pretty: false,
         json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
     };
 
     // Reference
-    v1.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
-    v1.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
-    v1.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v1.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
-    v1.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
+    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
 
-    v2.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
-    v2.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v2.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
-    v2.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
-    v2.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
+    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
 
-    v3.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
-    v3.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
-    v3.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
-    v3.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v3.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
+    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
 
-    v4.search_paths.push(SearchPath::from_cli_opt("all=mno", JSON));
-    v4.search_paths.push(SearchPath::from_cli_opt("native=abc", JSON));
-    v4.search_paths.push(SearchPath::from_cli_opt("crate=def", JSON));
-    v4.search_paths.push(SearchPath::from_cli_opt("dependency=ghi", JSON));
-    v4.search_paths.push(SearchPath::from_cli_opt("framework=jkl", JSON));
+    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
 
     assert_same_hash(&v1, &v2);
     assert_same_hash(&v1, &v3);
@@ -851,7 +870,9 @@ fn test_edition_parsing() {
     let options = Options::default();
     assert!(options.edition == DEFAULT_EDITION);
 
+    let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
-    let (sessopts, _) = build_session_options_and_crate_config(matches);
+    let (sessopts, _) = build_session_options_and_crate_config(&mut handler, matches);
     assert!(sessopts.edition == Edition::Edition2018)
 }

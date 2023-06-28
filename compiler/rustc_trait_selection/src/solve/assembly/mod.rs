@@ -469,13 +469,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
-            if let Some(clause) = assumption.as_clause() {
-                match G::consider_implied_clause(self, goal, clause, []) {
-                    Ok(result) => {
-                        candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
-                    }
-                    Err(NoSolution) => (),
+            match G::consider_implied_clause(self, goal, assumption, []) {
+                Ok(result) => {
+                    candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
                 }
+                Err(NoSolution) => (),
             }
         }
     }
@@ -685,19 +683,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // since that'll cause ambiguity.
             //
             // We can remove this when we have implemented lifetime intersections in responses.
-            if assumption.to_opt_poly_projection_pred().is_some()
-                && !own_bounds.contains(&assumption)
-            {
+            if assumption.as_projection_clause().is_some() && !own_bounds.contains(&assumption) {
                 continue;
             }
 
-            if let Some(clause) = assumption.as_clause() {
-                match G::consider_object_bound_candidate(self, goal, clause) {
-                    Ok(result) => {
-                        candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
-                    }
-                    Err(NoSolution) => (),
+            match G::consider_object_bound_candidate(self, goal, assumption) {
+                Ok(result) => {
+                    candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }
+                Err(NoSolution) => (),
             }
         }
     }
