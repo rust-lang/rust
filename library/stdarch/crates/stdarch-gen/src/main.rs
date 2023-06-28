@@ -2528,7 +2528,7 @@ fn gen_arm(
 
 {function_doc}
 #[inline]
-#[cfg(target_arch = "aarch64")]{target_feature_aarch64}
+#[cfg(not(target_arch = "arm"))]{target_feature_aarch64}
 #[cfg_attr(test, assert_instr({assert_aarch64}{const_assert}))]{const_legacy}{stable_aarch64}
 {call_aarch64}
 "#,
