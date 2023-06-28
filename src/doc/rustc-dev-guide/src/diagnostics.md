@@ -582,7 +582,7 @@ More information about lint registration can be found in the [LintStore]
 chapter.
 
 [deprecated plugin system]: https://doc.rust-lang.org/nightly/unstable-book/language-features/plugin.html
-[LintStore]: lintstore.md
+[LintStore]: diagnostics/lintstore.md
 
 ### Declaring a lint
 
