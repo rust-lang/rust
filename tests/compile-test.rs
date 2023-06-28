@@ -64,12 +64,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
 fn test_filter() -> Box<dyn Sync + Fn(&Path) -> bool> {
     if let Ok(filters) = env::var("TESTNAME") {
         let filters: Vec<_> = filters.split(',').map(ToString::to_string).collect();
-        Box::new(move |path| {
-            filters.is_empty()
-                || filters
-                    .iter()
-                    .any(|f| path.file_stem().map_or(false, |stem| stem == f.as_str()))
-        })
+        Box::new(move |path| filters.iter().any(|f| path.to_string_lossy().contains(f)))
     } else {
         Box::new(|_| true)
     }
