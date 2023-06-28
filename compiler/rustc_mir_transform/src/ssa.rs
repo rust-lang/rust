@@ -271,6 +271,14 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
         else { continue };
 
         let Some(rhs) = place.as_local() else { continue };
+        let local_ty = body.local_decls()[local].ty;
+        let rhs_ty = body.local_decls()[rhs].ty;
+        if local_ty != rhs_ty {
+            // FIXME(#112651): This can be removed afterwards.
+            trace!("skipped `{local:?} = {rhs:?}` due to subtyping: {local_ty} != {rhs_ty}");
+            continue;
+        }
+
         if !ssa.is_ssa(rhs) {
             continue;
         }

@@ -4,6 +4,7 @@
 #![feature(if_let_guard)]
 #![feature(int_roundings)]
 #![feature(let_chains)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(strict_provenance)]
 #![feature(try_blocks)]
