@@ -217,14 +217,13 @@ fn main() {
     // affected test 1000 times and gets the average.
     if let Ok(speedtest) = std::env::var("SPEEDTEST") {
         println!("----------- STARTING SPEEDTEST -----------");
-        let f;
-        match speedtest.as_str() {
-            "ui" => f = run_ui as fn(),
-            "cargo" => f = run_ui_cargo as fn(),
-            "toml" => f = run_ui_toml as fn(),
-            "internal" => f = run_internal_tests as fn(),
-            "rustfix-coverage-known-exceptions-accuracy" => f = rustfix_coverage_known_exceptions_accuracy as fn(),
-            "ui-cargo-toml-metadata" => f = ui_cargo_toml_metadata as fn(),
+        let f = match speedtest.as_str() {
+            "ui" => run_ui as fn(),
+            "cargo" => run_ui_cargo as fn(),
+            "toml" => run_ui_toml as fn(),
+            "internal" => run_internal_tests as fn(),
+            "rustfix-coverage-known-exceptions-accuracy" => rustfix_coverage_known_exceptions_accuracy as fn(),
+            "ui-cargo-toml-metadata" => ui_cargo_toml_metadata as fn(),
 
             _ => panic!("unknown speedtest: {speedtest} || accepted speedtests are: [ui, cargo, toml, internal]"),
         };
