@@ -179,7 +179,8 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
     let mut previous_defns = HashMap::new();
     let mut message_refs = Vec::new();
     for entry in resource.entries() {
-        if let Entry::Message(Message { id: Identifier { name }, attributes, value, .. }) = entry {
+        if let Entry::Message(msg) = entry {
+            let Message { id: Identifier { name }, attributes, value, .. } = msg;
             let _ = previous_defns.entry(name.to_string()).or_insert(resource_span);
             if name.contains('-') {
                 Diagnostic::spanned(
@@ -229,9 +230,10 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 continue;
             }
 
-            let msg = format!("Constant referring to Fluent message `{name}` from `{crate_name}`");
+            let docstr =
+                format!("Constant referring to Fluent message `{name}` from `{crate_name}`");
             constants.extend(quote! {
-                #[doc = #msg]
+                #[doc = #docstr]
                 pub const #snake_name: crate::DiagnosticMessage =
                     crate::DiagnosticMessage::FluentIdentifier(
                         std::borrow::Cow::Borrowed(#name),
@@ -269,6 +271,15 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                         );
                 });
             }
+
+            // Record variables referenced by these messages so we can produce
+            // tests in the derive diagnostics to validate them.
+            let ident = quote::format_ident!("{snake_name}_refs");
+            let vrefs = variable_references(msg);
+            constants.extend(quote! {
+                #[cfg(test)]
+                pub const #ident: &[&str] = &[#(#vrefs),*];
+            })
         }
     }
 
@@ -333,4 +344,29 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
         }
     }
     .into()
+}
+
+fn variable_references<'a>(msg: &Message<&'a str>) -> Vec<&'a str> {
+    let mut refs = vec![];
+    if let Some(Pattern { elements }) = &msg.value {
+        for elt in elements {
+            if let PatternElement::Placeable {
+                expression: Expression::Inline(InlineExpression::VariableReference { id }),
+            } = elt
+            {
+                refs.push(id.name);
+            }
+        }
+    }
+    for attr in &msg.attributes {
+        for elt in &attr.value.elements {
+            if let PatternElement::Placeable {
+                expression: Expression::Inline(InlineExpression::VariableReference { id }),
+            } = elt
+            {
+                refs.push(id.name);
+            }
+        }
+    }
+    refs
 }

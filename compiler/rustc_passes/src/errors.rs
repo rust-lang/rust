@@ -1150,14 +1150,6 @@ pub struct UnixSigpipeValues {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_no_main_function, code = "E0601")]
-pub struct NoMainFunction {
-    #[primary_span]
-    pub span: Span,
-    pub crate_name: String,
-}
-
 pub struct NoMainErr {
     pub sp: Span,
     pub crate_name: Symbol,
