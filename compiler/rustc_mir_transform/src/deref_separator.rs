@@ -8,13 +8,13 @@ use rustc_middle::ty::TyCtxt;
 
 pub struct Derefer;
 
-pub struct DerefChecker<'tcx> {
+pub struct DerefChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     patcher: MirPatch<'tcx>,
-    local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    local_decls: &'a IndexVec<Local, LocalDecl<'tcx>>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -36,7 +36,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
 
             for (idx, (p_ref, p_elem)) in place.iter_projections().enumerate() {
                 if !p_ref.projection.is_empty() && p_elem == ProjectionElem::Deref {
-                    let ty = p_ref.ty(&self.local_decls, self.tcx).ty;
+                    let ty = p_ref.ty(self.local_decls, self.tcx).ty;
                     let temp = self.patcher.new_internal_with_info(
                         ty,
                         self.local_decls[p_ref.local].source_info.span,
@@ -70,7 +70,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
 
 pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let patch = MirPatch::new(body);
-    let mut checker = DerefChecker { tcx, patcher: patch, local_decls: body.local_decls.clone() };
+    let mut checker = DerefChecker { tcx, patcher: patch, local_decls: &body.local_decls };
 
     for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
         checker.visit_basic_block_data(bb, data);
