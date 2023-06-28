@@ -53,7 +53,7 @@ pub fn provide(providers: &mut Providers) {
         const_eval::eval_to_valtree(tcx, param_env, raw)
     };
     providers.try_destructure_mir_constant =
-        |tcx, (cv, ty)| const_eval::try_destructure_mir_constant(tcx, cv, ty).ok();
+        |tcx, (cv, ty)| const_eval::try_destructure_mir_constant(tcx, cv, ty);
     providers.valtree_to_const_val = |tcx, (ty, valtree)| {
         const_eval::valtree_to_const_value(tcx, ty::ParamEnv::empty().and(ty), valtree)
     };
