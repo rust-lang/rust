@@ -520,6 +520,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "loongarch64" => "LoongArch LA64",
                         "m68k" => "M68k",
                         "mips" => "MIPS",
+                        "mips32r6" => "MIPS Release 6",
                         "mips64" => "MIPS-64",
                         "mips64r6" => "MIPS-64 Release 6",
                         "msp430" => "MSP430",

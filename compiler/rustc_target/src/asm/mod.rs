@@ -238,7 +238,7 @@ impl FromStr for InlineAsmArch {
             "powerpc64" => Ok(Self::PowerPC64),
             "hexagon" => Ok(Self::Hexagon),
             "loongarch64" => Ok(Self::LoongArch64),
-            "mips" => Ok(Self::Mips),
+            "mips" | "mips32r6" => Ok(Self::Mips),
             "mips64" | "mips64r6" => Ok(Self::Mips64),
             "s390x" => Ok(Self::S390x),
             "spirv" => Ok(Self::SpirV),

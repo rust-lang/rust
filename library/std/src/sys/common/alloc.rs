@@ -9,6 +9,7 @@ use crate::ptr;
     target_arch = "arm",
     target_arch = "m68k",
     target_arch = "mips",
+    target_arch = "mips32r6",
     target_arch = "powerpc",
     target_arch = "powerpc64",
     target_arch = "sparc",

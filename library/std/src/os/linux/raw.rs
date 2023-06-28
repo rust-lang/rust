@@ -94,7 +94,7 @@ mod arch {
     }
 }
 
-#[cfg(target_arch = "mips")]
+#[cfg(any(target_arch = "mips", target_arch = "mips32r6"))]
 mod arch {
     use crate::os::raw::{c_long, c_ulong};
 
