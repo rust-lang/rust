@@ -94,6 +94,10 @@ macro_rules! define_helper {
                     $tl.with(|c| c.set(self.0))
                 }
             }
+
+            pub fn $name() -> bool {
+                $tl.with(|c| c.get())
+            }
         )+
     }
 }
@@ -676,7 +680,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(")")
             }
             ty::FnDef(def_id, substs) => {
-                if NO_QUERIES.with(|q| q.get()) {
+                if with_no_queries() {
                     p!(print_def_path(def_id, substs));
                 } else {
                     let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
@@ -732,7 +736,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_def_path(def_id, &[]));
             }
             ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ref data) => {
-                if !(self.should_print_verbose() || NO_QUERIES.with(|q| q.get()))
+                if !(self.should_print_verbose() || with_no_queries())
                     && self.tcx().is_impl_trait_in_trait(data.def_id)
                 {
                     return self.pretty_print_opaque_impl_type(data.def_id, data.substs);
@@ -779,7 +783,7 @@ pub trait PrettyPrinter<'tcx>:
                         return Ok(self);
                     }
                     _ => {
-                        if NO_QUERIES.with(|q| q.get()) {
+                        if with_no_queries() {
                             p!(print_def_path(def_id, &[]));
                             return Ok(self);
                         } else {
@@ -1746,7 +1750,8 @@ impl DerefMut for FmtPrinter<'_, '_> {
 
 impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ns: Namespace) -> Self {
-        Self::new_with_limit(tcx, ns, tcx.type_length_limit())
+        let limit = if with_no_queries() { Limit::new(1048576) } else { tcx.type_length_limit() };
+        Self::new_with_limit(tcx, ns, limit)
     }
 
     pub fn new_with_limit(tcx: TyCtxt<'tcx>, ns: Namespace, type_length_limit: Limit) -> Self {
@@ -2999,7 +3004,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 ///
 /// The implementation uses similar import discovery logic to that of 'use' suggestions.
 ///
-/// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths`].
+/// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths!`].
 fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     let mut map: FxHashMap<DefId, Symbol> = FxHashMap::default();
 
