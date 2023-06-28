@@ -340,6 +340,8 @@ declare_clippy_lint! {
     ///     // NOTE: Type is a `Vec` here
     ///     println!("all elements: {all:#?}");
     /// }
+    /// // or
+    /// println!("all elements: {v:#?}");
     /// ```
     #[clippy::version = "1.72.0"]
     pub REDUNDANT_AT_REST_PATTERN,
