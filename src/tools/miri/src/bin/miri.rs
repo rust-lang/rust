@@ -31,9 +31,9 @@ use rustc_middle::{
     query::{ExternProviders, LocalCrate},
     ty::TyCtxt,
 };
-use rustc_session::{EarlyErrorHandler, CtfeBacktrace};
-use rustc_session::config::{OptLevel, CrateType, ErrorOutputType};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
+use rustc_session::{CtfeBacktrace, EarlyErrorHandler};
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 
