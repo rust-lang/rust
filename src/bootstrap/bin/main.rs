@@ -5,9 +5,11 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::fs::OpenOptions;
+#[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use std::io::Write;
-use std::{env, fs, process};
+#[cfg(all(any(unix, windows), not(target_os = "solaris")))]
+use std::process;
+use std::{env, fs};
 
 #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use bootstrap::t;
@@ -32,7 +34,7 @@ fn main() {
         };
 
         build_lock =
-            fd_lock::RwLock::new(t!(OpenOptions::new().write(true).create(true).open(&path)));
+            fd_lock::RwLock::new(t!(fs::OpenOptions::new().write(true).create(true).open(&path)));
         _build_lock_guard = match build_lock.try_write() {
             Ok(mut lock) => {
                 t!(lock.write(&process::id().to_string().as_ref()));
@@ -85,7 +87,7 @@ fn main() {
     // HACK: Since the commit script uses hard links, we can't actually tell if it was installed by x.py setup or not.
     // We could see if it's identical to src/etc/pre-push.sh, but pre-push may have been modified in the meantime.
     // Instead, look for this comment, which is almost certainly not in any custom hook.
-    if std::fs::read_to_string(pre_commit).map_or(false, |contents| {
+    if fs::read_to_string(pre_commit).map_or(false, |contents| {
         contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
     }) {
         println!(

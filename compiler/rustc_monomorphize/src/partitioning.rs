@@ -368,6 +368,7 @@ fn merge_codegen_units<'tcx>(
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
 
+    // Rename the newly merged CGUs.
     if cx.tcx.sess.opts.incremental.is_some() {
         // If we are doing incremental compilation, we want CGU names to
         // reflect the path of the source level module they correspond to.
@@ -404,18 +405,41 @@ fn merge_codegen_units<'tcx>(
                 }
             }
         }
+
+        // A sorted order here ensures what follows can be deterministic.
+        codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
     } else {
-        // If we are compiling non-incrementally we just generate simple CGU
-        // names containing an index.
+        // When compiling non-incrementally, we rename the CGUS so they have
+        // identical names except for the numeric suffix, something like
+        // `regex.f10ba03eb5ec7975-cgu.N`, where `N` varies.
+        //
+        // It is useful for debugging and profiling purposes if the resulting
+        // CGUs are sorted by name *and* reverse sorted by size. (CGU 0 is the
+        // biggest, CGU 1 is the second biggest, etc.)
+        //
+        // So first we reverse sort by size. Then we generate the names with
+        // zero-padded suffixes, which means they are automatically sorted by
+        // names. The numeric suffix width depends on the number of CGUs, which
+        // is always greater than zero:
+        // - [1,9]     CGUS: `0`, `1`, `2`, ...
+        // - [10,99]   CGUS: `00`, `01`, `02`, ...
+        // - [100,999] CGUS: `000`, `001`, `002`, ...
+        // - etc.
+        //
+        // If we didn't zero-pad the sorted-by-name order would be `XYZ-cgu.0`,
+        // `XYZ-cgu.1`, `XYZ-cgu.10`, `XYZ-cgu.11`, ..., `XYZ-cgu.2`, etc.
+        codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+        let num_digits = codegen_units.len().ilog10() as usize + 1;
         for (index, cgu) in codegen_units.iter_mut().enumerate() {
+            // Note: `WorkItem::short_description` depends on this name ending
+            // with `-cgu.` followed by a numeric suffix. Please keep it in
+            // sync with this code.
+            let suffix = format!("{index:0num_digits$}");
             let numbered_codegen_unit_name =
-                cgu_name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index));
+                cgu_name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(suffix));
             cgu.set_name(numbered_codegen_unit_name);
         }
     }
-
-    // A sorted order here ensures what follows can be deterministic.
-    codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 }
 
 fn internalize_symbols<'tcx>(

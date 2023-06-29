@@ -8,6 +8,7 @@
 
 :root {
 	--nav-sub-mobile-padding: 8px;
+	--search-typename-width: 6.75rem;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -869,14 +870,11 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	gap: 1em;
 }
 
-.search-results > a > div {
-	flex: 1;
-}
-
 .search-results > a > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+	flex: 2;
 }
 
 .search-results a:hover,
@@ -884,6 +882,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-color: var(--search-result-link-focus-background-color);
 }
 
+.search-results .result-name {
+	display: flex;
+	align-items: center;
+	justify-content: start;
+	flex: 3;
+}
 .search-results .result-name span.alias {
 	color: var(--search-results-alias-color);
 }
@@ -891,10 +895,14 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--search-results-grey-color);
 }
 .search-results .result-name .typename {
-	display: inline-block;
 	color: var(--search-results-grey-color);
 	font-size: 0.875rem;
-	width: 6.25rem;
+	width: var(--search-typename-width);
+}
+.search-results .result-name .path {
+	word-break: break-all;
+	max-width: calc(100% - var(--search-typename-width));
+	display: inline-block;
 }
 
 .popover {
@@ -1729,6 +1737,16 @@ in source-script.js
 	}
 	.search-results > a > div.desc, .item-table > li > div.desc {
 		padding-left: 2em;
+	}
+	.search-results .result-name {
+		display: block;
+	}
+	.search-results .result-name .typename {
+		width: initial;
+		margin-right: 0;
+	}
+	.search-results .result-name .typename, .search-results .result-name .path {
+		display: inline;
 	}
 
 	.source-sidebar-expanded .source .sidebar {
