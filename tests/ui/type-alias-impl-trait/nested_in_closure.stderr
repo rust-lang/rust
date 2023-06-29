@@ -1,0 +1,28 @@
+error: item constrains opaque type that is not in its signature
+  --> $DIR/nested_in_closure.rs:6:23
+   |
+LL |         let y: Tait = ();
+   |                       ^^
+   |
+   = note: this item must have the opaque type in its signature in order to be able to register hidden types
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/nested_in_closure.rs:3:4
+   |
+LL | fn main() {
+   |    ^^^^
+
+error: item constrains opaque type that is not in its signature
+  --> $DIR/nested_in_closure.rs:6:23
+   |
+LL |         let y: Tait = ();
+   |                       ^^
+   |
+   = note: this item must have the opaque type in its signature in order to be able to register hidden types
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/nested_in_closure.rs:4:13
+   |
+LL |     let x = || {
+   |             ^^
+
+error: aborting due to 2 previous errors
+
