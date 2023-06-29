@@ -45,8 +45,7 @@ impl CoverageCounters {
         basic_coverage_blocks: &mut CoverageGraph,
         coverage_spans: &[CoverageSpan],
     ) -> Result<Vec<CoverageKind>, Error> {
-        let mut bcb_counters = BcbCounters::new(self, basic_coverage_blocks);
-        bcb_counters.make_bcb_counters(coverage_spans)
+        MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(coverage_spans)
     }
 
     fn make_counter<F>(&mut self, debug_block_label_fn: F) -> CoverageKind
@@ -112,12 +111,12 @@ impl CoverageCounters {
 /// injected with `CoverageSpan`s. `Expressions` have no runtime overhead, so if a viable expression
 /// (adding or subtracting two other counters or expressions) can compute the same result as an
 /// embedded counter, an `Expression` should be used.
-struct BcbCounters<'a> {
+struct MakeBcbCounters<'a> {
     coverage_counters: &'a mut CoverageCounters,
     basic_coverage_blocks: &'a mut CoverageGraph,
 }
 
-impl<'a> BcbCounters<'a> {
+impl<'a> MakeBcbCounters<'a> {
     fn new(
         coverage_counters: &'a mut CoverageCounters,
         basic_coverage_blocks: &'a mut CoverageGraph,
