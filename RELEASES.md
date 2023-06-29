@@ -39,7 +39,6 @@ for more information on Rust's tiered platform support.
 
 Libraries
 ---------
-- [Remove structural match from `TypeId`.](https://github.com/rust-lang/rust/pull/103291/)
 - [Loosen `From<&[T]> for Box<[T]>` bound to `T: Clone`.](https://github.com/rust-lang/rust/pull/103406/)
 - [Remove unnecessary `T: Send` bound](https://github.com/rust-lang/rust/pull/111134/)
   in `Error for mpsc::SendError<T>` and `TrySendError<T>`.
@@ -111,6 +110,10 @@ Misc
 Compatibility Notes
 -------------------
 
+- [Remove structural match from `TypeId`.](https://github.com/rust-lang/rust/pull/103291/)
+  Code that uses a constant `TypeId` in a pattern will potentially be broken.
+  Known cases have already been fixed -- in particular, users of the `log`
+  crate's `kv_unstable` feature should update to `log v0.4.18` or later.
 - [Add a `sysroot` crate to represent the standard library crates.](https://github.com/rust-lang/rust/pull/108865/)
   This does not affect stable users, but may require adjustment in tools that build their own standard library.
 - [Cargo optimizes its usage under `rustup`.](https://github.com/rust-lang/cargo/pull/11917/) When
