@@ -1,4 +1,4 @@
-use crate::back::write::{self, save_temp_bitcode, CodegenDiagnosticsSection, DiagnosticHandlers};
+use crate::back::write::{self, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers};
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib,
 };
@@ -307,7 +307,7 @@ fn fat_lto(
             diag_handler,
             llcx,
             &module,
-            CodegenDiagnosticsSection::LTO,
+            CodegenDiagnosticsStage::LTO,
         );
 
         // For all other modules we codegened we'll need to link them into our own

@@ -269,10 +269,13 @@ pub(crate) fn save_temp_bitcode(
 }
 
 /// In what context is a dignostic handler being attached to a codegen unit?
-pub enum CodegenDiagnosticsSection {
-    Codegen,
+pub enum CodegenDiagnosticsStage {
+    /// Prelink optimization stage.
     Opt,
+    /// LTO/ThinLTO postlink optimization stage.
     LTO,
+    /// Code generation.
+    Codegen,
 }
 
 pub struct DiagnosticHandlers<'a> {
@@ -287,7 +290,7 @@ impl<'a> DiagnosticHandlers<'a> {
         handler: &'a Handler,
         llcx: &'a llvm::Context,
         module: &ModuleCodegen<ModuleLlvm>,
-        section: CodegenDiagnosticsSection,
+        section: CodegenDiagnosticsStage,
     ) -> Self {
         let remark_passes_all: bool;
         let remark_passes: Vec<CString>;
@@ -307,17 +310,16 @@ impl<'a> DiagnosticHandlers<'a> {
         let remark_file = cgcx
             .remark_dir
             .as_ref()
-            .and_then(|dir| dir.to_str())
-            // Use the .opt.yaml file pattern, which is supported by LLVM's opt-viewer.
+            // Use the .opt.yaml file suffix, which is supported by LLVM's opt-viewer.
             .map(|dir| {
                 let section = match section {
-                    CodegenDiagnosticsSection::Codegen => "codegen",
-                    CodegenDiagnosticsSection::Opt => "opt",
-                    CodegenDiagnosticsSection::LTO => "lto",
+                    CodegenDiagnosticsStage::Codegen => "codegen",
+                    CodegenDiagnosticsStage::Opt => "opt",
+                    CodegenDiagnosticsStage::LTO => "lto",
                 };
-                format!("{dir}/{}.{section}.opt.yaml", module.name)
+                dir.join(format!("{}.{section}.opt.yaml", module.name))
             })
-            .map(|dir| CString::new(dir).unwrap());
+            .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
@@ -551,7 +553,7 @@ pub(crate) unsafe fn optimize(
     let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
     let _handlers =
-        DiagnosticHandlers::new(cgcx, diag_handler, llcx, module, CodegenDiagnosticsSection::Opt);
+        DiagnosticHandlers::new(cgcx, diag_handler, llcx, module, CodegenDiagnosticsStage::Opt);
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
@@ -615,7 +617,7 @@ pub(crate) unsafe fn codegen(
             diag_handler,
             llcx,
             &module,
-            CodegenDiagnosticsSection::Codegen,
+            CodegenDiagnosticsStage::Codegen,
         );
 
         if cgcx.msvc_imps_needed {
