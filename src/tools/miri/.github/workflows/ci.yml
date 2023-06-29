@@ -198,10 +198,7 @@ jobs:
       - name: get changes from rustc
         run: ./miri rustc-pull
       - name: Install rustup-toolchain-install-master
-        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-        shell: bash
-        run: |
-          cargo install -f rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master
       - name: format changes (if any)
         run: |
           ./miri toolchain
