@@ -242,11 +242,9 @@
 
 use super::*;
 
-use crate::framework::{Analysis, Results, ResultsCursor};
+use crate::framework::{Analysis, Results, ResultsClonedCursor, ResultsCursor};
 use crate::impls::MaybeBorrowedLocals;
-use crate::{
-    AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKillAnalysis, ResultsRefCursor,
-};
+use crate::{AnalysisDomain, Backward, CallReturnPlaces, CloneAnalysis, GenKill, GenKillAnalysis};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::implementation::{Graph, NodeIndex};
@@ -257,7 +255,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TypeSuperVisitable};
 
-use std::cell::RefCell;
 use std::ops::{ControlFlow, Deref, DerefMut};
 
 // FIXME Properly determine a reasonable value
@@ -890,7 +887,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
     }
 }
 
-pub struct BorrowedLocalsResults<'a, 'mir, 'tcx> {
+pub struct BorrowedLocalsResults<'mir, 'tcx> {
     /// the results of the liveness analysis of `LiveBorrows`
     borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>,
 
@@ -900,36 +897,26 @@ pub struct BorrowedLocalsResults<'a, 'mir, 'tcx> {
     /// to the set of `Local`s that are borrowed through those references, pointers or composite values.
     borrowed_local_to_locals_to_keep_alive: FxHashMap<Local, FxHashSet<Local>>,
 
-    /// The results cursor of the `MaybeBorrowedLocals` analysis. Needed as an upper bound, since
+    /// The results of the `MaybeBorrowedLocals` analysis. Needed as an upper bound, since
     /// to ensure soundness the `LiveBorrows` analysis would keep more `Local`s alive than
     /// strictly necessary.
-    maybe_borrowed_locals_results_cursor: RefCell<
-        ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals, &'a Results<'tcx, MaybeBorrowedLocals>>,
-    >,
+    maybe_borrowed_locals_results: Results<'tcx, MaybeBorrowedLocals>,
 }
 
-impl<'a, 'mir, 'tcx> BorrowedLocalsResults<'a, 'mir, 'tcx>
+impl<'mir, 'tcx> BorrowedLocalsResults<'mir, 'tcx>
 where
     'tcx: 'mir,
-    'tcx: 'a,
 {
     fn new(
         borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>,
-        maybe_borrowed_locals_results_cursor: ResultsCursor<
-            'mir,
-            'tcx,
-            MaybeBorrowedLocals,
-            &'a Results<'tcx, MaybeBorrowedLocals>,
-        >,
+        maybe_borrowed_locals_results: Results<'tcx, MaybeBorrowedLocals>,
         dep_graph: BorrowDepGraph,
     ) -> Self {
         let borrowed_local_to_locals_to_keep_alive = Self::get_locals_to_keep_alive_map(dep_graph);
         Self {
             borrows_analysis_results,
             borrowed_local_to_locals_to_keep_alive,
-            maybe_borrowed_locals_results_cursor: RefCell::new(
-                maybe_borrowed_locals_results_cursor,
-            ),
+            maybe_borrowed_locals_results,
         }
     }
 
@@ -1051,17 +1038,12 @@ where
 
 /// The function gets the results of the borrowed locals analysis in this module. See the module
 /// doc-comment for information on what exactly this analysis does.
-#[instrument(skip(tcx, maybe_borrowed_locals_cursor, body), level = "debug")]
-pub fn get_borrowed_locals_results<'a, 'mir, 'tcx>(
+#[instrument(skip(tcx, maybe_borrowed_locals, body), level = "debug")]
+pub fn get_borrowed_locals_results<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    maybe_borrowed_locals_cursor: ResultsCursor<
-        'mir,
-        'tcx,
-        MaybeBorrowedLocals,
-        &'a Results<'tcx, MaybeBorrowedLocals>,
-    >,
-) -> BorrowedLocalsResults<'a, 'mir, 'tcx> {
+    maybe_borrowed_locals: Results<'tcx, MaybeBorrowedLocals>,
+) -> BorrowedLocalsResults<'mir, 'tcx> {
     debug!("body: {:#?}", body);
 
     let mut borrow_deps = BorrowDependencies::new(body.local_decls(), tcx);
@@ -1111,11 +1093,7 @@ pub fn get_borrowed_locals_results<'a, 'mir, 'tcx>(
     let live_borrows_results =
         live_borrows.into_engine(tcx, body).pass_name("borrowed_locals").iterate_to_fixpoint();
 
-    BorrowedLocalsResults::new(
-        live_borrows_results,
-        maybe_borrowed_locals_cursor,
-        borrow_deps.dep_graph,
-    )
+    BorrowedLocalsResults::new(live_borrows_results, maybe_borrowed_locals, borrow_deps.dep_graph)
 }
 
 /// The `ResultsCursor` equivalent for the borrowed locals analysis. Since this analysis doesn't
@@ -1123,7 +1101,16 @@ pub fn get_borrowed_locals_results<'a, 'mir, 'tcx>(
 /// the `get` method without the need for any prior 'seek' calls.
 pub struct BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
     // The cursor for the liveness analysis performed by `LiveBorrows`
-    borrows_analysis_cursor: ResultsRefCursor<'a, 'mir, 'tcx, LiveBorrows<'mir, 'tcx>>,
+    borrows_analysis_cursor: ResultsCursor<
+        'mir,
+        'tcx,
+        LiveBorrows<'mir, 'tcx>,
+        Results<
+            'tcx,
+            LiveBorrows<'mir, 'tcx>,
+            &'a rustc_index::IndexVec<BasicBlock, BitSet<Local>>,
+        >,
+    >,
 
     // Maps each `Local` corresponding to a reference or pointer to the set of `Local`s
     // that are borrowed through the ref/ptr. Additionally contains entries for `Local`s
@@ -1132,14 +1119,13 @@ pub struct BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
     borrowed_local_to_locals_to_keep_alive: &'a FxHashMap<Local, FxHashSet<Local>>,
 
     // the cursor of the conservative borrowed locals analysis
-    maybe_borrowed_locals_results_cursor: &'a RefCell<
-        ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals, &'a Results<'tcx, MaybeBorrowedLocals>>,
-    >,
+    maybe_borrowed_locals_results_cursor: ResultsClonedCursor<'a, 'mir, 'tcx, MaybeBorrowedLocals>,
 }
 
 impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
-    pub fn new(body: &'mir Body<'tcx>, results: &'a BorrowedLocalsResults<'a, 'mir, 'tcx>) -> Self {
-        let mut cursor = ResultsCursor::new(body, &results.borrows_analysis_results);
+    pub fn new(body: &'mir Body<'tcx>, results: &'a BorrowedLocalsResults<'mir, 'tcx>) -> Self {
+        let mut cursor =
+            ResultsCursor::new(body, results.borrows_analysis_results.clone_analysis());
 
         // We don't care about the order of the blocks, only about the result at a given location.
         // This statement is necessary since we're performing a backward analysis in `LiveBorrows`,
@@ -1149,7 +1135,10 @@ impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
         Self {
             borrows_analysis_cursor: cursor,
             borrowed_local_to_locals_to_keep_alive: &results.borrowed_local_to_locals_to_keep_alive,
-            maybe_borrowed_locals_results_cursor: &results.maybe_borrowed_locals_results_cursor,
+            maybe_borrowed_locals_results_cursor: ResultsClonedCursor::new(
+                body,
+                results.maybe_borrowed_locals_results.clone_analysis(),
+            ),
         }
     }
 
@@ -1178,11 +1167,9 @@ impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
         // use results of conservative analysis as an "upper bound" on the borrowed locals. This
         // is necessary since to guarantee soundness for this analysis we would have to keep
         // more `Local`s alive than strictly necessary.
-        let mut maybe_borrowed_locals_cursor =
-            self.maybe_borrowed_locals_results_cursor.borrow_mut();
-        maybe_borrowed_locals_cursor.allow_unreachable();
-        maybe_borrowed_locals_cursor.seek_before_primary_effect(loc);
-        let upper_bound_borrowed_locals = maybe_borrowed_locals_cursor.get();
+        self.maybe_borrowed_locals_results_cursor.allow_unreachable();
+        self.maybe_borrowed_locals_results_cursor.seek_before_primary_effect(loc);
+        let upper_bound_borrowed_locals = self.maybe_borrowed_locals_results_cursor.get();
         borrowed_locals.intersect(upper_bound_borrowed_locals);
 
         debug!(?borrowed_locals);
@@ -1225,7 +1212,7 @@ impl<'mir, 'tcx> LiveBorrows<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> crate::CloneAnalysis for LiveBorrows<'mir, 'tcx> {
+impl<'mir, 'tcx> CloneAnalysis for LiveBorrows<'mir, 'tcx> {
     fn clone_analysis(&self) -> Self {
         self.clone()
     }
@@ -1251,7 +1238,7 @@ impl<'a, 'tcx> GenKillAnalysis<'tcx> for LiveBorrows<'a, 'tcx> {
 
     #[instrument(skip(self, trans), level = "debug")]
     fn statement_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -1261,7 +1248,7 @@ impl<'a, 'tcx> GenKillAnalysis<'tcx> for LiveBorrows<'a, 'tcx> {
 
     #[instrument(skip(self, trans), level = "debug")]
     fn terminator_effect(
-        &self,
+        &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -1270,7 +1257,7 @@ impl<'a, 'tcx> GenKillAnalysis<'tcx> for LiveBorrows<'a, 'tcx> {
     }
 
     fn call_return_effect(
-        &self,
+        &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,

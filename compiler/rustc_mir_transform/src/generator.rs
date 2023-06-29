@@ -594,25 +594,26 @@ fn locals_live_across_suspend_points<'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
 
+    // conservative upper bound on borrowed locals that is needed in the `LiveBorrows` analysis
     let borrowed_locals_results =
         MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
-    let borrowed_locals_cursor =
-        rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
-
-    let mut blc = rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
 
     // Calculate the locals that are live due to outstanding references or pointers.
-    let live_borrows_results = get_borrowed_locals_results(body_ref, tcx, borrowed_locals_cursor);
+    let live_borrows_results = get_borrowed_locals_results(body_ref, tcx, borrowed_locals_results);
+
     let mut live_borrows_cursor = BorrowedLocalsResultsCursor::new(body_ref, &live_borrows_results);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let requires_storage_results = MaybeRequiresStorage::new(body, &live_borrows_results)
-        .into_engine(tcx, body_ref)
-        .iterate_to_fixpoint();
+    let mut requires_storage_results = MaybeRequiresStorage::new(
+        body,
+        BorrowedLocalsResultsCursor::new(body_ref, &live_borrows_results),
+    )
+    .into_engine(tcx, body_ref)
+    .iterate_to_fixpoint();
 
     let mut requires_storage_cursor =
-        rustc_mir_dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
+        rustc_mir_dataflow::ResultsRefCursor::new(body_ref, &mut requires_storage_results);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness = MaybeLiveLocals
@@ -646,8 +647,6 @@ fn locals_live_across_suspend_points<'tcx>(
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
                 let live_borrowed_locals = live_borrows_cursor.get(loc);
-                blc.seek_before_primary_effect(loc);
-                let old_borrowed_locals = blc.get();
 
                 let mut live_locals_stmt: BitSet<_> = BitSet::new_empty(body.local_decls.len());
                 liveness.seek_before_primary_effect(loc);
@@ -658,7 +657,6 @@ fn locals_live_across_suspend_points<'tcx>(
                 storage_req.union(requires_storage_cursor.get());
 
                 debug!(?live_borrowed_locals);
-                debug!(?old_borrowed_locals);
                 debug!(?live_locals_stmt);
                 debug!(?storage_req);
 
@@ -770,7 +768,7 @@ fn compute_storage_conflicts<'a, 'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &GeneratorSavedLocals,
     always_live_locals: BitSet<Local>,
-    requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'a, 'mir, 'tcx>>,
+    mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'a, 'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
