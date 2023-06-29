@@ -1631,7 +1631,7 @@ pub struct SemanticsScope<'a> {
     resolver: Resolver,
 }
 
-impl<'a> SemanticsScope<'a> {
+impl SemanticsScope<'_> {
     pub fn module(&self) -> Module {
         Module { id: self.resolver.module() }
     }

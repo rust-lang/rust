@@ -56,7 +56,7 @@ impl PatLike for PatId {
     }
 }
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     /// Infers type for tuple struct pattern or its corresponding assignee expression.
     ///
     /// Ellipses found in the original pattern or expression must be filtered out.

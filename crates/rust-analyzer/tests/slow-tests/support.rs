@@ -25,7 +25,7 @@ pub(crate) struct Project<'a> {
     config: serde_json::Value,
 }
 
-impl<'a> Project<'a> {
+impl Project<'_> {
     pub(crate) fn with_fixture(fixture: &str) -> Project<'_> {
         Project {
             fixture,
@@ -48,17 +48,17 @@ impl<'a> Project<'a> {
         }
     }
 
-    pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Project<'a> {
+    pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Self {
         self.tmp_dir = Some(tmp_dir);
         self
     }
 
-    pub(crate) fn root(mut self, path: &str) -> Project<'a> {
+    pub(crate) fn root(mut self, path: &str) -> Self {
         self.roots.push(path.into());
         self
     }
 
-    pub(crate) fn with_config(mut self, config: serde_json::Value) -> Project<'a> {
+    pub(crate) fn with_config(mut self, config: serde_json::Value) -> Self {
         fn merge(dst: &mut serde_json::Value, src: serde_json::Value) {
             match (dst, src) {
                 (Value::Object(dst), Value::Object(src)) => {

@@ -52,7 +52,7 @@ struct Printer<'a> {
     needs_indent: bool,
 }
 
-impl<'a> Printer<'a> {
+impl Printer<'_> {
     fn indented(&mut self, f: impl FnOnce(&mut Self)) {
         self.indent_level += 1;
         wln!(self);
@@ -572,7 +572,7 @@ impl<'a> Printer<'a> {
     }
 }
 
-impl<'a> Write for Printer<'a> {
+impl Write for Printer<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for line in s.split_inclusive('\n') {
             if self.needs_indent {

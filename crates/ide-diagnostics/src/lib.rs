@@ -194,7 +194,7 @@ struct DiagnosticsContext<'a> {
     resolve: &'a AssistResolveStrategy,
 }
 
-impl<'a> DiagnosticsContext<'a> {
+impl DiagnosticsContext<'_> {
     fn resolve_precise_location(
         &self,
         node: &InFile<SyntaxNodePtr>,

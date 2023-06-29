@@ -32,10 +32,10 @@ pub(crate) struct LoggerConfig {
 
 struct MakeWriterStderr;
 
-impl<'a> MakeWriter<'a> for MakeWriterStderr {
+impl MakeWriter<'_> for MakeWriterStderr {
     type Writer = Stderr;
 
-    fn make_writer(&'a self) -> Self::Writer {
+    fn make_writer(&self) -> Self::Writer {
         io::stderr()
     }
 }
