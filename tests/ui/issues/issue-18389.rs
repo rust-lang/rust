@@ -1,3 +1,4 @@
+#![feature(type_privacy_lints)]
 #![warn(private_bounds)]
 
 // In this test both old and new private-in-public diagnostic were emitted.

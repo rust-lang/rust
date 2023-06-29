@@ -1730,18 +1730,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             (
                 Some(name),
                 BorrowExplanation::UsedLater(LaterUseKind::ClosureCapture, var_or_use_span, _),
-            ) => self.report_escaping_closure_capture(
-                borrow_spans,
-                borrow_span,
-                &RegionName {
-                    name: self.synthesize_region_name(),
-                    source: RegionNameSource::Static,
-                },
-                ConstraintCategory::CallArgument(None),
-                var_or_use_span,
-                &format!("`{}`", name),
-                "block",
-            ),
+            ) if borrow_spans.for_generator() || borrow_spans.for_closure() => self
+                .report_escaping_closure_capture(
+                    borrow_spans,
+                    borrow_span,
+                    &RegionName {
+                        name: self.synthesize_region_name(),
+                        source: RegionNameSource::Static,
+                    },
+                    ConstraintCategory::CallArgument(None),
+                    var_or_use_span,
+                    &format!("`{}`", name),
+                    "block",
+                ),
             (
                 Some(name),
                 BorrowExplanation::MustBeValidFor {
@@ -1754,7 +1755,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     span,
                     ..
                 },
-            ) if borrow_spans.for_generator() | borrow_spans.for_closure() => self
+            ) if borrow_spans.for_generator() || borrow_spans.for_closure() => self
                 .report_escaping_closure_capture(
                     borrow_spans,
                     borrow_span,

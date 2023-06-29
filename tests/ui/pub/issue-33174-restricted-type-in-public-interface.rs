@@ -1,3 +1,4 @@
+#![feature(type_privacy_lints)]
 #![allow(non_camel_case_types)] // genus is always capitalized
 #![warn(private_interfaces)]
 //~^ NOTE the lint level is defined here

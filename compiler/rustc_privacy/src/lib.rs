@@ -73,14 +73,10 @@ impl<'tcx> fmt::Display for LazyDefPathStr<'tcx> {
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
 trait DefIdVisitor<'tcx> {
     type BreakTy = ();
+    const SHALLOW: bool = false;
+    const SKIP_ASSOC_TYS: bool = false;
 
     fn tcx(&self) -> TyCtxt<'tcx>;
-    fn shallow(&self) -> bool {
-        false
-    }
-    fn skip_assoc_tys(&self) -> bool {
-        false
-    }
     fn visit_def_id(
         &mut self,
         def_id: DefId,
@@ -135,11 +131,7 @@ where
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<V::BreakTy> {
         let TraitRef { def_id, substs, .. } = trait_ref;
         self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref.print_only_trait_path())?;
-        if self.def_id_visitor.shallow() {
-            ControlFlow::Continue(())
-        } else {
-            substs.visit_with(self)
-        }
+        if V::SHALLOW { ControlFlow::Continue(()) } else { substs.visit_with(self) }
     }
 
     fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<V::BreakTy> {
@@ -158,7 +150,7 @@ where
             )
         };
         self.visit_trait(trait_ref)?;
-        if self.def_id_visitor.shallow() {
+        if V::SHALLOW {
             ControlFlow::Continue(())
         } else {
             assoc_substs.iter().try_for_each(|subst| subst.visit_with(self))
@@ -208,7 +200,7 @@ where
             | ty::Closure(def_id, ..)
             | ty::Generator(def_id, ..) => {
                 self.def_id_visitor.visit_def_id(def_id, "type", &ty)?;
-                if self.def_id_visitor.shallow() {
+                if V::SHALLOW {
                     return ControlFlow::Continue(());
                 }
                 // Default type visitor doesn't visit signatures of fn types.
@@ -232,7 +224,7 @@ where
                 self.def_id_visitor.visit_def_id(alias.def_id, "type alias", &ty);
             }
             ty::Alias(ty::Projection, proj) => {
-                if self.def_id_visitor.skip_assoc_tys() {
+                if V::SKIP_ASSOC_TYS {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `<Type as Trait>::Alias`
                     // as visible/reachable even if both `Type` and `Trait` are private.
@@ -244,7 +236,7 @@ where
                 return self.visit_projection_ty(proj);
             }
             ty::Alias(ty::Inherent, data) => {
-                if self.def_id_visitor.skip_assoc_tys() {
+                if V::SKIP_ASSOC_TYS {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
                     // as visible/reachable even if `Type` is private.
@@ -260,7 +252,7 @@ where
                 )?;
 
                 // This will also visit substs if necessary, so we don't need to recurse.
-                return if self.def_id_visitor.shallow() {
+                return if V::SHALLOW {
                     ControlFlow::Continue(())
                 } else {
                     data.substs.iter().try_for_each(|subst| subst.visit_with(self))
@@ -319,11 +311,7 @@ where
             }
         }
 
-        if self.def_id_visitor.shallow() {
-            ControlFlow::Continue(())
-        } else {
-            ty.super_visit_with(self)
-        }
+        if V::SHALLOW { ControlFlow::Continue(()) } else { ty.super_visit_with(self) }
     }
 
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -340,21 +328,19 @@ fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visib
 /// Visitor used to determine impl visibility and reachability.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct FindMin<'a, 'tcx, VL: VisibilityLike> {
+struct FindMin<'a, 'tcx, VL: VisibilityLike, const SHALLOW: bool> {
     tcx: TyCtxt<'tcx>,
     effective_visibilities: &'a EffectiveVisibilities,
     min: VL,
 }
 
-impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'tcx> for FindMin<'a, 'tcx, VL> {
+impl<'a, 'tcx, VL: VisibilityLike, const SHALLOW: bool> DefIdVisitor<'tcx>
+    for FindMin<'a, 'tcx, VL, SHALLOW>
+{
+    const SHALLOW: bool = SHALLOW;
+    const SKIP_ASSOC_TYS: bool = true;
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
-    }
-    fn shallow(&self) -> bool {
-        VL::SHALLOW
-    }
-    fn skip_assoc_tys(&self) -> bool {
-        true
     }
     fn visit_def_id(
         &mut self,
@@ -371,17 +357,19 @@ impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'tcx> for FindMin<'a, 'tcx, VL> 
 
 trait VisibilityLike: Sized {
     const MAX: Self;
-    const SHALLOW: bool = false;
-    fn new_min(find: &FindMin<'_, '_, Self>, def_id: LocalDefId) -> Self;
+    fn new_min<const SHALLOW: bool>(
+        find: &FindMin<'_, '_, Self, SHALLOW>,
+        def_id: LocalDefId,
+    ) -> Self;
 
-    // Returns an over-approximation (`skip_assoc_tys` = true) of visibility due to
+    // Returns an over-approximation (`SKIP_ASSOC_TYS` = true) of visibility due to
     // associated types for which we can't determine visibility precisely.
-    fn of_impl(
+    fn of_impl<const SHALLOW: bool>(
         def_id: LocalDefId,
         tcx: TyCtxt<'_>,
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
-        let mut find = FindMin { tcx, effective_visibilities, min: Self::MAX };
+        let mut find = FindMin::<_, SHALLOW> { tcx, effective_visibilities, min: Self::MAX };
         find.visit(tcx.type_of(def_id).subst_identity());
         if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
             find.visit_trait(trait_ref.subst_identity());
@@ -391,49 +379,28 @@ trait VisibilityLike: Sized {
 }
 impl VisibilityLike for ty::Visibility {
     const MAX: Self = ty::Visibility::Public;
-    fn new_min(find: &FindMin<'_, '_, Self>, def_id: LocalDefId) -> Self {
+    fn new_min<const SHALLOW: bool>(
+        find: &FindMin<'_, '_, Self, SHALLOW>,
+        def_id: LocalDefId,
+    ) -> Self {
         min(find.tcx.local_visibility(def_id), find.min, find.tcx)
     }
 }
 
-struct NonShallowEffectiveVis(EffectiveVisibility);
-
-impl VisibilityLike for NonShallowEffectiveVis {
-    const MAX: Self = NonShallowEffectiveVis(EffectiveVisibility::from_vis(ty::Visibility::Public));
-    const SHALLOW: bool = false;
-
-    fn new_min(find: &FindMin<'_, '_, Self>, def_id: LocalDefId) -> Self {
-        let find = FindMin {
-            tcx: find.tcx,
-            effective_visibilities: find.effective_visibilities,
-            min: ShallowEffectiveVis(find.min.0),
-        };
-        NonShallowEffectiveVis(VisibilityLike::new_min(&find, def_id).0)
-    }
-}
-
-struct ShallowEffectiveVis(EffectiveVisibility);
-impl VisibilityLike for ShallowEffectiveVis {
-    const MAX: Self = ShallowEffectiveVis(EffectiveVisibility::from_vis(ty::Visibility::Public));
-    // Type inference is very smart sometimes.
-    // It can make an impl reachable even some components of its type or trait are unreachable.
-    // E.g. methods of `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
-    // can be usable from other crates (#57264). So we skip substs when calculating reachability
-    // and consider an impl reachable if its "shallow" type and trait are reachable.
-    //
-    // The assumption we make here is that type-inference won't let you use an impl without knowing
-    // both "shallow" version of its self type and "shallow" version of its trait if it exists
-    // (which require reaching the `DefId`s in them).
-    const SHALLOW: bool = true;
-    fn new_min(find: &FindMin<'_, '_, Self>, def_id: LocalDefId) -> Self {
+impl VisibilityLike for EffectiveVisibility {
+    const MAX: Self = EffectiveVisibility::from_vis(ty::Visibility::Public);
+    fn new_min<const SHALLOW: bool>(
+        find: &FindMin<'_, '_, Self, SHALLOW>,
+        def_id: LocalDefId,
+    ) -> Self {
         let effective_vis =
-            find.effective_visibilities.effective_vis(def_id).cloned().unwrap_or_else(|| {
+            find.effective_visibilities.effective_vis(def_id).copied().unwrap_or_else(|| {
                 let private_vis =
                     ty::Visibility::Restricted(find.tcx.parent_module_from_def_id(def_id));
                 EffectiveVisibility::from_vis(private_vis)
             });
 
-        ShallowEffectiveVis(effective_vis.min(find.min.0, find.tcx))
+        effective_vis.min(find.min, find.tcx)
     }
 }
 
@@ -492,14 +459,14 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         &mut self,
         def_id: LocalDefId,
         inherited_effective_vis: EffectiveVisibility,
-        nominal_vis: Option<ty::Visibility>,
+        max_vis: Option<ty::Visibility>,
         level: Level,
     ) {
         let private_vis = ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id));
-        if Some(private_vis) != nominal_vis {
+        if max_vis != Some(private_vis) {
             self.changed |= self.effective_visibilities.update(
                 def_id,
-                nominal_vis,
+                max_vis,
                 || private_vis,
                 inherited_effective_vis,
                 level,
@@ -771,12 +738,21 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
             hir::ItemKind::Impl(ref impl_) => {
-                let item_ev = ShallowEffectiveVis::of_impl(
+                // Type inference is very smart sometimes. It can make an impl reachable even some
+                // components of its type or trait are unreachable. E.g. methods of
+                // `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
+                // can be usable from other crates (#57264). So we skip substs when calculating
+                // reachability and consider an impl reachable if its "shallow" type and trait are
+                // reachable.
+                //
+                // The assumption we make here is that type-inference won't let you use an impl
+                // without knowing both "shallow" version of its self type and "shallow" version of
+                // its trait if it exists (which require reaching the `DefId`s in them).
+                let item_ev = EffectiveVisibility::of_impl::<true>(
                     item.owner_id.def_id,
                     self.tcx,
                     &self.effective_visibilities,
-                )
-                .0;
+                );
 
                 self.update_eff_vis(item.owner_id.def_id, item_ev, None, Level::Direct);
 
@@ -784,9 +760,9 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
 
                 for impl_item_ref in impl_.items {
                     let def_id = impl_item_ref.id.owner_id.def_id;
-                    let nominal_vis =
+                    let max_vis =
                         impl_.of_trait.is_none().then(|| self.tcx.local_visibility(def_id));
-                    self.update_eff_vis(def_id, item_ev, nominal_vis, Level::Direct);
+                    self.update_eff_vis(def_id, item_ev, max_vis, Level::Direct);
 
                     if let Some(impl_item_ev) = self.get(def_id) {
                         self.reach(def_id, impl_item_ev).generics().predicates().ty();
@@ -904,7 +880,12 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx>
         _descr: &dyn fmt::Display,
     ) -> ControlFlow<Self::BreakTy> {
         if let Some(def_id) = def_id.as_local() {
-            self.ev.update_eff_vis(def_id, self.effective_vis, None, self.level);
+            // All effective visibilities except `reachable_through_impl_trait` are limited to
+            // nominal visibility. If any type or trait is leaked farther than that, it will
+            // produce type privacy errors on any use, so we don't consider it leaked.
+            let max_vis = (self.level != Level::ReachableThroughImplTrait)
+                .then(|| self.ev.tcx.local_visibility(def_id));
+            self.ev.update_eff_vis(def_id, self.effective_vis, max_vis, self.level);
         }
         ControlFlow::Continue(())
     }
@@ -1876,10 +1857,9 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             return false;
         };
 
-        // FIXME: `Level::Reachable` should be taken instead of `Level::Reexported`
-        let reexported_at_vis = *effective_vis.at_level(Level::Reexported);
+        let reachable_at_vis = *effective_vis.at_level(Level::Reachable);
 
-        if !vis.is_at_least(reexported_at_vis, self.tcx) {
+        if !vis.is_at_least(reachable_at_vis, self.tcx) {
             let lint = if self.in_primary_interface {
                 lint::builtin::PRIVATE_INTERFACES
             } else {
@@ -1896,7 +1876,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         tcx: self.tcx,
                     })
                         .into(),
-                    item_vis_descr: &vis_to_string(self.item_def_id, reexported_at_vis, self.tcx),
+                    item_vis_descr: &vis_to_string(self.item_def_id, reachable_at_vis, self.tcx),
                     ty_span: vis_span,
                     ty_kind: kind,
                     ty_descr: descr.into(),
@@ -2137,27 +2117,28 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
             DefKind::Impl { .. } => {
                 let item = tcx.hir().item(id);
                 if let hir::ItemKind::Impl(ref impl_) = item.kind {
-                    let impl_vis =
-                        ty::Visibility::of_impl(item.owner_id.def_id, tcx, &Default::default());
+                    let impl_vis = ty::Visibility::of_impl::<false>(
+                        item.owner_id.def_id,
+                        tcx,
+                        &Default::default(),
+                    );
 
-                    // we are using the non-shallow version here, unlike when building the
+                    // We are using the non-shallow version here, unlike when building the
                     // effective visisibilities table to avoid large number of false positives.
-                    // For example:
+                    // For example in
                     //
                     // impl From<Priv> for Pub {
                     //     fn from(_: Priv) -> Pub {...}
                     // }
                     //
-                    // lints shouldn't be emmited even `from` effective visibility
-                    // is larger then `Priv` nominal visibility.
-                    let impl_ev = Some(
-                        NonShallowEffectiveVis::of_impl(
-                            item.owner_id.def_id,
-                            tcx,
-                            self.effective_visibilities,
-                        )
-                        .0,
-                    );
+                    // lints shouldn't be emmited even if `from` effective visibility
+                    // is larger than `Priv` nominal visibility and if `Priv` can leak
+                    // in some scenarios due to type inference.
+                    let impl_ev = Some(EffectiveVisibility::of_impl::<false>(
+                        item.owner_id.def_id,
+                        tcx,
+                        self.effective_visibilities,
+                    ));
 
                     // check that private components do not appear in the generics or predicates of inherent impls
                     // this check is intentionally NOT performed for impls of traits, per #90586
@@ -2284,7 +2265,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
         changed: false,
     };
 
-    visitor.effective_visibilities.check_invariants(tcx, true);
+    visitor.effective_visibilities.check_invariants(tcx);
     if visitor.impl_trait_pass {
         // Underlying types of `impl Trait`s are marked as reachable unconditionally,
         // so this pass doesn't need to be a part of the fixed point iteration below.
@@ -2301,7 +2282,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
             break;
         }
     }
-    visitor.effective_visibilities.check_invariants(tcx, false);
+    visitor.effective_visibilities.check_invariants(tcx);
 
     let mut check_visitor =
         TestReachabilityVisitor { tcx, effective_visibilities: &visitor.effective_visibilities };

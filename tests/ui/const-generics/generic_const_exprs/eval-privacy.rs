@@ -1,7 +1,7 @@
 #![crate_type = "lib"]
 #![feature(generic_const_exprs)]
+#![feature(type_privacy_lints)]
 #![allow(incomplete_features)]
-
 #![warn(private_interfaces)]
 
 // In this test both old and new private-in-public diagnostic were emitted.

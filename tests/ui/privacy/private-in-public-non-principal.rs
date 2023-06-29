@@ -1,6 +1,6 @@
 #![feature(auto_traits)]
 #![feature(negative_impls)]
-
+#![feature(type_privacy_lints)]
 #![deny(private_interfaces)]
 
 // In this test both old and new private-in-public diagnostic were emitted.

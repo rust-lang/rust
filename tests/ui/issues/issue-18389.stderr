@@ -1,5 +1,5 @@
 error[E0445]: private trait `Private<<Self as Public>::P, <Self as Public>::R>` in public interface
-  --> $DIR/issue-18389.rs:13:1
+  --> $DIR/issue-18389.rs:14:1
    |
 LL |   trait Private<P, R> {
    |   ------------------- `Private<<Self as Public>::P, <Self as Public>::R>` declared as private
@@ -14,7 +14,7 @@ LL | | > {
 warning: trait `Private<<Self as Public>::P, <Self as Public>::R>` is more private than the item `Public`
    |
 note: trait `Public` is reachable at visibility `pub`
-  --> $DIR/issue-18389.rs:13:1
+  --> $DIR/issue-18389.rs:14:1
    |
 LL | / pub trait Public: Private<
 LL | |
@@ -23,12 +23,12 @@ LL | |     <Self as Public>::R
 LL | | > {
    | |_^
 note: but trait `Private<<Self as Public>::P, <Self as Public>::R>` is only usable at visibility `pub(crate)`
-  --> $DIR/issue-18389.rs:10:1
+  --> $DIR/issue-18389.rs:11:1
    |
 LL | trait Private<P, R> {
    | ^^^^^^^^^^^^^^^^^^^
 note: the lint level is defined here
-  --> $DIR/issue-18389.rs:1:9
+  --> $DIR/issue-18389.rs:2:9
    |
 LL | #![warn(private_bounds)]
    |         ^^^^^^^^^^^^^^

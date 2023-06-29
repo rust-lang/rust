@@ -665,9 +665,7 @@ declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS])
 
 impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !(cx.effective_visibilities.is_reachable(item.owner_id.def_id)
-            && cx.tcx.local_visibility(item.owner_id.def_id).is_public())
-        {
+        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
             return;
         }
         let (def, ty) = match item.kind {
@@ -786,9 +784,7 @@ impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !(cx.effective_visibilities.is_reachable(item.owner_id.def_id)
-            && cx.tcx.local_visibility(item.owner_id.def_id).is_public())
-        {
+        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
             return;
         }
 
