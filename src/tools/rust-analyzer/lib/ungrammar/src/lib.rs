@@ -101,7 +101,7 @@ pub struct TokenData {
 }
 
 /// A production rule.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Rule {
     /// A labeled rule, like `a:B` (`"a"` is the label, `B` is the rule).
     Labeled {
