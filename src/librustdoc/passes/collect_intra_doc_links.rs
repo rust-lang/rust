@@ -1421,7 +1421,7 @@ impl LinkCollector<'_, '_> {
                 // For reference-style links we want to report only one error so unsuccessful
                 // resolutions are cached, for other links we want to report an error every
                 // time so they are not cached.
-                matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
+                matches!(ori_link.kind, LinkType::Reference),
             ) else {
                 return;
             };
