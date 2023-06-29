@@ -994,15 +994,7 @@ impl LinkCollector<'_, '_> {
                 _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
             };
             for md_link in preprocessed_markdown_links(&doc) {
-                let PreprocessedMarkdownLink(_pp_link, ori_link) = &md_link;
-                let diag_info = DiagnosticInfo {
-                    item,
-                    dox: &doc,
-                    ori_link: &ori_link.link,
-                    link_range: ori_link.range.clone(),
-                };
-
-                let link = self.resolve_link(item, item_id, module_id, &md_link, &diag_info);
+                let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().insert(link);
                 }
@@ -1015,14 +1007,20 @@ impl LinkCollector<'_, '_> {
     /// FIXME(jynelson): this is way too many arguments
     fn resolve_link(
         &mut self,
+        dox: &String,
         item: &Item,
         item_id: DefId,
         module_id: DefId,
         PreprocessedMarkdownLink(pp_link, ori_link): &PreprocessedMarkdownLink,
-        diag_info: &DiagnosticInfo<'_>,
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
 
+        let diag_info = DiagnosticInfo {
+            item,
+            dox,
+            ori_link: &ori_link.link,
+            link_range: ori_link.range.clone(),
+        };
         let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
             pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
         let disambiguator = *disambiguator;
@@ -1045,11 +1043,14 @@ impl LinkCollector<'_, '_> {
         self.check_redundant_explicit_link(
             &res,
             path_str,
-            item_id,
-            module_id,
-            disambiguator,
+            ResolutionInfo {
+                item_id,
+                module_id,
+                dis: disambiguator,
+                path_str: ori_link.display_text.clone().into_boxed_str(),
+                extra_fragment: extra_fragment.clone(),
+            },
             &ori_link,
-            extra_fragment,
             &diag_info,
         );
 
@@ -1384,15 +1385,13 @@ impl LinkCollector<'_, '_> {
         }
     }
 
+    /// Check if resolution of inline link's display text and explicit link are same.
     fn check_redundant_explicit_link(
         &mut self,
-        ex_res: &Res,
-        ex: &Box<str>,
-        item_id: DefId,
-        module_id: DefId,
-        dis: Option<Disambiguator>,
+        explicit_res: &Res,
+        explicit_link: &Box<str>,
+        display_res_info: ResolutionInfo,
         ori_link: &MarkdownLink,
-        extra_fragment: &Option<String>,
         diag_info: &DiagnosticInfo<'_>,
     ) {
         // Check if explicit resolution's path is same as resolution of original link's display text path, e.g.
@@ -1409,21 +1408,15 @@ impl LinkCollector<'_, '_> {
             return;
         }
 
-        let di_text = &ori_link.display_text;
-        let di_len = di_text.len();
-        let ex_len = ex.len();
+        let display_text = &ori_link.display_text;
+        let display_len = display_text.len();
+        let explicit_len = explicit_link.len();
 
-        let intra_doc_links = std::mem::take(&mut self.cx.cache.intra_doc_links);
-
-        if ex_len >= di_len && &ex[(ex_len - di_len)..] == di_text {
-            let Some((di_res, _)) = self.resolve_with_disambiguator_cached(
-                ResolutionInfo {
-                    item_id,
-                    module_id,
-                    dis,
-                    path_str: di_text.clone().into_boxed_str(),
-                    extra_fragment: extra_fragment.clone(),
-                },
+        if explicit_len >= display_len
+            && &explicit_link[(explicit_len - display_len)..] == display_text
+        {
+            let Some((display_res, _)) = self.resolve_with_disambiguator_cached(
+                display_res_info,
                 diag_info.clone(), // this struct should really be Copy, but Range is not :(
                 // For reference-style links we want to report only one error so unsuccessful
                 // resolutions are cached, for other links we want to report an error every
@@ -1433,7 +1426,7 @@ impl LinkCollector<'_, '_> {
                 return;
             };
 
-            if &di_res == ex_res {
+            if &display_res == explicit_res {
                 use crate::lint::REDUNDANT_EXPLICIT_LINKS;
 
                 report_diagnostic(
@@ -1444,9 +1437,14 @@ impl LinkCollector<'_, '_> {
                     |diag, sp, _link_range| {
                         if let Some(sp) = sp {
                             diag.note("Explicit link does not affect the original link")
-                                .span_suggestion(sp, "Remove explicit link instead", format!("[{}]", ori_link.link), Applicability::MachineApplicable);
+                                .span_suggestion_hidden(
+                                    sp,
+                                    "Remove explicit link instead",
+                                    format!(""),
+                                    Applicability::MachineApplicable,
+                                );
                         }
-                    }
+                    },
                 );
             }
         }

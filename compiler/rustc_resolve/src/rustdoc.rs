@@ -392,16 +392,57 @@ pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<s
     let (doc_fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
     let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap();
 
-    Parser::new_with_broken_link_callback(
+    parse_links(&doc)
+}
+
+/// Similiar version of `markdown_links` from rustdoc.
+/// This will collect destination links and display text if exists.
+fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
+    let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
+    let mut event_iter = Parser::new_with_broken_link_callback(
         &doc,
         main_body_opts(),
-        Some(&mut |link: BrokenLink<'_>| Some((link.reference, "".into()))),
+        Some(&mut broken_link_callback),
     )
-    .filter_map(|event| match event {
-        Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
-            Some(preprocess_link(&dest))
+    .into_iter();
+    let mut links = Vec::new();
+
+    while let Some(event) = event_iter.next() {
+        match event {
+            Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
+                if let Some(display_text) = collect_link_data(&mut event_iter) {
+                    links.push(display_text);
+                }
+
+                links.push(preprocess_link(&dest));
+            }
+            _ => {}
         }
-        _ => None,
-    })
-    .collect()
+    }
+
+    links
+}
+
+/// Collects additional data of link.
+fn collect_link_data<'input, 'callback>(
+    event_iter: &mut Parser<'input, 'callback>,
+) -> Option<Box<str>> {
+    let mut display_text = None;
+
+    while let Some(event) = event_iter.next() {
+        match event {
+            Event::Text(code) => {
+                display_text = Some(code.to_string().into_boxed_str());
+            }
+            Event::Code(code) => {
+                display_text = Some(code.to_string().into_boxed_str());
+            }
+            Event::End(_) => {
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    display_text
 }

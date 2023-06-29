@@ -1421,6 +1421,7 @@ pub(crate) fn markdown_links<'md, R>(
     links
 }
 
+/// Collects additional data of link.
 fn collect_link_data<'input, 'callback>(
     event_iter: &mut OffsetIter<'input, 'callback>,
 ) -> Option<CowStr<'input>> {

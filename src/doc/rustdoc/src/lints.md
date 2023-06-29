@@ -420,17 +420,29 @@ as computed automatic links.
 This usually means the explicit links is removeable. For example:
 
 ```rust
-#![warn(rustdoc::redundant_explicit_links)]
+#![warn(rustdoc::redundant_explicit_links)] // note: unnecessary - warns by default.
 
-pub fn dummy_target() {} // note: unnecessary - warns by default.
-
-/// [`dummy_target`](dummy_target)
-/// [dummy_target](dummy_target)
-pub fn c() {}
+/// add takes 2 [`usize`](usize) and performs addition
+/// on them, then returns result.
+pub fn add(left: usize, right: usize) -> usize {
+    left + right
+}
 ```
 
 Which will give:
 
 ```text
-
+error: redundant explicit rustdoc link
+  --> src/lib.rs:3:27
+   |
+3  | /// add takes 2 [`usize`](usize) and performs addition
+   |                           ^^^^^
+   |
+   = note: Explicit link does not affect the original link
+note: the lint level is defined here
+  --> src/lib.rs:1:9
+   |
+1  | #![deny(rustdoc::redundant_explicit_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: Remove explicit link instead
 ```
