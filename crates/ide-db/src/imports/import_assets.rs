@@ -13,7 +13,7 @@ use syntax::{
 
 use crate::{
     helpers::item_name,
-    items_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
+    items_locator::{self, AssocSearchMode, DEFAULT_QUERY_SEARCH_LIMIT},
     RootDatabase,
 };
 
@@ -317,7 +317,7 @@ fn path_applicable_imports(
                 // * improve the associated completion item matching and/or scoring to ensure no noisy completions appear
                 //
                 // see also an ignored test under FIXME comment in the qualify_path.rs module
-                AssocItemSearch::Exclude,
+                AssocSearchMode::Exclude,
                 Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
             )
             .filter_map(|item| {
@@ -334,7 +334,7 @@ fn path_applicable_imports(
                 sema,
                 current_crate,
                 path_candidate.name.clone(),
-                AssocItemSearch::Include,
+                AssocSearchMode::Include,
                 Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
             )
             .filter_map(|item| {
@@ -483,7 +483,7 @@ fn trait_applicable_items(
         sema,
         current_crate,
         trait_candidate.assoc_item_name.clone(),
-        AssocItemSearch::AssocItemsOnly,
+        AssocSearchMode::AssocItemsOnly,
         Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
     )
     .filter_map(|input| item_as_assoc(db, input))

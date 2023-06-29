@@ -73,7 +73,7 @@ pub(crate) fn replace_derive_with_manual_impl(
         &ctx.sema,
         current_crate,
         NameToImport::exact_case_sensitive(path.segments().last()?.to_string()),
-        items_locator::AssocItemSearch::Exclude,
+        items_locator::AssocSearchMode::Exclude,
         Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
     )
     .filter_map(|item| match item.as_module_def()? {

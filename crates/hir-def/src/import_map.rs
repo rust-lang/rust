@@ -286,22 +286,6 @@ fn fst_path(db: &dyn DefDatabase, path: &ImportPath) -> String {
     s
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum ImportKind {
-    Module,
-    Function,
-    Adt,
-    EnumVariant,
-    Const,
-    Static,
-    Trait,
-    TraitAlias,
-    TypeAlias,
-    BuiltinType,
-    AssociatedItem,
-    Macro,
-}
-
 /// A way to match import map contents against the search query.
 #[derive(Debug)]
 pub enum SearchMode {
@@ -314,15 +298,25 @@ pub enum SearchMode {
     Fuzzy,
 }
 
+/// Three possible ways to search for the name in associated and/or other items.
+#[derive(Debug, Clone, Copy)]
+pub enum AssocSearchMode {
+    /// Search for the name in both associated and other items.
+    Include,
+    /// Search for the name in other items only.
+    Exclude,
+    /// Search for the name in the associated items only.
+    AssocItemsOnly,
+}
+
 #[derive(Debug)]
 pub struct Query {
     query: String,
     lowercased: String,
-    assoc_items_only: bool,
     search_mode: SearchMode,
+    assoc_mode: AssocSearchMode,
     case_sensitive: bool,
     limit: usize,
-    exclude_import_kinds: FxHashSet<ImportKind>,
 }
 
 impl Query {
@@ -331,22 +325,21 @@ impl Query {
         Self {
             query,
             lowercased,
-            assoc_items_only: false,
             search_mode: SearchMode::Contains,
+            assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
             limit: usize::max_value(),
-            exclude_import_kinds: FxHashSet::default(),
         }
-    }
-
-    /// Matches only the entries that are associated items, ignoring the rest.
-    pub fn assoc_items_only(self) -> Self {
-        Self { assoc_items_only: true, ..self }
     }
 
     /// Specifies the way to search for the entries using the query.
     pub fn search_mode(self, search_mode: SearchMode) -> Self {
         Self { search_mode, ..self }
+    }
+
+    /// Specifies whether we want to include associated items in the result.
+    pub fn assoc_search_mode(self, assoc_mode: AssocSearchMode) -> Self {
+        Self { assoc_mode, ..self }
     }
 
     /// Limits the returned number of items to `limit`.
@@ -359,12 +352,6 @@ impl Query {
         Self { case_sensitive: true, ..self }
     }
 
-    /// Do not include imports of the specified kind in the search results.
-    pub fn exclude_import_kind(mut self, import_kind: ImportKind) -> Self {
-        self.exclude_import_kinds.insert(import_kind);
-        self
-    }
-
     fn import_matches(
         &self,
         db: &dyn DefDatabase,
@@ -372,12 +359,10 @@ impl Query {
         enforce_lowercase: bool,
     ) -> bool {
         let _p = profile::span("import_map::Query::import_matches");
-        if import.is_trait_assoc_item {
-            if self.exclude_import_kinds.contains(&ImportKind::AssociatedItem) {
-                return false;
-            }
-        } else if self.assoc_items_only {
-            return false;
+        match (import.is_trait_assoc_item, self.assoc_mode) {
+            (true, AssocSearchMode::Exclude) => return false,
+            (false, AssocSearchMode::AssocItemsOnly) => return false,
+            _ => {}
         }
 
         let mut input = import.path.segments.last().unwrap().display(db.upcast()).to_string();
@@ -458,10 +443,6 @@ pub fn search_dependencies(
             .take_while(|item| {
                 common_importables_path_fst == fst_path(db, &import_map.map[item].path)
             })
-            .filter(|&item| match item_import_kind(item) {
-                Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
-                None => true,
-            })
             .filter(|item| {
                 !query.case_sensitive // we've already checked the common importables path case-insensitively
                         || query.import_matches(db, &import_map.map[item], false)
@@ -474,22 +455,6 @@ pub fn search_dependencies(
     }
 
     res
-}
-
-fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
-    Some(match item.as_module_def_id()? {
-        ModuleDefId::ModuleId(_) => ImportKind::Module,
-        ModuleDefId::FunctionId(_) => ImportKind::Function,
-        ModuleDefId::AdtId(_) => ImportKind::Adt,
-        ModuleDefId::EnumVariantId(_) => ImportKind::EnumVariant,
-        ModuleDefId::ConstId(_) => ImportKind::Const,
-        ModuleDefId::StaticId(_) => ImportKind::Static,
-        ModuleDefId::TraitId(_) => ImportKind::Trait,
-        ModuleDefId::TraitAliasId(_) => ImportKind::TraitAlias,
-        ModuleDefId::TypeAliasId(_) => ImportKind::TypeAlias,
-        ModuleDefId::BuiltinType(_) => ImportKind::BuiltinType,
-        ModuleDefId::MacroId(_) => ImportKind::Macro,
-    })
 }
 
 #[cfg(test)]
@@ -888,7 +853,9 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy).assoc_items_only(),
+            Query::new("fmt".to_string())
+                .search_mode(SearchMode::Fuzzy)
+                .assoc_search_mode(AssocSearchMode::AssocItemsOnly),
             expect![[r#"
                 dep::fmt::Display::FMT_CONST (a)
                 dep::fmt::Display::format_function (a)
@@ -901,20 +868,10 @@ mod tests {
             "main",
             Query::new("fmt".to_string())
                 .search_mode(SearchMode::Fuzzy)
-                .exclude_import_kind(ImportKind::AssociatedItem),
+                .assoc_search_mode(AssocSearchMode::Exclude),
             expect![[r#"
                 dep::fmt (t)
             "#]],
-        );
-
-        check_search(
-            ra_fixture,
-            "main",
-            Query::new("fmt".to_string())
-                .search_mode(SearchMode::Fuzzy)
-                .assoc_items_only()
-                .exclude_import_kind(ImportKind::AssociatedItem),
-            expect![[r#""#]],
         );
     }
 
@@ -1099,36 +1056,6 @@ mod tests {
                 dep::Fmt (v)
                 dep::fmt (t)
             "#]],
-        );
-    }
-
-    #[test]
-    fn search_exclusions() {
-        let ra_fixture = r#"
-            //- /main.rs crate:main deps:dep
-            //- /dep.rs crate:dep
-
-            pub struct fmt;
-            pub struct FMT;
-        "#;
-
-        check_search(
-            ra_fixture,
-            "main",
-            Query::new("FMT".to_string()),
-            expect![[r#"
-                dep::FMT (t)
-                dep::FMT (v)
-                dep::fmt (t)
-                dep::fmt (v)
-            "#]],
-        );
-
-        check_search(
-            ra_fixture,
-            "main",
-            Query::new("FMT".to_string()).exclude_import_kind(ImportKind::Adt),
-            expect![[r#""#]],
         );
     }
 }
