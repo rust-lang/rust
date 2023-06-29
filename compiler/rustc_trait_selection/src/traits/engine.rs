@@ -229,7 +229,11 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
 
             // implied_bounds.insert(ty);
             let cause = ObligationCause::misc(span, def_id);
-            match self.infcx.at(&cause, param_env).deeply_normalize(ty) {
+            match self
+                .infcx
+                .at(&cause, param_env)
+                .deeply_normalize(ty, &mut **self.engine.borrow_mut())
+            {
                 // Insert well-formed types, ignoring duplicates.
                 Ok(normalized) => drop(implied_bounds.insert(normalized)),
                 Err(normalization_errors) => errors.extend(normalization_errors),
