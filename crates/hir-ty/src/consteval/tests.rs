@@ -2491,6 +2491,37 @@ fn type_error() {
 }
 
 #[test]
+fn unsized_field() {
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice, transmute
+    use core::mem::transmute;
+
+    struct Slice([u8]);
+    struct Slice2(Slice);
+
+    impl Slice2 {
+        fn as_inner(&self) -> &Slice {
+            &self.0
+        }
+
+        fn as_bytes(&self) -> &[u8] {
+            &self.as_inner().0
+        }
+    }
+
+    const GOAL: u8 = unsafe {
+        let x: &[u8] = &[1, 2, 3];
+        let x: &Slice2 = transmute(x);
+        let x = x.as_bytes();
+        x[0] + x[1] + x[2]
+    };
+        "#,
+        6,
+    );
+}
+
+#[test]
 fn unsized_local() {
     check_fail(
         r#"
