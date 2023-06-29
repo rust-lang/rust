@@ -108,6 +108,7 @@
 //!         recursively, generating labels with nested operations, enclosed in parentheses
 //!         (for example: `bcb2 + (bcb0 - bcb1)`).
 
+use super::counters::CoverageCounters;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
 
@@ -659,18 +660,21 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
     mir_body: &mir::Body<'tcx>,
     pass_name: &str,
     basic_coverage_blocks: &CoverageGraph,
-    debug_counters: &DebugCounters,
+    coverage_counters: &CoverageCounters,
     graphviz_data: &GraphvizData,
     intermediate_expressions: &[CoverageKind],
     debug_used_expressions: &UsedExpressions,
 ) {
+    let debug_counters = &coverage_counters.debug_counters;
+
     let mir_source = mir_body.source;
     let def_id = mir_source.def_id();
     let node_content = |bcb| {
         bcb_to_string_sections(
             tcx,
             mir_body,
-            debug_counters,
+            coverage_counters,
+            bcb,
             &basic_coverage_blocks[bcb],
             graphviz_data.get_bcb_coverage_spans_with_counters(bcb),
             graphviz_data.get_bcb_dependency_counters(bcb),
@@ -736,12 +740,15 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
 fn bcb_to_string_sections<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
-    debug_counters: &DebugCounters,
+    coverage_counters: &CoverageCounters,
+    bcb: BasicCoverageBlock,
     bcb_data: &BasicCoverageBlockData,
     some_coverage_spans_with_counters: Option<&[(CoverageSpan, CoverageKind)]>,
     some_dependency_counters: Option<&[CoverageKind]>,
     some_intermediate_expressions: Option<&[CoverageKind]>,
 ) -> Vec<String> {
+    let debug_counters = &coverage_counters.debug_counters;
+
     let len = bcb_data.basic_blocks.len();
     let mut sections = Vec::new();
     if let Some(collect_intermediate_expressions) = some_intermediate_expressions {
@@ -777,7 +784,7 @@ fn bcb_to_string_sections<'tcx>(
                 .join("  \n"),
         ));
     }
-    if let Some(counter_kind) = &bcb_data.counter_kind {
+    if let Some(counter_kind) = coverage_counters.bcb_counter(bcb) {
         sections.push(format!("{counter_kind:?}"));
     }
     let non_term_blocks = bcb_data.basic_blocks[0..len - 1]

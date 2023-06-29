@@ -675,7 +675,7 @@ fn test_make_bcb_counters() {
                 ));
             }
         }
-        let mut coverage_counters = counters::CoverageCounters::new(0);
+        let mut coverage_counters = counters::CoverageCounters::new(0, &basic_coverage_blocks);
         let () = coverage_counters
             .make_bcb_counters(&mut basic_coverage_blocks, &coverage_spans)
             .expect("should be Ok");
@@ -684,7 +684,7 @@ fn test_make_bcb_counters() {
         let_bcb!(1);
         assert_eq!(
             0, // bcb1 has a `Counter` with id = 0
-            match basic_coverage_blocks[bcb1].counter().expect("should have a counter") {
+            match coverage_counters.bcb_counter(bcb1).expect("should have a counter") {
                 CoverageKind::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }
@@ -694,7 +694,7 @@ fn test_make_bcb_counters() {
         let_bcb!(2);
         assert_eq!(
             1, // bcb2 has a `Counter` with id = 1
-            match basic_coverage_blocks[bcb2].counter().expect("should have a counter") {
+            match coverage_counters.bcb_counter(bcb2).expect("should have a counter") {
                 CoverageKind::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }

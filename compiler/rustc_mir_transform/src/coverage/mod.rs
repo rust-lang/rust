@@ -137,6 +137,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
+        let coverage_counters = CoverageCounters::new(function_source_hash, &basic_coverage_blocks);
+
         Self {
             pass_name,
             tcx,
@@ -145,7 +147,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             fn_sig_span,
             body_span,
             basic_coverage_blocks,
-            coverage_counters: CoverageCounters::new(function_source_hash),
+            coverage_counters,
         }
     }
 
@@ -250,7 +252,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 self.mir_body,
                 self.pass_name,
                 &self.basic_coverage_blocks,
-                &self.coverage_counters.debug_counters,
+                &self.coverage_counters,
                 &graphviz_data,
                 &self.coverage_counters.intermediate_expressions,
                 &debug_used_expressions,
@@ -298,7 +300,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             let span = covspan.span;
             let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
                 self.coverage_counters.make_identity_counter(counter_operand)
-            } else if let Some(counter_kind) = self.bcb_data_mut(bcb).take_counter() {
+            } else if let Some(counter_kind) = self.coverage_counters.take_bcb_counter(bcb) {
                 bcb_counters[bcb] = Some(counter_kind.as_operand());
                 debug_used_expressions.add_expression_operands(&counter_kind);
                 counter_kind
@@ -338,19 +340,17 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug_used_expressions: &mut debug::UsedExpressions,
     ) {
         let mut bcb_counters_without_direct_coverage_spans = Vec::new();
-        for (target_bcb, target_bcb_data) in self.basic_coverage_blocks.iter_enumerated_mut() {
-            if let Some(counter_kind) = target_bcb_data.take_counter() {
-                bcb_counters_without_direct_coverage_spans.push((None, target_bcb, counter_kind));
-            }
-            if let Some(edge_counters) = target_bcb_data.take_edge_counters() {
-                for (from_bcb, counter_kind) in edge_counters {
-                    bcb_counters_without_direct_coverage_spans.push((
-                        Some(from_bcb),
-                        target_bcb,
-                        counter_kind,
-                    ));
-                }
-            }
+        for (target_bcb, counter_kind) in self.coverage_counters.drain_bcb_counters() {
+            bcb_counters_without_direct_coverage_spans.push((None, target_bcb, counter_kind));
+        }
+        for ((from_bcb, target_bcb), counter_kind) in
+            self.coverage_counters.drain_bcb_edge_counters()
+        {
+            bcb_counters_without_direct_coverage_spans.push((
+                Some(from_bcb),
+                target_bcb,
+                counter_kind,
+            ));
         }
 
         // If debug is enabled, validate that every BCB or edge counter not directly associated
@@ -423,11 +423,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     #[inline]
     fn bcb_data(&self, bcb: BasicCoverageBlock) -> &BasicCoverageBlockData {
         &self.basic_coverage_blocks[bcb]
-    }
-
-    #[inline]
-    fn bcb_data_mut(&mut self, bcb: BasicCoverageBlock) -> &mut BasicCoverageBlockData {
-        &mut self.basic_coverage_blocks[bcb]
     }
 
     #[inline]
