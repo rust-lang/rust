@@ -16,8 +16,15 @@ pub use crate::msg::flat::FlatTree;
 pub const NO_VERSION_CHECK_VERSION: u32 = 0;
 pub const VERSION_CHECK_VERSION: u32 = 1;
 pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
+/// This version changes how spans are encoded, kind of. Prior to this version,
+/// spans were represented as a single u32 which effectively forced spans to be
+/// token ids. Starting with this version, the span fields are still u32,
+/// but if the size of the span is greater than 1 then the span data is encoded in
+/// an additional vector where the span represents the offset into that vector.
+/// This allows encoding bigger spans while supporting the previous versions.
+pub const VARIABLE_SIZED_SPANS: u32 = 2;
 
-pub const CURRENT_API_VERSION: u32 = ENCODE_CLOSE_SPAN_VERSION;
+pub const CURRENT_API_VERSION: u32 = VARIABLE_SIZED_SPANS;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
@@ -115,10 +122,14 @@ fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::tt::*;
+    use tt::{
+        Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Span, Subtree, TokenId,
+        TokenTree,
+    };
 
-    fn fixture_token_tree() -> Subtree {
+    use super::*;
+
+    fn fixture_token_tree() -> Subtree<TokenId> {
         let mut subtree = Subtree { delimiter: Delimiter::unspecified(), token_trees: Vec::new() };
         subtree
             .token_trees
@@ -128,17 +139,17 @@ mod tests {
             .push(TokenTree::Leaf(Ident { text: "Foo".into(), span: TokenId(1) }.into()));
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Literal(Literal {
             text: "Foo".into(),
-            span: TokenId::unspecified(),
+            span: TokenId::DUMMY,
         })));
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Punct(Punct {
             char: '@',
-            span: TokenId::unspecified(),
+            span: TokenId::DUMMY,
             spacing: Spacing::Joint,
         })));
         subtree.token_trees.push(TokenTree::Subtree(Subtree {
             delimiter: Delimiter {
                 open: TokenId(2),
-                close: TokenId::UNSPECIFIED,
+                close: TokenId::DUMMY,
                 kind: DelimiterKind::Brace,
             },
             token_trees: vec![],

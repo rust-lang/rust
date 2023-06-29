@@ -17,10 +17,8 @@ use triomphe::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use ::tt::token_id as tt;
-
 use crate::{
-    msg::{ExpandMacro, FlatTree, PanicMessage},
+    msg::{flat::SerializableSpan, ExpandMacro, FlatTree, PanicMessage},
     process::ProcMacroProcessSrv,
 };
 
@@ -134,12 +132,12 @@ impl ProcMacro {
         self.kind
     }
 
-    pub fn expand(
+    pub fn expand<const L: usize, S: SerializableSpan<L>>(
         &self,
-        subtree: &tt::Subtree,
-        attr: Option<&tt::Subtree>,
+        subtree: &tt::Subtree<S>,
+        attr: Option<&tt::Subtree<S>>,
         env: Vec<(String, String)>,
-    ) -> Result<Result<tt::Subtree, PanicMessage>, ServerError> {
+    ) -> Result<Result<tt::Subtree<S>, PanicMessage>, ServerError> {
         let version = self.process.lock().unwrap_or_else(|e| e.into_inner()).version();
         let current_dir = env
             .iter()
