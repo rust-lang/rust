@@ -315,7 +315,10 @@ fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {
             let data = db.struct_data(*i);
             let mut it = data.variant_data.fields().iter().rev();
             match it.next() {
-                Some((f, _)) => field_ty(db, (*i).into(), f, subst),
+                Some((f, _)) => {
+                    let last_field_ty = field_ty(db, (*i).into(), f, subst);
+                    struct_tail_erasing_lifetimes(db, last_field_ty)
+                }
                 None => pointee,
             }
         }

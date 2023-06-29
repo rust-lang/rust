@@ -344,6 +344,24 @@ fn return_position_impl_trait() {
 }
 
 #[test]
+fn unsized_ref() {
+    size_and_align! {
+        struct S1([u8]);
+        struct S2(S1);
+        struct S3(i32, str);
+        struct S4(u64, S3);
+        #[allow(dead_code)]
+        struct S5 {
+            field1: u8,
+            field2: i16,
+            field_last: S4,
+        }
+
+        struct Goal(&'static S1, &'static S2, &'static S3, &'static S4, &'static S5);
+    }
+}
+
+#[test]
 fn enums() {
     size_and_align! {
         enum Goal {
