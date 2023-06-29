@@ -31,7 +31,7 @@ defaults:
   run:
     shell: bash
 concurrency:
-  group: "${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}"
+  group: "${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}"
   cancel-in-progress: true
 jobs:
   pr:
