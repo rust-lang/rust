@@ -3292,10 +3292,10 @@ declare_clippy_lint! {
     /// Checks for usage of `Iterator::fold` with a type that implements `Try`.
     ///
     /// ### Why is this bad?
-    /// This should use `try_fold` instead, which short-circuits on failure, thus opening the door
-    /// for additional optimizations not possible with `fold` as rustc can guarantee the function is
-    /// never called on `None`, `Err`, etc., alleviating otherwise necessary checks. It's also
-    /// slightly more idiomatic.
+    /// The code should use `try_fold` instead, which short-circuits on failure, thus opening the
+    /// door for additional optimizations not possible with `fold` as rustc can guarantee the
+    /// function is never called on `None`, `Err`, etc., alleviating otherwise necessary checks. It's
+    /// also slightly more idiomatic.
     ///
     /// ### Known issues
     /// This lint doesn't take into account whether a function does something on the failure case,

@@ -150,6 +150,7 @@ The minimum rust version that the project supports
 * [`manual_retain`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_retain)
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds)
 * [`tuple_array_conversions`](https://rust-lang.github.io/rust-clippy/master/index.html#tuple_array_conversions)
+* [`manual_try_fold`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold)
 
 
 ## `cognitive-complexity-threshold`
