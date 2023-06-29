@@ -15,7 +15,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
-use std::cmp::{self, Ordering};
+use std::cmp;
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
@@ -316,8 +316,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
         // First, try computing an exact naive layout (this covers simple types with generic
         // references, where a full static layout would fail).
         if let Ok(layout) = tcx.naive_layout_of(param_env.and(ty)) {
-            if layout.is_exact {
-                return Ok(SizeSkeleton::Known(layout.min_size));
+            if layout.exact {
+                return Ok(SizeSkeleton::Known(layout.size));
             }
         }
 
@@ -650,51 +650,146 @@ impl std::ops::DerefMut for TyAndNaiveLayout<'_> {
     }
 }
 
-/// A naive underestimation of the layout of a type.
+/// Extremely simplified representation of a type's layout.
+///
+///
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct NaiveLayout {
-    pub min_size: Size,
-    pub min_align: Align,
-    // If `true`, `min_size` and `min_align` are guaranteed to be exact.
-    pub is_exact: bool,
+    pub abi: NaiveAbi,
+    pub size: Size,
+    pub align: Align,
+    /// If `true`, `size` and `align` are exact.
+    pub exact: bool,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
+pub enum NaiveAbi {
+    /// A scalar layout, always implies `exact`.
+    Scalar(Primitive),
+    /// An uninhabited layout. (needed to properly track `Scalar`)
+    Uninhabited,
+    /// An unsized aggregate. (needed to properly track `Scalar`)
+    Unsized,
+    Any,
+}
+
+impl NaiveAbi {
+    #[inline]
+    pub fn as_aggregate(self) -> Self {
+        match self {
+            NaiveAbi::Scalar(_) => NaiveAbi::Any,
+            _ => self,
+        }
+    }
 }
 
 impl NaiveLayout {
-    pub const UNKNOWN: Self = Self { min_size: Size::ZERO, min_align: Align::ONE, is_exact: false };
-    pub const EMPTY: Self = Self { min_size: Size::ZERO, min_align: Align::ONE, is_exact: true };
+    pub const EMPTY: Self =
+        Self { size: Size::ZERO, align: Align::ONE, exact: true, abi: NaiveAbi::Any };
 
-    pub fn is_compatible_with(&self, layout: Layout<'_>) -> bool {
-        let cmp = |cmp: Ordering| match (cmp, self.is_exact) {
-            (Ordering::Less | Ordering::Equal, false) => true,
-            (Ordering::Equal, true) => true,
-            (_, _) => false,
-        };
+    pub fn is_refined_by(&self, layout: Layout<'_>) -> bool {
+        if self.size > layout.size() || self.align > layout.align().abi {
+            return false;
+        }
 
-        cmp(self.min_size.cmp(&layout.size())) && cmp(self.min_align.cmp(&layout.align().abi))
+        if let NaiveAbi::Scalar(prim) = self.abi {
+            assert!(self.exact);
+            if !matches!(layout.abi(), Abi::Scalar(s) if s.primitive() == prim) {
+                return false;
+            }
+        }
+
+        !self.exact || (self.size, self.align) == (layout.size(), layout.align().abi)
+    }
+
+    /// Returns if this layout is known to be pointer-like (`None` if uncertain)
+    ///
+    /// See the corresponding `Layout::is_pointer_like` method.
+    pub fn is_pointer_like(&self, dl: &TargetDataLayout) -> Option<bool> {
+        match self.abi {
+            NaiveAbi::Scalar(_) => {
+                assert!(self.exact);
+                Some(self.size == dl.pointer_size && self.align == dl.pointer_align.abi)
+            }
+            NaiveAbi::Uninhabited | NaiveAbi::Unsized => Some(false),
+            NaiveAbi::Any if self.exact => Some(false),
+            NaiveAbi::Any => None,
+        }
     }
 
     #[must_use]
-    pub fn pad_to_align(mut self) -> Self {
-        self.min_size = self.min_size.align_to(self.min_align);
+    #[inline]
+    pub fn packed(mut self, align: Align) -> Self {
+        if self.align > align {
+            self.align = align;
+            self.abi = self.abi.as_aggregate();
+        }
         self
     }
 
     #[must_use]
-    pub fn concat<C: HasDataLayout>(&self, other: &Self, cx: &C) -> Option<Self> {
-        Some(Self {
-            min_size: self.min_size.checked_add(other.min_size, cx)?,
-            min_align: std::cmp::max(self.min_align, other.min_align),
-            is_exact: self.is_exact && other.is_exact,
-        })
+    #[inline]
+    pub fn align_to(mut self, align: Align) -> Self {
+        if align > self.align {
+            self.align = align;
+            self.abi = self.abi.as_aggregate();
+        }
+        self
     }
 
     #[must_use]
-    pub fn union(&self, other: &Self) -> Self {
-        Self {
-            min_size: std::cmp::max(self.min_size, other.min_size),
-            min_align: std::cmp::max(self.min_align, other.min_align),
-            is_exact: self.is_exact && other.is_exact,
+    #[inline]
+    pub fn pad_to_align(mut self, align: Align) -> Self {
+        let new_size = self.size.align_to(align);
+        if new_size > self.size {
+            self.abi = self.abi.as_aggregate();
+            self.size = new_size;
         }
+        self
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn concat(&self, other: &Self, dl: &TargetDataLayout) -> Option<Self> {
+        use NaiveAbi::*;
+
+        let size = self.size.checked_add(other.size, dl)?;
+        let align = cmp::max(self.align, other.align);
+        let exact = self.exact && other.exact;
+        let abi = match (self.abi, other.abi) {
+            // The uninhabited and unsized ABIs override everything.
+            (Uninhabited, _) | (_, Uninhabited) => Uninhabited,
+            (Unsized, _) | (_, Unsized) => Unsized,
+            // A scalar struct must have a single non ZST-field.
+            (_, s @ Scalar(_)) if exact && self.size == Size::ZERO => s,
+            (s @ Scalar(_), _) if exact && other.size == Size::ZERO => s,
+            // Default case.
+            (_, _) => Any,
+        };
+        Some(Self { abi, size, align, exact })
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn union(&self, other: &Self) -> Self {
+        use NaiveAbi::*;
+
+        let size = cmp::max(self.size, other.size);
+        let align = cmp::max(self.align, other.align);
+        let exact = self.exact && other.exact;
+        let abi = match (self.abi, other.abi) {
+            // The unsized ABI overrides everything.
+            (Unsized, _) | (_, Unsized) => Unsized,
+            // A scalar union must have a single non ZST-field.
+            (_, s @ Scalar(_)) if exact && self.size == Size::ZERO => s,
+            (s @ Scalar(_), _) if exact && other.size == Size::ZERO => s,
+            // ...or identical scalar fields.
+            (Scalar(s1), Scalar(s2)) if s1 == s2 => Scalar(s1),
+            // Default cases.
+            (Uninhabited, Uninhabited) => Uninhabited,
+            (_, _) => Any,
+        };
+        Self { abi, size, align, exact }
     }
 }
 

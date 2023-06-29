@@ -5,8 +5,8 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::layout::{
-    IntegerExt, LayoutCx, LayoutError, LayoutOf, NaiveLayout, TyAndLayout, TyAndNaiveLayout,
-    MAX_SIMD_LANES,
+    IntegerExt, LayoutCx, LayoutError, LayoutOf, NaiveAbi, NaiveLayout, TyAndLayout,
+    TyAndNaiveLayout, MAX_SIMD_LANES,
 };
 use rustc_middle::ty::{
     self, AdtDef, EarlyBinder, GenericArgsRef, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
@@ -90,12 +90,8 @@ fn layout_of<'tcx>(
     let cx = LayoutCx { tcx, param_env };
     let layout = layout_of_uncached(&cx, ty)?;
 
-    if !naive.is_compatible_with(layout) {
-        bug!(
-            "the naive layout isn't compatible with the actual layout:\n{:#?}\n{:#?}",
-            naive,
-            layout,
-        );
+    if !naive.is_refined_by(layout) {
+        bug!("the naive layout isn't refined by the actual layout:\n{:#?}\n{:#?}", naive, layout,);
     }
 
     let layout = TyAndLayout { ty, layout };
@@ -120,9 +116,10 @@ fn naive_layout_of_uncached<'tcx>(
     let dl = cx.data_layout();
 
     let scalar = |value: Primitive| NaiveLayout {
-        min_size: value.size(dl),
-        min_align: value.align(dl).abi,
-        is_exact: true,
+        abi: NaiveAbi::Scalar(value),
+        size: value.size(dl),
+        align: value.align(dl).abi,
+        exact: true,
     };
 
     let univariant = |fields: &mut dyn Iterator<Item = Ty<'tcx>>,
@@ -133,24 +130,29 @@ fn naive_layout_of_uncached<'tcx>(
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
 
-        // For simplicity, ignore inter-field padding; this may underestimate the size.
-        // FIXME(reference_niches): Be smarter and implement something closer to the real layout logic.
-        let mut layout = NaiveLayout::UNKNOWN;
+        let linear = repr.inhibit_struct_field_reordering_opt();
+        let pack = repr.pack.unwrap_or(Align::MAX);
+        let mut layout = NaiveLayout::EMPTY;
+
         for field in fields {
-            let field = cx.naive_layout_of(field)?;
+            let field = cx.naive_layout_of(field)?.packed(pack);
+            if linear {
+                layout = layout.pad_to_align(field.align);
+            }
             layout = layout
-                .concat(&field, cx)
+                .concat(&field, dl)
                 .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
         }
 
         if let Some(align) = repr.align {
-            layout.min_align = std::cmp::max(layout.min_align, align);
-        }
-        if let Some(pack) = repr.pack {
-            layout.min_align = std::cmp::min(layout.min_align, pack);
+            layout = layout.align_to(align);
         }
 
-        Ok(layout.pad_to_align())
+        if linear {
+            layout.abi = layout.abi.as_aggregate();
+        }
+
+        Ok(layout.pad_to_align(layout.align))
     };
 
     debug_assert!(!ty.has_non_region_infer());
@@ -168,17 +170,17 @@ fn naive_layout_of_uncached<'tcx>(
         ty::FnPtr(_) => scalar(Pointer(dl.instruction_address_space)),
 
         // The never type.
-        ty::Never => NaiveLayout::EMPTY,
+        ty::Never => NaiveLayout { abi: NaiveAbi::Uninhabited, ..NaiveLayout::EMPTY },
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
             let data_ptr = scalar(Pointer(AddressSpace::DATA));
             if let Some(metadata) = ptr_metadata_scalar(cx, pointee)? {
                 // Effectively a (ptr, meta) tuple.
-                data_ptr
-                    .concat(&scalar(metadata.primitive()), cx)
-                    .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?
-                    .pad_to_align()
+                let l = data_ptr
+                    .concat(&scalar(metadata.primitive()), dl)
+                    .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
+                l.pad_to_align(l.align)
             } else {
                 // No metadata, this is a thin pointer.
                 data_ptr
@@ -187,7 +189,7 @@ fn naive_layout_of_uncached<'tcx>(
 
         ty::Dynamic(_, _, ty::DynStar) => {
             let ptr = scalar(Pointer(AddressSpace::DATA));
-            ptr.concat(&ptr, cx).ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?
+            ptr.concat(&ptr, dl).ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?
         }
 
         // Arrays and slices.
@@ -196,26 +198,29 @@ fn naive_layout_of_uncached<'tcx>(
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
             let element = cx.naive_layout_of(element)?;
             NaiveLayout {
-                min_size: element
-                    .min_size
+                abi: element.abi.as_aggregate(),
+                size: element
+                    .size
                     .checked_mul(count, cx)
                     .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?,
                 ..*element
             }
         }
-        ty::Slice(element) => NaiveLayout {
-            min_size: Size::ZERO,
-            // NOTE: this could be unconditionally exact if `NaiveLayout` guaranteed exact align.
-            ..*cx.naive_layout_of(element)?
-        },
-        ty::Str => NaiveLayout::EMPTY,
+        ty::Slice(element) => {
+            let element = cx.naive_layout_of(element)?;
+            NaiveLayout { abi: NaiveAbi::Unsized, size: Size::ZERO, ..*element }
+        }
 
-        // Odd unit types.
-        ty::FnDef(..) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => NaiveLayout::EMPTY,
+        ty::FnDef(..) => NaiveLayout::EMPTY,
+
+        // Unsized types.
+        ty::Str | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
+            NaiveLayout { abi: NaiveAbi::Unsized, ..NaiveLayout::EMPTY }
+        }
 
         // FIXME(reference_niches): try to actually compute a reasonable layout estimate,
         // without duplicating too much code from `generator_layout`.
-        ty::Generator(..) => NaiveLayout::UNKNOWN,
+        ty::Generator(..) => NaiveLayout { exact: false, ..NaiveLayout::EMPTY },
 
         ty::Closure(_, ref substs) => {
             univariant(&mut substs.as_closure().upvar_tys(), &ReprOptions::default())?
@@ -225,33 +230,50 @@ fn naive_layout_of_uncached<'tcx>(
 
         ty::Adt(def, substs) if def.is_union() => {
             let repr = def.repr();
-            let only_variant = &def.variants()[FIRST_VARIANT];
-            only_variant.fields.iter().try_fold(NaiveLayout::EMPTY, |layout, f| {
-                let mut fields = std::iter::once(f.ty(tcx, substs));
-                univariant(&mut fields, &repr).map(|l| layout.union(&l))
-            })?
+            let pack = repr.pack.unwrap_or(Align::MAX);
+            if repr.pack.is_some() && repr.align.is_some() {
+                cx.tcx.sess.delay_span_bug(DUMMY_SP, "union cannot be packed and aligned");
+                return Err(error(cx, LayoutError::Unknown(ty)));
+            }
+
+            let mut layout = NaiveLayout::EMPTY;
+            for f in &def.variants()[FIRST_VARIANT].fields {
+                let field = cx.naive_layout_of(f.ty(tcx, substs))?;
+                layout = layout.union(&field.packed(pack));
+            }
+
+            // Unions are always inhabited, and never scalar if `repr(C)`.
+            if !matches!(layout.abi, NaiveAbi::Scalar(_)) || repr.inhibit_enum_layout_opt() {
+                layout.abi = NaiveAbi::Any;
+            }
+
+            if let Some(align) = repr.align {
+                layout = layout.align_to(align);
+            }
+            layout.pad_to_align(layout.align)
         }
 
         ty::Adt(def, substs) => {
             let repr = def.repr();
-            let base = if def.is_struct() && !repr.simd() {
-                // FIXME(reference_niches): compute proper alignment for SIMD types.
-                NaiveLayout::EMPTY
-            } else {
-                // For simplicity, assume that any discriminant field (if it exists)
-                // gets niched inside one of the variants; this will underestimate the size
-                // (and sometimes alignment) of enums.
-                // FIXME(reference_niches): Be smarter and actually take into accoount the discriminant.
+            let base = NaiveLayout {
+                // For simplicity, assume that any enum has its discriminant field (if it exists)
+                // niched inside one of the variants; this will underestimate the size (and sometimes
+                // alignment) of enums. We also doesn't compute exact alignment for SIMD structs.
+                // FIXME(reference_niches): Be smarter here.
                 // Also consider adding a special case for null-optimized enums, so that we can have
                 // `Option<&T>: PointerLike` in generic contexts.
-                NaiveLayout::UNKNOWN
+                exact: !def.is_enum() && !repr.simd(),
+                // An ADT with no inhabited variants should have an uninhabited ABI.
+                abi: NaiveAbi::Uninhabited,
+                ..NaiveLayout::EMPTY
             };
 
-            def.variants().iter().try_fold(base, |layout, v| {
+            let layout = def.variants().iter().try_fold(base, |layout, v| {
                 let mut fields = v.fields.iter().map(|f| f.ty(tcx, substs));
                 let vlayout = univariant(&mut fields, &repr)?;
                 Ok(layout.union(&vlayout))
-            })?
+            })?;
+            layout.pad_to_align(layout.align)
         }
 
         // Types with no meaningful known layout.
@@ -354,8 +376,8 @@ fn layout_of_uncached<'tcx>(
                 };
 
                 let (min_addr, max_addr) = dl.address_range_for(
-                    if niches.size { naive.min_size } else { Size::ZERO },
-                    if niches.align { naive.min_align } else { Align::ONE },
+                    if niches.size { naive.size } else { Size::ZERO },
+                    if niches.align { naive.align } else { Align::ONE },
                 );
 
                 *data_ptr.valid_range_mut() =

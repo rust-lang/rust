@@ -979,9 +979,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if let Ok(layout) = tcx.layout_of(key)
-            && layout.layout.is_pointer_like(&tcx.data_layout)
-        {
+        // First, try computing an exact naive layout in case the type is generic.
+        let is_pointer_like = if let Ok(layout) = tcx.naive_layout_of(key) {
+            layout.is_pointer_like(&tcx.data_layout).unwrap_or_else(|| {
+                // Second, we fall back to full layout computation.
+                tcx.layout_of(key)
+                    .ok()
+                    .filter(|l| l.layout.is_pointer_like(&tcx.data_layout))
+                    .is_some()
+            })
+        } else {
+            false
+        };
+
+        if is_pointer_like {
             candidates.vec.push(BuiltinCandidate { has_nested: false });
         }
     }
