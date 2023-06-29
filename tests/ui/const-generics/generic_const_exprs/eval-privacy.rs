@@ -21,6 +21,7 @@ where
 {
     type AssocTy = Const<{ my_const_fn(U) }>;
     //~^ ERROR private type
+    //~| WARNING type `fn(u8) -> u8 {my_const_fn}` is more private than the item `<Const<U> as Trait>::AssocTy`
     fn assoc_fn() -> Self::AssocTy {
         Const
     }

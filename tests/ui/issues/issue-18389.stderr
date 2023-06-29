@@ -6,22 +6,23 @@ LL |   trait Private<P, R> {
 ...
 LL | / pub trait Public: Private<
 LL | |
+LL | |
 LL | |     <Self as Public>::P,
 LL | |     <Self as Public>::R
 LL | | > {
    | |_^ can't leak private trait
 
 warning: trait `Private<<Self as Public>::P, <Self as Public>::R>` is more private than the item `Public`
-   |
-note: trait `Public` is reachable at visibility `pub`
   --> $DIR/issue-18389.rs:14:1
    |
 LL | / pub trait Public: Private<
 LL | |
+LL | |
 LL | |     <Self as Public>::P,
 LL | |     <Self as Public>::R
 LL | | > {
-   | |_^
+   | |_^ trait `Public` is reachable at visibility `pub`
+   |
 note: but trait `Private<<Self as Public>::P, <Self as Public>::R>` is only usable at visibility `pub(crate)`
   --> $DIR/issue-18389.rs:11:1
    |

@@ -13,6 +13,7 @@ trait Private<P, R> {
 }
 pub trait Public: Private<
 //~^ ERROR private trait `Private<<Self as Public>::P, <Self as Public>::R>` in public interface
+//~| WARNING trait `Private<<Self as Public>::P, <Self as Public>::R>` is more private than the item `Public`
     <Self as Public>::P,
     <Self as Public>::R
 > {
