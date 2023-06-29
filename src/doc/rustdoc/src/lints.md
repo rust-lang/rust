@@ -412,3 +412,25 @@ help: if you meant to use a literal backtick, escape it
 
 warning: 1 warning emitted
 ```
+
+## `redundant_explicit_links`
+
+This lint is **warned by default**. It detects explicit links that are same
+as computed automatic links.
+This usually means the explicit links is removeable. For example:
+
+```rust
+#![warn(rustdoc::redundant_explicit_links)]
+
+pub fn dummy_target() {} // note: unnecessary - warns by default.
+
+/// [`dummy_target`](dummy_target)
+/// [dummy_target](dummy_target)
+pub fn c() {}
+```
+
+Which will give:
+
+```text
+
+```

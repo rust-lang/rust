@@ -994,7 +994,15 @@ impl LinkCollector<'_, '_> {
                 _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),
             };
             for md_link in preprocessed_markdown_links(&doc) {
-                let link = self.resolve_link(item, item_id, module_id, &doc, &md_link);
+                let PreprocessedMarkdownLink(_pp_link, ori_link) = &md_link;
+                let diag_info = DiagnosticInfo {
+                    item,
+                    dox: &doc,
+                    ori_link: &ori_link.link,
+                    link_range: ori_link.range.clone(),
+                };
+
+                let link = self.resolve_link(item, item_id, module_id, &md_link, &diag_info);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().insert(link);
                 }
@@ -1010,18 +1018,10 @@ impl LinkCollector<'_, '_> {
         item: &Item,
         item_id: DefId,
         module_id: DefId,
-        dox: &str,
-        link: &PreprocessedMarkdownLink,
+        PreprocessedMarkdownLink(pp_link, ori_link): &PreprocessedMarkdownLink,
+        diag_info: &DiagnosticInfo<'_>,
     ) -> Option<ItemLink> {
-        let PreprocessedMarkdownLink(pp_link, ori_link) = link;
         trace!("considering link '{}'", ori_link.link);
-
-        let diag_info = DiagnosticInfo {
-            item,
-            dox,
-            ori_link: &ori_link.link,
-            link_range: ori_link.range.clone(),
-        };
 
         let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
             pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
@@ -1041,6 +1041,17 @@ impl LinkCollector<'_, '_> {
             // time so they are not cached.
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
         )?;
+
+        self.check_redundant_explicit_link(
+            &res,
+            path_str,
+            item_id,
+            module_id,
+            disambiguator,
+            &ori_link,
+            extra_fragment,
+            &diag_info,
+        );
 
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
@@ -1369,6 +1380,74 @@ impl LinkCollector<'_, '_> {
                         candidates.into_iter().flatten().flatten().collect::<Vec<_>>()
                     }
                 }
+            }
+        }
+    }
+
+    fn check_redundant_explicit_link(
+        &mut self,
+        ex_res: &Res,
+        ex: &Box<str>,
+        item_id: DefId,
+        module_id: DefId,
+        dis: Option<Disambiguator>,
+        ori_link: &MarkdownLink,
+        extra_fragment: &Option<String>,
+        diag_info: &DiagnosticInfo<'_>,
+    ) {
+        // Check if explicit resolution's path is same as resolution of original link's display text path, e.g.
+        // [target](target)
+        // [`target`](target)
+        // [target](path::to::target)
+        // [`target`](path::to::target)
+        // [path::to::target](path::to::target)
+        // [`path::to::target`](path::to::target)
+        //
+        // To avoid disambiguator from panicking, we check if display text path is possible to be disambiguated
+        // into explicit path.
+        if ori_link.kind != LinkType::Inline {
+            return;
+        }
+
+        let di_text = &ori_link.display_text;
+        let di_len = di_text.len();
+        let ex_len = ex.len();
+
+        let intra_doc_links = std::mem::take(&mut self.cx.cache.intra_doc_links);
+
+        if ex_len >= di_len && &ex[(ex_len - di_len)..] == di_text {
+            let Some((di_res, _)) = self.resolve_with_disambiguator_cached(
+                ResolutionInfo {
+                    item_id,
+                    module_id,
+                    dis,
+                    path_str: di_text.clone().into_boxed_str(),
+                    extra_fragment: extra_fragment.clone(),
+                },
+                diag_info.clone(), // this struct should really be Copy, but Range is not :(
+                // For reference-style links we want to report only one error so unsuccessful
+                // resolutions are cached, for other links we want to report an error every
+                // time so they are not cached.
+                matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
+            ) else {
+                return;
+            };
+
+            if &di_res == ex_res {
+                use crate::lint::REDUNDANT_EXPLICIT_LINKS;
+
+                report_diagnostic(
+                    self.cx.tcx,
+                    REDUNDANT_EXPLICIT_LINKS,
+                    "redundant explicit rustdoc link",
+                    &diag_info,
+                    |diag, sp, _link_range| {
+                        if let Some(sp) = sp {
+                            diag.note("Explicit link does not affect the original link")
+                                .span_suggestion(sp, "Remove explicit link instead", format!("[{}]", ori_link.link), Applicability::MachineApplicable);
+                        }
+                    }
+                );
             }
         }
     }
