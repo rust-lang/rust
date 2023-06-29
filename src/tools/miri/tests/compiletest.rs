@@ -88,6 +88,7 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         mode,
         program,
         output_conflict_handling,
+        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
         edition: Some("2021".into()),
         ..Config::rustc(path.into())
     };
