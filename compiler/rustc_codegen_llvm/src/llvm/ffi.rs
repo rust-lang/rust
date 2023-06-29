@@ -1071,6 +1071,7 @@ extern "C" {
 
     // Operations on other types
     pub fn LLVMVoidTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMTokenTypeInContext(C: &Context) -> &Type;
     pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values

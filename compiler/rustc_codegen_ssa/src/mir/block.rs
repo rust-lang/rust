@@ -79,8 +79,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             lltarget = fx.landing_pad_for(target);
         }
         if is_cleanupret {
-            // MSVC cross-funclet jump - need a trampoline
-            debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
+            // Cross-funclet jump - need a trampoline
+            debug_assert!(base::wants_new_eh_instructions(fx.cx.tcx().sess));
             debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
             let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
@@ -177,9 +177,16 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
             mir::UnwindAction::Terminate => {
-                if fx.mir[self.bb].is_cleanup && base::wants_msvc_seh(fx.cx.tcx().sess) {
-                    // SEH will abort automatically if an exception tries to
+                if fx.mir[self.bb].is_cleanup && base::wants_new_eh_instructions(fx.cx.tcx().sess) {
+                    // MSVC SEH will abort automatically if an exception tries to
                     // propagate out from cleanup.
+
+                    // FIXME(@mirkootter): For wasm, we currently do not support terminate during
+                    // cleanup, because this requires a few more changes: The current code
+                    // caches the `terminate_block` for each function; funclet based code - however -
+                    // requires a different terminate_block for each funclet
+                    // Until this is implemented, we just do not unwind inside cleanup blocks
+
                     None
                 } else {
                     Some(fx.terminate_block())
@@ -1528,7 +1535,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) rename this to `eh_pad_for_uncached`.
     fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
         let llbb = self.llbb(bb);
-        if base::wants_msvc_seh(self.cx.sess()) {
+        if base::wants_new_eh_instructions(self.cx.sess()) {
             let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{:?}", bb));
             let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
             let funclet = cleanup_bx.cleanup_pad(None, &[]);
@@ -1587,6 +1594,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //      } catch (...) {
                 //          bar();
                 //      }
+                //
+                // which creates an IR snippet like
+                //
+                //      cs_terminate:
+                //         %cs = catchswitch within none [%cp_terminate] unwind to caller
+                //      cp_terminate:
+                //         %cp = catchpad within %cs [null, i32 64, null]
+                //         ...
+
                 llbb = Bx::append_block(self.cx, self.llfn, "cs_terminate");
                 let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
 

@@ -52,6 +52,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMVoidTypeInContext(self.llcx) }
     }
 
+    pub(crate) fn type_token(&self) -> &'ll Type {
+        unsafe { llvm::LLVMTokenTypeInContext(self.llcx) }
+    }
+
     pub(crate) fn type_metadata(&self) -> &'ll Type {
         unsafe { llvm::LLVMMetadataTypeInContext(self.llcx) }
     }
