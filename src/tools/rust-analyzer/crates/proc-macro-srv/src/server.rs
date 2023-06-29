@@ -8,10 +8,7 @@
 //!
 //! FIXME: No span and source file information is implemented yet
 
-use proc_macro::{
-    bridge::{self, server},
-    LineColumn,
-};
+use proc_macro::bridge::{self, server};
 
 mod token_stream;
 pub use token_stream::TokenStream;
@@ -304,14 +301,6 @@ impl server::Span for RustAnalyzer {
         // FIXME handle span
         Range { start: 0, end: 0 }
     }
-    fn start(&mut self, _span: Self::Span) -> LineColumn {
-        // FIXME handle span
-        LineColumn { line: 0, column: 0 }
-    }
-    fn end(&mut self, _span: Self::Span) -> LineColumn {
-        // FIXME handle span
-        LineColumn { line: 0, column: 0 }
-    }
     fn join(&mut self, first: Self::Span, _second: Self::Span) -> Option<Self::Span> {
         // Just return the first span again, because some macros will unwrap the result.
         Some(first)
@@ -330,12 +319,22 @@ impl server::Span for RustAnalyzer {
         tt::TokenId::unspecified()
     }
 
-    fn after(&mut self, _self_: Self::Span) -> Self::Span {
+    fn end(&mut self, _self_: Self::Span) -> Self::Span {
         tt::TokenId::unspecified()
     }
 
-    fn before(&mut self, _self_: Self::Span) -> Self::Span {
+    fn start(&mut self, _self_: Self::Span) -> Self::Span {
         tt::TokenId::unspecified()
+    }
+
+    fn line(&mut self, _span: Self::Span) -> usize {
+        // FIXME handle line
+        0
+    }
+
+    fn column(&mut self, _span: Self::Span) -> usize {
+        // FIXME handle column
+        0
     }
 }
 

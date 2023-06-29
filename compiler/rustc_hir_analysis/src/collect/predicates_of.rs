@@ -1,4 +1,4 @@
-use crate::astconv::{AstConv, OnlySelfBounds};
+use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
@@ -125,7 +125,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     if let Some(self_bounds) = is_trait {
         predicates.extend(
             icx.astconv()
-                .compute_bounds(tcx.types.self_param, self_bounds, OnlySelfBounds(false))
+                .compute_bounds(tcx.types.self_param, self_bounds, PredicateFilter::All)
                 .clauses(),
         );
     }
@@ -530,19 +530,6 @@ pub(super) fn explicit_predicates_of<'tcx>(
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum PredicateFilter {
-    /// All predicates may be implied by the trait
-    All,
-
-    /// Only traits that reference `Self: ..` are implied by the trait
-    SelfOnly,
-
-    /// Only traits that reference `Self: ..` and define an associated type
-    /// with the given ident are implied by the trait
-    SelfThatDefines(Ident),
-}
-
 /// Ensures that the super-predicates of the trait with a `DefId`
 /// of `trait_def_id` are converted and stored. This also ensures that
 /// the transitive super-predicates are converted.
@@ -564,11 +551,15 @@ pub(super) fn implied_predicates_of(
     tcx: TyCtxt<'_>,
     trait_def_id: LocalDefId,
 ) -> ty::GenericPredicates<'_> {
-    if tcx.is_trait_alias(trait_def_id.to_def_id()) {
-        implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::All)
-    } else {
-        tcx.super_predicates_of(trait_def_id)
-    }
+    implied_predicates_with_filter(
+        tcx,
+        trait_def_id.to_def_id(),
+        if tcx.is_trait_alias(trait_def_id.to_def_id()) {
+            PredicateFilter::All
+        } else {
+            PredicateFilter::SelfAndAssociatedTypeBounds
+        },
+    )
 }
 
 /// Ensures that the super-predicates of the trait with a `DefId`
@@ -601,44 +592,14 @@ pub(super) fn implied_predicates_with_filter(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let (superbounds, where_bounds_that_match) = match filter {
-        PredicateFilter::All => (
-            // Convert the bounds that follow the colon (or equal in trait aliases)
-            icx.astconv().compute_bounds(self_param_ty, bounds, OnlySelfBounds(false)),
-            // Also include all where clause bounds
-            icx.type_parameter_bounds_in_generics(
-                generics,
-                item.owner_id.def_id,
-                self_param_ty,
-                OnlySelfBounds(false),
-                None,
-            ),
-        ),
-        PredicateFilter::SelfOnly => (
-            // Convert the bounds that follow the colon (or equal in trait aliases)
-            icx.astconv().compute_bounds(self_param_ty, bounds, OnlySelfBounds(true)),
-            // Include where clause bounds for `Self`
-            icx.type_parameter_bounds_in_generics(
-                generics,
-                item.owner_id.def_id,
-                self_param_ty,
-                OnlySelfBounds(true),
-                None,
-            ),
-        ),
-        PredicateFilter::SelfThatDefines(assoc_name) => (
-            // Convert the bounds that follow the colon (or equal) that reference the associated name
-            icx.astconv().compute_bounds_that_match_assoc_item(self_param_ty, bounds, assoc_name),
-            // Include where clause bounds for `Self` that reference the associated name
-            icx.type_parameter_bounds_in_generics(
-                generics,
-                item.owner_id.def_id,
-                self_param_ty,
-                OnlySelfBounds(true),
-                Some(assoc_name),
-            ),
-        ),
-    };
+    let superbounds = icx.astconv().compute_bounds(self_param_ty, bounds, filter);
+
+    let where_bounds_that_match = icx.type_parameter_bounds_in_generics(
+        generics,
+        item.owner_id.def_id,
+        self_param_ty,
+        filter,
+    );
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
@@ -743,8 +704,7 @@ pub(super) fn type_param_predicates(
             ast_generics,
             def_id,
             ty,
-            OnlySelfBounds(true),
-            Some(assoc_name),
+            PredicateFilter::SelfThatDefines(assoc_name),
         )
         .into_iter()
         .filter(|(predicate, _)| match predicate.kind().skip_binder() {
@@ -768,8 +728,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         ast_generics: &'tcx hir::Generics<'tcx>,
         param_def_id: LocalDefId,
         ty: Ty<'tcx>,
-        only_self_bounds: OnlySelfBounds,
-        assoc_name: Option<Ident>,
+        filter: PredicateFilter,
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
         let mut bounds = Bounds::default();
 
@@ -778,9 +737,23 @@ impl<'tcx> ItemCtxt<'tcx> {
                 continue;
             };
 
+            let (only_self_bounds, assoc_name) = match filter {
+                PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                    (OnlySelfBounds(false), None)
+                }
+                PredicateFilter::SelfOnly => (OnlySelfBounds(true), None),
+                PredicateFilter::SelfThatDefines(assoc_name) => {
+                    (OnlySelfBounds(true), Some(assoc_name))
+                }
+            };
+
+            // Subtle: If we're collecting `SelfAndAssociatedTypeBounds`, then we
+            // want to only consider predicates with `Self: ...`, but we don't want
+            // `OnlySelfBounds(true)` since we want to collect the nested associated
+            // type bound as well.
             let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
                 ty
-            } else if !only_self_bounds.0 {
+            } else if matches!(filter, PredicateFilter::All) {
                 self.to_ty(predicate.bounded_ty)
             } else {
                 continue;

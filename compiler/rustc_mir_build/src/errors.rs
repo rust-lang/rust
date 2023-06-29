@@ -432,6 +432,10 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
     }
 }
 
+#[derive(Subdiagnostic)]
+#[note(mir_build_non_exhaustive_match_all_arms_guarded)]
+pub struct NonExhaustiveMatchAllArmsGuarded;
+
 #[derive(Diagnostic)]
 #[diag(mir_build_static_in_pattern, code = "E0158")]
 pub struct StaticInPattern {

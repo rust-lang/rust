@@ -43,7 +43,6 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
-use std::cmp::Ordering;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -494,28 +493,32 @@ impl Span {
         self.0.byte_range()
     }
 
-    /// Gets the starting line/column in the source file for this span.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn start(&self) -> LineColumn {
-        self.0.start().add_1_to_column()
-    }
-
-    /// Gets the ending line/column in the source file for this span.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn end(&self) -> LineColumn {
-        self.0.end().add_1_to_column()
-    }
-
     /// Creates an empty span pointing to directly before this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn before(&self) -> Span {
-        Span(self.0.before())
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn start(&self) -> Span {
+        Span(self.0.start())
     }
 
     /// Creates an empty span pointing to directly after this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn after(&self) -> Span {
-        Span(self.0.after())
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn end(&self) -> Span {
+        Span(self.0.end())
+    }
+
+    /// The one-indexed line of the source file where the span starts.
+    ///
+    /// To obtain the line of the span's end, use `span.end().line()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn line(&self) -> usize {
+        self.0.line()
+    }
+
+    /// The one-indexed column of the source file where the span starts.
+    ///
+    /// To obtain the column of the span's end, use `span.end().column()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn column(&self) -> usize {
+        self.0.column()
     }
 
     /// Creates a new span encompassing `self` and `other`.
@@ -583,44 +586,6 @@ impl Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-/// A line-column pair representing the start or end of a `Span`.
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LineColumn {
-    /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub line: usize,
-    /// The 1-indexed column (number of bytes in UTF-8 encoding) in the source
-    /// file on which the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub column: usize,
-}
-
-impl LineColumn {
-    fn add_1_to_column(self) -> Self {
-        LineColumn { line: self.line, column: self.column + 1 }
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl !Send for LineColumn {}
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl !Sync for LineColumn {}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl Ord for LineColumn {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.line.cmp(&other.line).then(self.column.cmp(&other.column))
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl PartialOrd for LineColumn {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 

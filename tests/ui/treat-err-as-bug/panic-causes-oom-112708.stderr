@@ -1,0 +1,32 @@
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/panic-causes-oom-112708.rs:13:5
+   |
+LL |     while true {}
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+note: the lint level is defined here
+  --> $DIR/panic-causes-oom-112708.rs:12:12
+   |
+LL |     #[deny(while_true)]
+   |            ^^^^^^^^^^
+
+
+query stack during panic:
+#0 [early_lint_checks] perform lints prior to macro expansion
+#1 [hir_crate] getting the crate HIR
+end of query stack
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [early_lint_checks] perform lints prior to macro expansion
+#1 [hir_crate] getting the crate HIR
+end of query stack
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [early_lint_checks] perform lints prior to macro expansion
+#1 [hir_crate] getting the crate HIR
+end of query stack
+thread caused non-unwinding panic. aborting.
