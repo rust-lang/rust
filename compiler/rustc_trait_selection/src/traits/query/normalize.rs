@@ -211,10 +211,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
 
         // Wrap this in a closure so we don't accidentally return from the outer function
         let res = match kind {
-            // This is really important. While we *can* handle this, this has
-            // severe performance implications for large opaque types with
-            // late-bound regions. See `issue-88862` benchmark.
-            ty::Opaque if !data.substs.has_escaping_bound_vars() => {
+            ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.try_super_fold_with(self)?,
@@ -254,8 +251,6 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     }
                 }
             }
-
-            ty::Opaque => ty.try_super_fold_with(self)?,
 
             ty::Projection | ty::Inherent | ty::Weak => {
                 // See note in `rustc_trait_selection::traits::project`
