@@ -39,6 +39,9 @@ for more information on Rust's tiered platform support.
 
 Libraries
 ---------
+- [Rework handling of recursive panics.](https://github.com/rust-lang/rust/pull/110975/)
+  Additional panics are allowed while unwinding, as long as they are caught before escaping
+  a `Drop` implementation, but panicking within a panic hook is now an immediate abort.
 - [Loosen `From<&[T]> for Box<[T]>` bound to `T: Clone`.](https://github.com/rust-lang/rust/pull/103406/)
 - [Remove unnecessary `T: Send` bound](https://github.com/rust-lang/rust/pull/111134/)
   in `Error for mpsc::SendError<T>` and `TrySendError<T>`.
