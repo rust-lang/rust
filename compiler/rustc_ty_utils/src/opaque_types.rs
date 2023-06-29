@@ -97,6 +97,38 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         // Syntactically, we are allowed to define the concrete type if:
         hir_id == scope
     }
+
+    fn collect_body_and_predicate_taits(&mut self) {
+        // Look at all where bounds.
+        self.tcx.predicates_of(self.item).instantiate_identity(self.tcx).visit_with(self);
+        // An item is allowed to constrain opaques declared within its own body (but not nested within
+        // nested functions).
+        for id in self.find_taits_declared_in_body() {
+            self.opaques.extend(self.tcx.opaque_types_defined_by(id))
+        }
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn find_taits_declared_in_body(&self) -> Vec<LocalDefId> {
+        let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(self.item)).value;
+        struct TaitInBodyFinder<'tcx> {
+            /// Ids of type aliases found in the body
+            type_aliases: Vec<LocalDefId>,
+            tcx: TyCtxt<'tcx>,
+        }
+        impl<'v> intravisit::Visitor<'v> for TaitInBodyFinder<'_> {
+            #[instrument(level = "trace", skip(self))]
+            fn visit_nested_item(&mut self, id: rustc_hir::ItemId) {
+                let id = id.owner_id.def_id;
+                if let DefKind::TyAlias = self.tcx.def_kind(id) {
+                    self.type_aliases.push(id);
+                }
+            }
+        }
+        let mut visitor = TaitInBodyFinder { type_aliases: Default::default(), tcx: self.tcx };
+        visitor.visit_expr(body);
+        visitor.type_aliases
+    }
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
@@ -274,13 +306,7 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
                 }
                 _ => unreachable!(),
             }
-            // Look at all where bounds.
-            tcx.predicates_of(item).instantiate_identity(tcx).visit_with(&mut collector);
-            // An item is allowed to constrain opaques declared within its own body (but not nested within
-            // nested functions).
-            for id in find_taits_declared_in_body(tcx, item) {
-                collector.opaques.extend(tcx.opaque_types_defined_by(id))
-            }
+            collector.collect_body_and_predicate_taits();
         }
         DefKind::TyAlias | DefKind::AssocTy => {
             tcx.type_of(item).subst_identity().visit_with(&mut collector);
@@ -315,28 +341,6 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         }
     }
     tcx.arena.alloc_from_iter(collector.opaques)
-}
-
-#[instrument(level = "trace", skip(tcx), ret)]
-fn find_taits_declared_in_body(tcx: TyCtxt<'_>, item: LocalDefId) -> Vec<LocalDefId> {
-    let body = tcx.hir().body(tcx.hir().body_owned_by(item)).value;
-    struct TaitInBodyFinder<'tcx> {
-        /// Ids of type aliases found in the body
-        type_aliases: Vec<LocalDefId>,
-        tcx: TyCtxt<'tcx>,
-    }
-    impl<'v> intravisit::Visitor<'v> for TaitInBodyFinder<'_> {
-        #[instrument(level = "trace", skip(self))]
-        fn visit_nested_item(&mut self, id: rustc_hir::ItemId) {
-            let id = id.owner_id.def_id;
-            if let DefKind::TyAlias = self.tcx.def_kind(id) {
-                self.type_aliases.push(id);
-            }
-        }
-    }
-    let mut visitor = TaitInBodyFinder { type_aliases: Default::default(), tcx };
-    visitor.visit_expr(body);
-    visitor.type_aliases
 }
 
 pub(super) fn provide(providers: &mut Providers) {
