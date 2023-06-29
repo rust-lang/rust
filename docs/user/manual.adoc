@@ -933,17 +933,17 @@ For example:
 More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts[here].
 
 ==== Setting runnable environment variables
-You can use "rust-analyzer.runnableEnv" setting to define runnable environment-specific substitution variables.
+You can use "rust-analyzer.runnables.extraEnv" setting to define runnable environment-specific substitution variables.
 The simplest way for all runnables in a bunch:
 ```jsonc
-"rust-analyzer.runnableEnv": {
+"rust-analyzer.runnables.extraEnv": {
     "RUN_SLOW_TESTS": "1"
 }
 ```
 
 Or it is possible to specify vars more granularly:
 ```jsonc
-"rust-analyzer.runnableEnv": [
+"rust-analyzer.runnables.extraEnv": [
     {
         // "mask": null, // null mask means that this rule will be applied for all runnables
         env: {

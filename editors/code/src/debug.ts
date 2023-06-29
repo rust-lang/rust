@@ -118,7 +118,7 @@ async function getDebugConfiguration(
         return path.normalize(p).replace(wsFolder, "${workspaceFolder" + workspaceQualifier + "}");
     }
 
-    const env = prepareEnv(runnable, ctx.config.runnableEnv);
+    const env = prepareEnv(runnable, ctx.config.runnablesExtraEnv);
     const executable = await getDebugExecutable(runnable, env);
     let sourceFileMap = debugOptions.sourceFileMap;
     if (sourceFileMap === "auto") {

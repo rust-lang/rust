@@ -224,8 +224,8 @@ export class Config {
         return this.get<string | undefined>("cargoRunner");
     }
 
-    get runnableEnv() {
-        const item = this.get<any>("runnableEnv");
+    get runnablesExtraEnv() {
+        const item = this.get<any>("runnables.extraEnv") ?? this.get<any>("runnableEnv");
         if (!item) return item;
         const fixRecord = (r: Record<string, any>) => {
             for (const key in r) {

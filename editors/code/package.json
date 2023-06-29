@@ -311,7 +311,7 @@
                     "default": null,
                     "description": "Custom cargo runner extension ID."
                 },
-                "rust-analyzer.runnableEnv": {
+                "rust-analyzer.runnables.extraEnv": {
                     "anyOf": [
                         {
                             "type": "null"
