@@ -1319,6 +1319,13 @@ host_test!(RunMakeFullDeps {
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
+host_test!(RunCoverage { path: "tests/run-coverage", mode: "run-coverage", suite: "run-coverage" });
+host_test!(RunCoverageRustdoc {
+    path: "tests/run-coverage-rustdoc",
+    mode: "run-coverage",
+    suite: "run-coverage-rustdoc"
+});
+
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct MirOpt {
@@ -1503,6 +1510,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
+            || suite == "run-coverage-rustdoc"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
@@ -1516,7 +1524,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
         }
 
-        if mode == "run-make" {
+        if mode == "run-make" || mode == "run-coverage" {
             let rust_demangler = builder
                 .ensure(tool::RustDemangler {
                     compiler,
@@ -1703,17 +1711,21 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
-            // Only pass correct values for these flags for the `run-make` suite as it
-            // requires that a C++ compiler was configured which isn't always the case.
-            if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
+            if !builder.config.dry_run()
+                && (matches!(suite, "run-make" | "run-make-fulldeps") || mode == "run-coverage")
+            {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
+                // (The run-coverage tests also need these tools to process
+                // coverage reports.)
                 let llvm_bin_path = llvm_config
                     .parent()
                     .expect("Expected llvm-config to be contained in directory");
                 assert!(llvm_bin_path.is_dir());
                 cmd.arg("--llvm-bin-dir").arg(llvm_bin_path);
+            }
 
+            if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
                 // If LLD is available, add it to the PATH
                 if builder.config.lld_enabled {
                     let lld_install_root =
