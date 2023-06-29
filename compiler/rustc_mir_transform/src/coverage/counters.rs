@@ -17,7 +17,7 @@ use rustc_middle::mir::coverage::*;
 pub(super) struct CoverageCounters {
     function_source_hash: u64,
     next_counter_id: u32,
-    num_expressions: u32,
+    next_expression_id: ExpressionId,
     pub debug_counters: DebugCounters,
 }
 
@@ -26,7 +26,7 @@ impl CoverageCounters {
         Self {
             function_source_hash,
             next_counter_id: CounterValueReference::START.as_u32(),
-            num_expressions: 0,
+            next_expression_id: ExpressionId::START,
             debug_counters: DebugCounters::new(),
         }
     }
@@ -94,20 +94,17 @@ impl CoverageCounters {
 
     /// Counter IDs start from one and go up.
     fn next_counter(&mut self) -> CounterValueReference {
-        assert!(self.next_counter_id < u32::MAX - self.num_expressions);
         let next = self.next_counter_id;
         self.next_counter_id += 1;
         CounterValueReference::from(next)
     }
 
-    /// Expression IDs start from u32::MAX and go down because an Expression can reference
-    /// (add or subtract counts) of both Counter regions and Expression regions. The counter
-    /// expression operand IDs must be unique across both types.
-    fn next_expression(&mut self) -> InjectedExpressionId {
-        assert!(self.next_counter_id < u32::MAX - self.num_expressions);
-        let next = u32::MAX - self.num_expressions;
-        self.num_expressions += 1;
-        InjectedExpressionId::from(next)
+    /// Expression IDs start from 0 and go up.
+    /// (Counter IDs and Expression IDs are distinguished by the `Operand` enum.)
+    fn next_expression(&mut self) -> ExpressionId {
+        let next = self.next_expression_id;
+        self.next_expression_id = next.next_id();
+        next
     }
 }
 

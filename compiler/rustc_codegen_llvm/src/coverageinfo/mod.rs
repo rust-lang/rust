@@ -17,7 +17,7 @@ use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, CoverageKind, InjectedExpressionId, Op, Operand,
+    CodeRegion, CounterValueReference, CoverageKind, ExpressionId, Op, Operand,
 };
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
@@ -202,7 +202,7 @@ impl<'tcx> Builder<'_, '_, 'tcx> {
     fn add_coverage_counter_expression(
         &mut self,
         instance: Instance<'tcx>,
-        id: InjectedExpressionId,
+        id: ExpressionId,
         lhs: Operand,
         op: Op,
         rhs: Operand,

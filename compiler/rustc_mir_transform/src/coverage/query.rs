@@ -52,12 +52,11 @@ impl CoverageVisitor {
         self.info.num_counters = std::cmp::max(self.info.num_counters, counter_id + 1);
     }
 
-    /// Computes an expression index for each expression ID, and updates `num_expressions` to the
-    /// maximum encountered index plus 1.
+    /// Updates `num_expressions` to the maximum encountered expression ID plus 1.
     #[inline(always)]
-    fn update_num_expressions(&mut self, expression_id: InjectedExpressionId) {
-        let expression_index = u32::MAX - expression_id.as_u32();
-        self.info.num_expressions = std::cmp::max(self.info.num_expressions, expression_index + 1);
+    fn update_num_expressions(&mut self, expression_id: ExpressionId) {
+        let expression_id = expression_id.as_u32();
+        self.info.num_expressions = std::cmp::max(self.info.num_expressions, expression_id + 1);
     }
 
     fn update_from_expression_operand(&mut self, operand: Operand) {

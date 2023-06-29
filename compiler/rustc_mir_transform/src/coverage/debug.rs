@@ -485,7 +485,7 @@ impl GraphvizData {
 /// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
 /// and/or a `CoverageGraph` graphviz output).
 pub(super) struct UsedExpressions {
-    some_used_expression_operands: Option<FxHashMap<Operand, Vec<InjectedExpressionId>>>,
+    some_used_expression_operands: Option<FxHashMap<Operand, Vec<ExpressionId>>>,
     some_unused_expressions:
         Option<Vec<(CoverageKind, Option<BasicCoverageBlock>, BasicCoverageBlock)>>,
 }

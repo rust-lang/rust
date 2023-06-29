@@ -26,19 +26,23 @@ impl CounterValueReference {
 }
 
 rustc_index::newtype_index! {
-    /// Values descend from u32::MAX.
+    /// ID of a coverage-counter expression. Values ascend from 0.
+    ///
+    /// Note that LLVM handles expression IDs as `uint32_t`, so there is no need
+    /// to use a larger representation on the Rust side.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
-    #[debug_format = "InjectedExpressionId({})"]
-    pub struct InjectedExpressionId {}
+    #[debug_format = "ExpressionId({})"]
+    pub struct ExpressionId {}
 }
 
-rustc_index::newtype_index! {
-    /// Values ascend from 0.
-    #[derive(HashStable)]
-    #[max = 0xFFFF_FFFF]
-    #[debug_format = "InjectedExpressionIndex({})"]
-    pub struct InjectedExpressionIndex {}
+impl ExpressionId {
+    pub const START: Self = Self::from_u32(0);
+
+    #[inline(always)]
+    pub fn next_id(self) -> Self {
+        Self::from_u32(self.as_u32() + 1)
+    }
 }
 
 rustc_index::newtype_index! {
@@ -60,7 +64,7 @@ rustc_index::newtype_index! {
 pub enum Operand {
     Zero,
     Counter(CounterValueReference),
-    Expression(InjectedExpressionId),
+    Expression(ExpressionId),
 }
 
 impl Debug for Operand {
@@ -84,7 +88,7 @@ pub enum CoverageKind {
     Expression {
         /// ID of this coverage-counter expression within its enclosing function.
         /// Other expressions in the same function can refer to it as an operand.
-        id: InjectedExpressionId,
+        id: ExpressionId,
         lhs: Operand,
         op: Op,
         rhs: Operand,
