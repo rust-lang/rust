@@ -5137,6 +5137,7 @@ Released 2018-09-13
 [`recursive_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#recursive_format_impl
 [`redundant_allocation`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation
 [`redundant_async_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_async_block
+[`redundant_at_rest_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_at_rest_pattern
 [`redundant_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_clone
 [`redundant_closure`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
 [`redundant_closure_call`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_call
