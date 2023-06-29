@@ -1,7 +1,7 @@
 #![feature(inherent_associated_types)]
+#![feature(type_privacy_lints)]
 #![allow(incomplete_features)]
 #![crate_type = "lib"]
-
 #![deny(private_in_public)]
 #![warn(private_interfaces)]
 

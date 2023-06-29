@@ -1,5 +1,5 @@
 error[E0445]: private trait `Foo` in public interface
-  --> $DIR/E0445.rs:12:1
+  --> $DIR/E0445.rs:13:1
    |
 LL | trait Foo {
    | --------- `Foo` declared as private
@@ -10,23 +10,23 @@ LL | pub trait Bar : Foo {}
 warning: trait `Foo` is more private than the item `Bar`
    |
 note: trait `Bar` is reachable at visibility `pub`
-  --> $DIR/E0445.rs:12:1
+  --> $DIR/E0445.rs:13:1
    |
 LL | pub trait Bar : Foo {}
    | ^^^^^^^^^^^^^^^^^^^
 note: but trait `Foo` is only usable at visibility `pub(crate)`
-  --> $DIR/E0445.rs:8:1
+  --> $DIR/E0445.rs:9:1
    |
 LL | trait Foo {
    | ^^^^^^^^^
 note: the lint level is defined here
-  --> $DIR/E0445.rs:1:8
+  --> $DIR/E0445.rs:2:8
    |
 LL | #[warn(private_bounds)]
    |        ^^^^^^^^^^^^^^
 
 error[E0445]: private trait `Foo` in public interface
-  --> $DIR/E0445.rs:14:1
+  --> $DIR/E0445.rs:15:1
    |
 LL | trait Foo {
    | --------- `Foo` declared as private
@@ -37,18 +37,18 @@ LL | pub struct Bar2<T: Foo>(pub T);
 warning: trait `Foo` is more private than the item `Bar2`
    |
 note: struct `Bar2` is reachable at visibility `pub`
-  --> $DIR/E0445.rs:14:1
+  --> $DIR/E0445.rs:15:1
    |
 LL | pub struct Bar2<T: Foo>(pub T);
    | ^^^^^^^^^^^^^^^^^^^^^^^
 note: but trait `Foo` is only usable at visibility `pub(crate)`
-  --> $DIR/E0445.rs:8:1
+  --> $DIR/E0445.rs:9:1
    |
 LL | trait Foo {
    | ^^^^^^^^^
 
 error[E0445]: private trait `Foo` in public interface
-  --> $DIR/E0445.rs:16:1
+  --> $DIR/E0445.rs:17:1
    |
 LL | trait Foo {
    | --------- `Foo` declared as private
@@ -59,12 +59,12 @@ LL | pub fn foo<T: Foo> (t: T) {}
 warning: trait `Foo` is more private than the item `foo`
    |
 note: function `foo` is reachable at visibility `pub`
-  --> $DIR/E0445.rs:16:1
+  --> $DIR/E0445.rs:17:1
    |
 LL | pub fn foo<T: Foo> (t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: but trait `Foo` is only usable at visibility `pub(crate)`
-  --> $DIR/E0445.rs:8:1
+  --> $DIR/E0445.rs:9:1
    |
 LL | trait Foo {
    | ^^^^^^^^^

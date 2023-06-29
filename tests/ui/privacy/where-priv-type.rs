@@ -3,8 +3,8 @@
 
 #![crate_type = "lib"]
 #![feature(generic_const_exprs)]
+#![feature(type_privacy_lints)]
 #![allow(incomplete_features)]
-
 #![warn(private_bounds)]
 #![warn(private_interfaces)]
 

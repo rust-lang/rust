@@ -1,0 +1,93 @@
+warning: unknown lint: `private_interfaces`
+  --> $DIR/feature-gate-type_privacy_lints.rs:3:1
+   |
+LL | #![warn(private_interfaces)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `private_interfaces` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: unknown lint: `private_bounds`
+  --> $DIR/feature-gate-type_privacy_lints.rs:6:1
+   |
+LL | #![warn(private_bounds)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `private_bounds` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: unknown lint: `unnameable_types`
+  --> $DIR/feature-gate-type_privacy_lints.rs:9:1
+   |
+LL | #![warn(unnameable_types)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `unnameable_types` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: unknown lint: `private_interfaces`
+  --> $DIR/feature-gate-type_privacy_lints.rs:3:1
+   |
+LL | #![warn(private_interfaces)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `private_interfaces` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: unknown lint: `private_bounds`
+  --> $DIR/feature-gate-type_privacy_lints.rs:6:1
+   |
+LL | #![warn(private_bounds)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `private_bounds` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: unknown lint: `unnameable_types`
+  --> $DIR/feature-gate-type_privacy_lints.rs:9:1
+   |
+LL | #![warn(unnameable_types)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `unnameable_types` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: unknown lint: `private_interfaces`
+  --> $DIR/feature-gate-type_privacy_lints.rs:3:1
+   |
+LL | #![warn(private_interfaces)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `private_interfaces` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: unknown lint: `private_bounds`
+  --> $DIR/feature-gate-type_privacy_lints.rs:6:1
+   |
+LL | #![warn(private_bounds)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `private_bounds` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: unknown lint: `unnameable_types`
+  --> $DIR/feature-gate-type_privacy_lints.rs:9:1
+   |
+LL | #![warn(unnameable_types)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `unnameable_types` lint is unstable
+   = note: see issue #48054 <https://github.com/rust-lang/rust/issues/48054> for more information
+   = help: add `#![feature(type_privacy_lints)]` to the crate attributes to enable
+
+warning: 9 warnings emitted
+
