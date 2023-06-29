@@ -18,8 +18,8 @@ mod to_parser_input;
 mod benchmark;
 mod token_map;
 
-use ::tt::token_id as tt;
 use stdx::impl_from;
+use tt::{Span, TokenId};
 
 use std::fmt;
 
@@ -28,8 +28,9 @@ use crate::{
     tt_iter::TtIter,
 };
 
-pub use self::tt::{Delimiter, DelimiterKind, Punct};
+// FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
 pub use ::parser::TopEntryPoint;
+pub use tt::{Delimiter, DelimiterKind, Punct};
 
 pub use crate::{
     syntax_bridge::{
@@ -125,7 +126,7 @@ impl fmt::Display for CountError {
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeclarativeMacro {
-    rules: Box<[Rule]>,
+    rules: Box<[Rule<TokenId>]>,
     /// Highest id of the token we have in TokenMap
     shift: Shift,
     // This is used for correctly determining the behavior of the pat fragment
@@ -135,23 +136,23 @@ pub struct DeclarativeMacro {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct Rule {
-    lhs: MetaTemplate,
-    rhs: MetaTemplate,
+struct Rule<S> {
+    lhs: MetaTemplate<S>,
+    rhs: MetaTemplate<S>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Shift(u32);
 
 impl Shift {
-    pub fn new(tt: &tt::Subtree) -> Shift {
+    pub fn new(tt: &tt::Subtree<TokenId>) -> Shift {
         // Note that TokenId is started from zero,
         // We have to add 1 to prevent duplication.
         let value = max_id(tt).map_or(0, |it| it + 1);
         return Shift(value);
 
         // Find the max token id inside a subtree
-        fn max_id(subtree: &tt::Subtree) -> Option<u32> {
+        fn max_id(subtree: &tt::Subtree<TokenId>) -> Option<u32> {
             let filter =
                 |tt: &_| match tt {
                     tt::TokenTree::Subtree(subtree) => {
@@ -177,7 +178,7 @@ impl Shift {
     }
 
     /// Shift given TokenTree token id
-    pub fn shift_all(self, tt: &mut tt::Subtree) {
+    pub fn shift_all(self, tt: &mut tt::Subtree<TokenId>) {
         for t in &mut tt.token_trees {
             match t {
                 tt::TokenTree::Leaf(
@@ -224,7 +225,7 @@ impl DeclarativeMacro {
     }
 
     /// The old, `macro_rules! m {}` flavor.
-    pub fn parse_macro_rules(tt: &tt::Subtree, is_2021: bool) -> DeclarativeMacro {
+    pub fn parse_macro_rules(tt: &tt::Subtree<TokenId>, is_2021: bool) -> DeclarativeMacro {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
         // manually seems easier.
@@ -260,7 +261,7 @@ impl DeclarativeMacro {
     }
 
     /// The new, unstable `macro m {}` flavor.
-    pub fn parse_macro2(tt: &tt::Subtree, is_2021: bool) -> DeclarativeMacro {
+    pub fn parse_macro2(tt: &tt::Subtree<TokenId>, is_2021: bool) -> DeclarativeMacro {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         let mut err = None;
@@ -310,7 +311,7 @@ impl DeclarativeMacro {
         DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021, err }
     }
 
-    pub fn expand(&self, mut tt: tt::Subtree) -> ExpandResult<tt::Subtree> {
+    pub fn expand(&self, mut tt: tt::Subtree<TokenId>) -> ExpandResult<tt::Subtree<TokenId>> {
         self.shift.shift_all(&mut tt);
         expander::expand_rules(&self.rules, &tt, self.is_2021)
     }
@@ -335,8 +336,8 @@ impl DeclarativeMacro {
     }
 }
 
-impl Rule {
-    fn parse(src: &mut TtIter<'_>, expect_arrow: bool) -> Result<Self, ParseError> {
+impl<S: Span> Rule<S> {
+    fn parse(src: &mut TtIter<'_, S>, expect_arrow: bool) -> Result<Self, ParseError> {
         let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
         if expect_arrow {
             src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
@@ -351,7 +352,7 @@ impl Rule {
     }
 }
 
-fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
+fn validate<S: Span>(pattern: &MetaTemplate<S>) -> Result<(), ParseError> {
     for op in pattern.iter() {
         match op {
             Op::Subtree { tokens, .. } => validate(tokens)?,

@@ -3,9 +3,9 @@
 
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
-use crate::tt::buffer::TokenBuffer;
+use tt::{buffer::TokenBuffer, Span};
 
-pub(crate) fn to_parser_input(buffer: &TokenBuffer<'_>) -> parser::Input {
+pub(crate) fn to_parser_input<S: Span>(buffer: &TokenBuffer<'_, S>) -> parser::Input {
     let mut res = parser::Input::default();
 
     let mut current = buffer.begin();

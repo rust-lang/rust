@@ -8,23 +8,19 @@ use syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
-
-use crate::{
-    to_parser_input::to_parser_input,
-    tt::{
-        self,
-        buffer::{Cursor, TokenBuffer},
-    },
-    tt_iter::TtIter,
-    TokenMap,
+use tt::{
+    buffer::{Cursor, TokenBuffer},
+    TokenId,
 };
+
+use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, TokenMap};
 
 #[cfg(test)]
 mod tests;
 
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
-pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
+pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree<TokenId>, TokenMap) {
     let (subtree, token_map, _) = syntax_node_to_token_tree_with_modifications(
         node,
         Default::default(),
@@ -43,7 +39,7 @@ pub fn syntax_node_to_token_tree_with_modifications(
     next_id: u32,
     replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
     append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
-) -> (tt::Subtree, TokenMap, u32) {
+) -> (tt::Subtree<TokenId>, TokenMap, u32) {
     let global_offset = node.text_range().start();
     let mut c = Converter::new(node, global_offset, existing_token_map, next_id, replace, append);
     let subtree = convert_tokens(&mut c);
@@ -108,7 +104,7 @@ pub struct SyntheticToken {
 // * ForeignItems(SmallVec<[ast::ForeignItem; 1]>
 
 pub fn token_tree_to_syntax_node(
-    tt: &tt::Subtree,
+    tt: &tt::Subtree<TokenId>,
     entry_point: parser::TopEntryPoint,
 ) -> (Parse<SyntaxNode>, TokenMap) {
     let buffer = match tt {
@@ -138,7 +134,7 @@ pub fn token_tree_to_syntax_node(
 }
 
 /// Convert a string to a `TokenTree`
-pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
+pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree<TokenId>, TokenMap)> {
     let lexed = parser::LexedStr::new(text);
     if lexed.errors().next().is_some() {
         return None;
@@ -159,7 +155,7 @@ pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
 }
 
 /// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
+pub fn parse_exprs_with_sep(tt: &tt::Subtree<TokenId>, sep: char) -> Vec<tt::Subtree<TokenId>> {
     if tt.token_trees.is_empty() {
         return Vec::new();
     }
@@ -195,9 +191,9 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     res
 }
 
-fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
+fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree<TokenId> {
     struct StackEntry {
-        subtree: tt::Subtree,
+        subtree: tt::Subtree<TokenId>,
         idx: usize,
         open_range: TextRange,
     }
@@ -296,7 +292,7 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
                     .into()
                 };
             }
-            let leaf: tt::Leaf = match kind {
+            let leaf: tt::Leaf<TokenId> = match kind {
                 T![true] | T![false] => make_leaf!(Ident),
                 IDENT => make_leaf!(Ident),
                 UNDERSCORE => make_leaf!(Ident),
@@ -335,7 +331,7 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
         let parent = stack.last_mut();
 
         conv.id_alloc().close_delim(entry.idx, None);
-        let leaf: tt::Leaf = tt::Punct {
+        let leaf: tt::Leaf<TokenId> = tt::Punct {
             span: conv.id_alloc().alloc(entry.open_range, None),
             char: match entry.subtree.delimiter.kind {
                 tt::DelimiterKind::Parenthesis => '(',
@@ -514,7 +510,7 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
 fn convert_doc_comment(
     token: &syntax::SyntaxToken,
     span: tt::TokenId,
-) -> Option<Vec<tt::TokenTree>> {
+) -> Option<Vec<tt::TokenTree<TokenId>>> {
     cov_mark::hit!(test_meta_doc_comments);
     let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
@@ -537,11 +533,11 @@ fn convert_doc_comment(
     return Some(token_trees);
 
     // Helper functions
-    fn mk_ident(s: &str, span: tt::TokenId) -> tt::TokenTree {
+    fn mk_ident(s: &str, span: tt::TokenId) -> tt::TokenTree<TokenId> {
         tt::TokenTree::from(tt::Leaf::from(tt::Ident { text: s.into(), span }))
     }
 
-    fn mk_punct(c: char, span: tt::TokenId) -> tt::TokenTree {
+    fn mk_punct(c: char, span: tt::TokenId) -> tt::TokenTree<TokenId> {
         tt::TokenTree::from(tt::Leaf::from(tt::Punct {
             char: c,
             spacing: tt::Spacing::Alone,
@@ -549,7 +545,7 @@ fn convert_doc_comment(
         }))
     }
 
-    fn mk_doc_literal(comment: &ast::Comment, span: tt::TokenId) -> tt::TokenTree {
+    fn mk_doc_literal(comment: &ast::Comment, span: tt::TokenId) -> tt::TokenTree<TokenId> {
         let lit = tt::Literal { text: doc_comment_text(comment), span };
 
         tt::TokenTree::from(tt::Leaf::from(lit))
@@ -636,7 +632,7 @@ trait TokenConverter: Sized {
         &self,
         token: &Self::Token,
         span: tt::TokenId,
-    ) -> Option<Vec<tt::TokenTree>>;
+    ) -> Option<Vec<tt::TokenTree<TokenId>>>;
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)>;
 
@@ -666,7 +662,11 @@ impl SrcToken<RawConverter<'_>> for usize {
 impl TokenConverter for RawConverter<'_> {
     type Token = usize;
 
-    fn convert_doc_comment(&self, &token: &usize, span: tt::TokenId) -> Option<Vec<tt::TokenTree>> {
+    fn convert_doc_comment(
+        &self,
+        &token: &usize,
+        span: tt::TokenId,
+    ) -> Option<Vec<tt::TokenTree<TokenId>>> {
         let text = self.lexed.text(token);
         convert_doc_comment(&doc_comment(text), span)
     }
@@ -819,7 +819,7 @@ impl TokenConverter for Converter {
         &self,
         token: &Self::Token,
         span: tt::TokenId,
-    ) -> Option<Vec<tt::TokenTree>> {
+    ) -> Option<Vec<tt::TokenTree<TokenId>>> {
         convert_doc_comment(token.token()?, span)
     }
 
@@ -899,7 +899,7 @@ impl TokenConverter for Converter {
 
 struct TtTreeSink<'a> {
     buf: String,
-    cursor: Cursor<'a>,
+    cursor: Cursor<'a, TokenId>,
     open_delims: FxHashMap<tt::TokenId, TextSize>,
     text_pos: TextSize,
     inner: SyntaxTreeBuilder,
@@ -907,7 +907,7 @@ struct TtTreeSink<'a> {
 }
 
 impl<'a> TtTreeSink<'a> {
-    fn new(cursor: Cursor<'a>) -> Self {
+    fn new(cursor: Cursor<'a, TokenId>) -> Self {
         TtTreeSink {
             buf: String::new(),
             cursor,
