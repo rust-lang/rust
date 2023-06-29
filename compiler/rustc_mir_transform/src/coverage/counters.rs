@@ -18,6 +18,12 @@ pub(super) struct CoverageCounters {
     function_source_hash: u64,
     next_counter_id: CounterId,
     next_expression_id: ExpressionId,
+
+    /// Expression nodes that are not directly associated with any particular
+    /// BCB/edge, but are needed as operands to more complex expressions.
+    /// These are always `CoverageKind::Expression`.
+    pub(super) intermediate_expressions: Vec<CoverageKind>,
+
     pub debug_counters: DebugCounters,
 }
 
@@ -27,6 +33,9 @@ impl CoverageCounters {
             function_source_hash,
             next_counter_id: CounterId::START,
             next_expression_id: ExpressionId::START,
+
+            intermediate_expressions: Vec::new(),
+
             debug_counters: DebugCounters::new(),
         }
     }
@@ -38,13 +47,13 @@ impl CoverageCounters {
     }
 
     /// Makes `CoverageKind` `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
-    /// indirectly associated with `CoverageSpans`, and returns additional `Expression`s
+    /// indirectly associated with `CoverageSpans`, and accumulates additional `Expression`s
     /// representing intermediate values.
     pub fn make_bcb_counters(
         &mut self,
         basic_coverage_blocks: &mut CoverageGraph,
         coverage_spans: &[CoverageSpan],
-    ) -> Result<Vec<CoverageKind>, Error> {
+    ) -> Result<(), Error> {
         MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(coverage_spans)
     }
 
@@ -134,13 +143,9 @@ impl<'a> MakeBcbCounters<'a> {
     /// Returns any non-code-span expressions created to represent intermediate values (such as to
     /// add two counters so the result can be subtracted from another counter), or an Error with
     /// message for subsequent debugging.
-    fn make_bcb_counters(
-        &mut self,
-        coverage_spans: &[CoverageSpan],
-    ) -> Result<Vec<CoverageKind>, Error> {
+    fn make_bcb_counters(&mut self, coverage_spans: &[CoverageSpan]) -> Result<(), Error> {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
         let num_bcbs = self.basic_coverage_blocks.num_nodes();
-        let mut collect_intermediate_expressions = Vec::with_capacity(num_bcbs);
 
         let mut bcbs_with_coverage = BitSet::new_empty(num_bcbs);
         for covspan in coverage_spans {
@@ -161,16 +166,10 @@ impl<'a> MakeBcbCounters<'a> {
         while let Some(bcb) = traversal.next(self.basic_coverage_blocks) {
             if bcbs_with_coverage.contains(bcb) {
                 debug!("{:?} has at least one `CoverageSpan`. Get or make its counter", bcb);
-                let branching_counter_operand =
-                    self.get_or_make_counter_operand(bcb, &mut collect_intermediate_expressions)?;
+                let branching_counter_operand = self.get_or_make_counter_operand(bcb)?;
 
                 if self.bcb_needs_branch_counters(bcb) {
-                    self.make_branch_counters(
-                        &mut traversal,
-                        bcb,
-                        branching_counter_operand,
-                        &mut collect_intermediate_expressions,
-                    )?;
+                    self.make_branch_counters(&mut traversal, bcb, branching_counter_operand)?;
                 }
             } else {
                 debug!(
@@ -182,7 +181,7 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         if traversal.is_complete() {
-            Ok(collect_intermediate_expressions)
+            Ok(())
         } else {
             Error::from_string(format!(
                 "`TraverseCoverageGraphWithLoops` missed some `BasicCoverageBlock`s: {:?}",
@@ -196,7 +195,6 @@ impl<'a> MakeBcbCounters<'a> {
         traversal: &mut TraverseCoverageGraphWithLoops,
         branching_bcb: BasicCoverageBlock,
         branching_counter_operand: Operand,
-        collect_intermediate_expressions: &mut Vec<CoverageKind>,
     ) -> Result<(), Error> {
         let branches = self.bcb_branches(branching_bcb);
         debug!(
@@ -232,17 +230,10 @@ impl<'a> MakeBcbCounters<'a> {
                         counter",
                         branch, branching_bcb
                     );
-                    self.get_or_make_counter_operand(
-                        branch.target_bcb,
-                        collect_intermediate_expressions,
-                    )?
+                    self.get_or_make_counter_operand(branch.target_bcb)?
                 } else {
                     debug!("  {:?} has multiple incoming edges, so adding an edge counter", branch);
-                    self.get_or_make_edge_counter_operand(
-                        branching_bcb,
-                        branch.target_bcb,
-                        collect_intermediate_expressions,
-                    )?
+                    self.get_or_make_edge_counter_operand(branching_bcb, branch.target_bcb)?
                 };
                 if let Some(sumup_counter_operand) =
                     some_sumup_counter_operand.replace(branch_counter_operand)
@@ -258,7 +249,7 @@ impl<'a> MakeBcbCounters<'a> {
                         self.format_counter(&intermediate_expression)
                     );
                     let intermediate_expression_operand = intermediate_expression.as_operand();
-                    collect_intermediate_expressions.push(intermediate_expression);
+                    self.coverage_counters.intermediate_expressions.push(intermediate_expression);
                     some_sumup_counter_operand.replace(intermediate_expression_operand);
                 }
             }
@@ -290,18 +281,13 @@ impl<'a> MakeBcbCounters<'a> {
         Ok(())
     }
 
-    fn get_or_make_counter_operand(
-        &mut self,
-        bcb: BasicCoverageBlock,
-        collect_intermediate_expressions: &mut Vec<CoverageKind>,
-    ) -> Result<Operand, Error> {
-        self.recursive_get_or_make_counter_operand(bcb, collect_intermediate_expressions, 1)
+    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> Result<Operand, Error> {
+        self.recursive_get_or_make_counter_operand(bcb, 1)
     }
 
     fn recursive_get_or_make_counter_operand(
         &mut self,
         bcb: BasicCoverageBlock,
-        collect_intermediate_expressions: &mut Vec<CoverageKind>,
         debug_indent_level: usize,
     ) -> Result<Operand, Error> {
         // If the BCB already has a counter, return it.
@@ -354,7 +340,6 @@ impl<'a> MakeBcbCounters<'a> {
         let first_edge_counter_operand = self.recursive_get_or_make_edge_counter_operand(
             predecessors.next().unwrap(),
             bcb,
-            collect_intermediate_expressions,
             debug_indent_level + 1,
         )?;
         let mut some_sumup_edge_counter_operand = None;
@@ -362,7 +347,6 @@ impl<'a> MakeBcbCounters<'a> {
             let edge_counter_operand = self.recursive_get_or_make_edge_counter_operand(
                 predecessor,
                 bcb,
-                collect_intermediate_expressions,
                 debug_indent_level + 1,
             )?;
             if let Some(sumup_edge_counter_operand) =
@@ -380,7 +364,7 @@ impl<'a> MakeBcbCounters<'a> {
                     self.format_counter(&intermediate_expression)
                 );
                 let intermediate_expression_operand = intermediate_expression.as_operand();
-                collect_intermediate_expressions.push(intermediate_expression);
+                self.coverage_counters.intermediate_expressions.push(intermediate_expression);
                 some_sumup_edge_counter_operand.replace(intermediate_expression_operand);
             }
         }
@@ -403,32 +387,21 @@ impl<'a> MakeBcbCounters<'a> {
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
-        collect_intermediate_expressions: &mut Vec<CoverageKind>,
     ) -> Result<Operand, Error> {
-        self.recursive_get_or_make_edge_counter_operand(
-            from_bcb,
-            to_bcb,
-            collect_intermediate_expressions,
-            1,
-        )
+        self.recursive_get_or_make_edge_counter_operand(from_bcb, to_bcb, 1)
     }
 
     fn recursive_get_or_make_edge_counter_operand(
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
-        collect_intermediate_expressions: &mut Vec<CoverageKind>,
         debug_indent_level: usize,
     ) -> Result<Operand, Error> {
         // If the source BCB has only one successor (assumed to be the given target), an edge
         // counter is unnecessary. Just get or make a counter for the source BCB.
         let successors = self.bcb_successors(from_bcb).iter();
         if successors.len() == 1 {
-            return self.recursive_get_or_make_counter_operand(
-                from_bcb,
-                collect_intermediate_expressions,
-                debug_indent_level + 1,
-            );
+            return self.recursive_get_or_make_counter_operand(from_bcb, debug_indent_level + 1);
         }
 
         // If the edge already has a counter, return it.

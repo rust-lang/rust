@@ -676,10 +676,10 @@ fn test_make_bcb_counters() {
             }
         }
         let mut coverage_counters = counters::CoverageCounters::new(0);
-        let intermediate_expressions = coverage_counters
+        let () = coverage_counters
             .make_bcb_counters(&mut basic_coverage_blocks, &coverage_spans)
             .expect("should be Ok");
-        assert_eq!(intermediate_expressions.len(), 0);
+        assert_eq!(coverage_counters.intermediate_expressions.len(), 0);
 
         let_bcb!(1);
         assert_eq!(

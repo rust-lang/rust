@@ -199,52 +199,47 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // `BasicCoverageBlock`s not already associated with a `CoverageSpan`.
         //
         // Intermediate expressions (used to compute other `Expression` values), which have no
-        // direct associate to any `BasicCoverageBlock`, are returned in the method `Result`.
-        let intermediate_expressions_or_error = self
+        // direct association with any `BasicCoverageBlock`, are accumulated inside `coverage_counters`.
+        let result = self
             .coverage_counters
             .make_bcb_counters(&mut self.basic_coverage_blocks, &coverage_spans);
 
-        let (result, intermediate_expressions) = match intermediate_expressions_or_error {
-            Ok(intermediate_expressions) => {
-                // If debugging, add any intermediate expressions (which are not associated with any
-                // BCB) to the `debug_used_expressions` map.
-                if debug_used_expressions.is_enabled() {
-                    for intermediate_expression in &intermediate_expressions {
-                        debug_used_expressions.add_expression_operands(intermediate_expression);
-                    }
+        if let Ok(()) = result {
+            // If debugging, add any intermediate expressions (which are not associated with any
+            // BCB) to the `debug_used_expressions` map.
+            if debug_used_expressions.is_enabled() {
+                for intermediate_expression in &self.coverage_counters.intermediate_expressions {
+                    debug_used_expressions.add_expression_operands(intermediate_expression);
                 }
-
-                ////////////////////////////////////////////////////
-                // Remove the counter or edge counter from of each `CoverageSpan`s associated
-                // `BasicCoverageBlock`, and inject a `Coverage` statement into the MIR.
-                //
-                // `Coverage` statements injected from `CoverageSpan`s will include the code regions
-                // (source code start and end positions) to be counted by the associated counter.
-                //
-                // These `CoverageSpan`-associated counters are removed from their associated
-                // `BasicCoverageBlock`s so that the only remaining counters in the `CoverageGraph`
-                // are indirect counters (to be injected next, without associated code regions).
-                self.inject_coverage_span_counters(
-                    coverage_spans,
-                    &mut graphviz_data,
-                    &mut debug_used_expressions,
-                );
-
-                ////////////////////////////////////////////////////
-                // For any remaining `BasicCoverageBlock` counters (that were not associated with
-                // any `CoverageSpan`), inject `Coverage` statements (_without_ code region `Span`s)
-                // to ensure `BasicCoverageBlock` counters that other `Expression`s may depend on
-                // are in fact counted, even though they don't directly contribute to counting
-                // their own independent code region's coverage.
-                self.inject_indirect_counters(&mut graphviz_data, &mut debug_used_expressions);
-
-                // Intermediate expressions will be injected as the final step, after generating
-                // debug output, if any.
-                ////////////////////////////////////////////////////
-
-                (Ok(()), intermediate_expressions)
             }
-            Err(e) => (Err(e), Vec::new()),
+
+            ////////////////////////////////////////////////////
+            // Remove the counter or edge counter from of each `CoverageSpan`s associated
+            // `BasicCoverageBlock`, and inject a `Coverage` statement into the MIR.
+            //
+            // `Coverage` statements injected from `CoverageSpan`s will include the code regions
+            // (source code start and end positions) to be counted by the associated counter.
+            //
+            // These `CoverageSpan`-associated counters are removed from their associated
+            // `BasicCoverageBlock`s so that the only remaining counters in the `CoverageGraph`
+            // are indirect counters (to be injected next, without associated code regions).
+            self.inject_coverage_span_counters(
+                coverage_spans,
+                &mut graphviz_data,
+                &mut debug_used_expressions,
+            );
+
+            ////////////////////////////////////////////////////
+            // For any remaining `BasicCoverageBlock` counters (that were not associated with
+            // any `CoverageSpan`), inject `Coverage` statements (_without_ code region `Span`s)
+            // to ensure `BasicCoverageBlock` counters that other `Expression`s may depend on
+            // are in fact counted, even though they don't directly contribute to counting
+            // their own independent code region's coverage.
+            self.inject_indirect_counters(&mut graphviz_data, &mut debug_used_expressions);
+
+            // Intermediate expressions will be injected as the final step, after generating
+            // debug output, if any.
+            ////////////////////////////////////////////////////
         };
 
         if graphviz_data.is_enabled() {
@@ -257,7 +252,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 &self.basic_coverage_blocks,
                 &self.coverage_counters.debug_counters,
                 &graphviz_data,
-                &intermediate_expressions,
+                &self.coverage_counters.intermediate_expressions,
                 &debug_used_expressions,
             );
         }
@@ -273,7 +268,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         ////////////////////////////////////////////////////
         // Finally, inject the intermediate expressions collected along the way.
-        for intermediate_expression in intermediate_expressions {
+        for intermediate_expression in self.coverage_counters.intermediate_expressions.drain(..) {
             inject_intermediate_expression(self.mir_body, intermediate_expression);
         }
     }
