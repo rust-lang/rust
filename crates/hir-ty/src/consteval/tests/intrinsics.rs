@@ -183,6 +183,7 @@ fn allocator() {
             *ptr = 23;
             *ptr2 = 32;
             let ptr = __rust_realloc(ptr, 4, 1, 8);
+            let ptr = __rust_realloc(ptr, 8, 1, 3);
             let ptr2 = ((ptr as usize) + 1) as *mut u8;
             *ptr + *ptr2
         };
