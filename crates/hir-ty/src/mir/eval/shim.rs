@@ -144,14 +144,18 @@ impl Evaluator<'_> {
                 let [ptr, old_size, align, new_size] = args else {
                     return Err(MirEvalError::TypeError("rustc_allocator args are not provided"));
                 };
-                let ptr = Address::from_bytes(ptr.get(self)?)?;
                 let old_size = from_bytes!(usize, old_size.get(self)?);
                 let new_size = from_bytes!(usize, new_size.get(self)?);
-                let align = from_bytes!(usize, align.get(self)?);
-                let result = self.heap_allocate(new_size, align);
-                Interval { addr: result, size: old_size }
-                    .write_from_interval(self, Interval { addr: ptr, size: old_size })?;
-                destination.write_from_bytes(self, &result.to_bytes())?;
+                if old_size >= new_size {
+                    destination.write_from_interval(self, ptr.interval)?;
+                } else {
+                    let ptr = Address::from_bytes(ptr.get(self)?)?;
+                    let align = from_bytes!(usize, align.get(self)?);
+                    let result = self.heap_allocate(new_size, align);
+                    Interval { addr: result, size: old_size }
+                        .write_from_interval(self, Interval { addr: ptr, size: old_size })?;
+                    destination.write_from_bytes(self, &result.to_bytes())?;
+                }
             }
             _ => not_supported!("unknown alloc function"),
         }
