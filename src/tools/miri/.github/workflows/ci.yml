@@ -186,6 +186,7 @@ jobs:
           The Miri Cronjobs Bot' \
             --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com
       # Attempt to auto-sync with rustc
+      - uses: actions/checkout@v3
       - name: install josh-proxy
         run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
       - name: start josh-proxy
@@ -196,6 +197,8 @@ jobs:
           git config --global user.email 'miri@cron.bot'
       - name: get changes from rustc
         run: ./miri rustc-pull
+      - name: Install rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master
       - name: format changes (if any)
         run: |
           ./miri toolchain
