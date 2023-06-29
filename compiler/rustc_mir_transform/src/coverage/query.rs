@@ -43,11 +43,9 @@ struct CoverageVisitor {
 }
 
 impl CoverageVisitor {
-    /// Updates `num_counters` to the maximum encountered zero-based counter_id plus 1. Note the
-    /// final computed number of counters should be the number of all `CoverageKind::Counter`
-    /// statements in the MIR *plus one* for the implicit `ZERO` counter.
+    /// Updates `num_counters` to the maximum encountered counter ID plus 1.
     #[inline(always)]
-    fn update_num_counters(&mut self, counter_id: CounterValueReference) {
+    fn update_num_counters(&mut self, counter_id: CounterId) {
         let counter_id = counter_id.as_u32();
         self.info.num_counters = std::cmp::max(self.info.num_counters, counter_id + 1);
     }
@@ -103,8 +101,7 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
     let mir_body = tcx.instance_mir(instance_def);
 
     let mut coverage_visitor = CoverageVisitor {
-        // num_counters always has at least the `ZERO` counter.
-        info: CoverageInfo { num_counters: 1, num_expressions: 0 },
+        info: CoverageInfo { num_counters: 0, num_expressions: 0 },
         add_missing_operands: false,
     };
 

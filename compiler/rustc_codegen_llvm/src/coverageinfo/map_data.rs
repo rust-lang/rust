@@ -3,7 +3,7 @@ pub use super::ffi::*;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, ExpressionId, MappedExpressionIndex, Op, Operand,
+    CodeRegion, CounterId, ExpressionId, MappedExpressionIndex, Op, Operand,
 };
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
@@ -32,7 +32,7 @@ pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
     is_used: bool,
-    counters: IndexVec<CounterValueReference, Option<CodeRegion>>,
+    counters: IndexVec<CounterId, Option<CodeRegion>>,
     expressions: IndexVec<ExpressionId, Option<Expression>>,
     unreachable_regions: Vec<CodeRegion>,
 }
@@ -80,7 +80,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     /// Adds a code region to be counted by an injected counter intrinsic.
-    pub fn add_counter(&mut self, id: CounterValueReference, region: CodeRegion) {
+    pub fn add_counter(&mut self, id: CounterId, region: CodeRegion) {
         if let Some(previous_region) = self.counters[id].replace(region.clone()) {
             assert_eq!(previous_region, region, "add_counter: code region for id changed");
         }
@@ -192,18 +192,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         type NewIndexes = IndexSlice<ExpressionId, Option<MappedExpressionIndex>>;
         let id_to_counter = |new_indexes: &NewIndexes, operand: Operand| match operand {
             Operand::Zero => Some(Counter::zero()),
-            Operand::Counter(id) => {
-                debug_assert!(
-                    id.index() > 0,
-                    "Operand::Counter indexes for counters are 1-based, but this id={}",
-                    id.index()
-                );
-                // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
-                // and may not have their own `CodeRegion`s,
-                let index = CounterValueReference::from(id.index());
-                // Note, the conversion to LLVM `Counter` adjusts the index to be zero-based.
-                Some(Counter::counter_value_reference(index))
-            }
+            Operand::Counter(id) => Some(Counter::counter_value_reference(id)),
             Operand::Expression(id) => {
                 self.expressions
                     .get(id)

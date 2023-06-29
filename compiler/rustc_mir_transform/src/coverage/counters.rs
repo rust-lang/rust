@@ -16,7 +16,7 @@ use rustc_middle::mir::coverage::*;
 /// `Coverage` statements.
 pub(super) struct CoverageCounters {
     function_source_hash: u64,
-    next_counter_id: u32,
+    next_counter_id: CounterId,
     next_expression_id: ExpressionId,
     pub debug_counters: DebugCounters,
 }
@@ -25,7 +25,7 @@ impl CoverageCounters {
     pub fn new(function_source_hash: u64) -> Self {
         Self {
             function_source_hash,
-            next_counter_id: CounterValueReference::START.as_u32(),
+            next_counter_id: CounterId::START,
             next_expression_id: ExpressionId::START,
             debug_counters: DebugCounters::new(),
         }
@@ -93,10 +93,10 @@ impl CoverageCounters {
     }
 
     /// Counter IDs start from one and go up.
-    fn next_counter(&mut self) -> CounterValueReference {
+    fn next_counter(&mut self) -> CounterId {
         let next = self.next_counter_id;
-        self.next_counter_id += 1;
-        CounterValueReference::from(next)
+        self.next_counter_id = next.next_id();
+        next
     }
 
     /// Expression IDs start from 0 and go up.

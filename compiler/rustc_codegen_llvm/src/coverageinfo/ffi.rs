@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CounterValueReference, MappedExpressionIndex};
+use rustc_middle::mir::coverage::{CounterId, MappedExpressionIndex};
 
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
@@ -36,11 +36,9 @@ impl Counter {
         Self { kind: CounterKind::Zero, id: 0 }
     }
 
-    /// Constructs a new `Counter` of kind `CounterValueReference`, and converts
-    /// the given 1-based counter_id to the required 0-based equivalent for
-    /// the `Counter` encoding.
-    pub fn counter_value_reference(counter_id: CounterValueReference) -> Self {
-        Self { kind: CounterKind::CounterValueReference, id: counter_id.zero_based_index() }
+    /// Constructs a new `Counter` of kind `CounterValueReference`.
+    pub fn counter_value_reference(counter_id: CounterId) -> Self {
+        Self { kind: CounterKind::CounterValueReference, id: counter_id.as_u32() }
     }
 
     /// Constructs a new `Counter` of kind `Expression`.

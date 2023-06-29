@@ -6,22 +6,22 @@ use rustc_span::Symbol;
 use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
+    /// ID of a coverage counter. Values ascend from 0.
+    ///
+    /// Note that LLVM handles counter IDs as `uint32_t`, so there is no need
+    /// to use a larger representation on the Rust side.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
-    #[debug_format = "CounterValueReference({})"]
-    pub struct CounterValueReference {}
+    #[debug_format = "CounterId({})"]
+    pub struct CounterId {}
 }
 
-impl CounterValueReference {
-    /// Counters start at 1 for historical reasons.
-    pub const START: Self = Self::from_u32(1);
+impl CounterId {
+    pub const START: Self = Self::from_u32(0);
 
-    /// Returns explicitly-requested zero-based version of the counter id, used
-    /// during codegen. LLVM expects zero-based indexes.
-    pub fn zero_based_index(self) -> u32 {
-        let one_based_index = self.as_u32();
-        debug_assert!(one_based_index > 0);
-        one_based_index - 1
+    #[inline(always)]
+    pub fn next_id(self) -> Self {
+        Self::from_u32(self.as_u32() + 1)
     }
 }
 
@@ -63,7 +63,7 @@ rustc_index::newtype_index! {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum Operand {
     Zero,
-    Counter(CounterValueReference),
+    Counter(CounterId),
     Expression(ExpressionId),
 }
 
@@ -83,7 +83,7 @@ pub enum CoverageKind {
         function_source_hash: u64,
         /// ID of this counter within its enclosing function.
         /// Expressions in the same function can refer to it as an operand.
-        id: CounterValueReference,
+        id: CounterId,
     },
     Expression {
         /// ID of this coverage-counter expression within its enclosing function.
