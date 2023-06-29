@@ -45,6 +45,7 @@ mod iter_nth_zero;
 mod iter_on_single_or_empty_collections;
 mod iter_overeager_cloned;
 mod iter_skip_next;
+mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
 mod manual_next_back;
@@ -3443,6 +3444,27 @@ declare_clippy_lint! {
     "`format!`ing every element in a collection, then collecting the strings into a new `String`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.skip(0)` on iterators.
+    ///
+    /// ### Why is this bad?
+    /// This was likely intended to be `.skip(1)` to skip the first element, as `.skip(0)` does
+    /// nothing. If not, the call should be removed.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let v = vec![1, 2, 3];
+    /// let x = v.iter().skip(0).collect::<Vec<_>>();
+    /// let y = v.iter().collect::<Vec<_>>();
+    /// assert_eq!(x, y);
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub ITER_SKIP_ZERO,
+    correctness,
+    "disallows `.skip(0)`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3579,6 +3601,7 @@ impl_lint_pass!(Methods => [
     MANUAL_TRY_FOLD,
     FORMAT_COLLECT,
     STRING_LIT_CHARS_ANY,
+    ITER_SKIP_ZERO,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3901,7 +3924,16 @@ impl Methods {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);
                     }
                 },
-                ("last", []) | ("skip", [_]) => {
+                ("skip", [arg]) => {
+                    iter_skip_zero::check(cx, expr, arg);
+
+                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
+                        if let ("cloned", []) = (name2, args2) {
+                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
+                        }
+                    }
+                }
+                ("last", []) => {
                     if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
                         if let ("cloned", []) = (name2, args2) {
                             iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
