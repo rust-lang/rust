@@ -608,7 +608,7 @@ match foo {
     | a_very_long_pattern
     | another_pattern
     | yet_another_pattern
-    | a_forth_pattern => {
+    | a_fourth_pattern => {
         ...
     }
 }
@@ -623,7 +623,7 @@ match foo {
     a_very_long_pattern
     | another_pattern
     | yet_another_pattern
-    | a_forth_pattern => {
+    | a_fourth_pattern => {
         ...
     }
 }
