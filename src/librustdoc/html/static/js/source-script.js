@@ -3,13 +3,13 @@
 
 // Local js definitions:
 /* global addClass, getCurrentValue, onEachLazy, removeClass, browserSupportsHistoryApi */
-/* global updateLocalStorage */
+/* global updateLocalStorage, getVar */
 
 "use strict";
 
 (function() {
 
-const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
+const rootPath = getVar("root-path");
 
 const NAME_OFFSET = 0;
 const DIRS_OFFSET = 1;

@@ -293,9 +293,7 @@ fn resolve_associated_item<'tcx>(
                 None
             }
         }
-        traits::ImplSource::Param(..)
-        | traits::ImplSource::TraitAlias(..)
-        | traits::ImplSource::TraitUpcasting(_) => None,
+        traits::ImplSource::Param(..) | traits::ImplSource::TraitUpcasting(_) => None,
     })
 }
 

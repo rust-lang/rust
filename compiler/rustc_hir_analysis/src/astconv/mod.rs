@@ -58,6 +58,24 @@ pub struct PathSeg(pub DefId, pub usize);
 #[derive(Copy, Clone, Debug)]
 pub struct OnlySelfBounds(pub bool);
 
+#[derive(Copy, Clone, Debug)]
+pub enum PredicateFilter {
+    /// All predicates may be implied by the trait.
+    All,
+
+    /// Only traits that reference `Self: ..` are implied by the trait.
+    SelfOnly,
+
+    /// Only traits that reference `Self: ..` and define an associated type
+    /// with the given ident are implied by the trait.
+    SelfThatDefines(Ident),
+
+    /// Only traits that reference `Self: ..` and their associated type bounds.
+    /// For example, given `Self: Tr<A: B>`, this would expand to `Self: Tr`
+    /// and `<Self as Tr>::A: B`.
+    SelfAndAssociatedTypeBounds,
+}
+
 pub trait AstConv<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
