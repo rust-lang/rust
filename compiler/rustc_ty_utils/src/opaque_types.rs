@@ -322,7 +322,10 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::GlobalAsm
         | DefKind::Impl { .. } => {}
         DefKind::Closure | DefKind::Generator => {
-            return tcx.opaque_types_defined_by(tcx.local_parent(item));
+            // All items in the signature of the parent are ok
+            collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
+            // And items in the body of the closure itself
+            collector.collect_taits_declared_in_body();
         }
     }
     tcx.arena.alloc_from_iter(collector.opaques)

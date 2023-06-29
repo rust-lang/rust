@@ -5,6 +5,5 @@ fn main() {
         type Tait = impl Sized;
         let y: Tait = ();
         //~^ ERROR: item constrains opaque type that is not in its signature
-        //~| ERROR: item constrains opaque type that is not in its signature
     };
 }
