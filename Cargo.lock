@@ -238,7 +238,7 @@ dependencies = [
  "cc",
  "cfg-if",
  "libc",
- "miniz_oxide 0.7.1",
+ "miniz_oxide",
  "object",
  "rustc-demangle",
 ]
@@ -1174,12 +1174,12 @@ checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "flate2"
-version = "1.0.25"
+version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8a2db397cb1c8772f31494cb8917e48cd1e64f0fa7efac59fbd741a0a8ce841"
+checksum = "3b9429470923de8e8cbd4d2dc513535400b4b3fef0319fb5c4e1f520a7bef743"
 dependencies = [
  "crc32fast",
- "miniz_oxide 0.6.2",
+ "miniz_oxide",
 ]
 
 [[package]]
@@ -2143,15 +2143,6 @@ name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
-
-[[package]]
-name = "miniz_oxide"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b275950c28b37e794e8c55d88aeb5e139d0ce23fdbbeda68f8d7174abdf9e8fa"
-dependencies = [
- "adler",
-]
 
 [[package]]
 name = "miniz_oxide"
@@ -4559,7 +4550,7 @@ dependencies = [
  "hashbrown 0.14.0",
  "hermit-abi 0.3.0",
  "libc",
- "miniz_oxide 0.7.1",
+ "miniz_oxide",
  "object",
  "panic_abort",
  "panic_unwind",
