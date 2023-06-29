@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Ok(ok) = coerce.coerce(source, target) else {
                 return false;
             };
-            let ocx = ObligationCtxt::new_in_snapshot(self);
+            let ocx = ObligationCtxt::new(self);
             ocx.register_obligations(ok.obligations);
             ocx.select_where_possible().is_empty()
         })

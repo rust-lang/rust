@@ -161,7 +161,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(Ty<'tcx>, Vec<traits::PredicateObligation<'tcx>>)> {
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.infcx);
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self.infcx);
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
         let normalized_ty = match self

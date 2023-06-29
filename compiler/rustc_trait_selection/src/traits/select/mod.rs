@@ -606,7 +606,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         predicates: impl IntoIterator<Item = PredicateObligation<'tcx>>,
     ) -> Result<EvaluationResult, OverflowError> {
-        let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
+        let mut fulfill_cx = crate::solve::FulfillmentCtxt::new(self.infcx);
         fulfill_cx.register_predicate_obligations(self.infcx, predicates);
         // True errors
         // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?

@@ -20,7 +20,7 @@ pub fn recompute_applicable_impls<'tcx>(
     let param_env = obligation.param_env;
 
     let impl_may_apply = |impl_def_id| {
-        let ocx = ObligationCtxt::new_in_snapshot(infcx);
+        let ocx = ObligationCtxt::new(infcx);
         let placeholder_obligation =
             infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let obligation_trait_ref =
@@ -45,7 +45,7 @@ pub fn recompute_applicable_impls<'tcx>(
     };
 
     let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitPredicate<'tcx>| {
-        let ocx = ObligationCtxt::new_in_snapshot(infcx);
+        let ocx = ObligationCtxt::new(infcx);
         let placeholder_obligation =
             infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let obligation_trait_ref =

@@ -163,7 +163,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return fn_sig;
                 }
                 self.probe(|_| {
-                    let ocx = ObligationCtxt::new_in_snapshot(self);
+                    let ocx = ObligationCtxt::new(self);
                     let normalized_fn_sig =
                         ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
                     if ocx.select_all_or_error().is_empty() {

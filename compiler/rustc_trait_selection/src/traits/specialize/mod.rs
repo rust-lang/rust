@@ -238,7 +238,7 @@ fn fulfill_implication<'tcx>(
 
     // Needs to be `in_snapshot` because this function is used to rebase
     // substitutions, which may happen inside of a select within a probe.
-    let ocx = ObligationCtxt::new_in_snapshot(infcx);
+    let ocx = ObligationCtxt::new(infcx);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
     ocx.register_obligations(obligations.chain(more_obligations));

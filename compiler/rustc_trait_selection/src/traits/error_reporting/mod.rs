@@ -377,7 +377,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     param_env,
                     ty.rebind(ty::TraitPredicate { trait_ref, constness, polarity }),
                 );
-                let ocx = ObligationCtxt::new_in_snapshot(self);
+                let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation);
                 if ocx.select_all_or_error().is_empty() {
                     return Ok((
@@ -1596,7 +1596,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         self.probe(|_| {
-            let ocx = ObligationCtxt::new_in_snapshot(self);
+            let ocx = ObligationCtxt::new(self);
 
             // try to find the mismatched types to report the error with.
             //
