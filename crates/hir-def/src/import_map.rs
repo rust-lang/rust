@@ -318,7 +318,6 @@ pub enum SearchMode {
 pub struct Query {
     query: String,
     lowercased: String,
-    name_only: bool,
     assoc_items_only: bool,
     search_mode: SearchMode,
     case_sensitive: bool,
@@ -332,20 +331,12 @@ impl Query {
         Self {
             query,
             lowercased,
-            name_only: false,
             assoc_items_only: false,
             search_mode: SearchMode::Contains,
             case_sensitive: false,
             limit: usize::max_value(),
             exclude_import_kinds: FxHashSet::default(),
         }
-    }
-
-    /// Matches entries' names only, ignoring the rest of
-    /// the qualifier.
-    /// Example: for `std::marker::PhantomData`, the name is `PhantomData`.
-    pub fn name_only(self) -> Self {
-        Self { name_only: true, ..self }
     }
 
     /// Matches only the entries that are associated items, ignoring the rest.
@@ -389,17 +380,13 @@ impl Query {
             return false;
         }
 
-        let mut input = if import.is_trait_assoc_item || self.name_only {
-            import.path.segments.last().unwrap().display(db.upcast()).to_string()
-        } else {
-            import.path.display(db).to_string()
-        };
-        if enforce_lowercase || !self.case_sensitive {
+        let mut input = import.path.segments.last().unwrap().display(db.upcast()).to_string();
+        let case_insensitive = enforce_lowercase || !self.case_sensitive;
+        if case_insensitive {
             input.make_ascii_lowercase();
         }
 
-        let query_string =
-            if !enforce_lowercase && self.case_sensitive { &self.query } else { &self.lowercased };
+        let query_string = if case_insensitive { &self.lowercased } else { &self.query };
 
         match self.search_mode {
             SearchMode::Equals => &input == query_string,
@@ -875,7 +862,6 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
-                dep::fmt::Display (t)
                 dep::fmt::Display::FMT_CONST (a)
                 dep::fmt::Display::format_function (a)
                 dep::fmt::Display::format_method (a)
@@ -917,9 +903,8 @@ mod tests {
                 .search_mode(SearchMode::Fuzzy)
                 .exclude_import_kind(ImportKind::AssociatedItem),
             expect![[r#"
-            dep::fmt (t)
-            dep::fmt::Display (t)
-        "#]],
+                dep::fmt (t)
+            "#]],
         );
 
         check_search(
@@ -968,7 +953,6 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::fmt (t)
-                dep::fmt::Display (t)
                 dep::fmt::Display::fmt (a)
                 dep::format (f)
             "#]],
@@ -996,7 +980,6 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::fmt (t)
-                dep::fmt::Display (t)
                 dep::fmt::Display::fmt (a)
             "#]],
         );
@@ -1037,7 +1020,6 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::fmt (t)
-                dep::fmt::Display (t)
                 dep::fmt::Display::fmt (a)
             "#]],
         );
@@ -1045,7 +1027,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).name_only(),
+            Query::new("fmt".to_string()),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
