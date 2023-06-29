@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
         _: hir::def_id::LocalDefId,
     ) {
         self.apas.clear();
-        let initial_dummy_stmt = dummy_stmt_expr(&body.value);
+        let initial_dummy_stmt = dummy_stmt_expr(body.value);
         let mut ap = AuxParams::new(&mut self.apas, &initial_dummy_stmt);
         StmtsChecker::new(&mut ap, cx, &mut self.seen_types, &mut self.type_cache).visit_body(body);
         for apa in ap.apas.values() {
@@ -93,13 +93,13 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                             let indent = " ".repeat(indent_of(cx, apa.last_stmt_span).unwrap_or(0));
                             let init_method = snippet(cx, apa.first_method_span, "..");
                             let usage_method = snippet(cx, apa.last_method_span, "..");
-                            let stmt = if apa.last_bind_ident != Ident::empty() {
+                            let stmt = if apa.last_bind_ident == Ident::empty() {
+                                format!("\n{indent}{init_method}.{usage_method};")
+                            } else {
                                 format!(
                                     "\n{indent}let {} = {init_method}.{usage_method};",
                                     snippet(cx, apa.last_bind_ident.span, ".."),
                                 )
-                            } else {
-                                format!("\n{indent}{init_method}.{usage_method};")
                             };
                             diag.span_suggestion_verbose(
                                 apa.first_stmt_span,
@@ -265,7 +265,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
     fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
         self.ap.curr_block_hir_id = block.hir_id;
         self.ap.curr_block_span = block.span;
-        for stmt in block.stmts.iter() {
+        for stmt in block.stmts {
             self.ap.curr_stmt = Cow::Borrowed(stmt);
             self.visit_stmt(stmt);
             self.ap.curr_block_hir_id = block.hir_id;
@@ -300,20 +300,22 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
                     }
                 }
             {
-                let mut apa = AuxParamsAttr::default();
-                apa.first_bind_ident = ident;
-                apa.first_block_hir_id = self.ap.curr_block_hir_id;
-                apa.first_block_span = self.ap.curr_block_span;
-                apa.first_method_span = {
-                    let expr_or_init = expr_or_init(self.cx, expr);
-                    if let hir::ExprKind::MethodCall(_, local_expr, _, span) = expr_or_init.kind {
-                        local_expr.span.to(span)
-                    }
-                    else {
-                        expr_or_init.span
-                    }
+                let mut apa = AuxParamsAttr {
+                    first_bind_ident: ident,
+                    first_block_hir_id: self.ap.curr_block_hir_id,
+                    first_block_span: self.ap.curr_block_span,
+                    first_method_span: {
+                        let expr_or_init = expr_or_init(self.cx, expr);
+                        if let hir::ExprKind::MethodCall(_, local_expr, _, span) = expr_or_init.kind {
+                            local_expr.span.to(span)
+                        }
+                        else {
+                            expr_or_init.span
+                        }
+                    },
+                    first_stmt_span: self.ap.curr_stmt.span,
+                    ..Default::default()
                 };
-                apa.first_stmt_span = self.ap.curr_stmt.span;
                 modify_apa_params(&mut apa);
                 let _ = self.ap.apas.insert(hir_id, apa);
             } else {
@@ -445,9 +447,5 @@ fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident) -> bool {
 }
 
 fn is_expensive_expr(expr: &hir::Expr<'_>) -> bool {
-    if let hir::ExprKind::Path(_) = expr.kind {
-        false
-    } else {
-        true
-    }
+    !matches!(expr.kind, hir::ExprKind::Path(_))
 }
