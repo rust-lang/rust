@@ -341,7 +341,7 @@ rustc_queries! {
 
     query opaque_types_defined_by(
         key: LocalDefId
-    ) -> &'tcx ty::List<LocalDefId> {
+    ) -> ty::OpaqueTypes<'tcx> {
         desc {
             |tcx| "computing the opaque types defined by `{}`",
             tcx.def_path_str(key.to_def_id())

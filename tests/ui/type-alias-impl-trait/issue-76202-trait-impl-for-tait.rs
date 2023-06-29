@@ -7,11 +7,13 @@
 
 #![feature(type_alias_impl_trait)]
 
-trait Dummy {}
-impl Dummy for () {}
-
-type F = impl Dummy;
-fn f() -> F {}
+mod g {
+    pub trait Dummy {}
+    impl Dummy for () {}
+    pub type F = impl Dummy;
+    pub fn f() -> F {}
+}
+use g::*;
 
 trait Test {
     fn test(self);

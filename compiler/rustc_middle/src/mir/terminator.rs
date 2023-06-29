@@ -291,7 +291,6 @@ pub struct Terminator<'tcx> {
     pub kind: TerminatorKind<'tcx>,
 }
 
-pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
 pub type SuccessorsMut<'a> =
     iter::Chain<std::option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
 
@@ -317,47 +316,57 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_(cond: Operand<'tcx>, t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
         TerminatorKind::SwitchInt { discr: cond, targets: SwitchTargets::static_if(0, f, t) }
     }
+}
 
-    pub fn successors(&self) -> Successors<'_> {
-        use self::TerminatorKind::*;
-        match *self {
-            Call { target: Some(t), unwind: UnwindAction::Cleanup(ref u), .. }
-            | Yield { resume: t, drop: Some(ref u), .. }
-            | Drop { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
-            | Assert { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
-            | FalseUnwind { real_target: t, unwind: UnwindAction::Cleanup(ref u) }
-            | InlineAsm { destination: Some(t), unwind: UnwindAction::Cleanup(ref u), .. } => {
-                Some(t).into_iter().chain(slice::from_ref(u).into_iter().copied())
+pub use helper::*;
+
+mod helper {
+    use super::*;
+    pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
+    impl<'tcx> TerminatorKind<'tcx> {
+        pub fn successors(&self) -> Successors<'_> {
+            use self::TerminatorKind::*;
+            match *self {
+                Call { target: Some(t), unwind: UnwindAction::Cleanup(ref u), .. }
+                | Yield { resume: t, drop: Some(ref u), .. }
+                | Drop { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
+                | Assert { target: t, unwind: UnwindAction::Cleanup(ref u), .. }
+                | FalseUnwind { real_target: t, unwind: UnwindAction::Cleanup(ref u) }
+                | InlineAsm {
+                    destination: Some(t), unwind: UnwindAction::Cleanup(ref u), ..
+                } => Some(t).into_iter().chain(slice::from_ref(u).into_iter().copied()),
+                Goto { target: t }
+                | Call { target: None, unwind: UnwindAction::Cleanup(t), .. }
+                | Call { target: Some(t), unwind: _, .. }
+                | Yield { resume: t, drop: None, .. }
+                | Drop { target: t, unwind: _, .. }
+                | Assert { target: t, unwind: _, .. }
+                | FalseUnwind { real_target: t, unwind: _ }
+                | InlineAsm { destination: None, unwind: UnwindAction::Cleanup(t), .. }
+                | InlineAsm { destination: Some(t), unwind: _, .. } => {
+                    Some(t).into_iter().chain((&[]).into_iter().copied())
+                }
+                UnwindResume
+                | UnwindTerminate(_)
+                | CoroutineDrop
+                | Return
+                | Unreachable
+                | Call { target: None, unwind: _, .. }
+                | InlineAsm { destination: None, unwind: _, .. } => {
+                    None.into_iter().chain((&[]).into_iter().copied())
+                }
+                SwitchInt { ref targets, .. } => {
+                    None.into_iter().chain(targets.targets.iter().copied())
+                }
+                FalseEdge { real_target, ref imaginary_target } => Some(real_target)
+                    .into_iter()
+                    .chain(slice::from_ref(imaginary_target).into_iter().copied()),
             }
-            Goto { target: t }
-            | Call { target: None, unwind: UnwindAction::Cleanup(t), .. }
-            | Call { target: Some(t), unwind: _, .. }
-            | Yield { resume: t, drop: None, .. }
-            | Drop { target: t, unwind: _, .. }
-            | Assert { target: t, unwind: _, .. }
-            | FalseUnwind { real_target: t, unwind: _ }
-            | InlineAsm { destination: None, unwind: UnwindAction::Cleanup(t), .. }
-            | InlineAsm { destination: Some(t), unwind: _, .. } => {
-                Some(t).into_iter().chain((&[]).into_iter().copied())
-            }
-            UnwindResume
-            | UnwindTerminate(_)
-            | CoroutineDrop
-            | Return
-            | Unreachable
-            | Call { target: None, unwind: _, .. }
-            | InlineAsm { destination: None, unwind: _, .. } => {
-                None.into_iter().chain((&[]).into_iter().copied())
-            }
-            SwitchInt { ref targets, .. } => {
-                None.into_iter().chain(targets.targets.iter().copied())
-            }
-            FalseEdge { real_target, ref imaginary_target } => Some(real_target)
-                .into_iter()
-                .chain(slice::from_ref(imaginary_target).into_iter().copied()),
         }
     }
+}
 
+impl<'tcx> TerminatorKind<'tcx> {
     pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
         use self::TerminatorKind::*;
         match *self {

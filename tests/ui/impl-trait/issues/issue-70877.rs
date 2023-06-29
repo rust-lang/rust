@@ -1,10 +1,8 @@
 #![feature(type_alias_impl_trait)]
 
 type FooArg<'a> = &'a dyn ToString;
-type FooRet = impl std::fmt::Debug;
 
 type FooItem = Box<dyn Fn(FooArg) -> FooRet>;
-type Foo = impl Iterator<Item = FooItem>;
 
 #[repr(C)]
 struct Bar(u8);
@@ -17,19 +15,26 @@ impl Iterator for Bar {
     }
 }
 
-fn quux(st: FooArg) -> FooRet {
-    Some(st.to_string())
+mod ret {
+    pub type FooRet = impl std::fmt::Debug;
+    pub fn quux(st: super::FooArg) -> FooRet {
+        Some(st.to_string())
+    }
 }
-
-fn ham() -> Foo {
-    Bar(1)
+use ret::*;
+mod foo {
+    pub type Foo = impl Iterator<Item = super::FooItem>;
+    pub fn ham() -> Foo {
+        super::Bar(1)
+    }
+    pub fn oof(_: Foo) -> impl std::fmt::Debug {
+        //~^ ERROR: item does not constrain `Foo::{opaque#0}`, but has it in its signature
+        let mut bar = ham();
+        let func = bar.next().unwrap();
+        return func(&"oof");
+    }
 }
-
-fn oof(_: Foo) -> impl std::fmt::Debug {
-    let mut bar = ham();
-    let func = bar.next().unwrap();
-    return func(&"oof"); //~ ERROR opaque type's hidden type cannot be another opaque type
-}
+use foo::*;
 
 fn main() {
     let _ = oof(ham());

@@ -48,81 +48,84 @@ impl<T, U> Trait1<T> for Struct1<U> {
     fn foo(&self) { }
 }
 
-// impl Trait type aliases for helping with defining other types (see below)
-pub type Type1 = impl Send;
-pub type Type2 = impl Send;
-pub type Type3 = impl Send;
-pub type Type4 = impl Send;
-pub type Type5 = impl Send;
-pub type Type6 = impl Send;
-pub type Type7 = impl Send;
-pub type Type8 = impl Send;
-pub type Type9 = impl Send;
-pub type Type10 = impl Send;
-pub type Type11 = impl Send;
+use opaques::*;
+mod opaques {
+    use super::*;
+    // impl Trait type aliases for helping with defining other types (see below)
+    pub type Type1 = impl Send;
+    pub type Type2 = impl Send;
+    pub type Type3 = impl Send;
+    pub type Type4 = impl Send;
+    pub type Type5 = impl Send;
+    pub type Type6 = impl Send;
+    pub type Type7 = impl Send;
+    pub type Type8 = impl Send;
+    pub type Type9 = impl Send;
+    pub type Type10 = impl Send;
+    pub type Type11 = impl Send;
 
-pub fn fn1<'a>() where
-    Type1: 'static,
-    Type2: 'static,
-    Type3: 'static,
-    Type4: 'static,
-    Type5: 'static,
-    Type6: 'static,
-    Type7: 'static,
-    Type8: 'static,
-    Type9: 'static,
-    Type10: 'static,
-    Type11: 'static,
-{
-    // Closure
-    let closure1 = || { };
-    let _: Type1 = closure1;
+    pub fn fn1<'a>() where
+        Type1: 'static,
+        Type2: 'static,
+        Type3: 'static,
+        Type4: 'static,
+        Type6: 'static,
+        Type7: 'static,
+        Type8: 'static,
+        Type9: 'static,
+        Type10: 'static,
+        Type11: 'static,
+    {
+        // Closure
+            let closure1 = || { };
+        let _: Type1 = closure1;
 
-    // Constructor
-    pub struct Foo(i32);
-    let _: Type2 = Foo;
+        // Constructor
+        pub struct Foo(i32);
+        let _: Type2 = Foo;
 
-    // Type in extern path
-    extern {
-        fn foo();
+        // Type in extern path
+            extern {
+            fn foo();
+        }
+        let _: Type3 = foo;
+
+        // Type in closure path
+        || {
+            pub struct Foo;
+            let _: Type4 = Foo;
+        };
+
+        // Type in const path
+        const {
+            pub struct Foo;
+                fn foo() -> Type5 { Foo }
+        };
+
+        // Type in impl path
+        impl<T> Struct1<T> {
+                fn foo(&self) { }
+        }
+        let _: Type6 = <Struct1<i32>>::foo;
+
+        // Trait method
+        let _: Type7 = <dyn Trait1<i32>>::foo;
+
+        // Trait method
+        let _: Type8 = <i32 as Trait1<i32>>::foo;
+
+        // Trait method
+        let _: Type9 = <Struct1<i32> as Trait1<i32>>::foo;
+
+        // Const generics
+        pub struct Qux<T, const N: usize>([T; N]);
+        let _: Type10 = Qux([0; 32]);
+
+        // Lifetimes/regions
+        pub struct Quux<'a>(&'a i32);
+        pub struct Quuux<'a, 'b>(&'a i32, &'b Quux<'b>);
+        let _: Type11 = Quuux;
     }
-    let _: Type3 = foo;
-
-    // Type in closure path
-    || {
-        pub struct Foo;
-        let _: Type4 = Foo;
-    };
-
-    // Type in const path
-    const {
-        pub struct Foo;
-        fn foo() -> Type5 { Foo }
-    };
-
-    // Type in impl path
-    impl<T> Struct1<T> {
-        fn foo(&self) { }
-    }
-    let _: Type6 = <Struct1<i32>>::foo;
-
-    // Trait method
-    let _: Type7 = <dyn Trait1<i32>>::foo;
-
-    // Trait method
-    let _: Type8 = <i32 as Trait1<i32>>::foo;
-
-    // Trait method
-    let _: Type9 = <Struct1<i32> as Trait1<i32>>::foo;
-
-    // Const generics
-    pub struct Qux<T, const N: usize>([T; N]);
-    let _: Type10 = Qux([0; 32]);
-
-    // Lifetimes/regions
-    pub struct Quux<'a>(&'a i32);
-    pub struct Quuux<'a, 'b>(&'a i32, &'b Quux<'b>);
-    let _: Type11 = Quuux;
 }
 
 // Helper type to make Type12 have an unique id
@@ -560,24 +563,24 @@ pub fn foo149(_: Type14<Bar>, _: Type14<Bar>, _: Type14<Bar>) { }
 // CHECK: ![[TYPE105]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEEE"}
 // CHECK: ![[TYPE106]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_E"}
 // CHECK: ![[TYPE107]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_S2_E"}
-// CHECK: ![[TYPE108]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NCNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn111{{[{}][{}]}}closure{{[}][}]}}Iu2i8PFvvEvEE"}
-// CHECK: ![[TYPE109]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NCNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn111{{[{}][{}]}}closure{{[}][}]}}Iu2i8PFvvEvES1_E"}
-// CHECK: ![[TYPE110]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NCNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn111{{[{}][{}]}}closure{{[}][}]}}Iu2i8PFvvEvES1_S1_E"}
-// CHECK: ![[TYPE111]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn13Foo15{{[{}][{}]}}constructor{{[}][}]}}E"}
-// CHECK: ![[TYPE112]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn13Foo15{{[{}][{}]}}constructor{{[}][}]}}S_E"}
-// CHECK: ![[TYPE113]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn13Foo15{{[{}][{}]}}constructor{{[}][}]}}S_S_E"}
-// CHECK: ![[TYPE114]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNFNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn110{{[{}][{}]}}extern{{[}][}]}}3fooE"}
-// CHECK: ![[TYPE115]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNFNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn110{{[{}][{}]}}extern{{[}][}]}}3fooS_E"}
-// CHECK: ![[TYPE116]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNFNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn110{{[{}][{}]}}extern{{[}][}]}}3fooS_S_E"}
-// CHECK: ![[TYPE117]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn1s0_11{{[{}][{}]}}closure{{[}][}]}}3FooE"}
-// CHECK: ![[TYPE118]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn1s0_11{{[{}][{}]}}closure{{[}][}]}}3FooS_E"}
-// CHECK: ![[TYPE119]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn1s0_11{{[{}][{}]}}closure{{[}][}]}}3FooS_S_E"}
-// CHECK: ![[TYPE120]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn112{{[{}][{}]}}constant{{[}][}]}}3FooE"}
-// CHECK: ![[TYPE121]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn112{{[{}][{}]}}constant{{[}][}]}}3FooS_E"}
-// CHECK: ![[TYPE122]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn112{{[{}][{}]}}constant{{[}][}]}}3FooS_S_E"}
-// CHECK: ![[TYPE123]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32EE"}
-// CHECK: ![[TYPE124]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32ES0_E"}
-// CHECK: ![[TYPE125]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32ES0_S0_E"}
+// CHECK: ![[TYPE108]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NCNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn111{{[{}][{}]}}closure{{[}][}]}}Iu2i8PFvvEvEE"}
+// CHECK: ![[TYPE109]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NCNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn111{{[{}][{}]}}closure{{[}][}]}}Iu2i8PFvvEvES1_E"}
+// CHECK: ![[TYPE110]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NCNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn111{{[{}][{}]}}closure{{[}][}]}}Iu2i8PFvvEvES1_S1_E"}
+// CHECK: ![[TYPE111]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn13Foo15{{[{}][{}]}}constructor{{[}][}]}}E"}
+// CHECK: ![[TYPE112]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn13Foo15{{[{}][{}]}}constructor{{[}][}]}}S_E"}
+// CHECK: ![[TYPE113]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn13Foo15{{[{}][{}]}}constructor{{[}][}]}}S_S_E"}
+// CHECK: ![[TYPE114]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNFNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn110{{[{}][{}]}}extern{{[}][}]}}3fooE"}
+// CHECK: ![[TYPE115]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNFNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn110{{[{}][{}]}}extern{{[}][}]}}3fooS_E"}
+// CHECK: ![[TYPE116]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNFNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn110{{[{}][{}]}}extern{{[}][}]}}3fooS_S_E"}
+// CHECK: ![[TYPE117]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNCNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn1s0_11{{[{}][{}]}}closure{{[}][}]}}3FooE"}
+// CHECK: ![[TYPE118]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNCNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn1s0_11{{[{}][{}]}}closure{{[}][}]}}3FooS_E"}
+// CHECK: ![[TYPE119]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNCNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn1s0_11{{[{}][{}]}}closure{{[}][}]}}3FooS_S_E"}
+// CHECK: ![[TYPE120]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNkNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn112{{[{}][{}]}}constant{{[}][}]}}3FooE"}
+// CHECK: ![[TYPE121]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNkNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn112{{[{}][{}]}}constant{{[}][}]}}3FooS_E"}
+// CHECK: ![[TYPE122]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNkNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn112{{[{}][{}]}}constant{{[}][}]}}3FooS_S_E"}
+// CHECK: ![[TYPE123]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32EE"}
+// CHECK: ![[TYPE124]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32ES0_E"}
+// CHECK: ![[TYPE125]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32ES0_S0_E"}
 // CHECK: ![[TYPE126]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait1Iu5paramEu6regionEu3i32EE"}
 // CHECK: ![[TYPE127]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait1Iu5paramEu6regionEu3i32ES4_E"}
 // CHECK: ![[TYPE128]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait1Iu5paramEu6regionEu3i32ES4_S4_E"}
@@ -587,12 +590,12 @@ pub fn foo149(_: Type14<Bar>, _: Type14<Bar>, _: Type14<Bar>) { }
 // CHECK: ![[TYPE132]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait13fooIu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7Struct1Iu3i32ES_EE"}
 // CHECK: ![[TYPE133]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait13fooIu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7Struct1Iu3i32ES_ES1_E"}
 // CHECK: ![[TYPE134]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]6Trait13fooIu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7Struct1Iu3i32ES_ES1_S1_E"}
-// CHECK: ![[TYPE135]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn13QuxIu3i32Lu5usize32EEE"}
-// CHECK: ![[TYPE136]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn13QuxIu3i32Lu5usize32EES2_E"}
-// CHECK: ![[TYPE137]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn13QuxIu3i32Lu5usize32EES2_S2_E"}
-// CHECK: ![[TYPE138]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn15Quuux15{{[{}][{}]}}constructor{{[}][}]}}Iu6regionS_EE"}
-// CHECK: ![[TYPE139]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn15Quuux15{{[{}][{}]}}constructor{{[}][}]}}Iu6regionS_ES0_E"}
-// CHECK: ![[TYPE140]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3fn15Quuux15{{[{}][{}]}}constructor{{[}][}]}}Iu6regionS_ES0_S0_E"}
+// CHECK: ![[TYPE135]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn13QuxIu3i32Lu5usize32EEE"}
+// CHECK: ![[TYPE136]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn13QuxIu3i32Lu5usize32EES2_E"}
+// CHECK: ![[TYPE137]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn13QuxIu3i32Lu5usize32EES2_S2_E"}
+// CHECK: ![[TYPE138]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn15Quuux15{{[{}][{}]}}constructor{{[}][}]}}Iu6regionS_EE"}
+// CHECK: ![[TYPE139]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn15Quuux15{{[{}][{}]}}constructor{{[}][}]}}Iu6regionS_ES0_E"}
+// CHECK: ![[TYPE140]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NcNtNvN{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]7opaques3fn15Quuux15{{[{}][{}]}}constructor{{[}][}]}}Iu6regionS_ES0_S0_E"}
 // CHECK: ![[TYPE141]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3FooE"}
 // CHECK: ![[TYPE142]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3FooS_E"}
 // CHECK: ![[TYPE143]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_[[ITANIUMED_FILENAME]]3FooS_S_E"}

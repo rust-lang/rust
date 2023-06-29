@@ -1,5 +1,5 @@
 error: `Bar` cannot be used in patterns
-  --> $DIR/structural-match-no-leak.rs:14:9
+  --> $DIR/structural-match-no-leak.rs:16:9
    |
 LL |         LEAK_FREE => (),
    |         ^^^^^^^^^

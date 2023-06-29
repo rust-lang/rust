@@ -387,7 +387,12 @@ impl<'tcx> InferCtxt<'tcx> {
             // Named `type Foo = impl Bar;`
             hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
                 if in_assoc_ty {
-                    self.tcx.opaque_types_defined_by(parent_def_id).contains(&def_id)
+                    self.tcx.opaque_types_defined_by(parent_def_id).in_body.contains(&def_id)
+                        || self
+                            .tcx
+                            .opaque_types_defined_by(parent_def_id)
+                            .in_signature
+                            .contains(&def_id)
                 } else {
                     may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
                 }

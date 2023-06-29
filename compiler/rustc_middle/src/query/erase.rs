@@ -158,6 +158,10 @@ impl EraseType for Option<mir::DestructuredConstant<'_>> {
     type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
 }
 
+impl EraseType for ty::OpaqueTypes<'_> {
+    type Result = [u8; size_of::<ty::OpaqueTypes<'static>>()];
+}
+
 impl EraseType for Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
     type Result = [u8; size_of::<Option<ty::EarlyBinder<ty::TraitRef<'static>>>>()];
 }

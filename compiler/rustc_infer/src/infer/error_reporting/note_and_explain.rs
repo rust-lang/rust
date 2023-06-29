@@ -289,9 +289,10 @@ impl<T> Trait<T> for X {
                             ) =>
                     {
                         if tcx.is_type_alias_impl_trait(alias.def_id) {
-                            if !tcx
+                            let opaques = tcx
                                 .opaque_types_defined_by(body_owner_def_id.expect_local())
-                                .contains(&alias.def_id.expect_local())
+                                ;
+                            if !opaques.in_body.contains(&alias.def_id.expect_local()) && !opaques.in_signature.contains(&alias.def_id.expect_local())
                             {
                                 let sp = tcx
                                     .def_ident_span(body_owner_def_id)

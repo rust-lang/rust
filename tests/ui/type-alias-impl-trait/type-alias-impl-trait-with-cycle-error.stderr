@@ -1,3 +1,16 @@
+error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
+  --> $DIR/type-alias-impl-trait-with-cycle-error.rs:6:4
+   |
+LL | fn crash(x: Foo) -> Foo {
+   |    ^^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/type-alias-impl-trait-with-cycle-error.rs:3:12
+   |
+LL | type Foo = impl Fn() -> Foo;
+   |            ^^^^^^^^^^^^^^^^
+
 error: unconstrained opaque type
   --> $DIR/type-alias-impl-trait-with-cycle-error.rs:3:12
    |
@@ -6,5 +19,5 @@ LL | type Foo = impl Fn() -> Foo;
    |
    = note: `Foo` must be used in combination with a concrete type within the same module
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 

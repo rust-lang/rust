@@ -6,6 +6,7 @@ type B = impl Foo;
 trait Foo {}
 
 fn muh(x: A) -> B {
+    //~^ ERROR: item does not constrain `A::{opaque#0}`
     x // B's hidden type is A (opaquely)
     //~^ ERROR opaque type's hidden type cannot be another opaque type
 }

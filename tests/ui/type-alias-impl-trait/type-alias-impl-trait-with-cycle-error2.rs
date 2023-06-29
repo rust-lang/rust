@@ -8,6 +8,7 @@ type Foo = impl Bar<Foo, Item = Foo>;
 //~^ ERROR: unconstrained opaque type
 
 fn crash(x: Foo) -> Foo {
+    //~^ ERROR: does not constrain `Foo::{opaque#0}`, but has it in its signature
     x
 }
 

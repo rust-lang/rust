@@ -9,6 +9,7 @@ mod foo {
 
     // make compiler happy about using 'Foo'
     pub fn bar(x: Foo) -> Foo {
+        //~^ ERROR: item does not constrain `Foo::{opaque#0}`
         x
     }
 }
