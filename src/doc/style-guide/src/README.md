@@ -186,6 +186,11 @@ For attributes with argument lists, format like functions.
 ```rust
 #[repr(C)]
 #[foo(foo, bar)]
+#[long_multi_line_attribute(
+    split,
+    across,
+    lines,
+)]
 struct CRepr {
     #![repr(C)]
     x: f32,
