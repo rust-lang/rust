@@ -7,6 +7,7 @@ use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
 use shims::unix::linux::fd::EvalContextExt as _;
+use shims::unix::linux::mem::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
@@ -67,6 +68,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
+            }
+            "mremap" => {
+                let [old_address, old_size, new_size, flags] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.mremap(old_address, old_size, new_size, flags)?;
+                this.write_scalar(ptr, dest)?;
             }
             "socketpair" => {
                 let [domain, type_, protocol, sv] =
@@ -191,7 +198,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(pid)?.to_i32()?;
                 this.read_target_usize(cpusetsize)?;
-                this.deref_operand(mask)?;
+                this.deref_operand_as(mask, this.libc_ty_layout("cpu_set_t"))?;
                 // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
                 let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;

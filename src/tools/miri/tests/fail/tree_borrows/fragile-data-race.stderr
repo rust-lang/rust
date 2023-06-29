@@ -1,0 +1,32 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> $DIR/fragile-data-race.rs:LL:CC
+   |
+LL |     unsafe { *p = 1 };
+   |              ^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here
+  --> $DIR/fragile-data-race.rs:LL:CC
+   |
+LL | fn thread_1(x: &mut u8) -> SendPtr {
+   |             ^
+help: the conflicting tag <TAG> was created here, in the initial state Reserved
+  --> RUSTLIB/std/src/panic.rs:LL:CC
+   |
+LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
+   |                                                       ^
+help: the conflicting tag <TAG> later transitioned to Frozen due to a reborrow (acting as a foreign read access) at offsets [0x0..0x1]
+  --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   |
+LL |         crate::intrinsics::read_via_copy(src)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: this transition corresponds to a loss of write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at $DIR/fragile-data-race.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

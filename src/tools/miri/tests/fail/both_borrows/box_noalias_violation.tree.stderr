@@ -1,0 +1,38 @@
+error: Undefined Behavior: read access through <TAG> is forbidden
+  --> $DIR/box_noalias_violation.rs:LL:CC
+   |
+LL |     *y
+   |     ^^ read access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this foreign read access would cause the protected tag <TAG> to transition from Active to Frozen
+   = help: this transition would be a loss of write permissions, which is not allowed for protected tags
+help: the accessed tag <TAG> was created here
+  --> $DIR/box_noalias_violation.rs:LL:CC
+   |
+LL |         let ptr = &mut v as *mut i32;
+   |                   ^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/box_noalias_violation.rs:LL:CC
+   |
+LL | unsafe fn test(mut x: Box<i32>, y: *const i32) -> i32 {
+   |                ^^^^^
+help: the protected tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+  --> $DIR/box_noalias_violation.rs:LL:CC
+   |
+LL |     *x = 5;
+   |     ^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+   = note: BACKTRACE (of the first span):
+   = note: inside `test` at $DIR/box_noalias_violation.rs:LL:CC
+note: inside `main`
+  --> $DIR/box_noalias_violation.rs:LL:CC
+   |
+LL |         test(Box::from_raw(ptr), ptr);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

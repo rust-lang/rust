@@ -25,6 +25,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os_is_unix("clock_gettime");
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
+        let tp = this.deref_operand_as(tp_op, this.libc_ty_layout("timespec"))?;
 
         let absolute_clocks;
         let mut relative_clocks;
@@ -76,7 +77,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let tv_sec = duration.as_secs();
         let tv_nsec = duration.subsec_nanos();
 
-        this.write_int_fields(&[tv_sec.into(), tv_nsec.into()], &this.deref_operand(tp_op)?)?;
+        this.write_int_fields(&[tv_sec.into(), tv_nsec.into()], &tp)?;
 
         Ok(Scalar::from_i32(0))
     }
@@ -91,6 +92,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os_is_unix("gettimeofday");
         this.check_no_isolation("`gettimeofday`")?;
 
+        let tv = this.deref_operand_as(tv_op, this.libc_ty_layout("timeval"))?;
+
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
         if !this.ptr_is_null(tz)? {
@@ -103,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let tv_sec = duration.as_secs();
         let tv_usec = duration.subsec_micros();
 
-        this.write_int_fields(&[tv_sec.into(), tv_usec.into()], &this.deref_operand(tv_op)?)?;
+        this.write_int_fields(&[tv_sec.into(), tv_usec.into()], &tv)?;
 
         Ok(0)
     }
@@ -118,6 +121,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os("windows", "GetSystemTimeAsFileTime");
         this.check_no_isolation("`GetSystemTimeAsFileTime`")?;
 
+        let filetime = this.deref_operand_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
+
         let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
         let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
         let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH");
@@ -131,10 +136,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let dwLowDateTime = u32::try_from(duration_ticks & 0x00000000FFFFFFFF).unwrap();
         let dwHighDateTime = u32::try_from((duration_ticks & 0xFFFFFFFF00000000) >> 32).unwrap();
-        this.write_int_fields(
-            &[dwLowDateTime.into(), dwHighDateTime.into()],
-            &this.deref_operand(LPFILETIME_op)?,
-        )?;
+        this.write_int_fields(&[dwLowDateTime.into(), dwHighDateTime.into()], &filetime)?;
 
         Ok(())
     }
@@ -177,7 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // and thus 10^9 counts per second.
         this.write_scalar(
             Scalar::from_i64(1_000_000_000),
-            &this.deref_operand(lpFrequency_op)?.into(),
+            &this.deref_operand_as(lpFrequency_op, this.machine.layouts.u64)?.into(),
         )?;
         Ok(Scalar::from_i32(-1)) // Return non-zero on success
     }
@@ -204,7 +206,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os("macos", "mach_timebase_info");
 
-        let info = this.deref_operand(info_op)?;
+        let info = this.deref_operand_as(info_op, this.libc_ty_layout("mach_timebase_info"))?;
 
         // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
         // no scaling needs to happen.
@@ -223,7 +225,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os_is_unix("nanosleep");
 
-        let duration = match this.read_timespec(&this.deref_operand(req_op)?)? {
+        let req = this.deref_operand_as(req_op, this.libc_ty_layout("timespec"))?;
+
+        let duration = match this.read_timespec(&req)? {
             Some(duration) => duration,
             None => {
                 let einval = this.eval_libc("EINVAL");

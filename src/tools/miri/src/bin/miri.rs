@@ -31,9 +31,9 @@ use rustc_middle::{
     query::{ExternProviders, LocalCrate},
     ty::TyCtxt,
 };
-use rustc_session::{EarlyErrorHandler, CtfeBacktrace};
-use rustc_session::config::{OptLevel, CrateType, ErrorOutputType};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
+use rustc_session::{CtfeBacktrace, EarlyErrorHandler};
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 
@@ -343,6 +343,8 @@ fn main() {
             miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-tree-borrows" {
             miri_config.borrow_tracker = Some(BorrowTrackerMethod::TreeBorrows);
+        } else if arg == "-Zmiri-unique-is-unique" {
+            miri_config.unique_is_unique = true;
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;
@@ -559,6 +561,14 @@ fn main() {
             // Forward to rustc.
             rustc_args.push(arg);
         }
+    }
+    // `-Zmiri-unique-is-unique` should only be used with `-Zmiri-tree-borrows`
+    if miri_config.unique_is_unique
+        && !matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
+    {
+        show_error!(
+            "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
+        );
     }
 
     debug!("rustc arguments: {:?}", rustc_args);

@@ -1,0 +1,45 @@
+error: Undefined Behavior: reborrow through <TAG> is forbidden
+  --> $DIR/write-during-2phase.rs:LL:CC
+   |
+LL |     fn add(&mut self, n: u64) -> u64 {
+   |            ^^^^^^^^^ reborrow through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> has state Disabled which forbids this reborrow (acting as a child read access)
+help: the accessed tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/write-during-2phase.rs:LL:CC
+   |
+LL |       let _res = f.add(unsafe {
+   |  ________________^
+LL | |         let n = f.0;
+LL | |         // This is the access at fault, but it's not immediately apparent because
+LL | |         // the reference that got invalidated is not under a Protector.
+LL | |         *inner = 42;
+LL | |         n
+LL | |     });
+   | |______^
+help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x8]
+  --> $DIR/write-during-2phase.rs:LL:CC
+   |
+LL |         *inner = 42;
+   |         ^^^^^^^^^^^
+   = help: this transition corresponds to a loss of read and write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `Foo::add` at $DIR/write-during-2phase.rs:LL:CC
+note: inside `main`
+  --> $DIR/write-during-2phase.rs:LL:CC
+   |
+LL |       let _res = f.add(unsafe {
+   |  ________________^
+LL | |         let n = f.0;
+LL | |         // This is the access at fault, but it's not immediately apparent because
+LL | |         // the reference that got invalidated is not under a Protector.
+LL | |         *inner = 42;
+LL | |         n
+LL | |     });
+   | |______^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

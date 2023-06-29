@@ -197,16 +197,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
-            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
-            // These shims are enabled only when the caller is in the standard library.
-            "mmap" if this.frame_in_std() => {
-                // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
-                let [addr, _, _, _, _, _] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let addr = this.read_scalar(addr)?;
-                this.write_scalar(addr, dest)?;
-            }
-
             _ => return Ok(EmulateByNameResult::NotSupported),
         };
 

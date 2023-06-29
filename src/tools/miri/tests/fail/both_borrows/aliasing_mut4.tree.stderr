@@ -1,0 +1,39 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> RUSTLIB/core/src/mem/mod.rs:LL:CC
+   |
+LL |         ptr::write(dest, src);
+   |         ^^^^^^^^^^^^^^^^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this foreign write access would cause the protected tag <TAG> to transition from Frozen to Disabled
+   = help: this transition would be a loss of read permissions, which is not allowed for protected tags
+help: the accessed tag <TAG> was created here
+  --> $DIR/aliasing_mut4.rs:LL:CC
+   |
+LL |     y.set(1);
+   |     ^^^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Frozen
+  --> $DIR/aliasing_mut4.rs:LL:CC
+   |
+LL | pub fn safe(x: &i32, y: &mut Cell<i32>) {
+   |             ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `std::mem::replace::<i32>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+   = note: inside `std::cell::Cell::<i32>::replace` at RUSTLIB/core/src/cell.rs:LL:CC
+   = note: inside `std::cell::Cell::<i32>::set` at RUSTLIB/core/src/cell.rs:LL:CC
+note: inside `safe`
+  --> $DIR/aliasing_mut4.rs:LL:CC
+   |
+LL |     y.set(1);
+   |     ^^^^^^^^
+note: inside `main`
+  --> $DIR/aliasing_mut4.rs:LL:CC
+   |
+LL |     safe_raw(xshr, xraw as *mut _);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

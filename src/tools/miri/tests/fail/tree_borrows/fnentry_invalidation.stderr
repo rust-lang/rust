@@ -1,0 +1,32 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> $DIR/fnentry_invalidation.rs:LL:CC
+   |
+LL |         *z = 2;
+   |         ^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/fnentry_invalidation.rs:LL:CC
+   |
+LL |     let z = &mut x as *mut i32;
+   |             ^^^^^^
+help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+  --> $DIR/fnentry_invalidation.rs:LL:CC
+   |
+LL |         *z = 1;
+   |         ^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (acting as a foreign read access) at offsets [0x0..0x4]
+  --> $DIR/fnentry_invalidation.rs:LL:CC
+   |
+LL |     x.do_bad();
+   |     ^^^^^^^^^^
+   = help: this transition corresponds to a loss of write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at $DIR/fnentry_invalidation.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

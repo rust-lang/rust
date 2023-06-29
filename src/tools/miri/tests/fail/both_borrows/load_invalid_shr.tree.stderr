@@ -1,0 +1,32 @@
+error: Undefined Behavior: reborrow through <TAG> is forbidden
+  --> $DIR/load_invalid_shr.rs:LL:CC
+   |
+LL |     let _val = *xref_in_mem;
+   |                ^^^^^^^^^^^^ reborrow through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Disabled which forbids this reborrow (acting as a child read access)
+help: the accessed tag <TAG> was created here
+  --> $DIR/load_invalid_shr.rs:LL:CC
+   |
+LL |     let xref_in_mem = Box::new(xref);
+   |                       ^^^^^^^^^^^^^^
+help: the conflicting tag <TAG> was created here, in the initial state Frozen
+  --> $DIR/load_invalid_shr.rs:LL:CC
+   |
+LL |     let xref = unsafe { &*xraw };
+   |                         ^^^^^^
+help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x4]
+  --> $DIR/load_invalid_shr.rs:LL:CC
+   |
+LL |     unsafe { *xraw = 42 }; // unfreeze
+   |              ^^^^^^^^^^
+   = help: this transition corresponds to a loss of read permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at $DIR/load_invalid_shr.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

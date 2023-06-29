@@ -442,7 +442,6 @@ dependencies = [
  "measureme",
  "rand",
  "regex",
- "rustc-workspace-hack",
  "rustc_version",
  "smallvec",
  "ui_test",
@@ -627,12 +626,6 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
-
-[[package]]
-name = "rustc-workspace-hack"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc71d2faa173b74b232dedc235e3ee1696581bb132fc116fa3626d6151a1a8fb"
 
 [[package]]
 name = "rustc_version"
@@ -849,9 +842,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.10.0"
+version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "191a442639ea102fa62671026047e51d574bfda44b7fdf32151d7314624c1cd2"
+checksum = "24a2e70adc9d18b9b4dd80ea57aeec447103c6fbb354a07c080adad451c645e1"
 dependencies = [
  "bstr",
  "cargo-platform",

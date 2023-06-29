@@ -36,7 +36,13 @@ fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
-    ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)?.to_i32()
+    ecx.read_scalar_at_offset(
+        attr_op,
+        0,
+        ecx.libc_ty_layout("pthread_mutexattr_t"),
+        ecx.machine.layouts.i32,
+    )?
+    .to_i32()
 }
 
 fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
@@ -44,7 +50,13 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     attr_op: &OpTy<'tcx, Provenance>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(attr_op, 0, Scalar::from_i32(kind), ecx.machine.layouts.i32)
+    ecx.write_scalar_at_offset(
+        attr_op,
+        0,
+        Scalar::from_i32(kind),
+        ecx.libc_ty_layout("pthread_mutexattr_t"),
+        ecx.machine.layouts.i32,
+    )
 }
 
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
@@ -60,14 +72,20 @@ fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, MutexId> {
-    ecx.mutex_get_or_create_id(mutex_op, 4)
+    ecx.mutex_get_or_create_id(mutex_op, ecx.libc_ty_layout("pthread_mutex_t"), 4)
 }
 
 fn mutex_reset_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(mutex_op, 4, Scalar::from_i32(0), ecx.machine.layouts.u32)
+    ecx.write_scalar_at_offset(
+        mutex_op,
+        4,
+        Scalar::from_i32(0),
+        ecx.libc_ty_layout("pthread_mutex_t"),
+        ecx.machine.layouts.u32,
+    )
 }
 
 fn mutex_get_kind<'mir, 'tcx: 'mir>(
@@ -75,7 +93,13 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    ecx.read_scalar_at_offset(mutex_op, offset, ecx.machine.layouts.i32)?.to_i32()
+    ecx.read_scalar_at_offset(
+        mutex_op,
+        offset,
+        ecx.libc_ty_layout("pthread_mutex_t"),
+        ecx.machine.layouts.i32,
+    )?
+    .to_i32()
 }
 
 fn mutex_set_kind<'mir, 'tcx: 'mir>(
@@ -84,7 +108,13 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    ecx.write_scalar_at_offset(mutex_op, offset, Scalar::from_i32(kind), ecx.machine.layouts.i32)
+    ecx.write_scalar_at_offset(
+        mutex_op,
+        offset,
+        Scalar::from_i32(kind),
+        ecx.libc_ty_layout("pthread_mutex_t"),
+        ecx.machine.layouts.i32,
+    )
 }
 
 // pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
@@ -98,7 +128,7 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, RwLockId> {
-    ecx.rwlock_get_or_create_id(rwlock_op, 4)
+    ecx.rwlock_get_or_create_id(rwlock_op, ecx.libc_ty_layout("pthread_rwlock_t"), 4)
 }
 
 // pthread_condattr_t
@@ -111,7 +141,13 @@ fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
-    ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)?.to_i32()
+    ecx.read_scalar_at_offset(
+        attr_op,
+        0,
+        ecx.libc_ty_layout("pthread_condattr_t"),
+        ecx.machine.layouts.i32,
+    )?
+    .to_i32()
 }
 
 fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
@@ -119,7 +155,13 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
     attr_op: &OpTy<'tcx, Provenance>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(attr_op, 0, Scalar::from_i32(clock_id), ecx.machine.layouts.i32)
+    ecx.write_scalar_at_offset(
+        attr_op,
+        0,
+        Scalar::from_i32(clock_id),
+        ecx.libc_ty_layout("pthread_condattr_t"),
+        ecx.machine.layouts.i32,
+    )
 }
 
 // pthread_cond_t
@@ -135,21 +177,33 @@ fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, CondvarId> {
-    ecx.condvar_get_or_create_id(cond_op, 4)
+    ecx.condvar_get_or_create_id(cond_op, ecx.libc_ty_layout("pthread_cond_t"), 4)
 }
 
 fn cond_reset_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(cond_op, 4, Scalar::from_i32(0), ecx.machine.layouts.u32)
+    ecx.write_scalar_at_offset(
+        cond_op,
+        4,
+        Scalar::from_i32(0),
+        ecx.libc_ty_layout("pthread_cond_t"),
+        ecx.machine.layouts.u32,
+    )
 }
 
 fn cond_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
-    ecx.read_scalar_at_offset(cond_op, 8, ecx.machine.layouts.i32)?.to_i32()
+    ecx.read_scalar_at_offset(
+        cond_op,
+        8,
+        ecx.libc_ty_layout("pthread_cond_t"),
+        ecx.machine.layouts.i32,
+    )?
+    .to_i32()
 }
 
 fn cond_set_clock_id<'mir, 'tcx: 'mir>(
@@ -157,7 +211,13 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     cond_op: &OpTy<'tcx, Provenance>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(cond_op, 8, Scalar::from_i32(clock_id), ecx.machine.layouts.i32)
+    ecx.write_scalar_at_offset(
+        cond_op,
+        8,
+        Scalar::from_i32(clock_id),
+        ecx.libc_ty_layout("pthread_cond_t"),
+        ecx.machine.layouts.i32,
+    )
 }
 
 /// Try to reacquire the mutex associated with the condition variable after we
@@ -285,7 +345,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // However, the way libstd uses the pthread APIs works in our favor here, so we can get away with this.
         // This can always be revisited to have some external state to catch double-destroys
         // but not complain about the above code. See https://github.com/rust-lang/miri/pull/1933
-        this.write_uninit(&this.deref_operand(attr_op)?.into())?;
+        this.write_uninit(
+            &this.deref_operand_as(attr_op, this.libc_ty_layout("pthread_mutexattr_t"))?.into(),
+        )?;
 
         Ok(0)
     }
@@ -437,7 +499,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         mutex_get_id(this, mutex_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(&this.deref_operand(mutex_op)?.into())?;
+        this.write_uninit(
+            &this.deref_operand_as(mutex_op, this.libc_ty_layout("pthread_mutex_t"))?.into(),
+        )?;
         // FIXME: delete interpreter state associated with this mutex.
 
         Ok(0)
@@ -560,7 +624,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock_get_id(this, rwlock_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(&this.deref_operand(rwlock_op)?.into())?;
+        this.write_uninit(
+            &this.deref_operand_as(rwlock_op, this.libc_ty_layout("pthread_rwlock_t"))?.into(),
+        )?;
         // FIXME: delete interpreter state associated with this rwlock.
 
         Ok(0)
@@ -624,7 +690,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         condattr_get_clock_id(this, attr_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(&this.deref_operand(attr_op)?.into())?;
+        this.write_uninit(
+            &this.deref_operand_as(attr_op, this.libc_ty_layout("pthread_condattr_t"))?.into(),
+        )?;
 
         Ok(0)
     }
@@ -715,7 +783,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Extract the timeout.
         let clock_id = cond_get_clock_id(this, cond_op)?;
-        let duration = match this.read_timespec(&this.deref_operand(abstime_op)?)? {
+        let duration = match this
+            .read_timespec(&this.deref_operand_as(abstime_op, this.libc_ty_layout("timespec"))?)?
+        {
             Some(duration) => duration,
             None => {
                 let einval = this.eval_libc("EINVAL");
@@ -797,7 +867,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         cond_get_clock_id(this, cond_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(&this.deref_operand(cond_op)?.into())?;
+        this.write_uninit(
+            &this.deref_operand_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?.into(),
+        )?;
         // FIXME: delete interpreter state associated with this condvar.
 
         Ok(0)

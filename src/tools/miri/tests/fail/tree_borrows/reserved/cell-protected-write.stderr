@@ -1,0 +1,42 @@
+──────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  1
+| Act|    └─┬──<TAG=root of the allocation>
+| Re*|      └─┬──<TAG=base>
+| Re*|        ├─┬──<TAG=x>
+| Re*|        │ └─┬──<TAG=caller:x>
+| Re*|        │   └────<TAG=callee:x> Strongly protected
+| Re*|        └────<TAG=y, callee:y, caller:y>
+──────────────────────────────────────────────────────────────────────
+error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) is forbidden
+  --> $DIR/cell-protected-write.rs:LL:CC
+   |
+LL |             *y = 1;
+   |             ^^^^^^ write access through <TAG> (y, callee:y, caller:y) is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> (y, callee:y, caller:y) is foreign to the protected tag <TAG> (callee:x) (i.e., it is not a child)
+   = help: this foreign write access would cause the protected tag <TAG> (callee:x) to transition from Reserved to Disabled
+   = help: this transition would be a loss of read and write permissions, which is not allowed for protected tags
+help: the accessed tag <TAG> was created here
+  --> $DIR/cell-protected-write.rs:LL:CC
+   |
+LL |         let y = (&mut *n).get();
+   |                 ^^^^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/cell-protected-write.rs:LL:CC
+   |
+LL |         unsafe fn write_second(x: &mut UnsafeCell<u8>, y: *mut u8) {
+   |                                ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `main::write_second` at $DIR/cell-protected-write.rs:LL:CC
+note: inside `main`
+  --> $DIR/cell-protected-write.rs:LL:CC
+   |
+LL |         write_second(x, y);
+   |         ^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

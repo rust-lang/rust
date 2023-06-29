@@ -1,0 +1,6 @@
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..  2
+| Act|    └─┬──<TAG=root of the allocation>
+| Res|      └────<TAG=base.as_ptr(), base.as_ptr(), raw_parts.0, reconstructed.as_ptr(), reconstructed.as_ptr()>
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────

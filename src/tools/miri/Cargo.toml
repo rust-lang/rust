@@ -24,10 +24,6 @@ log = "0.4"
 rand = "0.8"
 smallvec = "1.7"
 
-# A noop dependency that changes in the Rust repository, it's a bit of a hack.
-# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
-# for more information.
-rustc-workspace-hack = "1.0.0"
 measureme = "10.0.0"
 ctrlc = "3.2.5"
 
@@ -40,7 +36,7 @@ libloading = "0.7"
 
 [dev-dependencies]
 colored = "2"
-ui_test = "0.10"
+ui_test = "0.11.6"
 rustc_version = "0.4"
 # Features chosen to match those required by env_logger, to avoid rebuilds
 regex = { version = "1.5.5", default-features = false, features = ["perf", "std"] }

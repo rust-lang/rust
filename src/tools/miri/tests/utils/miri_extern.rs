@@ -65,7 +65,7 @@ extern "Rust" {
     ///
     /// This is only useful as an input to `miri_print_borrow_stacks`, and it is a separate call because
     /// getting a pointer to an allocation at runtime can change the borrow stacks in the allocation.
-    /// This function should be considered unstable. It exists only to support `miri_print_borrow_stacks` and so
+    /// This function should be considered unstable. It exists only to support `miri_print_borrow_state` and so
     /// inherits all of its instability.
     pub fn miri_get_alloc_id(ptr: *const ()) -> u64;
 

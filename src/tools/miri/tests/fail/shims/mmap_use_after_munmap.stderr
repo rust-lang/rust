@@ -1,0 +1,30 @@
+warning: integer-to-pointer cast
+  --> $DIR/mmap_use_after_munmap.rs:LL:CC
+   |
+LL |         libc::munmap(ptr, 4096);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = help: This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,
+   = help: which means that Miri might miss pointer bugs in this program.
+   = help: See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation.
+   = help: To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead.
+   = help: You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics.
+   = help: Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/mmap_use_after_munmap.rs:LL:CC
+
+error: Undefined Behavior: pointer to ALLOC was dereferenced after this allocation got freed
+  --> $DIR/mmap_use_after_munmap.rs:LL:CC
+   |
+LL |         let _x = *(ptr as *mut u8);
+   |                  ^^^^^^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/mmap_use_after_munmap.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error; 1 warning emitted
+

@@ -349,7 +349,14 @@ impl<'tcx> Tree {
         global: &GlobalState,
         span: Span, // diagnostics
     ) -> InterpResult<'tcx> {
-        self.perform_access(AccessKind::Write, tag, access_range, global, span)?;
+        self.perform_access(
+            AccessKind::Write,
+            tag,
+            access_range,
+            global,
+            span,
+            diagnostics::AccessCause::Dealloc,
+        )?;
         for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size) {
             TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                 .traverse_parents_this_children_others(
@@ -368,7 +375,7 @@ impl<'tcx> Tree {
                         let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
                         TbError {
                             conflicting_info,
-                            access_kind: AccessKind::Write,
+                            access_cause: diagnostics::AccessCause::Dealloc,
                             error_offset: perms_range.start,
                             error_kind,
                             accessed_info,
@@ -391,7 +398,8 @@ impl<'tcx> Tree {
         tag: BorTag,
         access_range: AllocRange,
         global: &GlobalState,
-        span: Span, // diagnostics
+        span: Span,                             // diagnostics
+        access_cause: diagnostics::AccessCause, // diagnostics
     ) -> InterpResult<'tcx> {
         for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size) {
             TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
@@ -456,8 +464,8 @@ impl<'tcx> Tree {
                         if !transition.is_noop() {
                             node.debug_info.history.push(diagnostics::Event {
                                 transition,
-                                access_kind,
                                 is_foreign: rel_pos.is_foreign(),
+                                access_cause,
                                 access_range,
                                 transition_range: perms_range.clone(),
                                 span,
@@ -472,7 +480,7 @@ impl<'tcx> Tree {
                         let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
                         TbError {
                             conflicting_info,
-                            access_kind,
+                            access_cause,
                             error_offset: perms_range.start,
                             error_kind,
                             accessed_info,

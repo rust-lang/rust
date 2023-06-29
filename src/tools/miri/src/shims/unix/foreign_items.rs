@@ -10,6 +10,7 @@ use rustc_target::spec::abi::Abi;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
+use shims::unix::mem::EvalContextExt as _;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
@@ -213,6 +214,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
 
+            "mmap" => {
+                let [addr, length, prot, flags, fd, offset] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let ptr = this.mmap(addr, length, prot, flags, fd, offset)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "munmap" => {
+                let [addr, length] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let result = this.munmap(addr, length)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Dynamic symbol loading
             "dlsym" => {
                 let [handle, symbol] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -259,7 +271,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Thread-local storage
             "pthread_key_create" => {
                 let [key, dtor] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key_place = this.deref_operand(key)?;
+                let key_place = this.deref_operand_as(key, this.libc_ty_layout("pthread_key_t"))?;
                 let dtor = this.read_pointer(dtor)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
@@ -520,7 +532,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Hence we can mostly ignore the input `attr_place`.
                 let [attr_place, addr_place, size_place] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let _attr_place = this.deref_operand(attr_place)?;
+                let _attr_place = this.deref_operand_as(attr_place, this.libc_ty_layout("pthread_attr_t"))?;
                 let addr_place = this.deref_operand(addr_place)?;
                 let size_place = this.deref_operand(size_place)?;
 
@@ -563,7 +575,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.check_no_isolation("`getpwuid_r`")?;
 
                 let uid = this.read_scalar(uid)?.to_u32()?;
-                let pwd = this.deref_operand(pwd)?;
+                let pwd = this.deref_operand_as(pwd, this.libc_ty_layout("passwd"))?;
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_target_usize(buflen)?;
                 let result = this.deref_operand(result)?;

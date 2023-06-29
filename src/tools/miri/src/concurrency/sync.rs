@@ -6,6 +6,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::ty::layout::TyAndLayout;
 
 use super::init_once::InitOnce;
 use super::vector_clock::VClock;
@@ -200,11 +201,12 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
         &mut self,
         next_id: Id,
         lock_op: &OpTy<'tcx, Provenance>,
+        lock_layout: TyAndLayout<'tcx>,
         offset: u64,
     ) -> InterpResult<'tcx, Option<Id>> {
         let this = self.eval_context_mut();
         let value_place =
-            this.deref_operand_and_offset(lock_op, offset, this.machine.layouts.u32)?;
+            this.deref_operand_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
 
         // Since we are lazy, this update has to be atomic.
         let (old, success) = this
@@ -278,28 +280,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn mutex_get_or_create_id(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,
+        lock_layout: TyAndLayout<'tcx>,
         offset: u64,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
-        this.mutex_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
+        this.mutex_get_or_create(|ecx, next_id| {
+            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
+        })
     }
 
     fn rwlock_get_or_create_id(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,
+        lock_layout: TyAndLayout<'tcx>,
         offset: u64,
     ) -> InterpResult<'tcx, RwLockId> {
         let this = self.eval_context_mut();
-        this.rwlock_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
+        this.rwlock_get_or_create(|ecx, next_id| {
+            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
+        })
     }
 
     fn condvar_get_or_create_id(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,
+        lock_layout: TyAndLayout<'tcx>,
         offset: u64,
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
-        this.condvar_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
+        this.condvar_get_or_create(|ecx, next_id| {
+            ecx.get_or_create_id(next_id, lock_op, lock_layout, offset)
+        })
     }
 
     #[inline]

@@ -85,8 +85,10 @@ pub fn futex<'tcx>(
                 return Ok(());
             }
 
-            // `deref_operand` but not actually dereferencing the ptr yet (it might be NULL!).
-            let timeout = this.ref_to_mplace(&this.read_immediate(&args[3])?)?;
+            let timeout = this.deref_pointer_as(
+                &this.read_immediate(&args[3])?,
+                this.libc_ty_layout("timespec"),
+            )?;
             let timeout_time = if this.ptr_is_null(timeout.ptr)? {
                 None
             } else {

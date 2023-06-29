@@ -1,0 +1,6 @@
+thread $NAME panicked at 'ow', $DIR/thread_local_const_drop_panic.rs:LL:CC
+fatal runtime error: thread local panicked on drop
+error: abnormal termination: the program aborted execution
+
+error: aborting due to previous error
+

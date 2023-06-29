@@ -1,0 +1,32 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
+   |
+LL |     unsafe { *x = 0 };
+   |              ^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this foreign write access would cause the protected tag <TAG> to transition from Frozen to Disabled
+   = help: this transition would be a loss of read permissions, which is not allowed for protected tags
+help: the accessed tag <TAG> was created here
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
+   |
+LL |     let xraw = &mut x as *mut _;
+   |                ^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Frozen
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
+   |
+LL | fn inner(x: *mut i32, _y: &i32) {
+   |                       ^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `inner` at $DIR/invalidate_against_protector2.rs:LL:CC
+note: inside `main`
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
+   |
+LL |     inner(xraw, xref);
+   |     ^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

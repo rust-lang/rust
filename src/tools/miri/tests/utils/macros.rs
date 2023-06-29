@@ -47,12 +47,12 @@ macro_rules! name {
     ($ptr:expr) => {
         crate::utils::macros::name!($ptr => 0, stringify!($ptr));
     };
-    ($ptr:expr => $nb:expr) => {
-        crate::utils::macros::name!($ptr => $nb, stringify!($ptr));
+    ($ptr:expr => $nth_parent:expr) => {
+        crate::utils::macros::name!($ptr => $nth_parent, stringify!($ptr));
     };
-    ($ptr:expr => $nb:expr, $name:expr) => {
+    ($ptr:expr => $nth_parent:expr, $name:expr) => {
         let name = $name.as_bytes();
-        crate::utils::miri_extern::miri_pointer_name($ptr as *const u8 as *const (), $nb, name);
+        crate::utils::miri_extern::miri_pointer_name($ptr as *const u8 as *const (), $nth_parent, name);
     };
 }
 

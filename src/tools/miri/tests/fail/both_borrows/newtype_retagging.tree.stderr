@@ -1,0 +1,55 @@
+error: Undefined Behavior: deallocation through <TAG> is forbidden
+  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
+   |
+LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocation through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this deallocation (acting as a foreign write access) would cause the protected tag <TAG> to transition from Frozen to Disabled
+   = help: this transition would be a loss of read permissions, which is not allowed for protected tags
+help: the accessed tag <TAG> was created here
+  --> $DIR/newtype_retagging.rs:LL:CC
+   |
+LL |             || drop(Box::from_raw(ptr)),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/newtype_retagging.rs:LL:CC
+   |
+LL | fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
+   |                          ^^
+help: the protected tag <TAG> later transitioned to Frozen due to a reborrow (acting as a foreign read access) at offsets [0x0..0x4]
+  --> $DIR/newtype_retagging.rs:LL:CC
+   |
+LL |             || drop(Box::from_raw(ptr)),
+   |                     ^^^^^^^^^^^^^^^^^^
+   = help: this transition corresponds to a loss of write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+note: inside closure
+  --> $DIR/newtype_retagging.rs:LL:CC
+   |
+LL |             || drop(Box::from_raw(ptr)),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `dealloc_while_running::<[closure@$DIR/newtype_retagging.rs:LL:CC]>`
+  --> $DIR/newtype_retagging.rs:LL:CC
+   |
+LL |     dealloc();
+   |     ^^^^^^^^^
+note: inside `main`
+  --> $DIR/newtype_retagging.rs:LL:CC
+   |
+LL | /         dealloc_while_running(
+LL | |             Newtype(&mut *ptr),
+LL | |             || drop(Box::from_raw(ptr)),
+LL | |         )
+   | |_________^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+
