@@ -10,6 +10,70 @@ use rustc_span::hygiene::MacroKind;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
+/// Table elements in the rmeta format must have fixed size, but we also want to encode offsets in
+/// the file inside of table elements. If we use 4-byte offsets, it is too easy for crates to run
+/// over that limit; see #112934. Switching to an 8-byte offset increases the size of some rlibs by 30%.
+/// So for the time being we are using 5 bytes, which lets us encode offsets as large as 1 TB. It
+/// seems unlikely that anyone will need offsets larger than that, but if you do, simply adjust
+/// this constant.
+const OFFSET_SIZE_BYTES: usize = 5;
+
+#[derive(Default)]
+struct Offset(usize);
+
+impl Offset {
+    // We technically waste 1 byte per offset if the compiler is compiled for a 32-bit target, but
+    // that waste keeps the format described in this module portable.
+    #[cfg(target_pointer_width = "32")]
+    const MAX: usize = usize::MAX;
+
+    #[cfg(target_pointer_width = "64")]
+    const MAX: usize = usize::MAX >> (8 - OFFSET_SIZE_BYTES);
+}
+
+#[derive(Debug)]
+pub struct OffsetTooLarge;
+
+impl TryFrom<usize> for Offset {
+    type Error = OffsetTooLarge;
+
+    #[inline]
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        if value > Self::MAX { Err(OffsetTooLarge) } else { Ok(Self(value)) }
+    }
+}
+
+impl From<Offset> for usize {
+    #[inline]
+    fn from(v: Offset) -> usize {
+        v.0
+    }
+}
+
+impl FixedSizeEncoding for Offset {
+    type ByteArray = [u8; OFFSET_SIZE_BYTES];
+
+    #[inline]
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        let mut buf = [0u8; std::mem::size_of::<usize>()];
+        buf[..OFFSET_SIZE_BYTES].copy_from_slice(b);
+        let inner = usize::from_le_bytes(buf);
+        debug_assert!(inner <= Self::MAX);
+        Self(inner)
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
+        b.copy_from_slice(&self.0.to_le_bytes()[..OFFSET_SIZE_BYTES]);
+    }
+}
+
+impl IsDefault for Offset {
+    fn is_default(&self) -> bool {
+        self.0 == 0
+    }
+}
+
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;
 }
@@ -73,8 +137,6 @@ pub(super) trait FixedSizeEncoding: IsDefault {
     fn write_to_bytes(self, b: &mut Self::ByteArray);
 }
 
-/// This implementation is not used generically, but for reading/writing
-/// concrete `u32` fields in `Lazy*` structures, which may be zero.
 impl FixedSizeEncoding for u32 {
     type ByteArray = [u8; 4];
 
@@ -296,25 +358,22 @@ impl FixedSizeEncoding for UnusedGenericParams {
     }
 }
 
-// NOTE(eddyb) there could be an impl for `usize`, which would enable a more
-// generic `LazyValue<T>` impl, but in the general case we might not need / want
-// to fit every `usize` in `u32`.
 impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
-    type ByteArray = [u8; 4];
+    type ByteArray = [u8; OFFSET_SIZE_BYTES];
 
     #[inline]
-    fn from_bytes(b: &[u8; 4]) -> Self {
-        let position = NonZeroUsize::new(u32::from_bytes(b) as usize)?;
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        let position = NonZeroUsize::new(Offset::from_bytes(b).try_into().unwrap())?;
         Some(LazyValue::from_position(position))
     }
 
     #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 4]) {
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
         match self {
             None => unreachable!(),
             Some(lazy) => {
                 let position = lazy.position.get();
-                let position: u32 = position.try_into().unwrap();
+                let position: Offset = position.try_into().unwrap();
                 position.write_to_bytes(b)
             }
         }
@@ -323,55 +382,58 @@ impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
 
 impl<T> LazyArray<T> {
     #[inline]
-    fn write_to_bytes_impl(self, b: &mut [u8; 8]) {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks_mut::<4>() else { panic!() };
+    fn write_to_bytes_impl(self, b: &mut [u8; OFFSET_SIZE_BYTES * 2]) {
+        let ([position_bytes, meta_bytes],[])= b.as_chunks_mut::<OFFSET_SIZE_BYTES>() else { panic!() };
 
         let position = self.position.get();
-        let position: u32 = position.try_into().unwrap();
+        let position: Offset = position.try_into().unwrap();
         position.write_to_bytes(position_bytes);
 
         let len = self.num_elems;
-        let len: u32 = len.try_into().unwrap();
+        let len: Offset = len.try_into().unwrap();
         len.write_to_bytes(meta_bytes);
     }
 
-    fn from_bytes_impl(position_bytes: &[u8; 4], meta_bytes: &[u8; 4]) -> Option<LazyArray<T>> {
-        let position = NonZeroUsize::new(u32::from_bytes(position_bytes) as usize)?;
-        let len = u32::from_bytes(meta_bytes) as usize;
+    fn from_bytes_impl(
+        position_bytes: &[u8; OFFSET_SIZE_BYTES],
+        meta_bytes: &[u8; OFFSET_SIZE_BYTES],
+    ) -> Option<LazyArray<T>> {
+        let position = NonZeroUsize::new(Offset::from_bytes(position_bytes).0)?;
+        let len = Offset::from_bytes(meta_bytes).0;
         Some(LazyArray::from_position_and_num_elems(position, len))
     }
 }
 
 impl<T> FixedSizeEncoding for LazyArray<T> {
-    type ByteArray = [u8; 8];
+    type ByteArray = [u8; OFFSET_SIZE_BYTES * 2];
 
     #[inline]
-    fn from_bytes(b: &[u8; 8]) -> Self {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
-        if *meta_bytes == [0; 4] {
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        let ([position_bytes, meta_bytes],[])= b.as_chunks::<OFFSET_SIZE_BYTES>() else { panic!() };
+        if *meta_bytes == [0u8; OFFSET_SIZE_BYTES] {
             return Default::default();
         }
         LazyArray::from_bytes_impl(position_bytes, meta_bytes).unwrap()
     }
 
     #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 8]) {
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
         assert!(!self.is_default());
         self.write_to_bytes_impl(b)
     }
 }
 
 impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
-    type ByteArray = [u8; 8];
+    type ByteArray = [u8; OFFSET_SIZE_BYTES * 2];
 
     #[inline]
-    fn from_bytes(b: &[u8; 8]) -> Self {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        let ([position_bytes, meta_bytes],[])= b.as_chunks::<OFFSET_SIZE_BYTES>() else { panic!() };
         LazyArray::from_bytes_impl(position_bytes, meta_bytes)
     }
 
     #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 8]) {
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
         match self {
             None => unreachable!(),
             Some(lazy) => lazy.write_to_bytes_impl(b),
