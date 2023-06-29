@@ -24,7 +24,6 @@ use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::TraitSolver;
-use rustc_span::Span;
 
 pub trait TraitEngineExt<'tcx> {
     fn new(infcx: &InferCtxt<'tcx>) -> Box<Self>;
@@ -223,14 +222,11 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn assumed_wf_types(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        span: Span,
         def_id: LocalDefId,
     ) -> FxIndexSet<Ty<'tcx>> {
         let tcx = self.infcx.tcx;
-        let assumed_wf_types = tcx.assumed_wf_types(def_id);
         let mut implied_bounds = FxIndexSet::default();
-        let cause = ObligationCause::misc(span, def_id);
-        for ty in assumed_wf_types {
+        for &(ty, span) in tcx.assumed_wf_types(def_id) {
             // FIXME(@lcnr): rustc currently does not check wf for types
             // pre-normalization, meaning that implied bounds are sometimes
             // incorrect. See #100910 for more details.
@@ -243,6 +239,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             // sound and then uncomment this line again.
 
             // implied_bounds.insert(ty);
+            let cause = ObligationCause::misc(span, def_id);
             let normalized = self.normalize(&cause, param_env, ty);
             implied_bounds.insert(normalized);
         }

@@ -4,16 +4,6 @@ error[E0277]: the trait bound `for<'a> (): Trait2<'a>` is not satisfied
 LL | fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
    |                                        ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait2<'a>` is not implemented for `()`
 
-error[E0277]: the trait bound `for<'a> (): Trait2<'a>` is not satisfied
-  --> $DIR/issue-35570.rs:8:1
-   |
-LL | / fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
-LL | |
-LL | |
-LL | |     let _e: (usize, usize) = unsafe{mem::transmute(param)};
-LL | | }
-   | |_^ the trait `for<'a> Trait2<'a>` is not implemented for `()`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

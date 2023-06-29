@@ -105,7 +105,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     }
     f(&mut wfcx);
 
-    let assumed_wf_types = wfcx.ocx.assumed_wf_types(param_env, span, body_def_id);
+    let assumed_wf_types = wfcx.ocx.assumed_wf_types(param_env, body_def_id);
     let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, assumed_wf_types);
 
     let errors = wfcx.select_all_or_error();
