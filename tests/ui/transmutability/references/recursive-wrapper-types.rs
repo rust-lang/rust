@@ -1,5 +1,4 @@
-// check-fail
-// FIXME(bryangarza): Change to check-pass when coinduction is supported for BikeshedIntrinsicFrom
+// check-pass
 #![feature(transmutability)]
 
 mod assert {
@@ -22,6 +21,6 @@ mod assert {
 fn main() {
     #[repr(C)] struct A(&'static B);
     #[repr(C)] struct B(&'static A);
-    assert::is_maybe_transmutable::<&'static A, &'static B>(); //~ overflow evaluating the requirement
+    assert::is_maybe_transmutable::<&'static A, &'static B>();
     assert::is_maybe_transmutable::<&'static B, &'static A>();
 }
