@@ -1,6 +1,5 @@
-use std::iter;
-
 use either::Either;
+use hir::PatField;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
@@ -28,6 +27,8 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use std::iter;
+use std::marker::PhantomData;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -992,6 +993,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     issued_borrow.borrowed_place,
                     &issued_spans,
                 );
+                self.explain_iterator_advancement_in_for_loop_if_applicable(
+                    &mut err,
+                    span,
+                    &issued_spans,
+                );
                 err
             }
 
@@ -1275,6 +1281,75 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 "consider using `.split_at_mut(position)` or similar method to obtain \
                      two mutable non-overlapping sub-slices",
             );
+        }
+    }
+
+    /// Suggest using `while let` for call `next` on an iterator in a for loop.
+    ///
+    /// For example:
+    /// ```ignore (illustrative)
+    ///
+    /// for x in iter {
+    ///     ...
+    ///     iter.next()
+    /// }
+    /// ```
+    pub(crate) fn explain_iterator_advancement_in_for_loop_if_applicable(
+        &self,
+        err: &mut Diagnostic,
+        span: Span,
+        issued_spans: &UseSpans<'tcx>,
+    ) {
+        let issue_span = issued_spans.args_or_use();
+        let tcx = self.infcx.tcx;
+        let hir = tcx.hir();
+
+        let Some(body_id) = hir.get(self.mir_hir_id()).body_id() else { return };
+
+        struct ExprFinder<'hir> {
+            phantom: PhantomData<&'hir hir::Expr<'hir>>,
+            issue_span: Span,
+            expr_span: Span,
+            found_body_expr: bool,
+            loop_bind: Option<Symbol>,
+        }
+        impl<'hir> Visitor<'hir> for ExprFinder<'hir> {
+            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+                if let hir::ExprKind::Loop(hir::Block{ stmts: [stmt, ..], ..}, _, hir::LoopSource::ForLoop, _) = ex.kind &&
+                    let hir::StmtKind::Expr(hir::Expr{ kind: hir::ExprKind::Match(call, [_, bind, ..], _), ..}) = stmt.kind &&
+                    let hir::ExprKind::Call(path, _args) = call.kind &&
+                    let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IteratorNext, _, _, )) = path.kind &&
+                    let hir::PatKind::Struct(path, [field, ..], _) = bind.pat.kind &&
+                    let hir::QPath::LangItem(LangItem::OptionSome, _, _) = path &&
+                    let PatField { pat: hir::Pat{ kind: hir::PatKind::Binding(_, _, ident, ..), .. }, ..} = field &&
+                    self.issue_span.source_equal(call.span) {
+                        self.loop_bind = Some(ident.name);
+                    }
+
+                if let hir::ExprKind::MethodCall(body_call, ..) = ex.kind &&
+                    body_call.ident.name == sym::next &&
+                    ex.span.source_equal(self.expr_span) {
+                        self.found_body_expr = true;
+                }
+
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+        let mut finder = ExprFinder {
+            phantom: PhantomData,
+            expr_span: span,
+            issue_span,
+            loop_bind: None,
+            found_body_expr: false,
+        };
+        finder.visit_expr(hir.body(body_id).value);
+        if let Some(loop_bind) = finder.loop_bind &&
+            finder.found_body_expr {
+            err.note(format!(
+                "a for loop advances the iterator for you, the result is stored in `{}`.",
+                loop_bind
+            ));
+            err.help("if you want to call `next` on a iterator within the loop, consider using `while let`.");
         }
     }
 

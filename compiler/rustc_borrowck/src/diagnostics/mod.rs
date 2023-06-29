@@ -1146,6 +1146,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // Avoid pointing to the same function in multiple different
                     // error messages.
                     if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {
+                        self.explain_iterator_advancement_in_for_loop_if_applicable(
+                            err,
+                            span,
+                            &move_spans,
+                        );
+
                         let func = tcx.def_path_str(method_did);
                         err.subdiagnostic(CaptureReasonNote::FuncTakeSelf {
                             func,
