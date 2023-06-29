@@ -22,7 +22,7 @@ LL | /// [`dummy_target`](dummy_target)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:7:11
+  --> $DIR/redundant_explicit_links.rs:8:11
    |
 LL | /// [Vec](Vec)
    |           ^^^
@@ -31,7 +31,7 @@ LL | /// [Vec](Vec)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:8:13
+  --> $DIR/redundant_explicit_links.rs:9:13
    |
 LL | /// [`Vec`](Vec)
    |             ^^^
@@ -40,7 +40,7 @@ LL | /// [`Vec`](Vec)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:9:11
+  --> $DIR/redundant_explicit_links.rs:10:11
    |
 LL | /// [Vec](std::vec::Vec)
    |           ^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL | /// [Vec](std::vec::Vec)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:10:13
+  --> $DIR/redundant_explicit_links.rs:11:13
    |
 LL | /// [`Vec`](std::vec::Vec)
    |             ^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ LL | /// [`Vec`](std::vec::Vec)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:11:21
+  --> $DIR/redundant_explicit_links.rs:14:21
    |
 LL | /// [std::vec::Vec](std::vec::Vec)
    |                     ^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL | /// [std::vec::Vec](std::vec::Vec)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:12:23
+  --> $DIR/redundant_explicit_links.rs:15:23
    |
 LL | /// [`std::vec::Vec`](std::vec::Vec)
    |                       ^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ LL | /// [`std::vec::Vec`](std::vec::Vec)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:13:13
+  --> $DIR/redundant_explicit_links.rs:17:13
    |
 LL | /// [usize](usize)
    |             ^^^^^
@@ -85,7 +85,7 @@ LL | /// [usize](usize)
    = help: Remove explicit link instead
 
 error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:14:15
+  --> $DIR/redundant_explicit_links.rs:18:15
    |
 LL | /// [`usize`](usize)
    |               ^^^^^
@@ -93,5 +93,41 @@ LL | /// [`usize`](usize)
    = note: Explicit link does not affect the original link
    = help: Remove explicit link instead
 
-error: aborting due to 10 previous errors
+error: redundant explicit rustdoc link
+  --> $DIR/redundant_explicit_links.rs:19:13
+   |
+LL | /// [usize](std::primitive::usize)
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Explicit link does not affect the original link
+   = help: Remove explicit link instead
+
+error: redundant explicit rustdoc link
+  --> $DIR/redundant_explicit_links.rs:20:15
+   |
+LL | /// [`usize`](std::primitive::usize)
+   |               ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Explicit link does not affect the original link
+   = help: Remove explicit link instead
+
+error: redundant explicit rustdoc link
+  --> $DIR/redundant_explicit_links.rs:23:29
+   |
+LL | /// [std::primitive::usize](std::primitive::usize)
+   |                             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Explicit link does not affect the original link
+   = help: Remove explicit link instead
+
+error: redundant explicit rustdoc link
+  --> $DIR/redundant_explicit_links.rs:24:31
+   |
+LL | /// [`std::primitive::usize`](std::primitive::usize)
+   |                               ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Explicit link does not affect the original link
+   = help: Remove explicit link instead
+
+error: aborting due to 14 previous errors
 
