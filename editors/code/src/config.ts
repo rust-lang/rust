@@ -225,7 +225,7 @@ export class Config {
     }
 
     get runnablesExtraEnv() {
-        const item = this.get<any>("runnables.extraEnv");
+        const item = this.get<any>("runnables.extraEnv") ?? this.get<any>("runnableEnv");
         if (!item) return item;
         const fixRecord = (r: Record<string, any>) => {
             for (const key in r) {
