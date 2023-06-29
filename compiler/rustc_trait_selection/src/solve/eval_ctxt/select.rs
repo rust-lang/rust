@@ -1,25 +1,23 @@
 use std::ops::ControlFlow;
 
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::{
     Obligation, PredicateObligation, Selection, SelectionResult, TraitObligation,
 };
-use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_middle::traits::solve::{Certainty, Goal, PredefinedOpaquesData, QueryInput};
+use rustc_middle::traits::solve::{CanonicalInput, Certainty, Goal};
 use rustc_middle::traits::{
-    DefiningAnchor, ImplSource, ImplSourceObjectData, ImplSourceTraitUpcastingData,
-    ImplSourceUserDefinedData, ObligationCause, SelectionError,
+    ImplSource, ImplSourceObjectData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
+    ObligationCause, SelectionError,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::DUMMY_SP;
 
 use crate::solve::assembly::{BuiltinImplSource, Candidate, CandidateSource};
-use crate::solve::eval_ctxt::{EvalCtxt, NestedGoals};
+use crate::solve::eval_ctxt::{EvalCtxt, GenerateProofTree};
 use crate::solve::inspect::ProofTreeBuilder;
-use crate::solve::search_graph::SearchGraph;
-use crate::solve::SolverMode;
+use crate::solve::search_graph::OverflowHandler;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 pub trait InferCtxtSelectExt<'tcx> {
@@ -36,59 +34,54 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
-        let goal = Goal::new(
+        let trait_goal = Goal::new(
             self.tcx,
             obligation.param_env,
             self.instantiate_binder_with_placeholders(obligation.predicate),
         );
 
-        let mode = if self.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
-        let mut search_graph = SearchGraph::new(self.tcx, mode);
-        let mut ecx = EvalCtxt {
-            search_graph: &mut search_graph,
-            infcx: self,
-            // Only relevant when canonicalizing the response,
-            // which we don't do within this evaluation context.
-            predefined_opaques_in_body: self
-                .tcx
-                .mk_predefined_opaques_in_body(PredefinedOpaquesData::default()),
-            // Only relevant when canonicalizing the response.
-            max_input_universe: ty::UniverseIndex::ROOT,
-            var_values: CanonicalVarValues::dummy(),
-            nested_goals: NestedGoals::new(),
-            tainted: Ok(()),
-            inspect: ProofTreeBuilder::new_noop(),
-        };
+        let (result, _) = EvalCtxt::enter_root(self, GenerateProofTree::No, |ecx| {
+            let goal = Goal::new(ecx.tcx(), trait_goal.param_env, trait_goal.predicate);
+            let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
+            let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);
 
-        let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
-        let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);
-
-        // pseudo-winnow
-        if candidates.len() == 0 {
-            return Err(SelectionError::Unimplemented);
-        } else if candidates.len() > 1 {
-            let mut i = 0;
-            while i < candidates.len() {
-                let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                    candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
-                });
-                if should_drop_i {
-                    candidates.swap_remove(i);
-                } else {
-                    i += 1;
-                    if i > 1 {
-                        return Ok(None);
+            // pseudo-winnow
+            if candidates.len() == 0 {
+                return Err(SelectionError::Unimplemented);
+            } else if candidates.len() > 1 {
+                let mut i = 0;
+                while i < candidates.len() {
+                    let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
+                        candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
+                    });
+                    if should_drop_i {
+                        candidates.swap_remove(i);
+                    } else {
+                        i += 1;
+                        if i > 1 {
+                            return Ok(None);
+                        }
                     }
                 }
             }
-        }
 
-        let candidate = candidates.pop().unwrap();
-        let (certainty, nested_goals) = ecx
-            .instantiate_and_apply_query_response(goal.param_env, orig_values, candidate.result)
-            .map_err(|_| SelectionError::Unimplemented)?;
+            let candidate = candidates.pop().unwrap();
+            let (certainty, nested_goals) = ecx
+                .instantiate_and_apply_query_response(
+                    trait_goal.param_env,
+                    orig_values,
+                    candidate.result,
+                )
+                .map_err(|_| SelectionError::Unimplemented)?;
 
-        let goal = self.resolve_vars_if_possible(goal);
+            Ok(Some((candidate, certainty, nested_goals)))
+        });
+
+        let (candidate, certainty, nested_goals) = match result {
+            Ok(Some((candidate, certainty, nested_goals))) => (candidate, certainty, nested_goals),
+            Ok(None) => return Ok(None),
+            Err(e) => return Err(e),
+        };
 
         let nested_obligations: Vec<_> = nested_goals
             .into_iter()
@@ -97,15 +90,18 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
             })
             .collect();
 
-        if let Certainty::Maybe(_) = certainty {
-            return Ok(None);
-        }
-
+        let goal = self.resolve_vars_if_possible(trait_goal);
         match (certainty, candidate.source) {
+            // Rematching the implementation will instantiate the same nested goals that
+            // would have caused the ambiguity, so we can still make progress here regardless.
             (_, CandidateSource::Impl(def_id)) => {
                 rematch_impl(self, goal, def_id, nested_obligations)
             }
 
+            // Rematching the dyn upcast or object goal will instantiate the same nested
+            // goals that would have caused the ambiguity, so we can still make progress here
+            // regardless.
+            // FIXME: This doesn't actually check the object bounds hold here.
             (
                 _,
                 CandidateSource::BuiltinImpl(
@@ -113,16 +109,16 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
                 ),
             ) => rematch_object(self, goal, nested_obligations),
 
+            // Technically some builtin impls have nested obligations, but if
+            // `Certainty::Yes`, then they should've all been verified and don't
+            // need re-checking.
             (Certainty::Yes, CandidateSource::BuiltinImpl(BuiltinImplSource::Misc)) => {
-                // technically some builtin impls have nested obligations, but if
-                // `Certainty::Yes`, then they should've all been verified by the
-                // evaluation above.
                 Ok(Some(ImplSource::Builtin(nested_obligations)))
             }
 
+            // It's fine not to do anything to rematch these, since there are no
+            // nested obligations.
             (Certainty::Yes, CandidateSource::ParamEnv(_) | CandidateSource::AliasBound) => {
-                // It's fine not to do anything to rematch these, since there are no
-                // nested obligations.
                 Ok(Some(ImplSource::Param(nested_obligations, ty::BoundConstness::NotConst)))
             }
 
@@ -135,44 +131,31 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn compute_canonical_trait_candidates(
         &mut self,
-        canonical_input: Canonical<'tcx, QueryInput<'tcx, ty::TraitPredicate<'tcx>>>,
+        canonical_input: CanonicalInput<'tcx>,
     ) -> Vec<Candidate<'tcx>> {
-        let intercrate = match self.search_graph.solver_mode() {
-            SolverMode::Normal => false,
-            SolverMode::Coherence => true,
-        };
-        let (canonical_infcx, input, var_values) = self
-            .tcx()
-            .infer_ctxt()
-            .intercrate(intercrate)
-            .with_next_trait_solver(true)
-            .with_opaque_type_inference(canonical_input.value.anchor)
-            .build_with_canonical(DUMMY_SP, &canonical_input);
-
-        let mut ecx = EvalCtxt {
-            infcx: &canonical_infcx,
-            var_values,
-            predefined_opaques_in_body: input.predefined_opaques_in_body,
-            max_input_universe: canonical_input.max_universe,
-            search_graph: &mut self.search_graph,
-            nested_goals: NestedGoals::new(),
-            tainted: Ok(()),
-            inspect: ProofTreeBuilder::new_noop(),
-        };
-
-        for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.insert_hidden_type(key, input.goal.param_env, ty)
-                .expect("failed to prepopulate opaque types");
-        }
-
-        let candidates = ecx.assemble_and_evaluate_candidates(input.goal);
-
-        // We don't need the canonicalized context anymore
-        if input.anchor != DefiningAnchor::Error {
-            let _ = canonical_infcx.take_opaque_types();
-        }
-
-        candidates
+        // This doesn't record the canonical goal on the stack during the
+        // candidate assembly step, but that's fine. Selection is conceptually
+        // outside of the solver, and if there were any cycles, we'd encounter
+        // the cycle anyways one step later.
+        EvalCtxt::enter_canonical(
+            self.tcx(),
+            self.search_graph(),
+            canonical_input,
+            // FIXME: This is wrong, idk if we even want to track stuff here.
+            &mut ProofTreeBuilder::new_noop(),
+            |ecx, goal| {
+                let trait_goal = Goal {
+                    param_env: goal.param_env,
+                    predicate: goal
+                        .predicate
+                        .to_opt_poly_trait_pred()
+                        .expect("we canonicalized a trait goal")
+                        .no_bound_vars()
+                        .expect("we instantiated all bound vars"),
+                };
+                ecx.assemble_and_evaluate_candidates(trait_goal)
+            },
+        )
     }
 }
 
