@@ -288,11 +288,9 @@ fn fst_path(db: &dyn DefDatabase, path: &ImportPath) -> String {
 
 /// A way to match import map contents against the search query.
 #[derive(Debug)]
-pub enum SearchMode {
+enum SearchMode {
     /// Import map entry should strictly match the query string.
-    Equals,
-    /// Import map entry should contain the query string.
-    Contains,
+    Exact,
     /// Import map entry should contain all letters from the query string,
     /// in the same order, but not necessary adjacent.
     Fuzzy,
@@ -325,16 +323,16 @@ impl Query {
         Self {
             query,
             lowercased,
-            search_mode: SearchMode::Contains,
+            search_mode: SearchMode::Exact,
             assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
-            limit: usize::max_value(),
+            limit: usize::MAX,
         }
     }
 
-    /// Specifies the way to search for the entries using the query.
-    pub fn search_mode(self, search_mode: SearchMode) -> Self {
-        Self { search_mode, ..self }
+    /// Fuzzy finds items instead of exact matching.
+    pub fn fuzzy(self) -> Self {
+        Self { search_mode: SearchMode::Fuzzy, ..self }
     }
 
     /// Specifies whether we want to include associated items in the result.
@@ -374,22 +372,15 @@ impl Query {
         let query_string = if case_insensitive { &self.lowercased } else { &self.query };
 
         match self.search_mode {
-            SearchMode::Equals => &input == query_string,
-            SearchMode::Contains => input.contains(query_string),
+            SearchMode::Exact => &input == query_string,
             SearchMode::Fuzzy => {
-                let mut unchecked_query_chars = query_string.chars();
-                let mut mismatching_query_char = unchecked_query_chars.next();
-
-                for input_char in input.chars() {
-                    match mismatching_query_char {
-                        None => return true,
-                        Some(matching_query_char) if matching_query_char == input_char => {
-                            mismatching_query_char = unchecked_query_chars.next();
-                        }
-                        _ => (),
+                let mut input_chars = input.chars();
+                for query_char in query_string.chars() {
+                    if input_chars.find(|&it| it == query_char).is_none() {
+                        return false;
                     }
                 }
-                mismatching_query_char.is_none()
+                true
             }
         }
     }
@@ -824,7 +815,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
+            Query::new("fmt".to_string()).fuzzy(),
             expect![[r#"
                 dep::fmt (t)
                 dep::fmt::Display::FMT_CONST (a)
@@ -854,7 +845,7 @@ mod tests {
             ra_fixture,
             "main",
             Query::new("fmt".to_string())
-                .search_mode(SearchMode::Fuzzy)
+                .fuzzy()
                 .assoc_search_mode(AssocSearchMode::AssocItemsOnly),
             expect![[r#"
                 dep::fmt::Display::FMT_CONST (a)
@@ -866,9 +857,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string())
-                .search_mode(SearchMode::Fuzzy)
-                .assoc_search_mode(AssocSearchMode::Exclude),
+            Query::new("fmt".to_string()).fuzzy().assoc_search_mode(AssocSearchMode::Exclude),
             expect![[r#"
                 dep::fmt (t)
             "#]],
@@ -904,7 +893,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
+            Query::new("fmt".to_string()).fuzzy(),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -918,20 +907,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).search_mode(SearchMode::Equals),
-            expect![[r#"
-                dep::Fmt (m)
-                dep::Fmt (t)
-                dep::Fmt (v)
-                dep::fmt (t)
-                dep::fmt::Display::fmt (a)
-            "#]],
-        );
-
-        check_search(
-            ra_fixture,
-            "main",
-            Query::new("fmt".to_string()).search_mode(SearchMode::Contains),
+            Query::new("fmt".to_string()),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -1049,7 +1025,7 @@ mod tests {
         pub fn no() {}
     "#,
             "main",
-            Query::new("".to_string()).limit(2),
+            Query::new("".to_string()).fuzzy().limit(2),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)

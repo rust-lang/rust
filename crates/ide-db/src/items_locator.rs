@@ -36,8 +36,7 @@ pub fn items_with_name<'a>(
             let mut local_query = symbol_index::Query::new(exact_name.clone());
             local_query.exact();
 
-            let external_query =
-                import_map::Query::new(exact_name).search_mode(import_map::SearchMode::Equals);
+            let external_query = import_map::Query::new(exact_name);
 
             (
                 local_query,
@@ -48,7 +47,7 @@ pub fn items_with_name<'a>(
             let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());
 
             let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
-                .search_mode(import_map::SearchMode::Fuzzy)
+                .fuzzy()
                 .assoc_search_mode(assoc_item_search);
 
             if fuzzy_search_string.to_lowercase() != fuzzy_search_string {
