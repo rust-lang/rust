@@ -3,6 +3,7 @@
 //! issues. Exposed raw pointers (i.e. those cast to `usize`) and function calls would make this simple
 //! analysis unsound, so we have to handle them as follows:
 //!
+//! ```text
 //!     * exposed pointers (i.e. a cast of a raw pointer to `usize`)
 //!         => These count towards the liveness of the `Local` that is behind the raw pointer, e.g. for
 //!            `_5 = _4 as usize` (where `_4 = AddressOf(_3)`), we keep `_3` alive on any use site of _5.
@@ -28,6 +29,7 @@
 //!            Let `Locals2` be the set of `Local`s that need to be kept alive due to the borrows corresponding to `Op2`
 //!            Then we need to start tracking all `Local`s in `Locals2` for the borrow corresponding to `Op1`, since the `Place`
 //!            corresponding to `Op2` might be moved into `Op1` in then call.
+//! ```
 //!
 //! As an example for what this analysis does:
 //!
@@ -67,20 +69,19 @@
 //!         yield 3;    // live locals: [`Local4`]
 //!
 //!         takes_and_returns_ref(bar3_ref);    // live locals: [`Local4`]
-//!     }     
+//!     }
 //! }
 //! ```
 //!
 //! Following is a description of the algorithm:
+//! ```text
 //!     1. build a dependency graph that relates `Local`s based on their borrowing relationships.
 //!        As an example if we have something like this (in a simplified MIR representation):
 //!
-//!        ```ignore
 //!         _4 = Bar {}
 //!         _5 = Ref(_4)
 //!         ...
 //!         _10 = f(_5)
-//!        ```
 //!
 //!         Then we add edges from `_5` to `_4` and `_4` to `_5` (for an explanation of why the edge
 //!         from `_4` to `_5` is necessary see the comment in `handle_ravlue_or_ptr`) and from
@@ -95,6 +96,7 @@
 //!        in that range we traverse our dependency graph and look for nodes that correspond to borrowed
 //!        `Local`s ("leaf nodes"). In our example we would find an edge from `_5` to `_4`, which is a leaf
 //!        node and hence we keep `_4` live over that range.
+//! ```
 //!
 //! There are some corner cases we need to look out for to make this analysis sound. Let's look
 //! at each of the three steps in more detail and elaborate how these steps deal with these corner
@@ -104,6 +106,7 @@
 //!
 //! The `Node`s in the dependency graph include data values of type `NodeKind`. `NodeKind` has
 //! three variants: `Local`, `Borrow` and `LocalWithRefs`.
+//!     ```text
 //!     * `NodeKind::Local` is used for `Local`s that are borrowed somewhere (`_4` in our example), but aren't
 //!        themselves references or pointers.
 //!     * `NodeKind::Borrow` is used for `Local`s that correspond to borrows (`_5` in our example). We equate
@@ -111,51 +114,51 @@
 //!     * `NodeKind::LocalWithRefs` is used for `Local`s that aren't themselves refs/ptrs, but contain
 //!       `Local`s that correspond to refs/ptrs or other `Local`s with `Node`s of kind `NodeKind::LocalWithRef`s.
 //!       `LocalWithRefs` is also used for exposed pointers.
-//!       Let's look at an example:
+//!     ```
 //!
-//!        ```ignore
-//!         _4 = Bar {}
-//!         _5 = Ref(_4)
-//!         _6 = Foo(..)(move _5)
-//!         ...
-//!         _7 = (_6.0)
-//!         ```
+//! Let's look at an example:
 //!
-//!         In this example `_6` would be given `NodeKind::LocalWithRefs` and our graph would look
-//!         as follows:
+//! ```text
+//!     _4 = Bar {}
+//!     _5 = Ref(_4)
+//!     _6 = Foo(..)(move _5)
+//!     ...
+//!     _7 = (_6.0)
 //!
-//!         `_7` (NodeKind::Borrow) <-> `_6` (NodeKind::LocalWithRefs) <-> `_5` (NodeKind::Borrow) <-> `_4` (NodeKind::Local)
+//!     In this example `_6` would be given `NodeKind::LocalWithRefs` and our graph would look
+//!     as follows:
 //!
-//!         On the one hand we need to treat `Local`s with `Node`s of kind `NodeKind::LocalWithRefs` similarly
-//!         to how we treat `Local`s with `Node`s of kind `NodeKind::Local`, in the sense that if they are
-//!         borrowed we want to keep them live over the live range of the borrow. But on the other hand we
-//!         want to also treat them like `Local`s with `Node`s of kind `NodeKind::Borrow` as they ultimately
-//!         could also contain references or pointers that refer to other `Local`s. So we want a
-//!         path in the graph from a `NodeKind::LocalWithRef`s node to the `NodeKind::Local` nodes, whose borrows
-//!         they might contain.
+//!     `_7` (NodeKind::Borrow) <-> `_6` (NodeKind::LocalWithRefs) <-> `_5` (NodeKind::Borrow) <-> `_4` (NodeKind::Local)
 //!
-//!         Additionally `NodeKind::LocalWithRefs` is also used for raw pointers that are cast to
-//!         `usize`:
+//!     On the one hand we need to treat `Local`s with `Node`s of kind `NodeKind::LocalWithRefs` similarly
+//!     to how we treat `Local`s with `Node`s of kind `NodeKind::Local`, in the sense that if they are
+//!     borrowed we want to keep them live over the live range of the borrow. But on the other hand we
+//!     want to also treat them like `Local`s with `Node`s of kind `NodeKind::Borrow` as they ultimately
+//!     could also contain references or pointers that refer to other `Local`s. So we want a
+//!     path in the graph from a `NodeKind::LocalWithRef`s node to the `NodeKind::Local` nodes, whose borrows
+//!     they might contain.
 //!
-//!         ```ignore
-//!         _4 = Bar {}
-//!         _5 = AddressOf(_4)
-//!         _6 = _5 as usize
-//!         _7 = Aggregate(..) (move _6)
-//!         _8 = (_7.0)
-//!         ```
+//!     Additionally `NodeKind::LocalWithRefs` is also used for raw pointers that are cast to
+//!     `usize`:
 //!
-//!         In this example our graph would have the following edges:
-//!             * `_5` (Borrow) <-> `_4` (Local)
-//!             * `_6` (LocalWithRefs) <-> `_5` (Borrow)
-//!             * `_7` (LocalWithRefs) <-> `_6` (LocalWithRefs)
-//!             * `_8` (LocalWithRefs) <-> `_7` (LocalWithRefs)
+//!     _4 = Bar {}
+//!     _5 = AddressOf(_4)
+//!     _6 = _5 as usize
+//!     _7 = Aggregate(..) (move _6)
+//!     _8 = (_7.0)
 //!
-//!         We also have to be careful about dealing with `Terminator`s. Whenever we pass references,
-//!         pointers or `Local`s with `NodeKind::LocalWithRefs` to a `TerminatorKind::Call` or
-//!         `TerminatorKind::Yield`, the destination `Place` or resume place, resp., might contain
-//!         these references, pointers or `LocalWithRefs`, hence we have to be conservative
-//!         and keep the `destination` `Local` and `resume_arg` `Local` live.
+//!     In this example our graph would have the following edges:
+//!         * `_5` (Borrow) <-> `_4` (Local)
+//!         * `_6` (LocalWithRefs) <-> `_5` (Borrow)
+//!         * `_7` (LocalWithRefs) <-> `_6` (LocalWithRefs)
+//!         * `_8` (LocalWithRefs) <-> `_7` (LocalWithRefs)
+//!
+//!     We also have to be careful about dealing with `Terminator`s. Whenever we pass references,
+//!     pointers or `Local`s with `NodeKind::LocalWithRefs` to a `TerminatorKind::Call` or
+//!     `TerminatorKind::Yield`, the destination `Place` or resume place, resp., might contain
+//!     these references, pointers or `LocalWithRefs`, hence we have to be conservative
+//!     and keep the `destination` `Local` and `resume_arg` `Local` live.
+//! ```
 //!
 //! 2. Liveness analysis for borrows
 //!
@@ -163,7 +166,7 @@
 //! So we `gen` at any use site, which are either direct uses of these `Local`s or projections that contain
 //! these `Local`s. So e.g.:
 //!
-//! ```ignore
+//! ```text
 //! 1. _3 = Foo {}
 //! 2. _4 = Bar {}
 //! 3. _5 = Ref(_3)
@@ -173,7 +176,6 @@
 //! 7. _9 = (_8.0)
 //! 8. _10 = const 5
 //! 9. (_7.0) = move _10
-//! ```
 //!
 //! * `_5` is live from stmt 3 to stmt 9
 //! * `_6` is live from stmt 4 to stmt 7
@@ -181,28 +183,34 @@
 //!   analyis. It's live from stmt 5 to stmt 9
 //! * `_8` is a `Local` of kind `LocalWithRefs`. It's live from 6. to 7.
 //! * `_9` is a `Local` of kind `LocalWithRefs`. It's live at 7.
+//! ```
 //!
 //! 3. Determining which `Local`s are borrowed
 //!
 //! Let's use our last example again. The dependency graph for that example looks as follows:
 //!
+//! ```text
 //! `_5` (Borrow) <-> `_3` (Local)
 //! `_6` (Borrow) <-> `_4` (Local)
 //! `_7` (LocalWithRef) <-> `_5` (Borrow)
 //! `_8` (LocalWithRef) -> `_6` (Borrow)
 //! `_9` (LocalWithRef) <-> `_8` (LocalWithRef)
 //! `_7` (LocalWithRef) <-> `_10` (Local)
+//! ```
 //!
 //! We then construct a strongly connected components graph from the dependency graph, yielding:
 //!
+//! ```text
 //! SCC1: [_3, _5, _7, _10]
 //! SCC2: [_4, _6, _8, _9]
+//! ```
 //!
 //! Now for each statement in the `Body` we check which refs/ptrs or `LocalWithRefs` are live at that statement
 //! and then perform a depth-first search in the scc graph, collecting all `Local`s that need to be kept alive
 //! (`Local`s that have `Node`s in the graph of either `NodeKind::Local` or `NodeKind::LocalWithRefs`).
 //! So at each of those statements we have the following `Local`s that are live due to borrows:
 //!
+//! ```text
 //! 1. {}
 //! 2. {}
 //! 3. {_3}
@@ -212,12 +220,14 @@
 //! 7. {_3, _4, _7, _8, _9}
 //! 8. {_3, _7}
 //! 9. {_3, _7, _10}
+//! ```
 //!
 //! Ensuring soundness in all cases requires us to be more conservative (i.e. keeping more `Local`s alive) than necessary
 //! in most situations. To eliminate all the unnecessary `Local`s we use the fact that the analysis performed by
 //! `MaybeBorrowedLocals` functions as an upper bound for which `Local`s need to be kept alive. Hence we take the intersection
 //! of the two analyses at each statement. The results of `MaybeBorrowedLocals` for our example are:
 //!
+//! ```text
 //! 1. {}
 //! 2. {}
 //! 3. {_3}
@@ -227,9 +237,11 @@
 //! 7. {_3, _4,}
 //! 8. {_3, _4}
 //! 9. {_3, _4}
+//! ```
 //!
 //! Taking the intersection hence yields:
 //!
+//! ```text
 //! 1. {}
 //! 2. {}
 //! 3. {_3}
@@ -239,6 +251,7 @@
 //! 7. {_3, _4}
 //! 8. {_3}
 //! 9. {_3}
+//! ```
 
 use super::*;
 
