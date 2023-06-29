@@ -1865,9 +1865,10 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             } else {
                 lint::builtin::PRIVATE_BOUNDS
             };
-            self.tcx.emit_lint(
+            self.tcx.emit_spanned_lint(
                 lint,
                 hir_id,
+                span,
                 PrivateInterfacesOrBoundsLint {
                     item_span: span,
                     item_kind: self.tcx.def_descr(self.item_def_id.to_def_id()),
