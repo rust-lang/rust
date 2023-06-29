@@ -6,7 +6,6 @@ Version 1.71.0 (2023-07-13)
 Language
 --------
 
-- [Remove misleading target feature aliases, inappropriately connected to AVX-512.](https://github.com/rust-lang/rust/pull/107707/)
 - [Stabilize `raw-dylib`, `link_ordinal`, `import_name_type` and `-Cdlltool`.](https://github.com/rust-lang/rust/pull/109677/)
 - [Uplift `clippy::{drop,forget}_{ref,copy}` lints.](https://github.com/rust-lang/rust/pull/109732/)
 - [Type inference is more conservative around constrained vars.](https://github.com/rust-lang/rust/pull/110100/)
