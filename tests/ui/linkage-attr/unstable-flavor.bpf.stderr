@@ -1,2 +1,2 @@
-error: linker flavor `bpf-linker` is unstable, `-Z unstable-options` flag must also be passed to explicitly use it
+error: the linker flavor `bpf-linker` is unstable, the `-Z unstable-options` flag must also be passed to use the unstable values
 
