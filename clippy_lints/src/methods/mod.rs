@@ -513,6 +513,7 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map(|a| a + 1).unwrap_or(0);
+    /// option.map(|a| a > 10).unwrap_or(false);
     /// result.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     ///
@@ -522,6 +523,7 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map_or(0, |a| a + 1);
+    /// option.is_some_and(|a| a > 10);
     /// result.map_or_else(some_function, |a| a + 1);
     /// ```
     #[clippy::version = "1.45.0"]
@@ -3904,7 +3906,7 @@ impl Methods {
                             manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
                         },
                         Some(("map", m_recv, [m_arg], span, _)) => {
-                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
+                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
                         },
                         Some(("then_some", t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);

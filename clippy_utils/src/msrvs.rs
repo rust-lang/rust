@@ -19,6 +19,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,70,0 { OPTION_IS_SOME_AND }
     1,68,0 { PATH_MAIN_SEPARATOR_STR }
     1,65,0 { LET_ELSE, POINTER_CAST_CONSTNESS }
     1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE }

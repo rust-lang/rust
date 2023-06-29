@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -19,6 +20,7 @@ use rustc_span::sym;
 use super::MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or()` for `Option`s
+#[expect(clippy::too_many_arguments)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &rustc_hir::Expr<'_>,
@@ -27,6 +29,7 @@ pub(super) fn check<'tcx>(
     unwrap_recv: &rustc_hir::Expr<'_>,
     unwrap_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
+    msrv: &Msrv,
 ) {
     // lint if the caller of `map()` is an `Option`
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
@@ -74,16 +77,29 @@ pub(super) fn check<'tcx>(
             return;
         }
 
+        // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
+        let suggest_is_some_and = msrv.meets(msrvs::OPTION_IS_SOME_AND)
+            && matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
+            if matches!(lit.node, rustc_ast::LitKind::Bool(false)));
+
         let mut applicability = Applicability::MachineApplicable;
         // get snippet for unwrap_or()
         let unwrap_snippet = snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability);
         // lint message
         // comparing the snippet from source to raw text ("None") below is safe
         // because we already have checked the type.
-        let arg = if unwrap_snippet == "None" { "None" } else { "<a>" };
+        let arg = if unwrap_snippet == "None" {
+            "None"
+        } else if suggest_is_some_and {
+            "false"
+        } else {
+            "<a>"
+        };
         let unwrap_snippet_none = unwrap_snippet == "None";
         let suggest = if unwrap_snippet_none {
             "and_then(<f>)"
+        } else if suggest_is_some_and {
+            "is_some_and(<f>)"
         } else {
             "map_or(<a>, <f>)"
         };
@@ -98,12 +114,18 @@ pub(super) fn check<'tcx>(
             let mut suggestion = vec![
                 (
                     map_span,
-                    String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
+                    String::from(if unwrap_snippet_none {
+                        "and_then"
+                    } else if suggest_is_some_and {
+                        "is_some_and"
+                    } else {
+                        "map_or"
+                    }),
                 ),
                 (expr.span.with_lo(unwrap_recv.span.hi()), String::new()),
             ];
 
-            if !unwrap_snippet_none {
+            if !unwrap_snippet_none && !suggest_is_some_and {
                 suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
             }
 
