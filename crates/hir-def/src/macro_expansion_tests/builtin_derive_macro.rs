@@ -279,6 +279,44 @@ impl < > core::cmp::Eq for Command< > where {}"#]],
 }
 
 #[test]
+fn test_partial_eq_expand_with_derive_const() {
+    // FIXME: actually expand with const
+    check(
+        r#"
+//- minicore: derive, eq
+#[derive_const(PartialEq, Eq)]
+enum Command {
+    Move { x: i32, y: i32 },
+    Do(&'static str),
+    Jump,
+}
+"#,
+        expect![[r#"
+#[derive_const(PartialEq, Eq)]
+enum Command {
+    Move { x: i32, y: i32 },
+    Do(&'static str),
+    Jump,
+}
+
+impl < > core::cmp::PartialEq for Command< > where {
+    fn eq(&self , other: &Self ) -> bool {
+        match (self , other) {
+            (Command::Move {
+                x: x_self, y: y_self,
+            }
+            , Command::Move {
+                x: x_other, y: y_other,
+            }
+            )=>x_self.eq(x_other) && y_self.eq(y_other), (Command::Do(f0_self, ), Command::Do(f0_other, ))=>f0_self.eq(f0_other), (Command::Jump, Command::Jump)=>true , _unused=>false
+        }
+    }
+}
+impl < > core::cmp::Eq for Command< > where {}"#]],
+    );
+}
+
+#[test]
 fn test_partial_ord_expand() {
     check(
         r#"

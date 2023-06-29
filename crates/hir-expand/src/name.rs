@@ -365,6 +365,7 @@ pub mod known {
         cfg_eval,
         crate_type,
         derive,
+        derive_const,
         global_allocator,
         no_core,
         no_std,
