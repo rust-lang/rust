@@ -1311,6 +1311,11 @@ mod macros {
         pub macro derive($item:item) {
             /* compiler built-in */
         }
+
+        #[rustc_builtin_macro]
+        pub macro derive_const($item:item) {
+            /* compiler built-in */
+        }
     }
     // endregion:derive
 
@@ -1378,24 +1383,24 @@ pub mod error {
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
-            clone::Clone,                       // :clone
-            cmp::{Eq, PartialEq},               // :eq
-            cmp::{Ord, PartialOrd},             // :ord
-            convert::AsRef,                     // :as_ref
-            convert::{From, Into},              // :from
-            default::Default,                   // :default
-            iter::{IntoIterator, Iterator},     // :iterator
-            macros::builtin::derive,            // :derive
-            marker::Copy,                       // :copy
-            marker::Send,                       // :send
-            marker::Sized,                      // :sized
-            marker::Sync,                       // :sync
-            mem::drop,                          // :drop
-            ops::Drop,                          // :drop
-            ops::{Fn, FnMut, FnOnce},           // :fn
-            option::Option::{self, None, Some}, // :option
-            panic,                              // :panic
-            result::Result::{self, Err, Ok},    // :result
+            clone::Clone,                            // :clone
+            cmp::{Eq, PartialEq},                    // :eq
+            cmp::{Ord, PartialOrd},                  // :ord
+            convert::AsRef,                          // :as_ref
+            convert::{From, Into},                   // :from
+            default::Default,                        // :default
+            iter::{IntoIterator, Iterator},          // :iterator
+            macros::builtin::{derive, derive_const}, // :derive
+            marker::Copy,                            // :copy
+            marker::Send,                            // :send
+            marker::Sized,                           // :sized
+            marker::Sync,                            // :sync
+            mem::drop,                               // :drop
+            ops::Drop,                               // :drop
+            ops::{Fn, FnMut, FnOnce},                // :fn
+            option::Option::{self, None, Some},      // :option
+            panic,                                   // :panic
+            result::Result::{self, Err, Ok},         // :result
         };
     }
 
