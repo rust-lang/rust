@@ -121,6 +121,12 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                     self.collector.opaques.extend(items);
                 }
             }
+            #[instrument(level = "trace", skip(self))]
+            // Recurse into these, as they are type checked with their parent
+            fn visit_nested_body(&mut self, id: rustc_hir::BodyId) {
+                let body = self.collector.tcx.hir().body(id);
+                self.visit_body(body);
+            }
         }
         TaitInBodyFinder { collector: self }.visit_expr(body);
     }
@@ -280,11 +286,7 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
             collector.collect_body_and_predicate_taits();
         }
         // Walk over the type of the item to find opaques.
-        DefKind::Static(_)
-        | DefKind::Const
-        | DefKind::AssocConst
-        | DefKind::AnonConst
-        | DefKind::InlineConst => {
+        DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
             let span = match tcx.hir().get_by_def_id(item).ty() {
                 Some(ty) => ty.span,
                 _ => tcx.def_span(item),
@@ -321,11 +323,9 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Impl { .. } => {}
-        DefKind::Closure | DefKind::Generator => {
-            // All items in the signature of the parent are ok
-            collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
-            // And items in the body of the closure itself
-            collector.collect_taits_declared_in_body();
+        // Closures and generators are type checked with their parent, so there is no difference here.
+        DefKind::Closure | DefKind::Generator | DefKind::InlineConst => {
+            return tcx.opaque_types_defined_by(tcx.local_parent(item));
         }
     }
     tcx.arena.alloc_from_iter(collector.opaques)
