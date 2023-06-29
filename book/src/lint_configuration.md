@@ -108,6 +108,7 @@ The minimum rust version that the project supports
 * [`manual_str_repeat`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_str_repeat)
 * [`cloned_instead_of_copied`](https://rust-lang.github.io/rust-clippy/master/index.html#cloned_instead_of_copied)
 * [`redundant_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names)
+* [`option_map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unwrap_or)
 * [`redundant_static_lifetimes`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_static_lifetimes)
 * [`filter_map_next`](https://rust-lang.github.io/rust-clippy/master/index.html#filter_map_next)
 * [`checked_conversions`](https://rust-lang.github.io/rust-clippy/master/index.html#checked_conversions)
