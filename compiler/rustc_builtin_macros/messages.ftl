@@ -1,4 +1,5 @@
 builtin_macros_alloc_error_must_be_fn = alloc_error_handler must be a function
+builtin_macros_alloc_must_statics = allocators must be statics
 
 builtin_macros_asm_clobber_abi = clobber_abi
 builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs
@@ -56,6 +57,9 @@ builtin_macros_bad_derive_target = `derive` may only be applied to `struct`s, `e
     .label = not applicable here
     .label2 = not a `struct`, `enum` or `union`
 
+builtin_macros_bench_sig = functions used as benches must have signature `fn(&mut Bencher) -> impl Termination`
+
+
 builtin_macros_cannot_derive_union = this trait cannot be derived for unions
 
 builtin_macros_cfg_accessible_has_args = `cfg_accessible` path cannot accept arguments
@@ -84,6 +88,7 @@ builtin_macros_concat_bytes_non_u8 = numeric literal is not a `u8`
 builtin_macros_concat_bytes_oob = numeric literal is out of bounds
 
 builtin_macros_concat_bytestr = cannot concatenate a byte string literal
+builtin_macros_concat_c_str_lit = cannot concatenate a C string literal
 
 builtin_macros_concat_idents_ident_args = `concat_idents!()` requires ident args
 
@@ -110,6 +115,10 @@ builtin_macros_env_not_defined = environment variable `{$var}` not defined at co
 builtin_macros_env_takes_args = `env!()` takes 1 or 2 arguments
 
 builtin_macros_expected_one_cfg_pattern = expected 1 cfg-pattern
+
+builtin_macros_expected_register_class_or_explicit_register = expected register class or explicit register
+
+builtin_macros_export_macro_rules = cannot export macro_rules! macros from a `proc-macro` crate type currently
 
 builtin_macros_format_duplicate_arg = duplicate argument named `{$ident}`
     .label1 = previously here
@@ -158,6 +167,8 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
 
 builtin_macros_global_asm_clobber_abi = `clobber_abi` cannot be used with `global_asm!`
 
+builtin_macros_invalid_crate_attribute = invalid crate attribute
+
 builtin_macros_multiple_default_attrs = multiple `#[default]` attributes
     .note = only one `#[default]` attribute is needed
     .label = `#[default]` used here
@@ -177,6 +188,8 @@ builtin_macros_no_default_variant = no default declared
     .help = make a unit variant default by placing `#[default]` above it
     .suggestion = make `{$ident}` default
 
+builtin_macros_non_abi = at least one abi must be provided as an argument to `clobber_abi`
+
 builtin_macros_non_exhaustive_default = default variant must be exhaustive
     .label = declared `#[non_exhaustive]` here
     .help = consider a manual implementation of `Default`
@@ -184,11 +197,19 @@ builtin_macros_non_exhaustive_default = default variant must be exhaustive
 builtin_macros_non_unit_default = the `#[default]` attribute may only be used on unit enum variants
     .help = consider a manual implementation of `Default`
 
+builtin_macros_proc_macro = `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+
 builtin_macros_requires_cfg_pattern =
     macro requires a cfg-pattern as an argument
     .label = cfg-pattern required
 
+builtin_macros_should_panic = functions using `#[should_panic]` must return `()`
+
 builtin_macros_sugg = consider using a positional formatting argument instead
+
+builtin_macros_test_arg_non_lifetime = functions used as tests can not have any non-lifetime generic parameters
+
+builtin_macros_test_args = functions used as tests can not have any arguments
 
 builtin_macros_test_bad_fn = {$kind} functions cannot be used for tests
     .label = `{$kind}` because of this
@@ -197,6 +218,10 @@ builtin_macros_test_case_non_item = `#[test_case]` attribute is only allowed on 
 
 builtin_macros_test_runner_invalid = `test_runner` argument must be a path
 builtin_macros_test_runner_nargs = `#![test_runner(..)]` accepts exactly 1 argument
+
+builtin_macros_tests_not_support = building tests with panic=abort is not supported without `-Zpanic_abort_tests`
+
+builtin_macros_trace_macros = trace_macros! accepts only `true` or `false`
 
 builtin_macros_unexpected_lit = expected path to a trait, found literal
     .label = not a trait
