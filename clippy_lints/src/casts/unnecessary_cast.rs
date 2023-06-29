@@ -85,11 +85,6 @@ pub(super) fn check<'tcx>(
         }
     }
 
-    // skip cast of fn call that returns type alias
-    if let ExprKind::Cast(inner, ..) = expr.kind && is_cast_from_ty_alias(cx, inner, cast_from) {
-        return false;
-    }
-
     // skip cast to non-primitive type
     if_chain! {
         if let ExprKind::Cast(_, cast_to) = expr.kind;
@@ -99,6 +94,11 @@ pub(super) fn check<'tcx>(
         else {
             return false;
         }
+    }
+
+    // skip cast of fn call that returns type alias
+    if let ExprKind::Cast(inner, ..) = expr.kind && is_cast_from_ty_alias(cx, inner, cast_from) {
+        return false;
     }
 
     if let Some(lit) = get_numeric_literal(cast_expr) {
@@ -259,16 +259,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 if !snippet
                     .split("->")
                     .skip(1)
-                    .map(|s| {
-                        s.trim() == cast_from.to_string()
-                            || s.trim().contains(&format!("::{cast_from}"))
-                            || s.split("where").any(|ty| {
-                                ty.trim() == cast_from.to_string()
-                                    || ty.trim() == cast_from.to_string()
-                                    // Fully qualified path, or something silly like `::u32`
-                                    || s.trim().contains(&format!("::{cast_from}"))
-                            })
-                    })
+                    .map(|s| snippet_eq_ty(s, cast_from) || s.split("where").any(|ty| snippet_eq_ty(ty, cast_from)))
                     .any(|a| a)
                 {
                     return ControlFlow::Break(());
@@ -294,4 +285,8 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
         ControlFlow::Continue(())
     })
     .is_some()
+}
+
+fn snippet_eq_ty(snippet: &str, ty: Ty<'_>) -> bool {
+    snippet.trim() == ty.to_string() || snippet.trim().contains(&format!("::{ty}"))
 }
