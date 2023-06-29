@@ -64,7 +64,16 @@ LL | |     };
    | |______^ help: consider writing: `let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else_match.rs:76:5
+  --> $DIR/manual_let_else_match.rs:75:5
+   |
+LL | /     let _value = match Some(build_enum()) {
+LL | |         Some(Variant::Bar(v) | Variant::Baz(v)) => v,
+LL | |         _ => return,
+LL | |     };
+   | |______^ help: consider writing: `let Some(Variant::Bar(_value) | Variant::Baz(_value)) = Some(build_enum()) else { return };`
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else_match.rs:81:5
    |
 LL | /     let data = match data.as_slice() {
 LL | |         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,
@@ -72,5 +81,5 @@ LL | |         _ => return,
 LL | |     };
    | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

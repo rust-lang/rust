@@ -25,6 +25,12 @@ declare_clippy_lint! {
     /// It is just extraneous code. Remove it to make your code
     /// more rusty.
     ///
+    /// ### Known problems
+    /// In the case of some temporaries, e.g. locks, eliding the variable binding could lead
+    /// to deadlocks. See [this issue](https://github.com/rust-lang/rust/issues/37612).
+    /// This could become relevant if the code is later changed to use the code that would have been
+    /// bound without first assigning it to a let-binding.
+    ///
     /// ### Example
     /// ```rust
     /// fn foo() -> String {
@@ -286,7 +292,7 @@ fn check_final_expr<'tcx>(
         // (except for unit type functions) so we don't match it
         ExprKind::Match(_, arms, MatchSource::Normal) => {
             let match_ty = cx.typeck_results().expr_ty(peeled_drop_expr);
-            for arm in arms.iter() {
+            for arm in *arms {
                 check_final_expr(cx, arm.body, semi_spans.clone(), RetReplacement::Unit, Some(match_ty));
             }
         },

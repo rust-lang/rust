@@ -166,15 +166,15 @@ fn is_value_unfrozen_raw<'tcx>(
             // have a value that is a frozen variant with a generic param (an example is
             // `declare_interior_mutable_const::enums::BothOfCellAndGeneric::GENERIC_VARIANT`).
             // However, it prevents a number of false negatives that is, I think, important:
-            // 1. assoc consts in trait defs referring to consts of themselves
-            //    (an example is `declare_interior_mutable_const::traits::ConcreteTypes::ANOTHER_ATOMIC`).
-            // 2. a path expr referring to assoc consts whose type is doesn't have
-            //    any frozen variants in trait defs (i.e. without substitute for `Self`).
-            //    (e.g. borrowing `borrow_interior_mutable_const::trait::ConcreteTypes::ATOMIC`)
-            // 3. similar to the false positive above;
-            //    but the value is an unfrozen variant, or the type has no enums. (An example is
-            //    `declare_interior_mutable_const::enums::BothOfCellAndGeneric::UNFROZEN_VARIANT`
-            //    and `declare_interior_mutable_const::enums::BothOfCellAndGeneric::NO_ENUM`).
+            // 1. assoc consts in trait defs referring to consts of themselves (an example is
+            //    `declare_interior_mutable_const::traits::ConcreteTypes::ANOTHER_ATOMIC`).
+            // 2. a path expr referring to assoc consts whose type is doesn't have any frozen variants in trait
+            //    defs (i.e. without substitute for `Self`). (e.g. borrowing
+            //    `borrow_interior_mutable_const::trait::ConcreteTypes::ATOMIC`)
+            // 3. similar to the false positive above; but the value is an unfrozen variant, or the type has no
+            //    enums. (An example is
+            //    `declare_interior_mutable_const::enums::BothOfCellAndGeneric::UNFROZEN_VARIANT` and
+            //    `declare_interior_mutable_const::enums::BothOfCellAndGeneric::NO_ENUM`).
             // One might be able to prevent these FNs correctly, and replace this with `false`;
             // e.g. implementing `has_frozen_variant` described above, and not running this function
             // when the type doesn't have any frozen variants would be the 'correct' way for the 2nd

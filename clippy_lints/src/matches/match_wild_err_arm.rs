@@ -25,7 +25,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
                     let mut ident_bind_name = kw::Underscore;
                     if !matching_wild {
                         // Looking for unused bindings (i.e.: `_e`)
-                        for pat in inner.iter() {
+                        for pat in inner {
                             if let PatKind::Binding(_, id, ident, None) = pat.kind {
                                 if ident.as_str().starts_with('_') && !is_local_used(cx, arm.body, id) {
                                     ident_bind_name = ident.name;

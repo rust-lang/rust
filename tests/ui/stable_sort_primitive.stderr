@@ -1,5 +1,5 @@
 error: used `sort` on primitive type `i32`
-  --> $DIR/stable_sort_primitive.rs:7:5
+  --> $DIR/stable_sort_primitive.rs:8:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -8,7 +8,7 @@ LL |     vec.sort();
    = note: `-D clippy::stable-sort-primitive` implied by `-D warnings`
 
 error: used `sort` on primitive type `bool`
-  --> $DIR/stable_sort_primitive.rs:9:5
+  --> $DIR/stable_sort_primitive.rs:10:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -16,7 +16,7 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `char`
-  --> $DIR/stable_sort_primitive.rs:11:5
+  --> $DIR/stable_sort_primitive.rs:12:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -24,7 +24,7 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `str`
-  --> $DIR/stable_sort_primitive.rs:13:5
+  --> $DIR/stable_sort_primitive.rs:14:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -32,7 +32,7 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `tuple`
-  --> $DIR/stable_sort_primitive.rs:15:5
+  --> $DIR/stable_sort_primitive.rs:16:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -40,7 +40,7 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `array`
-  --> $DIR/stable_sort_primitive.rs:17:5
+  --> $DIR/stable_sort_primitive.rs:18:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -48,7 +48,7 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `i32`
-  --> $DIR/stable_sort_primitive.rs:19:5
+  --> $DIR/stable_sort_primitive.rs:20:5
    |
 LL |     arr.sort();
    |     ^^^^^^^^^^ help: try: `arr.sort_unstable()`

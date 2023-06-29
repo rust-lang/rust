@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_crash.rs
+//@aux-build:proc_macro_crash.rs:proc-macro
 
 #![warn(clippy::suspicious_else_formatting)]
 

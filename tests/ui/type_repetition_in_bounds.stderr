@@ -1,5 +1,5 @@
 error: this type has already been used as a bound predicate
-  --> $DIR/type_repetition_in_bounds.rs:9:5
+  --> $DIR/type_repetition_in_bounds.rs:10:5
    |
 LL |     T: Clone,
    |     ^^^^^^^^
@@ -12,7 +12,7 @@ LL | #![deny(clippy::type_repetition_in_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this type has already been used as a bound predicate
-  --> $DIR/type_repetition_in_bounds.rs:26:5
+  --> $DIR/type_repetition_in_bounds.rs:27:5
    |
 LL |     Self: Copy + Default + Ord,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |     Self: Copy + Default + Ord,
    = help: consider combining the bounds: `Self: Clone + Copy + Default + Ord`
 
 error: this type has already been used as a bound predicate
-  --> $DIR/type_repetition_in_bounds.rs:86:5
+  --> $DIR/type_repetition_in_bounds.rs:101:5
    |
 LL |     T: Clone,
    |     ^^^^^^^^
@@ -28,12 +28,20 @@ LL |     T: Clone,
    = help: consider combining the bounds: `T: ?Sized + Clone`
 
 error: this type has already been used as a bound predicate
-  --> $DIR/type_repetition_in_bounds.rs:91:5
+  --> $DIR/type_repetition_in_bounds.rs:106:5
    |
 LL |     T: ?Sized,
    |     ^^^^^^^^^
    |
    = help: consider combining the bounds: `T: Clone + ?Sized`
 
-error: aborting due to 4 previous errors
+error: this type has already been used as a bound predicate
+  --> $DIR/type_repetition_in_bounds.rs:131:9
+   |
+LL |         T: Trait<Option<usize>, Box<[String]>, bool> + 'static,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider combining the bounds: `T: ?Sized + Trait<Option<usize>, Box<[String]>, bool>`
+
+error: aborting due to 5 previous errors
 

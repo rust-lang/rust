@@ -1,5 +1,7 @@
 [alias]
 uitest = "test --test compile-test"
+uibless = "test --test compile-test -- -- --bless"
+bless = "test -- -- --bless"
 dev = "run --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
 lintcheck = "run --package lintcheck --bin lintcheck --manifest-path lintcheck/Cargo.toml  -- "
 collect-metadata = "test --test dogfood --features internal -- run_metadata_collection_lint --ignored"

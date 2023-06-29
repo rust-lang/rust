@@ -1,5 +1,5 @@
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:14:5
+  --> $DIR/collapsible_if.rs:15:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" {
@@ -17,7 +17,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:20:5
+  --> $DIR/collapsible_if.rs:21:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -34,7 +34,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:26:5
+  --> $DIR/collapsible_if.rs:27:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -51,7 +51,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:32:5
+  --> $DIR/collapsible_if.rs:33:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -68,7 +68,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:38:5
+  --> $DIR/collapsible_if.rs:39:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -85,7 +85,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:44:5
+  --> $DIR/collapsible_if.rs:45:5
    |
 LL | /     if 42 == 1337 {
 LL | |         if 'a' != 'A' {
@@ -102,7 +102,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:100:5
+  --> $DIR/collapsible_if.rs:101:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" { // Collapsible
@@ -119,7 +119,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:159:5
+  --> $DIR/collapsible_if.rs:160:5
    |
 LL | /     if matches!(true, true) {
 LL | |         if matches!(true, true) {}
@@ -127,7 +127,7 @@ LL | |     }
    | |_____^ help: collapse nested if block: `if matches!(true, true) && matches!(true, true) {}`
 
 error: this `if` statement can be collapsed
-  --> $DIR/collapsible_if.rs:164:5
+  --> $DIR/collapsible_if.rs:165:5
    |
 LL | /     if matches!(true, true) && truth() {
 LL | |         if matches!(true, true) {}

@@ -333,7 +333,7 @@ impl<'cx, 'sdt, 'tcx> SigDropChecker<'cx, 'sdt, 'tcx> {
                         return true;
                     }
                 }
-                for generic_arg in b.iter() {
+                for generic_arg in *b {
                     if let GenericArgKind::Type(ty) = generic_arg.unpack() {
                         if self.has_sig_drop_attr(ty) {
                             return true;

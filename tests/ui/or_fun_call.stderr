@@ -1,5 +1,5 @@
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:48:22
+  --> $DIR/or_fun_call.rs:54:22
    |
 LL |     with_constructor.unwrap_or(make());
    |                      ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(make)`
@@ -7,163 +7,163 @@ LL |     with_constructor.unwrap_or(make());
    = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:51:14
+  --> $DIR/or_fun_call.rs:57:14
    |
 LL |     with_new.unwrap_or(Vec::new());
    |              ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:54:21
+  --> $DIR/or_fun_call.rs:60:21
    |
 LL |     with_const_args.unwrap_or(Vec::with_capacity(12));
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:57:14
+  --> $DIR/or_fun_call.rs:63:14
    |
 LL |     with_err.unwrap_or(make());
    |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| make())`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:60:19
+  --> $DIR/or_fun_call.rs:66:19
    |
 LL |     with_err_args.unwrap_or(Vec::with_capacity(12));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:63:24
+  --> $DIR/or_fun_call.rs:69:24
    |
 LL |     with_default_trait.unwrap_or(Default::default());
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:66:23
+  --> $DIR/or_fun_call.rs:72:23
    |
 LL |     with_default_type.unwrap_or(u64::default());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:69:18
+  --> $DIR/or_fun_call.rs:75:18
    |
 LL |     self_default.unwrap_or(<FakeDefault>::default());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(<FakeDefault>::default)`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:72:18
+  --> $DIR/or_fun_call.rs:78:18
    |
 LL |     real_default.unwrap_or(<FakeDefault as Default>::default());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:75:14
+  --> $DIR/or_fun_call.rs:81:14
    |
 LL |     with_vec.unwrap_or(vec![]);
    |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:78:21
+  --> $DIR/or_fun_call.rs:84:21
    |
 LL |     without_default.unwrap_or(Foo::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:81:19
+  --> $DIR/or_fun_call.rs:87:19
    |
 LL |     map.entry(42).or_insert(String::new());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
 
 error: use of `or_insert` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:84:23
+  --> $DIR/or_fun_call.rs:90:23
    |
 LL |     map_vec.entry(42).or_insert(vec![]);
    |                       ^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
 
 error: use of `or_insert` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:87:21
+  --> $DIR/or_fun_call.rs:93:21
    |
 LL |     btree.entry(42).or_insert(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
 
 error: use of `or_insert` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:90:25
+  --> $DIR/or_fun_call.rs:96:25
    |
 LL |     btree_vec.entry(42).or_insert(vec![]);
    |                         ^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:93:21
+  --> $DIR/or_fun_call.rs:99:21
    |
 LL |     let _ = stringy.unwrap_or(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:101:21
+  --> $DIR/or_fun_call.rs:107:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:103:21
+  --> $DIR/or_fun_call.rs:109:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
 
 error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:127:35
+  --> $DIR/or_fun_call.rs:133:35
    |
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some("b".to_string()))`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:166:14
+  --> $DIR/or_fun_call.rs:172:14
    |
 LL |         None.unwrap_or(ptr_to_ref(s));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| ptr_to_ref(s))`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:172:14
+  --> $DIR/or_fun_call.rs:178:14
    |
 LL |         None.unwrap_or(unsafe { ptr_to_ref(s) });
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:174:14
+  --> $DIR/or_fun_call.rs:180:14
    |
 LL |         None.unwrap_or( unsafe { ptr_to_ref(s) }    );
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:188:14
+  --> $DIR/or_fun_call.rs:194:14
    |
 LL |             .unwrap_or(String::new());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:201:14
+  --> $DIR/or_fun_call.rs:207:14
    |
 LL |             .unwrap_or(String::new());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:213:14
+  --> $DIR/or_fun_call.rs:219:14
    |
 LL |             .unwrap_or(String::new());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:224:10
+  --> $DIR/or_fun_call.rs:230:10
    |
 LL |         .unwrap_or(String::new());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `map_or` followed by a function call
-  --> $DIR/or_fun_call.rs:249:25
+  --> $DIR/or_fun_call.rs:255:25
    |
 LL |         let _ = Some(4).map_or(g(), |v| v);
    |                         ^^^^^^^^^^^^^^^^^^ help: try this: `map_or_else(g, |v| v)`
 
 error: use of `map_or` followed by a function call
-  --> $DIR/or_fun_call.rs:250:25
+  --> $DIR/or_fun_call.rs:256:25
    |
 LL |         let _ = Some(4).map_or(g(), f);
    |                         ^^^^^^^^^^^^^^ help: try this: `map_or_else(g, f)`

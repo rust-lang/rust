@@ -140,6 +140,9 @@ fn try_get_option_occurrence<'tcx>(
             let (as_ref, as_mut) = match &expr.kind {
                 ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
                 ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
+                _ if let Some(mutb) = cx.typeck_results().expr_ty(expr).ref_mutability() => {
+                    (mutb == Mutability::Not, mutb == Mutability::Mut)
+                }
                 _ => (bind_annotation == BindingAnnotation::REF, bind_annotation == BindingAnnotation::REF_MUT),
             };
 

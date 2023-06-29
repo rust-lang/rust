@@ -1,3 +1,3 @@
 fn main() {
-    println!("{}" a); //~ERROR expected `,`, found `a`
+    println!("{}" a); //~ERROR: expected `,`, found `a`
 }

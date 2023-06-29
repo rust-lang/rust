@@ -1,5 +1,5 @@
 error: called `.iter().count()` on a `slice`
-  --> $DIR/iter_count.rs:54:6
+  --> $DIR/iter_count.rs:55:6
    |
 LL |     &vec[..].iter().count();
    |      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
@@ -7,145 +7,145 @@ LL |     &vec[..].iter().count();
    = note: `-D clippy::iter-count` implied by `-D warnings`
 
 error: called `.iter().count()` on a `Vec`
-  --> $DIR/iter_count.rs:55:5
+  --> $DIR/iter_count.rs:56:5
    |
 LL |     vec.iter().count();
    |     ^^^^^^^^^^^^^^^^^^ help: try: `vec.len()`
 
 error: called `.iter().count()` on a `slice`
-  --> $DIR/iter_count.rs:56:5
+  --> $DIR/iter_count.rs:57:5
    |
 LL |     boxed_slice.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `boxed_slice.len()`
 
 error: called `.iter().count()` on a `VecDeque`
-  --> $DIR/iter_count.rs:57:5
+  --> $DIR/iter_count.rs:58:5
    |
 LL |     vec_deque.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec_deque.len()`
 
 error: called `.iter().count()` on a `HashSet`
-  --> $DIR/iter_count.rs:58:5
+  --> $DIR/iter_count.rs:59:5
    |
 LL |     hash_set.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `hash_set.len()`
 
 error: called `.iter().count()` on a `HashMap`
-  --> $DIR/iter_count.rs:59:5
+  --> $DIR/iter_count.rs:60:5
    |
 LL |     hash_map.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `hash_map.len()`
 
 error: called `.iter().count()` on a `BTreeMap`
-  --> $DIR/iter_count.rs:60:5
+  --> $DIR/iter_count.rs:61:5
    |
 LL |     b_tree_map.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b_tree_map.len()`
 
 error: called `.iter().count()` on a `BTreeSet`
-  --> $DIR/iter_count.rs:61:5
+  --> $DIR/iter_count.rs:62:5
    |
 LL |     b_tree_set.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b_tree_set.len()`
 
 error: called `.iter().count()` on a `LinkedList`
-  --> $DIR/iter_count.rs:62:5
+  --> $DIR/iter_count.rs:63:5
    |
 LL |     linked_list.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `linked_list.len()`
 
 error: called `.iter().count()` on a `BinaryHeap`
-  --> $DIR/iter_count.rs:63:5
+  --> $DIR/iter_count.rs:64:5
    |
 LL |     binary_heap.iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `binary_heap.len()`
 
 error: called `.iter_mut().count()` on a `Vec`
-  --> $DIR/iter_count.rs:65:5
+  --> $DIR/iter_count.rs:66:5
    |
 LL |     vec.iter_mut().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.len()`
 
 error: called `.iter_mut().count()` on a `slice`
-  --> $DIR/iter_count.rs:66:6
+  --> $DIR/iter_count.rs:67:6
    |
 LL |     &vec[..].iter_mut().count();
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
 
 error: called `.iter_mut().count()` on a `VecDeque`
-  --> $DIR/iter_count.rs:67:5
+  --> $DIR/iter_count.rs:68:5
    |
 LL |     vec_deque.iter_mut().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec_deque.len()`
 
 error: called `.iter_mut().count()` on a `HashMap`
-  --> $DIR/iter_count.rs:68:5
+  --> $DIR/iter_count.rs:69:5
    |
 LL |     hash_map.iter_mut().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `hash_map.len()`
 
 error: called `.iter_mut().count()` on a `BTreeMap`
-  --> $DIR/iter_count.rs:69:5
+  --> $DIR/iter_count.rs:70:5
    |
 LL |     b_tree_map.iter_mut().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b_tree_map.len()`
 
 error: called `.iter_mut().count()` on a `LinkedList`
-  --> $DIR/iter_count.rs:70:5
+  --> $DIR/iter_count.rs:71:5
    |
 LL |     linked_list.iter_mut().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `linked_list.len()`
 
 error: called `.into_iter().count()` on a `slice`
-  --> $DIR/iter_count.rs:72:6
+  --> $DIR/iter_count.rs:73:6
    |
 LL |     &vec[..].into_iter().count();
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
 
 error: called `.into_iter().count()` on a `Vec`
-  --> $DIR/iter_count.rs:73:5
+  --> $DIR/iter_count.rs:74:5
    |
 LL |     vec.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.len()`
 
 error: called `.into_iter().count()` on a `VecDeque`
-  --> $DIR/iter_count.rs:74:5
+  --> $DIR/iter_count.rs:75:5
    |
 LL |     vec_deque.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec_deque.len()`
 
 error: called `.into_iter().count()` on a `HashSet`
-  --> $DIR/iter_count.rs:75:5
+  --> $DIR/iter_count.rs:76:5
    |
 LL |     hash_set.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `hash_set.len()`
 
 error: called `.into_iter().count()` on a `HashMap`
-  --> $DIR/iter_count.rs:76:5
+  --> $DIR/iter_count.rs:77:5
    |
 LL |     hash_map.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `hash_map.len()`
 
 error: called `.into_iter().count()` on a `BTreeMap`
-  --> $DIR/iter_count.rs:77:5
+  --> $DIR/iter_count.rs:78:5
    |
 LL |     b_tree_map.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b_tree_map.len()`
 
 error: called `.into_iter().count()` on a `BTreeSet`
-  --> $DIR/iter_count.rs:78:5
+  --> $DIR/iter_count.rs:79:5
    |
 LL |     b_tree_set.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b_tree_set.len()`
 
 error: called `.into_iter().count()` on a `LinkedList`
-  --> $DIR/iter_count.rs:79:5
+  --> $DIR/iter_count.rs:80:5
    |
 LL |     linked_list.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `linked_list.len()`
 
 error: called `.into_iter().count()` on a `BinaryHeap`
-  --> $DIR/iter_count.rs:80:5
+  --> $DIR/iter_count.rs:81:5
    |
 LL |     binary_heap.into_iter().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `binary_heap.len()`

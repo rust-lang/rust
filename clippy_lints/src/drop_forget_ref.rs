@@ -6,6 +6,7 @@ use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
+use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -47,6 +48,27 @@ declare_clippy_lint! {
     "call to `std::mem::forget` with a value which does not implement `Drop`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `std::mem::forget(t)` where `t` is
+    /// `Drop` or has a field that implements `Drop`.
+    ///
+    /// ### Why is this bad?
+    /// `std::mem::forget(t)` prevents `t` from running its
+    /// destructor, possibly causing leaks.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::mem;
+    /// # use std::rc::Rc;
+    /// mem::forget(Rc::new(55))
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MEM_FORGET,
+    restriction,
+    "`mem::forget` usage on `Drop` types, likely to cause memory leaks"
+}
+
 const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that does not implement `Drop`. \
                                  Dropping such a type only extends its contained lifetimes";
 const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value that does not implement `Drop`. \
@@ -55,6 +77,7 @@ const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value t
 declare_lint_pass!(DropForgetRef => [
     DROP_NON_DROP,
     FORGET_NON_DROP,
+    MEM_FORGET,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
@@ -67,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
             let arg_ty = cx.typeck_results().expr_ty(arg);
             let is_copy = is_copy(cx, arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
-            let (lint, msg) = match fn_name {
+            let (lint, msg, note_span) = match fn_name {
                 // early return for uplifted lints: dropping_references, dropping_copy_types, forgetting_references, forgetting_copy_types
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => return,
                 sym::mem_forget if arg_ty.is_ref() => return,
@@ -81,19 +104,34 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                         || drop_is_single_call_in_arm
                         ) =>
                 {
-                    (DROP_NON_DROP, DROP_NON_DROP_SUMMARY)
+                    (DROP_NON_DROP, DROP_NON_DROP_SUMMARY.into(), Some(arg.span))
                 },
-                sym::mem_forget if !arg_ty.needs_drop(cx.tcx, cx.param_env) => {
-                    (FORGET_NON_DROP, FORGET_NON_DROP_SUMMARY)
-                },
+                sym::mem_forget => {
+                    if arg_ty.needs_drop(cx.tcx, cx.param_env) {
+                        (
+                            MEM_FORGET,
+                            Cow::Owned(format!(
+                                "usage of `mem::forget` on {}",
+                                if arg_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {
+                                    "`Drop` type"
+                                } else {
+                                    "type with `Drop` fields"
+                                }
+                            )),
+                            None,
+                        )
+                    } else {
+                        (FORGET_NON_DROP, FORGET_NON_DROP_SUMMARY.into(), Some(arg.span))
+                    }
+                }
                 _ => return,
             };
             span_lint_and_note(
                 cx,
                 lint,
                 expr.span,
-                msg,
-                Some(arg.span),
+                &msg,
+                note_span,
                 &format!("argument has type `{arg_ty}`"),
             );
         }

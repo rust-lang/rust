@@ -36,8 +36,9 @@ impl<T> Context for io::Result<T> {
 /// # Errors
 ///
 /// This function errors out if the files couldn't be created or written to.
+#[allow(clippy::missing_panics_doc)]
 pub fn create(
-    pass: Option<&String>,
+    pass: &String,
     lint_name: Option<&String>,
     category: Option<&str>,
     mut ty: Option<&str>,
@@ -49,7 +50,7 @@ pub fn create(
     }
 
     let lint = LintData {
-        pass: pass.map_or("", String::as_str),
+        pass,
         name: lint_name.expect("`name` argument is validated by clap"),
         category: category.expect("`category` argument is validated by clap"),
         ty,
@@ -61,6 +62,14 @@ pub fn create(
 
     if lint.ty.is_none() {
         add_lint(&lint, msrv).context("Unable to add lint to clippy_lints/src/lib.rs")?;
+    }
+
+    if pass == "early" {
+        println!(
+            "\n\
+            NOTE: Use a late pass unless you need something specific from\
+            an early pass, as they lack many features and utilities"
+        );
     }
 
     Ok(())
@@ -87,7 +96,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
 
         path.push("src");
         fs::create_dir(&path)?;
-        let header = format!("// compile-flags: --crate-name={lint_name}");
+        let header = format!("//@compile-flags: --crate-name={lint_name}");
         write_file(path.join("main.rs"), get_test_file_contents(lint_name, Some(&header)))?;
 
         Ok(())

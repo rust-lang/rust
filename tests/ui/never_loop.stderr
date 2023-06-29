@@ -1,5 +1,5 @@
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:10:5
+  --> $DIR/never_loop.rs:12:5
    |
 LL | /     loop {
 LL | |         // clippy::never_loop
@@ -13,7 +13,7 @@ LL | |     }
    = note: `#[deny(clippy::never_loop)]` on by default
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:32:5
+  --> $DIR/never_loop.rs:34:5
    |
 LL | /     loop {
 LL | |         // never loops
@@ -23,7 +23,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:52:5
+  --> $DIR/never_loop.rs:54:5
    |
 LL | /     loop {
 LL | |         // never loops
@@ -35,7 +35,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:54:9
+  --> $DIR/never_loop.rs:56:9
    |
 LL | /         while i == 0 {
 LL | |             // never loops
@@ -44,7 +44,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:66:9
+  --> $DIR/never_loop.rs:68:9
    |
 LL | /         loop {
 LL | |             // never loops
@@ -56,7 +56,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:102:5
+  --> $DIR/never_loop.rs:104:5
    |
 LL | /     while let Some(y) = x {
 LL | |         // never loops
@@ -65,7 +65,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:109:5
+  --> $DIR/never_loop.rs:111:5
    |
 LL | /     for x in 0..10 {
 LL | |         // never loops
@@ -82,7 +82,7 @@ LL |     if let Some(x) = (0..10).next() {
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:157:5
+  --> $DIR/never_loop.rs:159:5
    |
 LL | /     'outer: while a {
 LL | |         // never loops
@@ -94,7 +94,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:172:9
+  --> $DIR/never_loop.rs:174:9
    |
 LL | /         while false {
 LL | |             break 'label;
@@ -102,7 +102,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:223:13
+  --> $DIR/never_loop.rs:225:13
    |
 LL |       let _ = loop {
    |  _____________^
@@ -115,7 +115,7 @@ LL | |     };
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:244:5
+  --> $DIR/never_loop.rs:246:5
    |
 LL | /     'a: loop {
 LL | |         'b: {
@@ -126,8 +126,16 @@ LL | |         }
 LL | |     }
    | |_____^
 
+error: sub-expression diverges
+  --> $DIR/never_loop.rs:249:17
+   |
+LL |                 break 'a;
+   |                 ^^^^^^^^
+   |
+   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:278:13
+  --> $DIR/never_loop.rs:280:13
    |
 LL | /             for _ in 0..20 {
 LL | |                 break 'block;
@@ -139,5 +147,17 @@ help: if you need the first element of the iterator, try writing
 LL |             if let Some(_) = (0..20).next() {
    |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 12 previous errors
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:324:5
+   |
+LL | /     loop {
+LL | |         'label: {
+LL | |             let x = true;
+LL | |             // Lints because we cannot prove it's always `true`
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+
+error: aborting due to 14 previous errors
 

@@ -1,3 +1,5 @@
+//@aux-build:macro_rules.rs
+
 extern crate macro_rules;
 
 // STMT

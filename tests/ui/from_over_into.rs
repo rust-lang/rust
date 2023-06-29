@@ -60,6 +60,15 @@ impl From<String> for A {
     }
 }
 
+struct PathInExpansion;
+
+impl Into<String> for PathInExpansion {
+    fn into(self) -> String {
+        // non self/Self paths in expansions are fine
+        panic!()
+    }
+}
+
 #[clippy::msrv = "1.40"]
 fn msrv_1_40() {
     struct FromOverInto<T>(Vec<T>);
