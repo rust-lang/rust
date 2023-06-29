@@ -286,7 +286,7 @@ of a crate.][passes] Then the codegen backend invokes the
 for that function and then creates codegen units. This kind of split will need
 to remain to ensure that unreachable functions still have their errors emitted.
 
-[passes]: https://github.com/rust-lang/rust/blob/45ebd5808afd3df7ba842797c0fcd4447ddf30fb/src/librustc_interface/passes.rs#L824
+[passes]: https://github.com/rust-lang/rust/blob/e69c7306e2be08939d95f14229e3f96566fb206c/compiler/rustc_interface/src/passes.rs#L791
 
 Moreover, the compiler wasn't originally built to use a query system; the query
 system has been retrofitted into the compiler, so parts of it are not query-fied
