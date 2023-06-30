@@ -16,9 +16,7 @@ impl Ord for A {
 }
 
 impl PartialOrd for A {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        todo!();
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
 // do not lint
@@ -50,9 +48,7 @@ impl Ord for C {
 }
 
 impl PartialOrd for C {
-    fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
-        todo!();
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
 // do not lint derived

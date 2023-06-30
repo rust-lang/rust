@@ -4,13 +4,12 @@ use clippy_utils::{
     ty::implements_trait,
 };
 use rustc_errors::Applicability;
-use rustc_hir::{def::Res, Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, PatKind, UnOp};
-use rustc_hir::{ExprKind, ImplItem, ImplItemKind, Node, UnOp};
+use rustc_hir::{def::Res, Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, UnOp};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, symbol};
-use std::borrow::Cow;
+use rustc_span::{sym, symbol::kw};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -61,31 +60,39 @@ declare_clippy_lint! {
     /// wrapping the result of `cmp` in `Some` for `partial_cmp`. Not doing this may silently
     /// introduce an error upon refactoring.
     ///
+    /// ### Limitations
+    /// Will not lint if `Self` and `Rhs` do not have the same type.
+    ///
     /// ### Example
-    /// ```rust,ignore
+    /// ```rust
+    /// # use std::cmp::Ordering;
     /// #[derive(Eq, PartialEq)]
     /// struct A(u32);
     ///
     /// impl Ord for A {
     ///     fn cmp(&self, other: &Self) -> Ordering {
-    ///         todo!();
+    ///         // ...
+    /// #       todo!();
     ///     }
     /// }
     ///
     /// impl PartialOrd for A {
     ///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-    ///         todo!();
+    ///         // ...
+    /// #       todo!();
     ///     }
     /// }
     /// ```
     /// Use instead:
-    /// ```rust,ignore
+    /// ```rust
+    /// # use std::cmp::Ordering;
     /// #[derive(Eq, PartialEq)]
     /// struct A(u32);
     ///
     /// impl Ord for A {
     ///     fn cmp(&self, other: &Self) -> Ordering {
-    ///         todo!();
+    ///         // ...
+    /// #       todo!();
     ///     }
     /// }
     ///
@@ -105,17 +112,18 @@ declare_lint_pass!(IncorrectImpls => [INCORRECT_CLONE_IMPL_ON_COPY_TYPE, INCORRE
 impl LateLintPass<'_> for IncorrectImpls {
     #[expect(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
-        let node = get_parent_node(cx.tcx, impl_item.hir_id());
-        let Some(Node::Item(item)) = node else {
+        let Some(Node::Item(item)) = get_parent_node(cx.tcx, impl_item.hir_id()) else {
             return;
         };
         let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder) else {
             return;
         };
-        let trait_impl_def_id = trait_impl.def_id;
         if cx.tcx.is_automatically_derived(item.owner_id.to_def_id()) {
             return;
         }
+        let ItemKind::Impl(imp) = item.kind else {
+            return;
+        };
         let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir().impl_item(impl_item.impl_item_id()).kind else {
             return;
         };
@@ -124,7 +132,7 @@ impl LateLintPass<'_> for IncorrectImpls {
             return;
         };
 
-        if cx.tcx.is_diagnostic_item(sym::Clone, trait_impl_def_id)
+        if cx.tcx.is_diagnostic_item(sym::Clone, trait_impl.def_id)
             && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
             && implements_trait(
                     cx,
@@ -136,9 +144,9 @@ impl LateLintPass<'_> for IncorrectImpls {
             if impl_item.ident.name == sym::clone {
                 if block.stmts.is_empty()
                     && let Some(expr) = block.expr
-                    && let ExprKind::Unary(UnOp::Deref, inner) = expr.kind
-                    && let ExprKind::Path(qpath) = inner.kind
-                    && last_path_segment(&qpath).ident.name == symbol::kw::SelfLower
+                    && let ExprKind::Unary(UnOp::Deref, deref) = expr.kind
+                    && let ExprKind::Path(qpath) = deref.kind
+                    && last_path_segment(&qpath).ident.name == kw::SelfLower
                 {} else {
                     span_lint_and_sugg(
                         cx,
@@ -160,7 +168,7 @@ impl LateLintPass<'_> for IncorrectImpls {
                     INCORRECT_CLONE_IMPL_ON_COPY_TYPE,
                     impl_item.span,
                     "incorrect implementation of `clone_from` on a `Copy` type",
-                    "remove this",
+                    "remove it",
                     String::new(),
                     Applicability::MaybeIncorrect,
                 );
@@ -169,7 +177,7 @@ impl LateLintPass<'_> for IncorrectImpls {
             }
         }
 
-        if cx.tcx.is_diagnostic_item(sym::PartialOrd, trait_impl_def_id)
+        if cx.tcx.is_diagnostic_item(sym::PartialOrd, trait_impl.def_id)
             && impl_item.ident.name == sym::partial_cmp
             && let Some(ord_def_id) = cx
                 .tcx
@@ -198,12 +206,9 @@ impl LateLintPass<'_> for IncorrectImpls {
                 && cmp_path.ident.name == sym::cmp
                 && let Res::Local(..) = path_res(cx, other_expr)
             {} else {
-                // If lhs and rhs are not the same type, bail. This makes creating a valid
+                // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
                 // suggestion tons more complex.
-                if let Some(lhs) = trait_impl.substs.get(0)
-                    && let Some(rhs) = trait_impl.substs.get(1)
-                    && lhs != rhs
-                {
+                if let [lhs, rhs, ..] = trait_impl.substs.as_slice() && lhs != rhs {
                     return;
                 }
 
@@ -213,22 +218,23 @@ impl LateLintPass<'_> for IncorrectImpls {
                     item.span,
                     "incorrect implementation of `partial_cmp` on an `Ord` type",
                     |diag| {
-                        let (help, app) = if let Some(other) = body.params.get(1)
-                            && let PatKind::Binding(_, _, other_ident, ..) = other.pat.kind
-                        {
-                            (
-                                Cow::Owned(format!("{{ Some(self.cmp({})) }}", other_ident.name)),
-                                Applicability::Unspecified,
-                            )
-                        } else {
-                            (Cow::Borrowed("{ Some(self.cmp(...)) }"), Applicability::HasPlaceholders)
+                        let [_, other] = body.params else {
+                            return;
                         };
 
-                        diag.span_suggestion(
-                            block.span,
+                        let suggs = if let Some(other_ident) = other.pat.simple_ident() {
+                            vec![(block.span, format!("{{ Some(self.cmp({})) }}", other_ident.name))]
+                        } else {
+                            vec![
+                                (block.span, "{ Some(self.cmp(other)) }".to_owned()),
+                                (other.pat.span, "other".to_owned()),
+                            ]
+                        };
+
+                        diag.multipart_suggestion(
                             "change this to",
-                            help,
-                            app,
+                            suggs,
+                            Applicability::Unspecified,
                         );
                     }
                 );
