@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/wf-bounds.rs:13:22
+  --> $DIR/wf-bounds.rs:17:22
    |
 LL |     fn nya() -> impl Wf<Vec<[u8]>>;
    |                      ^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -9,14 +9,14 @@ note: required by a bound in `Vec`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/wf-bounds.rs:16:23
+  --> $DIR/wf-bounds.rs:20:23
    |
 LL |     fn nya2() -> impl Wf<[u8]>;
    |                       ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by a bound in `Wf`
-  --> $DIR/wf-bounds.rs:8:10
+  --> $DIR/wf-bounds.rs:10:10
    |
 LL | trait Wf<T> {
    |          ^ required by this bound in `Wf`
@@ -26,7 +26,7 @@ LL | trait Wf<T: ?Sized> {
    |           ++++++++
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/wf-bounds.rs:19:44
+  --> $DIR/wf-bounds.rs:23:44
    |
 LL |     fn nya3() -> impl Wf<(), Output = impl Wf<Vec<[u8]>>>;
    |                                            ^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -35,6 +35,23 @@ LL |     fn nya3() -> impl Wf<(), Output = impl Wf<Vec<[u8]>>>;
 note: required by a bound in `Vec`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
-error: aborting due to 3 previous errors
+error[E0277]: `T` doesn't implement `std::fmt::Display`
+  --> $DIR/wf-bounds.rs:26:26
+   |
+LL |     fn nya4<T>() -> impl Wf<NeedsDisplay<T>>;
+   |                          ^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted with the default formatter
+   |
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+note: required by a bound in `NeedsDisplay`
+  --> $DIR/wf-bounds.rs:14:24
+   |
+LL | struct NeedsDisplay<T: Display>(T);
+   |                        ^^^^^^^ required by this bound in `NeedsDisplay`
+help: consider restricting type parameter `T`
+   |
+LL |     fn nya4<T: std::fmt::Display>() -> impl Wf<NeedsDisplay<T>>;
+   |              +++++++++++++++++++
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
