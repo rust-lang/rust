@@ -6,8 +6,9 @@ use crate::type_error_struct;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::{self, CtorKind, Namespace, Res};
+use rustc_hir::def::{self, CtorKind, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::HirId;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
@@ -376,15 +377,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
-            ty::FnDef(def_id, subst) => {
-                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, subst);
+            ty::FnDef(def_id, substs) => {
+                self.enforce_context_effects(call_expr.hir_id, call_expr.span, def_id, substs);
+                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
 
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
                 if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
                     let predicates = self.tcx.predicates_of(def_id);
-                    let predicates = predicates.instantiate(self.tcx, subst);
+                    let predicates = predicates.instantiate(self.tcx, substs);
                     for (predicate, predicate_span) in predicates {
                         let obligation = Obligation::new(
                             self.tcx,
@@ -405,6 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 (fn_sig, Some(def_id))
             }
+            // FIXME(effects): these arms should error because we can't enforce them
             ty::FnPtr(sig) => (sig, None),
             _ => {
                 for arg in arg_exprs {
@@ -737,6 +740,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         fn_sig.output()
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, span))]
+    pub(super) fn enforce_context_effects(
+        &self,
+        call_expr_hir: HirId,
+        span: Span,
+        callee_did: DefId,
+        callee_substs: SubstsRef<'tcx>,
+    ) {
+        let tcx = self.tcx;
+
+        if !tcx.features().effects || tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
+            return;
+        }
+
+        // Compute the constness required by the context.
+        let context = tcx.hir().enclosing_body_owner(call_expr_hir);
+        let const_context = tcx.hir().body_const_context(context);
+
+        let kind = tcx.def_kind(context.to_def_id());
+        debug_assert_ne!(kind, DefKind::ConstParam);
+
+        if tcx.has_attr(context.to_def_id(), sym::rustc_do_not_const_check) {
+            trace!("do not const check this context");
+            return;
+        }
+
+        let effect = match const_context {
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const) => tcx.consts.false_,
+            Some(hir::ConstContext::ConstFn) => {
+                let substs = ty::InternalSubsts::identity_for_item(tcx, context);
+                substs.host_effect_param().expect("ConstContext::Maybe must have host effect param")
+            }
+            None => tcx.consts.true_,
+        };
+
+        let identity_substs = ty::InternalSubsts::identity_for_item(tcx, callee_did);
+
+        trace!(?effect, ?identity_substs, ?callee_substs);
+
+        // FIXME this should be made more efficient
+        let host_effect_param_index = identity_substs.iter().position(|x| {
+            matches!(x.unpack(), ty::GenericArgKind::Const(const_) if matches!(const_.kind(), ty::ConstKind::Param(param) if param.name == sym::host))
+        });
+
+        if let Some(idx) = host_effect_param_index {
+            let param = callee_substs.const_at(idx);
+            let cause = self.misc(span);
+            match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
+                Ok(infer::InferOk { obligations, value: () }) => {
+                    self.register_predicates(obligations);
+                }
+                Err(e) => {
+                    self.err_ctxt().report_mismatched_consts(&cause, effect, param, e).emit();
+                }
+            }
+        }
     }
 
     fn confirm_overloaded_call(
