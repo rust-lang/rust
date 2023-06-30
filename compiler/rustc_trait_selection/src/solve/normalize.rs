@@ -1,7 +1,6 @@
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{needs_normalization, TraitEngineExt as _};
-use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
+use crate::traits::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -13,22 +12,23 @@ use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{FallibleTypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
 
+use super::FulfillmentCtxt;
+
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
 pub(crate) fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
-    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(&at.infcx);
-    let mut folder =
-        NormalizationFolder { at, fulfill_cx: &mut *fulfill_cx, depth: 0, universes: Vec::new() };
+    let fulfill_cx = FulfillmentCtxt::new();
+    let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes: Vec::new() };
 
     value.try_fold_with(&mut folder)
 }
 
 struct NormalizationFolder<'me, 'tcx> {
     at: At<'me, 'tcx>,
-    fulfill_cx: &'me mut dyn TraitEngine<'tcx>,
+    fulfill_cx: FulfillmentCtxt<'tcx>,
     depth: usize,
     universes: Vec<Option<UniverseIndex>>,
 }
@@ -163,16 +163,14 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
             return Ok(ty);
         }
 
-        let (kind, data) = match *ty.kind() {
-            ty::Alias(kind, alias_ty) => (kind, alias_ty),
-            _ => return ty.try_super_fold_with(self),
-        };
-
         // We don't normalize opaque types unless we have
         // `Reveal::All`, even if we're in the defining scope.
-        if matches!(kind, ty::Opaque) && reveal == Reveal::UserFacing {
-            return ty.try_super_fold_with(self);
-        }
+        let data = match *ty.kind() {
+            ty::Alias(kind, alias_ty) if kind != ty::Opaque || reveal == Reveal::UserFacing => {
+                alias_ty
+            }
+            _ => return ty.try_super_fold_with(self),
+        };
 
         if data.has_escaping_bound_vars() {
             let (data, mapped_regions, mapped_types, mapped_consts) =

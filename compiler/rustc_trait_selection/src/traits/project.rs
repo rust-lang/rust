@@ -58,12 +58,18 @@ pub trait NormalizeExt<'tcx> {
 
     /// Deeply normalizes `value`, replacing all aliases which can by normalized in
     /// the current environment. In the new solver this errors in case normalization
-    /// fails or is ambiguous. This only normalize opaque types with `Reveal::All`.
+    /// fails or is ambiguous. This only normalizes opaque types with `Reveal::All`.
     ///
     /// In the old solver this simply uses `normalizes` and adds the nested obligations
     /// to the `fulfill_cx`. This is necessary as we otherwise end up recomputing the
     /// same goals in both a temporary and the shared context which negatively impacts
     /// performance as these don't share caching.
+    ///
+    /// FIXME(-Ztrait-solver=next): This has the same behavior as `traits::fully_normalize`
+    /// in the new solver, but because of performance reasons, we currently reuse an
+    /// existing fulfillment context in the old solver. Once we also eagerly prove goals with
+    /// the old solver or have removed the old solver, remove `traits::fully_normalize` and
+    /// rename this function to `At::fully_normalize`.
     fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
         self,
         value: T,
