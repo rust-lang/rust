@@ -351,19 +351,34 @@ impl<'tcx> Cx<'tcx> {
                             });
                         }
                     }
-                    let adt_data =
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = fun.kind {
+                    let adt_data = if let hir::ExprKind::Path(qpath) = fun.kind {
+                        match qpath {
                             // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
-                            expr_ty.ty_adt_def().and_then(|adt_def| match path.res {
-                                Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_id) => {
-                                    Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id)))
-                                }
-                                Res::SelfCtor(..) => Some((adt_def, FIRST_VARIANT)),
-                                _ => None,
-                            })
-                        } else {
-                            None
-                        };
+                            hir::QPath::Resolved(_, ref path) => {
+                                expr_ty.ty_adt_def().and_then(|adt_def| match path.res {
+                                    Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_id) => {
+                                        Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id)))
+                                    }
+                                    Res::SelfCtor(..) => Some((adt_def, FIRST_VARIANT)),
+                                    _ => None,
+                                })
+                            }
+                            hir::QPath::TypeRelative(_ty, _) => {
+                                expr_ty.ty_adt_def().and_then(|adt_def| {
+                                    if let Some((DefKind::Ctor(_, CtorKind::Fn), ctor_id)) =
+                                        self.typeck_results().type_dependent_def(fun.hir_id)
+                                    {
+                                        Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id)))
+                                    } else {
+                                        None
+                                    }
+                                })
+                            }
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
                     if let Some((adt_def, index)) = adt_data {
                         let substs = self.typeck_results().node_substs(fun.hir_id);
                         let user_provided_types = self.typeck_results().user_provided_types();
