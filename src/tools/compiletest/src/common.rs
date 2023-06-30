@@ -439,7 +439,7 @@ pub struct TargetCfgs {
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        let targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
+        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
             config,
             &["--print=all-target-specs-json", "-Zunstable-options"],
         ))
@@ -453,6 +453,18 @@ impl TargetCfgs {
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
+
+        // Handle custom target specs, which are not included in `--print=all-target-specs-json`.
+        if config.target.ends_with(".json") {
+            targets.insert(
+                config.target.clone(),
+                serde_json::from_str(&rustc_output(
+                    config,
+                    &["--print=target-spec-json", "-Zunstable-options", "--target", &config.target],
+                ))
+                .unwrap(),
+            );
+        }
 
         for (target, cfg) in targets.iter() {
             all_archs.insert(cfg.arch.clone());
