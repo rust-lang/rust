@@ -190,6 +190,17 @@ impl<'tcx> Constant<'tcx> {
         }
     }
 
+    /// Returns the bit representation if `self` is a bool, integer, or float.
+    pub fn to_bits(&self) -> Option<u128> {
+        match self {
+            Constant::Int(int) => Some(*int),
+            Constant::F32(float) => Some(u128::from(float.to_bits())),
+            Constant::F64(float) => Some(u128::from(float.to_bits())),
+            Constant::Bool(bool) => Some(u128::from(*bool)),
+            _ => None,
+        }
+    }
+
     /// Returns the integer value or `None` if `self` or `val_type` is not integer type.
     pub fn int_value(&self, cx: &LateContext<'_>, val_type: Ty<'_>) -> Option<FullInt> {
         if let Constant::Int(const_int) = *self {

@@ -273,6 +273,8 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_async_fn::MANUAL_ASYNC_FN_INFO,
     crate::manual_bits::MANUAL_BITS_INFO,
     crate::manual_clamp::MANUAL_CLAMP_INFO,
+    crate::manual_float_methods::MANUAL_IS_FINITE_INFO,
+    crate::manual_float_methods::MANUAL_IS_INFINITE_INFO,
     crate::manual_is_ascii_check::MANUAL_IS_ASCII_CHECK_INFO,
     crate::manual_let_else::MANUAL_LET_ELSE_INFO,
     crate::manual_main_separator_str::MANUAL_MAIN_SEPARATOR_STR_INFO,
