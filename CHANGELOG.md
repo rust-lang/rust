@@ -5256,6 +5256,7 @@ Released 2018-09-13
 [`string_extend_chars`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_extend_chars
 [`string_from_utf8_as_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_from_utf8_as_bytes
 [`string_lit_as_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_lit_as_bytes
+[`string_lit_chars_any`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_lit_chars_any
 [`string_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_slice
 [`string_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_to_string
 [`strlen_on_c_strings`]: https://rust-lang.github.io/rust-clippy/master/index.html#strlen_on_c_strings
