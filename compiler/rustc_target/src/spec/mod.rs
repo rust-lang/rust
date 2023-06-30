@@ -62,6 +62,7 @@ mod android_base;
 mod apple_base;
 pub use apple_base::deployment_target as current_apple_deployment_target;
 mod avr_gnu_base;
+pub use avr_gnu_base::ef_avr_arch;
 mod bpf_base;
 mod dragonfly_base;
 mod freebsd_base;

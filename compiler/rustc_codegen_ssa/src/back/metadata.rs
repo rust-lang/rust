@@ -20,7 +20,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_target::abi::Endian;
-use rustc_target::spec::{RelocModel, Target};
+use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -286,6 +286,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Architecture::LoongArch64 => {
             // Source: https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html#_e_flags_identifies_abi_type_and_version
             elf::EF_LARCH_OBJABI_V1 | elf::EF_LARCH_ABI_DOUBLE_FLOAT
+        }
+        Architecture::Avr => {
+            // Resolve the ISA revision and set
+            // the appropriate EF_AVR_ARCH flag.
+            ef_avr_arch(&sess.target.options.cpu)
         }
         _ => 0,
     };
