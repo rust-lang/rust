@@ -1,18 +1,15 @@
 error: return type captures more lifetimes than trait definition
   --> $DIR/signature-mismatch.rs:17:47
    |
-LL |     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
-   |                              - this lifetime was captured
-...
 LL |     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
-   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 -- this lifetime was captured ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: hidden type must only reference lifetimes captured by this impl trait
   --> $DIR/signature-mismatch.rs:11:40
    |
 LL |     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: hidden type inferred to be `impl Future<Output = Vec<u8>> + '_`
+   = note: hidden type inferred to be `impl Future<Output = Vec<u8>> + 'a`
 
 error: aborting due to previous error
 

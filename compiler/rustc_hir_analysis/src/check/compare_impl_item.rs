@@ -651,11 +651,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &norm_cause,
         param_env,
-        infcx.instantiate_binder_with_fresh_vars(
-            return_span,
-            infer::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id).subst_identity(),
-        ),
+        tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(impl_m.def_id).subst_identity()),
     );
     impl_sig.error_reported()?;
     let impl_return_ty = impl_sig.output();
@@ -665,9 +661,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // them with inference variables.
     // We will use these inference variables to collect the hidden types of RPITITs.
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_def_id);
-    let unnormalized_trait_sig = tcx
-        .liberate_late_bound_regions(
-            impl_m.def_id,
+    let unnormalized_trait_sig = infcx
+        .instantiate_binder_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
             tcx.fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
         .fold_with(&mut collector);
@@ -760,8 +757,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut collected_tys = FxHashMap::default();
     for (def_id, (ty, substs)) in collected_types {
-        match infcx.fully_resolve(ty) {
-            Ok(ty) => {
+        match infcx.fully_resolve((ty, substs)) {
+            Ok((ty, substs)) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to
                 // contains `def_id`'s early-bound regions.
