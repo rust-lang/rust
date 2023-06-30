@@ -428,6 +428,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         {
                             return;
                         }
+                        if let ObligationCauseCode::FunctionArgumentObligation {
+                            arg_hir_id,
+                            ..
+                        } = obligation.cause.code()
+                            && let Some(Node::Expr(arg)) = self.tcx.hir().find(*arg_hir_id)
+                            && let arg = arg.peel_borrows()
+                            && let hir::ExprKind::Path(hir::QPath::Resolved(
+                                None,
+                                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+                            )) = arg.kind
+                            && let Some(Node::Pat(pat)) = self.tcx.hir().find(*hir_id)
+                            && let Some(preds) = self.reported_trait_errors.borrow().get(&pat.span)
+                            && preds.contains(&obligation.predicate)
+                            && self.tcx.sess.has_errors().is_some()
+                        {
+                            // Silence redundant errors on binding acccess that are already
+                            // reported on the binding definition (#56607).
+                            return;
+                        }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
 
                         let (post_message, pre_message, type_def) = self
