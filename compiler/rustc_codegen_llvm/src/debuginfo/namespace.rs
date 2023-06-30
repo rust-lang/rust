@@ -28,7 +28,7 @@ pub fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DISco
         .map(|parent| item_namespace(cx, DefId { krate: def_id.krate, index: parent }));
 
     let namespace_name_string = {
-        let mut output = String::new();
+        let mut output = String::with_capacity(64);
         type_names::push_item_name(cx.tcx, def_id, false, &mut output);
         output
     };

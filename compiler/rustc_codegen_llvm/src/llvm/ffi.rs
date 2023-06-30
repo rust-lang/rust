@@ -1301,7 +1301,7 @@ extern "C" {
         NumArgs: c_uint,
         Then: &'a BasicBlock,
         Catch: &'a BasicBlock,
-        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        OpBundles: *const &OperandBundleDef<'a>,
         NumOpBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
@@ -1673,7 +1673,7 @@ extern "C" {
         Fn: &'a Value,
         Args: *const &'a Value,
         NumArgs: c_uint,
-        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        OpBundles: *const &OperandBundleDef<'a>,
         NumOpBundles: c_uint,
     ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy<'a>(
