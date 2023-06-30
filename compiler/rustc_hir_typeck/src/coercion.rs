@@ -1005,7 +1005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         allow_two_phase: AllowTwoPhase,
         cause: Option<ObligationCause<'tcx>>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.resolve_vars_with_obligations(expr_ty);
+        let source = self.try_structurally_resolve_type(expr.span, expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause =
