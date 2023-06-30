@@ -99,6 +99,15 @@ hir_analysis_invalid_union_field =
 hir_analysis_invalid_union_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
+hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
+    .label = const parameter declared here
+
+hir_analysis_late_bound_lifetime_in_apit = `impl Trait` can only mention lifetimes from an fn or impl
+    .label = lifetime declared here
+
+hir_analysis_late_bound_type_in_apit = `impl Trait` can only mention type parameters from an fn or impl
+    .label = type parameter declared here
+
 hir_analysis_lifetimes_or_bounds_mismatch_on_trait =
     lifetime parameters or bounds on {$item_kind} `{$ident}` do not match the trait declaration
     .label = lifetimes do not match {$item_kind} in trait
