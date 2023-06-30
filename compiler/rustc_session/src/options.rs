@@ -1597,7 +1597,7 @@ options! {
         "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
-    packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
+    packed_bundled_libs: bool = (true, parse_bool, [TRACKED],
         "change rlib format to store native libraries as archives"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),

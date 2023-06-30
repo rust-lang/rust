@@ -25,8 +25,12 @@ fn main() {
         let mut contents = Vec::new();
         File::open(path).unwrap().read_to_end(&mut contents).unwrap();
 
-        // This file is produced during linking in a temporary directory.
-        let arg = if arg.ends_with("/symbols.o") || arg.ends_with("\\symbols.o") {
+        // These files are produced during linking in a temporary directory.
+        let arg = if arg.ends_with("/symbols.o")
+            || arg.ends_with("\\symbols.o")
+            || arg.ends_with("/libcompiler-rt.a")
+            || arg.ends_with("\\libcompiler-rt.a")
+        {
             "symbols.o"
         } else {
             &*arg
