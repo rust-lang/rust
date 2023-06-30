@@ -1,6 +1,5 @@
-use std::iter;
-
 use either::Either;
+use hir::PatField;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
@@ -28,6 +27,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use std::iter;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -992,6 +992,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     issued_borrow.borrowed_place,
                     &issued_spans,
                 );
+                self.explain_iterator_advancement_in_for_loop_if_applicable(
+                    &mut err,
+                    span,
+                    &issued_spans,
+                );
                 err
             }
 
@@ -1276,6 +1281,73 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                      two mutable non-overlapping sub-slices",
             )
             .help("consider using `.swap(index_1, index_2)` to swap elements at the specified indices");
+        }
+    }
+
+    /// Suggest using `while let` for call `next` on an iterator in a for loop.
+    ///
+    /// For example:
+    /// ```ignore (illustrative)
+    ///
+    /// for x in iter {
+    ///     ...
+    ///     iter.next()
+    /// }
+    /// ```
+    pub(crate) fn explain_iterator_advancement_in_for_loop_if_applicable(
+        &self,
+        err: &mut Diagnostic,
+        span: Span,
+        issued_spans: &UseSpans<'tcx>,
+    ) {
+        let issue_span = issued_spans.args_or_use();
+        let tcx = self.infcx.tcx;
+        let hir = tcx.hir();
+
+        let Some(body_id) = hir.get(self.mir_hir_id()).body_id() else { return };
+        let typeck_results = tcx.typeck(self.mir_def_id());
+
+        struct ExprFinder<'hir> {
+            issue_span: Span,
+            expr_span: Span,
+            body_expr: Option<&'hir hir::Expr<'hir>>,
+            loop_bind: Option<Symbol>,
+        }
+        impl<'hir> Visitor<'hir> for ExprFinder<'hir> {
+            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+                if let hir::ExprKind::Loop(hir::Block{ stmts: [stmt, ..], ..}, _, hir::LoopSource::ForLoop, _) = ex.kind &&
+                    let hir::StmtKind::Expr(hir::Expr{ kind: hir::ExprKind::Match(call, [_, bind, ..], _), ..}) = stmt.kind &&
+                    let hir::ExprKind::Call(path, _args) = call.kind &&
+                    let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IteratorNext, _, _, )) = path.kind &&
+                    let hir::PatKind::Struct(path, [field, ..], _) = bind.pat.kind &&
+                    let hir::QPath::LangItem(LangItem::OptionSome, _, _) = path &&
+                    let PatField { pat: hir::Pat{ kind: hir::PatKind::Binding(_, _, ident, ..), .. }, ..} = field &&
+                    self.issue_span.source_equal(call.span) {
+                        self.loop_bind = Some(ident.name);
+                    }
+
+                if let hir::ExprKind::MethodCall(body_call, _recv, ..) = ex.kind &&
+                    body_call.ident.name == sym::next && ex.span.source_equal(self.expr_span) {
+                        self.body_expr = Some(ex);
+                }
+
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+        let mut finder =
+            ExprFinder { expr_span: span, issue_span, loop_bind: None, body_expr: None };
+        finder.visit_expr(hir.body(body_id).value);
+
+        if let Some(loop_bind) = finder.loop_bind &&
+            let Some(body_expr) = finder.body_expr &&
+                let Some(def_id) = typeck_results.type_dependent_def_id(body_expr.hir_id) &&
+                let Some(trait_did) = tcx.trait_of_item(def_id) &&
+                tcx.is_diagnostic_item(sym::Iterator, trait_did) {
+                    err.note(format!(
+                        "a for loop advances the iterator for you, the result is stored in `{}`.",
+                        loop_bind
+                    ));
+                    err.help("if you want to call `next` on a iterator within the loop, consider using `while let`.");
         }
     }
 
