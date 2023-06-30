@@ -333,6 +333,13 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
     }
 }
 
+/// Forward dataflow computation of the set of borrows that are in scope at a particular location.
+/// - we gen the introduced loans
+/// - we kill loans on locals going out of (regular) scope
+/// - we kill the loans going out of their region's NLL scope: in NLL terms, the frontier where a
+///   region stops containing the CFG points reachable from the issuing location.
+/// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
+///   `a.b.c` when `a` is overwritten.
 impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
