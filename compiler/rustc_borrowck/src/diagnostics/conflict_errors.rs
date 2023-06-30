@@ -28,7 +28,6 @@ use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
-use std::marker::PhantomData;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -1305,12 +1304,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let hir = tcx.hir();
 
         let Some(body_id) = hir.get(self.mir_hir_id()).body_id() else { return };
+        let typeck_results = tcx.typeck(self.mir_def_id());
 
         struct ExprFinder<'hir> {
-            phantom: PhantomData<&'hir hir::Expr<'hir>>,
             issue_span: Span,
             expr_span: Span,
-            found_body_expr: bool,
+            body_expr: Option<&'hir hir::Expr<'hir>>,
             loop_bind: Option<Symbol>,
         }
         impl<'hir> Visitor<'hir> for ExprFinder<'hir> {
@@ -1326,30 +1325,28 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.loop_bind = Some(ident.name);
                     }
 
-                if let hir::ExprKind::MethodCall(body_call, ..) = ex.kind &&
-                    body_call.ident.name == sym::next &&
-                    ex.span.source_equal(self.expr_span) {
-                        self.found_body_expr = true;
+                if let hir::ExprKind::MethodCall(body_call, _recv, ..) = ex.kind &&
+                    body_call.ident.name == sym::next && ex.span.source_equal(self.expr_span) {
+                        self.body_expr = Some(ex);
                 }
 
                 hir::intravisit::walk_expr(self, ex);
             }
         }
-        let mut finder = ExprFinder {
-            phantom: PhantomData,
-            expr_span: span,
-            issue_span,
-            loop_bind: None,
-            found_body_expr: false,
-        };
+        let mut finder =
+            ExprFinder { expr_span: span, issue_span, loop_bind: None, body_expr: None };
         finder.visit_expr(hir.body(body_id).value);
+
         if let Some(loop_bind) = finder.loop_bind &&
-            finder.found_body_expr {
-            err.note(format!(
-                "a for loop advances the iterator for you, the result is stored in `{}`.",
-                loop_bind
-            ));
-            err.help("if you want to call `next` on a iterator within the loop, consider using `while let`.");
+            let Some(body_expr) = finder.body_expr &&
+                let Some(def_id) = typeck_results.type_dependent_def_id(body_expr.hir_id) &&
+                let Some(trait_did) = tcx.trait_of_item(def_id) &&
+                tcx.is_diagnostic_item(sym::Iterator, trait_did) {
+                    err.note(format!(
+                        "a for loop advances the iterator for you, the result is stored in `{}`.",
+                        loop_bind
+                    ));
+                    err.help("if you want to call `next` on a iterator within the loop, consider using `while let`.");
         }
     }
 
