@@ -1,0 +1,11 @@
+error[E0275]: overflow evaluating the requirement `X`
+  --> $DIR/infinite-vec-type-recursion.rs:6:10
+   |
+LL | type X = Vec<X>;
+   |          ^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.
