@@ -468,6 +468,9 @@ pub fn interpret_mir(
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body, assert_placeholder_ty_is_unused);
     let x: Result<Const> = (|| {
+        if evaluator.ptr_size() != std::mem::size_of::<usize>() {
+            not_supported!("targets with different pointer size from host");
+        }
         let bytes = evaluator.interpret_mir(&body, None.into_iter())?;
         let mut memory_map = evaluator.create_memory_map(
             &bytes,
