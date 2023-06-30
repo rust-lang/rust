@@ -1493,7 +1493,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// basically like transmuting references of different types. See
     /// [`mem::transmute`][transmute] for more information on what
     /// restrictions apply in this case.
-    /// 
+    ///
     /// The raw pointer must point to a block of memory allocated by `alloc`
     ///
     /// The user of `from_raw` has to make sure a specific value of `T` is only
