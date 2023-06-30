@@ -90,16 +90,16 @@ so let's go through each in detail.
    `src/llvm-project` to ensure submodule updates aren't reverted.
    Some commands you should execute are:
 
-   * `./x.py build src/llvm` - test that LLVM still builds
-   * `./x.py build src/tools/lld` - same for LLD
-   * `./x.py build` - build the rest of rustc
+   * `./x build src/llvm` - test that LLVM still builds
+   * `./x build src/tools/lld` - same for LLD
+   * `./x build` - build the rest of rustc
 
    You'll likely need to update [`llvm-wrapper/*.cpp`][`llvm-wrapper`]
    to compile with updated LLVM bindings.
    Note that you should use `#ifdef` and such to ensure
    that the bindings still compile on older LLVM versions.
 
-   Note that `profile = "compiler"` and other defaults set by `./x.py setup`
+   Note that `profile = "compiler"` and other defaults set by `./x setup`
    download LLVM from CI instead of building it from source.
    You should disable this temporarily to make sure your changes are being used.
    This is done by having the following setting in `config.toml`:

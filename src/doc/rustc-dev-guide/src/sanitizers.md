@@ -98,7 +98,7 @@ To enable a sanitizer on a new target which is already supported by LLVM:
 2. [Build the runtime for the target and include it in the libdir.][sanitizer-targets]
 3. [Teach compiletest that your target now supports the sanitizer.][compiletest-definition]
    Tests marked with `needs-sanitizer-*` should now run on the target.
-4. Run tests `./x.py test --force-rerun tests/ui/sanitize/` to verify.
+4. Run tests `./x test --force-rerun tests/ui/sanitize/` to verify.
 5. [--enable-sanitizers in the CI configuration][ci-configuration] to build and
    distribute the sanitizer runtime as part of the release process.
 

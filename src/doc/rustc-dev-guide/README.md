@@ -118,7 +118,7 @@ git submodule update --remote src/doc/rustc-dev-guide
 git add -u
 git commit -m "Update rustc-dev-guide"
 # Note that you can use -i, which is short for --incremental, in the following command
-./x.py test --incremental src/doc/rustc-dev-guide # This is optional and should succeed anyway
+./x test --incremental src/doc/rustc-dev-guide # This is optional and should succeed anyway
 # Open a PR in rust-lang/rust
 ```
 

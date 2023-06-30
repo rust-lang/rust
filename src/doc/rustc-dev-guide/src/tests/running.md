@@ -6,7 +6,7 @@ You can run the tests using `x.py`. The most basic command – which
 you will almost never want to use! – is as follows:
 
 ```bash
-./x.py test
+./x test
 ```
 
 This will build the stage 1 compiler and then run the whole test
@@ -37,7 +37,7 @@ modifying rustc to see if things are generally working correctly would be the
 following:
 
 ```bash
-./x.py test tests/ui
+./x test tests/ui
 ```
 
 This will run the `ui` test suite. Of course, the choice
@@ -46,32 +46,32 @@ doing. For example, if you are hacking on debuginfo, you may be better off
 with the debuginfo test suite:
 
 ```bash
-./x.py test tests/debuginfo
+./x test tests/debuginfo
 ```
 
 If you only need to test a specific subdirectory of tests for any
-given test suite, you can pass that directory to `./x.py test`:
+given test suite, you can pass that directory to `./x test`:
 
 ```bash
-./x.py test tests/ui/const-generics
+./x test tests/ui/const-generics
 ```
 
 Likewise, you can test a single file by passing its path:
 
 ```bash
-./x.py test tests/ui/const-generics/const-test.rs
+./x test tests/ui/const-generics/const-test.rs
 ```
 
 ### Run only the tidy script
 
 ```bash
-./x.py test tidy
+./x test tidy
 ```
 
 ### Run tests on the standard library
 
 ```bash
-./x.py test --stage 0 library/std
+./x test --stage 0 library/std
 ```
 
 Note that this only runs tests on `std`; if you want to test `core` or other crates,
@@ -80,13 +80,13 @@ you have to specify those explicitly.
 ### Run the tidy script and tests on the standard library
 
 ```bash
-./x.py test --stage 0 tidy library/std
+./x test --stage 0 tidy library/std
 ```
 
 ### Run tests on the standard library using a stage 1 compiler
 
 ```bash
-./x.py test --stage 1 library/std
+./x test --stage 1 library/std
 ```
 
 By listing which test suites you want to run you avoid having to run
@@ -99,7 +99,7 @@ there are some limitations.
 ### Run all tests using a stage 2 compiler
 
 ```bash
-./x.py test --stage 2
+./x test --stage 2
 ```
 You almost never need to do this; CI will run these tests for you.
 
@@ -108,13 +108,13 @@ You almost never need to do this; CI will run these tests for you.
 You may want to run unit tests on a specific file with following:
 
 ```bash
-./x.py test compiler/rustc_data_structures/src/thin_vec/tests.rs
+./x test compiler/rustc_data_structures/src/thin_vec/tests.rs
 ```
 
 But unfortunately, it's impossible. You should invoke following instead:
 
 ```bash
-./x.py test compiler/rustc_data_structures/ --test-args thin_vec
+./x test compiler/rustc_data_structures/ --test-args thin_vec
 ```
 
 ## Running an individual test
@@ -125,7 +125,7 @@ you may pass the full file path to achieve this, or alternatively one
 may invoke `x.py` with the `--test-args` option:
 
 ```bash
-./x.py test tests/ui --test-args issue-1234
+./x test tests/ui --test-args issue-1234
 ```
 
 Under the hood, the test runner invokes the standard Rust test runner
@@ -140,7 +140,7 @@ making a new test, you can pass `--bless` to the test subcommand. E.g.
 if some tests in `tests/ui` are failing, you can run
 
 ```text
-./x.py test tests/ui --bless
+./x test tests/ui --bless
 ```
 
 to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
@@ -168,7 +168,7 @@ exists in the test file. For example, you can run all the tests in
 `tests/ui` as `check-pass`:
 
 ```bash
-./x.py test tests/ui --pass check
+./x test tests/ui --pass check
 ```
 
 By passing `--pass $mode`, you can reduce the testing time. For each
@@ -184,7 +184,7 @@ mode, a test `foo.rs` will first look for expected output in
 The following will run the UI test suite in Polonius mode:
 
 ```bash
-./x.py test tests/ui --compare-mode=polonius
+./x test tests/ui --compare-mode=polonius
 ```
 
 See [Compare modes](compiletest.md#compare-modes) for more details.
@@ -217,7 +217,7 @@ execution* so be careful where it is used.
 To do this, first build `remote-test-server` for the remote
 machine, e.g. for RISC-V
 ```sh
-./x.py build src/tools/remote-test-server --target riscv64gc-unknown-linux-gnu
+./x build src/tools/remote-test-server --target riscv64gc-unknown-linux-gnu
 ```
 
 The binary will be created at
@@ -251,7 +251,7 @@ variable then use `x.py` as usual. For example, to run `ui` tests for a RISC-V
 machine with the IP address `1.2.3.4` use
 ```sh
 export TEST_DEVICE_ADDR="1.2.3.4:12345"
-./x.py test tests/ui --target riscv64gc-unknown-linux-gnu
+./x test tests/ui --target riscv64gc-unknown-linux-gnu
 ```
 
 If `remote-test-server` was run with the verbose flag, output on the test machine

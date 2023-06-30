@@ -10,7 +10,7 @@ can be incorporated into the compiler.
 
 The goal of this page is to cover some of the more common questions and
 problems new contributors face. Although some Git basics will be covered here,
-if you  find that this is still a little too fast for you, it might make sense
+if you find that this is still a little too fast for you, it might make sense
 to first read some introductions to Git, such as the Beginner and Getting
 started sections of [this tutorial from Atlassian][atlassian-git]. GitHub also
 provides [documentation] and [guides] for beginners, or you can consult the
@@ -239,7 +239,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 ```
 
 These changes are not changes to files: they are changes to submodules (more on this
-[later](#git-submodules)). To get rid of those, run `./x.py --help`, which will automatically update
+[later](#git-submodules)). To get rid of those, run `./x --help`, which will automatically update
 the submodules.
 
 Some submodules are not actually needed; for example, `src/llvm-project` doesn't need to be checked

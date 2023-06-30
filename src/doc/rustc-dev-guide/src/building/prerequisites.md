@@ -20,7 +20,7 @@ recommend trying to build on a Raspberry Pi! We recommend the following.
 * 2+ cores. Having more cores really helps. 10 or 20 or more is not too many!
 
 Beefier machines will lead to much faster builds. If your machine is not very
-powerful, a common strategy is to only use `./x.py check` on your local machine
+powerful, a common strategy is to only use `./x check` on your local machine
 and let the CI build test your changes when you push to a PR branch.
 
 Building the compiler takes more than half an hour on my moderately powerful

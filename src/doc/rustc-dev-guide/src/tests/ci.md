@@ -6,7 +6,7 @@
 When a Pull Request is opened on GitHub, [GitHub Actions] will automatically
 launch a build that will run all tests on some configurations
 (x86_64-gnu-llvm-13 linux, x86_64-gnu-tools linux, and mingw-check linux).
-In essence, each runs `./x.py test` with various different options.
+In essence, each runs `./x test` with various different options.
 
 The integration bot [bors] is used for coordinating merges to the master branch.
 When a PR is approved, it goes into a [queue] where merges are tested one at a
@@ -54,8 +54,8 @@ the other jobs.
 The comment at the top of `ci.yml` will tell you to run this command:
 
 ```sh
-./x.py run src/tools/expand-yaml-anchors
-````
+./x run src/tools/expand-yaml-anchors
+```
 
 This will generate the true [`.github/workflows/ci.yml`] which is what GitHub
 Actions uses.

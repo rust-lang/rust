@@ -325,7 +325,7 @@ general, if the test used to have `#[deny(overlapping_inherent_impls)]`, that
 can just be removed.
 
 ```
-./x.py test
+./x test
 ```
 
 #### All done!

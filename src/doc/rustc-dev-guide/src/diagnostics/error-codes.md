@@ -37,7 +37,7 @@ To create a new error, you first need to find the next available
 code. You can find it with `tidy`:
 
 ```
-./x.py test tidy
+./x test tidy
 ```
 
 This will invoke the tidy script, which generally checks that your code obeys

@@ -41,24 +41,24 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 
 ## Cheat sheet
 
-* Run `./x.py setup tools` before getting started. This will configure `x.py`
+* Run `./x setup tools` before getting started. This will configure `x.py`
   with nice settings for developing rustdoc and other tools, including
   downloading a copy of rustc rather than building it.
-* Use `./x.py check src/tools/rustdoc` to quickly check for compile errors.
-* Use `./x.py build` to make a usable
+* Use `./x check src/tools/rustdoc` to quickly check for compile errors.
+* Use `./x build` to make a usable
   rustdoc you can run on other projects.
   * Add `library/test` to be able to use `rustdoc --test`.
   * Run `rustup toolchain link stage2 build/host/stage2` to add a
     custom toolchain called `stage2` to your rustup environment. After
     running that, `cargo +stage2 doc` in any directory will build with
     your locally-compiled rustdoc.
-* Use `./x.py doc library` to use this rustdoc to generate the
+* Use `./x doc library` to use this rustdoc to generate the
   standard library docs.
   * The completed docs will be available in `build/host/doc` (under `core`, `alloc`, and `std`).
   * If you want to copy those docs to a webserver, copy all of
     `build/host/doc`, since that's where the CSS, JS, fonts, and landing
     page are.
-* Use `./x.py test tests/rustdoc*` to run the tests using a stage1
+* Use `./x test tests/rustdoc*` to run the tests using a stage1
   rustdoc.
   * See [Rustdoc internals] for more information about tests.
 

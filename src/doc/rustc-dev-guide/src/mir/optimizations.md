@@ -34,7 +34,7 @@ optimizes it, and returns the improved MIR.
    `println!`, `format!`, etc. generate a lot of MIR that can make it harder to
    understand what the optimization does to the test.
 
-2. Run `./x.py test --bless tests/mir-opt/<your-test>.rs` to generate a MIR
+2. Run `./x test --bless tests/mir-opt/<your-test>.rs` to generate a MIR
    dump. Read [this README][mir-opt-test-readme] for instructions on how to dump
    things.
 
@@ -51,10 +51,10 @@ optimizes it, and returns the improved MIR.
       [`run_optimization_passes()`] function,
    3. and then start modifying the copied optimization.
 
-5. Rerun `./x.py test --bless tests/mir-opt/<your-test>.rs` to regenerate the
+5. Rerun `./x test --bless tests/mir-opt/<your-test>.rs` to regenerate the
    MIR dumps. Look at the diffs to see if they are what you expect.
 
-6. Run `./x.py test tests/ui` to see if your optimization broke anything.
+6. Run `./x test tests/ui` to see if your optimization broke anything.
 
 7. If there are issues with your optimization, experiment with it a bit and
    repeat steps 5 and 6.

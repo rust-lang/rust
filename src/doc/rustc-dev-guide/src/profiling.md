@@ -19,7 +19,7 @@ Depending on what you're trying to measure, there are several different approach
 - If you want a nice visual representation of the compile times of your crate graph,
   you can use [cargo's `--timings` flag](https://doc.rust-lang.org/nightly/cargo/reference/timings.html),
   e.g. `cargo build --timings`.
-  You can use this flag on the compiler itself with `CARGOFLAGS="--timings" ./x.py build`
+  You can use this flag on the compiler itself with `CARGOFLAGS="--timings" ./x build`
 
 - If you want to profile memory usage, you can use various tools depending on what operating system
   you are using.
@@ -44,8 +44,8 @@ cargo install cargo-llvm-lines
 # On a normal crate you could now run `cargo llvm-lines`, but `x.py` isn't normal :P
 
 # Do a clean before every run, to not mix in the results from previous runs.
-./x.py clean
-env RUSTFLAGS=-Csave-temps ./x.py build --stage 0 compiler/rustc
+./x clean
+env RUSTFLAGS=-Csave-temps ./x build --stage 0 compiler/rustc
 
 # Single crate, e.g., rustc_middle. (Relies on the glob support of your shell.)
 # Convert unoptimized LLVM bitcode into a human readable LLVM assembly accepted by cargo-llvm-lines.
@@ -85,7 +85,7 @@ Example output for the compiler:
     326903 (0.7%)      642 (0.0%)  rustc_query_system::query::plumbing::try_execute_query
 ```
 
-Since this doesn't seem to work with incremental compilation or `./x.py check`,
+Since this doesn't seem to work with incremental compilation or `./x check`,
 you will be compiling rustc _a lot_.
 I recommend changing a few settings in `config.toml` to make it bearable:
 ```

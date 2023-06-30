@@ -503,10 +503,9 @@ currently only apply to the test as a whole, not to particular
 revisions. The only headers that are intended to really work when
 customized to a revision are error patterns and compiler flags.
 
-
 ## Compare modes
 
-Compiletest can be run in different modes, called *compare modes*, which can
+Compiletest can be run in different modes, called _compare modes_, which can
 be used to compare the behavior of all tests with different compiler flags
 enabled.
 This can help highlight what differences might appear with certain flags, and
@@ -516,7 +515,7 @@ To run the tests in a different mode, you need to pass the `--compare-mode`
 CLI flag:
 
 ```bash
-./x.py test tests/ui --compare-mode=chalk
+./x test tests/ui --compare-mode=chalk
 ```
 
 The possible compare modes are:
@@ -537,5 +536,5 @@ following settings:
   enabling split-DWARF.
 
 Note that compare modes are separate to [revisions](#revisions).
-All revisions are tested when running `./x.py test tests/ui`, however
+All revisions are tested when running `./x test tests/ui`, however
 compare-modes must be manually run individually via the `--compare-mode` flag.

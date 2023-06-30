@@ -390,7 +390,7 @@ Tests with the `*-pass` headers can be overridden with the `--pass`
 command-line option:
 
 ```sh
-./x.py test tests/ui --pass check
+./x test tests/ui --pass check
 ```
 
 The `--pass` option only affects UI tests.
@@ -515,7 +515,7 @@ If in the rare case you encounter a test that has different behavior, you can
 run something like the following to generate the alternate stderr file:
 
 ```sh
-./x.py test tests/ui --compare-mode=polonius --bless
+./x test tests/ui --compare-mode=polonius --bless
 ```
 
 Currently none of the compare modes are checked in CI for UI tests.

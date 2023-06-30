@@ -62,7 +62,7 @@ if you want to learn more about `x.py`, [read this chapter][bootstrap].
 The `x.py` command can be run directly on most Unix systems in the following format:
 
 ```sh
-./x.py <subcommand> [flags]
+./x <subcommand> [flags]
 ```
 
 This is how the documentation and examples assume you are running `x.py`.
@@ -110,7 +110,7 @@ You can install it with `cargo install --path src/tools/x`.
 
 ## Create a `config.toml`
 
-To start, run `./x.py setup` and select the `compiler` defaults. This will do some initialization
+To start, run `./x setup` and select the `compiler` defaults. This will do some initialization
 and create a `config.toml` for you with reasonable defaults. If you use a different default (which
 you'll likely want to do if you want to contribute to an area of rust other than the compiler, such
 as rustdoc), make sure to read information about that default (located in `src/bootstrap/defaults`)
@@ -120,7 +120,7 @@ Alternatively, you can write `config.toml` by hand. See `config.example.toml` fo
 settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
-execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py
+execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x
 clean` will not cause a rebuild of LLVM.
 
 ## Common `x.py` commands
@@ -128,16 +128,16 @@ clean` will not cause a rebuild of LLVM.
 Here are the basic invocations of the `x.py` commands most commonly used when
 working on `rustc`, `std`, `rustdoc`, and other tools.
 
-| Command | When to use it |
-| --- | --- |
-| `./x.py check` | Quick check to see if most things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
-| `./x.py build` | Builds `rustc`, `std`, and `rustdoc` |
-| `./x.py test` | Runs all tests |
-| `./x.py fmt` | Formats all code |
+| Command     | When to use it                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------ |
+| `./x check` | Quick check to see if most things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
+| `./x build` | Builds `rustc`, `std`, and `rustdoc`                                                                         |
+| `./x test`  | Runs all tests                                                                                               |
+| `./x fmt`   | Formats all code                                                                                             |
 
 As written, these commands are reasonable starting points. However, there are
 additional options and arguments for each of them that are worth learning for
-serious development work. In particular, `./x.py build` and `./x.py test`
+serious development work. In particular, `./x build` and `./x test`
 provide many ways to compile or test a subset of the code, which can save a lot
 of time.
 
@@ -160,7 +160,7 @@ Once you've created a `config.toml`, you are now ready to run
 probably the best "go to" command for building a local compiler:
 
 ```bash
-./x.py build library
+./x build library
 ```
 
 This may *look* like it only builds the standard library, but that is not the case.
@@ -183,10 +183,10 @@ see [the section on avoiding rebuilds for std][keep-stage].
 
 Sometimes you don't need a full build. When doing some kind of
 "type-based refactoring", like renaming a method, or changing the
-signature of some function, you can use `./x.py check` instead for a much faster build.
+signature of some function, you can use `./x check` instead for a much faster build.
 
 Note that this whole command just gives you a subset of the full `rustc`
-build. The **full** `rustc` build (what you get with `./x.py build
+build. The **full** `rustc` build (what you get with `./x build
 --stage 2 compiler/rustc`) has quite a few more steps:
 
 - Build `rustc` with the stage1 compiler.
@@ -203,7 +203,7 @@ the compiler unless you are planning to use a recently added nightly feature.
 Instead, you can just build using the bootstrap compiler.
 
 ```bash
-./x.py build --stage 0 library
+./x build --stage 0 library
 ```
 
 If you choose the `library` profile when running `x.py setup`, you can omit `--stage 0` (it's the
@@ -256,7 +256,7 @@ custom toolchain for a project (e.g. via `rustup override set stage1`) you may
 want to build this component:
 
 ```bash
-./x.py build proc-macro-srv-cli
+./x build proc-macro-srv-cli
 ```
 
 ## Building targets for cross-compilation
@@ -267,7 +267,7 @@ For example, if your host platform is `x86_64-unknown-linux-gnu`
 and your cross-compilation target is `wasm32-wasi`, you can build with:
 
 ```bash
-./x.py build --target x86_64-unknown-linux-gnu --target wasm32-wasi
+./x build --target x86_64-unknown-linux-gnu --target wasm32-wasi
 ```
 
 Note that if you want the resulting compiler to be able to build crates that
@@ -309,18 +309,18 @@ Here are a few other useful `x.py` commands. We'll cover some of them in detail
 in other sections:
 
 - Building things:
-  - `./x.py build` – builds everything using the stage 1 compiler,
+  - `./x build` – builds everything using the stage 1 compiler,
     not just up to `std`
-  - `./x.py build --stage 2` – builds everything with the stage 2 compiler including
+  - `./x build --stage 2` – builds everything with the stage 2 compiler including
     `rustdoc`
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
-  - `./x.py test library/std` – runs the unit tests and integration tests from `std`
-  - `./x.py test tests/ui` – runs the `ui` test suite
-  - `./x.py test tests/ui/const-generics` - runs all the tests in
-  the `const-generics/` subdirectory of the `ui` test suite
-  - `./x.py test tests/ui/const-generics/const-types.rs` - runs
-  the single test `const-types.rs` from the `ui` test suite
+  - `./x test library/std` – runs the unit tests and integration tests from `std`
+  - `./x test tests/ui` – runs the `ui` test suite
+  - `./x test tests/ui/const-generics` - runs all the tests in
+    the `const-generics/` subdirectory of the `ui` test suite
+  - `./x test tests/ui/const-generics/const-types.rs` - runs
+    the single test `const-types.rs` from the `ui` test suite
 
 ### Cleaning out build directories
 
@@ -330,7 +330,7 @@ you should file a bug as to what is going wrong. If you do need to clean
 everything up then you only need to run one command!
 
 ```bash
-./x.py clean
+./x clean
 ```
 
 `rm -rf build` works too, but then you have to rebuild LLVM, which can take

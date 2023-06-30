@@ -13,11 +13,11 @@ However, for now we don't use stable `rustfmt`; we use a pinned version with a
 special config, so this may result in different style from normal [`rustfmt`].
 Therefore, formatting this repository using `cargo fmt` is not recommended.
 
-Instead, formatting should be done using `./x.py fmt`. It's a good habit to run
-`./x.py fmt` before every commit, as this reduces conflicts later.
+Instead, formatting should be done using `./x fmt`. It's a good habit to run
+`./x fmt` before every commit, as this reduces conflicts later.
 
 Formatting is checked by the `tidy` script. It runs automatically when you do
-`./x.py test` and can be run in isolation with `./x.py fmt --check`.
+`./x test` and can be run in isolation with `./x fmt --check`.
 
 If you want to use format-on-save in your editor, the pinned version of
 `rustfmt` is built under `build/<target>/stage0/bin/rustfmt`. You'll have to
@@ -126,7 +126,7 @@ dramatically (versus adding to it) in a later commit, that
 
 **Format liberally.** While only the final commit of a PR must be correctly
 formatted, it is both easier to review and less noisy to format each commit
-individually using `./x.py fmt`.
+individually using `./x fmt`.
 
 **No merges.** We do not allow merge commits into our history, other
 than those by bors. If you get a merge conflict, rebase instead via a

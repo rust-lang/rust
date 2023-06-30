@@ -21,7 +21,7 @@ directory. From there, you can run `../src/ci/run.sh` which will run the build
 as defined by the image.
 
 Alternatively, you can run individual commands to do specific tasks. For
-example, you can run `python3 ../x.py test tests/ui` to just run UI tests.
+example, you can run `../x test tests/ui` to just run UI tests.
 Note that there is some configuration in the [`src/ci/run.sh`] script that you
 may need to recreate. Particularly, set `submodules = false` in your
 `config.toml` so that it doesn't attempt to modify the read-only directory.

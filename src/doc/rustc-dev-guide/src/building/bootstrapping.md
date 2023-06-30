@@ -96,7 +96,7 @@ However, it takes a very long time to build
 because one must first build the new compiler with an older compiler
 and then use that to build the new compiler with itself.
 For development, you usually only want the `stage1` compiler,
-which you can build with `./x.py build library`.
+which you can build with `./x build library`.
 See [Building the compiler](./how-to-build-and-run.html#building-the-compiler).
 
 ### Stage 3: the same-result test
@@ -173,27 +173,27 @@ Build artifacts include, but are not limited to:
 
 #### Examples
 
-- `./x.py build --stage 0` means to build with the beta `rustc`.
-- `./x.py doc --stage 0` means to document using the beta `rustdoc`.
-- `./x.py test --stage 0 library/std` means to run tests on the standard library
-    without building `rustc` from source ('build with stage 0, then test the
+- `./x build --stage 0` means to build with the beta `rustc`.
+- `./x doc --stage 0` means to document using the beta `rustdoc`.
+- `./x test --stage 0 library/std` means to run tests on the standard library
+  without building `rustc` from source ('build with stage 0, then test the
   artifacts'). If you're working on the standard library, this is normally the
   test command you want.
-- `./x.py test tests/ui` means to build the stage 1 compiler and run
+- `./x test tests/ui` means to build the stage 1 compiler and run
   `compiletest` on it. If you're working on the compiler, this is normally the
   test command you want.
 
 #### Examples of what *not* to do
 
-- `./x.py test --stage 0 tests/ui` is not useful: it runs tests on the
+- `./x test --stage 0 tests/ui` is not useful: it runs tests on the
   _beta_ compiler and doesn't build `rustc` from source. Use `test tests/ui`
   instead, which builds stage 1 from source.
-- `./x.py test --stage 0 compiler/rustc` builds the compiler but runs no tests:
+- `./x test --stage 0 compiler/rustc` builds the compiler but runs no tests:
   it's running `cargo test -p rustc`, but cargo doesn't understand Rust's
   tests. You shouldn't need to use this, use `test` instead (without arguments).
-- `./x.py build --stage 0 compiler/rustc` builds the compiler, but does not build
-  libstd or even libcore. Most of the time, you'll want `./x.py build
-  library` instead, which allows compiling programs without needing to define
+- `./x build --stage 0 compiler/rustc` builds the compiler, but does not build
+  libstd or even libcore. Most of the time, you'll want `./x build
+library` instead, which allows compiling programs without needing to define
   lang items.
 
 ### Building vs. running

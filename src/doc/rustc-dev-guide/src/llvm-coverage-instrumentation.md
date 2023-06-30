@@ -292,8 +292,8 @@ Expected results for both the `mir-opt` tests and the `coverage*` tests under
 `run-make-fulldeps` can be refreshed by running:
 
 ```shell
-$ ./x.py test mir-opt --bless
-$ ./x.py test tests/run-make-fulldeps/coverage --bless
+$ ./x test mir-opt --bless
+$ ./x test tests/run-make-fulldeps/coverage --bless
 ```
 
 [mir-opt-test]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/instrument_coverage.rs

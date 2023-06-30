@@ -84,7 +84,7 @@ The next step is to create the expected output from the compiler.
 This can be done with the `--bless` option:
 
 ```sh
-./x.py test tests/ui/async-await/await-without-async.rs --bless
+./x test tests/ui/async-await/await-without-async.rs --bless
 ```
 
 This will build the compiler (if it hasn't already been built), compile the
@@ -118,7 +118,7 @@ annotations](ui.md#error-annotations) section).
 Save that, and run the test again:
 
 ```sh
-./x.py test tests/ui/async-await/await-without-async.rs
+./x test tests/ui/async-await/await-without-async.rs
 ```
 
 It should now pass, yay!
@@ -166,7 +166,7 @@ The final step before posting a PR is to check if you have affected anything els
 Running the UI suite is usually a good start:
 
 ```sh
-./x.py test tests/ui
+./x test tests/ui
 ```
 
 If other tests start failing, you may need to investigate what has changed

@@ -10,14 +10,14 @@ to make your life easier.
 CI will automatically fail your build if it doesn't pass `tidy`, our
 internal tool for ensuring code quality. If you'd like, you can install a
 [Git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
-that will automatically run `./x.py test tidy` on each push, to ensure
-your code is up to par. If the hook fails then run `./x.py test tidy --bless`
+that will automatically run `./x test tidy` on each push, to ensure
+your code is up to par. If the hook fails then run `./x test tidy --bless`
 and commit the changes. If you decide later that the pre-push behavior is
 undesirable, you can delete the `pre-push` file in `.git/hooks`.
 
 A prebuilt git hook lives at [`src/etc/pre-push.sh`](https://github.com/rust-lang/rust/blob/master/src/etc/pre-push.sh) which can be copied into your `.git/hooks` folder as `pre-push` (without the `.sh` extension!).
 
-You can also install the hook as a step of running `./x.py setup`!
+You can also install the hook as a step of running `./x setup`!
 
 ## Configuring `rust-analyzer` for `rustc`
 
@@ -28,7 +28,7 @@ a file. By default, `rust-analyzer` runs the `cargo check` and `rustfmt`
 commands, but you can override these commands to use more adapted versions
 of these tools when hacking on `rustc`. For example, `x.py setup vscode` will prompt
 you to create a `.vscode/settings.json` file which will configure Visual Studio code.
-This will ask `rust-analyzer` to use `./x.py check` to check the sources, and the
+This will ask `rust-analyzer` to use `./x check` to check the sources, and the
 stage 0 rustfmt to format them.
 The recommended `rust-analyzer` settings live at [`src/etc/rust_analyzer_settings.json`].
 
@@ -41,7 +41,7 @@ If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
 
 [`src/etc/rust_analyzer_settings.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_settings.json
 
-If running `./x.py check` on save is inconvenient, in VS Code you can use a [Build
+If running `./x check` on save is inconvenient, in VS Code you can use a [Build
 Task] instead:
 
 ```JSON
@@ -50,8 +50,8 @@ Task] instead:
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "./x.py check",
-            "command": "./x.py check",
+            "label": "./x check",
+            "command": "./x check",
             "type": "shell",
             "problemMatcher": "$rustc",
             "presentation": { "clear": true },
@@ -73,9 +73,9 @@ Rust-Analyzer to already be configured with Neovim. Steps for this can be
 [found here](https://rust-analyzer.github.io/manual.html#nvim-lsp).
 
 1. First install the plugin. This can be done by following the steps in the README.
-2. Run `x.py setup`, which will have a prompt for it to create a `.vscode/settings.json` file. 
-`neoconf` is able to read and update Rust-Analyzer settings automatically when the project is 
-opened when this file is detected.
+2. Run `x.py setup`, which will have a prompt for it to create a `.vscode/settings.json` file.
+   `neoconf` is able to read and update Rust-Analyzer settings automatically when the project is
+   opened when this file is detected.
 
 If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
 `.vim/coc-settings.json` and copy the settings from 
@@ -94,11 +94,11 @@ follow the same instructions as above.
 
 ## Check, check, and check again
 
-When doing simple refactorings, it can be useful to run `./x.py check`
+When doing simple refactorings, it can be useful to run `./x check`
 continuously. If you set up `rust-analyzer` as described above, this will
 be done for you every time you save a file. Here you are just checking that
 the compiler can **build**, but often that is all you need (e.g., when renaming a
-method). You can then run `./x.py build` when you actually need to
+method). You can then run `./x build` when you actually need to
 run tests.
 
 In fact, it is sometimes useful to put off tests even when you are not
@@ -166,13 +166,13 @@ don't work (but that is easily detected and fixed).
 
 The sequence of commands you want is as follows:
 
-- Initial build: `./x.py build library`
+- Initial build: `./x build library`
   - As [documented previously], this will build a functional
     stage1 compiler as part of running all stage0 commands (which include
     building a `std` compatible with the stage1 compiler) as well as the
     first few steps of the "stage 1 actions" up to "stage1 (sysroot stage1)
     builds std".
-- Subsequent builds: `./x.py build library --keep-stage 1`
+- Subsequent builds: `./x build library --keep-stage 1`
   - Note that we added the `--keep-stage 1` flag here
 
 [documented previously]: ./how-to-build-and-run.md#building-the-compiler
@@ -194,8 +194,8 @@ rebuild. That ought to fix the problem.
 
 You can also use `--keep-stage 1` when running tests. Something like this:
 
-- Initial test run: `./x.py test tests/ui`
-- Subsequent test run: `./x.py test tests/ui --keep-stage 1`
+- Initial test run: `./x test tests/ui`
+- Subsequent test run: `./x test tests/ui --keep-stage 1`
 
 ## Using incremental compilation
 
@@ -203,7 +203,7 @@ You can further enable the `--incremental` flag to save additional
 time in subsequent rebuilds:
 
 ```bash
-./x.py test tests/ui --incremental --test-args issue-1234
+./x test tests/ui --incremental --test-args issue-1234
 ```
 
 If you don't want to include the flag with every command, you can
