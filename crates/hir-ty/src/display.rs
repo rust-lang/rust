@@ -192,7 +192,7 @@ pub trait HirDisplay {
     }
 }
 
-impl<'a> HirFormatter<'a> {
+impl HirFormatter<'_> {
     pub fn write_joined<T: HirDisplay>(
         &mut self,
         iter: impl IntoIterator<Item = T>,
@@ -342,7 +342,7 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
     }
 }
 
-impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
+impl<T> fmt::Display for HirDisplayWrapper<'_, T>
 where
     T: HirDisplay,
 {
@@ -360,7 +360,7 @@ where
 
 const TYPE_HINT_TRUNCATION: &str = "…";
 
-impl<T: HirDisplay> HirDisplay for &'_ T {
+impl<T: HirDisplay> HirDisplay for &T {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         HirDisplay::hir_fmt(*self, f)
     }

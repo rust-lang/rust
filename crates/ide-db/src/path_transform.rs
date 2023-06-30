@@ -195,7 +195,7 @@ fn postorder(item: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
     })
 }
 
-impl<'a> Ctx<'a> {
+impl Ctx<'_> {
     fn apply(&self, item: &SyntaxNode) {
         // `transform_path` may update a node's parent and that would break the
         // tree traversal. Thus all paths in the tree are collected into a vec

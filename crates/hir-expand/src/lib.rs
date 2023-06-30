@@ -850,7 +850,7 @@ impl<L, R> InFile<Either<L, R>> {
     }
 }
 
-impl<'a> InFile<&'a SyntaxNode> {
+impl InFile<&SyntaxNode> {
     pub fn ancestors_with_macros(
         self,
         db: &dyn db::ExpandDatabase,

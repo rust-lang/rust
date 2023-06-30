@@ -24,7 +24,7 @@ enum Repr {
     TupleField(usize),
 }
 
-impl<'a> UnescapedName<'a> {
+impl UnescapedName<'_> {
     /// Returns the textual representation of this name as a [`SmolStr`]. Prefer using this over
     /// [`ToString::to_string`] if possible as this conversion is cheaper in the general case.
     pub fn to_smol_str(&self) -> SmolStr {
@@ -40,7 +40,7 @@ impl<'a> UnescapedName<'a> {
         }
     }
 
-    pub fn display(&'a self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+    pub fn display(&self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + '_ {
         _ = db;
         UnescapedDisplay { name: self }
     }
@@ -162,7 +162,7 @@ struct Display<'a> {
     name: &'a Name,
 }
 
-impl<'a> fmt::Display for Display<'a> {
+impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.name.0 {
             Repr::Text(text) => fmt::Display::fmt(&text, f),
@@ -175,7 +175,7 @@ struct UnescapedDisplay<'a> {
     name: &'a UnescapedName<'a>,
 }
 
-impl<'a> fmt::Display for UnescapedDisplay<'a> {
+impl fmt::Display for UnescapedDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.name.0 .0 {
             Repr::Text(text) => {

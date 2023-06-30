@@ -50,7 +50,7 @@ use super::{
     InferenceContext, InferenceDiagnostic, TypeMismatch,
 };
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     pub(crate) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
         if let Some(expected_ty) = expected.only_has_type(&mut self.table) {

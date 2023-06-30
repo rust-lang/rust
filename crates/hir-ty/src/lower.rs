@@ -959,10 +959,10 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     pub(crate) fn lower_where_predicate(
-        &'a self,
-        where_predicate: &'a WherePredicate,
+        &self,
+        where_predicate: &WherePredicate,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {

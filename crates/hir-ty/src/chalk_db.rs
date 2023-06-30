@@ -46,7 +46,7 @@ pub(crate) type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Inte
 pub(crate) type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
 pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
-impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
+impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     fn associated_ty_data(&self, id: AssocTypeId) -> Arc<AssociatedTyDatum> {
         self.db.associated_ty_data(id)
     }

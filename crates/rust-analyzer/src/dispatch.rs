@@ -32,7 +32,7 @@ pub(crate) struct RequestDispatcher<'a> {
     pub(crate) global_state: &'a mut GlobalState,
 }
 
-impl<'a> RequestDispatcher<'a> {
+impl RequestDispatcher<'_> {
     /// Dispatches the request onto the current thread, given full access to
     /// mutable global state. Unlike all other methods here, this one isn't
     /// guarded by `catch_unwind`, so, please, don't make bugs :-)
@@ -306,7 +306,7 @@ pub(crate) struct NotificationDispatcher<'a> {
     pub(crate) global_state: &'a mut GlobalState,
 }
 
-impl<'a> NotificationDispatcher<'a> {
+impl NotificationDispatcher<'_> {
     pub(crate) fn on_sync_mut<N>(
         &mut self,
         f: fn(&mut GlobalState, N::Params) -> anyhow::Result<()>,

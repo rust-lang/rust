@@ -509,12 +509,12 @@ trait TokenConverter: Sized {
     fn id_alloc(&mut self) -> &mut TokenIdAlloc;
 }
 
-impl<'a> SrcToken<RawConverter<'a>> for usize {
-    fn kind(&self, ctx: &RawConverter<'a>) -> SyntaxKind {
+impl SrcToken<RawConverter<'_>> for usize {
+    fn kind(&self, ctx: &RawConverter<'_>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
 
-    fn to_char(&self, ctx: &RawConverter<'a>) -> Option<char> {
+    fn to_char(&self, ctx: &RawConverter<'_>) -> Option<char> {
         ctx.lexed.text(*self).chars().next()
     }
 
@@ -522,12 +522,12 @@ impl<'a> SrcToken<RawConverter<'a>> for usize {
         ctx.lexed.text(*self).into()
     }
 
-    fn synthetic_id(&self, _ctx: &RawConverter<'a>) -> Option<SyntheticTokenId> {
+    fn synthetic_id(&self, _ctx: &RawConverter<'_>) -> Option<SyntheticTokenId> {
         None
     }
 }
 
-impl<'a> TokenConverter for RawConverter<'a> {
+impl TokenConverter for RawConverter<'_> {
     type Token = usize;
 
     fn convert_doc_comment(&self, &token: &usize, span: tt::TokenId) -> Option<Vec<tt::TokenTree>> {
@@ -800,7 +800,7 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
     Some(&texts[idx..texts.len() - (1 - idx)])
 }
 
-impl<'a> TtTreeSink<'a> {
+impl TtTreeSink<'_> {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {

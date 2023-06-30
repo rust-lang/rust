@@ -197,4 +197,4 @@ impl<'a> Iterator for TtIter<'a> {
     }
 }
 
-impl<'a> std::iter::ExactSizeIterator for TtIter<'a> {}
+impl std::iter::ExactSizeIterator for TtIter<'_> {}

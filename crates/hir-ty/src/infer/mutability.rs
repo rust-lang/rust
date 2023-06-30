@@ -12,7 +12,7 @@ use crate::{lower::lower_to_chalk_mutability, Adjust, Adjustment, AutoBorrow, Ov
 
 use super::InferenceContext;
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     pub(crate) fn infer_mut_body(&mut self) {
         self.infer_mut_expr(self.body.body_expr, Mutability::Not);
     }

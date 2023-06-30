@@ -338,21 +338,21 @@ pub struct FindUsages<'a> {
     search_self_mod: bool,
 }
 
-impl<'a> FindUsages<'a> {
+impl FindUsages<'_> {
     /// Enable searching for `Self` when the definition is a type or `self` for modules.
-    pub fn include_self_refs(mut self) -> FindUsages<'a> {
+    pub fn include_self_refs(mut self) -> Self {
         self.include_self_kw_refs = def_to_ty(self.sema, &self.def);
         self.search_self_mod = true;
         self
     }
 
     /// Limit the search to a given [`SearchScope`].
-    pub fn in_scope(self, scope: SearchScope) -> FindUsages<'a> {
+    pub fn in_scope(self, scope: SearchScope) -> Self {
         self.set_scope(Some(scope))
     }
 
     /// Limit the search to a given [`SearchScope`].
-    pub fn set_scope(mut self, scope: Option<SearchScope>) -> FindUsages<'a> {
+    pub fn set_scope(mut self, scope: Option<SearchScope>) -> Self {
         assert!(self.scope.is_none());
         self.scope = scope;
         self
