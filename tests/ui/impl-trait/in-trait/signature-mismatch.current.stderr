@@ -1,16 +1,18 @@
-error: `impl` item signature doesn't match `trait` item signature
-  --> $DIR/signature-mismatch.rs:17:5
+error: return type captures more lifetimes than trait definition
+  --> $DIR/signature-mismatch.rs:17:47
    |
 LL |     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
-   |     ----------------------------------------------------------------- expected `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + '3`
+   |                              - this lifetime was captured
 ...
 LL |     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + '2`
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected signature `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + '3`
-              found signature `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + '2`
-   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
-   = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/signature-mismatch.rs:11:40
+   |
+LL |     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: hidden type inferred to be `impl Future<Output = Vec<u8>> + '_`
 
 error: aborting due to previous error
 

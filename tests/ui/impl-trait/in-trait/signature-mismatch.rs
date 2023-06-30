@@ -15,7 +15,7 @@ pub struct Struct;
 
 impl AsyncTrait for Struct {
     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
-        //~^ ERROR `impl` item signature doesn't match `trait` item signature
+        //~^ ERROR return type captures more lifetimes than trait definition
         async move { buff.to_vec() }
     }
 }
