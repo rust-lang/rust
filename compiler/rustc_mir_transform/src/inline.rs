@@ -222,7 +222,14 @@ impl<'tcx> Inliner<'tcx> {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
-        if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
+        if callsite.fn_sig.abi() == Abi::RustCall {
+            // FIXME: Don't inline user-written `extern "rust-call"` functions,
+            // since this is generally perf-negative on rustc, and we hope that
+            // LLVM will inline these functions instead.
+            if callee_body.spread_arg.is_some() {
+                return Err("do not inline user-written rust-call functions");
+            }
+
             let (self_arg, arg_tuple) = match &args[..] {
                 [arg_tuple] => (None, arg_tuple),
                 [self_arg, arg_tuple] => (Some(self_arg), arg_tuple),
