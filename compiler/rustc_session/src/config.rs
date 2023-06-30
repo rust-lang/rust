@@ -3427,7 +3427,7 @@ pub enum Polonius {
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
     Legacy,
 
-    /// In-tree experimentation
+    /// In-tree prototype, extending the NLL infrastructure.
     Next,
 }
 
@@ -3441,5 +3441,10 @@ impl Polonius {
     /// Returns whether the legacy version of polonius is enabled
     pub fn is_legacy_enabled(&self) -> bool {
         matches!(self, Polonius::Legacy)
+    }
+
+    /// Returns whether the "next" version of polonius is enabled
+    pub fn is_next_enabled(&self) -> bool {
+        matches!(self, Polonius::Next)
     }
 }
