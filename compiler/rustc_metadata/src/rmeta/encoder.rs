@@ -1447,6 +1447,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .is_type_alias_impl_trait
                     .set(def_id.index, self.tcx.is_type_alias_impl_trait(def_id));
             }
+            if let DefKind::ImplTraitPlaceholder = def_kind {
+                self.encode_explicit_item_bounds(def_id);
+            }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
