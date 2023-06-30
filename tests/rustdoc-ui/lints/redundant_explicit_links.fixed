@@ -42,7 +42,7 @@ pub fn dummy_target() {}
 //~^ ERROR redundant explicit link target
 /// [`std::primitive::usize`]
 //~^ ERROR redundant explicit link target
-/// 
+///
 /// [dummy_target] TEXT
 //~^ ERROR redundant explicit link target
 /// [`dummy_target`] TEXT
@@ -91,7 +91,7 @@ pub fn should_not_warn_inline() {}
 //~^ ERROR redundant explicit link target
 /// [`std::primitive::usize`]
 //~^ ERROR redundant explicit link target
-/// 
+///
 /// [dummy_target] TEXT
 //~^ ERROR redundant explicit link target
 /// [`dummy_target`] TEXT
@@ -140,7 +140,7 @@ pub fn should_not_warn_reference_unknown() {}
 //~^ ERROR redundant explicit link target
 /// [`std::primitive::usize`]
 //~^ ERROR redundant explicit link target
-/// 
+///
 /// [dummy_target] TEXT
 //~^ ERROR redundant explicit link target
 /// [`dummy_target`] TEXT

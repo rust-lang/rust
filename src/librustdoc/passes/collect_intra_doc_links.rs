@@ -1038,6 +1038,7 @@ impl LinkCollector<'_, '_> {
             // resolutions are cached, for other links we want to report an error every
             // time so they are not cached.
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
+            false,
         )?;
 
         self.resolve_display_text(
@@ -1232,6 +1233,9 @@ impl LinkCollector<'_, '_> {
         // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
         cache_errors: bool,
+        // If this call is intended to be recoverable, then pass true to silence.
+        // This is only recoverable when path is failed to resolved.
+        recoverable: bool,
     ) -> Option<(Res, Option<UrlFragment>)> {
         if let Some(res) = self.visited_links.get(&key) {
             if res.is_some() || cache_errors {
@@ -1239,7 +1243,7 @@ impl LinkCollector<'_, '_> {
             }
         }
 
-        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone());
+        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), recoverable);
 
         // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
         // However I'm not sure how to check that across crates.
@@ -1290,6 +1294,9 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: &ResolutionInfo,
         diag: DiagnosticInfo<'_>,
+        // If this call is intended to be recoverable, then pass true to silence.
+        // This is only recoverable when path is failed to resolved.
+        recoverable: bool,
     ) -> Vec<(Res, Option<DefId>)> {
         let disambiguator = key.dis;
         let path_str = &key.path_str;
@@ -1319,7 +1326,9 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        if !recoverable {
+                            resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        }
                         return vec![];
                     }
                 }
@@ -1356,13 +1365,15 @@ impl LinkCollector<'_, '_> {
                     .fold(0, |acc, res| if let Ok(res) = res { acc + res.len() } else { acc });
 
                 if len == 0 {
-                    resolution_failure(
-                        self,
-                        diag,
-                        path_str,
-                        disambiguator,
-                        candidates.into_iter().filter_map(|res| res.err()).collect(),
-                    );
+                    if !recoverable {
+                        resolution_failure(
+                            self,
+                            diag,
+                            path_str,
+                            disambiguator,
+                            candidates.into_iter().filter_map(|res| res.err()).collect(),
+                        );
+                    }
                     return vec![];
                 } else if len == 1 {
                     candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
@@ -1396,43 +1407,8 @@ impl LinkCollector<'_, '_> {
         ori_link: &MarkdownLink,
         diag_info: &DiagnosticInfo<'_>,
     ) {
-        // Check if explicit resolution's path is same as resolution of original link's display text path, e.g.
-        //
-        // LinkType::Inline:
-        //
-        // [target](target)
-        // [`target`](target)
-        // [target](path::to::target)
-        // [`target`](path::to::target)
-        // [path::to::target](target)
-        // [`path::to::target`](target)
-        // [path::to::target](path::to::target)
-        // [`path::to::target`](path::to::target)
-        //
-        // LinkType::ReferenceUnknown
-        //
-        // [target][target]
-        // [`target`][target]
-        // [target][path::to::target]
-        // [`target`][path::to::target]
-        // [path::to::target][target]
-        // [`path::to::target`][target]
-        // [path::to::target][path::to::target]
-        // [`path::to::target`][path::to::target]
-        //
-        // LinkType::Reference
-        //
-        // [target][target]
-        // [`target`][target]
-        // [target][path::to::target]
-        // [`target`][path::to::target]
-        // [path::to::target][target]
-        // [`path::to::target`][target]
-        // [path::to::target][path::to::target]
-        // [`path::to::target`][path::to::target]
-        //
-        // [target]: target // or [target]: path::to::target
-        // [path::to::target]: path::to::target // or [path::to::target]: target
+        // Check if explicit resolution's path is same as resolution of original link's display text path, see
+        // tests/rustdoc-ui/lint/redundant_explicit_links.rs for more cases.
         //
         // To avoid disambiguator from panicking, we check if display text path is possible to be disambiguated
         // into explicit path.
@@ -1471,6 +1447,7 @@ impl LinkCollector<'_, '_> {
                 display_res_info,
                 diag_info.clone(), // this struct should really be Copy, but Range is not :(
                 false,
+                true,
             );
         }
     }

@@ -1,4 +1,5 @@
 #![deny(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::redundant_explicit_links)]
 
 pub struct S;
 pub mod char {}

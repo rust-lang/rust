@@ -32,6 +32,13 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
         return;
     }
 
+    if item.link_names(&cx.cache).is_empty() {
+        // If there's no link names in this item,
+        // then we skip resolution querying to 
+        // avoid from panicking.
+        return;
+    }
+
     check_redundant_explicit_link(cx, item, hir_id, &doc);
 }
 
@@ -57,33 +64,52 @@ fn check_redundant_explicit_link<'md>(
 
     while let Some((event, link_range)) = offset_iter.next() {
         match event {
-            Event::Start(Tag::Link(link_type, dest, _)) => match link_type {
-                LinkType::Inline | LinkType::ReferenceUnknown => {
-                    check_inline_or_reference_unknown_redundancy(
-                        cx,
-                        item,
-                        hir_id,
-                        doc,
-                        resolutions,
-                        link_range,
-                        dest.to_string(),
-                        collect_link_data(&mut offset_iter),
-                        if link_type == LinkType::Inline { (b'(', b')') } else { (b'[', b']') },
-                    );
+            Event::Start(Tag::Link(link_type, dest, _)) => {
+                let link_data = collect_link_data(&mut offset_iter);
+
+                let explicit_link = dest.to_string();
+                let display_link = link_data.resolvable_link.clone()?;
+                let explicit_len = explicit_link.len();
+                let display_len = display_link.len();
+
+                if explicit_len == display_len && explicit_link != display_link {
+                    // Skips if they possibly have no relativity.
+                    continue;
                 }
-                LinkType::Reference => {
-                    check_reference_redundancy(
-                        cx,
-                        item,
-                        hir_id,
-                        doc,
-                        resolutions,
-                        link_range,
-                        &dest,
-                        collect_link_data(&mut offset_iter),
-                    );
+
+                if (explicit_len >= display_len
+                    && &explicit_link[(explicit_len - display_len)..] == display_link)
+                    || (display_len >= explicit_len
+                        && &display_link[(display_len - explicit_len)..] == explicit_link) {
+                    match link_type {
+                        LinkType::Inline | LinkType::ReferenceUnknown => {
+                            check_inline_or_reference_unknown_redundancy(
+                                cx,
+                                item,
+                                hir_id,
+                                doc,
+                                resolutions,
+                                link_range,
+                                dest.to_string(),
+                                link_data,
+                                if link_type == LinkType::Inline { (b'(', b')') } else { (b'[', b']') },
+                            );
+                        }
+                        LinkType::Reference => {
+                            check_reference_redundancy(
+                                cx,
+                                item,
+                                hir_id,
+                                doc,
+                                resolutions,
+                                link_range,
+                                &dest,
+                                link_data,
+                            );
+                        }
+                        _ => {}
+                    }
                 }
-                _ => {}
             },
             _ => {}
         }
