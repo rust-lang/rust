@@ -1,19 +1,19 @@
+use crate::question_mark::{pat_and_expr_can_be_question_mark, QuestionMark};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs;
+use clippy_utils::peel_blocks;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{Descend, Visitable};
-use clippy_utils::{is_refutable, is_res_lang_ctor, peel_blocks};
 use if_chain::if_chain;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind, HirId, ItemId, Local, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind, Ty};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::declare_tool_lint;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use serde::Deserialize;
@@ -51,25 +51,8 @@ declare_clippy_lint! {
     "manual implementation of a let...else statement"
 }
 
-pub struct ManualLetElse {
-    msrv: Msrv,
-    matches_behaviour: MatchLintBehaviour,
-}
-
-impl ManualLetElse {
-    #[must_use]
-    pub fn new(msrv: Msrv, matches_behaviour: MatchLintBehaviour) -> Self {
-        Self {
-            msrv,
-            matches_behaviour,
-        }
-    }
-}
-
-impl_lint_pass!(ManualLetElse => [MANUAL_LET_ELSE]);
-
-impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
-    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
+impl<'tcx> QuestionMark {
+    pub(crate) fn check_manual_let_else(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
         if !self.msrv.meets(msrvs::LET_ELSE) || in_external_macro(cx.sess(), stmt.span) {
             return;
         }
@@ -130,8 +113,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
             }
         };
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn emit_manual_let_else(
@@ -167,50 +148,6 @@ fn emit_manual_let_else(
             diag.span_suggestion(span, "consider writing", sugg, app);
         },
     );
-}
-
-/// Returns whether the given let pattern and else body can be turned into a question mark
-///
-/// For this example:
-/// ```ignore
-/// let FooBar { a, b } = if let Some(a) = ex { a } else { return None };
-/// ```
-/// We get as parameters:
-/// ```ignore
-/// pat: Some(a)
-/// else_body: return None
-/// ```
-
-/// And for this example:
-/// ```ignore
-/// let Some(FooBar { a, b }) = ex else { return None };
-/// ```
-/// We get as parameters:
-/// ```ignore
-/// pat: Some(FooBar { a, b })
-/// else_body: return None
-/// ```
-
-/// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
-/// the question mark operator is applicable here. Callers have to check whether we are in a
-/// constant or not.
-pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
-    cx: &LateContext<'_>,
-    pat: &'a Pat<'hir>,
-    else_body: &Expr<'_>,
-) -> Option<&'a Pat<'hir>> {
-    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind &&
-        is_res_lang_ctor(cx, cx.qpath_res(&pat_path, pat.hir_id), OptionSome) &&
-        !is_refutable(cx, inner_pat) &&
-        let else_body = peel_blocks(else_body) &&
-        let ExprKind::Ret(Some(ret_val)) = else_body.kind &&
-        let ExprKind::Path(ret_path) = ret_val.kind &&
-        is_res_lang_ctor(cx, cx.qpath_res(&ret_path, ret_val.hir_id), OptionNone)
-    {
-        Some(inner_pat)
-    } else {
-        None
-    }
 }
 
 /// Replaces the locals in the pattern

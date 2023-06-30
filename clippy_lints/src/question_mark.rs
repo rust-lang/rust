@@ -1,10 +1,11 @@
-use crate::manual_let_else::pat_and_expr_can_be_question_mark;
+use crate::manual_let_else::{MatchLintBehaviour, MANUAL_LET_ELSE};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    eq_expr_value, get_parent_node, in_constant, is_else_clause, is_res_lang_ctor, path_to_local, path_to_local_id,
-    peel_blocks, peel_blocks_with_stmt,
+    eq_expr_value, get_parent_node, in_constant, is_else_clause, is_refutable, is_res_lang_ctor, path_to_local,
+    path_to_local_id, peel_blocks, peel_blocks_with_stmt,
 };
 use clippy_utils::{higher, is_path_lang_item};
 use if_chain::if_chain;
@@ -12,7 +13,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingAnnotation, Block, ByRef, Expr, ExprKind, Local, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
+    BindingAnnotation, Block, ByRef, Expr, ExprKind, Local, Node, Pat, PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
@@ -45,8 +46,9 @@ declare_clippy_lint! {
     "checks for expressions that could be replaced by the question mark operator"
 }
 
-#[derive(Default)]
 pub struct QuestionMark {
+    pub(crate) msrv: Msrv,
+    pub(crate) matches_behaviour: MatchLintBehaviour,
     /// Keeps track of how many try blocks we are in at any point during linting.
     /// This allows us to answer the question "are we inside of a try block"
     /// very quickly, without having to walk up the parent chain, by simply checking
@@ -54,7 +56,19 @@ pub struct QuestionMark {
     /// As for why we need this in the first place: <https://github.com/rust-lang/rust-clippy/issues/8628>
     try_block_depth_stack: Vec<u32>,
 }
-impl_lint_pass!(QuestionMark => [QUESTION_MARK]);
+
+impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
+
+impl QuestionMark {
+    #[must_use]
+    pub fn new(msrv: Msrv, matches_behaviour: MatchLintBehaviour) -> Self {
+        Self {
+            msrv,
+            matches_behaviour,
+            try_block_depth_stack: Vec::new(),
+        }
+    }
+}
 
 enum IfBlockType<'hir> {
     /// An `if x.is_xxx() { a } else { b } ` expression.
@@ -79,6 +93,50 @@ enum IfBlockType<'hir> {
         &'hir Expr<'hir>,
         Option<&'hir Expr<'hir>>,
     ),
+}
+
+/// Returns whether the given let pattern and else body can be turned into a question mark
+///
+/// For this example:
+/// ```ignore
+/// let FooBar { a, b } = if let Some(a) = ex { a } else { return None };
+/// ```
+/// We get as parameters:
+/// ```ignore
+/// pat: Some(a)
+/// else_body: return None
+/// ```
+
+/// And for this example:
+/// ```ignore
+/// let Some(FooBar { a, b }) = ex else { return None };
+/// ```
+/// We get as parameters:
+/// ```ignore
+/// pat: Some(FooBar { a, b })
+/// else_body: return None
+/// ```
+
+/// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
+/// the question mark operator is applicable here. Callers have to check whether we are in a
+/// constant or not.
+pub(crate) fn pat_and_expr_can_be_question_mark<'a, 'hir>(
+    cx: &LateContext<'_>,
+    pat: &'a Pat<'hir>,
+    else_body: &Expr<'_>,
+) -> Option<&'a Pat<'hir>> {
+    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind &&
+        is_res_lang_ctor(cx, cx.qpath_res(&pat_path, pat.hir_id), OptionSome) &&
+        !is_refutable(cx, inner_pat) &&
+        let else_body = peel_blocks(else_body) &&
+        let ExprKind::Ret(Some(ret_val)) = else_body.kind &&
+        let ExprKind::Path(ret_path) = ret_val.kind &&
+        is_res_lang_ctor(cx, cx.qpath_res(&ret_path, ret_val.hir_id), OptionNone)
+    {
+        Some(inner_pat)
+    } else {
+        None
+    }
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
@@ -289,6 +347,7 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         if !in_constant(cx, stmt.hir_id) {
             check_let_some_else_return_none(cx, stmt);
         }
+        self.check_manual_let_else(cx, stmt);
     }
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !in_constant(cx, expr.hir_id) {
@@ -322,4 +381,5 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
                 .expect("blocks are always part of bodies and must have a depth") -= 1;
         }
     }
+    extract_msrv_attr!(LateContext);
 }
