@@ -10,7 +10,6 @@ use rustc_mir_dataflow::elaborate_drops::{DropElaborator, DropFlagMode, DropStyl
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::on_lookup_result_bits;
-use rustc_mir_dataflow::un_derefer::UnDerefer;
 use rustc_mir_dataflow::MoveDataParamEnv;
 use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -54,20 +53,19 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
         let def_id = body.source.def_id();
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        let (side_table, move_data) = match MoveData::gather_moves(body, tcx, param_env) {
+        let move_data = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {
                 tcx.sess.delay_span_bug(
                     body.span,
                     "No `move_errors` should be allowed in MIR borrowck",
                 );
-                (Default::default(), move_data)
+                move_data
             }
         };
-        let un_derefer = UnDerefer { tcx: tcx, derefer_sidetable: side_table };
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
-            remove_dead_unwinds(tcx, body, &env, &un_derefer);
+            remove_dead_unwinds(tcx, body, &env);
 
             let inits = MaybeInitializedPlaces::new(tcx, body, &env)
                 .into_engine(tcx, body)
@@ -92,7 +90,6 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 init_data: InitializationData { inits, uninits },
                 drop_flags,
                 patch: MirPatch::new(body),
-                un_derefer: un_derefer,
                 reachable,
             }
             .elaborate()
@@ -108,7 +105,6 @@ fn remove_dead_unwinds<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     env: &MoveDataParamEnv<'tcx>,
-    und: &UnDerefer<'tcx>,
 ) {
     debug!("remove_dead_unwinds({:?})", body.span);
     // We only need to do this pass once, because unwind edges can only
@@ -121,9 +117,7 @@ fn remove_dead_unwinds<'tcx>(
         .into_results_cursor(body);
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let place = match bb_data.terminator().kind {
-            TerminatorKind::Drop { ref place, unwind: UnwindAction::Cleanup(_), .. } => {
-                und.derefer(place.as_ref(), body).unwrap_or(*place)
-            }
+            TerminatorKind::Drop { place, unwind: UnwindAction::Cleanup(_), .. } => place,
             _ => continue,
         };
 
@@ -296,7 +290,6 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     init_data: InitializationData<'a, 'tcx>,
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
-    un_derefer: UnDerefer<'tcx>,
     reachable: BitSet<BasicBlock>,
 }
 
@@ -342,9 +335,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             }
             let terminator = data.terminator();
             let place = match terminator.kind {
-                TerminatorKind::Drop { ref place, .. } => {
-                    self.un_derefer.derefer(place.as_ref(), self.body).unwrap_or(*place)
-                }
+                TerminatorKind::Drop { ref place, .. } => place,
                 _ => continue,
             };
 
@@ -401,11 +392,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let terminator = data.terminator();
 
             match terminator.kind {
-                TerminatorKind::Drop { mut place, target, unwind, replace } => {
-                    if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
-                        place = new_place;
-                    }
-
+                TerminatorKind::Drop { place, target, unwind, replace } => {
                     self.init_data.seek_before(loc);
                     match self.move_data().rev_lookup.find(place.as_ref()) {
                         LookupResult::Exact(path) => {
