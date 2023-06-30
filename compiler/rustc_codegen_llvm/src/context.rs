@@ -8,7 +8,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use rustc_codegen_ssa::base::wants_msvc_seh;
+use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
@@ -532,19 +532,28 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if let Some(llpersonality) = self.eh_personality.get() {
             return llpersonality;
         }
+
+        let name = if wants_msvc_seh(self.sess()) {
+            Some("__CxxFrameHandler3")
+        } else if wants_wasm_eh(self.sess()) {
+            // LLVM specifically tests for the name of the personality function
+            // There is no need for this function to exist anywhere, it will
+            // not be called. However, its name has to be "__gxx_wasm_personality_v0"
+            // for native wasm exceptions.
+            Some("__gxx_wasm_personality_v0")
+        } else {
+            None
+        };
+
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
+            Some(def_id) if name.is_none() => self.get_fn_addr(
                 ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, ty::List::empty())
                     .unwrap()
                     .unwrap(),
             ),
             _ => {
-                let name = if wants_msvc_seh(self.sess()) {
-                    "__CxxFrameHandler3"
-                } else {
-                    "rust_eh_personality"
-                };
+                let name = name.unwrap_or("rust_eh_personality");
                 if let Some(llfn) = self.get_declared_value(name) {
                     llfn
                 } else {
@@ -662,6 +671,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
         let t_metadata = self.type_metadata();
+        let t_token = self.type_token();
+
+        ifn!("llvm.wasm.get.exception", fn(t_token) -> i8p);
+        ifn!("llvm.wasm.get.ehselector", fn(t_token) -> t_i32);
 
         ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);

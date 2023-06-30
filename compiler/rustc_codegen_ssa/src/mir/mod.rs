@@ -179,7 +179,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         start_bx.set_personality_fn(cx.eh_personality());
     }
 
-    let cleanup_kinds = base::wants_msvc_seh(cx.tcx().sess).then(|| analyze::cleanup_kinds(&mir));
+    let cleanup_kinds =
+        base::wants_new_eh_instructions(cx.tcx().sess).then(|| analyze::cleanup_kinds(&mir));
 
     let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
         mir.basic_blocks
