@@ -875,14 +875,19 @@ unsafe fn embed_bitcode(
     //   passed though then these sections will show up in the final output.
     //   Additionally the flag that we need to set here is `SHF_EXCLUDE`.
     //
+    // * XCOFF - AIX linker ignores content in .ipa and .info if no auxiliary
+    //   symbol associated with these sections.
+    //
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
+    let is_aix = cgcx.opts.target_triple.triple().contains("-aix");
     let is_apple = cgcx.opts.target_triple.triple().contains("-ios")
         || cgcx.opts.target_triple.triple().contains("-darwin")
         || cgcx.opts.target_triple.triple().contains("-tvos")
         || cgcx.opts.target_triple.triple().contains("-watchos");
     if is_apple
+        || is_aix
         || cgcx.opts.target_triple.triple().starts_with("wasm")
         || cgcx.opts.target_triple.triple().starts_with("asmjs")
     {
@@ -895,7 +900,13 @@ unsafe fn embed_bitcode(
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
 
-        let section = if is_apple { c"__LLVM,__bitcode" } else { c".llvmbc" };
+        let section = if is_apple {
+            c"__LLVM,__bitcode"
+        } else if is_aix {
+            c".ipa"
+        } else {
+            c".llvmbc"
+        };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
@@ -907,7 +918,13 @@ unsafe fn embed_bitcode(
             c"rustc.embedded.cmdline".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section = if is_apple { c"__LLVM,__cmdline" } else { c".llvmcmd" };
+        let section = if is_apple {
+            c"__LLVM,__cmdline"
+        } else if is_aix {
+            c".info"
+        } else {
+            c".llvmcmd"
+        };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     } else {
