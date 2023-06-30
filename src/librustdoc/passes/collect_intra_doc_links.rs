@@ -1041,7 +1041,6 @@ impl LinkCollector<'_, '_> {
         )?;
 
         self.check_redundant_explicit_link(
-            &res,
             path_str,
             ResolutionInfo {
                 item_id,
@@ -1388,7 +1387,6 @@ impl LinkCollector<'_, '_> {
     /// Check if resolution of inline link's display text and explicit link are same.
     fn check_redundant_explicit_link(
         &mut self,
-        explicit_res: &Res,
         explicit_link: &Box<str>,
         display_res_info: ResolutionInfo,
         ori_link: &MarkdownLink,
@@ -1415,38 +1413,14 @@ impl LinkCollector<'_, '_> {
         if explicit_len >= display_len
             && &explicit_link[(explicit_len - display_len)..] == display_text
         {
-            let Some((display_res, _)) = self.resolve_with_disambiguator_cached(
+            self.resolve_with_disambiguator_cached(
                 display_res_info,
                 diag_info.clone(), // this struct should really be Copy, but Range is not :(
                 // For reference-style links we want to report only one error so unsuccessful
                 // resolutions are cached, for other links we want to report an error every
                 // time so they are not cached.
                 matches!(ori_link.kind, LinkType::Reference),
-            ) else {
-                return;
-            };
-
-            if &display_res == explicit_res {
-                use crate::lint::REDUNDANT_EXPLICIT_LINKS;
-
-                report_diagnostic(
-                    self.cx.tcx,
-                    REDUNDANT_EXPLICIT_LINKS,
-                    "redundant explicit rustdoc link",
-                    &diag_info,
-                    |diag, sp, _link_range| {
-                        if let Some(sp) = sp {
-                            diag.note("Explicit link does not affect the original link")
-                                .span_suggestion_hidden(
-                                    sp,
-                                    "Remove explicit link instead",
-                                    format!(""),
-                                    Applicability::MachineApplicable,
-                                );
-                        }
-                    },
-                );
-            }
+            );
         }
     }
 }

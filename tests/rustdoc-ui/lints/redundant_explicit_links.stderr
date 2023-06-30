@@ -1,133 +1,307 @@
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:5:20
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:7:20
    |
 LL | /// [dummy_target](dummy_target)
-   |                    ^^^^^^^^^^^^
+   |      ------------  ^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 note: the lint level is defined here
-  --> $DIR/redundant_explicit_links.rs:1:9
+  --> $DIR/redundant_explicit_links.rs:3:9
    |
 LL | #![deny(rustdoc::redundant_explicit_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: Remove explicit link instead
+help: remove explicit link target
+   |
+LL | /// [dummy_target]
+   |     ~~~~~~~~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:6:22
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:9:22
    |
 LL | /// [`dummy_target`](dummy_target)
-   |                      ^^^^^^^^^^^^
+   |      --------------  ^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`dummy_target`]
+   |     ~~~~~~~~~~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:8:11
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:12:11
    |
 LL | /// [Vec](Vec)
-   |           ^^^
+   |      ---  ^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [Vec]
+   |     ~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:9:13
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:14:13
    |
 LL | /// [`Vec`](Vec)
-   |             ^^^
+   |      -----  ^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`Vec`]
+   |     ~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:10:11
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:16:11
    |
 LL | /// [Vec](std::vec::Vec)
-   |           ^^^^^^^^^^^^^
+   |      ---  ^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [Vec]
+   |     ~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:11:13
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:18:13
    |
 LL | /// [`Vec`](std::vec::Vec)
-   |             ^^^^^^^^^^^^^
+   |      -----  ^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`Vec`]
+   |     ~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:14:21
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:20:21
+   |
+LL | /// [std::vec::Vec](Vec)
+   |      -------------  ^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [std::vec::Vec]
+   |     ~~~~~~~~~~~~~~~
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:22:23
+   |
+LL | /// [`std::vec::Vec`](Vec)
+   |      ---------------  ^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`std::vec::Vec`]
+   |     ~~~~~~~~~~~~~~~~~
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:24:21
    |
 LL | /// [std::vec::Vec](std::vec::Vec)
-   |                     ^^^^^^^^^^^^^
+   |      -------------  ^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [std::vec::Vec]
+   |     ~~~~~~~~~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:15:23
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:26:23
    |
 LL | /// [`std::vec::Vec`](std::vec::Vec)
-   |                       ^^^^^^^^^^^^^
+   |      ---------------  ^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`std::vec::Vec`]
+   |     ~~~~~~~~~~~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:17:13
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:29:13
    |
 LL | /// [usize](usize)
-   |             ^^^^^
+   |      -----  ^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [usize]
+   |     ~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:18:15
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:31:15
    |
 LL | /// [`usize`](usize)
-   |               ^^^^^
+   |      -------  ^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`usize`]
+   |     ~~~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:19:13
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:33:13
    |
 LL | /// [usize](std::primitive::usize)
-   |             ^^^^^^^^^^^^^^^^^^^^^
+   |      -----  ^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [usize]
+   |     ~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:20:15
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:35:15
    |
 LL | /// [`usize`](std::primitive::usize)
-   |               ^^^^^^^^^^^^^^^^^^^^^
+   |      -------  ^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`usize`]
+   |     ~~~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:23:29
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:37:29
+   |
+LL | /// [std::primitive::usize](usize)
+   |      ---------------------  ^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [std::primitive::usize]
+   |     ~~~~~~~~~~~~~~~~~~~~~~~
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:39:31
+   |
+LL | /// [`std::primitive::usize`](usize)
+   |      -----------------------  ^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`std::primitive::usize`]
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:41:29
    |
 LL | /// [std::primitive::usize](std::primitive::usize)
-   |                             ^^^^^^^^^^^^^^^^^^^^^
+   |      ---------------------  ^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [std::primitive::usize]
+   |     ~~~~~~~~~~~~~~~~~~~~~~~
 
-error: redundant explicit rustdoc link
-  --> $DIR/redundant_explicit_links.rs:24:31
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:43:31
    |
 LL | /// [`std::primitive::usize`](std::primitive::usize)
-   |                               ^^^^^^^^^^^^^^^^^^^^^
+   |      -----------------------  ^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
    |
-   = note: Explicit link does not affect the original link
-   = help: Remove explicit link instead
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`std::primitive::usize`]
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 14 previous errors
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:46:20
+   |
+LL | /// [dummy_target](dummy_target) TEXT
+   |      ------------  ^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [dummy_target] TEXT
+   |     ~~~~~~~~~~~~~~
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:48:22
+   |
+LL | /// [`dummy_target`](dummy_target) TEXT
+   |      --------------  ^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL | /// [`dummy_target`] TEXT
+   |     ~~~~~~~~~~~~~~~~
+
+error: aborting due to 20 previous errors
 

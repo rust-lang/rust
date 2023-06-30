@@ -4,48 +4,48 @@
 
 pub fn dummy_target() {}
 
-/// [dummy_target](dummy_target)
+/// [dummy_target]
 //~^ ERROR redundant explicit link target
-/// [`dummy_target`](dummy_target)
-//~^ ERROR redundant explicit link target
-///
-/// [Vec](Vec)
-//~^ ERROR redundant explicit link target
-/// [`Vec`](Vec)
-//~^ ERROR redundant explicit link target
-/// [Vec](std::vec::Vec)
-//~^ ERROR redundant explicit link target
-/// [`Vec`](std::vec::Vec)
-//~^ ERROR redundant explicit link target
-/// [std::vec::Vec](Vec)
-//~^ ERROR redundant explicit link target
-/// [`std::vec::Vec`](Vec)
-//~^ ERROR redundant explicit link target
-/// [std::vec::Vec](std::vec::Vec)
-//~^ ERROR redundant explicit link target
-/// [`std::vec::Vec`](std::vec::Vec)
+/// [`dummy_target`]
 //~^ ERROR redundant explicit link target
 ///
-/// [usize](usize)
+/// [Vec]
 //~^ ERROR redundant explicit link target
-/// [`usize`](usize)
+/// [`Vec`]
 //~^ ERROR redundant explicit link target
-/// [usize](std::primitive::usize)
+/// [Vec]
 //~^ ERROR redundant explicit link target
-/// [`usize`](std::primitive::usize)
+/// [`Vec`]
 //~^ ERROR redundant explicit link target
-/// [std::primitive::usize](usize)
+/// [std::vec::Vec]
 //~^ ERROR redundant explicit link target
-/// [`std::primitive::usize`](usize)
+/// [`std::vec::Vec`]
 //~^ ERROR redundant explicit link target
-/// [std::primitive::usize](std::primitive::usize)
+/// [std::vec::Vec]
 //~^ ERROR redundant explicit link target
-/// [`std::primitive::usize`](std::primitive::usize)
+/// [`std::vec::Vec`]
+//~^ ERROR redundant explicit link target
+///
+/// [usize]
+//~^ ERROR redundant explicit link target
+/// [`usize`]
+//~^ ERROR redundant explicit link target
+/// [usize]
+//~^ ERROR redundant explicit link target
+/// [`usize`]
+//~^ ERROR redundant explicit link target
+/// [std::primitive::usize]
+//~^ ERROR redundant explicit link target
+/// [`std::primitive::usize`]
+//~^ ERROR redundant explicit link target
+/// [std::primitive::usize]
+//~^ ERROR redundant explicit link target
+/// [`std::primitive::usize`]
 //~^ ERROR redundant explicit link target
 /// 
-/// [dummy_target](dummy_target) TEXT
+/// [dummy_target] TEXT
 //~^ ERROR redundant explicit link target
-/// [`dummy_target`](dummy_target) TEXT
+/// [`dummy_target`] TEXT
 //~^ ERROR redundant explicit link target
 pub fn should_warn_inline() {}
 
