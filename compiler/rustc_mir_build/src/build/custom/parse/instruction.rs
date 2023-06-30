@@ -158,6 +158,22 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call("mir_len", args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
             @call("mir_copy_for_deref", args) => Ok(Rvalue::CopyForDeref(self.parse_place(args[0])?)),
+            @call("mir_offset_of", args, substs) => {
+                let fields = parse_by_kind!(self, args[0], _, "array",
+                    ExprKind::Array { fields } => {
+                        let iter = fields.iter().map(|f| Ok(FieldIdx::from_u32(self.parse_integer_literal(*f)? as u32)));
+                        self.tcx.mk_fields_from_iter(iter)?
+                    },
+                    ExprKind::Repeat { value, count } => {
+                        let field = FieldIdx::from_u32(self.parse_integer_literal(*value)? as u32);
+                        let count = count.eval_bits(self.tcx, self.param_env, self.tcx.types.usize);
+                        let iter = std::iter::repeat(field).take(count as usize);
+                        self.tcx.mk_fields_from_iter(iter)
+                    },
+                );
+
+                Ok(Rvalue::NullaryOp(NullOp::OffsetOf(fields), substs[0].expect_ty()))
+            },
             ExprKind::Borrow { borrow_kind, arg } => Ok(
                 Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
             ),

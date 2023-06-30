@@ -228,7 +228,7 @@
 //!
 //!  - Operands implicitly convert to `Use` rvalues.
 //!  - `&`, `&mut`, `addr_of!`, and `addr_of_mut!` all work to create their associated rvalue.
-//!  - [`Discriminant`], [`Len`], and [`CopyForDeref`] have associated functions.
+//!  - [`Discriminant`], [`Len`], [`CopyForDeref`], and [`OffsetOf`] have associated functions.
 //!  - Unary and binary operations use their normal Rust syntax - `a * b`, `!c`, etc.
 //!  - The binary operation `Offset` can be created via [`Offset`].
 //!  - Checked binary operations are represented by wrapping the associated binop in [`Checked`].
@@ -284,6 +284,7 @@ define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);
 define!("mir_static_mut", fn StaticMut<T>(s: T) -> *mut T);
+define!("mir_offset_of", fn OffsetOf<T, const N: usize>(indices: [u32; N]) -> usize);
 define!(
     "mir_discriminant",
     /// Gets the discriminant of a place.

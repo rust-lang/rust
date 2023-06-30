@@ -1,0 +1,13 @@
+// MIR for `offsets` after built
+
+fn offsets() -> (usize, usize, usize, usize) {
+    let mut _0: (usize, usize, usize, usize);
+
+    bb0: {
+        (_0.0: usize) = OffsetOf(FieldStruct, [0]);
+        (_0.1: usize) = OffsetOf(FieldStruct, [1]);
+        (_0.2: usize) = OffsetOf(FieldStruct, [2]);
+        (_0.3: usize) = OffsetOf(NestedA, [0, 0]);
+        return;
+    }
+}

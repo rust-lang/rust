@@ -26,7 +26,7 @@ macro_rules! parse_by_kind {
         $expr_name:pat,
         $expected:literal,
         $(
-            @call($name:literal, $args:ident) => $call_expr:expr,
+            @call($name:literal, $args:ident $(,$substs:ident)?) => $call_expr:expr,
         )*
         $(
             $pat:pat => $expr:expr,
@@ -38,14 +38,10 @@ macro_rules! parse_by_kind {
         let $expr_name = expr;
         match &expr.kind {
             $(
-                ExprKind::Call { ty, fun: _, args: $args, .. } if {
-                    match ty.kind() {
-                        ty::FnDef(did, _) => {
-                            $self.tcx.is_diagnostic_item(rustc_span::Symbol::intern($name), *did)
-                        }
-                        _ => false,
-                    }
-                } => $call_expr,
+                ExprKind::Call { ty, fun: _, args: $args, .. }
+                    if let ty::FnDef(did, $($substs,)? ..) = ty.kind()
+                    && $self.tcx.is_diagnostic_item(rustc_span::Symbol::intern($name), *did)
+                => $call_expr,
             )*
             $(
                 $pat => $expr,
