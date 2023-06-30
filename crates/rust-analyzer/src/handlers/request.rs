@@ -1156,7 +1156,7 @@ pub(crate) fn handle_code_action(
         let code_action = to_proto::code_action(&snap, assist, resolve_data)?;
 
         // Check if the client supports the necessary `ResourceOperation`s.
-        if let Some(changes) = &code_action.edit.as_ref().unwrap().document_changes {
+        if let Some(changes) = code_action.edit.as_ref().and_then(|it| &it.document_changes) {
             for change in changes {
                 if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
                     if let Err(err) =
