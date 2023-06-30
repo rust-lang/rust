@@ -158,6 +158,12 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call("mir_len", args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
             @call("mir_copy_for_deref", args) => Ok(Rvalue::CopyForDeref(self.parse_place(args[0])?)),
+            @call("mir_size_of", _args, substs) => {
+                Ok(Rvalue::NullaryOp(NullOp::SizeOf, substs[0].expect_ty()))
+            },
+            @call("mir_align_of", _args, substs) => {
+                Ok(Rvalue::NullaryOp(NullOp::AlignOf, substs[0].expect_ty()))
+            },
             @call("mir_offset_of", args, substs) => {
                 let fields = parse_by_kind!(self, args[0], _, "array",
                     ExprKind::Array { fields } => {

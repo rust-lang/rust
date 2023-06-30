@@ -1,0 +1,11 @@
+// MIR for `size_and_align` after built
+
+fn size_and_align() -> (usize, usize) {
+    let mut _0: (usize, usize);
+
+    bb0: {
+        (_0.0: usize) = SizeOf(T);
+        (_0.1: usize) = AlignOf(T);
+        return;
+    }
+}

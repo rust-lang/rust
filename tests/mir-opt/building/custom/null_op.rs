@@ -18,7 +18,20 @@ struct NestedA {
 #[repr(C)]
 struct NestedB(u8);
 
-// EMIT_MIR offset_of.offsets.built.after.mir
+// EMIT_MIR null_op.size_and_align.built.after.mir
+#[custom_mir(dialect = "analysis", phase = "post-cleanup")]
+fn size_and_align<T>() -> (usize, usize) {
+    mir!(
+        type RET = (usize, usize);
+        {
+            RET.0 = SizeOf::<T>();
+            RET.1 = AlignOf::<T>();
+            Return()
+        }
+    )
+}
+
+// EMIT_MIR null_op.offsets.built.after.mir
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
 fn offsets() -> (usize, usize, usize, usize) {
     mir!(
@@ -34,5 +47,7 @@ fn offsets() -> (usize, usize, usize, usize) {
 }
 
 fn main() {
+    assert_eq!(size_and_align::<FieldStruct>(), (6, 2));
+    assert_eq!(size_and_align::<NestedA>(), (1, 1));
     assert_eq!(offsets(), (0, 2, 4, 0));
 }
