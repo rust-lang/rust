@@ -1,4 +1,4 @@
-use crate::{FnCtxt, LocalTy};
+use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::PatKind;
@@ -48,7 +48,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         Self { fcx, outermost_fn_param_pat: None }
     }
 
-    fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
+    fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
                 // Infer the variable's type.
@@ -56,23 +56,20 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
                     kind: TypeVariableOriginKind::TypeInference,
                     span,
                 });
-                self.fcx
-                    .locals
-                    .borrow_mut()
-                    .insert(nid, LocalTy { decl_ty: var_ty, revealed_ty: var_ty });
+                self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }
             Some(typ) => {
                 // Take type that the user specified.
                 self.fcx.locals.borrow_mut().insert(nid, typ);
-                typ.revealed_ty
+                typ
             }
         }
     }
 
-    /// Allocates a [LocalTy] for a declaration, which may have a type annotation. If it does have
-    /// a type annotation, then the LocalTy stored will be the resolved type. This may be found
-    /// again during type checking by querying [FnCtxt::local_ty] for the same hir_id.
+    /// Allocates a type for a declaration, which may have a type annotation. If it does have
+    /// a type annotation, then the [`Ty`] stored will be the resolved type. This may be found
+    /// again during type checking by querying [`FnCtxt::local_ty`] for the same hir_id.
     fn declare(&mut self, decl: Declaration<'tcx>) {
         let local_ty = match decl.ty {
             Some(ref ty) => {
@@ -87,7 +84,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
                     .user_provided_types_mut()
                     .insert(ty.hir_id, c_ty);
 
-                Some(LocalTy { decl_ty: o_ty.normalized, revealed_ty: o_ty.normalized })
+                Some(o_ty.normalized)
             }
             None => None,
         };
@@ -96,7 +93,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         debug!(
             "local variable {:?} is assigned type {}",
             decl.pat,
-            self.fcx.ty_to_string(self.fcx.locals.borrow().get(&decl.hir_id).unwrap().decl_ty)
+            self.fcx.ty_to_string(*self.fcx.locals.borrow().get(&decl.hir_id).unwrap())
         );
     }
 }
@@ -151,7 +148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             debug!(
                 "pattern binding {} is assigned to {} with type {:?}",
                 ident,
-                self.fcx.ty_to_string(self.fcx.locals.borrow().get(&p.hir_id).unwrap().decl_ty),
+                self.fcx.ty_to_string(*self.fcx.locals.borrow().get(&p.hir_id).unwrap()),
                 var_ty
             );
         }
