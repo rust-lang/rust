@@ -339,6 +339,16 @@
                     "default": null,
                     "markdownDescription": "Environment variables passed to the runnable launched using `Test` or `Debug` lens or `rust-analyzer.run` command."
                 },
+                "rust-analyzer.runnables.problemMatcher": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "$rustc"
+                    ],
+                    "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
+                },
                 "rust-analyzer.server.path": {
                     "type": [
                         "null",

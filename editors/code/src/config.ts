@@ -220,6 +220,10 @@ export class Config {
         return this.get<string[] | undefined>("discoverProjectCommand");
     }
 
+    get problemMatcher(): string[] {
+        return this.get<string[]>("runnables.problemMatcher") || [];
+    }
+
     get cargoRunner() {
         return this.get<string | undefined>("cargoRunner");
     }
