@@ -1040,7 +1040,7 @@ impl LinkCollector<'_, '_> {
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
         )?;
 
-        self.check_redundant_explicit_link(
+        self.resolve_display_text(
             path_str,
             ResolutionInfo {
                 item_id,
@@ -1384,8 +1384,12 @@ impl LinkCollector<'_, '_> {
         }
     }
 
-    /// Check if resolution of inline link's display text and explicit link are same.
-    fn check_redundant_explicit_link(
+    /// Resolve display text if the provided link has separated parts of links.
+    ///
+    /// For example:
+    /// Inline link `[display_text](dest_link)` and reference link `[display_text][reference_link]` has
+    /// separated parts of links.
+    fn resolve_display_text(
         &mut self,
         explicit_link: &Box<str>,
         display_res_info: ResolutionInfo,
@@ -1393,33 +1397,80 @@ impl LinkCollector<'_, '_> {
         diag_info: &DiagnosticInfo<'_>,
     ) {
         // Check if explicit resolution's path is same as resolution of original link's display text path, e.g.
+        //
+        // LinkType::Inline:
+        //
         // [target](target)
         // [`target`](target)
         // [target](path::to::target)
         // [`target`](path::to::target)
+        // [path::to::target](target)
+        // [`path::to::target`](target)
         // [path::to::target](path::to::target)
         // [`path::to::target`](path::to::target)
         //
+        // LinkType::ReferenceUnknown
+        //
+        // [target][target]
+        // [`target`][target]
+        // [target][path::to::target]
+        // [`target`][path::to::target]
+        // [path::to::target][target]
+        // [`path::to::target`][target]
+        // [path::to::target][path::to::target]
+        // [`path::to::target`][path::to::target]
+        //
+        // LinkType::Reference
+        //
+        // [target][target]
+        // [`target`][target]
+        // [target][path::to::target]
+        // [`target`][path::to::target]
+        // [path::to::target][target]
+        // [`path::to::target`][target]
+        // [path::to::target][path::to::target]
+        // [`path::to::target`][path::to::target]
+        //
+        // [target]: target // or [target]: path::to::target
+        // [path::to::target]: path::to::target // or [path::to::target]: target
+        //
         // To avoid disambiguator from panicking, we check if display text path is possible to be disambiguated
         // into explicit path.
-        if ori_link.kind != LinkType::Inline {
+        if !matches!(
+            ori_link.kind,
+            LinkType::Inline | LinkType::Reference | LinkType::ReferenceUnknown
+        ) {
             return;
         }
 
+        // Algorithm to check if display text could possibly be the explicit link:
+        //
+        // Consider 2 links which are display text and explicit link, pick the shorter
+        // one as symbol and longer one as full qualified path, and tries to match symbol
+        // to the full qualified path's last symbol.
+        //
+        // Otherwise, check if 2 links are same, if so, skip the resolve process.
+        //
+        // Notice that this algorithm is passive, might possibly miss actual redudant cases.
+        let explicit_link = &explicit_link.to_string();
         let display_text = &ori_link.display_text;
         let display_len = display_text.len();
         let explicit_len = explicit_link.len();
 
-        if explicit_len >= display_len
-            && &explicit_link[(explicit_len - display_len)..] == display_text
+        if display_len == explicit_len {
+            // Whether they are same or not, skip the resolve process.
+            return;
+        }
+
+        if (explicit_len >= display_len
+            && &explicit_link[(explicit_len - display_len)..] == display_text)
+            || (display_len >= explicit_len
+                && &display_text[(display_len - explicit_len)..] == explicit_link)
         {
             self.resolve_with_disambiguator_cached(
                 display_res_info,
                 diag_info.clone(), // this struct should really be Copy, but Range is not :(
-                // For reference-style links we want to report only one error so unsuccessful
-                // resolutions are cached, for other links we want to report an error every
-                // time so they are not cached.
-                matches!(ori_link.kind, LinkType::Reference),
+                false,
             );
         }
     }
