@@ -6,11 +6,7 @@ LL |         MyTrait::foo(&self)
    |         |
    |         required by a bound introduced by this call
    |
-help: consider removing the leading `&`-reference
-   |
-LL -         MyTrait::foo(&self)
-LL +         MyTrait::foo(self)
-   |
+   = help: the trait `MyTrait` is implemented for `Outer`
 
 error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
   --> $DIR/issue-102140.rs:26:9
