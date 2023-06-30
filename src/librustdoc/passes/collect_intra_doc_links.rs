@@ -398,6 +398,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .doc_link_resolutions(module_id)
             .get(&(Symbol::intern(path_str), ns))
             .copied()
+            // NOTE: do not remove this panic! Missing links should be recorded as `Res::Err`; if
+            // `doc_link_resolutions` is missing a `path_str`, that means that there are valid links
+            // that are being missed. To fix the ICE, change
+            // `rustc_resolve::rustdoc::attrs_to_preprocessed_links` to cache the link.
             .unwrap_or_else(|| panic!("no resolution for {:?} {:?} {:?}", path_str, ns, module_id))
             .and_then(|res| res.try_into().ok())
             .or_else(|| resolve_primitive(path_str, ns));
