@@ -594,7 +594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("check_pat_ident: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
-        let local_ty = self.local_ty(pat.span, pat.hir_id).decl_ty;
+        let local_ty = self.local_ty(pat.span, pat.hir_id);
         let eq_ty = match bm {
             ty::BindByReference(mutbl) => {
                 // If the binding is like `ref x | ref mut x`,
@@ -635,7 +635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) {
-        let var_ty = self.local_ty(span, var_id).decl_ty;
+        let var_ty = self.local_ty(span, var_id);
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
             let hir = self.tcx.hir();
             let var_ty = self.resolve_vars_with_obligations(var_ty);

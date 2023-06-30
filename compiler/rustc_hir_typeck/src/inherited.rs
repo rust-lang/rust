@@ -30,7 +30,7 @@ pub struct Inherited<'tcx> {
 
     pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 
-    pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
+    pub(super) locals: RefCell<HirIdMap<Ty<'tcx>>>,
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
