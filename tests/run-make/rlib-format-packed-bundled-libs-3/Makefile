@@ -31,5 +31,4 @@ all: $(call NATIVE_STATICLIB,native_dep_1) $(call NATIVE_STATICLIB,native_dep_2)
 	rm $(TMPDIR)/libnative_dep_3.a
 
 	$(RUSTC) main.rs --extern rust_dep=$(TMPDIR)/librust_dep.rlib --print link-args > $(TMPDIR)/link_args
-	cat $(TMPDIR)/link_args | $(CGREP) -ev "native_dep_3"
-	cat $(TMPDIR)/link_args | $(CGREP) -e "--whole-archive.*native_dep_1.*--whole-archive.*lnative_dep_2.*no-whole-archive.*lnative_dep_4"
+	cat $(TMPDIR)/link_args | $(CGREP) -e "--whole-archive.*native_dep_1.*--whole-archive.*lnative_dep_2.*no-whole-archive.*native_dep_3.*lnative_dep_4"
