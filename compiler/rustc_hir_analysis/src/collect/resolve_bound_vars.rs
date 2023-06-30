@@ -1344,12 +1344,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    let mut err = self.tcx.sess.struct_span_err(
-                        lifetime_ref.ident.span,
-                        "`impl Trait` can only mention lifetimes bound at the fn or impl level",
-                    );
-                    err.span_note(self.tcx.def_span(region_def_id), "lifetime declared here");
-                    err.emit();
+                    self.tcx.sess.emit_err(errors::LateBoundInApit::Lifetime {
+                        span: lifetime_ref.ident.span,
+                        param_span: self.tcx.def_span(region_def_id),
+                    });
                     return;
                 }
                 Scope::Root { .. } => break,
@@ -1379,6 +1377,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let mut late_depth = 0;
         let mut scope = self.scope;
         let mut crossed_anon_const = false;
+
         let result = loop {
             match *scope {
                 Scope::Body { s, .. } => {
@@ -1444,6 +1443,50 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 self.map.defs.insert(hir_id, def);
             }
             return;
+        }
+
+        // We may fail to resolve higher-ranked ty/const vars that are mentioned by APIT.
+        // AST-based resolution does not care for impl-trait desugaring, which are the
+        // responsibility of lowering. This may create a mismatch between the resolution
+        // AST found (`param_def_id`) which points to HRTB, and what HIR allows.
+        // ```
+        // fn foo(x: impl for<T> Trait<Assoc = impl Trait2<T>>) {}
+        // ```
+        //
+        // In such case, walk back the binders to diagnose it properly.
+        let mut scope = self.scope;
+        loop {
+            match *scope {
+                Scope::Binder {
+                    where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
+                } => {
+                    let guar = self.tcx.sess.emit_err(match self.tcx.def_kind(param_def_id) {
+                        DefKind::TyParam => errors::LateBoundInApit::Type {
+                            span: self.tcx.hir().span(hir_id),
+                            param_span: self.tcx.def_span(param_def_id),
+                        },
+                        DefKind::ConstParam => errors::LateBoundInApit::Const {
+                            span: self.tcx.hir().span(hir_id),
+                            param_span: self.tcx.def_span(param_def_id),
+                        },
+                        kind => {
+                            bug!("unexpected def-kind: {}", kind.descr(param_def_id.to_def_id()))
+                        }
+                    });
+                    self.map.defs.insert(hir_id, ResolvedArg::Error(guar));
+                    return;
+                }
+                Scope::Root { .. } => break,
+                Scope::Binder { s, .. }
+                | Scope::Body { s, .. }
+                | Scope::Elision { s, .. }
+                | Scope::ObjectLifetimeDefault { s, .. }
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::AnonConstBoundary { s } => {
+                    scope = s;
+                }
+            }
         }
 
         self.tcx.sess.delay_span_bug(

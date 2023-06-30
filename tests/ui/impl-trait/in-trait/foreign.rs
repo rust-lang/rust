@@ -14,6 +14,10 @@ impl Foo for Local {
     fn bar(self) -> Arc<String> { Arc::new(String::new()) }
 }
 
+fn generic(f: impl Foo) {
+    let x = &*f.bar();
+}
+
 fn main() {
     // Witness an RPITIT from another crate.
     let &() = Foreign.bar();
