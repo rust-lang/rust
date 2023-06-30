@@ -723,6 +723,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         and it is only intended to be used in `alloc`."
     ),
 
+    rustc_attr!(
+        rustc_host, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_host] annotates const generic parameters as the `host` effect param, \
+        and it is only intended for internal use and as a desugaring."
+    ),
+
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
