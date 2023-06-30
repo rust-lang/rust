@@ -222,6 +222,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
     }
 }
 
+// This is `pub` because it's used by unstable external borrowck data users, see `consumers.rs`.
 pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
