@@ -223,6 +223,10 @@ fn never_loop_expr<'tcx>(
                 NeverLoopResult::AlwaysBreak,
             )
         }),
+        ExprKind::Become(e) => combine_seq(
+            never_loop_expr(cx, e, ignore_ids, main_loop_id),
+            NeverLoopResult::AlwaysBreak,
+        ),
         ExprKind::InlineAsm(asm) => asm
             .operands
             .iter()

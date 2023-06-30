@@ -1,7 +1,6 @@
 mod absurd_extreme_comparisons;
 mod assign_op_pattern;
 mod bit_mask;
-mod cmp_nan;
 mod cmp_owned;
 mod double_comparison;
 mod duration_subsec;
@@ -487,31 +486,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for comparisons to NaN.
-    ///
-    /// ### Why is this bad?
-    /// NaN does not compare meaningfully to anything – not
-    /// even itself – so those comparisons are simply wrong.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let x = 1.0;
-    /// if x == f32::NAN { }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust
-    /// # let x = 1.0f32;
-    /// if x.is_nan() { }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub CMP_NAN,
-    correctness,
-    "comparisons to `NAN`, which will always return false, probably not intended"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for conversions to owned values just for the sake
     /// of a comparison.
     ///
@@ -775,7 +749,6 @@ impl_lint_pass!(Operators => [
     FLOAT_EQUALITY_WITHOUT_ABS,
     IDENTITY_OP,
     INTEGER_DIVISION,
-    CMP_NAN,
     CMP_OWNED,
     FLOAT_CMP,
     FLOAT_CMP_CONST,
@@ -816,7 +789,6 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 duration_subsec::check(cx, e, op.node, lhs, rhs);
                 float_equality_without_abs::check(cx, e, op.node, lhs, rhs);
                 integer_division::check(cx, e, op.node, lhs, rhs);
-                cmp_nan::check(cx, e, op.node, lhs, rhs);
                 cmp_owned::check(cx, op.node, lhs, rhs);
                 float_cmp::check(cx, e, op.node, lhs, rhs);
                 modulo_one::check(cx, e, op.node, rhs);

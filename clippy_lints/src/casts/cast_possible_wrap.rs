@@ -24,6 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
     // 1. unsigned to signed
     // and
     // 2. either:
+    //
     //    2a. between two types of constant size that are always the same size
     //    2b. between one target-dependent size and one constant size integer,
     //        and the constant integer is in the allowed set of target dependent sizes

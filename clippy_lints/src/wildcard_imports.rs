@@ -160,7 +160,7 @@ impl LateLintPass<'_> for WildcardImports {
                     )
                 };
 
-                let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord(false);
+                let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord();
                 let imports_string = if imports.len() == 1 {
                     imports.pop().unwrap()
                 } else if braced_glob {

@@ -329,6 +329,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Field(..) |
             ExprKind::Index(..) |
             ExprKind::Ret(..) |
+            ExprKind::Become(..) |
             ExprKind::Repeat(..) |
             ExprKind::Yield(..) => walk_expr(self, ex),
             ExprKind::AddrOf(_, _, _) |

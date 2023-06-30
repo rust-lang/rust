@@ -28,35 +28,6 @@ type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
 pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) -> McfResult {
     let def_id = body.source.def_id();
-    let mut current = def_id;
-    loop {
-        let predicates = tcx.predicates_of(current);
-        for (predicate, _) in predicates.predicates {
-            match predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(
-                    ty::Clause::RegionOutlives(_)
-                    | ty::Clause::TypeOutlives(_)
-                    | ty::Clause::Projection(_)
-                    | ty::Clause::Trait(..)
-                    | ty::Clause::ConstArgHasType(..),
-                )
-                | ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::ConstEvaluatable(..)
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::AliasRelate(..) => panic!("alias relate predicate on function: {predicate:#?}"),
-                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
-                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
-                ty::PredicateKind::Ambiguous => panic!("ambiguous predicate on function: {predicate:#?}"),
-            }
-        }
-        match predicates.parent {
-            Some(parent) => current = parent,
-            None => break,
-        }
-    }
 
     for local in &body.local_decls {
         check_ty(tcx, local.ty, local.source_info.span)?;
@@ -338,7 +309,7 @@ fn check_terminator<'tcx>(
         TerminatorKind::Call {
             func,
             args,
-            from_hir_call: _,
+            call_source: _,
             destination: _,
             target: _,
             unwind: _,
@@ -439,7 +410,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
     if !matches!(
         impl_src,
-        ImplSource::ConstDestruct(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+        ImplSource::Builtin(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
     ) {
         return false;
     }

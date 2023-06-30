@@ -26,8 +26,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
-    self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamEnv, ParamTy,
-    PredicateKind, ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
+    self, Binder, BoundVariableKind, ClauseKind, EarlyBinder, FnSig, GenericArgKind, List, ParamEnv, ParamTy,
+    ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
@@ -357,15 +357,17 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                         //    start auto-deref.
                         // 4. If the chain of non-user-defined derefs ends with a mutable re-borrow, and re-borrow
                         //    adjustments will not be inserted automatically, then leave one further reference to avoid
-                        //    moving a mutable borrow.
-                        //    e.g.
-                        //        fn foo<T>(x: &mut Option<&mut T>, y: &mut T) {
-                        //            let x = match x {
-                        //                // Removing the borrow will cause `x` to be moved
-                        //                Some(x) => &mut *x,
-                        //                None => y
-                        //            };
-                        //        }
+                        //    moving a mutable borrow. e.g.
+                        //
+                        //    ```rust
+                        //    fn foo<T>(x: &mut Option<&mut T>, y: &mut T) {
+                        //        let x = match x {
+                        //            // Removing the borrow will cause `x` to be moved
+                        //            Some(x) => &mut *x,
+                        //            None => y
+                        //        };
+                        //    }
+                        //    ```
                         let deref_msg =
                             "this expression creates a reference which is immediately dereferenced by the compiler";
                         let borrow_msg = "this expression borrows a value the compiler would automatically borrow";
@@ -1135,7 +1137,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     let projection_predicates = predicates
         .iter()
         .filter_map(|predicate| {
-            if let PredicateKind::Clause(Clause::Projection(projection_predicate)) = predicate.kind().skip_binder() {
+            if let ClauseKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
                 Some(projection_predicate)
             } else {
                 None
@@ -1149,7 +1151,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     if predicates
         .iter()
         .filter_map(|predicate| {
-            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder()
+            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
                 && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
             {
                 Some(trait_predicate.trait_ref.def_id)
@@ -1211,7 +1213,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
         }
 
         predicates.iter().all(|predicate| {
-            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder()
+            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
                 && cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
                 && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
                 && let GenericArgKind::Type(ty) = substs_with_referent_ty[param_ty.index as usize].unpack()
@@ -1426,6 +1428,7 @@ fn ty_auto_deref_stability<'tcx>(
                 continue;
             },
             ty::Param(_) => TyPosition::new_deref_stable_for_result(precedence, ty),
+            ty::Alias(ty::Weak, _) => unreachable!("should have been normalized away above"),
             ty::Alias(ty::Inherent, _) => unreachable!("inherent projection should have been normalized away above"),
             ty::Alias(ty::Projection, _) if ty.has_non_region_param() => {
                 TyPosition::new_deref_stable_for_result(precedence, ty)

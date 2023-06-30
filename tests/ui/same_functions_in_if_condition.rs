@@ -10,6 +10,8 @@
     clippy::uninlined_format_args
 )]
 
+use std::marker::ConstParamTy;
+
 fn function() -> bool {
     true
 }
@@ -96,7 +98,7 @@ fn main() {
     };
     println!("{}", os);
 
-    #[derive(PartialEq, Eq)]
+    #[derive(PartialEq, Eq, ConstParamTy)]
     enum E {
         A,
         B,

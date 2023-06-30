@@ -67,7 +67,7 @@ fn into_iter_bound(cx: &LateContext<'_>, fn_did: DefId, into_iter_did: DefId, pa
         .predicates
         .iter()
         .find_map(|&(ref pred, span)| {
-            if let ty::PredicateKind::Clause(ty::Clause::Trait(tr)) = pred.kind().skip_binder()
+            if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder()
                 && tr.def_id() == into_iter_did
                 && tr.self_ty().is_param(param_index)
             {
