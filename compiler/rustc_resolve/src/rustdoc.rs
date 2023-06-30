@@ -410,7 +410,14 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
     while let Some(event) = event_iter.next() {
         match event {
             Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
-                if matches!(link_type, LinkType::Inline | LinkType::ReferenceUnknown | LinkType::Reference) {
+                if matches!(
+                    link_type,
+                    LinkType::Inline
+                        | LinkType::ReferenceUnknown
+                        | LinkType::Reference
+                        | LinkType::Shortcut
+                        | LinkType::ShortcutUnknown
+                ) {
                     if let Some(display_text) = collect_link_data(&mut event_iter) {
                         links.push(display_text);
                     }

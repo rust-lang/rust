@@ -34,7 +34,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
 
     if item.link_names(&cx.cache).is_empty() {
         // If there's no link names in this item,
-        // then we skip resolution querying to 
+        // then we skip resolution querying to
         // avoid from panicking.
         return;
     }
@@ -80,7 +80,8 @@ fn check_redundant_explicit_link<'md>(
                 if (explicit_len >= display_len
                     && &explicit_link[(explicit_len - display_len)..] == display_link)
                     || (display_len >= explicit_len
-                        && &display_link[(display_len - explicit_len)..] == explicit_link) {
+                        && &display_link[(display_len - explicit_len)..] == explicit_link)
+                {
                     match link_type {
                         LinkType::Inline | LinkType::ReferenceUnknown => {
                             check_inline_or_reference_unknown_redundancy(
@@ -92,7 +93,11 @@ fn check_redundant_explicit_link<'md>(
                                 link_range,
                                 dest.to_string(),
                                 link_data,
-                                if link_type == LinkType::Inline { (b'(', b')') } else { (b'[', b']') },
+                                if link_type == LinkType::Inline {
+                                    (b'(', b')')
+                                } else {
+                                    (b'[', b']')
+                                },
                             );
                         }
                         LinkType::Reference => {
@@ -110,7 +115,7 @@ fn check_redundant_explicit_link<'md>(
                         _ => {}
                     }
                 }
-            },
+            }
             _ => {}
         }
     }
