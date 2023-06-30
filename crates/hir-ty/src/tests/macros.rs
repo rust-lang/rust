@@ -202,11 +202,11 @@ fn expr_macro_def_expanded_in_various_places() {
             100..119 'for _ ...!() {}': IntoIterator::IntoIter<isize>
             100..119 'for _ ...!() {}': &mut IntoIterator::IntoIter<isize>
             100..119 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
-            100..119 'for _ ...!() {}': Option<Iterator::Item<IntoIterator::IntoIter<isize>>>
+            100..119 'for _ ...!() {}': Option<IntoIterator::Item<isize>>
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
             100..119 'for _ ...!() {}': ()
-            104..105 '_': Iterator::Item<IntoIterator::IntoIter<isize>>
+            104..105 '_': IntoIterator::Item<isize>
             117..119 '{}': ()
             124..134 '|| spam!()': impl Fn() -> isize
             140..156 'while ...!() {}': ()
@@ -293,11 +293,11 @@ fn expr_macro_rules_expanded_in_various_places() {
             114..133 'for _ ...!() {}': IntoIterator::IntoIter<isize>
             114..133 'for _ ...!() {}': &mut IntoIterator::IntoIter<isize>
             114..133 'for _ ...!() {}': fn next<IntoIterator::IntoIter<isize>>(&mut IntoIterator::IntoIter<isize>) -> Option<<IntoIterator::IntoIter<isize> as Iterator>::Item>
-            114..133 'for _ ...!() {}': Option<Iterator::Item<IntoIterator::IntoIter<isize>>>
+            114..133 'for _ ...!() {}': Option<IntoIterator::Item<isize>>
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
             114..133 'for _ ...!() {}': ()
-            118..119 '_': Iterator::Item<IntoIterator::IntoIter<isize>>
+            118..119 '_': IntoIterator::Item<isize>
             131..133 '{}': ()
             138..148 '|| spam!()': impl Fn() -> isize
             154..170 'while ...!() {}': ()
