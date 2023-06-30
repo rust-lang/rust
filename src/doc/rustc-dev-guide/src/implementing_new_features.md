@@ -177,7 +177,8 @@ a new unstable feature:
 
 1. Add a test to ensure the feature cannot be used without
    a feature gate, by creating `tests/ui/feature-gates/feature-gate-$feature_name.rs`.
-   You can generate the corresponding `.stderr` file by running `./x test tests/ui/feature-gates/ --bless`.
+   You can generate the corresponding `.stderr` file by running `./x test 
+tests/ui/feature-gates/ --bless`.
 
 1. Add a section to the unstable book, in
    `src/doc/unstable-book/src/language-features/$feature_name.md`.
