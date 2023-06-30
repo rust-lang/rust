@@ -125,7 +125,7 @@ means the following command:
 ./x check
 ```
 
-could been replaced by:
+could be replaced by:
 
 ```bash
 ./x.py check
