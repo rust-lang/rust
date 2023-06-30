@@ -63,10 +63,7 @@ pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn Resolve
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
                 } else {
-                    span_diagnostic.err(
-                        "building tests with panic=abort is not supported \
-                                         without `-Zpanic_abort_tests`",
-                    );
+                    span_diagnostic.emit_err(errors::TestsNotSupport {});
                 }
                 PanicStrategy::Unwind
             }
