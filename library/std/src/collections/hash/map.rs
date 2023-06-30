@@ -2543,12 +2543,12 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map: HashMap<&str, String> = HashMap::new();
-    /// let s = "hoho".to_string();
+    /// let mut map = HashMap::new();
+    /// let value = "hoho";
     ///
-    /// map.entry("poneyland").or_insert_with(|| s);
+    /// map.entry("poneyland").or_insert_with(|| value);
     ///
-    /// assert_eq!(map["poneyland"], "hoho".to_string());
+    /// assert_eq!(map["poneyland"], "hoho");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

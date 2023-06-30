@@ -89,13 +89,6 @@ macro_rules! type_error_struct {
     })
 }
 
-/// The type of a local binding, including the revealed type for anon types.
-#[derive(Copy, Clone, Debug)]
-pub struct LocalTy<'tcx> {
-    decl_ty: Ty<'tcx>,
-    revealed_ty: Ty<'tcx>,
-}
-
 /// If this `DefId` is a "primary tables entry", returns
 /// `Some((body_id, body_ty, fn_sig))`. Otherwise, returns `None`.
 ///
