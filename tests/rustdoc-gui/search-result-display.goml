@@ -38,10 +38,11 @@ compare-elements-position-near: (
     ".search-results .result-name .path",
     {"y": 2, "x": 0},
 )
-store-size: (".search-results .result-name", {"width": width, "height": height})
-store-size: (".search-results .result-name .path", {"width": sub_width, "height": sub_height})
-assert: |width| < |sub_width| + 8 && |width| > |sub_width| - 8
-assert: |height| < |sub_height| + 8 && |height| > |sub_height| - 8
+compare-elements-size-near: (
+    ".search-results .result-name",
+    ".search-results .result-name .path",
+    {"width": 8, "height": 8},
+)
 
 // Check that the crate filter `<select>` is correctly handled when it goes to next line.
 // To do so we need to update the length of one of its `<option>`.
