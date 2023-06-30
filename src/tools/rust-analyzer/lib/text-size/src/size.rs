@@ -33,6 +33,12 @@ impl fmt::Debug for TextSize {
 }
 
 impl TextSize {
+    /// Creates a new instance of `TextSize` from a raw `u32`.
+    #[inline]
+    pub const fn new(raw: u32) -> TextSize {
+        TextSize { raw }
+    }
+
     /// The text size of some primitive text-like object.
     ///
     /// Accepts `char`, `&str`, and `&String`.
@@ -58,14 +64,20 @@ impl TextSize {
 impl TextSize {
     /// Checked addition. Returns `None` if overflow occurred.
     #[inline]
-    pub fn checked_add(self, rhs: TextSize) -> Option<TextSize> {
-        self.raw.checked_add(rhs.raw).map(|raw| TextSize { raw })
+    pub const fn checked_add(self, rhs: TextSize) -> Option<TextSize> {
+        match self.raw.checked_add(rhs.raw) {
+            Some(raw) => Some(TextSize { raw }),
+            None => None,
+        }
     }
 
     /// Checked subtraction. Returns `None` if overflow occurred.
     #[inline]
-    pub fn checked_sub(self, rhs: TextSize) -> Option<TextSize> {
-        self.raw.checked_sub(rhs.raw).map(|raw| TextSize { raw })
+    pub const fn checked_sub(self, rhs: TextSize) -> Option<TextSize> {
+        match self.raw.checked_sub(rhs.raw) {
+            Some(raw) => Some(TextSize { raw }),
+            None => None,
+        }
     }
 }
 
