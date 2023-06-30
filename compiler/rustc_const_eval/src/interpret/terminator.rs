@@ -47,6 +47,15 @@ impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
     }
 }
 
+struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
+    callee: FnVal<'tcx, M::ExtraFnVal>,
+    args: Vec<FnArg<'tcx, M::Provenance>>,
+    fn_sig: ty::FnSig<'tcx>,
+    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    /// True if the function is marked as `#[track_caller]` ([`ty::InstanceDef::requires_caller_location`])
+    with_caller_location: bool,
+}
+
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of the
     /// original memory occurs.
@@ -124,40 +133,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
-                let func = self.eval_operand(func, None)?;
-                let args = self.eval_fn_call_arguments(args)?;
 
-                let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
-                let fn_sig =
-                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
-                let extra_args = &args[fn_sig.inputs().len()..];
-                let extra_args =
-                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
-
-                let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
-                    ty::FnPtr(_sig) => {
-                        let fn_ptr = self.read_pointer(&func)?;
-                        let fn_val = self.get_ptr_fn(fn_ptr)?;
-                        (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
-                    }
-                    ty::FnDef(def_id, args) => {
-                        let instance = self.resolve(def_id, args)?;
-                        (
-                            FnVal::Instance(instance),
-                            self.fn_abi_of_instance(instance, extra_args)?,
-                            instance.def.requires_caller_location(*self.tcx),
-                        )
-                    }
-                    _ => span_bug!(
-                        terminator.source_info.span,
-                        "invalid callee of type {}",
-                        func.layout.ty
-                    ),
-                };
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
+                    self.eval_callee_and_args(terminator, func, args)?;
 
                 let destination = self.force_allocation(&self.eval_place(destination)?)?;
                 self.eval_fn_call(
-                    fn_val,
+                    callee,
                     (fn_sig.abi, fn_abi),
                     &args,
                     with_caller_location,
@@ -173,38 +155,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             TailCall { ref func, ref args, fn_span: _ } => {
-                // FIXME(explicit_tail_calls): a lot of code here is duplicated with normal calls, can we refactor this?
                 let old_frame_idx = self.frame_idx();
-                let func = self.eval_operand(func, None)?;
-                let args = self.eval_fn_call_arguments(args)?;
 
-                let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
-                let fn_sig =
-                    self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
-                let extra_args = &args[fn_sig.inputs().len()..];
-                let extra_args =
-                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
-
-                let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
-                    ty::FnPtr(_sig) => {
-                        let fn_ptr = self.read_pointer(&func)?;
-                        let fn_val = self.get_ptr_fn(fn_ptr)?;
-                        (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
-                    }
-                    ty::FnDef(def_id, substs) => {
-                        let instance = self.resolve(def_id, substs)?;
-                        (
-                            FnVal::Instance(instance),
-                            self.fn_abi_of_instance(instance, extra_args)?,
-                            instance.def.requires_caller_location(*self.tcx),
-                        )
-                    }
-                    _ => span_bug!(
-                        terminator.source_info.span,
-                        "invalid callee of type {:?}",
-                        func.layout.ty
-                    ),
-                };
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
+                    self.eval_callee_and_args(terminator, func, args)?;
 
                 // This is the "canonical" implementation of tails calls,
                 // a pop of the current stack frame, followed by a normal call
@@ -227,7 +181,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 self.eval_fn_call(
-                    fn_val,
+                    callee,
                     (fn_sig.abi, fn_abi),
                     &args,
                     with_caller_location,
@@ -584,6 +538,45 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             M::protect_in_place_function_argument(self, mplace)?;
         }
         Ok(())
+    }
+
+    /// Shared part of `Call` and `TailCall` implementation — finding and evaluating all the
+    /// necessary information about callee and arguments to make a call.
+    fn eval_callee_and_args(
+        &self,
+        terminator: &mir::Terminator<'tcx>,
+        func: &mir::Operand<'tcx>,
+        args: &[Spanned<mir::Operand<'tcx>>],
+    ) -> InterpResult<'tcx, EvaluatedCalleeAndArgs<'tcx, M>> {
+        let func = self.eval_operand(func, None)?;
+        let args = self.eval_fn_call_arguments(args)?;
+
+        let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
+        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+        let extra_args = &args[fn_sig.inputs().len()..];
+        let extra_args =
+            self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
+
+        let (callee, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+            ty::FnPtr(_sig) => {
+                let fn_ptr = self.read_pointer(&func)?;
+                let fn_val = self.get_ptr_fn(fn_ptr)?;
+                (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
+            }
+            ty::FnDef(def_id, args) => {
+                let instance = self.resolve(def_id, args)?;
+                (
+                    FnVal::Instance(instance),
+                    self.fn_abi_of_instance(instance, extra_args)?,
+                    instance.def.requires_caller_location(*self.tcx),
+                )
+            }
+            _ => {
+                span_bug!(terminator.source_info.span, "invalid callee of type {}", func.layout.ty)
+            }
+        };
+
+        Ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
