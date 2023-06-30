@@ -53,13 +53,12 @@ impl ImportMap {
     pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
         let _p = profile::span("import_map_query");
 
-        let mut import_map = collect_import_map(db, krate);
+        let map = collect_import_map(db, krate);
 
-        let mut importables: Vec<_> = import_map
-            .map
+        let mut importables: Vec<_> = map
             .iter()
             // We've only collected items, whose name cannot be tuple field.
-            .map(|(item, info)| (item, info.name.as_str().unwrap().to_ascii_lowercase()))
+            .map(|(&item, info)| (item, info.name.as_str().unwrap().to_ascii_lowercase()))
             .collect();
         importables.sort_by(|(_, lhs_name), (_, rhs_name)| lhs_name.cmp(rhs_name));
 
@@ -70,61 +69,30 @@ impl ImportMap {
             let _ = builder.insert(name, start_idx as u64);
         }
 
-        import_map.fst = builder.into_map();
-        import_map.importables = importables.into_iter().map(|(&item, _)| item).collect();
-
-        Arc::new(import_map)
+        Arc::new(ImportMap {
+            map,
+            fst: builder.into_map(),
+            importables: importables.into_iter().map(|(item, _)| item).collect(),
+        })
     }
 
     pub fn import_info_for(&self, item: ItemInNs) -> Option<&ImportInfo> {
         self.map.get(&item)
     }
-
-    fn collect_trait_assoc_items(
-        &mut self,
-        db: &dyn DefDatabase,
-        tr: TraitId,
-        is_type_in_ns: bool,
-        trait_import_info: &ImportInfo,
-    ) {
-        let _p = profile::span("collect_trait_assoc_items");
-        for (assoc_item_name, item) in &db.trait_data(tr).items {
-            let module_def_id = match item {
-                AssocItemId::FunctionId(f) => ModuleDefId::from(*f),
-                AssocItemId::ConstId(c) => ModuleDefId::from(*c),
-                // cannot use associated type aliases directly: need a `<Struct as Trait>::TypeAlias`
-                // qualifier, ergo no need to store it for imports in import_map
-                AssocItemId::TypeAliasId(_) => {
-                    cov_mark::hit!(type_aliases_ignored);
-                    continue;
-                }
-            };
-            let assoc_item = if is_type_in_ns {
-                ItemInNs::Types(module_def_id)
-            } else {
-                ItemInNs::Values(module_def_id)
-            };
-
-            let assoc_item_info = ImportInfo {
-                container: trait_import_info.container,
-                name: assoc_item_name.clone(),
-                is_trait_assoc_item: true,
-            };
-            self.map.insert(assoc_item, assoc_item_info);
-        }
-    }
 }
 
-fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMap {
+fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemInNs, ImportInfo> {
     let _p = profile::span("collect_import_map");
 
     let def_map = db.crate_def_map(krate);
-    let mut import_map = ImportMap::default();
+    let mut map = FxIndexMap::default();
 
     // We look only into modules that are public(ly reexported), starting with the crate root.
     let root = def_map.module_id(DefMap::ROOT);
     let mut worklist = vec![(root, 0)];
+    // Records items' minimum module depth.
     let mut depth_map = FxHashMap::default();
+
     while let Some((module, depth)) = worklist.pop() {
         let ext_def_map;
         let mod_data = if module.krate == krate {
@@ -166,15 +134,16 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMap {
                 }
 
                 if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
-                    import_map.collect_trait_assoc_items(
+                    collect_trait_assoc_items(
                         db,
+                        &mut map,
                         tr,
                         matches!(item, ItemInNs::Types(_)),
                         &import_info,
                     );
                 }
 
-                import_map.map.insert(item, import_info);
+                map.insert(item, import_info);
 
                 // If we've just added a module, descend into it. We might traverse modules
                 // multiple times, but only if the module depth is smaller (else we `continue`
@@ -186,7 +155,41 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMap {
         }
     }
 
-    import_map
+    map
+}
+
+fn collect_trait_assoc_items(
+    db: &dyn DefDatabase,
+    map: &mut FxIndexMap<ItemInNs, ImportInfo>,
+    tr: TraitId,
+    is_type_in_ns: bool,
+    trait_import_info: &ImportInfo,
+) {
+    let _p = profile::span("collect_trait_assoc_items");
+    for (assoc_item_name, item) in &db.trait_data(tr).items {
+        let module_def_id = match item {
+            AssocItemId::FunctionId(f) => ModuleDefId::from(*f),
+            AssocItemId::ConstId(c) => ModuleDefId::from(*c),
+            // cannot use associated type aliases directly: need a `<Struct as Trait>::TypeAlias`
+            // qualifier, ergo no need to store it for imports in import_map
+            AssocItemId::TypeAliasId(_) => {
+                cov_mark::hit!(type_aliases_ignored);
+                continue;
+            }
+        };
+        let assoc_item = if is_type_in_ns {
+            ItemInNs::Types(module_def_id)
+        } else {
+            ItemInNs::Values(module_def_id)
+        };
+
+        let assoc_item_info = ImportInfo {
+            container: trait_import_info.container,
+            name: assoc_item_name.clone(),
+            is_trait_assoc_item: true,
+        };
+        map.insert(assoc_item, assoc_item_info);
+    }
 }
 
 impl PartialEq for ImportMap {
