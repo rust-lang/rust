@@ -4374,7 +4374,7 @@ impl ProcRes {
     pub fn print_info(&self) {
         fn render(name: &str, contents: &str) -> String {
             let contents = json::extract_rendered(contents);
-            let contents = contents.trim();
+            let contents = contents.trim_end();
             if contents.is_empty() {
                 format!("{name}: none")
             } else {
