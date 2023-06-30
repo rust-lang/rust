@@ -1403,7 +1403,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
                 ident,
-                ScopeSet::All(ns, false),
+                ScopeSet::All(ns),
                 &parent_scope,
                 None,
                 false,
@@ -1841,10 +1841,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         _ => None,
                     }
                 } else {
-                    let scopes = ScopeSet::All(ns_to_try, opt_ns.is_none());
                     self.early_resolve_ident_in_lexical_scope(
                         ident,
-                        scopes,
+                        ScopeSet::All(ns_to_try),
                         parent_scope,
                         None,
                         false,
