@@ -241,7 +241,7 @@ impl CStr {
     /// ```
     ///
     /// ```
-    /// #![feature(const_cstr_methods)]
+    /// #![feature(const_cstr_from_ptr)]
     ///
     /// use std::ffi::{c_char, CStr};
     ///
@@ -256,7 +256,7 @@ impl CStr {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "101719")]
     pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
         // string with a NUL terminator of size less than `isize::MAX`, whose
@@ -377,7 +377,7 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
     pub const fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
@@ -561,10 +561,12 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes(&self) -> &[u8] {
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
+        // FIXME(const-hack) replace with range index
         // SAFETY: to_bytes_with_nul returns slice with length at least 1
-        unsafe { bytes.get_unchecked(..bytes.len() - 1) }
+        unsafe { slice::from_raw_parts(bytes.as_ptr(), bytes.len() - 1) }
     }
 
     /// Converts this C string to a byte slice containing the trailing 0 byte.
@@ -588,7 +590,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
@@ -612,7 +614,8 @@ impl CStr {
     /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation
