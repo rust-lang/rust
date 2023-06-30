@@ -1,4 +1,5 @@
 #![crate_name = "foo"]
+#![allow(rustdoc::redundant_explicit_links)]
 //! # Description test crate
 //!
 //! This is the contents of the test crate docstring.
@@ -26,5 +27,5 @@ pub fn foo_fn() {}
 // @has 'foo/fn.bar_fn.html' '//meta[@name="description"]/@content' \
 //   'Description with intra-doc link to foo_fn and [nonexistent_item] and foo_fn.'
 #[allow(rustdoc::broken_intra_doc_links)]
-/// Description with intra-doc link to [foo_fn] and [nonexistent_item] and [foo_fn].
+/// Description with intra-doc link to [foo_fn] and [nonexistent_item] and [foo_fn](self::foo_fn).
 pub fn bar_fn() {}
