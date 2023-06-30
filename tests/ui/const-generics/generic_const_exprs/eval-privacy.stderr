@@ -8,14 +8,13 @@ LL | const fn my_const_fn(val: u8) -> u8 {
    | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
 
 warning: type `fn(u8) -> u8 {my_const_fn}` is more private than the item `<Const<U> as Trait>::AssocTy`
-   |
-note: associated type `<Const<U> as Trait>::AssocTy` is reachable at visibility `pub`
   --> $DIR/eval-privacy.rs:22:5
    |
 LL |     type AssocTy = Const<{ my_const_fn(U) }>;
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ associated type `<Const<U> as Trait>::AssocTy` is reachable at visibility `pub`
+   |
 note: but type `fn(u8) -> u8 {my_const_fn}` is only usable at visibility `pub(crate)`
-  --> $DIR/eval-privacy.rs:29:1
+  --> $DIR/eval-privacy.rs:30:1
    |
 LL | const fn my_const_fn(val: u8) -> u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

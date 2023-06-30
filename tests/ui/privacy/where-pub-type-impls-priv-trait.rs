@@ -23,6 +23,7 @@ impl PubTrWithAssocTy for PrivTy { type AssocTy = PrivTy; }
 
 pub struct S
 //~^ ERROR private trait `PrivTr` in public interface
+//~| WARNING trait `PrivTr` is more private than the item `S`
 where
     PubTy: PrivTr
 {}
@@ -30,6 +31,7 @@ where
 
 pub enum E
 //~^ ERROR private trait `PrivTr` in public interface
+//~| WARNING trait `PrivTr` is more private than the item `E`
 where
     PubTy: PrivTr
 {}
@@ -37,6 +39,7 @@ where
 
 pub fn f()
 //~^ ERROR private trait `PrivTr` in public interface
+//~| WARNING trait `PrivTr` is more private than the item `f`
 where
     PubTy: PrivTr
 {}
@@ -44,11 +47,13 @@ where
 
 impl S
 //~^ ERROR private trait `PrivTr` in public interface
+//~| WARNING trait `PrivTr` is more private than the item `S`
 where
     PubTy: PrivTr
 {
     pub fn f()
     //~^ ERROR private trait `PrivTr` in public interface
+    //~| WARNING trait `PrivTr` is more private than the item `S::f`
     where
         PubTy: PrivTr
     {}

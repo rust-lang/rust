@@ -10,10 +10,7 @@ use crate::errors::{
 use crate::Determinacy::{self, *};
 use crate::{fluent_generated as fluent, Namespace::*};
 use crate::{module_to_string, names_to_string, ImportSuggestion};
-use crate::{
-    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, ModuleKind, ResolutionError,
-    Resolver, Segment,
-};
+use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
 use crate::{NameBinding, NameBindingKind, PathResult};
 
@@ -984,7 +981,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 match binding {
                     Ok(binding) => {
                         // Consistency checks, analogous to `finalize_macro_resolutions`.
-                        let initial_binding = source_bindings[ns].get().map(|initial_binding| {
+                        let initial_res = source_bindings[ns].get().map(|initial_binding| {
                             all_ns_err = false;
                             if let Some(target_binding) = target_bindings[ns].get() {
                                 if target.name == kw::Underscore
@@ -998,20 +995,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     );
                                 }
                             }
-                            initial_binding
+                            initial_binding.res()
                         });
                         let res = binding.res();
-                        if let Ok(initial_binding) = initial_binding {
-                            let initial_res = initial_binding.res();
+                        if let Ok(initial_res) = initial_res {
                             if res != initial_res && this.ambiguity_errors.is_empty() {
-                                this.ambiguity_errors.push(AmbiguityError {
-                                    kind: AmbiguityKind::Import,
-                                    ident,
-                                    b1: initial_binding,
-                                    b2: binding,
-                                    misc1: AmbiguityErrorMisc::None,
-                                    misc2: AmbiguityErrorMisc::None,
-                                });
+                                span_bug!(import.span, "inconsistent resolution for an import");
                             }
                         } else if res != Res::Err
                             && this.ambiguity_errors.is_empty()
@@ -1283,7 +1272,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 match this.early_resolve_ident_in_lexical_scope(
                     target,
-                    ScopeSet::All(ns, false),
+                    ScopeSet::All(ns),
                     &import.parent_scope,
                     None,
                     false,

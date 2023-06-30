@@ -4,7 +4,7 @@ error[E0659]: `std` is ambiguous
 LL | use std::io;
    |     ^^^ ambiguous name
    |
-   = note: ambiguous because of multiple potential import sources
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `std` could refer to a built-in crate
    = help: use `::std` to refer to this crate unambiguously
 note: `std` could also refer to the module defined here

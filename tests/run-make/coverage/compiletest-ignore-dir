@@ -1,3 +1,0 @@
-# Directory "coverage" supports the tests at prefix ../coverage-*
-
-# Use ./x.py [options] test tests/run-make/coverage to run all related tests.

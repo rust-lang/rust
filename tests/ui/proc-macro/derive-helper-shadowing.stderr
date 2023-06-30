@@ -38,25 +38,6 @@ LL +             use crate::empty_helper;
    |
 
 error[E0659]: `empty_helper` is ambiguous
-  --> $DIR/derive-helper-shadowing.rs:26:13
-   |
-LL |         use empty_helper;
-   |             ^^^^^^^^^^^^ ambiguous name
-   |
-   = note: ambiguous because of multiple potential import sources
-note: `empty_helper` could refer to the derive helper attribute defined here
-  --> $DIR/derive-helper-shadowing.rs:22:10
-   |
-LL | #[derive(Empty)]
-   |          ^^^^^
-note: `empty_helper` could also refer to the attribute macro imported here
-  --> $DIR/derive-helper-shadowing.rs:10:5
-   |
-LL | use test_macros::empty_attr as empty_helper;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
-
-error[E0659]: `empty_helper` is ambiguous
   --> $DIR/derive-helper-shadowing.rs:19:3
    |
 LL | #[empty_helper]
@@ -88,6 +69,6 @@ LL | #[derive(Empty)]
    = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
    = note: `#[warn(legacy_derive_helpers)]` on by default
 
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0659`.

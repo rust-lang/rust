@@ -1,0 +1,13 @@
+$DIR/auxiliary/unused_mod_helper.rs:
+    1|      0|pub fn never_called_function() {
+    2|      0|    println!("I am never called");
+    3|      0|}
+
+$DIR/unused_mod.rs:
+    1|       |#[path = "auxiliary/unused_mod_helper.rs"]
+    2|       |mod unused_module;
+    3|       |
+    4|      1|fn main() {
+    5|      1|    println!("hello world!");
+    6|      1|}
+
