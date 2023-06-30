@@ -190,9 +190,9 @@ impl LintStore {
     pub fn register_late_pass(
         &mut self,
         pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
-        + 'static
-        + sync::DynSend
-        + sync::DynSync,
+            + 'static
+            + sync::DynSend
+            + sync::DynSync,
     ) {
         self.late_passes.push(Box::new(pass));
     }
@@ -200,9 +200,9 @@ impl LintStore {
     pub fn register_late_mod_pass(
         &mut self,
         pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
-        + 'static
-        + sync::DynSend
-        + sync::DynSync,
+            + 'static
+            + sync::DynSend
+            + sync::DynSync,
     ) {
         self.late_module_passes.push(Box::new(pass));
     }
@@ -533,6 +533,7 @@ impl LintStore {
 }
 
 /// Context for lint checking outside of type inference.
+#[derive(Clone)]
 pub struct LateContext<'tcx> {
     /// Type context we're checking in.
     pub tcx: TyCtxt<'tcx>,
@@ -1145,6 +1146,20 @@ impl LintContext for EarlyContext<'_> {
 }
 
 impl<'tcx> LateContext<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, enclosing_body: Option<hir::BodyId>) -> Self {
+        Self {
+            tcx,
+            enclosing_body,
+            cached_typeck_results: Cell::new(None),
+            param_env: ty::ParamEnv::empty(),
+            effective_visibilities: &tcx.effective_visibilities(()),
+            lint_store: crate::unerased_lint_store(tcx),
+            last_node_with_lint_attrs: hir::CRATE_HIR_ID,
+            generics: None,
+            only_module: false,
+        }
+    }
+
     /// Gets the type-checking results for the current body,
     /// or `None` if outside a body.
     pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {

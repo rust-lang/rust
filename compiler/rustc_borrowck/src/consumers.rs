@@ -10,7 +10,7 @@ use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::TyCtxt;
 use std::rc::Rc;
 
-use crate::borrow_set::BorrowSet;
+use crate::{borrow_set::BorrowSet, BorrowCheckResult};
 
 pub use super::{
     constraints::OutlivesConstraint,
@@ -107,9 +107,18 @@ pub fn get_body_with_borrowck_facts(
     def: LocalDefId,
     options: ConsumerOptions,
 ) -> BodyWithBorrowckFacts<'_> {
+    *do_mir_borrowck(tcx, def, options).1.unwrap()
+}
+
+/// Like [`get_body_with_borrowck_facts`], but also return the borrow check results.
+pub fn do_mir_borrowck<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: LocalDefId,
+    options: ConsumerOptions,
+) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let (input_body, promoted) = tcx.mir_promoted(def);
     let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def)).build();
     let input_body: &Body<'_> = &input_body.borrow();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    *super::do_mir_borrowck(&infcx, input_body, promoted, Some(options)).1.unwrap()
+    super::do_mir_borrowck(&infcx, input_body, promoted, Some(options))
 }

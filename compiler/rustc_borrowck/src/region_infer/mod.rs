@@ -1366,7 +1366,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     // Evaluate whether `sup_region: sub_region`.
     #[instrument(skip(self), level = "debug", ret)]
-    fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
+    pub fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
         debug!(
             "sup_region's value = {:?} universal={:?}",
             self.region_value_str(sup_region),
