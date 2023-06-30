@@ -169,10 +169,11 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     upvars: &[Upvar<'tcx>],
     consumer_options: Option<ConsumerOptions>,
 ) -> NllOutput<'tcx> {
+    let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
     let polonius_input = consumer_options.map(|c| c.polonius_input()).unwrap_or_default()
-        || infcx.tcx.sess.opts.unstable_opts.polonius;
+        || is_polonius_legacy_enabled;
     let polonius_output = consumer_options.map(|c| c.polonius_output()).unwrap_or_default()
-        || infcx.tcx.sess.opts.unstable_opts.polonius;
+        || is_polonius_legacy_enabled;
     let mut all_facts =
         (polonius_input || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
 
