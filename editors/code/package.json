@@ -38,7 +38,7 @@
         "lint": "prettier --check . && eslint -c .eslintrc.js --ext ts ./src ./tests",
         "fix": "prettier --write . && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
         "pretest": "tsc && npm run build",
-        "test": "cross-env TEST_VARIABLE=test node ./out/tests/runTests.js"
+        "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
         "@hpcc-js/wasm": "^2.13.0",
@@ -55,7 +55,6 @@
         "@typescript-eslint/parser": "^5.60.1",
         "@vscode/test-electron": "^2.3.3",
         "@vscode/vsce": "^2.19.0",
-        "cross-env": "^7.0.3",
         "esbuild": "^0.18.10",
         "eslint": "^8.43.0",
         "eslint-config-prettier": "^8.8.0",
