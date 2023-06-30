@@ -2581,10 +2581,9 @@ pub struct UnevaluatedConst<'tcx> {
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
-    // FIXME: probably should get rid of this method. It's also wrong to
-    // shrink and then later expand a promoted.
     #[inline]
     pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
+        assert_eq!(self.promoted, None);
         ty::UnevaluatedConst { def: self.def, substs: self.substs }
     }
 }
