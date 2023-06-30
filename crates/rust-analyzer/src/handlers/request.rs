@@ -2051,7 +2051,7 @@ fn resource_ops_supported(config: &Config, kind: ResourceOperationKind) -> anyho
             .as_ref()
     })();
 
-    if resops.is_none() || !resops.unwrap().contains(&kind) {
+    if !matches!(resops, Some(resops) if resops.contains(&kind)) {
         return Err(LspError::new(
             ErrorCode::RequestFailed as i32,
             format!(
