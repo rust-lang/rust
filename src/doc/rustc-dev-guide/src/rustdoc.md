@@ -41,7 +41,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 
 ## Cheat sheet
 
-* Run `./x setup tools` before getting started. This will configure `x.py`
+* Run `./x setup tools` before getting started. This will configure `x`
   with nice settings for developing rustdoc and other tools, including
   downloading a copy of rustc rather than building it.
 * Use `./x check src/tools/rustdoc` to quickly check for compile errors.

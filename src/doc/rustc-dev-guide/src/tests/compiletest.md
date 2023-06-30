@@ -330,7 +330,7 @@ set a baseline for optimizations:
 
 The test should be annotated with `// EMIT_MIR` comments that specify files that
 will contain the expected MIR output.
-You can use `x.py test --bless` to create the initial expected files.
+You can use `x test --bless` to create the initial expected files.
 
 There are several forms the `EMIT_MIR` comment can take:
 

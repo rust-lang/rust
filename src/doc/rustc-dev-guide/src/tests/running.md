@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-You can run the tests using `x.py`. The most basic command – which
+You can run the tests using `x`. The most basic command – which
 you will almost never want to use! – is as follows:
 
 ```bash
@@ -122,7 +122,7 @@ But unfortunately, it's impossible. You should invoke following instead:
 Another common thing that people want to do is to run an **individual
 test**, often the test they are trying to fix. As mentioned earlier,
 you may pass the full file path to achieve this, or alternatively one
-may invoke `x.py` with the `--test-args` option:
+may invoke `x` with the `--test-args` option:
 
 ```bash
 ./x test tests/ui --test-args issue-1234
@@ -247,7 +247,7 @@ pong
 ```
 
 To run tests using the remote runner, set the `TEST_DEVICE_ADDR` environment
-variable then use `x.py` as usual. For example, to run `ui` tests for a RISC-V
+variable then use `x` as usual. For example, to run `ui` tests for a RISC-V
 machine with the IP address `1.2.3.4` use
 ```sh
 export TEST_DEVICE_ADDR="1.2.3.4:12345"
@@ -273,7 +273,7 @@ run "/tmp/work/test1018/a"
 [...]
 ```
 
-Tests are built on the machine running `x.py` not on the remote machine. Tests
+Tests are built on the machine running `x` not on the remote machine. Tests
 which fail to build unexpectedly (or `ui` tests producing incorrect build
 output) may fail without ever running on the remote machine.
 

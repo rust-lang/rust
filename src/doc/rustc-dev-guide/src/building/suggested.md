@@ -26,15 +26,15 @@ You can also install the hook as a step of running `./x setup`!
 `rust-analyzer` can help you check and format your code whenever you save
 a file. By default, `rust-analyzer` runs the `cargo check` and `rustfmt`
 commands, but you can override these commands to use more adapted versions
-of these tools when hacking on `rustc`. For example, `x.py setup vscode` will prompt
+of these tools when hacking on `rustc`. For example, `x setup vscode` will prompt
 you to create a `.vscode/settings.json` file which will configure Visual Studio code.
 This will ask `rust-analyzer` to use `./x check` to check the sources, and the
 stage 0 rustfmt to format them.
 The recommended `rust-analyzer` settings live at [`src/etc/rust_analyzer_settings.json`].
 
-If you have enough free disk space and you would like to be able to run `x.py` commands while
+If you have enough free disk space and you would like to be able to run `x` commands while
 rust-analyzer runs in the background, you can also add `--build-dir build-rust-analyzer` to the
-`overrideCommand` to avoid x.py locking.
+`overrideCommand` to avoid x locking.
 
 If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
 `.vim/coc-settings.json` and copy the settings from [`src/etc/rust_analyzer_settings.json`].
@@ -73,7 +73,7 @@ Rust-Analyzer to already be configured with Neovim. Steps for this can be
 [found here](https://rust-analyzer.github.io/manual.html#nvim-lsp).
 
 1. First install the plugin. This can be done by following the steps in the README.
-2. Run `x.py setup`, which will have a prompt for it to create a `.vscode/settings.json` file.
+2. Run `x setup`, which will have a prompt for it to create a `.vscode/settings.json` file.
    `neoconf` is able to read and update Rust-Analyzer settings automatically when the project is
    opened when this file is detected.
 
@@ -141,11 +141,11 @@ directories you have [setup a worktree for]. You may need to use the pinned
 nightly version from `src/stage0.json`, but often the normal `nightly` channel
 will work.
 
-**Note** see [the section on vscode] for how to configure it with this real rustfmt `x.py` uses,
+**Note** see [the section on vscode] for how to configure it with this real rustfmt `x` uses,
 and [the section on rustup] for how to setup `rustup` toolchain for your bootstrapped compiler
 
 **Note** This does _not_ allow you to build `rustc` with cargo directly. You
-still have to use `x.py` to work on the compiler or standard library, this just
+still have to use `x` to work on the compiler or standard library, this just
 lets you use `cargo fmt`.
 
 [installing a nightly toolchain]: https://rust-lang.github.io/rustup/concepts/channels.html?highlight=nightl#working-with-nightly-rust

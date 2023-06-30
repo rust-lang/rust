@@ -41,7 +41,7 @@ extension in LLVM bitcode format.
 Example usage:
 ```
 cargo install cargo-llvm-lines
-# On a normal crate you could now run `cargo llvm-lines`, but `x.py` isn't normal :P
+# On a normal crate you could now run `cargo llvm-lines`, but `x` isn't normal :P
 
 # Do a clean before every run, to not mix in the results from previous runs.
 ./x clean

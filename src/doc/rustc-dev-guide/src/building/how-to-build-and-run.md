@@ -108,6 +108,29 @@ of a checkout. It also looks up the appropriate version of `python` to use.
 
 You can install it with `cargo install --path src/tools/x`.
 
+Using `x` rather than `x.py` is recommended as:
+
+> `./x` is the most likely to work on every system (on Unix it runs the shell script
+> that does python version detection, on Windows it will probably run the
+> powershell script - certainly less likely to break than `./x.py` which often just
+> opens the file in an editor).[^1]
+
+Notice that this is not absolute, for instance, using Nushell in VSCode on Win10,
+typing `x` or `./x` still open the `x.py` in editor rather invoke the program :)
+
+In the rest of documents, we use `x` to represent the straightly usage of `x.py`, which
+means the following command:
+
+```bash
+./x check
+```
+
+could been replaced by:
+
+```bash
+./x.py check
+```
+
 ## Create a `config.toml`
 
 To start, run `./x setup` and select the `compiler` defaults. This will do some initialization
@@ -123,9 +146,9 @@ If you have already built `rustc` and you change settings related to LLVM, then 
 execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x
 clean` will not cause a rebuild of LLVM.
 
-## Common `x.py` commands
+## Common `x` commands
 
-Here are the basic invocations of the `x.py` commands most commonly used when
+Here are the basic invocations of the `x` commands most commonly used when
 working on `rustc`, `std`, `rustdoc`, and other tools.
 
 | Command     | When to use it                                                                                               |
@@ -141,9 +164,9 @@ serious development work. In particular, `./x build` and `./x test`
 provide many ways to compile or test a subset of the code, which can save a lot
 of time.
 
-Also, note that `x.py` supports all kinds of path suffixes for `compiler`, `library`,
-and `src/tools` directories. So, you can simply run `x.py test tidy` instead of
-`x.py test src/tools/tidy`. Or, `x.py build std` instead of `x.py build library/std`.
+Also, note that `x` supports all kinds of path suffixes for `compiler`, `library`,
+and `src/tools` directories. So, you can simply run `x test tidy` instead of
+`x test src/tools/tidy`. Or, `x build std` instead of `x build library/std`.
 
 [rust-analyzer]: suggested.html#configuring-rust-analyzer-for-rustc
 
@@ -156,7 +179,7 @@ Note that building will require a relatively large amount of storage space.
 You may want to have upwards of 10 or 15 gigabytes available to build the compiler.
 
 Once you've created a `config.toml`, you are now ready to run
-`x.py`. There are a lot of options here, but let's start with what is
+`x`. There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local compiler:
 
 ```bash
@@ -206,7 +229,7 @@ Instead, you can just build using the bootstrap compiler.
 ./x build --stage 0 library
 ```
 
-If you choose the `library` profile when running `x.py setup`, you can omit `--stage 0` (it's the
+If you choose the `library` profile when running `x setup`, you can omit `--stage 0` (it's the
 default).
 
 ## Creating a rustup toolchain
@@ -241,7 +264,7 @@ LLVM version: 11.0
 ```
 
 The rustup toolchain points to the specified toolchain compiled in your `build` directory,
-so the rustup toolchain will be updated whenever `x.py build` or `x.py test` are run for
+so the rustup toolchain will be updated whenever `x build` or `x test` are run for
 that toolchain/stage.
 
 **Note:** the toolchain we've built does not include `cargo`.  In this case, `rustup` will
@@ -262,7 +285,7 @@ want to build this component:
 ## Building targets for cross-compilation
 
 To produce a compiler that can cross-compile for other targets,
-pass any number of `target` flags to `x.py build`.
+pass any number of `target` flags to `x build`.
 For example, if your host platform is `x86_64-unknown-linux-gnu`
 and your cross-compilation target is `wasm32-wasi`, you can build with:
 
@@ -274,7 +297,7 @@ Note that if you want the resulting compiler to be able to build crates that
 involve proc macros or build scripts, you must be sure to explicitly build target support for the
 host platform (in this case, `x86_64-unknown-linux-gnu`).
 
-If you want to always build for other targets without needing to pass flags to `x.py build`,
+If you want to always build for other targets without needing to pass flags to `x build`,
 you can configure this in the `[build]` section of your `config.toml` like so:
 
 ```toml
@@ -303,9 +326,9 @@ then once you have built your compiler you will be able to use it to cross-compi
 cargo +stage1 build --target wasm32-wasi
 ```
 
-## Other `x.py` commands
+## Other `x` commands
 
-Here are a few other useful `x.py` commands. We'll cover some of them in detail
+Here are a few other useful `x` commands. We'll cover some of them in detail
 in other sections:
 
 - Building things:
@@ -335,3 +358,5 @@ everything up then you only need to run one command!
 
 `rm -rf build` works too, but then you have to rebuild LLVM, which can take
 a long time even on fast computers.
+
+[^1]: issue[#1707](https://github.com/rust-lang/rustc-dev-guide/issues/1707)

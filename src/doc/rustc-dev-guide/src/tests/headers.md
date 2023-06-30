@@ -145,7 +145,7 @@ The following header commands will check rustc build settings and target setting
   (AddressSanitizer, hardware-assisted AddressSanitizer, LeakSanitizer,
   MemorySanitizer or ThreadSanitizer respectively)
 * `needs-run-enabled` — ignores if it is a test that gets executed, and
-  running has been disabled. Running tests can be disabled with the `x.py test
+  running has been disabled. Running tests can be disabled with the `x test
   --run=never` flag, or running on fuchsia.
 * `needs-unwind` — ignores if the target does not support unwinding
 * `needs-rust-lld` — ignores if the rust lld support is not enabled

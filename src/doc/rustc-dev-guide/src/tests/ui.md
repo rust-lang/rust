@@ -485,7 +485,7 @@ Then, it applies the suggestion and compares against `.fixed` (they must match).
 Finally, the fixed source is compiled, and this compilation is required to succeed.
 
 Usually when creating a rustfix test you will generate the `.fixed` file
-automatically with the `x.py test --bless` option.
+automatically with the `x test --bless` option.
 
 The `run-rustfix` header will cause *all* suggestions to be applied, even
 if they are not [`MachineApplicable`](../diagnostics.md#suggestions).

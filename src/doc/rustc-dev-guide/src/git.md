@@ -139,7 +139,7 @@ You might also notice conflicts in the web UI:
 ![conflict in src/tools/cargo](./img/submodule-conflicts.png)
 
 The most common cause is that you rebased after a change and ran `git add .` without first running
-`x.py` to update the submodules.  Alternatively, you might have run `cargo fmt` instead of `x fmt`
+`x` to update the submodules.  Alternatively, you might have run `cargo fmt` instead of `x fmt`
 and modified files in a submodule, then committed the changes.
 
 To fix it, do the following things:
@@ -248,7 +248,7 @@ out if you're using `download-ci-llvm`.  To avoid having to keep fetching its hi
 
 Note that, as of <!-- date-check --> Aug 2022,
 there is a [bug][#77620] if you use worktrees,
-submodules, and `x.py` in a commit hook.
+submodules, and `x` in a commit hook.
 If you run into an error like the following,
 it's not anything you did wrong:
 
@@ -314,7 +314,7 @@ Generally, resolving the conflict consists of two steps: First, fix the
 particular conflict. Edit the file to make the changes you want and remove the
 `<<<<<<<`, `=======` and `>>>>>>>` lines in the process. Second, check the
 surrounding code. If there was a conflict, its likely there are some logical
-errors lying around too! It's a good idea to run `x.py check` here to make sure
+errors lying around too! It's a good idea to run `x check` here to make sure
 there are no glaring errors.
 
 Once you're all done fixing the conflicts, you need to stage the files that had
@@ -558,7 +558,7 @@ commit, which doesn't change unless modified manually. If you use `git checkout 
 in the `llvm-project` directory and go back to the `rust` directory, you can stage this
 change like any other, e.g. by running `git add src/llvm-project`. (Note that if
 you *don't* stage the change to commit, then you run the risk that running
-`x.py` will just undo your change by switching back to the previous commit when
+`x` will just undo your change by switching back to the previous commit when
 it automatically "updates" the submodules.)
 
 This version selection is usually done by the maintainers of the project, and
