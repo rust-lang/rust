@@ -9,7 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
@@ -295,7 +295,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             })
         }
         GenericParamKind::Const { default, .. } => {
-            if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
+            // `rustc_host` effect params are allowed to have defaults.
+            if !matches!(allow_defaults, Defaults::Allowed)
+                && default.is_some()
+                && !tcx.has_attr(param.def_id, sym::rustc_host)
+            {
                 tcx.sess.span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
