@@ -503,9 +503,14 @@ pub fn hacky_block_expr(
 pub fn expr_unit() -> ast::Expr {
     expr_from_text("()")
 }
+
 pub fn expr_literal(text: &str) -> ast::Literal {
     assert_eq!(text.trim(), text);
     ast_from_text(&format!("fn f() {{ let _ = {text}; }}"))
+}
+
+pub fn expr_const_value(text: &str) -> ast::Expr {
+    ast_from_text(&format!("trait Foo<const N: usize = {text}> {{}}"))
 }
 
 pub fn expr_empty_block() -> ast::Expr {

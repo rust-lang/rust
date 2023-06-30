@@ -158,8 +158,14 @@ impl<'a> PathTransform<'a> {
                         const_substs.insert(k, expr.syntax().clone());
                     }
                 }
-                (Either::Left(_), None) => (), // FIXME: get default const value
-                _ => (),                       // ignore mismatching params
+                (Either::Left(k), None) => {
+                    if let Some(default) = k.default(db) {
+                        let default = ast::make::expr_const_value(&default);
+                        const_substs.insert(k, default.syntax().clone_for_update());
+                        // FIXME: transform the default value
+                    }
+                }
+                _ => (), // ignore mismatching params
             });
         let lifetime_substs: FxHashMap<_, _> = self
             .generic_def

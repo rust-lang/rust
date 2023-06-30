@@ -57,7 +57,8 @@ use triomphe::Arc;
 use utils::Generics;
 
 use crate::{
-    consteval::unknown_const, db::HirDatabase, infer::unify::InferenceTable, utils::generics,
+    consteval::unknown_const, db::HirDatabase, display::HirDisplay, infer::unify::InferenceTable,
+    utils::generics,
 };
 
 pub use autoderef::autoderef;
@@ -718,4 +719,13 @@ where
     let mut collector = PlaceholderCollector { db, placeholders: FxHashSet::default() };
     value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
     collector.placeholders.into_iter().collect()
+}
+
+pub fn known_const_to_string(konst: &Const, db: &dyn HirDatabase) -> Option<String> {
+    if let ConstValue::Concrete(c) = &konst.interned().value {
+        if c.interned == ConstScalar::Unknown {
+            return None;
+        }
+    }
+    Some(konst.display(db).to_string())
 }

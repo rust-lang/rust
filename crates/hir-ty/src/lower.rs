@@ -213,6 +213,19 @@ impl<'a> TyLoweringContext<'a> {
         self.lower_ty_ext(type_ref).0
     }
 
+    pub fn lower_const(&self, const_ref: &ConstRef, const_type: Ty) -> Const {
+        const_or_path_to_chalk(
+            self.db,
+            self.resolver,
+            self.owner,
+            const_type,
+            const_ref,
+            self.type_param_mode,
+            || self.generics(),
+            self.in_binders,
+        )
+    }
+
     fn generics(&self) -> Generics {
         generics(
             self.db.upcast(),
@@ -242,17 +255,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Array(inner, len) => {
                 let inner_ty = self.lower_ty(inner);
-                let const_len = const_or_path_to_chalk(
-                    self.db,
-                    self.resolver,
-                    self.owner,
-                    TyBuilder::usize(),
-                    len,
-                    self.type_param_mode,
-                    || self.generics(),
-                    self.in_binders,
-                );
-
+                let const_len = self.lower_const(len, TyBuilder::usize());
                 TyKind::Array(inner_ty, const_len).intern(Interner)
             }
             TypeRef::Slice(inner) => {
@@ -847,18 +850,7 @@ impl<'a> TyLoweringContext<'a> {
                         arg,
                         &mut (),
                         |_, type_ref| self.lower_ty(type_ref),
-                        |_, c, ty| {
-                            const_or_path_to_chalk(
-                                self.db,
-                                self.resolver,
-                                self.owner,
-                                ty,
-                                c,
-                                self.type_param_mode,
-                                || self.generics(),
-                                self.in_binders,
-                            )
-                        },
+                        |_, const_ref, ty| self.lower_const(const_ref, ty),
                     ) {
                         had_explicit_args = true;
                         substs.push(x);
@@ -1604,24 +1596,31 @@ pub(crate) fn generic_defaults_query(
             .iter()
             .enumerate()
             .map(|(idx, (id, p))| {
-                let p = match p {
-                    TypeOrConstParamData::TypeParamData(p) => p,
-                    TypeOrConstParamData::ConstParamData(_) => {
-                        // FIXME: implement const generic defaults
-                        let val = unknown_const_as_generic(
+                match p {
+                    TypeOrConstParamData::TypeParamData(p) => {
+                        let mut ty = p
+                            .default
+                            .as_ref()
+                            .map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
+                        // Each default can only refer to previous parameters.
+                        // Type variable default referring to parameter coming
+                        // after it is forbidden (FIXME: report diagnostic)
+                        ty = fallback_bound_vars(ty, idx, parent_start_idx);
+                        return crate::make_binders(db, &generic_params, ty.cast(Interner));
+                    }
+                    TypeOrConstParamData::ConstParamData(p) => {
+                        let unknown = unknown_const_as_generic(
                             db.const_param_ty(ConstParamId::from_unchecked(id)),
                         );
+                        let val = p.default.as_ref().map_or(unknown, |c| {
+                            let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
+                            chalk_ir::GenericArg::new(Interner, GenericArgData::Const(c))
+                        });
+                        // FIXME: check if complex default values refer to
+                        // previous parameters they should not.
                         return make_binders(db, &generic_params, val);
                     }
                 };
-                let mut ty =
-                    p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
-
-                // Each default can only refer to previous parameters.
-                // Type variable default referring to parameter coming
-                // after it is forbidden (FIXME: report diagnostic)
-                ty = fallback_bound_vars(ty, idx, parent_start_idx);
-                crate::make_binders(db, &generic_params, ty.cast(Interner))
             })
             // FIXME: use `Arc::from_iter` when it becomes available
             .collect::<Vec<_>>(),

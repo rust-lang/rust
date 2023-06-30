@@ -393,6 +393,17 @@ impl ConstRef {
         Self::Scalar(LiteralConstRef::Unknown)
     }
 
+    pub(crate) fn from_default_param_value(
+        _: &LowerCtx<'_>,
+        param: ast::ConstParam,
+    ) -> Option<Self> {
+        if let Some(expr) = param.default_val() {
+            // FIXME: pass the `ast_id` arg to recognize complex expressions
+            return Some(Self::from_expr(expr, None));
+        }
+        None
+    }
+
     pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {
         struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRef);
         impl fmt::Display for Display<'_> {
