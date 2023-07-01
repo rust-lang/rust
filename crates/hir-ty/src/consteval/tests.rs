@@ -108,6 +108,7 @@ fn bit_op() {
     check_fail(r#"const GOAL: i8 = 1 << 8"#, |e| {
         e == ConstEvalError::MirEvalError(MirEvalError::Panic("Overflow in Shl".to_string()))
     });
+    check_number(r#"const GOAL: i32 = 100000000i32 << 11"#, (100000000i32 << 11) as i128);
 }
 
 #[test]
