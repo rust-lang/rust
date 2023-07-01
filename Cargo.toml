@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.5.3"
+version = "1.6.0"
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
 readme = "README.md"
