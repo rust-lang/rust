@@ -57,6 +57,31 @@ if you want to learn more about `x.py`, [read this chapter][bootstrap].
 
 [bootstrap]: ./bootstrapping.md
 
+Also, using `x` rather than `x.py` is recommended as:
+
+> `./x` is the most likely to work on every system (on Unix it runs the shell script
+> that does python version detection, on Windows it will probably run the
+> powershell script - certainly less likely to break than `./x.py` which often just
+> opens the file in an editor).[^1]
+
+(You can find the platform related scripts around the `x.py`, like `x.ps1`)
+
+Notice that this is not absolute, for instance, using Nushell in VSCode on Win10,
+typing `x` or `./x` still open the `x.py` in editor rather invoke the program :)
+
+In the rest of documents, we use `x` to represent the straightly usage of `x.py`, which
+means the following command:
+
+```bash
+./x check
+```
+
+could be replaced by:
+
+```bash
+./x.py check
+```
+
 ### Running `x.py`
 
 The `x.py` command can be run directly on most Unix systems in the following format:
@@ -108,28 +133,10 @@ of a checkout. It also looks up the appropriate version of `python` to use.
 
 You can install it with `cargo install --path src/tools/x`.
 
-Using `x` rather than `x.py` is recommended as:
-
-> `./x` is the most likely to work on every system (on Unix it runs the shell script
-> that does python version detection, on Windows it will probably run the
-> powershell script - certainly less likely to break than `./x.py` which often just
-> opens the file in an editor).[^1]
-
-Notice that this is not absolute, for instance, using Nushell in VSCode on Win10,
-typing `x` or `./x` still open the `x.py` in editor rather invoke the program :)
-
-In the rest of documents, we use `x` to represent the straightly usage of `x.py`, which
-means the following command:
-
-```bash
-./x check
-```
-
-could be replaced by:
-
-```bash
-./x.py check
-```
+To clarify that this is another global installed binary util, which is
+similar to the fromer `x` declared in section [What is `x.py`](#what-is-xpy) but
+it works as an independent process to execute the `x.py` rather than calling the 
+shell to run the platform related scripts.
 
 ## Create a `config.toml`
 
