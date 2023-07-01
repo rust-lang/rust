@@ -374,23 +374,22 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
-        if place.projection.first() != Some(&PlaceElem::Deref) {
-            return;
-        }
-
         loop {
-            if let Value::Pointer(target, _) = self.targets[place.local] {
-                let perform_opt = matches!(ctxt, PlaceContext::NonUse(_))
-                    || self.allowed_replacements.contains(&(target.local, loc));
-
-                if perform_opt {
-                    *place = target.project_deeper(&place.projection[1..], self.tcx);
-                    self.any_replacement = true;
-                    continue;
-                }
+            if place.projection.first() != Some(&PlaceElem::Deref) {
+                return;
             }
 
-            break;
+            let Value::Pointer(target, _) = self.targets[place.local] else { return };
+
+            let perform_opt = matches!(ctxt, PlaceContext::NonUse(_))
+                || self.allowed_replacements.contains(&(target.local, loc));
+
+            if !perform_opt {
+                return;
+            }
+
+            *place = target.project_deeper(&place.projection[1..], self.tcx);
+            self.any_replacement = true;
         }
     }
 
