@@ -194,8 +194,9 @@
 //! at 0. For ordered collections like [`BTreeMap`], this means that the items
 //! will be yielded in sorted order. For unordered collections like [`HashMap`],
 //! the items will be yielded in whatever order the internal representation made
-//! most convenient. This is great for reading through all the contents of the
-//! collection.
+//! most convenient. This order is guaranteed to be the same across multiple calls
+//! to the same collection, as long as the collection isn't modified in between.
+//! This is great for reading through all the contents of the collection.
 //!
 //! ```
 //! let vec = vec![1, 2, 3, 4];
