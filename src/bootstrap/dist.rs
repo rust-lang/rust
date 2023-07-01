@@ -1601,9 +1601,7 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-analysis");
             prepare("rust-std");
-            prepare("clippy");
-            prepare("rust-analyzer");
-            for tool in &["rust-docs", "rust-demangler", "miri"] {
+            for tool in &["clippy", "rust-analyzer", "rust-docs", "rust-demangler", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1689,40 +1687,44 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(exe.join("StdGroup.wxs")),
             );
-            builder.run(
-                Command::new(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rust-analyzer")
-                    .args(&heat_flags)
-                    .arg("-cg")
-                    .arg("RustAnalyzerGroup")
-                    .arg("-dr")
-                    .arg("RustAnalyzer")
-                    .arg("-var")
-                    .arg("var.RustAnalyzerDir")
-                    .arg("-out")
-                    .arg(exe.join("RustAnalyzerGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl")),
-            );
-            builder.run(
-                Command::new(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("clippy")
-                    .args(&heat_flags)
-                    .arg("-cg")
-                    .arg("ClippyGroup")
-                    .arg("-dr")
-                    .arg("Clippy")
-                    .arg("-var")
-                    .arg("var.ClippyDir")
-                    .arg("-out")
-                    .arg(exe.join("ClippyGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl")),
-            );
+            if built_tools.contains("rust-analyzer") {
+                builder.run(
+                    Command::new(&heat)
+                        .current_dir(&exe)
+                        .arg("dir")
+                        .arg("rust-analyzer")
+                        .args(&heat_flags)
+                        .arg("-cg")
+                        .arg("RustAnalyzerGroup")
+                        .arg("-dr")
+                        .arg("RustAnalyzer")
+                        .arg("-var")
+                        .arg("var.RustAnalyzerDir")
+                        .arg("-out")
+                        .arg(exe.join("RustAnalyzerGroup.wxs"))
+                        .arg("-t")
+                        .arg(etc.join("msi/remove-duplicates.xsl")),
+                );
+            }
+            if built_tools.contains("clippy") {
+                builder.run(
+                    Command::new(&heat)
+                        .current_dir(&exe)
+                        .arg("dir")
+                        .arg("clippy")
+                        .args(&heat_flags)
+                        .arg("-cg")
+                        .arg("ClippyGroup")
+                        .arg("-dr")
+                        .arg("Clippy")
+                        .arg("-var")
+                        .arg("var.ClippyDir")
+                        .arg("-out")
+                        .arg(exe.join("ClippyGroup.wxs"))
+                        .arg("-t")
+                        .arg(etc.join("msi/remove-duplicates.xsl")),
+                );
+            }
             if built_tools.contains("rust-demangler") {
                 builder.run(
                     Command::new(&heat)
@@ -1806,7 +1808,6 @@ impl Step for Extended {
                     .arg("-dCargoDir=cargo")
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
-                    .arg("-dClippyDir=clippy")
                     .arg("-arch")
                     .arg(&arch)
                     .arg("-out")
@@ -1814,6 +1815,9 @@ impl Step for Extended {
                     .arg(&input);
                 add_env(builder, &mut cmd, target);
 
+                if built_tools.contains("clippy") {
+                    cmd.arg("-dClippyDir=clippy");
+                }
                 if built_tools.contains("rust-docs") {
                     cmd.arg("-dDocsDir=rust-docs");
                 }
@@ -1840,7 +1844,9 @@ impl Step for Extended {
             }
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
-            candle("ClippyGroup.wxs".as_ref());
+            if built_tools.contains("clippy") {
+                candle("ClippyGroup.wxs".as_ref());
+            }
             if built_tools.contains("miri") {
                 candle("MiriGroup.wxs".as_ref());
             }
@@ -1877,9 +1883,11 @@ impl Step for Extended {
                 .arg("CargoGroup.wixobj")
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
-                .arg("ClippyGroup.wixobj")
                 .current_dir(&exe);
 
+            if built_tools.contains("clippy") {
+                cmd.arg("ClippyGroup.wixobj");
+            }
             if built_tools.contains("miri") {
                 cmd.arg("MiriGroup.wixobj");
             }
