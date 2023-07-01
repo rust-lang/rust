@@ -391,17 +391,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t) = {
             let resolution = &mut *self.resolution(module, key).borrow_mut();
-            let old_binding = resolution.binding();
+            let old_binding = resolution.binding;
 
             let t = f(self, resolution);
 
-            match resolution.binding() {
-                _ if old_binding.is_some() => return t,
-                None => return t,
-                Some(binding) => match old_binding {
-                    Some(old_binding) if ptr::eq(old_binding, binding) => return t,
-                    _ => (binding, t),
-                },
+            match resolution.binding {
+                Some(binding)
+                    if !old_binding.is_some_and(|old_binding| ptr::eq(binding, old_binding)) =>
+                {
+                    (binding, t)
+                }
+                _ => return t,
             }
         };
 

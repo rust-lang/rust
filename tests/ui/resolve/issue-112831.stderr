@@ -1,0 +1,14 @@
+error[E0404]: expected trait, found derive macro `Zeroable`
+  --> $DIR/issue-112831.rs:11:20
+   |
+LL |     pub trait Pod: Zeroable {}
+   |                    ^^^^^^^^ not a trait
+   |
+help: consider importing this trait through its public re-export instead
+   |
+LL +     use Zeroable;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0404`.

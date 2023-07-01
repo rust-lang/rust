@@ -1,4 +1,3 @@
-// check-pass
 // aux-build:issue-112831-aux.rs
 
 mod zeroable {
@@ -9,7 +8,7 @@ use zeroable::*;
 
 mod pod {
     use super::*;
-    pub trait Pod: Zeroable {}
+    pub trait Pod: Zeroable {} //~ ERROR expected trait, found derive macro `Zeroable`
 }
 
 use pod::*;
