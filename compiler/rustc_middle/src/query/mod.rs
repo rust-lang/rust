@@ -1394,10 +1394,11 @@ rustc_queries! {
         desc { "computing layout of `{}`", key.value }
     }
 
-    /// Computes the naive layout estimate of a type. Note that this implicitly
+    /// Computes the naive layout approximation of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     ///
-    /// Unlike `layout_of`, this doesn't recurse behind reference types.
+    /// Unlike `layout_of`, this doesn't look past references (beyond the `Pointee::Metadata`
+    /// projection), and as such can be called on generic types like `Option<&T>`.
     query naive_layout_of(
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndNaiveLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {

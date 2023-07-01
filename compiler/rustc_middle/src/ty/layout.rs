@@ -650,15 +650,16 @@ impl std::ops::DerefMut for TyAndNaiveLayout<'_> {
     }
 }
 
-/// Extremely simplified representation of a type's layout.
-///
-///
+/// Extremely simplified approximation of a type's layout returned by the
+/// `naive_layout_of` query.
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct NaiveLayout {
     pub abi: NaiveAbi,
+    /// An underestimate of the layout's size.
     pub size: Size,
+    /// An underestimate of the layout's required alignment.
     pub align: Align,
-    /// If `true`, `size` and `align` are exact.
+    /// If `true`, `size` and `align` must be exact values.
     pub exact: bool,
 }
 
@@ -670,23 +671,28 @@ pub enum NaiveAbi {
     Uninhabited,
     /// An unsized aggregate. (needed to properly track `Scalar`)
     Unsized,
-    Any,
+    /// Any other sized layout.
+    Sized,
 }
 
 impl NaiveAbi {
     #[inline]
     pub fn as_aggregate(self) -> Self {
         match self {
-            NaiveAbi::Scalar(_) => NaiveAbi::Any,
+            NaiveAbi::Scalar(_) => NaiveAbi::Sized,
             _ => self,
         }
     }
 }
 
 impl NaiveLayout {
+    /// The layout of an empty aggregate, e.g. `()`.
     pub const EMPTY: Self =
-        Self { size: Size::ZERO, align: Align::ONE, exact: true, abi: NaiveAbi::Any };
+        Self { size: Size::ZERO, align: Align::ONE, exact: true, abi: NaiveAbi::Sized };
 
+    /// Returns whether `self` is a valid approximation of the given full `layout`.
+    ///
+    /// This should always return `true` when both layouts are computed from the same type.
     pub fn is_refined_by(&self, layout: Layout<'_>) -> bool {
         if self.size > layout.size() || self.align > layout.align().abi {
             return false;
@@ -712,11 +718,12 @@ impl NaiveLayout {
                 Some(self.size == dl.pointer_size && self.align == dl.pointer_align.abi)
             }
             NaiveAbi::Uninhabited | NaiveAbi::Unsized => Some(false),
-            NaiveAbi::Any if self.exact => Some(false),
-            NaiveAbi::Any => None,
+            NaiveAbi::Sized if self.exact => Some(false),
+            NaiveAbi::Sized => None,
         }
     }
 
+    /// Artificially lowers the alignment of this layout.
     #[must_use]
     #[inline]
     pub fn packed(mut self, align: Align) -> Self {
@@ -727,6 +734,7 @@ impl NaiveLayout {
         self
     }
 
+    /// Artificially raises the alignment of this layout.
     #[must_use]
     #[inline]
     pub fn align_to(mut self, align: Align) -> Self {
@@ -737,6 +745,7 @@ impl NaiveLayout {
         self
     }
 
+    /// Pads this layout so that its size is a multiple of `align`.
     #[must_use]
     #[inline]
     pub fn pad_to_align(mut self, align: Align) -> Self {
@@ -748,6 +757,8 @@ impl NaiveLayout {
         self
     }
 
+    /// Returns the layout of `self` immediately followed by `other`, without any
+    /// padding between them, as in a packed `struct` or tuple.
     #[must_use]
     #[inline]
     pub fn concat(&self, other: &Self, dl: &TargetDataLayout) -> Option<Self> {
@@ -764,11 +775,13 @@ impl NaiveLayout {
             (_, s @ Scalar(_)) if exact && self.size == Size::ZERO => s,
             (s @ Scalar(_), _) if exact && other.size == Size::ZERO => s,
             // Default case.
-            (_, _) => Any,
+            (_, _) => Sized,
         };
         Some(Self { abi, size, align, exact })
     }
 
+    /// Returns the layout of `self` superposed with `other`, as in an `enum`
+    /// or an `union`.
     #[must_use]
     #[inline]
     pub fn union(&self, other: &Self) -> Self {
@@ -787,7 +800,7 @@ impl NaiveLayout {
             (Scalar(s1), Scalar(s2)) if s1 == s2 => Scalar(s1),
             // Default cases.
             (Uninhabited, Uninhabited) => Uninhabited,
-            (_, _) => Any,
+            (_, _) => Sized,
         };
         Self { abi, size, align, exact }
     }
@@ -849,7 +862,8 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
     /// Computes the naive layout estimate of a type. Note that this implicitly
     /// executes in "reveal all" mode, and will normalize the input type.
     ///
-    /// Unlike `layout_of`, this doesn't recurse behind reference types.
+    /// Unlike `layout_of`, this doesn't look past references (beyond the `Pointee::Metadata`
+    /// projection), and as such can be called on generic types like `Option<&T>`.
     #[inline]
     fn naive_layout_of(
         &self,

@@ -244,7 +244,7 @@ fn naive_layout_of_uncached<'tcx>(
 
             // Unions are always inhabited, and never scalar if `repr(C)`.
             if !matches!(layout.abi, NaiveAbi::Scalar(_)) || repr.inhibit_enum_layout_opt() {
-                layout.abi = NaiveAbi::Any;
+                layout.abi = NaiveAbi::Sized;
             }
 
             if let Some(align) = repr.align {
