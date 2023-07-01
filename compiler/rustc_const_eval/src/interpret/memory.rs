@@ -1244,7 +1244,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if offset > size.bytes() {
                     // If the pointer is out-of-bounds, we do not have a
                     // meaningful range to return.
-                    0..=dl.max_address()
+                    0..=dl.target_usize_max()
                 } else {
                     let (min, max) = dl.address_range_for(size, align);
                     (min + offset)..=(max + offset)

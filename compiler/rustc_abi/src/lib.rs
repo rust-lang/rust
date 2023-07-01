@@ -354,17 +354,19 @@ impl TargetDataLayout {
         }
     }
 
-    /// Returns the theoretical maximum address.
-    ///
-    /// Note that this doesn't take into account target-specific limitations.
     #[inline]
-    pub fn max_address(&self) -> u64 {
-        match self.pointer_size.bits() {
-            16 => u16::MAX.into(),
-            32 => u32::MAX.into(),
-            64 => u64::MAX,
-            bits => panic!("max_address: unknown pointer bit size {}", bits),
-        }
+    pub fn target_usize_max(&self) -> u64 {
+        self.pointer_size.unsigned_int_max().try_into().unwrap()
+    }
+
+    #[inline]
+    pub fn target_isize_min(&self) -> i64 {
+        self.pointer_size.signed_int_min().try_into().unwrap()
+    }
+
+    #[inline]
+    pub fn target_isize_max(&self) -> i64 {
+        self.pointer_size.signed_int_max().try_into().unwrap()
     }
 
     /// Returns the (inclusive) range of possible addresses for an allocation with
@@ -373,7 +375,7 @@ impl TargetDataLayout {
     /// Note that this doesn't take into account target-specific limitations.
     #[inline]
     pub fn address_range_for(&self, size: Size, align: Align) -> (u64, u64) {
-        let end = Size::from_bytes(self.max_address());
+        let end = Size::from_bytes(self.target_usize_max());
         let min = align.bytes();
         let max = (end - size).align_down_to(align).bytes();
         (min, max)

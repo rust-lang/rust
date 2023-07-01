@@ -5,9 +5,7 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{
-        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar,
-    },
+    interpret::{Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, Scalar},
     BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
@@ -15,7 +13,7 @@ use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Align, Primitive, Size};
+use rustc_target::abi::{Abi, Align, HasDataLayout as _, Primitive, Size};
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -361,11 +359,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
 
                 // Perform division by size to compute return value.
+                let dl = self.data_layout();
                 let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {
-                    assert!(0 <= dist && dist <= self.target_isize_max());
+                    assert!(0 <= dist && dist <= dl.target_isize_max());
                     usize_layout
                 } else {
-                    assert!(self.target_isize_min() <= dist && dist <= self.target_isize_max());
+                    assert!(dl.target_isize_min() <= dist && dist <= dl.target_isize_max());
                     isize_layout
                 };
                 let pointee_layout = self.layout_of(instance_args.type_at(0))?;
