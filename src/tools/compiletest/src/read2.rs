@@ -83,7 +83,7 @@ impl ProcOutput {
                 }
 
                 let new_len = bytes.len();
-                if *filtered_len <= HEAD_LEN + TAIL_LEN {
+                if (*filtered_len).min(new_len) <= HEAD_LEN + TAIL_LEN {
                     return;
                 }
 
