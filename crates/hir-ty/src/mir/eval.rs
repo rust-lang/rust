@@ -226,16 +226,26 @@ impl IntervalOrOwned {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
+const STACK_OFFSET: usize = 1 << 60;
+#[cfg(target_pointer_width = "64")]
+const HEAP_OFFSET: usize = 1 << 59;
+
+#[cfg(target_pointer_width = "32")]
+const STACK_OFFSET: usize = 1 << 30;
+#[cfg(target_pointer_width = "32")]
+const HEAP_OFFSET: usize = 1 << 29;
+
 impl Address {
     fn from_bytes(x: &[u8]) -> Result<Self> {
         Ok(Address::from_usize(from_bytes!(usize, x)))
     }
 
     fn from_usize(x: usize) -> Self {
-        if x > usize::MAX / 2 {
-            Stack(x - usize::MAX / 2)
-        } else if x > usize::MAX / 4 {
-            Heap(x - usize::MAX / 4)
+        if x > STACK_OFFSET {
+            Stack(x - STACK_OFFSET)
+        } else if x > HEAP_OFFSET {
+            Heap(x - HEAP_OFFSET)
         } else {
             Invalid(x)
         }
@@ -247,8 +257,8 @@ impl Address {
 
     fn to_usize(&self) -> usize {
         let as_num = match self {
-            Stack(x) => *x + usize::MAX / 2,
-            Heap(x) => *x + usize::MAX / 4,
+            Stack(x) => *x + STACK_OFFSET,
+            Heap(x) => *x + HEAP_OFFSET,
             Invalid(x) => *x,
         };
         as_num
@@ -721,8 +731,14 @@ impl Evaluator<'_> {
                 .locals
                 .iter()
                 .map(|(id, x)| {
-                    let size =
-                        self.size_of_sized(&x.ty, &locals, "no unsized local in extending stack")?;
+                    let (size, align) = self.size_align_of_sized(
+                        &x.ty,
+                        &locals,
+                        "no unsized local in extending stack",
+                    )?;
+                    while stack_ptr % align != 0 {
+                        stack_ptr += 1;
+                    }
                     let my_ptr = stack_ptr;
                     stack_ptr += size;
                     Ok((id, Interval { addr: Stack(my_ptr), size }))
@@ -1469,8 +1485,8 @@ impl Evaluator<'_> {
         Ok(match &c.interned {
             ConstScalar::Bytes(v, memory_map) => {
                 let mut v: Cow<'_, [u8]> = Cow::Borrowed(v);
-                let patch_map = memory_map.transform_addresses(|b| {
-                    let addr = self.heap_allocate(b.len(), 1); // FIXME: align is wrong
+                let patch_map = memory_map.transform_addresses(|b, align| {
+                    let addr = self.heap_allocate(b.len(), align);
                     self.write_memory(addr, b)?;
                     Ok(addr.to_usize())
                 })?;
@@ -1574,7 +1590,24 @@ impl Evaluator<'_> {
         }
     }
 
-    fn heap_allocate(&mut self, size: usize, _align: usize) -> Address {
+    /// A version of `self.size_align_of` which returns error if the type is unsized. `what` argument should
+    /// be something that complete this: `error: type {ty} was unsized. {what} should be sized`
+    fn size_align_of_sized(
+        &self,
+        ty: &Ty,
+        locals: &Locals<'_>,
+        what: &'static str,
+    ) -> Result<(usize, usize)> {
+        match self.size_align_of(ty, locals)? {
+            Some(x) => Ok(x),
+            None => Err(MirEvalError::TypeIsUnsized(ty.clone(), what)),
+        }
+    }
+
+    fn heap_allocate(&mut self, size: usize, align: usize) -> Address {
+        while self.heap.len() % align != 0 {
+            self.heap.push(0);
+        }
         let pos = self.heap.len();
         self.heap.extend(iter::repeat(0).take(size));
         Address::Heap(pos)

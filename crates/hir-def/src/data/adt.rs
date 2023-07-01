@@ -147,6 +147,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                 }
                 "C" => ReprFlags::IS_C,
                 "transparent" => ReprFlags::IS_TRANSPARENT,
+                "simd" => ReprFlags::IS_SIMD,
                 repr => {
                     if let Some(builtin) = BuiltinInt::from_suffix(repr)
                         .map(Either::Left)

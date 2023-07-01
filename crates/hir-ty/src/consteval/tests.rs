@@ -36,6 +36,18 @@ fn check_fail(ra_fixture: &str, error: impl FnOnce(ConstEvalError) -> bool) {
 
 #[track_caller]
 fn check_number(ra_fixture: &str, answer: i128) {
+    check_answer(ra_fixture, |b| {
+        assert_eq!(
+            b,
+            &answer.to_le_bytes()[0..b.len()],
+            "Bytes differ. In decimal form: actual = {}, expected = {answer}",
+            i128::from_le_bytes(pad16(b, true))
+        );
+    });
+}
+
+#[track_caller]
+fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8])) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
     let r = match eval_goal(&db, file_id) {
         Ok(t) => t,
@@ -47,12 +59,7 @@ fn check_number(ra_fixture: &str, answer: i128) {
     match &r.data(Interner).value {
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
             ConstScalar::Bytes(b, _) => {
-                assert_eq!(
-                    b,
-                    &answer.to_le_bytes()[0..b.len()],
-                    "Bytes differ. In decimal form: actual = {}, expected = {answer}",
-                    i128::from_le_bytes(pad16(b, true))
-                );
+                check(b);
             }
             x => panic!("Expected number but found {:?}", x),
         },
@@ -87,7 +94,7 @@ fn eval_goal(db: &TestDB, file_id: FileId) -> Result<Const, ConstEvalError> {
             }
             _ => None,
         })
-        .unwrap();
+        .expect("No const named GOAL found in the test");
     db.const_eval(const_id.into(), Substitution::empty(Interner))
 }
 
@@ -203,6 +210,30 @@ fn raw_pointer_equality() {
         };
         "#,
         1,
+    );
+}
+
+#[test]
+fn alignment() {
+    check_answer(
+        r#"
+//- minicore: transmute
+use core::mem::transmute;
+const GOAL: usize = {
+    let x: i64 = 2;
+    transmute(&x)
+}
+        "#,
+        |b| assert_eq!(b[0] % 8, 0),
+    );
+    check_answer(
+        r#"
+//- minicore: transmute
+use core::mem::transmute;
+static X: i64 = 12;
+const GOAL: usize = transmute(&X);
+        "#,
+        |b| assert_eq!(b[0] % 8, 0),
     );
 }
 
