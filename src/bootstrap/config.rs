@@ -39,16 +39,6 @@ macro_rules! check_ci_llvm {
     };
 }
 
-macro_rules! check_ci_rustc {
-    ($name:expr) => {
-        assert!(
-            $name.is_none(),
-            "setting {} is incompatible with download-ci-rustc.",
-            stringify!($name)
-        );
-    };
-}
-
 #[derive(Clone, Default)]
 pub enum DryRun {
     /// This isn't a dry run.
@@ -1516,10 +1506,6 @@ impl Config {
                 check_ci_llvm!(llvm.clang);
                 check_ci_llvm!(llvm.build_config);
                 check_ci_llvm!(llvm.plugins);
-            }
-
-            if config.download_rustc_commit.is_some() {
-                check_ci_rustc!(llvm.assertions);
             }
 
             // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
