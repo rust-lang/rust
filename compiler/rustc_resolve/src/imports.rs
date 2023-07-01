@@ -324,6 +324,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
                             // We are glob-importing the same item but with greater visibility.
                             resolution.binding = Some(binding);
+                        } else if binding.is_ambiguity() {
+                            resolution.binding = Some(binding);
                         }
                     }
                     (old_glob @ true, false) | (old_glob @ false, true) => {
