@@ -96,7 +96,11 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     for (local, rvalue, _) in ssa.assignments(body) {
         let value = state.insert_rvalue(rvalue).or_else(|| state.new_opaque()).unwrap();
-        state.assign(local, value);
+        // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
+        // reusable if we have an exact type match.
+        if state.local_decls[local].ty == rvalue.ty(state.local_decls, tcx) {
+            state.assign(local, value);
+        }
     }
 
     // Stop creating opaques during replacement as it is useless.
