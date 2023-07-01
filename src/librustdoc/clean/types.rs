@@ -1455,6 +1455,9 @@ impl Trait {
     pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
         tcx.trait_def(self.def_id).unsafety
     }
+    pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.check_is_object_safe(self.def_id)
+    }
 }
 
 #[derive(Clone, Debug)]
