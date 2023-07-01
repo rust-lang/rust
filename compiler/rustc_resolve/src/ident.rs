@@ -370,7 +370,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// expansion and import resolution (perhaps they can be merged in the future).
     /// The function is used for resolving initial segments of macro paths (e.g., `foo` in
     /// `foo::bar!();` or `foo!();`) and also for import paths on 2018 edition.
-    #[instrument(level = "debug", skip(self, scope_set))]
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,

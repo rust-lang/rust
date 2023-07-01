@@ -128,7 +128,7 @@ enum Scope<'a> {
 /// with different restrictions when looking up the resolution.
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum ScopeSet<'a> {
     /// All scopes with the given namespace.
     All(Namespace),
