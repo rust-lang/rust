@@ -180,9 +180,16 @@ impl MemoryMap {
     /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
     fn transform_addresses(
         &self,
-        mut f: impl FnMut(&[u8]) -> Result<usize, MirEvalError>,
+        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
     ) -> Result<HashMap<usize, usize>, MirEvalError> {
-        self.memory.iter().map(|x| Ok((*x.0, f(x.1)?))).collect()
+        self.memory
+            .iter()
+            .map(|x| {
+                let addr = *x.0;
+                let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
+                Ok((addr, f(x.1, align)?))
+            })
+            .collect()
     }
 
     fn get<'a>(&'a self, addr: usize, size: usize) -> Option<&'a [u8]> {

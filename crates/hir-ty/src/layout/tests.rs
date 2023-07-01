@@ -271,6 +271,20 @@ struct Goal(Foo<S>);
 }
 
 #[test]
+fn simd_types() {
+    check_size_and_align(
+        r#"
+            #[repr(simd)]
+            struct SimdType(i64, i64);
+            struct Goal(SimdType);
+        "#,
+        "",
+        16,
+        16,
+    );
+}
+
+#[test]
 fn return_position_impl_trait() {
     size_and_align_expr! {
         trait T {}
