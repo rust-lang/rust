@@ -4022,6 +4022,7 @@ dependencies = [
  "rustc_hir",
  "rustc_middle",
  "rustc_span",
+ "scoped-tls",
  "tracing",
 ]
 

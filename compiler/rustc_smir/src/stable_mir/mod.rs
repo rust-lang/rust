@@ -100,18 +100,17 @@ pub trait Context {
     fn rustc_tables(&mut self, f: &mut dyn FnMut(&mut Tables<'_>));
 }
 
-thread_local! {
-    /// A thread local variable that stores a pointer to the tables mapping between TyCtxt
-    /// datastructures and stable MIR datastructures.
-    static TLV: Cell<*mut ()> = const { Cell::new(std::ptr::null_mut()) };
-}
+// A thread local variable that stores a pointer to the tables mapping between TyCtxt
+// datastructures and stable MIR datastructures
+scoped_thread_local! (static TLV: Cell<*mut ()>);
 
 pub fn run(mut context: impl Context, f: impl FnOnce()) {
-    assert!(TLV.get().is_null());
+    assert!(!TLV.is_set());
     fn g<'a>(mut context: &mut (dyn Context + 'a), f: impl FnOnce()) {
-        TLV.set(&mut context as *mut &mut _ as _);
-        f();
-        TLV.replace(std::ptr::null_mut());
+        let ptr: *mut () = &mut context as *mut &mut _ as _;
+        TLV.set(&Cell::new(ptr), || {
+            f();
+        });
     }
     g(&mut context, f);
 }
@@ -119,9 +118,10 @@ pub fn run(mut context: impl Context, f: impl FnOnce()) {
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
 pub(crate) fn with<R>(f: impl FnOnce(&mut dyn Context) -> R) -> R {
-    let ptr = TLV.replace(std::ptr::null_mut()) as *mut &mut dyn Context;
-    assert!(!ptr.is_null());
-    let ret = f(unsafe { *ptr });
-    TLV.set(ptr as _);
-    ret
+    assert!(TLV.is_set());
+    TLV.with(|tlv| {
+        let ptr = tlv.get();
+        assert!(!ptr.is_null());
+        f(unsafe { *(ptr as *mut &mut dyn Context) })
+    })
 }
