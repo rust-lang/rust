@@ -290,7 +290,7 @@ impl<'a> DiagnosticHandlers<'a> {
         handler: &'a Handler,
         llcx: &'a llvm::Context,
         module: &ModuleCodegen<ModuleLlvm>,
-        section: CodegenDiagnosticsStage,
+        stage: CodegenDiagnosticsStage,
     ) -> Self {
         let remark_passes_all: bool;
         let remark_passes: Vec<CString>;
@@ -312,12 +312,12 @@ impl<'a> DiagnosticHandlers<'a> {
             .as_ref()
             // Use the .opt.yaml file suffix, which is supported by LLVM's opt-viewer.
             .map(|dir| {
-                let section = match section {
+                let stage_suffix = match stage {
                     CodegenDiagnosticsStage::Codegen => "codegen",
                     CodegenDiagnosticsStage::Opt => "opt",
                     CodegenDiagnosticsStage::LTO => "lto",
                 };
-                dir.join(format!("{}.{section}.opt.yaml", module.name))
+                dir.join(format!("{}.{stage_suffix}.opt.yaml", module.name))
             })
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 

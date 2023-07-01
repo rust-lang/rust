@@ -35,6 +35,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
+use crate::errors::ErrorCreatingRemarkDir;
 use std::any::Any;
 use std::borrow::Cow;
 use std::fs;
@@ -1046,10 +1047,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let backend_features = tcx.global_backend_features(());
 
     let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
-        // Should this be here?
-        // Can this conflict with a parallel attempt to create this directory?
-        fs::create_dir_all(dir).expect("Cannot create remark directory");
-        Some(dir.canonicalize().expect("Cannot canonicalize remark directory"))
+        let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
+        match result {
+            Ok(dir) => Some(dir),
+            Err(error) => sess.emit_fatal(ErrorCreatingRemarkDir { error }),
+        }
     } else {
         None
     };

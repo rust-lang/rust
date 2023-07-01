@@ -1877,17 +1877,17 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
       void *DiagnosticHandlerContext,
       bool RemarkAllPasses,
       std::vector<std::string> RemarkPasses,
+      std::unique_ptr<ToolOutputFile> RemarksFile,
       std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer,
-      std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer,
-      std::unique_ptr<ToolOutputFile> RemarksFile
+      std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer
     )
         : DiagnosticHandlerCallback(DiagnosticHandlerCallback),
           DiagnosticHandlerContext(DiagnosticHandlerContext),
           RemarkAllPasses(RemarkAllPasses),
           RemarkPasses(std::move(RemarkPasses)),
+          RemarksFile(std::move(RemarksFile)),
           RemarkStreamer(std::move(RemarkStreamer)),
-          LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)),
-          RemarksFile(std::move(RemarksFile)) {}
+          LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)) {}
 
     virtual bool handleDiagnostics(const DiagnosticInfo &DI) override {
       if (this->LlvmRemarkStreamer) {
@@ -1939,11 +1939,11 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     bool RemarkAllPasses = false;
     std::vector<std::string> RemarkPasses;
 
-    // Since LlvmRemarkStreamer contains a pointer to RemarkStreamer, the ordering of the two
+    // Since LlvmRemarkStreamer contains a pointer to RemarkStreamer, the ordering of the three
     // members below is important.
+    std::unique_ptr<ToolOutputFile> RemarksFile;
     std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer;
     std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer;
-    std::unique_ptr<ToolOutputFile> RemarksFile;
   };
 
   std::vector<std::string> Passes;
@@ -1953,9 +1953,9 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   }
 
   // We need to hold onto both the streamers and the opened file
+  std::unique_ptr<ToolOutputFile> RemarkFile;
   std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer;
   std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer;
-  std::unique_ptr<ToolOutputFile> RemarkFile;
 
   if (RemarkFilePath != nullptr) {
     std::error_code EC;
@@ -1964,6 +1964,12 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
       EC,
       llvm::sys::fs::OF_TextWithCRLF
     );
+    if (EC) {
+      std::string Error = std::string("Cannot create remark file: ") +
+              toString(errorCodeToError(EC));
+      report_fatal_error(Twine(Error));
+    }
+
     // Do not delete the file after we gather remarks
     RemarkFile->keep();
 
@@ -1974,8 +1980,8 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     );
     if (Error E = RemarkSerializer.takeError())
     {
-      // Is this OK?
-      report_fatal_error("Cannot create remark serializer");
+      std::string Error = std::string("Cannot create remark serializer: ") + toString(std::move(E));
+      report_fatal_error(Twine(Error));
     }
     RemarkStreamer = std::make_unique<llvm::remarks::RemarkStreamer>(std::move(*RemarkSerializer));
     LlvmRemarkStreamer = std::make_unique<LLVMRemarkStreamer>(*RemarkStreamer);
@@ -1986,9 +1992,9 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     DiagnosticHandlerContext,
     RemarkAllPasses,
     Passes,
+    std::move(RemarkFile),
     std::move(RemarkStreamer),
-    std::move(LlvmRemarkStreamer),
-    std::move(RemarkFile)
+    std::move(LlvmRemarkStreamer)
   ));
 }
 
