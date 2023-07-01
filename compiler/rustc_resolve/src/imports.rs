@@ -894,8 +894,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 return None;
             }
-            PathResult::NonModule(_) => {
-                if no_ambiguity {
+            PathResult::NonModule(partial_res) => {
+                if no_ambiguity && partial_res.full_res() != Some(Res::Err) {
+                    // Check if there are no ambiguities and the result is not dummy.
                     assert!(import.imported_module.get().is_none());
                 }
                 // The error was already reported earlier.
