@@ -2135,16 +2135,18 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
                     // lints shouldn't be emmited even if `from` effective visibility
                     // is larger than `Priv` nominal visibility and if `Priv` can leak
                     // in some scenarios due to type inference.
-                    let impl_ev = Some(EffectiveVisibility::of_impl::<false>(
+                    let impl_ev = EffectiveVisibility::of_impl::<false>(
                         item.owner_id.def_id,
                         tcx,
                         self.effective_visibilities,
-                    ));
+                    );
 
                     // check that private components do not appear in the generics or predicates of inherent impls
                     // this check is intentionally NOT performed for impls of traits, per #90586
                     if impl_.of_trait.is_none() {
-                        self.check(item.owner_id.def_id, impl_vis, impl_ev).generics().predicates();
+                        self.check(item.owner_id.def_id, impl_vis, Some(impl_ev))
+                            .generics()
+                            .predicates();
                     }
                     for impl_item_ref in impl_.items {
                         let impl_item_vis = if impl_.of_trait.is_none() {
@@ -2159,8 +2161,9 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
 
                         let impl_item_ev = if impl_.of_trait.is_none() {
                             self.get(impl_item_ref.id.owner_id.def_id)
+                                .map(|ev| ev.min(impl_ev, self.tcx))
                         } else {
-                            impl_ev
+                            Some(impl_ev)
                         };
 
                         self.check_assoc_item(
