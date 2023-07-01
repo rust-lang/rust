@@ -1353,14 +1353,16 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_tokens(&mut self) -> TokenStream {
-        let mut result = Vec::new();
+        use smallvec::SmallVec;
+
+        let mut result = SmallVec::new();
         loop {
             match self.token.kind {
                 token::Eof | token::CloseDelim(..) => break,
                 _ => result.push(self.parse_token_tree()),
             }
         }
-        TokenStream::new(result)
+        TokenStream::new_small(result)
     }
 
     /// Evaluates the closure with restrictions in place.

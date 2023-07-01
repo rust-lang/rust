@@ -25,7 +25,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use std::{fmt, iter};
+use std::{fmt, iter, mem};
 
 /// When the main Rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token tree. This is a very
@@ -199,7 +199,7 @@ impl AttrTokenStream {
     /// If there are inner attributes, they are inserted into the proper
     /// place in the attribute target tokens.
     pub fn to_tokenstream(&self) -> TokenStream {
-        let trees: Vec<_> = self
+        let trees: SmallVec<_> = self
             .0
             .iter()
             .flat_map(|tree| match &tree {
@@ -273,7 +273,7 @@ impl AttrTokenStream {
                 }
             })
             .collect();
-        TokenStream::new(trees)
+        TokenStream::new_small(trees)
     }
 }
 
@@ -296,6 +296,8 @@ pub struct AttributesData {
     pub tokens: LazyAttrTokenStream,
 }
 
+pub type TSVec = SmallVec<[TokenTree; 6]>;
+
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
 ///
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
@@ -303,7 +305,7 @@ pub struct AttributesData {
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
 /// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
+pub struct TokenStream(pub(crate) Lrc<TSVec>);
 
 /// Similar to `proc_macro::Spacing`, but for tokens.
 ///
@@ -352,12 +354,12 @@ impl TokenStream {
             }
         }
         if let Some((pos, comma, sp)) = suggestion {
-            let mut new_stream = Vec::with_capacity(self.0.len() + 1);
+            let mut new_stream = SmallVec::with_capacity(self.0.len() + 1);
             let parts = self.0.split_at(pos + 1);
-            new_stream.extend_from_slice(parts.0);
+            new_stream.extend(parts.0.iter().cloned());
             new_stream.push(comma);
-            new_stream.extend_from_slice(parts.1);
-            return Some((TokenStream::new(new_stream), sp));
+            new_stream.extend(parts.1.iter().cloned());
+            return Some((TokenStream::new_small(new_stream), sp));
         }
         None
     }
@@ -365,7 +367,7 @@ impl TokenStream {
 
 impl FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
-        TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
+        TokenStream::new_small(iter.into_iter().collect::<SmallVec<_>>())
     }
 }
 
@@ -379,6 +381,10 @@ impl PartialEq<TokenStream> for TokenStream {
 
 impl TokenStream {
     pub fn new(streams: Vec<TokenTree>) -> TokenStream {
+        TokenStream(Lrc::new(streams.into()))
+    }
+
+    pub fn new_small(streams: SmallVec<[TokenTree; 6]>) -> TokenStream {
         TokenStream(Lrc::new(streams))
     }
 
@@ -416,17 +422,17 @@ impl TokenStream {
 
     /// Create a token stream containing a single token with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenStream {
-        TokenStream::new(vec![TokenTree::token_alone(kind, span)])
+        TokenStream::new_small(smallvec![TokenTree::token_alone(kind, span)])
     }
 
     /// Create a token stream containing a single token with joint spacing.
     pub fn token_joint(kind: TokenKind, span: Span) -> TokenStream {
-        TokenStream::new(vec![TokenTree::token_joint(kind, span)])
+        TokenStream::new_small(smallvec![TokenTree::token_joint(kind, span)])
     }
 
     /// Create a token stream containing a single `Delimited`.
     pub fn delimited(span: DelimSpan, delim: Delimiter, tts: TokenStream) -> TokenStream {
-        TokenStream::new(vec![TokenTree::Delimited(span, delim, tts)])
+        TokenStream::new_small(smallvec![TokenTree::Delimited(span, delim, tts)])
     }
 
     pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
@@ -509,7 +515,7 @@ impl TokenStream {
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
     // value indicates if gluing took place.
-    fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
+    fn try_glue_to_last(vec: &mut SmallVec<[TokenTree; 6]>, tt: &TokenTree) -> bool {
         if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = vec.last()
             && let TokenTree::Token(tok, spacing) = tt
             && let Some(glued_tok) = last_tok.glue(tok)
@@ -629,7 +635,14 @@ impl TokenTreeCursor {
         assert!(self.index > 0);
         self.index -= 1;
         let stream = Lrc::make_mut(&mut self.stream.0);
-        stream.splice(self.index..self.index + 1, tts);
+        let old = mem::take(stream);
+        let mut new = SmallVec::with_capacity(old.len() - 1 + tts.len());
+        let mut iter = old.into_iter();
+        new.extend(iter.by_ref().take(self.index));
+        new.extend(tts);
+        new.extend(iter.skip(1));
+        *stream = new;
+        //stream.splice(self.index..self.index + 1, tts);
     }
 }
 

@@ -335,6 +335,16 @@ where
     }
 }
 
+#[inline]
+pub fn visit_small_vec<A: Array, F>(elems: &mut SmallVec<A>, mut visit_elem: F)
+where
+    F: FnMut(&mut A::Item),
+{
+    for elem in elems {
+        visit_elem(elem);
+    }
+}
+
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 pub fn visit_thin_vec<T, F>(elems: &mut ThinVec<T>, mut visit_elem: F)
@@ -713,7 +723,7 @@ pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
 pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
     if T::VISIT_TOKENS && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
-        visit_vec(tts, |tree| visit_tt(tree, vis));
+        visit_small_vec(tts, |tree| visit_tt(tree, vis));
     }
 }
 

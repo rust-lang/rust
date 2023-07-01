@@ -1858,7 +1858,7 @@ impl<'a> Parser<'a> {
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
             let bspan = body.span();
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
-            let tokens = TokenStream::new(vec![params, arrow, body]);
+            let tokens = TokenStream::new_small(smallvec::smallvec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             P(DelimArgs { dspan, delim: MacDelimiter::Brace, tokens })
         } else {

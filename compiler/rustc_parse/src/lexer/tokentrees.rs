@@ -31,13 +31,17 @@ impl<'a> TokenTreesReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s.
     fn parse_token_trees(&mut self, is_delimited: bool) -> PResult<'a, TokenStream> {
         self.token = self.string_reader.next_token().0;
-        let mut buf = Vec::new();
+
+        use smallvec::SmallVec;
+
+        let mut buf = SmallVec::new();
         loop {
             match self.token.kind {
                 token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)?),
                 token::CloseDelim(delim) => {
                     return if is_delimited {
-                        Ok(TokenStream::new(buf))
+                        //eprintln!("tts at delim: {}", buf.len());
+                        Ok(TokenStream::new_small(buf))
                     } else {
                         Err(self.close_delim_err(delim))
                     };
@@ -46,7 +50,8 @@ impl<'a> TokenTreesReader<'a> {
                     return if is_delimited {
                         Err(self.eof_err())
                     } else {
-                        Ok(TokenStream::new(buf))
+                        //eprintln!("tts at eof: {}", buf.len());
+                        Ok(TokenStream::new_small(buf))
                     };
                 }
                 _ => {
