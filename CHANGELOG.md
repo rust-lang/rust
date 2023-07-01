@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+
+## [1.6.0] 2023-07-02
+
+### Added
+
+- Support for formatting let-else statements [#5690]
+- New config option, `single_line_let_else_max_width`, that allows users to configure the maximum length of single line `let-else` statements. `let-else` statements that otherwise meet the requirements to be formatted on a single line will have their divergent`else` block formatted over multiple lines if they exceed this length [#5684]
+
+[#5690]: (https://github.com/rust-lang/rustfmt/pulls/5690)
+[#5684]: https://github.com/rust-lang/rustfmt/issues/5684
+
 ## [1.5.3] 2023-06-20
 
 ### Fixed
