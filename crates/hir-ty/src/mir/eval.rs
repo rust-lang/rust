@@ -1037,13 +1037,18 @@ impl Evaluator<'_> {
                                         BinOp::Shr => l128.checked_shr(shift_amount),
                                         _ => unreachable!(),
                                     };
+                                    if shift_amount as usize >= lc.len() * 8 {
+                                        return Err(MirEvalError::Panic(format!(
+                                            "Overflow in {op:?}"
+                                        )));
+                                    }
                                     if let Some(r) = r {
                                         break 'b r;
                                     }
                                 };
                                 return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
                             };
-                            check_overflow(r)?
+                            Owned(r.to_le_bytes()[..lc.len()].to_vec())
                         }
                         BinOp::Offset => not_supported!("offset binop"),
                     }
