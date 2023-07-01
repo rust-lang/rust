@@ -284,8 +284,19 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             e_flags
         }
         Architecture::LoongArch64 => {
-            // Source: https://loongson.github.io/LoongArch-Documentation/LoongArch-ELF-ABI-EN.html#_e_flags_identifies_abi_type_and_version
-            elf::EF_LARCH_OBJABI_V1 | elf::EF_LARCH_ABI_DOUBLE_FLOAT
+            // Source: https://github.com/loongson/la-abi-specs/blob/release/laelf.adoc#e_flags-identifies-abi-type-and-version
+            let mut e_flags: u32 = elf::EF_LARCH_OBJABI_V1;
+            let features = &sess.target.options.features;
+
+            // Select the appropriate floating-point ABI
+            if features.contains("+d") {
+                e_flags |= elf::EF_LARCH_ABI_DOUBLE_FLOAT;
+            } else if features.contains("+f") {
+                e_flags |= elf::EF_LARCH_ABI_SINGLE_FLOAT;
+            } else {
+                e_flags |= elf::EF_LARCH_ABI_SOFT_FLOAT;
+            }
+            e_flags
         }
         Architecture::Avr => {
             // Resolve the ISA revision and set
