@@ -197,8 +197,8 @@ impl CStr {
     ///
     /// This function will wrap the provided `ptr` with a `CStr` wrapper, which
     /// allows inspection and interoperation of non-owned C strings. The total
-    /// size of the raw C string must be smaller than `isize::MAX` **bytes**
-    /// in memory due to calling the `slice::from_raw_parts` function.
+    /// size of the terminated buffer must be smaller than [`isize::MAX`] **bytes**
+    /// in memory (a restriction from [`slice::from_raw_parts`]).
     ///
     /// # Safety
     ///
@@ -295,11 +295,11 @@ impl CStr {
         }
     }
 
-    /// Creates a C string wrapper from a byte slice.
+    /// Creates a C string wrapper from a byte slice with any number of nuls.
     ///
     /// This method will create a `CStr` from any byte slice that contains at
-    /// least one nul byte. The caller does not need to know or specify where
-    /// the nul byte is located.
+    /// least one nul byte. Unlike with [`CStr::from_bytes_with_nul`], the caller
+    /// does not need to know where the nul byte is located.
     ///
     /// If the first byte is a nul character, this method will return an
     /// empty `CStr`. If multiple nul characters are present, the `CStr` will
@@ -341,7 +341,8 @@ impl CStr {
         }
     }
 
-    /// Creates a C string wrapper from a byte slice.
+    /// Creates a C string wrapper from a byte slice with exactly one nul
+    /// terminator.
     ///
     /// This function will cast the provided `bytes` to a `CStr`
     /// wrapper after ensuring that the byte slice is nul-terminated
