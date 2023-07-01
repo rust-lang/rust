@@ -125,10 +125,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// right before lexical region resolution.
     #[instrument(level = "debug", skip(self, outlives_env))]
     pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
-        assert!(
-            !self.in_snapshot.get(),
-            "cannot process registered region obligations in a snapshot"
-        );
+        assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         let my_region_obligations = self.take_registered_region_obligations();
 

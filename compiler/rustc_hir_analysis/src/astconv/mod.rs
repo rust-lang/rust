@@ -1984,7 +1984,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .copied()
                 .filter(|&(impl_, _)| {
                     infcx.probe(|_| {
-                        let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+                        let ocx = ObligationCtxt::new(&infcx);
                         ocx.register_obligations(obligations.clone());
 
                         let impl_substs = infcx.fresh_substs_for_item(span, impl_);

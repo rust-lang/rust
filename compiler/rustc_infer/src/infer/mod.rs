@@ -6,6 +6,7 @@ pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use combine::ObligationEmittingRelation;
+use rustc_data_structures::undo_log::UndoLogs;
 
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
@@ -296,9 +297,6 @@ pub struct InferCtxt<'tcx> {
     /// `tainted_by_errors`) to avoid reporting certain kinds of errors.
     // FIXME(matthewjasper) Merge into `tainted_by_errors`
     err_count_on_creation: usize,
-
-    /// This flag is true while there is an active snapshot.
-    in_snapshot: Cell<bool>,
 
     /// What is the innermost universe we have created? Starts out as
     /// `UniverseIndex::root()` but grows from there as we enter
@@ -643,7 +641,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_closure_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.sess.err_count(),
-            in_snapshot: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
@@ -679,7 +676,6 @@ pub struct CombinedSnapshot<'tcx> {
     undo_snapshot: Snapshot<'tcx>,
     region_constraints_snapshot: RegionSnapshot,
     universe: ty::UniverseIndex,
-    was_in_snapshot: bool,
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -700,10 +696,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 vec![(ty, vec![])]
             }),
         }
-    }
-
-    pub fn is_in_snapshot(&self) -> bool {
-        self.in_snapshot.get()
     }
 
     pub fn freshen<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
@@ -766,10 +758,16 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    pub fn in_snapshot(&self) -> bool {
+        UndoLogs::<UndoLog<'tcx>>::in_snapshot(&self.inner.borrow_mut().undo_log)
+    }
+
+    pub fn num_open_snapshots(&self) -> usize {
+        UndoLogs::<UndoLog<'tcx>>::num_open_snapshots(&self.inner.borrow_mut().undo_log)
+    }
+
     fn start_snapshot(&self) -> CombinedSnapshot<'tcx> {
         debug!("start_snapshot()");
-
-        let in_snapshot = self.in_snapshot.replace(true);
 
         let mut inner = self.inner.borrow_mut();
 
@@ -777,20 +775,13 @@ impl<'tcx> InferCtxt<'tcx> {
             undo_snapshot: inner.undo_log.start_snapshot(),
             region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
             universe: self.universe(),
-            was_in_snapshot: in_snapshot,
         }
     }
 
     #[instrument(skip(self, snapshot), level = "debug")]
     fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'tcx>) {
-        let CombinedSnapshot {
-            undo_snapshot,
-            region_constraints_snapshot,
-            universe,
-            was_in_snapshot,
-        } = snapshot;
+        let CombinedSnapshot { undo_snapshot, region_constraints_snapshot, universe } = snapshot;
 
-        self.in_snapshot.set(was_in_snapshot);
         self.universe.set(universe);
 
         let mut inner = self.inner.borrow_mut();
@@ -800,14 +791,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[instrument(skip(self, snapshot), level = "debug")]
     fn commit_from(&self, snapshot: CombinedSnapshot<'tcx>) {
-        let CombinedSnapshot {
-            undo_snapshot,
-            region_constraints_snapshot: _,
-            universe: _,
-            was_in_snapshot,
-        } = snapshot;
-
-        self.in_snapshot.set(was_in_snapshot);
+        let CombinedSnapshot { undo_snapshot, region_constraints_snapshot: _, universe: _ } =
+            snapshot;
 
         self.inner.borrow_mut().commit(undo_snapshot);
     }
