@@ -2392,6 +2392,78 @@ By default this option is set as a percentage of [`max_width`](#max_width) provi
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
+## `single_line_let_else_max_width`
+
+Maximum line length for single line let-else statements.
+See the [let-else statement section of the Rust Style Guide](https://github.com/rust-lang/rust/blob/master/src/doc/style-guide/src/statements.md#else-blocks-let-else-statements) for more details on when a let-else statement may be written on a single line.
+A value of `0` (zero) means the divergent `else` block will always be formatted over multiple lines.
+Note this occurs when `use_small_heuristics` is set to `Off`.
+
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `single_line_let_else_max_width` will take precedence.
+
+- **Default value**: `50`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+#### `50` (default):
+
+```rust
+fn main() {
+    let Some(w) = opt else { return Ok(()) };
+
+    let Some(x) = opt else { return };
+
+    let Some(y) = opt else {
+        return;
+    };
+
+    let Some(z) = some_very_very_very_very_long_name else {
+        return;
+    };
+}
+```
+
+#### `0`:
+
+```rust
+fn main() {
+    let Some(w) = opt else {
+        return Ok(());
+    };
+
+    let Some(x) = opt else {
+        return;
+    };
+
+    let Some(y) = opt else {
+        return;
+    };
+
+    let Some(z) = some_very_very_very_very_long_name else {
+        return;
+    };
+}
+```
+
+#### `100`:
+
+```rust
+fn main() {
+    let Some(w) = opt else { return Ok(()) };
+
+    let Some(x) = opt else { return };
+
+    let Some(y) = opt else {
+        return;
+    };
+
+    let Some(z) = some_very_very_very_very_long_name else { return };
+}
+```
+
+See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
+
+
 ## `space_after_colon`
 
 Leave a space after the colon.
@@ -2804,6 +2876,7 @@ The ratios are:
 * [`array_width`](#array_width) - `60%`
 * [`chain_width`](#chain_width) - `60%`
 * [`single_line_if_else_max_width`](#single_line_if_else_max_width) - `50%`
+* [`single_line_let_else_max_width`](#single_line_let_else_max_width) - `50%`
 
 For example when `max_width` is set to `100`, the width settings are:
 * `fn_call_width=60`
@@ -2813,6 +2886,7 @@ For example when `max_width` is set to `100`, the width settings are:
 * `array_width=60`
 * `chain_width=60`
 * `single_line_if_else_max_width=50`
+* `single_line_let_else_max_width=50`
 
 and when `max_width` is set to `200`:
 * `fn_call_width=120`
@@ -2822,6 +2896,7 @@ and when `max_width` is set to `200`:
 * `array_width=120`
 * `chain_width=120`
 * `single_line_if_else_max_width=100`
+* `single_line_let_else_max_width=100`
 
 ```rust
 enum Lorem {
@@ -2891,6 +2966,7 @@ So if `max_width` is set to `200`, then all the width settings are also set to `
 * `array_width=200`
 * `chain_width=200`
 * `single_line_if_else_max_width=200`
+* `single_line_let_else_max_width=200`
 
 ```rust
 enum Lorem {
@@ -2918,6 +2994,7 @@ See also:
 * [`array_width`](#array_width)
 * [`chain_width`](#chain_width)
 * [`single_line_if_else_max_width`](#single_line_if_else_max_width)
+* [`single_line_let_else_max_width`](#single_line_let_else_max_width)
 
 ## `use_try_shorthand`
 
