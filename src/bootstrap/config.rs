@@ -875,7 +875,7 @@ impl Default for StringOrBool {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum RustOptimize {
     #[serde(deserialize_with = "deserialize_and_validate_opt_level")]
