@@ -310,6 +310,8 @@ the source.
 
 ### `--show-type-layout`: add a section to each type's docs describing its memory layout
 
+* Tracking issue: [#113248](https://github.com/rust-lang/rust/issues/113248)
+
 Using this flag looks like this:
 
 ```bash
