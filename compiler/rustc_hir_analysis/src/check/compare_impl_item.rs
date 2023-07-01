@@ -19,7 +19,7 @@ use rustc_middle::ty::{
     self, InternalSubsts, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -651,11 +651,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &norm_cause,
         param_env,
-        infcx.instantiate_binder_with_fresh_vars(
-            return_span,
-            infer::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id).subst_identity(),
-        ),
+        tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(impl_m.def_id).subst_identity()),
     );
     impl_sig.error_reported()?;
     let impl_return_ty = impl_sig.output();
@@ -665,9 +661,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // them with inference variables.
     // We will use these inference variables to collect the hidden types of RPITITs.
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_def_id);
-    let unnormalized_trait_sig = tcx
-        .liberate_late_bound_regions(
-            impl_m.def_id,
+    let unnormalized_trait_sig = infcx
+        .instantiate_binder_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
             tcx.fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
         .fold_with(&mut collector);
@@ -760,15 +757,17 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut collected_tys = FxHashMap::default();
     for (def_id, (ty, substs)) in collected_types {
-        match infcx.fully_resolve(ty) {
-            Ok(ty) => {
+        match infcx.fully_resolve((ty, substs)) {
+            Ok((ty, substs)) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to
                 // contains `def_id`'s early-bound regions.
                 let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
                 debug!(?id_substs, ?substs);
-                let map: FxHashMap<ty::GenericArg<'tcx>, ty::GenericArg<'tcx>> =
-                    std::iter::zip(substs, id_substs).collect();
+                let map: FxHashMap<_, _> = std::iter::zip(substs, id_substs)
+                    .skip(tcx.generics_of(trait_m.def_id).count())
+                    .filter_map(|(a, b)| Some((a.as_region()?, b.as_region()?)))
+                    .collect();
                 debug!(?map);
 
                 // NOTE(compiler-errors): RPITITs, like all other RPITs, have early-bound
@@ -793,25 +792,19 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // same generics.
                 let num_trait_substs = trait_to_impl_substs.len();
                 let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
-                let ty = tcx.fold_regions(ty, |region, _| {
-                    match region.kind() {
-                        // Remap all free regions, which correspond to late-bound regions in the function.
-                        ty::ReFree(_) => {}
-                        // Remap early-bound regions as long as they don't come from the `impl` itself.
-                        ty::ReEarlyBound(ebr) if tcx.parent(ebr.def_id) != impl_m.container_id(tcx) => {}
-                        _ => return region,
-                    }
-                    let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
-                    else {
-                        return ty::Region::new_error_with_message(tcx, return_span, "expected ReFree to map to ReEarlyBound")
-                    };
-                    ty::Region::new_early_bound(tcx, ty::EarlyBoundRegion {
-                        def_id: e.def_id,
-                        name: e.name,
-                        index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
-                    })
-                });
-                debug!(%ty);
+                let ty = match ty.try_fold_with(&mut RemapHiddenTyRegions {
+                    tcx,
+                    map,
+                    num_trait_substs,
+                    num_impl_substs,
+                    def_id,
+                    impl_def_id: impl_m.container_id(tcx),
+                    ty,
+                    return_span,
+                }) {
+                    Ok(ty) => ty,
+                    Err(guar) => tcx.ty_error(guar),
+                };
                 collected_tys.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
@@ -892,6 +885,97 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
         } else {
             ty.super_fold_with(self)
         }
+    }
+}
+
+struct RemapHiddenTyRegions<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    map: FxHashMap<ty::Region<'tcx>, ty::Region<'tcx>>,
+    num_trait_substs: usize,
+    num_impl_substs: usize,
+    def_id: DefId,
+    impl_def_id: DefId,
+    ty: Ty<'tcx>,
+    return_span: Span,
+}
+
+impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
+    type Error = ErrorGuaranteed;
+
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { substs, def_id, .. }) = *t.kind() {
+            let mut mapped_substs = Vec::with_capacity(substs.len());
+            for (arg, v) in std::iter::zip(substs, self.tcx.variances_of(def_id)) {
+                mapped_substs.push(match (arg.unpack(), v) {
+                    // Skip uncaptured opaque substs
+                    (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => arg,
+                    _ => arg.try_fold_with(self)?,
+                });
+            }
+            Ok(self.tcx.mk_opaque(def_id, self.tcx.mk_substs(&mapped_substs)))
+        } else {
+            t.try_super_fold_with(self)
+        }
+    }
+
+    fn try_fold_region(
+        &mut self,
+        region: ty::Region<'tcx>,
+    ) -> Result<ty::Region<'tcx>, Self::Error> {
+        match region.kind() {
+            // Remap all free regions, which correspond to late-bound regions in the function.
+            ty::ReFree(_) => {}
+            // Remap early-bound regions as long as they don't come from the `impl` itself,
+            // in which case we don't really need to renumber them.
+            ty::ReEarlyBound(ebr) if self.tcx.parent(ebr.def_id) != self.impl_def_id => {}
+            _ => return Ok(region),
+        }
+
+        let e = if let Some(region) = self.map.get(&region) {
+            if let ty::ReEarlyBound(e) = region.kind() { e } else { bug!() }
+        } else {
+            let guar = match region.kind() {
+                ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. })
+                | ty::ReFree(ty::FreeRegion {
+                    bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                    ..
+                }) => {
+                    let return_span = if let ty::Alias(ty::Opaque, opaque_ty) = self.ty.kind() {
+                        self.tcx.def_span(opaque_ty.def_id)
+                    } else {
+                        self.return_span
+                    };
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            return_span,
+                            "return type captures more lifetimes than trait definition",
+                        )
+                        .span_label(self.tcx.def_span(def_id), "this lifetime was captured")
+                        .span_note(
+                            self.tcx.def_span(self.def_id),
+                            "hidden type must only reference lifetimes captured by this impl trait",
+                        )
+                        .note(format!("hidden type inferred to be `{}`", self.ty))
+                        .emit()
+                }
+                _ => self.tcx.sess.delay_span_bug(DUMMY_SP, "should've been able to remap region"),
+            };
+            return Err(guar);
+        };
+
+        Ok(ty::Region::new_early_bound(
+            self.tcx,
+            ty::EarlyBoundRegion {
+                def_id: e.def_id,
+                name: e.name,
+                index: (e.index as usize - self.num_trait_substs + self.num_impl_substs) as u32,
+            },
+        ))
     }
 }
 
