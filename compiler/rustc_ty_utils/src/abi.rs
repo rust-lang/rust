@@ -202,7 +202,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let (param_env, (sig, extra_args)) = query.into_parts();
 
     let cx = LayoutCx { tcx, param_env };
@@ -212,7 +212,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
 fn fn_abi_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let (param_env, (instance, extra_args)) = query.into_parts();
 
     let sig = fn_sig_for_fn_abi(tcx, instance, param_env);
@@ -331,7 +331,7 @@ fn fn_abi_new_uncached<'tcx>(
     fn_def_id: Option<DefId>,
     // FIXME(eddyb) replace this with something typed, like an `enum`.
     force_thin_self_ptr: bool,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let sig = cx.tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
@@ -376,7 +376,7 @@ fn fn_abi_new_uncached<'tcx>(
     let is_drop_in_place =
         fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
 
-    let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
+    let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
@@ -386,7 +386,8 @@ fn fn_abi_new_uncached<'tcx>(
             _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
         });
 
-        let layout = cx.layout_of(ty)?;
+        let layout =
+            cx.layout_of(ty).map_err(|err| &*cx.tcx.arena.alloc(FnAbiError::Layout(*err)))?;
         let layout = if force_thin_self_ptr && arg_idx == Some(0) {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
@@ -454,7 +455,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: SpecAbi,
     fn_def_id: Option<DefId>,
-) -> Result<(), FnAbiError<'tcx>> {
+) -> Result<(), &'tcx FnAbiError<'tcx>> {
     if abi == SpecAbi::Unadjusted {
         return Ok(());
     }
@@ -548,7 +549,9 @@ fn fn_abi_adjust_for_abi<'tcx>(
             fixup(arg, Some(arg_idx));
         }
     } else {
-        fn_abi.adjust_for_foreign_abi(cx, abi)?;
+        fn_abi
+            .adjust_for_foreign_abi(cx, abi)
+            .map_err(|err| &*cx.tcx.arena.alloc(FnAbiError::AdjustForForeignAbi(err)))?;
     }
 
     Ok(())

@@ -71,8 +71,8 @@ impl<T> EraseType for Result<&'_ T, traits::CodegenObligationError> {
     type Result = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
 }
 
-impl<T> EraseType for Result<&'_ T, ty::layout::FnAbiError<'_>> {
-    type Result = [u8; size_of::<Result<&'static (), ty::layout::FnAbiError<'static>>>()];
+impl<T> EraseType for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
+    type Result = [u8; size_of::<Result<&'static (), &'static ty::layout::FnAbiError<'static>>>()];
 }
 
 impl<T> EraseType for Result<(&'_ T, rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed> {
@@ -96,15 +96,17 @@ impl EraseType for Result<ty::GenericArg<'_>, traits::query::NoSolution> {
     type Result = [u8; size_of::<Result<ty::GenericArg<'static>, traits::query::NoSolution>>()];
 }
 
-impl EraseType for Result<bool, ty::layout::LayoutError<'_>> {
-    type Result = [u8; size_of::<Result<bool, ty::layout::LayoutError<'static>>>()];
+impl EraseType for Result<bool, &ty::layout::LayoutError<'_>> {
+    type Result = [u8; size_of::<Result<bool, &'static ty::layout::LayoutError<'static>>>()];
 }
 
-impl EraseType for Result<rustc_target::abi::TyAndLayout<'_, Ty<'_>>, ty::layout::LayoutError<'_>> {
+impl EraseType
+    for Result<rustc_target::abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>>
+{
     type Result = [u8; size_of::<
         Result<
             rustc_target::abi::TyAndLayout<'static, Ty<'static>>,
-            ty::layout::LayoutError<'static>,
+            &'static ty::layout::LayoutError<'static>,
         >,
     >()];
 }

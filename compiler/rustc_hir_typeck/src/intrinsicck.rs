@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
+        let skeleton_string = |ty: Ty<'tcx>, sk: Result<_, &_>| match sk {
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
             Ok(SizeSkeleton::Known(size)) => {
                 if let Some(v) = u128::from(size.bytes()).checked_mul(8) {
@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             Err(LayoutError::Unknown(bad)) => {
-                if bad == ty {
+                if *bad == ty {
                     "this type does not have a fixed size".to_owned()
                 } else {
                     format!("size can vary because of {bad}")
