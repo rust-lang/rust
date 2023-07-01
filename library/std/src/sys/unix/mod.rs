@@ -170,7 +170,14 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     }
 
     unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
-        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
+        #[cfg(not(any(
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "horizon",
+            // Unikraft's `signal` implementation is currently broken:
+            // https://github.com/unikraft/lib-musl/issues/57
+            target_vendor = "unikraft",
+        )))]
         {
             // We don't want to add this as a public type to std, nor do we
             // want to `include!` a file from the compiler (which would break
