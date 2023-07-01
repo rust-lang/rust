@@ -139,7 +139,7 @@ where
                 MATCH_LIKE_MATCHES_MACRO,
                 expr.span,
                 &format!("{} expression looks like `matches!` macro", if is_if_let { "if let .. else" } else { "match" }),
-                "try this",
+                "try",
                 format!(
                     "{}matches!({}, {pat_and_guard})",
                     if b0 { "" } else { "!" },

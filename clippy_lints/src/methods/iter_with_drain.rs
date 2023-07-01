@@ -21,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span
             ITER_WITH_DRAIN,
             span.with_hi(expr.span.hi()),
             &format!("`drain(..)` used on a `{ty_name}`"),
-            "try this",
+            "try",
             "into_iter()".to_string(),
             Applicability::MaybeIncorrect,
         );

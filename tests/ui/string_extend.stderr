@@ -2,7 +2,7 @@ error: calling `.extend(_.chars())`
   --> $DIR/string_extend.rs:18:5
    |
 LL |     s.extend(abc.chars());
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(abc)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(abc)`
    |
    = note: `-D clippy::string-extend-chars` implied by `-D warnings`
 
@@ -10,19 +10,19 @@ error: calling `.extend(_.chars())`
   --> $DIR/string_extend.rs:21:5
    |
 LL |     s.extend("abc".chars());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str("abc")`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str("abc")`
 
 error: calling `.extend(_.chars())`
   --> $DIR/string_extend.rs:24:5
    |
 LL |     s.extend(def.chars());
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(&def)`
 
 error: calling `.extend(_.chars())`
   --> $DIR/string_extend.rs:34:5
    |
 LL |     s.extend(abc[0..2].chars());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&abc[0..2])`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(&abc[0..2])`
 
 error: aborting due to 4 previous errors
 

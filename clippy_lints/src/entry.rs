@@ -186,7 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             MAP_ENTRY,
             expr.span,
             &format!("usage of `contains_key` followed by `insert` on a `{}`", map_ty.name()),
-            "try this",
+            "try",
             sugg,
             app,
         );

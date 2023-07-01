@@ -175,7 +175,7 @@ fn find_sugg_for_if_let<'tcx>(
                 .maybe_par()
                 .to_string();
 
-            diag.span_suggestion(span, "try this", format!("{keyword} {sugg}.{good_method}"), app);
+            diag.span_suggestion(span, "try", format!("{keyword} {sugg}.{good_method}"), app);
 
             if needs_drop {
                 diag.note("this will change drop order of the result, as well as all temporaries");
@@ -200,7 +200,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 REDUNDANT_PATTERN_MATCHING,
                 span,
                 &format!("redundant pattern matching, consider using `{good_method}`"),
-                "try this",
+                "try",
                 format!("{}.{good_method}", snippet(cx, result_expr.span, "_")),
                 Applicability::MachineApplicable,
             );

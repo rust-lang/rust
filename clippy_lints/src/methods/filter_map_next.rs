@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
                 FILTER_MAP_NEXT,
                 expr.span,
                 msg,
-                "try this",
+                "try",
                 format!("{iter_snippet}.find_map({filter_snippet})"),
                 Applicability::MachineApplicable,
             );

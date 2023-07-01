@@ -42,7 +42,7 @@ pub(super) fn check(
             CLONE_ON_REF_PTR,
             expr.span,
             "using `.clone()` on a ref-counted pointer",
-            "try this",
+            "try",
             format!("{caller_type}::<{}>::clone(&{snippet})", subst.type_at(0)),
             app,
         );

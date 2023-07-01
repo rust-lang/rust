@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
         OR_THEN_UNWRAP,
         unwrap_expr.span.with_lo(or_span.lo()),
         title,
-        "try this",
+        "try",
         suggestion,
         applicability,
     );
