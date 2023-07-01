@@ -582,3 +582,11 @@ fn run_canonical_bat_script() {
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
 }
+
+#[test]
+fn terminate_exited_process() {
+    let mut p = known_command().arg("hello").spawn().unwrap();
+    p.wait().unwrap();
+    assert!(p.kill().is_ok());
+    assert!(p.kill().is_ok());
+}
