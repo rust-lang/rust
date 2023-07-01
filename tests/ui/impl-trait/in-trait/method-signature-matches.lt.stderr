@@ -5,7 +5,7 @@ LL |     fn early<'late, T>(_: &'late ()) {}
    |                     -     ^^^^^^^^^
    |                     |     |
    |                     |     expected type parameter `T`, found `()`
-   |                     |     help: change the parameter type to match the trait: `&'early T`
+   |                     |     help: change the parameter type to match the trait: `&T`
    |                     this type parameter
    |
 note: type in trait
@@ -13,8 +13,8 @@ note: type in trait
    |
 LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
    |                            ^^^^^^^^^
-   = note: expected signature `fn(&'early T)`
-              found signature `fn(&())`
+   = note: expected signature `fn(&T)`
+              found signature `fn(&'late ())`
 
 error: aborting due to previous error
 
