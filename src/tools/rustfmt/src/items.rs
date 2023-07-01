@@ -18,7 +18,8 @@ use crate::config::lists::*;
 use crate::config::{BraceStyle, Config, IndentStyle, Version};
 use crate::expr::{
     is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
-    rewrite_assign_rhs_with_comments, RhsAssignKind, RhsTactics,
+    rewrite_assign_rhs_with_comments, rewrite_else_kw_with_comments, rewrite_let_else_block,
+    RhsAssignKind, RhsTactics,
 };
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::macros::{rewrite_macro, MacroPosition};
@@ -44,7 +45,7 @@ fn type_annotation_separator(config: &Config) -> &str {
 }
 
 // Statements of the form
-// let pat: ty = init;
+// let pat: ty = init; or let pat: ty = init else { .. };
 impl Rewrite for ast::Local {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         debug!(
@@ -54,7 +55,7 @@ impl Rewrite for ast::Local {
 
         skip_out_of_file_lines_range!(context, self.span);
 
-        if contains_skip(&self.attrs) || matches!(self.kind, ast::LocalKind::InitElse(..)) {
+        if contains_skip(&self.attrs) {
             return None;
         }
 
@@ -112,7 +113,7 @@ impl Rewrite for ast::Local {
 
         result.push_str(&infix);
 
-        if let Some((init, _els)) = self.kind.init_else_opt() {
+        if let Some((init, else_block)) = self.kind.init_else_opt() {
             // 1 = trailing semicolon;
             let nested_shape = shape.sub_width(1)?;
 
@@ -123,12 +124,109 @@ impl Rewrite for ast::Local {
                 &RhsAssignKind::Expr(&init.kind, init.span),
                 nested_shape,
             )?;
-            // todo else
+
+            if let Some(block) = else_block {
+                let else_kw_span = init.span.between(block.span);
+                let force_newline_else = pat_str.contains('\n')
+                    || !same_line_else_kw_and_brace(&result, context, else_kw_span, nested_shape);
+                let else_kw = rewrite_else_kw_with_comments(
+                    force_newline_else,
+                    true,
+                    context,
+                    else_kw_span,
+                    shape,
+                );
+                result.push_str(&else_kw);
+
+                // At this point we've written `let {pat} = {expr} else' into the buffer, and we
+                // want to calculate up front if there's room to write the divergent block on the
+                // same line. The available space varies based on indentation so we clamp the width
+                // on the smaller of `shape.width` and `single_line_let_else_max_width`.
+                let max_width =
+                    std::cmp::min(shape.width, context.config.single_line_let_else_max_width());
+
+                // If available_space hits zero we know for sure this will be a multi-lined block
+                let available_space = max_width.saturating_sub(result.len());
+
+                let allow_single_line = !force_newline_else
+                    && available_space > 0
+                    && allow_single_line_let_else_block(&result, block);
+
+                let mut rw_else_block =
+                    rewrite_let_else_block(block, allow_single_line, context, shape)?;
+
+                let single_line_else = !rw_else_block.contains('\n');
+                // +1 for the trailing `;`
+                let else_block_exceeds_width = rw_else_block.len() + 1 > available_space;
+
+                if allow_single_line && single_line_else && else_block_exceeds_width {
+                    // writing this on one line would exceed the available width
+                    // so rewrite the else block over multiple lines.
+                    rw_else_block = rewrite_let_else_block(block, false, context, shape)?;
+                }
+
+                result.push_str(&rw_else_block);
+            };
         }
 
         result.push(';');
         Some(result)
     }
+}
+
+/// When the initializer expression is multi-lined, then the else keyword and opening brace of the
+/// block ( i.e. "else {") should be put on the same line as the end of the initializer expression
+/// if all the following are true:
+///
+/// 1. The initializer expression ends with one or more closing parentheses, square brackets,
+///    or braces
+/// 2. There is nothing else on that line
+/// 3. That line is not indented beyond the indent on the first line of the let keyword
+fn same_line_else_kw_and_brace(
+    init_str: &str,
+    context: &RewriteContext<'_>,
+    else_kw_span: Span,
+    init_shape: Shape,
+) -> bool {
+    if !init_str.contains('\n') {
+        // initializer expression is single lined. The "else {" can only be placed on the same line
+        // as the initializer expression if there is enough room for it.
+        // 7 = ` else {`
+        return init_shape.width.saturating_sub(init_str.len()) >= 7;
+    }
+
+    // 1. The initializer expression ends with one or more `)`, `]`, `}`.
+    if !init_str.ends_with([')', ']', '}']) {
+        return false;
+    }
+
+    // 2. There is nothing else on that line
+    // For example, there are no comments
+    let else_kw_snippet = context.snippet(else_kw_span).trim();
+    if else_kw_snippet != "else" {
+        return false;
+    }
+
+    // 3. The last line of the initializer expression is not indented beyond the `let` keyword
+    let indent = init_shape.indent.to_string(context.config);
+    init_str
+        .lines()
+        .last()
+        .expect("initializer expression is multi-lined")
+        .strip_prefix(indent.as_ref())
+        .map_or(false, |l| !l.starts_with(char::is_whitespace))
+}
+
+fn allow_single_line_let_else_block(result: &str, block: &ast::Block) -> bool {
+    if result.contains('\n') {
+        return false;
+    }
+
+    if block.stmts.len() <= 1 {
+        return true;
+    }
+
+    false
 }
 
 // FIXME convert to using rewrite style rather than visitor
