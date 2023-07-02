@@ -1,4 +1,4 @@
-use pulldown_cmark::{BrokenLink, Event, LinkType, Options, Parser, Tag};
+use pulldown_cmark::{BrokenLink, CowStr, Event, LinkType, Options, Parser, Tag};
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxHashMap;
@@ -436,15 +436,22 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
 fn collect_link_data<'input, 'callback>(
     event_iter: &mut Parser<'input, 'callback>,
 ) -> Option<Box<str>> {
-    let mut display_text = None;
+    let mut display_text: Option<String> = None;
+    let mut append_text = |text: CowStr<'_>| {
+        if let Some(display_text) = &mut display_text {
+            display_text.push_str(&text);
+        } else {
+            display_text = Some(text.to_string());
+        }
+    };
 
     while let Some(event) = event_iter.next() {
         match event {
-            Event::Text(code) => {
-                display_text = Some(code.to_string().into_boxed_str());
+            Event::Text(text) => {
+                append_text(text);
             }
             Event::Code(code) => {
-                display_text = Some(code.to_string().into_boxed_str());
+                append_text(code);
             }
             Event::End(_) => {
                 break;
@@ -453,5 +460,5 @@ fn collect_link_data<'input, 'callback>(
         }
     }
 
-    display_text
+    display_text.map(String::into_boxed_str)
 }

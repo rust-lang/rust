@@ -1041,18 +1041,20 @@ impl LinkCollector<'_, '_> {
             false,
         )?;
 
-        self.resolve_display_text(
-            path_str,
-            ResolutionInfo {
-                item_id,
-                module_id,
-                dis: disambiguator,
-                path_str: ori_link.display_text.clone().into_boxed_str(),
-                extra_fragment: extra_fragment.clone(),
-            },
-            &ori_link,
-            &diag_info,
-        );
+        if ori_link.display_text.is_some() {
+            self.resolve_display_text(
+                path_str,
+                ResolutionInfo {
+                    item_id,
+                    module_id,
+                    dis: disambiguator,
+                    path_str: ori_link.display_text.clone()?.into_boxed_str(),
+                    extra_fragment: extra_fragment.clone(),
+                },
+                &ori_link,
+                &diag_info,
+            );
+        }
 
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
@@ -1429,7 +1431,7 @@ impl LinkCollector<'_, '_> {
         //
         // Notice that this algorithm is passive, might possibly miss actual redudant cases.
         let explicit_link = &explicit_link.to_string();
-        let display_text = &ori_link.display_text;
+        let display_text = ori_link.display_text.as_ref().unwrap();
         let display_len = display_text.len();
         let explicit_len = explicit_link.len();
 
