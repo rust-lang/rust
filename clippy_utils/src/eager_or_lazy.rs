@@ -1,7 +1,7 @@
 //! Utilities for evaluating whether eagerly evaluated expressions can be made lazy and vice versa.
 //!
 //! Things to consider:
-//!  - has the expression side-effects?
+//!  - does the expression have side-effects?
 //!  - is the expression computationally expensive?
 //!
 //! See lints:

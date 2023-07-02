@@ -143,13 +143,13 @@ pub fn get_unique_attr<'a>(
     unique_attr
 }
 
-/// Return true if the attributes contain any of `proc_macro`,
+/// Returns true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
 pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().any(rustc_ast::Attribute::is_proc_macro_attr)
 }
 
-/// Return true if the attributes contain `#[doc(hidden)]`
+/// Returns true if the attributes contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
     attrs
         .iter()

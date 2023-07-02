@@ -51,7 +51,7 @@ impl EarlyLintPass for NeedlessElse {
                 cx,
                 NEEDLESS_ELSE,
                 span,
-                "this else branch is empty",
+                "this `else` branch is empty",
                 "you can remove it",
                 String::new(),
                 Applicability::MachineApplicable,

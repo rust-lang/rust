@@ -267,7 +267,7 @@ pub fn constant_with_source<'tcx>(
     res.map(|x| (x, ctxt.source))
 }
 
-/// Attempts to evaluate an expression only if it's value is not dependent on other items.
+/// Attempts to evaluate an expression only if its value is not dependent on other items.
 pub fn constant_simple<'tcx>(
     lcx: &LateContext<'tcx>,
     typeck_results: &ty::TypeckResults<'tcx>,

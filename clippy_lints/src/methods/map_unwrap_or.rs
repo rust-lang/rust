@@ -11,7 +11,8 @@ use rustc_span::symbol::sym;
 use super::MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
-/// Return true if lint triggered
+///
+/// Returns true if the lint was emitted
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
