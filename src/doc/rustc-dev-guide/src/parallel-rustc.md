@@ -44,7 +44,6 @@ are implemented differently depending on whether `parallel-compiler` is true.
 | MappedWriteGuard | parking_lot::MappedRwLockWriteGuard | std::cell::RefMut |
 | LockGuard | parking_lot::MutexGuard | std::cell::RefMut |
 | MappedLockGuard | parking_lot::MappedMutexGuard | std::cell::RefMut |
-| MetadataRef | [`OwningRef<Box<dyn Erased + Send + Sync>, [u8]>`][OwningRef] | [`OwningRef<Box<dyn Erased>, [u8]>`][OwningRef] |
 
 - These thread-safe data structures interspersed during compilation can 
   cause a lot of lock contention, which actually degrades performance as the
@@ -164,4 +163,3 @@ are a bit out of date):
 [parallel-rustdoc]: https://github.com/rust-lang/rust/issues/82741
 [Arc]: https://doc.rust-lang.org/std/sync/struct.Arc.html
 [Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
-[OwningRef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/owning_ref/index.html
