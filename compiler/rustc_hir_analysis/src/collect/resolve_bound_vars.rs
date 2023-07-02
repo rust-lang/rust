@@ -518,7 +518,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Static(..)
-            | hir::ItemKind::Const(..)
             | hir::ItemKind::GlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
@@ -583,6 +582,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 })
             }
             hir::ItemKind::TyAlias(_, generics)
+            | hir::ItemKind::Const(_, generics, _)
             | hir::ItemKind::Enum(_, generics)
             | hir::ItemKind::Struct(_, generics)
             | hir::ItemKind::Union(_, generics)
@@ -590,21 +590,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::TraitAlias(generics, ..)
             | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
-                let bound_vars = generics.params.iter().map(ResolvedArg::early).collect();
-                self.record_late_bound_vars(item.hir_id(), vec![]);
-                let scope = Scope::Binder {
-                    hir_id: item.hir_id(),
-                    bound_vars,
-                    scope_type: BinderScopeType::Normal,
-                    s: self.scope,
-                    where_bound_origin: None,
-                };
-                self.with(scope, |this| {
-                    let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |this| {
-                        intravisit::walk_item(this, item);
-                    });
-                });
+                self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));
             }
         }
     }
@@ -777,39 +763,24 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         use self::hir::TraitItemKind::*;
         match trait_item.kind {
             Fn(_, _) => {
-                self.visit_early_late(trait_item.hir_id(), &trait_item.generics, |this| {
+                self.visit_early_late(trait_item.hir_id(), trait_item.generics, |this| {
                     intravisit::walk_trait_item(this, trait_item)
                 });
             }
             Type(bounds, ty) => {
-                let generics = &trait_item.generics;
-                let bound_vars = generics.params.iter().map(ResolvedArg::early).collect();
-                self.record_late_bound_vars(trait_item.hir_id(), vec![]);
-                let scope = Scope::Binder {
-                    hir_id: trait_item.hir_id(),
-                    bound_vars,
-                    s: self.scope,
-                    scope_type: BinderScopeType::Normal,
-                    where_bound_origin: None,
-                };
-                self.with(scope, |this| {
-                    let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |this| {
-                        this.visit_generics(generics);
-                        for bound in bounds {
-                            this.visit_param_bound(bound);
-                        }
-                        if let Some(ty) = ty {
-                            this.visit_ty(ty);
-                        }
-                    })
-                });
+                self.visit_early(trait_item.hir_id(), trait_item.generics, |this| {
+                    this.visit_generics(&trait_item.generics);
+                    for bound in bounds {
+                        this.visit_param_bound(bound);
+                    }
+                    if let Some(ty) = ty {
+                        this.visit_ty(ty);
+                    }
+                })
             }
-            Const(_, _) => {
-                // Only methods and types support generics.
-                assert!(trait_item.generics.params.is_empty());
-                intravisit::walk_trait_item(self, trait_item);
-            }
+            Const(_, _) => self.visit_early(trait_item.hir_id(), trait_item.generics, |this| {
+                intravisit::walk_trait_item(this, trait_item)
+            }),
         }
     }
 
@@ -817,34 +788,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
         match impl_item.kind {
-            Fn(..) => self.visit_early_late(impl_item.hir_id(), &impl_item.generics, |this| {
+            Fn(..) => self.visit_early_late(impl_item.hir_id(), impl_item.generics, |this| {
                 intravisit::walk_impl_item(this, impl_item)
             }),
-            Type(ty) => {
-                let generics = &impl_item.generics;
-                let bound_vars: FxIndexMap<LocalDefId, ResolvedArg> =
-                    generics.params.iter().map(ResolvedArg::early).collect();
-                self.record_late_bound_vars(impl_item.hir_id(), vec![]);
-                let scope = Scope::Binder {
-                    hir_id: impl_item.hir_id(),
-                    bound_vars,
-                    s: self.scope,
-                    scope_type: BinderScopeType::Normal,
-                    where_bound_origin: None,
-                };
-                self.with(scope, |this| {
-                    let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |this| {
-                        this.visit_generics(generics);
-                        this.visit_ty(ty);
-                    })
-                });
-            }
-            Const(_, _) => {
-                // Only methods and types support generics.
-                assert!(impl_item.generics.params.is_empty());
-                intravisit::walk_impl_item(self, impl_item);
-            }
+            Type(ty) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
+                this.visit_generics(impl_item.generics);
+                this.visit_ty(ty);
+            }),
+            Const(_, _) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
+                intravisit::walk_impl_item(this, impl_item)
+            }),
         }
     }
 
@@ -1178,6 +1131,25 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             where_bound_origin: None,
         };
         self.with(scope, walk);
+    }
+
+    fn visit_early<F>(&mut self, hir_id: hir::HirId, generics: &'tcx hir::Generics<'tcx>, walk: F)
+    where
+        F: for<'b, 'c> FnOnce(&'b mut BoundVarContext<'c, 'tcx>),
+    {
+        let bound_vars = generics.params.iter().map(ResolvedArg::early).collect();
+        self.record_late_bound_vars(hir_id, vec![]);
+        let scope = Scope::Binder {
+            hir_id,
+            bound_vars,
+            s: self.scope,
+            scope_type: BinderScopeType::Normal,
+            where_bound_origin: None,
+        };
+        self.with(scope, |this| {
+            let scope = Scope::TraitRefBoundary { s: this.scope };
+            this.with(scope, walk)
+        });
     }
 
     #[instrument(level = "debug", skip(self))]
