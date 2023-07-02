@@ -181,8 +181,6 @@ fn profile_user_dist() {
 
 #[test]
 fn rust_optimize() {
-    let parse = |s| Config::parse_inner(&["check".to_owned()], |&_| toml::from_str(s).unwrap());
-
     assert_eq!(parse("").rust_optimize.is_release(), true);
     assert_eq!(parse("rust.optimize = false").rust_optimize.is_release(), false);
     assert_eq!(parse("rust.optimize = true").rust_optimize.is_release(), true);
@@ -193,7 +191,5 @@ fn rust_optimize() {
 #[test]
 #[should_panic]
 fn invalid_rust_optimize() {
-    Config::parse_inner(&["check".to_owned()], |&_| {
-        toml::from_str("rust.optimize = \"a\"").unwrap()
-    });
+    parse("rust.optimize = \"a\"");
 }
