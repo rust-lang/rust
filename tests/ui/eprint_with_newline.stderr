@@ -62,13 +62,13 @@ LL +     eprintln!();
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:28:5
    |
-LL |     eprint!("//n"); // should fail
+LL |     eprint!("///n"); // should fail
    |     ^^^^^^^^^^^^^^^
    |
 help: use `eprintln!` instead
    |
-LL -     eprint!("//n"); // should fail
-LL +     eprintln!("/"); // should fail
+LL -     eprint!("///n"); // should fail
+LL +     eprintln!("//"); // should fail
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
@@ -104,13 +104,13 @@ LL ~
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:47:5
    |
-LL |     eprint!("/r/n"); //~ ERROR
+LL |     eprint!("//r/n");
    |     ^^^^^^^^^^^^^^^^
    |
 help: use `eprintln!` instead
    |
-LL -     eprint!("/r/n"); //~ ERROR
-LL +     eprintln!("/r"); //~ ERROR
+LL -     eprint!("//r/n");
+LL +     eprintln!("//r");
    |
 
 error: aborting due to 9 previous errors

@@ -1,4 +1,5 @@
 //@run-rustfix
+#![allow(clippy::needless_if)]
 
 fn main() {
     let x = 1;

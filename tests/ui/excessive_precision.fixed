@@ -1,6 +1,12 @@
 //@run-rustfix
 #![warn(clippy::excessive_precision)]
-#![allow(dead_code, unused_variables, clippy::print_literal)]
+#![allow(
+    dead_code,
+    overflowing_literals,
+    unused_variables,
+    clippy::print_literal,
+    clippy::useless_vec
+)]
 
 fn main() {
     // Consts
@@ -66,4 +72,11 @@ fn main() {
 
     // issue #7745
     let _ = 0_f64;
+
+    // issue #9910
+    const INF1: f32 = 1.0e+33f32;
+    const INF2: f64 = 1.0e+3300f64;
+    const NEG_INF1: f32 = -1.0e+33f32;
+    const NEG_INF2: f64 = -1.0e+3300f64;
+    const NEG_INF3: f32 = -3.40282357e+38_f32;
 }

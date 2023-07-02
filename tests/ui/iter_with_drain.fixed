@@ -2,7 +2,7 @@
 // will emits unused mut warnings after fixing
 #![allow(unused_mut)]
 // will emits needless collect warnings after fixing
-#![allow(clippy::needless_collect)]
+#![allow(clippy::needless_collect, clippy::drain_collect)]
 #![warn(clippy::iter_with_drain)]
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 

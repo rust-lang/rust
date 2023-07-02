@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
 
         for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
             for def_id in def_path_def_ids(cx, module) {
-                for item in cx.tcx.module_children(def_id).iter() {
+                for item in cx.tcx.module_children(def_id) {
                     if_chain! {
                         if let Res::Def(DefKind::Const, item_def_id) = item.res;
                         let ty = cx.tcx.type_of(item_def_id).subst_identity();

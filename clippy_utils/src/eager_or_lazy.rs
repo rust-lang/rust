@@ -16,6 +16,7 @@ use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{def_id::DefId, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{sym, Symbol};
 use std::cmp;
 use std::ops;
@@ -114,6 +115,20 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
             if self.eagerness == ForceNoChange {
                 return;
             }
+
+            // Autoderef through a user-defined `Deref` impl can have side-effects,
+            // so don't suggest changing it.
+            if self
+                .cx
+                .typeck_results()
+                .expr_adjustments(e)
+                .iter()
+                .any(|adj| matches!(adj.kind, Adjust::Deref(Some(_))))
+            {
+                self.eagerness |= NoChange;
+                return;
+            }
+
             match e.kind {
                 ExprKind::Call(
                     &Expr {
@@ -173,11 +188,15 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                         self.eagerness = Lazy;
                     }
                 },
-
+                // Custom `Deref` impl might have side effects
+                ExprKind::Unary(UnOp::Deref, e)
+                    if self.cx.typeck_results().expr_ty(e).builtin_deref(true).is_none() =>
+                {
+                    self.eagerness |= NoChange;
+                },
                 // Dereferences should be cheap, but dereferencing a raw pointer earlier may not be safe.
                 ExprKind::Unary(UnOp::Deref, e) if !self.cx.typeck_results().expr_ty(e).is_unsafe_ptr() => (),
                 ExprKind::Unary(UnOp::Deref, _) => self.eagerness |= NoChange,
-
                 ExprKind::Unary(_, e)
                     if matches!(
                         self.cx.typeck_results().expr_ty(e).kind(),

@@ -1,0 +1,40 @@
+error: incorrect implementation of `clone` on a `Copy` type
+  --> $DIR/incorrect_clone_impl_on_copy_type.rs:10:29
+   |
+LL |       fn clone(&self) -> Self {
+   |  _____________________________^
+LL | |         Self(self.0)
+LL | |     }
+   | |_____^ help: change this to: `{ *self }`
+   |
+   = note: `#[deny(clippy::incorrect_clone_impl_on_copy_type)]` on by default
+
+error: incorrect implementation of `clone_from` on a `Copy` type
+  --> $DIR/incorrect_clone_impl_on_copy_type.rs:14:5
+   |
+LL | /     fn clone_from(&mut self, source: &Self) {
+LL | |         source.clone();
+LL | |         *self = source.clone();
+LL | |     }
+   | |_____^ help: remove this
+
+error: incorrect implementation of `clone` on a `Copy` type
+  --> $DIR/incorrect_clone_impl_on_copy_type.rs:81:29
+   |
+LL |       fn clone(&self) -> Self {
+   |  _____________________________^
+LL | |         Self(self.0)
+LL | |     }
+   | |_____^ help: change this to: `{ *self }`
+
+error: incorrect implementation of `clone_from` on a `Copy` type
+  --> $DIR/incorrect_clone_impl_on_copy_type.rs:85:5
+   |
+LL | /     fn clone_from(&mut self, source: &Self) {
+LL | |         source.clone();
+LL | |         *self = source.clone();
+LL | |     }
+   | |_____^ help: remove this
+
+error: aborting due to 4 previous errors
+

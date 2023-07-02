@@ -16,7 +16,6 @@ on:
 env:
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: 0
-  CARGO_UNSTABLE_SPARSE_REGISTRY: true
 
 jobs:
   clippy_dev:

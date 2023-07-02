@@ -21,6 +21,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "GitHub", "GitLab",
     "IPv4", "IPv6",
     "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
+    "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
@@ -34,6 +35,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "CamelCase",
 ];
 const DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
+const DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS: &[&str] = &["i", "j", "x", "y", "z", "w", "n"];
 
 /// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
 #[derive(Clone, Debug, Deserialize)]
@@ -288,11 +290,11 @@ define_Conf! {
     /// arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
     /// ```
     (arithmetic_side_effects_allowed_unary: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
-    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX, UNNECESSARY_BOX_RETURNS.
+    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX, UNNECESSARY_BOX_RETURNS, SINGLE_CALL_FN.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -305,6 +307,10 @@ define_Conf! {
     ///
     /// The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
+    /// Lint: EXCESSIVE_NESTING.
+    ///
+    /// The maximum amount of nesting a block can reside in
+    (excessive_nesting_threshold: u64 = 0),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
@@ -382,6 +388,10 @@ define_Conf! {
     ///
     /// The maximum allowed size for arrays on the stack
     (array_size_threshold: u64 = 512_000),
+    /// Lint: LARGE_STACK_FRAMES.
+    ///
+    /// The maximum allowed stack size for functions in bytes
+    (stack_size_threshold: u64 = 512_000),
     /// Lint: VEC_BOX.
     ///
     /// The size of the boxed type in bytes, where boxing in a `Vec` is allowed
@@ -514,6 +524,33 @@ define_Conf! {
     ///
     /// The byte size a `T` in `Box<T>` can have, below which it triggers the `clippy::unnecessary_box` lint
     (unnecessary_box_size: u64 = 128),
+    /// Lint: MODULE_INCEPTION.
+    ///
+    /// Whether to allow module inception if it's not public.
+    (allow_private_module_inception: bool = false),
+    /// Lint: MIN_IDENT_CHARS.
+    ///
+    /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
+    /// the list to indicate, that the configured values should be appended to the default
+    /// configuration of Clippy. By default, any configuration will replace the default value.
+    (allowed_idents_below_min_chars: rustc_data_structures::fx::FxHashSet<String> =
+        super::DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect()),
+    /// Lint: MIN_IDENT_CHARS.
+    ///
+    /// Minimum chars an ident can have, anything below or equal to this will be linted.
+    (min_ident_chars_threshold: u64 = 1),
+    /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
+    ///
+    /// Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
+    (accept_comment_above_statement: bool = false),
+    /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
+    ///
+    /// Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
+    (accept_comment_above_attributes: bool = false),
+    /// Lint: UNNECESSARY_RAW_STRING_HASHES.
+    ///
+    /// Whether to allow `r#""#` when `r""` can be used
+    (allow_one_hash_in_raw_strings: bool = false),
 }
 
 /// Search for the configuration file.
@@ -581,6 +618,12 @@ pub fn read(sess: &Session, path: &Path) -> TryConf {
         Ok(mut conf) => {
             extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
             extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
+            // TODO: THIS SHOULD BE TESTED, this comment will be gone soon
+            if conf.conf.allowed_idents_below_min_chars.contains(&"..".to_owned()) {
+                conf.conf
+                    .allowed_idents_below_min_chars
+                    .extend(DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string));
+            }
 
             conf
         },

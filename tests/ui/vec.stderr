@@ -1,5 +1,5 @@
 error: useless use of `vec!`
-  --> $DIR/vec.rs:28:14
+  --> $DIR/vec.rs:31:14
    |
 LL |     on_slice(&vec![]);
    |              ^^^^^^^ help: you can use a slice directly: `&[]`
@@ -7,64 +7,94 @@ LL |     on_slice(&vec![]);
    = note: `-D clippy::useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:30:18
+  --> $DIR/vec.rs:33:18
    |
 LL |     on_mut_slice(&mut vec![]);
    |                  ^^^^^^^^^^^ help: you can use a slice directly: `&mut []`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:32:14
+  --> $DIR/vec.rs:35:14
    |
 LL |     on_slice(&vec![1, 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:34:18
+  --> $DIR/vec.rs:37:18
    |
 LL |     on_mut_slice(&mut vec![1, 2]);
    |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:36:14
+  --> $DIR/vec.rs:39:14
    |
 LL |     on_slice(&vec![1, 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:38:18
+  --> $DIR/vec.rs:41:18
    |
 LL |     on_mut_slice(&mut vec![1, 2]);
    |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:40:14
+  --> $DIR/vec.rs:43:14
    |
 LL |     on_slice(&vec!(1, 2));
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:42:18
+  --> $DIR/vec.rs:45:18
    |
 LL |     on_mut_slice(&mut vec![1, 2]);
    |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:44:14
+  --> $DIR/vec.rs:47:14
    |
 LL |     on_slice(&vec![1; 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1; 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:46:18
+  --> $DIR/vec.rs:49:18
    |
 LL |     on_mut_slice(&mut vec![1; 2]);
    |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1; 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:63:14
+  --> $DIR/vec.rs:75:19
+   |
+LL |     let _x: i32 = vec![1, 2, 3].iter().sum();
+   |                   ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:78:17
+   |
+LL |     let mut x = vec![1, 2, 3];
+   |                 ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:84:22
+   |
+LL |     let _x: &[i32] = &vec![1, 2, 3];
+   |                      ^^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:86:14
+   |
+LL |     for _ in vec![1, 2, 3] {}
+   |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:120:14
    |
 LL |     for a in vec![1, 2, 3] {
-   |              ^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
+   |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
 
-error: aborting due to 11 previous errors
+error: useless use of `vec!`
+  --> $DIR/vec.rs:124:14
+   |
+LL |     for a in vec![String::new(), String::new()] {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `[String::new(), String::new()]`
+
+error: aborting due to 16 previous errors
 

@@ -4,7 +4,8 @@
     clippy::unused_unit,
     clippy::let_unit_value,
     clippy::match_single_binding,
-    clippy::never_loop
+    clippy::never_loop,
+    clippy::needless_if
 )]
 #![warn(clippy::manual_let_else)]
 
@@ -127,8 +128,8 @@ fn fire() {
         return;
     };
 
-    // Tuples supported for the identity block and pattern
-    let v = if let (Some(v_some), w_some) = (g(), 0) {
+    // Tuples supported with multiple bindings
+    let (w, S { v }) = if let (Some(v_some), w_some) = (g().map(|_| S { v: 0 }), 0) {
         (w_some, v_some)
     } else {
         return;
@@ -160,6 +161,30 @@ fn fire() {
     };
     // dot dot works
     let v = if let Variant::A(.., a) = e() { a } else { return };
+
+    // () is preserved: a bit of an edge case but make sure it stays around
+    let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
+
+    // Tuple structs work
+    let w = if let Some(S { v: x }) = Some(S { v: 0 }) {
+        x
+    } else {
+        return;
+    };
+
+    // Field init shorthand is suggested
+    let v = if let Some(S { v: x }) = Some(S { v: 0 }) {
+        x
+    } else {
+        return;
+    };
+
+    // Multi-field structs also work
+    let (x, S { v }, w) = if let Some(U { v, w, x }) = None::<U<S<()>>> {
+        (x, v, w)
+    } else {
+        return;
+    };
 }
 
 fn not_fire() {
@@ -284,4 +309,23 @@ fn not_fire() {
         };
         1
     };
+
+    // This would require creation of a suggestion of the form
+    // let v @ (Some(_), _) = (...) else { return };
+    // Which is too advanced for our code, so we just bail.
+    let v = if let (Some(v_some), w_some) = (g(), 0) {
+        (w_some, v_some)
+    } else {
+        return;
+    };
+}
+
+struct S<T> {
+    v: T,
+}
+
+struct U<T> {
+    v: T,
+    w: T,
+    x: T,
 }

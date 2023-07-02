@@ -29,3 +29,18 @@ fn main() {
     let mut iter2 = s3.iter();
     let _unwrapped = iter2.nth(0).unwrap();
 }
+
+struct Issue9820;
+
+impl Iterator for Issue9820 {
+    type Item = ();
+
+    fn nth(&mut self, _n: usize) -> Option<Self::Item> {
+        todo!()
+    }
+
+    // Don't lint in implementations of `next`, as calling `next` in `next` is incorrect
+    fn next(&mut self) -> Option<Self::Item> {
+        self.nth(0)
+    }
+}

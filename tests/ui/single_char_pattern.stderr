@@ -226,13 +226,13 @@ error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:65:13
    |
 LL |     x.split(r#"/"#);
-   |             ^^^^^^ help: try using a `char` instead: `'/'`
+   |             ^^^^^^ help: try using a `char` instead: `'//'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:66:13
    |
 LL |     x.split(r"/");
-   |             ^^^^ help: try using a `char` instead: `'/'`
+   |             ^^^^ help: try using a `char` instead: `'//'`
 
 error: aborting due to 39 previous errors
 

@@ -1,4 +1,4 @@
-use clippy_utils::{diagnostics::span_lint_and_help, is_in_cfg_test};
+use clippy_utils::{diagnostics::span_lint_and_help, is_from_proc_macro, is_in_cfg_test};
 use rustc_hir::{HirId, ItemId, ItemKind, Mod};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -59,6 +59,7 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
             if !matches!(item.kind, ItemKind::Mod(_));
             if !is_in_cfg_test(cx.tcx, itid.hir_id()); // The item isn't in the testing module itself
             if !in_external_macro(cx.sess(), item.span);
+            if !is_from_proc_macro(cx, item);
 
             then {
                 span_lint_and_help(cx, ITEMS_AFTER_TEST_MODULE, test_mod_span.unwrap().with_hi(item.span.hi()), "items were found after the testing module", None, "move the items to before the testing module was defined");

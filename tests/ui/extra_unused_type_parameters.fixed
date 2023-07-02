@@ -1,7 +1,11 @@
 //@run-rustfix
+//@aux-build:proc_macros.rs:proc-macro
 
 #![allow(unused, clippy::needless_lifetimes)]
 #![warn(clippy::extra_unused_type_parameters)]
+
+extern crate proc_macros;
+use proc_macros::with_span;
 
 fn unused_ty(x: u8) {
     unimplemented!()
@@ -101,5 +105,13 @@ mod issue10319 {
     {
     }
 }
+
+with_span!(
+    span
+
+    fn should_not_lint<T>(x: u8) {
+        unimplemented!()
+    }
+);
 
 fn main() {}

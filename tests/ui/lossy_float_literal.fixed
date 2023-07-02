@@ -1,5 +1,6 @@
 //@run-rustfix
 #![warn(clippy::lossy_float_literal)]
+#![allow(overflowing_literals, unused)]
 
 fn main() {
     // Lossy whole-number float literals
@@ -32,4 +33,7 @@ fn main() {
     let _: f64 = 1e99;
     let _: f64 = 1E99;
     let _: f32 = 0.1;
+
+    const INF1: f32 = 1000000000000000000000000000000000f32;
+    const NEG_INF1: f32 = -340282357000000000000000000000000000001_f32;
 }

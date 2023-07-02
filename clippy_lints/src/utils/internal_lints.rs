@@ -1,3 +1,4 @@
+pub mod almost_standard_lint_formulation;
 pub mod clippy_lints_internal;
 pub mod collapsible_calls;
 pub mod compiler_lint_functions;

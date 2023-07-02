@@ -1,5 +1,6 @@
 //@run-rustfix
 
+#![allow(clippy::needless_if)]
 #![warn(clippy::bool_comparison)]
 
 fn main() {

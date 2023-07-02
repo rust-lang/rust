@@ -571,6 +571,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut in_link = None;
     let mut in_heading = false;
     let mut is_rust = false;
+    let mut no_test = false;
     let mut edition = None;
     let mut ticks_unbalanced = false;
     let mut text_to_check: Vec<(CowStr<'_>, Span)> = Vec::new();
@@ -584,6 +585,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         if item == "ignore" {
                             is_rust = false;
                             break;
+                        } else if item == "no_test" {
+                            no_test = true;
                         }
                         if let Some(stripped) = item.strip_prefix("edition") {
                             is_rust = true;
@@ -648,7 +651,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 headers.errors |= in_heading && trimmed_text == "Errors";
                 headers.panics |= in_heading && trimmed_text == "Panics";
                 if in_code {
-                    if is_rust {
+                    if is_rust && !no_test {
                         let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
                         check_code(cx, &text, edition, span);
                     }
@@ -906,15 +909,15 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
             if is_panic(self.cx, macro_call.def_id)
                 || matches!(
                     self.cx.tcx.item_name(macro_call.def_id).as_str(),
-                    "assert" | "assert_eq" | "assert_ne" | "todo"
+                    "assert" | "assert_eq" | "assert_ne"
                 )
             {
                 self.panic_span = Some(macro_call.span);
             }
         }
 
-        // check for `unwrap`
-        if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+        // check for `unwrap` and `expect` for both `Option` and `Result`
+        if let Some(arglists) = method_chain_args(expr, &["unwrap"]).or(method_chain_args(expr, &["expect"])) {
             let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
             if is_type_diagnostic_item(self.cx, receiver_ty, sym::Option)
                 || is_type_diagnostic_item(self.cx, receiver_ty, sym::Result)

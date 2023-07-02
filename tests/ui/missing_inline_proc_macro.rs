@@ -1,5 +1,4 @@
 #![warn(clippy::missing_inline_in_public_items)]
-#![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 

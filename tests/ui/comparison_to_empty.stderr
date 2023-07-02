@@ -1,5 +1,5 @@
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:8:13
+  --> $DIR/comparison_to_empty.rs:9:13
    |
 LL |     let _ = s == "";
    |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
@@ -7,19 +7,19 @@ LL |     let _ = s == "";
    = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:9:13
+  --> $DIR/comparison_to_empty.rs:10:13
    |
 LL |     let _ = s != "";
    |             ^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!s.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:12:13
+  --> $DIR/comparison_to_empty.rs:13:13
    |
 LL |     let _ = v == [];
    |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `v.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/comparison_to_empty.rs:13:13
+  --> $DIR/comparison_to_empty.rs:14:13
    |
 LL |     let _ = v != [];
    |             ^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!v.is_empty()`

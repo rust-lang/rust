@@ -1,5 +1,6 @@
 //@compile-flags: --test
 #![warn(clippy::expect_used)]
+#![allow(clippy::unnecessary_literal_unwrap)]
 
 fn expect_option() {
     let opt = Some(0);
