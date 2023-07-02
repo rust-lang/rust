@@ -207,11 +207,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
         if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), self_ty, items, .. }) = item.kind
             && let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res
             && let TyKind::Path(QPath::Resolved(_, self_path)) = &self_ty.kind
-            // don't trigger if self is a generic parameter, e.g. `impl<T> Debug for T`
-            // this can only happen in core itself, where the trait is defined,
-            // but it caused ICEs in the past:
-            // https://github.com/rust-lang/rust-clippy/issues/10887
-            && !matches!(self_path.res, Res::Def(DefKind::TyParam, _))
+            // make sure that the self type is either a struct, an enum or a union
+            // this prevents ICEs such as when self is a type parameter or a primitive type
+            // (see #10887, #11063)
+            && let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, self_path_did) = self_path.res
             && cx.match_def_path(trait_def_id, &[sym::core, sym::fmt, sym::Debug])
             // don't trigger if this impl was derived
             && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
@@ -222,7 +221,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && let body = cx.tcx.hir().body(*body_id)
             && let ExprKind::Block(block, _) = body.value.kind
             // inspect `self`
-            && let self_ty = cx.tcx.type_of(self_path.res.def_id()).skip_binder().peel_refs()
+            && let self_ty = cx.tcx.type_of(self_path_did).skip_binder().peel_refs()
             && let Some(self_adt) = self_ty.ty_adt_def()
             && let Some(self_def_id) = self_adt.did().as_local()
             && let Some(Node::Item(self_item)) = cx.tcx.hir().find_by_def_id(self_def_id)
