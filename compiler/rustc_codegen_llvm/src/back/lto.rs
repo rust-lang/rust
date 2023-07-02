@@ -1,4 +1,4 @@
-use crate::back::write::{self, save_temp_bitcode, DiagnosticHandlers};
+use crate::back::write::{self, save_temp_bitcode, CodegenDiagnosticsStage, DiagnosticHandlers};
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib,
 };
@@ -302,7 +302,13 @@ fn fat_lto(
         // The linking steps below may produce errors and diagnostics within LLVM
         // which we'd like to handle and print, so set up our diagnostic handlers
         // (which get unregistered when they go out of scope below).
-        let _handler = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
+        let _handler = DiagnosticHandlers::new(
+            cgcx,
+            diag_handler,
+            llcx,
+            &module,
+            CodegenDiagnosticsStage::LTO,
+        );
 
         // For all other modules we codegened we'll need to link them into our own
         // bitcode. All modules were codegened in their own LLVM context, however,

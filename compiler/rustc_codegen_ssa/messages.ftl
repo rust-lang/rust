@@ -21,6 +21,8 @@ codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
 codegen_ssa_erroneous_constant = erroneous constant encountered
 
+codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
+
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified

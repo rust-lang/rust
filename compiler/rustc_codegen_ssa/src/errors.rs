@@ -1023,3 +1023,9 @@ pub struct TargetFeatureSafeTrait {
     #[label(codegen_ssa_label_def)]
     pub def: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_creating_remark_dir)]
+pub struct ErrorCreatingRemarkDir {
+    pub error: std::io::Error,
+}

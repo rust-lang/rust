@@ -268,6 +268,16 @@ pub(crate) fn save_temp_bitcode(
     }
 }
 
+/// In what context is a dignostic handler being attached to a codegen unit?
+pub enum CodegenDiagnosticsStage {
+    /// Prelink optimization stage.
+    Opt,
+    /// LTO/ThinLTO postlink optimization stage.
+    LTO,
+    /// Code generation.
+    Codegen,
+}
+
 pub struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a Handler),
     llcx: &'a llvm::Context,
@@ -279,6 +289,8 @@ impl<'a> DiagnosticHandlers<'a> {
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
         handler: &'a Handler,
         llcx: &'a llvm::Context,
+        module: &ModuleCodegen<ModuleLlvm>,
+        stage: CodegenDiagnosticsStage,
     ) -> Self {
         let remark_passes_all: bool;
         let remark_passes: Vec<CString>;
@@ -295,6 +307,20 @@ impl<'a> DiagnosticHandlers<'a> {
         };
         let remark_passes: Vec<*const c_char> =
             remark_passes.iter().map(|name: &CString| name.as_ptr()).collect();
+        let remark_file = cgcx
+            .remark_dir
+            .as_ref()
+            // Use the .opt.yaml file suffix, which is supported by LLVM's opt-viewer.
+            .map(|dir| {
+                let stage_suffix = match stage {
+                    CodegenDiagnosticsStage::Codegen => "codegen",
+                    CodegenDiagnosticsStage::Opt => "opt",
+                    CodegenDiagnosticsStage::LTO => "lto",
+                };
+                dir.join(format!("{}.{stage_suffix}.opt.yaml", module.name))
+            })
+            .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
+
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
@@ -305,6 +331,9 @@ impl<'a> DiagnosticHandlers<'a> {
                 remark_passes_all,
                 remark_passes.as_ptr(),
                 remark_passes.len(),
+                // The `as_ref()` is important here, otherwise the `CString` will be dropped
+                // too soon!
+                remark_file.as_ref().map(|dir| dir.as_ptr()).unwrap_or(std::ptr::null()),
             );
             DiagnosticHandlers { data, llcx, old_handler }
         }
@@ -523,7 +552,8 @@ pub(crate) unsafe fn optimize(
 
     let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
-    let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
+    let _handlers =
+        DiagnosticHandlers::new(cgcx, diag_handler, llcx, module, CodegenDiagnosticsStage::Opt);
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
@@ -582,7 +612,13 @@ pub(crate) unsafe fn codegen(
         let tm = &*module.module_llvm.tm;
         let module_name = module.name.clone();
         let module_name = Some(&module_name[..]);
-        let handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
+        let _handlers = DiagnosticHandlers::new(
+            cgcx,
+            diag_handler,
+            llcx,
+            &module,
+            CodegenDiagnosticsStage::Codegen,
+        );
 
         if cgcx.msvc_imps_needed {
             create_msvc_imps(cgcx, llcx, llmod);
@@ -775,7 +811,6 @@ pub(crate) unsafe fn codegen(
         }
 
         record_llvm_cgu_instructions_stats(&cgcx.prof, llmod);
-        drop(handlers);
     }
 
     // `.dwo` files are only emitted if:

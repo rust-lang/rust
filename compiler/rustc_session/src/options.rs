@@ -1344,7 +1344,7 @@ options! {
         "control generation of position-independent code (PIC) \
         (`rustc --print relocation-models` for details)"),
     remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
-        "print remarks for these optimization passes (space separated, or \"all\")"),
+        "output remarks for these optimization passes (space separated, or \"all\")"),
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes (default: no)"),
     save_temps: bool = (false, parse_bool, [UNTRACKED],
@@ -1689,6 +1689,9 @@ options! {
         "choose which RELRO level to use"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
+    remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+        "directory into which to write optimization remarks (if not specified, they will be \
+written to standard error output)"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
         "immediately print bugs registered with `delay_span_bug` (default: no)"),
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
