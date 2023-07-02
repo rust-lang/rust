@@ -5,6 +5,7 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, match_def_path, path_to_local, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -101,6 +102,17 @@ fn into_iter_deep_call<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -
     (expr, depth)
 }
 
+/// Checks if the given `expr` is an argument of a macro invocation.
+/// This is a slow-ish operation, so consider calling this late
+/// to avoid slowing down the lint in the happy path when not emitting a warning
+fn is_macro_argument(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(parent) = get_parent_expr(cx, expr) {
+        parent.span.from_expansion() || is_macro_argument(cx, parent)
+    } else {
+        false
+    }
+}
+
 #[expect(clippy::too_many_lines)]
 impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -155,7 +167,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                     && let Some(did) = cx.qpath_res(qpath, recv.hir_id).opt_def_id()
                                     // make sure that the path indeed points to a fn-like item, so that
                                     // `fn_sig` does not ICE. (see #11065)
-                                    && cx.tcx.opt_def_kind(did).is_some_and(|k| k.is_fn_like()) =>
+                                    && cx.tcx.opt_def_kind(did).is_some_and(DefKind::is_fn_like) =>
                             {
                                     Some((did, args, MethodOrFunction::Function))
                             }
@@ -173,6 +185,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(&into_iter_param) = sig.inputs().get(kind.param_pos(arg_pos))
                             && let ty::Param(param) = into_iter_param.kind()
                             && let Some(span) = into_iter_bound(cx, parent_fn_did, into_iter_did, param.index)
+                            && !is_macro_argument(cx, e)
                         {
                             // Get the "innermost" `.into_iter()` call, e.g. given this expression:
                             // `foo.into_iter().into_iter()`
