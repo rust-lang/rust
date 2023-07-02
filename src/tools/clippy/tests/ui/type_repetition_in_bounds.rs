@@ -1,6 +1,7 @@
 #![deny(clippy::type_repetition_in_bounds)]
 #![allow(clippy::extra_unused_type_parameters)]
 
+use serde::Deserialize;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 pub fn foo<T>(_t: T)
@@ -70,6 +71,20 @@ mod issue4326 {
     }
 }
 
+// Extern macros shouldn't lint, again (see #10504)
+mod issue10504 {
+    use serde::{Deserialize, Serialize};
+    use std::fmt::Debug;
+    use std::hash::Hash;
+
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(bound(
+        serialize = "T: Serialize + Hash + Eq",
+        deserialize = "Box<T>: serde::de::DeserializeOwned + Hash + Eq"
+    ))]
+    struct OpaqueParams<T: ?Sized + Debug>(std::marker::PhantomData<T>);
+}
+
 // Issue #7360
 struct Foo<T, U>
 where
@@ -94,5 +109,29 @@ where
 
 // This should not lint
 fn impl_trait(_: impl AsRef<str>, _: impl AsRef<str>) {}
+
+#[clippy::msrv = "1.14.0"]
+mod issue8772_fail {
+    pub trait Trait<X, Y, Z> {}
+
+    pub fn f<T: ?Sized, U>(arg: usize)
+    where
+        T: Trait<Option<usize>, Box<[String]>, bool> + 'static,
+        U: Clone + Sync + 'static,
+    {
+    }
+}
+
+#[clippy::msrv = "1.15.0"]
+mod issue8772_pass {
+    pub trait Trait<X, Y, Z> {}
+
+    pub fn f<T: ?Sized, U>(arg: usize)
+    where
+        T: Trait<Option<usize>, Box<[String]>, bool> + 'static,
+        U: Clone + Sync + 'static,
+    {
+    }
+}
 
 fn main() {}

@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_derive.rs
+//@aux-build:proc_macro_derive.rs:proc-macro
 
 #![allow(
     unused,

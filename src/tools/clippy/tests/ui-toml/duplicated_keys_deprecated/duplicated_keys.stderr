@@ -1,11 +1,11 @@
 error: error reading Clippy's configuration file: duplicate field `cognitive_complexity_threshold` (provided as `cyclomatic_complexity_threshold`)
-  --> $DIR/clippy.toml:3:1
+  --> $DIR/$DIR/clippy.toml:3:1
    |
 LL | cyclomatic-complexity-threshold = 3
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: error reading Clippy's configuration file: deprecated field `cyclomatic-complexity-threshold`. Please use `cognitive-complexity-threshold` instead
-  --> $DIR/clippy.toml:3:1
+  --> $DIR/$DIR/clippy.toml:3:1
    |
 LL | cyclomatic-complexity-threshold = 3
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

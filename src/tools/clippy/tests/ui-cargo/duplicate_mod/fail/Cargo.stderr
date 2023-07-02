@@ -1,0 +1,52 @@
+error: file is loaded as a module multiple times: `src/b.rs`
+ --> src/main.rs:5:1
+  |
+5 |   mod b;
+  |   ^^^^^^ first loaded here
+6 | / #[path = "b.rs"]
+7 | | mod b2;
+  | |_______^ loaded again here
+  |
+  = help: replace all but one `mod` item with `use` items
+  = note: `-D clippy::duplicate-mod` implied by `-D warnings`
+
+error: file is loaded as a module multiple times: `src/c.rs`
+  --> src/main.rs:9:1
+   |
+9  |   mod c;
+   |   ^^^^^^ first loaded here
+10 | / #[path = "c.rs"]
+11 | | mod c2;
+   | |_______^ loaded again here
+12 | / #[path = "c.rs"]
+13 | | mod c3;
+   | |_______^ loaded again here
+   |
+   = help: replace all but one `mod` item with `use` items
+
+error: file is loaded as a module multiple times: `src/d.rs`
+  --> src/main.rs:18:1
+   |
+18 |   mod d;
+   |   ^^^^^^ first loaded here
+19 | / #[path = "d.rs"]
+20 | | mod d2;
+   | |_______^ loaded again here
+   |
+   = help: replace all but one `mod` item with `use` items
+
+error: file is loaded as a module multiple times: `src/from_other_module.rs`
+  --> src/main.rs:15:1
+   |
+15 |   mod from_other_module;
+   |   ^^^^^^^^^^^^^^^^^^^^^^ first loaded here
+   |
+  ::: src/other_module/mod.rs:1:1
+   |
+1  | / #[path = "../from_other_module.rs"]
+2  | | mod m;
+   | |______^ loaded again here
+   |
+   = help: replace all but one `mod` item with `use` items
+
+error: could not compile `duplicate_mod` (bin "duplicate_mod") due to 4 previous errors

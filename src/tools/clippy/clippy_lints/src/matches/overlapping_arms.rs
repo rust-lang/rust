@@ -41,7 +41,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                                 cx.tcx.valtree_to_const_val((ty, min_val_const.to_valtree())),
                                 ty,
                             );
-                            miri_to_const(cx.tcx, min_constant)?
+                            miri_to_const(cx, min_constant)?
                         },
                     };
                     let rhs_const = match rhs {
@@ -52,7 +52,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                                 cx.tcx.valtree_to_const_val((ty, max_val_const.to_valtree())),
                                 ty,
                             );
-                            miri_to_const(cx.tcx, max_constant)?
+                            miri_to_const(cx, max_constant)?
                         },
                     };
                     let lhs_val = lhs_const.int_value(cx, ty)?;

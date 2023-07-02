@@ -1,5 +1,7 @@
 #![warn(clippy::missing_const_for_fn)]
 #![allow(incomplete_features, clippy::let_and_return)]
+#![feature(const_mut_refs)]
+#![feature(const_trait_impl)]
 
 use std::mem::transmute;
 
@@ -87,3 +89,14 @@ fn msrv_1_46() -> i32 {
 
 // Should not be const
 fn main() {}
+
+struct D;
+
+impl const Drop for D {
+    fn drop(&mut self) {
+        todo!();
+    }
+}
+
+// Lint this, since it can be dropped in const contexts
+fn d(this: D) {}

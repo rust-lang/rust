@@ -1,5 +1,5 @@
 error: error reading Clippy's configuration file: invalid type: integer `42`, expected a sequence
-  --> $DIR/clippy.toml:1:20
+  --> $DIR/$DIR/clippy.toml:1:20
    |
 LL | disallowed-names = 42
    |                    ^^

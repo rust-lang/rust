@@ -31,7 +31,7 @@ struct Foo;
 impl PartialEq for Foo {
     // Allow this here, because it emits the lint
     // without a suggestion. This is tested in
-    // `tests/ui/cmp_owned/without_suggestion.rs`
+    // `$DIR/without_suggestion.rs`
     #[allow(clippy::cmp_owned)]
     fn eq(&self, other: &Self) -> bool {
         self.to_owned() == *other

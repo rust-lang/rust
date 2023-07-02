@@ -1,5 +1,6 @@
 //@run-rustfix
 #![warn(clippy::assertions_on_result_states)]
+#![allow(clippy::unnecessary_literal_unwrap)]
 
 use std::result::Result;
 

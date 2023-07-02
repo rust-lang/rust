@@ -1,5 +1,5 @@
 error: function pointer assumed to be nullable, even though it isn't
-  --> $DIR/fn_null_check.rs:13:8
+  --> $DIR/fn_null_check.rs:14:8
    |
 LL |     if (fn_ptr as *mut ()).is_null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     if (fn_ptr as *mut ()).is_null() {}
    = note: `-D clippy::fn-null-check` implied by `-D warnings`
 
 error: function pointer assumed to be nullable, even though it isn't
-  --> $DIR/fn_null_check.rs:14:8
+  --> $DIR/fn_null_check.rs:15:8
    |
 LL |     if (fn_ptr as *const u8).is_null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     if (fn_ptr as *const u8).is_null() {}
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `is_none` to check for null pointer value
 
 error: function pointer assumed to be nullable, even though it isn't
-  --> $DIR/fn_null_check.rs:15:8
+  --> $DIR/fn_null_check.rs:16:8
    |
 LL |     if (fn_ptr as *const ()) == std::ptr::null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     if (fn_ptr as *const ()) == std::ptr::null() {}
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `is_none` to check for null pointer value
 
 error: function pointer assumed to be nullable, even though it isn't
-  --> $DIR/fn_null_check.rs:16:8
+  --> $DIR/fn_null_check.rs:17:8
    |
 LL |     if (fn_ptr as *const ()) == (0 as *const ()) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     if (fn_ptr as *const ()) == (0 as *const ()) {}
    = help: try wrapping your function pointer type in `Option<T>` instead, and using `is_none` to check for null pointer value
 
 error: function pointer assumed to be nullable, even though it isn't
-  --> $DIR/fn_null_check.rs:17:8
+  --> $DIR/fn_null_check.rs:18:8
    |
 LL |     if (fn_ptr as *const ()) == ZPTR {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

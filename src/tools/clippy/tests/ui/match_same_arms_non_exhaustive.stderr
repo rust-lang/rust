@@ -1,0 +1,29 @@
+error: this match arm has an identical body to the `_` wildcard arm
+  --> $DIR/match_same_arms_non_exhaustive.rs:41:9
+   |
+LL |         Ordering::AcqRel | Ordering::SeqCst => panic!(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the arm
+   |
+   = help: or try changing either arm body
+note: `_` wildcard arm here
+  --> $DIR/match_same_arms_non_exhaustive.rs:42:9
+   |
+LL |         _ => panic!(),
+   |         ^^^^^^^^^^^^^
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
+
+error: this match arm has an identical body to the `_` wildcard arm
+  --> $DIR/match_same_arms_non_exhaustive.rs:54:13
+   |
+LL |             Ordering::AcqRel | Ordering::SeqCst => panic!(),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the arm
+   |
+   = help: or try changing either arm body
+note: `_` wildcard arm here
+  --> $DIR/match_same_arms_non_exhaustive.rs:55:13
+   |
+LL |             _ => panic!(),
+   |             ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

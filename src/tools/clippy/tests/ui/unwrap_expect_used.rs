@@ -1,4 +1,5 @@
 #![warn(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unnecessary_literal_unwrap)]
 
 trait OptionExt {
     type Item;

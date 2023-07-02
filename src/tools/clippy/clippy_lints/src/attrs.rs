@@ -1,9 +1,12 @@
 //! checks for attributes
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, macro_backtrace};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
+use clippy_utils::{
+    diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then},
+    is_from_proc_macro,
+};
 use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_errors::Applicability;
@@ -362,6 +365,32 @@ declare_clippy_lint! {
     "ensure that all `cfg(any())` and `cfg(all())` have more than one condition"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `#[cfg(features = "...")]` and suggests to replace it with
+    /// `#[cfg(feature = "...")]`.
+    ///
+    /// ### Why is this bad?
+    /// Misspelling `feature` as `features` can be sometimes hard to spot. It
+    /// may cause conditional compilation not work quitely.
+    ///
+    /// ### Example
+    /// ```rust
+    /// #[cfg(features = "some-feature")]
+    /// fn conditional() { }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// #[cfg(feature = "some-feature")]
+    /// fn conditional() { }
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub MAYBE_MISUSED_CFG,
+    suspicious,
+    "prevent from misusing the wrong attr name"
+}
+
 declare_lint_pass!(Attributes => [
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
@@ -540,7 +569,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
     }
 }
 
-fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem], attr: &'_ Attribute) {
+fn check_lint_reason<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMetaItem], attr: &'cx Attribute) {
     // Check for the feature
     if !cx.tcx.features().lint_reasons {
         return;
@@ -555,7 +584,7 @@ fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem
     }
 
     // Check if the attribute is in an external macro and therefore out of the developer's control
-    if in_external_macro(cx.sess(), attr.span) {
+    if in_external_macro(cx.sess(), attr.span) || is_from_proc_macro(cx, &attr) {
         return;
     }
 
@@ -676,6 +705,7 @@ impl_lint_pass!(EarlyAttributes => [
     EMPTY_LINE_AFTER_OUTER_ATTR,
     EMPTY_LINE_AFTER_DOC_COMMENTS,
     NON_MINIMAL_CFG,
+    MAYBE_MISUSED_CFG,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
@@ -687,6 +717,7 @@ impl EarlyLintPass for EarlyAttributes {
         check_deprecated_cfg_attr(cx, attr, &self.msrv);
         check_mismatched_target_os(cx, attr);
         check_minimal_cfg_condition(cx, attr);
+        check_misused_cfg(cx, attr);
     }
 
     extract_msrv_attr!(EarlyContext);
@@ -777,7 +808,7 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msr
 }
 
 fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
-    for item in items.iter() {
+    for item in items {
         if let NestedMetaItem::MetaItem(meta) = item {
             if !meta.has_name(sym::any) && !meta.has_name(sym::all) {
                 continue;
@@ -810,11 +841,40 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
     }
 }
 
+fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
+    for item in items {
+        if let NestedMetaItem::MetaItem(meta) = item {
+            if meta.has_name(sym!(features)) && let Some(val) = meta.value_str() {
+                span_lint_and_sugg(
+                    cx,
+                    MAYBE_MISUSED_CFG,
+                    meta.span,
+                    "feature may misspelled as features",
+                    "use",
+                    format!("feature = \"{val}\""),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            if let MetaItemKind::List(list) = &meta.kind {
+                check_nested_misused_cfg(cx, list);
+            }
+        }
+    }
+}
+
 fn check_minimal_cfg_condition(cx: &EarlyContext<'_>, attr: &Attribute) {
     if attr.has_name(sym::cfg) &&
         let Some(items) = attr.meta_item_list()
     {
         check_nested_cfg(cx, &items);
+    }
+}
+
+fn check_misused_cfg(cx: &EarlyContext<'_>, attr: &Attribute) {
+    if attr.has_name(sym::cfg) &&
+        let Some(items) = attr.meta_item_list()
+    {
+        check_nested_misused_cfg(cx, &items);
     }
 }
 

@@ -1,7 +1,12 @@
-//@aux-build:proc_macro_suspicious_else_formatting.rs
+//@aux-build:proc_macro_suspicious_else_formatting.rs:proc-macro
 
 #![warn(clippy::suspicious_else_formatting)]
-#![allow(clippy::if_same_then_else, clippy::let_unit_value, clippy::needless_else)]
+#![allow(
+    clippy::if_same_then_else,
+    clippy::let_unit_value,
+    clippy::needless_if,
+    clippy::needless_else
+)]
 
 extern crate proc_macro_suspicious_else_formatting;
 use proc_macro_suspicious_else_formatting::DeriveBadSpan;
@@ -106,6 +111,13 @@ fn main() {
     {
     }
     else
+    {
+    }
+
+    //#10273 This is fine. Don't warn
+    if foo() {
+    } else
+    /* whelp */
     {
     }
 }

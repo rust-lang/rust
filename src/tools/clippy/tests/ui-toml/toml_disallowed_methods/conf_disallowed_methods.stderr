@@ -1,5 +1,5 @@
 error: use of a disallowed method `regex::Regex::new`
-  --> $DIR/conf_disallowed_methods.rs:33:14
+  --> $DIR/conf_disallowed_methods.rs:35:14
    |
 LL |     let re = Regex::new(r"ab.*c").unwrap();
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let re = Regex::new(r"ab.*c").unwrap();
    = note: `-D clippy::disallowed-methods` implied by `-D warnings`
 
 error: use of a disallowed method `regex::Regex::is_match`
-  --> $DIR/conf_disallowed_methods.rs:34:5
+  --> $DIR/conf_disallowed_methods.rs:36:5
    |
 LL |     re.is_match("abc");
    |     ^^^^^^^^^^^^^^^^^^
@@ -15,73 +15,73 @@ LL |     re.is_match("abc");
    = note: no matching allowed (from clippy.toml)
 
 error: use of a disallowed method `std::iter::Iterator::sum`
-  --> $DIR/conf_disallowed_methods.rs:37:5
+  --> $DIR/conf_disallowed_methods.rs:39:5
    |
 LL |     a.iter().sum::<i32>();
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of a disallowed method `slice::sort_unstable`
-  --> $DIR/conf_disallowed_methods.rs:39:5
+  --> $DIR/conf_disallowed_methods.rs:41:5
    |
 LL |     a.sort_unstable();
    |     ^^^^^^^^^^^^^^^^^
 
 error: use of a disallowed method `f32::clamp`
-  --> $DIR/conf_disallowed_methods.rs:41:13
+  --> $DIR/conf_disallowed_methods.rs:43:13
    |
 LL |     let _ = 2.0f32.clamp(3.0f32, 4.0f32);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of a disallowed method `regex::Regex::new`
-  --> $DIR/conf_disallowed_methods.rs:44:61
+  --> $DIR/conf_disallowed_methods.rs:46:61
    |
 LL |     let indirect: fn(&str) -> Result<Regex, regex::Error> = Regex::new;
    |                                                             ^^^^^^^^^^
 
 error: use of a disallowed method `f32::clamp`
-  --> $DIR/conf_disallowed_methods.rs:47:28
+  --> $DIR/conf_disallowed_methods.rs:49:28
    |
 LL |     let in_call = Box::new(f32::clamp);
    |                            ^^^^^^^^^^
 
 error: use of a disallowed method `regex::Regex::new`
-  --> $DIR/conf_disallowed_methods.rs:48:53
+  --> $DIR/conf_disallowed_methods.rs:50:53
    |
 LL |     let in_method_call = ["^", "$"].into_iter().map(Regex::new);
    |                                                     ^^^^^^^^^^
 
 error: use of a disallowed method `futures::stream::select_all`
-  --> $DIR/conf_disallowed_methods.rs:51:31
+  --> $DIR/conf_disallowed_methods.rs:53:31
    |
 LL |     let same_name_as_module = select_all(vec![empty::<()>()]);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::local_fn`
-  --> $DIR/conf_disallowed_methods.rs:53:5
+  --> $DIR/conf_disallowed_methods.rs:55:5
    |
 LL |     local_fn();
    |     ^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::local_mod::f`
-  --> $DIR/conf_disallowed_methods.rs:54:5
+  --> $DIR/conf_disallowed_methods.rs:56:5
    |
 LL |     local_mod::f();
    |     ^^^^^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::Struct::method`
-  --> $DIR/conf_disallowed_methods.rs:56:5
+  --> $DIR/conf_disallowed_methods.rs:58:5
    |
 LL |     s.method();
    |     ^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::Trait::provided_method`
-  --> $DIR/conf_disallowed_methods.rs:57:5
+  --> $DIR/conf_disallowed_methods.rs:59:5
    |
 LL |     s.provided_method();
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: use of a disallowed method `conf_disallowed_methods::Trait::implemented_method`
-  --> $DIR/conf_disallowed_methods.rs:58:5
+  --> $DIR/conf_disallowed_methods.rs:60:5
    |
 LL |     s.implemented_method();
    |     ^^^^^^^^^^^^^^^^^^^^^^

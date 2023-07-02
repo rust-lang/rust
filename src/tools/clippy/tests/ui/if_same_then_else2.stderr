@@ -1,24 +1,24 @@
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:14:13
+  --> $DIR/if_same_then_else2.rs:15:13
    |
 LL |       if true {
    |  _____________^
+LL | |
 LL | |         for _ in &[42] {
 LL | |             let foo: &Option<_> = &Some::<u8>(42);
-LL | |             if foo.is_some() {
 ...  |
 LL | |         }
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:23:12
+  --> $DIR/if_same_then_else2.rs:25:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         for _ in &[42] {
 LL | |             let bar: &Option<_> = &Some::<u8>(42);
+LL | |             if bar.is_some() {
 ...  |
 LL | |         }
 LL | |     }
@@ -26,93 +26,94 @@ LL | |     }
    = note: `-D clippy::if-same-then-else` implied by `-D warnings`
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:35:13
+  --> $DIR/if_same_then_else2.rs:36:13
    |
 LL |       if true {
    |  _____________^
+LL | |
 LL | |         if let Some(a) = Some(42) {}
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:37:12
+  --> $DIR/if_same_then_else2.rs:39:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         if let Some(a) = Some(42) {}
 LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:42:13
+  --> $DIR/if_same_then_else2.rs:43:13
    |
 LL |       if true {
    |  _____________^
+LL | |
 LL | |         if let (1, .., 3) = (1, 2, 3) {}
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:44:12
+  --> $DIR/if_same_then_else2.rs:46:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         if let (1, .., 3) = (1, 2, 3) {}
 LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:92:21
+  --> $DIR/if_same_then_else2.rs:93:21
    |
 LL |       let _ = if true {
    |  _____________________^
+LL | |
 LL | |         f32::NAN
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:94:12
+  --> $DIR/if_same_then_else2.rs:96:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         f32::NAN
 LL | |     };
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:99:13
+  --> $DIR/if_same_then_else2.rs:100:13
    |
 LL |       if true {
    |  _____________^
+LL | |
 LL | |         Ok("foo")?;
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:101:12
+  --> $DIR/if_same_then_else2.rs:103:12
    |
 LL |       } else {
    |  ____________^
-LL | |         //~ ERROR same body as `if` block
 LL | |         Ok("foo")?;
 LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:123:20
+  --> $DIR/if_same_then_else2.rs:124:20
    |
 LL |       } else if true {
    |  ____________________^
+LL | |
 LL | |         let foo = "";
 LL | |         return Ok(&foo[0..]);
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:126:12
+  --> $DIR/if_same_then_else2.rs:128:12
    |
 LL |       } else {
    |  ____________^

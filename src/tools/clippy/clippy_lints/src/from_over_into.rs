@@ -134,9 +134,10 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
                 kw::SelfUpper => self.upper.push(segment.ident.span),
                 _ => continue,
             }
+
+            self.invalid |= segment.ident.span.from_expansion();
         }
 
-        self.invalid |= path.span.from_expansion();
         if !self.invalid {
             walk_path(self, path);
         }
@@ -156,6 +157,11 @@ fn convert_to_from(
     self_ty: &Ty<'_>,
     impl_item_ref: &ImplItemRef,
 ) -> Option<Vec<(Span, String)>> {
+    if !target_ty.find_self_aliases().is_empty() {
+        // It's tricky to expand self-aliases correctly, we'll ignore it to not cause a
+        // bad suggestion/fix.
+        return None;
+    }
     let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
     let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else { return None };
     let body = cx.tcx.hir().body(body_id);

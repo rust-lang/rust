@@ -1,5 +1,5 @@
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:56:13
+  --> $DIR/unnecessary_lazy_eval.rs:69:13
    |
 LL |     let _ = opt.unwrap_or_else(|| 2);
    |             ^^^^--------------------
@@ -9,7 +9,7 @@ LL |     let _ = opt.unwrap_or_else(|| 2);
    = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:57:13
+  --> $DIR/unnecessary_lazy_eval.rs:70:13
    |
 LL |     let _ = opt.unwrap_or_else(|| astronomers_pi);
    |             ^^^^---------------------------------
@@ -17,7 +17,7 @@ LL |     let _ = opt.unwrap_or_else(|| astronomers_pi);
    |                 help: use `unwrap_or(..)` instead: `unwrap_or(astronomers_pi)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:58:13
+  --> $DIR/unnecessary_lazy_eval.rs:71:13
    |
 LL |     let _ = opt.unwrap_or_else(|| ext_str.some_field);
    |             ^^^^-------------------------------------
@@ -25,7 +25,7 @@ LL |     let _ = opt.unwrap_or_else(|| ext_str.some_field);
    |                 help: use `unwrap_or(..)` instead: `unwrap_or(ext_str.some_field)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:60:13
+  --> $DIR/unnecessary_lazy_eval.rs:73:13
    |
 LL |     let _ = opt.and_then(|_| ext_opt);
    |             ^^^^---------------------
@@ -33,7 +33,7 @@ LL |     let _ = opt.and_then(|_| ext_opt);
    |                 help: use `and(..)` instead: `and(ext_opt)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:61:13
+  --> $DIR/unnecessary_lazy_eval.rs:74:13
    |
 LL |     let _ = opt.or_else(|| ext_opt);
    |             ^^^^-------------------
@@ -41,7 +41,7 @@ LL |     let _ = opt.or_else(|| ext_opt);
    |                 help: use `or(..)` instead: `or(ext_opt)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:62:13
+  --> $DIR/unnecessary_lazy_eval.rs:75:13
    |
 LL |     let _ = opt.or_else(|| None);
    |             ^^^^----------------
@@ -49,7 +49,7 @@ LL |     let _ = opt.or_else(|| None);
    |                 help: use `or(..)` instead: `or(None)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:63:13
+  --> $DIR/unnecessary_lazy_eval.rs:76:13
    |
 LL |     let _ = opt.get_or_insert_with(|| 2);
    |             ^^^^------------------------
@@ -57,7 +57,7 @@ LL |     let _ = opt.get_or_insert_with(|| 2);
    |                 help: use `get_or_insert(..)` instead: `get_or_insert(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:64:13
+  --> $DIR/unnecessary_lazy_eval.rs:77:13
    |
 LL |     let _ = opt.ok_or_else(|| 2);
    |             ^^^^----------------
@@ -65,7 +65,7 @@ LL |     let _ = opt.ok_or_else(|| 2);
    |                 help: use `ok_or(..)` instead: `ok_or(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:65:13
+  --> $DIR/unnecessary_lazy_eval.rs:78:13
    |
 LL |     let _ = nested_tuple_opt.unwrap_or_else(|| Some((1, 2)));
    |             ^^^^^^^^^^^^^^^^^-------------------------------
@@ -73,7 +73,7 @@ LL |     let _ = nested_tuple_opt.unwrap_or_else(|| Some((1, 2)));
    |                              help: use `unwrap_or(..)` instead: `unwrap_or(Some((1, 2)))`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:66:13
+  --> $DIR/unnecessary_lazy_eval.rs:79:13
    |
 LL |     let _ = cond.then(|| astronomers_pi);
    |             ^^^^^-----------------------
@@ -81,7 +81,39 @@ LL |     let _ = cond.then(|| astronomers_pi);
    |                  help: use `then_some(..)` instead: `then_some(astronomers_pi)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:69:13
+  --> $DIR/unnecessary_lazy_eval.rs:83:13
+   |
+LL |     let _ = Some(1).unwrap_or_else(|| *r);
+   |             ^^^^^^^^---------------------
+   |                     |
+   |                     help: use `unwrap_or(..)` instead: `unwrap_or(*r)`
+
+error: unnecessary closure used to substitute value for `Option::None`
+  --> $DIR/unnecessary_lazy_eval.rs:85:13
+   |
+LL |     let _ = Some(1).unwrap_or_else(|| *b);
+   |             ^^^^^^^^---------------------
+   |                     |
+   |                     help: use `unwrap_or(..)` instead: `unwrap_or(*b)`
+
+error: unnecessary closure used to substitute value for `Option::None`
+  --> $DIR/unnecessary_lazy_eval.rs:87:13
+   |
+LL |     let _ = Some(1).as_ref().unwrap_or_else(|| &r);
+   |             ^^^^^^^^^^^^^^^^^---------------------
+   |                              |
+   |                              help: use `unwrap_or(..)` instead: `unwrap_or(&r)`
+
+error: unnecessary closure used to substitute value for `Option::None`
+  --> $DIR/unnecessary_lazy_eval.rs:88:13
+   |
+LL |     let _ = Some(1).as_ref().unwrap_or_else(|| &b);
+   |             ^^^^^^^^^^^^^^^^^---------------------
+   |                              |
+   |                              help: use `unwrap_or(..)` instead: `unwrap_or(&b)`
+
+error: unnecessary closure used to substitute value for `Option::None`
+  --> $DIR/unnecessary_lazy_eval.rs:91:13
    |
 LL |     let _ = Some(10).unwrap_or_else(|| 2);
    |             ^^^^^^^^^--------------------
@@ -89,7 +121,7 @@ LL |     let _ = Some(10).unwrap_or_else(|| 2);
    |                      help: use `unwrap_or(..)` instead: `unwrap_or(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:70:13
+  --> $DIR/unnecessary_lazy_eval.rs:92:13
    |
 LL |     let _ = Some(10).and_then(|_| ext_opt);
    |             ^^^^^^^^^---------------------
@@ -97,7 +129,7 @@ LL |     let _ = Some(10).and_then(|_| ext_opt);
    |                      help: use `and(..)` instead: `and(ext_opt)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:71:28
+  --> $DIR/unnecessary_lazy_eval.rs:93:28
    |
 LL |     let _: Option<usize> = None.or_else(|| ext_opt);
    |                            ^^^^^-------------------
@@ -105,7 +137,7 @@ LL |     let _: Option<usize> = None.or_else(|| ext_opt);
    |                                 help: use `or(..)` instead: `or(ext_opt)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:72:13
+  --> $DIR/unnecessary_lazy_eval.rs:94:13
    |
 LL |     let _ = None.get_or_insert_with(|| 2);
    |             ^^^^^------------------------
@@ -113,7 +145,7 @@ LL |     let _ = None.get_or_insert_with(|| 2);
    |                  help: use `get_or_insert(..)` instead: `get_or_insert(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:73:35
+  --> $DIR/unnecessary_lazy_eval.rs:95:35
    |
 LL |     let _: Result<usize, usize> = None.ok_or_else(|| 2);
    |                                   ^^^^^----------------
@@ -121,7 +153,7 @@ LL |     let _: Result<usize, usize> = None.ok_or_else(|| 2);
    |                                        help: use `ok_or(..)` instead: `ok_or(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:74:28
+  --> $DIR/unnecessary_lazy_eval.rs:96:28
    |
 LL |     let _: Option<usize> = None.or_else(|| None);
    |                            ^^^^^----------------
@@ -129,7 +161,7 @@ LL |     let _: Option<usize> = None.or_else(|| None);
    |                                 help: use `or(..)` instead: `or(None)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:77:13
+  --> $DIR/unnecessary_lazy_eval.rs:99:13
    |
 LL |     let _ = deep.0.unwrap_or_else(|| 2);
    |             ^^^^^^^--------------------
@@ -137,7 +169,7 @@ LL |     let _ = deep.0.unwrap_or_else(|| 2);
    |                    help: use `unwrap_or(..)` instead: `unwrap_or(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:78:13
+  --> $DIR/unnecessary_lazy_eval.rs:100:13
    |
 LL |     let _ = deep.0.and_then(|_| ext_opt);
    |             ^^^^^^^---------------------
@@ -145,7 +177,7 @@ LL |     let _ = deep.0.and_then(|_| ext_opt);
    |                    help: use `and(..)` instead: `and(ext_opt)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:79:13
+  --> $DIR/unnecessary_lazy_eval.rs:101:13
    |
 LL |     let _ = deep.0.or_else(|| None);
    |             ^^^^^^^----------------
@@ -153,7 +185,7 @@ LL |     let _ = deep.0.or_else(|| None);
    |                    help: use `or(..)` instead: `or(None)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:80:13
+  --> $DIR/unnecessary_lazy_eval.rs:102:13
    |
 LL |     let _ = deep.0.get_or_insert_with(|| 2);
    |             ^^^^^^^------------------------
@@ -161,7 +193,7 @@ LL |     let _ = deep.0.get_or_insert_with(|| 2);
    |                    help: use `get_or_insert(..)` instead: `get_or_insert(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:81:13
+  --> $DIR/unnecessary_lazy_eval.rs:103:13
    |
 LL |     let _ = deep.0.ok_or_else(|| 2);
    |             ^^^^^^^----------------
@@ -169,7 +201,7 @@ LL |     let _ = deep.0.ok_or_else(|| 2);
    |                    help: use `ok_or(..)` instead: `ok_or(2)`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:105:28
+  --> $DIR/unnecessary_lazy_eval.rs:133:28
    |
 LL |     let _: Option<usize> = None.or_else(|| Some(3));
    |                            ^^^^^-------------------
@@ -177,7 +209,7 @@ LL |     let _: Option<usize> = None.or_else(|| Some(3));
    |                                 help: use `or(..)` instead: `or(Some(3))`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:106:13
+  --> $DIR/unnecessary_lazy_eval.rs:134:13
    |
 LL |     let _ = deep.0.or_else(|| Some(3));
    |             ^^^^^^^-------------------
@@ -185,7 +217,7 @@ LL |     let _ = deep.0.or_else(|| Some(3));
    |                    help: use `or(..)` instead: `or(Some(3))`
 
 error: unnecessary closure used to substitute value for `Option::None`
-  --> $DIR/unnecessary_lazy_eval.rs:107:13
+  --> $DIR/unnecessary_lazy_eval.rs:135:13
    |
 LL |     let _ = opt.or_else(|| Some(3));
    |             ^^^^-------------------
@@ -193,7 +225,7 @@ LL |     let _ = opt.or_else(|| Some(3));
    |                 help: use `or(..)` instead: `or(Some(3))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:113:13
+  --> $DIR/unnecessary_lazy_eval.rs:141:13
    |
 LL |     let _ = res2.unwrap_or_else(|_| 2);
    |             ^^^^^---------------------
@@ -201,7 +233,7 @@ LL |     let _ = res2.unwrap_or_else(|_| 2);
    |                  help: use `unwrap_or(..)` instead: `unwrap_or(2)`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:114:13
+  --> $DIR/unnecessary_lazy_eval.rs:142:13
    |
 LL |     let _ = res2.unwrap_or_else(|_| astronomers_pi);
    |             ^^^^^----------------------------------
@@ -209,7 +241,7 @@ LL |     let _ = res2.unwrap_or_else(|_| astronomers_pi);
    |                  help: use `unwrap_or(..)` instead: `unwrap_or(astronomers_pi)`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:115:13
+  --> $DIR/unnecessary_lazy_eval.rs:143:13
    |
 LL |     let _ = res2.unwrap_or_else(|_| ext_str.some_field);
    |             ^^^^^--------------------------------------
@@ -217,7 +249,7 @@ LL |     let _ = res2.unwrap_or_else(|_| ext_str.some_field);
    |                  help: use `unwrap_or(..)` instead: `unwrap_or(ext_str.some_field)`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:137:35
+  --> $DIR/unnecessary_lazy_eval.rs:165:35
    |
 LL |     let _: Result<usize, usize> = res.and_then(|_| Err(2));
    |                                   ^^^^--------------------
@@ -225,7 +257,7 @@ LL |     let _: Result<usize, usize> = res.and_then(|_| Err(2));
    |                                       help: use `and(..)` instead: `and(Err(2))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:138:35
+  --> $DIR/unnecessary_lazy_eval.rs:166:35
    |
 LL |     let _: Result<usize, usize> = res.and_then(|_| Err(astronomers_pi));
    |                                   ^^^^---------------------------------
@@ -233,7 +265,7 @@ LL |     let _: Result<usize, usize> = res.and_then(|_| Err(astronomers_pi));
    |                                       help: use `and(..)` instead: `and(Err(astronomers_pi))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:139:35
+  --> $DIR/unnecessary_lazy_eval.rs:167:35
    |
 LL |     let _: Result<usize, usize> = res.and_then(|_| Err(ext_str.some_field));
    |                                   ^^^^-------------------------------------
@@ -241,7 +273,7 @@ LL |     let _: Result<usize, usize> = res.and_then(|_| Err(ext_str.some_field))
    |                                       help: use `and(..)` instead: `and(Err(ext_str.some_field))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:141:35
+  --> $DIR/unnecessary_lazy_eval.rs:169:35
    |
 LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(2));
    |                                   ^^^^------------------
@@ -249,7 +281,7 @@ LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(2));
    |                                       help: use `or(..)` instead: `or(Ok(2))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:142:35
+  --> $DIR/unnecessary_lazy_eval.rs:170:35
    |
 LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(astronomers_pi));
    |                                   ^^^^-------------------------------
@@ -257,7 +289,7 @@ LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(astronomers_pi));
    |                                       help: use `or(..)` instead: `or(Ok(astronomers_pi))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:143:35
+  --> $DIR/unnecessary_lazy_eval.rs:171:35
    |
 LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(ext_str.some_field));
    |                                   ^^^^-----------------------------------
@@ -265,7 +297,7 @@ LL |     let _: Result<usize, usize> = res.or_else(|_| Ok(ext_str.some_field));
    |                                       help: use `or(..)` instead: `or(Ok(ext_str.some_field))`
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> $DIR/unnecessary_lazy_eval.rs:144:35
+  --> $DIR/unnecessary_lazy_eval.rs:172:35
    |
 LL |       let _: Result<usize, usize> = res.
    |  ___________________________________^
@@ -279,5 +311,5 @@ LL | |     or_else(|_| Ok(ext_str.some_field));
    |       |
    |       help: use `or(..)` instead: `or(Ok(ext_str.some_field))`
 
-error: aborting due to 34 previous errors
+error: aborting due to 38 previous errors
 

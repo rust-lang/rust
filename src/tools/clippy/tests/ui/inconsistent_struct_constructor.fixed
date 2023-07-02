@@ -1,5 +1,5 @@
 //@run-rustfix
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 
 #![warn(clippy::inconsistent_struct_constructor)]
 #![allow(clippy::redundant_field_names)]

@@ -212,7 +212,7 @@ mod super_imports {
     }
 
     mod use_explicit_should_be_replaced {
-        use super_imports::*;
+        use crate::super_imports::*;
 
         fn with_explicit() {
             let _ = foofoo();

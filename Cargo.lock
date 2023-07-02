@@ -343,9 +343,9 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "bytes"
-version = "1.0.1"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b700ce4376041dcd0a327fd0097c41095743c4c8af8887265942faf1100bd040"
+checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
 
 [[package]]
 name = "camino"
@@ -536,27 +536,16 @@ checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
 name = "clippy"
 version = "0.1.72"
 dependencies = [
- "clap",
  "clippy_lints",
- "clippy_utils",
- "compiletest_rs",
- "derive-new",
  "filetime",
- "futures",
- "if_chain",
  "itertools",
- "parking_lot 0.12.1",
- "quote",
  "regex",
- "rustc-semver",
  "rustc_tools_util",
- "serde",
- "syn 2.0.8",
  "tempfile",
  "termize",
  "tester",
- "tokio",
  "toml 0.7.4",
+ "ui_test",
  "walkdir",
 ]
 
@@ -585,6 +574,7 @@ dependencies = [
  "itertools",
  "pulldown-cmark",
  "quine-mc_cluskey",
+ "regex",
  "regex-syntax 0.7.1",
  "rustc-semver",
  "semver",
@@ -595,6 +585,24 @@ dependencies = [
  "unicode-normalization",
  "unicode-script",
  "url",
+]
+
+[[package]]
+name = "clippy_test_deps"
+version = "0.1.0"
+dependencies = [
+ "clippy_lints",
+ "clippy_utils",
+ "derive-new",
+ "futures",
+ "if_chain",
+ "itertools",
+ "parking_lot 0.12.1",
+ "quote",
+ "regex",
+ "serde",
+ "syn 2.0.8",
+ "tokio",
 ]
 
 [[package]]
@@ -677,7 +685,7 @@ dependencies = [
  "glob",
  "lazycell",
  "libc",
- "miow 0.5.0",
+ "miow",
  "miropt-test-tools",
  "once_cell",
  "regex",
@@ -689,29 +697,6 @@ dependencies = [
  "unified-diff",
  "walkdir",
  "windows",
-]
-
-[[package]]
-name = "compiletest_rs"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2731272cf25196735df1b52ab5bcba22cf9f99455626c4c8dc092bd5f7f66d0"
-dependencies = [
- "diff",
- "filetime",
- "getopts",
- "lazy_static",
- "libc",
- "log",
- "miow 0.3.7",
- "regex",
- "rustfix",
- "serde",
- "serde_derive",
- "serde_json",
- "tempfile",
- "tester",
- "winapi",
 ]
 
 [[package]]
@@ -881,9 +866,9 @@ dependencies = [
 
 [[package]]
 name = "derive-new"
-version = "0.5.8"
+version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71f31892cd5c62e414316f2963c5689242c43d8e7bbcaaeca97e5e28c95d91d9"
+checksum = "3418329ca0ad70234b9735dc4ceed10af4df60eff9c8e7b06cb5e520d92c3535"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2158,15 +2143,6 @@ dependencies = [
 
 [[package]]
 name = "miow"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
-dependencies = [
- "winapi",
-]
-
-[[package]]
-name = "miow"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52ffbca2f655e33c08be35d87278e5b18b89550a37dbd598c20db92f6a471123"
@@ -2386,7 +2362,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.4",
+ "parking_lot_core 0.9.8",
 ]
 
 [[package]]
@@ -2405,15 +2381,15 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.9.4"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dc9e0dc2adc1c69d09143aff38d3d30c5c3f0df0dad82e6d25547af174ebec0"
+checksum = "93f00c865fe7cabf650081affecd3871070f26767e7b2070a3ffae14c654b447"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.2.10",
+ "redox_syscall 0.3.5",
  "smallvec",
- "windows-sys 0.42.0",
+ "windows-targets 0.48.0",
 ]
 
 [[package]]
@@ -4467,9 +4443,12 @@ checksum = "fa8f3741c7372e75519bd9346068370c9cdaabcc1f9599cbcf2a2719352286b7"
 
 [[package]]
 name = "slab"
-version = "0.4.2"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
+checksum = "6528351c9bc8ab22353f9d776db39a20288e8d6c37ef8cfe3317cf875eecfc2d"
+dependencies = [
+ "autocfg",
+]
 
 [[package]]
 name = "smallvec"
@@ -4901,14 +4880,14 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.28.2"
+version = "1.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94d7b1cfd2aa4011f2de74c2c4c63665e27a71006b0a192dcd2710272e73dfa2"
+checksum = "532826ff75199d5833b9d2c5fe410f29235e25704ee5f0ef599fb51c21f4a4da"
 dependencies = [
  "autocfg",
+ "backtrace",
  "bytes",
  "pin-project-lite",
- "windows-sys 0.48.0",
 ]
 
 [[package]]

@@ -118,5 +118,65 @@ error: useless conversion to the same type: `std::vec::IntoIter<Foo<'a'>>`
 LL |     let _ = vec![s4, s4, s4].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![s4, s4, s4].into_iter()`
 
-error: aborting due to 19 previous errors
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> $DIR/useless_conversion.rs:171:7
+   |
+LL |     b(vec![1, 2].into_iter());
+   |       ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `vec![1, 2]`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> $DIR/useless_conversion.rs:161:13
+   |
+LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> $DIR/useless_conversion.rs:172:7
+   |
+LL |     c(vec![1, 2].into_iter());
+   |       ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `vec![1, 2]`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> $DIR/useless_conversion.rs:162:18
+   |
+LL |     fn c(_: impl IntoIterator<Item = i32>) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> $DIR/useless_conversion.rs:173:7
+   |
+LL |     d(vec![1, 2].into_iter());
+   |       ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`: `vec![1, 2]`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> $DIR/useless_conversion.rs:165:12
+   |
+LL |         T: IntoIterator<Item = i32>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> $DIR/useless_conversion.rs:176:7
+   |
+LL |     b(vec![1, 2].into_iter().into_iter());
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`s: `vec![1, 2]`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> $DIR/useless_conversion.rs:161:13
+   |
+LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
+  --> $DIR/useless_conversion.rs:177:7
+   |
+LL |     b(vec![1, 2].into_iter().into_iter().into_iter());
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing the `.into_iter()`s: `vec![1, 2]`
+   |
+note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
+  --> $DIR/useless_conversion.rs:161:13
+   |
+LL |     fn b<T: IntoIterator<Item = i32>>(_: T) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 24 previous errors
 

@@ -1,5 +1,5 @@
 error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
-  --> $DIR/methods_fixable.rs:10:13
+  --> $DIR/methods_fixable.rs:11:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `v.iter().find(|&x| *x < 0)`

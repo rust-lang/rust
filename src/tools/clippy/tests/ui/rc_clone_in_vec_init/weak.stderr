@@ -1,5 +1,5 @@
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:8:13
+  --> $DIR/weak.rs:9:13
    |
 LL |     let v = vec![SyncWeak::<u32>::new(); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:9:14
+  --> $DIR/weak.rs:10:14
    |
 LL |     let v2 = vec![UnSyncWeak::<u32>::new(); 2];
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:11:13
+  --> $DIR/weak.rs:12:13
    |
 LL |     let v = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:12:13
+  --> $DIR/weak.rs:13:13
    |
 LL |     let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,7 +92,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:20:21
+  --> $DIR/weak.rs:21:21
    |
 LL |             let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,7 +115,7 @@ LL ~             };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:21:22
+  --> $DIR/weak.rs:22:22
    |
 LL |             let v2 = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ LL ~             };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:27:13
+  --> $DIR/weak.rs:28:13
    |
 LL |       let v = vec![
    |  _____________^
@@ -168,7 +168,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/weak.rs:36:14
+  --> $DIR/weak.rs:37:14
    |
 LL |       let v1 = vec![
    |  ______________^

@@ -66,7 +66,7 @@ If the output of a [UI test] differs from the expected output, you can update
 the reference file with:
 
 ```bash
-cargo dev bless
+cargo bless
 ```
 
 For example, this is necessary if you fix a typo in an error message of a lint,

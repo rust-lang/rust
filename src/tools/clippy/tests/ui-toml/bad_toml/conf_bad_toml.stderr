@@ -1,5 +1,5 @@
 error: error reading Clippy's configuration file: expected `.`, `=`
-  --> $DIR/clippy.toml:1:4
+  --> $DIR/$DIR/clippy.toml:1:4
    |
 LL | fn this_is_obviously(not: a, toml: file) {
    |    ^

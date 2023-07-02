@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace};
 use clippy_utils::{ast_utils::is_useless_with_eq_exprs, eq_expr_value, is_in_test_function};
 use rustc_hir::{BinOpKind, Expr};
@@ -35,11 +35,16 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if is_useless_with_eq_exprs(op.into()) && eq_expr_value(cx, left, right) && !is_in_test_function(cx.tcx, e.hir_id) {
-        span_lint(
+        span_lint_and_then(
             cx,
             EQ_OP,
             e.span,
             &format!("equal expressions as operands to `{}`", op.as_str()),
+            |diag| {
+                if let BinOpKind::Ne = op && cx.typeck_results().expr_ty(left).is_floating_point() {
+                    diag.note("if you intended to check if the operand is NaN, use `.is_nan()` instead");
+                }
+            },
         );
     }
 }

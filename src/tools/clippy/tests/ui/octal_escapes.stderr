@@ -34,17 +34,17 @@ LL |     let _bad2 = b"/x0033[0m";
 error: octal-looking escape in string literal
   --> $DIR/octal_escapes.rs:6:17
    |
-LL |     let _bad3 = "//033[0m";
+LL |     let _bad3 = "///033[0m";
    |                 ^^^^^^^^^^^
    |
    = help: octal escapes are not supported, `/0` is always a null character
 help: if an octal escape was intended, use the hexadecimal representation instead
    |
-LL |     let _bad3 = "//x1b[0m";
+LL |     let _bad3 = "///x1b[0m";
    |                 ~~~~~~~~~~~
 help: if the null character is intended, disambiguate using
    |
-LL |     let _bad3 = "//x0033[0m";
+LL |     let _bad3 = "///x0033[0m";
    |                 ~~~~~~~~~~~~~
 
 error: octal-looking escape in string literal

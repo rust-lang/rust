@@ -1,5 +1,5 @@
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:9:20
+  --> $DIR/indexing_slicing_index.rs:14:20
    |
 LL | const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
    |                    ^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-re
    = note: `-D clippy::indexing-slicing` implied by `-D warnings`
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:10:24
+  --> $DIR/indexing_slicing_index.rs:15:24
    |
 LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    |                        ^^^^^^^^^^^
@@ -18,19 +18,19 @@ LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    = note: the suggestion might not be applicable in constant blocks
 
 error[E0080]: evaluation of `main::{constant#3}` failed
-  --> $DIR/indexing_slicing_index.rs:31:14
+  --> $DIR/indexing_slicing_index.rs:36:14
    |
 LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
    |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
 note: erroneous constant used
-  --> $DIR/indexing_slicing_index.rs:31:5
+  --> $DIR/indexing_slicing_index.rs:36:5
    |
 LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:22:5
+  --> $DIR/indexing_slicing_index.rs:27:5
    |
 LL |     x[index];
    |     ^^^^^^^^
@@ -38,7 +38,7 @@ LL |     x[index];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:30:14
+  --> $DIR/indexing_slicing_index.rs:35:14
    |
 LL |     const { &ARR[idx()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
    |              ^^^^^^^^^^
@@ -47,7 +47,7 @@ LL |     const { &ARR[idx()] }; // This should be linted, since `suppress-restri
    = note: the suggestion might not be applicable in constant blocks
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:31:14
+  --> $DIR/indexing_slicing_index.rs:36:14
    |
 LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
    |              ^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restr
    = note: the suggestion might not be applicable in constant blocks
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:38:5
+  --> $DIR/indexing_slicing_index.rs:43:5
    |
 LL |     v[0];
    |     ^^^^
@@ -64,7 +64,7 @@ LL |     v[0];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:39:5
+  --> $DIR/indexing_slicing_index.rs:44:5
    |
 LL |     v[10];
    |     ^^^^^
@@ -72,7 +72,7 @@ LL |     v[10];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:40:5
+  --> $DIR/indexing_slicing_index.rs:45:5
    |
 LL |     v[1 << 3];
    |     ^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     v[1 << 3];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:46:5
+  --> $DIR/indexing_slicing_index.rs:51:5
    |
 LL |     v[N];
    |     ^^^^
@@ -88,7 +88,7 @@ LL |     v[N];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:47:5
+  --> $DIR/indexing_slicing_index.rs:52:5
    |
 LL |     v[M];
    |     ^^^^
@@ -96,7 +96,7 @@ LL |     v[M];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/indexing_slicing_index.rs:10:24
+  --> $DIR/indexing_slicing_index.rs:15:24
    |
 LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    |                        ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
