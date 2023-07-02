@@ -204,8 +204,8 @@ jobs:
           ./miri fmt --check || (./miri fmt && git commit -am "fmt")
       - name: Push changes to a branch
         run: |
-          git switch -c "rustup$(date -u +%Y-%m)"
-          git push
+          git switch -c "rustup$(date -u +%Y-%m-%d)"
+          git push -u
       - name: Create Pull Request
         run: gh pr create -B master --title 'Automatic sync from rustc' --body ''
         env:
