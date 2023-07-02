@@ -217,12 +217,45 @@ fn main() {
     }
 
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
-    run_ui();
-    run_ui_toml();
-    run_ui_cargo();
-    run_internal_tests();
-    rustfix_coverage_known_exceptions_accuracy();
-    ui_cargo_toml_metadata();
+    // The SPEEDTEST_* env variables can be used to check Clippy's performance on your PR. It runs the
+    // affected test 1000 times and gets the average.
+    if let Ok(speedtest) = std::env::var("SPEEDTEST") {
+        println!("----------- STARTING SPEEDTEST -----------");
+        let f = match speedtest.as_str() {
+            "ui" => run_ui as fn(),
+            "cargo" => run_ui_cargo as fn(),
+            "toml" => run_ui_toml as fn(),
+            "internal" => run_internal_tests as fn(),
+            "rustfix-coverage-known-exceptions-accuracy" => rustfix_coverage_known_exceptions_accuracy as fn(),
+            "ui-cargo-toml-metadata" => ui_cargo_toml_metadata as fn(),
+
+            _ => panic!("unknown speedtest: {speedtest} || accepted speedtests are: [ui, cargo, toml, internal]"),
+        };
+
+        let iterations;
+        if let Ok(iterations_str) = std::env::var("SPEEDTEST_ITERATIONS") {
+            iterations = iterations_str
+                .parse::<u64>()
+                .unwrap_or_else(|_| panic!("Couldn't parse `{iterations_str}`, please use a valid u64"));
+        } else {
+            iterations = 1000;
+        }
+
+        let mut sum = 0;
+        for _ in 0..iterations {
+            let start = std::time::Instant::now();
+            f();
+            sum += start.elapsed().as_millis();
+        }
+        println!("average {} time: {} millis.", speedtest.to_uppercase(), sum / 1000);
+    } else {
+        run_ui();
+        run_ui_toml();
+        run_ui_cargo();
+        run_internal_tests();
+        rustfix_coverage_known_exceptions_accuracy();
+        ui_cargo_toml_metadata();
+    }
 }
 
 const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
