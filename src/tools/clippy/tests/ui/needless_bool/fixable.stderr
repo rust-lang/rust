@@ -1,5 +1,5 @@
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:41:5
+  --> $DIR/fixable.rs:42:5
    |
 LL | /     if x {
 LL | |         true
@@ -11,7 +11,7 @@ LL | |     };
    = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:46:5
+  --> $DIR/fixable.rs:47:5
    |
 LL | /     if x {
 LL | |         false
@@ -21,7 +21,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `!x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:51:5
+  --> $DIR/fixable.rs:52:5
    |
 LL | /     if x && y {
 LL | |         false
@@ -31,7 +31,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `!(x && y)`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:59:5
+  --> $DIR/fixable.rs:60:5
    |
 LL | /     if a == b {
 LL | |         false
@@ -41,7 +41,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a != b`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:64:5
+  --> $DIR/fixable.rs:65:5
    |
 LL | /     if a != b {
 LL | |         false
@@ -51,7 +51,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a == b`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:69:5
+  --> $DIR/fixable.rs:70:5
    |
 LL | /     if a < b {
 LL | |         false
@@ -61,7 +61,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a >= b`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:74:5
+  --> $DIR/fixable.rs:75:5
    |
 LL | /     if a <= b {
 LL | |         false
@@ -71,7 +71,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a > b`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:79:5
+  --> $DIR/fixable.rs:80:5
    |
 LL | /     if a > b {
 LL | |         false
@@ -81,7 +81,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a <= b`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:84:5
+  --> $DIR/fixable.rs:85:5
    |
 LL | /     if a >= b {
 LL | |         false
@@ -91,7 +91,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `a < b`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:112:5
+  --> $DIR/fixable.rs:113:5
    |
 LL | /     if x {
 LL | |         return true;
@@ -101,7 +101,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:120:5
+  --> $DIR/fixable.rs:121:5
    |
 LL | /     if x {
 LL | |         return false;
@@ -111,7 +111,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return !x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:128:5
+  --> $DIR/fixable.rs:129:5
    |
 LL | /     if x && y {
 LL | |         return true;
@@ -121,7 +121,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return x && y`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:136:5
+  --> $DIR/fixable.rs:137:5
    |
 LL | /     if x && y {
 LL | |         return false;
@@ -131,7 +131,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `return !(x && y)`
 
 error: equality checks against true are unnecessary
-  --> $DIR/fixable.rs:144:8
+  --> $DIR/fixable.rs:145:8
    |
 LL |     if x == true {};
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
@@ -139,25 +139,25 @@ LL |     if x == true {};
    = note: `-D clippy::bool-comparison` implied by `-D warnings`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/fixable.rs:148:8
+  --> $DIR/fixable.rs:149:8
    |
 LL |     if x == false {};
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: equality checks against true are unnecessary
-  --> $DIR/fixable.rs:158:8
+  --> $DIR/fixable.rs:159:8
    |
 LL |     if x == true {};
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/fixable.rs:159:8
+  --> $DIR/fixable.rs:160:8
    |
 LL |     if x == false {};
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:168:12
+  --> $DIR/fixable.rs:169:12
    |
 LL |       } else if returns_bool() {
    |  ____________^
@@ -168,7 +168,7 @@ LL | |     };
    | |_____^ help: you can reduce it to: `{ !returns_bool() }`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:181:5
+  --> $DIR/fixable.rs:182:5
    |
 LL | /     if unsafe { no(4) } & 1 != 0 {
 LL | |         true
@@ -178,13 +178,13 @@ LL | |     };
    | |_____^ help: you can reduce it to: `(unsafe { no(4) } & 1 != 0)`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:186:30
+  --> $DIR/fixable.rs:187:30
    |
 LL |     let _brackets_unneeded = if unsafe { no(4) } & 1 != 0 { true } else { false };
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `unsafe { no(4) } & 1 != 0`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/fixable.rs:189:9
+  --> $DIR/fixable.rs:190:9
    |
 LL |         if unsafe { no(4) } & 1 != 0 { true } else { false }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `(unsafe { no(4) } & 1 != 0)`

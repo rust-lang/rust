@@ -1,5 +1,5 @@
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:18:9
+  --> $DIR/from_iter_instead_of_collect.rs:19:9
    |
 LL |         <Self as FromIterator<bool>>::from_iter(iter.into_iter().copied())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter.into_iter().copied().collect::<Self>()`
@@ -7,85 +7,85 @@ LL |         <Self as FromIterator<bool>>::from_iter(iter.into_iter().copied())
    = note: `-D clippy::from-iter-instead-of-collect` implied by `-D warnings`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:24:13
+  --> $DIR/from_iter_instead_of_collect.rs:25:13
    |
 LL |     let _ = Vec::from_iter(iter_expr);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter_expr.collect::<Vec<_>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:26:13
+  --> $DIR/from_iter_instead_of_collect.rs:27:13
    |
 LL |     let _ = HashMap::<usize, &i8>::from_iter(vec![5, 5, 5, 5].iter().enumerate());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `vec![5, 5, 5, 5].iter().enumerate().collect::<HashMap<usize, &i8>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:31:19
+  --> $DIR/from_iter_instead_of_collect.rs:32:19
    |
 LL |     assert_eq!(a, Vec::from_iter(0..3));
    |                   ^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<Vec<_>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:32:19
+  --> $DIR/from_iter_instead_of_collect.rs:33:19
    |
 LL |     assert_eq!(a, Vec::<i32>::from_iter(0..3));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<Vec<i32>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:34:17
+  --> $DIR/from_iter_instead_of_collect.rs:35:17
    |
 LL |     let mut b = VecDeque::from_iter(0..3);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<VecDeque<_>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:37:17
+  --> $DIR/from_iter_instead_of_collect.rs:38:17
    |
 LL |     let mut b = VecDeque::<i32>::from_iter(0..3);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<VecDeque<i32>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:42:21
+  --> $DIR/from_iter_instead_of_collect.rs:43:21
    |
 LL |         let mut b = collections::VecDeque::<i32>::from_iter(0..3);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<collections::VecDeque<i32>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:47:14
+  --> $DIR/from_iter_instead_of_collect.rs:48:14
    |
 LL |     let bm = BTreeMap::from_iter(values.iter().cloned());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `values.iter().cloned().collect::<BTreeMap<_, _>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:48:19
+  --> $DIR/from_iter_instead_of_collect.rs:49:19
    |
 LL |     let mut bar = BTreeMap::from_iter(bm.range(0..2));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `bm.range(0..2).collect::<BTreeMap<_, _>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:51:19
+  --> $DIR/from_iter_instead_of_collect.rs:52:19
    |
 LL |     let mut bts = BTreeSet::from_iter(0..3);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<BTreeSet<_>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:55:17
+  --> $DIR/from_iter_instead_of_collect.rs:56:17
    |
 LL |         let _ = collections::BTreeSet::from_iter(0..3);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<collections::BTreeSet<_>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:56:17
+  --> $DIR/from_iter_instead_of_collect.rs:57:17
    |
 LL |         let _ = collections::BTreeSet::<u32>::from_iter(0..3);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `(0..3).collect::<collections::BTreeSet<u32>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:59:15
+  --> $DIR/from_iter_instead_of_collect.rs:60:15
    |
 LL |     for _i in Vec::from_iter([1, 2, 3].iter()) {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `[1, 2, 3].iter().collect::<Vec<_>>()`
 
 error: usage of `FromIterator::from_iter`
-  --> $DIR/from_iter_instead_of_collect.rs:60:15
+  --> $DIR/from_iter_instead_of_collect.rs:61:15
    |
 LL |     for _i in Vec::<&i32>::from_iter([1, 2, 3].iter()) {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `[1, 2, 3].iter().collect::<Vec<&i32>>()`

@@ -1,9 +1,18 @@
 //@run-rustfix
 #![warn(clippy::borrow_as_ptr)]
+#![allow(clippy::useless_vec)]
+
+fn a() -> i32 {
+    0
+}
 
 fn main() {
     let val = 1;
     let _p = std::ptr::addr_of!(val);
+    let _p = &0 as *const i32;
+    let _p = &a() as *const i32;
+    let vec = vec![1];
+    let _p = &vec.len() as *const usize;
 
     let mut val_mut = 1;
     let _p_mut = std::ptr::addr_of_mut!(val_mut);

@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_derive.rs
+//@aux-build:proc_macro_derive.rs:proc-macro
 
 #![allow(
     clippy::assign_op_pattern,
@@ -464,6 +464,21 @@ pub fn issue_10767() {
     3.1_f32 + &1.2_f32;
     &3.4_f32 + 1.5_f32;
     &3.5_f32 + &1.3_f32;
+}
+
+pub fn issue_10792() {
+    struct One {
+        a: u32,
+    }
+    struct Two {
+        b: u32,
+        c: u64,
+    }
+    const ONE: One = One { a: 1 };
+    const TWO: Two = Two { b: 2, c: 3 };
+    let _ = 10 / ONE.a;
+    let _ = 10 / TWO.b;
+    let _ = 10 / TWO.c;
 }
 
 fn main() {}

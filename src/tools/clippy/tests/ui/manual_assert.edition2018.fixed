@@ -5,7 +5,7 @@
 
 #![warn(clippy::manual_assert)]
 #![allow(dead_code, unused_doc_comments)]
-#![allow(clippy::nonminimal_bool, clippy::uninlined_format_args)]
+#![allow(clippy::nonminimal_bool, clippy::uninlined_format_args, clippy::useless_vec)]
 
 macro_rules! one {
     () => {

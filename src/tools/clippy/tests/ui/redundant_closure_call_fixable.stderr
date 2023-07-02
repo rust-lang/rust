@@ -1,5 +1,5 @@
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:17:13
+  --> $DIR/redundant_closure_call_fixable.rs:18:13
    |
 LL |     let a = (|| 42)();
    |             ^^^^^^^^^ help: try doing something like: `42`
@@ -7,7 +7,7 @@ LL |     let a = (|| 42)();
    = note: `-D clippy::redundant-closure-call` implied by `-D warnings`
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:18:13
+  --> $DIR/redundant_closure_call_fixable.rs:19:13
    |
 LL |       let b = (async || {
    |  _____________^
@@ -27,7 +27,7 @@ LL ~     };
    |
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:23:13
+  --> $DIR/redundant_closure_call_fixable.rs:24:13
    |
 LL |       let c = (|| {
    |  _____________^
@@ -47,13 +47,13 @@ LL ~     };
    |
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:28:13
+  --> $DIR/redundant_closure_call_fixable.rs:29:13
    |
 LL |     let d = (async || something().await)();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `async { something().await }`
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:37:13
+  --> $DIR/redundant_closure_call_fixable.rs:38:13
    |
 LL |             (|| m!())()
    |             ^^^^^^^^^^^ help: try doing something like: `m!()`
@@ -64,7 +64,7 @@ LL |     m2!();
    = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: try not to call a closure in the expression where it is declared
-  --> $DIR/redundant_closure_call_fixable.rs:32:13
+  --> $DIR/redundant_closure_call_fixable.rs:33:13
    |
 LL |             (|| 0)()
    |             ^^^^^^^^ help: try doing something like: `0`
@@ -74,5 +74,53 @@ LL |     m2!();
    |
    = note: this error originates in the macro `m` which comes from the expansion of the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 6 previous errors
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:46:16
+   |
+LL |     assert_eq!((|| || 43)()(), 42);
+   |                ^^^^^^^^^^^^^^ help: try doing something like: `43`
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:55:10
+   |
+LL |     dbg!((|| 42)());
+   |          ^^^^^^^^^ help: try doing something like: `42`
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:58:13
+   |
+LL |     let a = (|| || || 123)();
+   |             ^^^^^^^^^^^^^^^^ help: try doing something like: `(|| || 123)`
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:62:13
+   |
+LL |     let a = (|| || || || async || 1)()()()()();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `async { 1 }`
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:71:13
+   |
+LL |     let a = (|| echo!(|| echo!(|| 1)))()()();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `1`
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:73:13
+   |
+LL |     let a = (|| echo!((|| 123)))()();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try doing something like: `123`
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:86:11
+   |
+LL |     bar()((|| || 42)()(), 5);
+   |           ^^^^^^^^^^^^^^ help: try doing something like: `42`
+
+error: try not to call a closure in the expression where it is declared
+  --> $DIR/redundant_closure_call_fixable.rs:87:9
+   |
+LL |     foo((|| || 42)()(), 5);
+   |         ^^^^^^^^^^^^^^ help: try doing something like: `42`
+
+error: aborting due to 14 previous errors
 

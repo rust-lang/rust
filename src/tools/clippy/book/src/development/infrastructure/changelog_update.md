@@ -56,6 +56,28 @@ and open that file in your editor of choice.
 When updating the changelog it's also a good idea to make sure that `commit1` is
 already correct in the current changelog.
 
+#### PR ranges
+
+We developed the concept of PR ranges to help the user understand the size of a new update. To create a PR range,
+get the current release date and the date that the last version was released (YYYY-MM-DD) and use the following link:
+
+```
+[**View <NUMBER OF PRs> PRs merged since 1.<LAST VERSION NUM>**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A<LAST VERSION DATE>..<CURRENT VERSION DATE>+base%3Amaster+sort%3Amerged-desc+)
+```
+
+> Note: Be sure to check click the link and check how many PRs got merged between
+
+Example:
+
+```
+[**View 85 PRs merged since 1.69**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2023-04-20..2023-06-01+base%3Amaster+sort%3Amerged-desc+)
+```
+
+Which renders to:
+[**View 85 PRs merged since 1.69**](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Apr+is%3Aclosed+merged%3A2023-04-20..2023-06-01+base%3Amaster+sort%3Amerged-desc+)
+
+Note that **commit ranges should not be included**, only PR ranges.
+
 ### 3. Authoring the final changelog
 
 The above script should have dumped all the relevant PRs to the file you

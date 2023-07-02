@@ -1,4 +1,5 @@
 #![warn(clippy::self_assignment)]
+#![allow(clippy::useless_vec)]
 
 pub struct S<'a> {
     a: i32,

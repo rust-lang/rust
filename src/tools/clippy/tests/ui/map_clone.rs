@@ -4,7 +4,8 @@
     clippy::clone_on_copy,
     clippy::iter_cloned_collect,
     clippy::many_single_char_names,
-    clippy::redundant_clone
+    clippy::redundant_clone,
+    clippy::useless_vec
 )]
 
 fn main() {

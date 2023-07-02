@@ -7,8 +7,6 @@ macro_rules! bar {
     };
 }
 
-fn main() {}
-
 // Should trigger warning
 fn asserts_without_message() {
     assert!(foo());
@@ -66,9 +64,14 @@ fn asserts_without_message_but_inside_a_test_function() {
     debug_assert_ne!(foo(), foo());
 }
 
+fn foo() -> bool {
+    true
+}
+
 // Should not trigger warning
 #[cfg(test)]
 mod tests {
+    use super::foo;
     fn asserts_without_message_but_inside_a_test_module() {
         assert!(foo());
         assert_eq!(foo(), foo());
@@ -77,8 +80,4 @@ mod tests {
         debug_assert_eq!(foo(), foo());
         debug_assert_ne!(foo(), foo());
     }
-}
-
-fn foo() -> bool {
-    true
 }

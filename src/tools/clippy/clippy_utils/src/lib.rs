@@ -20,6 +20,7 @@
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
+extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 // The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate.
 #[allow(unused_extern_crates)]
@@ -324,6 +325,18 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
     cx.typeck_results()
         .type_dependent_def_id(expr.hir_id)
         .map_or(false, |did| is_diag_trait_item(cx, did, diag_item))
+}
+
+/// Checks if the `def_id` belongs to a function that is part of a trait impl.
+pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
+    if let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(def_id)
+        && let Node::Item(item) = cx.tcx.hir().get_parent(hir_id)
+        && let ItemKind::Impl(imp) = item.kind
+    {
+        imp.of_trait.is_some()
+    } else {
+        false
+    }
 }
 
 /// Checks if the given expression is a path referring an item on the trait
@@ -1498,7 +1511,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
                 && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, min_val.to_valtree()))
                 && let min_const_kind = ConstantKind::from_value(const_val, bnd_ty)
-                && let Some(min_const) = miri_to_const(cx.tcx, min_const_kind)
+                && let Some(min_const) = miri_to_const(cx, min_const_kind)
                 && let Some(start_const) = constant(cx, cx.typeck_results(), start)
             {
                 start_const == min_const
@@ -1514,7 +1527,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                         && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
                         && let const_val = cx.tcx.valtree_to_const_val((bnd_ty, max_val.to_valtree()))
                         && let max_const_kind = ConstantKind::from_value(const_val, bnd_ty)
-                        && let Some(max_const) = miri_to_const(cx.tcx, max_const_kind)
+                        && let Some(max_const) = miri_to_const(cx, max_const_kind)
                         && let Some(end_const) = constant(cx, cx.typeck_results(), end)
                     {
                         end_const == max_const
@@ -2396,7 +2409,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalDefId, f: impl Fn(&[Symbol
 
 /// Checks if the function containing the given `HirId` is a `#[test]` function
 ///
-/// Note: Add `// compile-flags: --test` to UI tests with a `#[test]` function
+/// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
 pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     with_test_item_names(tcx, tcx.parent_module(id), |names| {
         tcx.hir()
@@ -2418,7 +2431,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 
 /// Checks if the item containing the given `HirId` has `#[cfg(test)]` attribute applied
 ///
-/// Note: Add `// compile-flags: --test` to UI tests with a `#[cfg(test)]` function
+/// Note: Add `//@compile-flags: --test` to UI tests with a `#[cfg(test)]` function
 pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     fn is_cfg_test(attr: &Attribute) -> bool {
         if attr.has_name(sym::cfg)
@@ -2440,7 +2453,7 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 /// Checks whether item either has `test` attribute applied, or
 /// is a module with `test` in its name.
 ///
-/// Note: Add `// compile-flags: --test` to UI tests with a `#[test]` function
+/// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
 pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
     is_in_test_function(tcx, item.hir_id())
         || matches!(item.kind, ItemKind::Mod(..))

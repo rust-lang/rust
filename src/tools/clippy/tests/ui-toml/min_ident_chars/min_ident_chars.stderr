@@ -1,0 +1,46 @@
+error: this ident is too short (3 <= 3)
+  --> $DIR/min_ident_chars.rs:6:19
+   |
+LL | use extern_types::Aaa;
+   |                   ^^^
+   |
+   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+
+error: this ident is too short (3 <= 3)
+  --> $DIR/min_ident_chars.rs:10:5
+   |
+LL |     aaa: Aaa,
+   |     ^^^
+
+error: this ident is too short (3 <= 3)
+  --> $DIR/min_ident_chars.rs:15:9
+   |
+LL |     let vvv = 1;
+   |         ^^^
+
+error: this ident is too short (3 <= 3)
+  --> $DIR/min_ident_chars.rs:16:9
+   |
+LL |     let uuu = 1;
+   |         ^^^
+
+error: this ident is too short (1 <= 3)
+  --> $DIR/min_ident_chars.rs:17:14
+   |
+LL |     let (mut a, mut b) = (1, 2);
+   |              ^
+
+error: this ident is too short (1 <= 3)
+  --> $DIR/min_ident_chars.rs:17:21
+   |
+LL |     let (mut a, mut b) = (1, 2);
+   |                     ^
+
+error: this ident is too short (1 <= 3)
+  --> $DIR/min_ident_chars.rs:18:9
+   |
+LL |     for i in 0..1000 {}
+   |         ^
+
+error: aborting due to 7 previous errors
+

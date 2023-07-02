@@ -7,7 +7,7 @@ note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy
 
 note: rustc <version> running on <target>
 
-note: compiler flags: -C prefer-dynamic -Z ui-testing
+note: compiler flags: -Z ui-testing
 
-query stack during panic:
-thread panicked while processing panic. aborting.
+note: Clippy version: foo
+

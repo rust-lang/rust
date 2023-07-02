@@ -1,7 +1,12 @@
 //@run-rustfix
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 
-#![allow(unused_variables, dead_code, clippy::derive_partial_eq_without_eq)]
+#![allow(
+    unused_variables,
+    dead_code,
+    clippy::derive_partial_eq_without_eq,
+    clippy::needless_if
+)]
 #![warn(clippy::equatable_if_let)]
 
 extern crate proc_macros;

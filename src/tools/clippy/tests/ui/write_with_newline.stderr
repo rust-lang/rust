@@ -62,13 +62,13 @@ LL +     writeln!(v);
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:36:5
    |
-LL |     write!(v, "//n"); // should fail
+LL |     write!(v, "///n"); // should fail
    |     ^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!` instead
    |
-LL -     write!(v, "//n"); // should fail
-LL +     writeln!(v, "/"); // should fail
+LL -     write!(v, "///n"); // should fail
+LL +     writeln!(v, "//"); // should fail
    |
 
 error: using `write!()` with a format string that ends in a single newline
@@ -106,13 +106,13 @@ LL ~         v
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:57:5
    |
-LL |     write!(v, "/r/n");
+LL |     write!(v, "//r/n");
    |     ^^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!` instead
    |
-LL -     write!(v, "/r/n");
-LL +     writeln!(v, "/r");
+LL -     write!(v, "//r/n");
+LL +     writeln!(v, "//r");
    |
 
 error: aborting due to 9 previous errors

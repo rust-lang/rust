@@ -1,11 +1,16 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::is_lint_allowed;
 use clippy_utils::peel_blocks;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
+use clippy_utils::{get_parent_node, is_lint_allowed};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, PatKind, Stmt, StmtKind, UnsafeSource};
+use rustc_hir::{
+    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, FnRetTy, ItemKind, Node, PatKind, Stmt, StmtKind,
+    UnsafeSource,
+};
+use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -86,7 +91,43 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     if let StmtKind::Semi(expr) = stmt.kind {
         if has_no_effect(cx, expr) {
-            span_lint_hir(cx, NO_EFFECT, expr.hir_id, stmt.span, "statement with no effect");
+            span_lint_hir_and_then(
+                cx,
+                NO_EFFECT,
+                expr.hir_id,
+                stmt.span,
+                "statement with no effect",
+                |diag| {
+                    for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
+                        if let Node::Item(item) = parent.1
+                            && let ItemKind::Fn(sig, ..) = item.kind
+                            && let FnRetTy::Return(ret_ty) = sig.decl.output
+                            && let Some(Node::Block(block)) = get_parent_node(cx.tcx, stmt.hir_id)
+                            && let [.., final_stmt] = block.stmts
+                            && final_stmt.hir_id == stmt.hir_id
+                        {
+                            let expr_ty = cx.typeck_results().expr_ty(expr);
+                            let mut ret_ty = hir_ty_to_ty(cx.tcx, ret_ty);
+
+                            // Remove `impl Future<Output = T>` to get `T`
+                            if cx.tcx.ty_is_opaque_future(ret_ty) &&
+                                let Some(true_ret_ty) = cx.tcx.infer_ctxt().build().get_impl_future_output_ty(ret_ty)
+                            {
+                                ret_ty = true_ret_ty;
+                            }
+
+                            if ret_ty == expr_ty {
+                                diag.span_suggestion(
+                                    stmt.span.shrink_to_lo(),
+                                    "did you mean to return it?",
+                                    "return ",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
+                    }
+                },
+            );
             return true;
         }
     } else if let StmtKind::Local(local) = stmt.kind {

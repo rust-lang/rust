@@ -1,5 +1,5 @@
 error: unused `async` for function with no await statements
-  --> $DIR/unused_async.rs:11:5
+  --> $DIR/unused_async.rs:13:5
    |
 LL | /     async fn async_block_await() {
 LL | |         async {
@@ -10,14 +10,14 @@ LL | |     }
    |
    = help: consider removing the `async` from this function
 note: `await` used in an async block, which does not require the enclosing function to be `async`
-  --> $DIR/unused_async.rs:13:23
+  --> $DIR/unused_async.rs:15:23
    |
 LL |             ready(()).await;
    |                       ^^^^^
    = note: `-D clippy::unused-async` implied by `-D warnings`
 
 error: unused `async` for function with no await statements
-  --> $DIR/unused_async.rs:26:1
+  --> $DIR/unused_async.rs:40:1
    |
 LL | / async fn foo() -> i32 {
 LL | |     4
@@ -27,7 +27,7 @@ LL | | }
    = help: consider removing the `async` from this function
 
 error: unused `async` for function with no await statements
-  --> $DIR/unused_async.rs:37:5
+  --> $DIR/unused_async.rs:51:5
    |
 LL | /     async fn unused(&self) -> i32 {
 LL | |         1

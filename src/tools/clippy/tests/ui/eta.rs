@@ -7,7 +7,8 @@
     clippy::no_effect,
     clippy::option_map_unit_fn,
     clippy::redundant_closure_call,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::useless_vec
 )]
 
 use std::path::{Path, PathBuf};
@@ -46,6 +47,12 @@ fn main() {
 
     // issue #7224
     let _: Option<Vec<u32>> = Some(0).map(|_| vec![]);
+
+    // issue #10684
+    fn test<T>(x: impl Fn(usize, usize) -> T) -> T {
+        x(1, 2)
+    }
+    test(|start, end| start..=end);
 }
 
 trait TestTrait {

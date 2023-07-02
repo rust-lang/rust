@@ -118,9 +118,10 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for casts from an unsigned type to a signed type of
-    /// the same size. Performing such a cast is a 'no-op' for the compiler,
-    /// i.e., nothing is changed at the bit level, and the binary representation of
-    /// the value is reinterpreted. This can cause wrapping if the value is too big
+    /// the same size, or possibly smaller due to target dependent integers.
+    /// Performing such a cast is a 'no-op' for the compiler, i.e., nothing is
+    /// changed at the bit level, and the binary representation of the value is
+    /// reinterpreted. This can cause wrapping if the value is too big
     /// for the target signed type. However, the cast works as defined, so this lint
     /// is `Allow` by default.
     ///
@@ -174,8 +175,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for casts to the same type, casts of int literals to integer types
-    /// and casts of float literals to float types.
+    /// Checks for casts to the same type, casts of int literals to integer types, casts of float
+    /// literals to float types and casts between raw pointers without changing type or constness.
     ///
     /// ### Why is this bad?
     /// It's just unnecessary.
@@ -522,7 +523,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for the usage of `as _` conversion using inferred type.
+    /// Checks for the usage of `as _` conversion using inferred type.
     ///
     /// ### Why is this bad?
     /// The conversion might include lossy conversion and dangerous cast that might go

@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::trait_ref_of_method;
+use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
@@ -201,7 +202,19 @@ fn check_fn_inner<'tcx>(
         span_lint_and_then(
             cx,
             NEEDLESS_LIFETIMES,
-            span.with_hi(sig.decl.output.span().hi()),
+            elidable_lts
+                .iter()
+                .map(|&lt| cx.tcx.def_span(lt))
+                .chain(usages.iter().filter_map(|usage| {
+                    if let LifetimeName::Param(def_id) = usage.res
+                        && elidable_lts.contains(&def_id)
+                    {
+                        return Some(usage.ident.span);
+                    }
+
+                    None
+                }))
+                .collect_vec(),
             &format!("the following explicit lifetimes could be elided: {lts}"),
             |diag| {
                 if sig.header.is_async() {
@@ -562,7 +575,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                 // if the bounds define new lifetimes, they are fine to occur
                 let allowed_lts = allowed_lts_from(pred.bound_generic_params);
                 // now walk the bounds
-                for bound in pred.bounds.iter() {
+                for bound in pred.bounds {
                     walk_param_bound(&mut visitor, bound);
                 }
                 // and check that all lifetimes are allowed

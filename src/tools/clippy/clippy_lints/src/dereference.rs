@@ -56,9 +56,11 @@ declare_clippy_lint! {
     /// let b = &*a;
     /// ```
     ///
-    /// This lint excludes:
+    /// This lint excludes all of:
     /// ```rust,ignore
     /// let _ = d.unwrap().deref();
+    /// let _ = Foo::deref(&foo);
+    /// let _ = <Foo as Deref>::deref(&foo);
     /// ```
     #[clippy::version = "1.44.0"]
     pub EXPLICIT_DEREF_METHODS,
@@ -355,15 +357,17 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                         //    start auto-deref.
                         // 4. If the chain of non-user-defined derefs ends with a mutable re-borrow, and re-borrow
                         //    adjustments will not be inserted automatically, then leave one further reference to avoid
-                        //    moving a mutable borrow.
-                        //    e.g.
-                        //        fn foo<T>(x: &mut Option<&mut T>, y: &mut T) {
-                        //            let x = match x {
-                        //                // Removing the borrow will cause `x` to be moved
-                        //                Some(x) => &mut *x,
-                        //                None => y
-                        //            };
-                        //        }
+                        //    moving a mutable borrow. e.g.
+                        //
+                        //    ```rust
+                        //    fn foo<T>(x: &mut Option<&mut T>, y: &mut T) {
+                        //        let x = match x {
+                        //            // Removing the borrow will cause `x` to be moved
+                        //            Some(x) => &mut *x,
+                        //            None => y
+                        //        };
+                        //    }
+                        //    ```
                         let deref_msg =
                             "this expression creates a reference which is immediately dereferenced by the compiler";
                         let borrow_msg = "this expression borrows a value the compiler would automatically borrow";
@@ -1481,7 +1485,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             target_mut,
         } => {
             let mut app = Applicability::MachineApplicable;
-            let (expr_str, expr_is_macro_call) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
+            let (expr_str, _expr_is_macro_call) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
             let ty = cx.typeck_results().expr_ty(expr);
             let (_, ref_count) = peel_mid_ty_refs(ty);
             let deref_str = if ty_changed_count >= ref_count && ref_count != 0 {
@@ -1504,11 +1508,20 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 "&"
             };
 
-            let expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
-                format!("({expr_str})")
+            // expr_str (the suggestion) is never shown if is_final_ufcs is true, since it's
+            // `expr.kind == ExprKind::Call`. Therefore, this is, afaik, always unnecessary.
+            /*
+            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
+                Cow::Owned(format!("({expr_str})"))
             } else {
-                expr_str.into_owned()
+                expr_str
             };
+            */
+
+            // Fix #10850, do not lint if it's `Foo::deref` instead of `foo.deref()`.
+            if is_final_ufcs {
+                return;
+            }
 
             span_lint_and_sugg(
                 cx,

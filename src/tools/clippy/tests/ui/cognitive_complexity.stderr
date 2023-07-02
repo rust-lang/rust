@@ -40,6 +40,14 @@ LL | fn bar() {
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cognitive complexity of (2/1)
+  --> $DIR/cognitive_complexity.rs:178:4
+   |
+LL | fn dont_warn_on_tests() {
+   |    ^^^^^^^^^^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cognitive complexity of (2/1)
   --> $DIR/cognitive_complexity.rs:186:4
    |
 LL | fn barr() {
@@ -151,5 +159,5 @@ LL |         pub async fn async_method() {
    |
    = help: you could split it up into multiple smaller functions
 
-error: aborting due to 19 previous errors
+error: aborting due to 20 previous errors
 
