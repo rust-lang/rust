@@ -823,7 +823,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
     false
 }
 
-/// Return true if the expr is equal to `Default::default` when evaluated.
+/// Returns true if the expr is equal to `Default::default` when evaluated.
 pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) -> bool {
     if_chain! {
         if let hir::ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
@@ -2527,7 +2527,8 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
     });
 }
 
-/// Return all the comments a given span contains
+/// Returns all the comments a given span contains
+///
 /// Comments are returned wrapped with their relevant delimiters
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();

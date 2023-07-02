@@ -339,7 +339,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Tup(..) => (Pat::Str("("), Pat::Str(")")),
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
-        // NOTE: This is missing `TraitObject`. It always return true then.
+        // NOTE: This is missing `TraitObject`. It will always return true then.
         _ => (Pat::Str(""), Pat::Str("")),
     }
 }

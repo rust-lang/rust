@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// for m in movies {
-    ///	    let title = m.t;
+    ///     let title = m.t;
     /// }
     /// ```
     /// Use instead:
