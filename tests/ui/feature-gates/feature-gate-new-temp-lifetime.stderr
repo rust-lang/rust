@@ -1,0 +1,8 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found keyword `let`
+  --> $DIR/feature-gate-new-temp-lifetime.rs:2:11
+   |
+LL |     super let it_doesnt_work = 0;
+   |           ^^^ expected one of 8 possible tokens
+
+error: aborting due to 1 previous error
+

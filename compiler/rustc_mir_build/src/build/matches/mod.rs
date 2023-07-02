@@ -798,7 +798,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
         // Although there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id)
+        let scope = if let Some(scope_map) = self.scope_map {
+            scope_map.var_scope_new(var.0.local_id)
+        } else {
+            self.region_scope_tree.var_scope(var.0.local_id)
+        };
+        if let Some(region_scope) = scope
             && schedule_drop
         {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
@@ -813,7 +818,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for_guard: ForGuard,
     ) {
         let local_id = self.var_local_id(var, for_guard);
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) {
+        let scope = if let Some(scope_map) = self.scope_map {
+            scope_map.var_scope_new(var.0.local_id)
+        } else {
+            self.region_scope_tree.var_scope(var.0.local_id)
+        };
+        if let Some(region_scope) = scope {
             self.schedule_drop(span, region_scope, local_id, DropKind::Value);
         }
     }

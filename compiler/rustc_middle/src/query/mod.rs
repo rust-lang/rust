@@ -1143,6 +1143,12 @@ rustc_queries! {
         desc { |tcx| "computing drop scopes for `{}`", tcx.def_path_str(def_id) }
     }
 
+    /// Per-body `region::BodyScopeMap`. The `DefId` should point to the owner of the body;
+    /// in the case of closures, this will be redirected to the enclosing function.
+    query body_scope_map(def_id: DefId) -> &'tcx crate::middle::region::BodyScopeMap {
+        desc { |tcx| "computing drop scopes and temporary lifetime for `{}`", tcx.def_path_str(def_id) }
+    }
+
     /// Generates a MIR body for the shim.
     query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::Body<'tcx> {
         arena_cache

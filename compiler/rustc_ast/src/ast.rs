@@ -1067,20 +1067,23 @@ pub enum LocalKind {
     /// Local declaration with an initializer and an `else` clause.
     /// Example: `let Some(x) = y else { return };`
     InitElse(P<Expr>, P<Block>),
+    /// Local declaration with an initializer living through the temporary lifetime.
+    /// Example: `super let x = y;`
+    Super(P<Expr>),
 }
 
 impl LocalKind {
     pub fn init(&self) -> Option<&Expr> {
         match self {
             Self::Decl => None,
-            Self::Init(i) | Self::InitElse(i, _) => Some(i),
+            Self::Init(i) | Self::InitElse(i, _) | Self::Super(i) => Some(i),
         }
     }
 
     pub fn init_else_opt(&self) -> Option<(&Expr, Option<&Block>)> {
         match self {
             Self::Decl => None,
-            Self::Init(init) => Some((init, None)),
+            Self::Init(init) | Self::Super(init) => Some((init, None)),
             Self::InitElse(init, els) => Some((init, Some(els))),
         }
     }

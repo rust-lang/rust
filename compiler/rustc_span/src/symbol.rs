@@ -1114,6 +1114,7 @@ symbols! {
         new_lower_hex,
         new_octal,
         new_pointer,
+        new_temp_lifetime,
         new_unchecked,
         new_upper_exp,
         new_upper_hex,

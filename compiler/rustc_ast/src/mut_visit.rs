@@ -609,7 +609,7 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
     visit_opt(ty, |ty| vis.visit_ty(ty));
     match kind {
         LocalKind::Decl => {}
-        LocalKind::Init(init) => {
+        LocalKind::Init(init) | LocalKind::Super(init) => {
             vis.visit_expr(init);
         }
         LocalKind::InitElse(init, els) => {

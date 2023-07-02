@@ -2342,6 +2342,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             source,
             span: self.lower_span(span),
             ty: None,
+            is_super: false,
         };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }

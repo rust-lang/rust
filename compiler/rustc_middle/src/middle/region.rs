@@ -303,6 +303,10 @@ pub struct ScopeTree {
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
     pub yield_in_scope: UnordMap<Scope, Vec<YieldData>>,
+
+    pub expr_scope: hir::ItemLocalMap<Option<Scope>>,
+
+    pub new_var_scope: hir::ItemLocalMap<Option<Scope>>,
 }
 
 /// Identifies the reason that a given expression is an rvalue candidate
@@ -393,5 +397,24 @@ impl ScopeTree {
     /// returns `Some(YieldData)`. If not, returns `None`.
     pub fn yield_in_scope(&self, scope: Scope) -> Option<&[YieldData]> {
         self.yield_in_scope.get(&scope).map(Deref::deref)
+    }
+}
+
+#[derive(Clone, Debug, HashStable)]
+pub struct BodyScopeMap {
+    /// Assignment of temporary lifetimes to each expression
+    pub expr_scope: hir::ItemLocalMap<Option<Scope>>,
+
+    /// Assignment of scope to each variable declaration, including `super let`s.
+    pub new_var_scope: hir::ItemLocalMap<Option<Scope>>,
+}
+
+impl BodyScopeMap {
+    pub fn var_scope_new(&self, var_id: hir::ItemLocalId) -> Option<Scope> {
+        self.new_var_scope.get(&var_id).copied().flatten()
+    }
+
+    pub fn temporary_scope_new(&self, expr_id: hir::ItemLocalId) -> Option<Scope> {
+        self.expr_scope.get(&expr_id).copied().flatten()
     }
 }

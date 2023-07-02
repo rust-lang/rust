@@ -73,7 +73,14 @@ impl<'a> Parser<'a> {
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
-            self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
+            self.parse_local_mk(lo, attrs, capture_semi, force_collect, false)?
+        } else if self.sess.edition.at_least_rust_2024()
+            && self.token.is_keyword(kw::Super)
+            && self.look_ahead(1, |t| t.is_keyword(kw::Let))
+        {
+            // Super let variable declaration
+            self.bump();
+            self.parse_local_mk(lo, attrs, capture_semi, force_collect, true)?
         } else if self.is_kw_followed_by_ident(kw::Mut) && self.may_recover() {
             self.recover_stmt_local_after_let(
                 lo,
@@ -251,7 +258,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Stmt> {
         let stmt =
             self.collect_tokens_trailing_token(attrs, ForceCollect::Yes, |this, attrs| {
-                let local = this.parse_local(attrs)?;
+                let local = this.parse_local(attrs, false)?;
                 // FIXME - maybe capture semicolon in recovery?
                 Ok((
                     this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)),
@@ -269,10 +276,11 @@ impl<'a> Parser<'a> {
         attrs: AttrWrapper,
         capture_semi: bool,
         force_collect: ForceCollect,
+        is_super: bool,
     ) -> PResult<'a, Stmt> {
         self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             this.expect_keyword(kw::Let)?;
-            let local = this.parse_local(attrs)?;
+            let local = this.parse_local(attrs, is_super)?;
             let trailing = if capture_semi && this.token.kind == token::Semi {
                 TrailingToken::Semi
             } else {
@@ -283,7 +291,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
+    fn parse_local(&mut self, attrs: AttrVec, is_super: bool) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
@@ -361,7 +369,15 @@ impl<'a> Parser<'a> {
             }
         };
         let kind = match init {
-            None => LocalKind::Decl,
+            None => {
+                if is_super {
+                    return Err(self
+                        .dcx()
+                        .struct_span_err(self.token.span, "expect initializer for `super let`"));
+                } else {
+                    LocalKind::Decl
+                }
+            }
             Some(init) => {
                 if self.eat_keyword(kw::Else) {
                     if self.token.is_keyword(kw::If) {
@@ -374,6 +390,8 @@ impl<'a> Parser<'a> {
                     self.check_let_else_init_bool_expr(&init);
                     self.check_let_else_init_trailing_brace(&init);
                     LocalKind::InitElse(init, els)
+                } else if is_super {
+                    LocalKind::Super(init)
                 } else {
                     LocalKind::Init(init)
                 }
@@ -749,7 +767,9 @@ impl<'a> Parser<'a> {
             StmtKind::Local(local) if let Err(e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
-                    LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
+                    LocalKind::Init(expr)
+                    | LocalKind::InitElse(expr, _)
+                    | LocalKind::Super(expr) => {
                         self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
                         // We found `foo<bar, baz>`, have we fully recovered?
                         self.expect_semi()?;

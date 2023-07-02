@@ -992,6 +992,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        debug!("dump known scopes");
+        for scope in self.scopes.scopes.iter().rev() {
+            let region_scope_span = region_scope.span(self.tcx, &self.region_scope_tree);
+            debug!("in scope {:?} @ {region_scope_span:?}", scope.region_scope)
+        }
+        let region_scope_span = region_scope.span(self.tcx, &self.region_scope_tree);
+        debug!("problem scope {:?} @ {region_scope_span:?}", region_scope);
         span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
     }
 

@@ -70,6 +70,7 @@ mod errs;
 pub mod intrinsic;
 pub mod intrinsicck;
 mod region;
+mod scope_map;
 pub mod wfcheck;
 
 pub use check::check_abi;
@@ -105,6 +106,7 @@ use crate::util::common::indenter;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
+use self::scope_map::body_scope_map;
 
 pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);
@@ -114,6 +116,7 @@ pub fn provide(providers: &mut Providers) {
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,
         check_coroutine_obligations: check::check_coroutine_obligations,
+        body_scope_map,
         ..*providers
     };
 }

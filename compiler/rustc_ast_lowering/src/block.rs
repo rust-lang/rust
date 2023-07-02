@@ -97,7 +97,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
         self.lower_attrs(hir_id, &l.attrs);
-        self.arena.alloc(hir::Local { hir_id, ty, pat, init, els, span, source })
+        self.arena.alloc(hir::Local {
+            hir_id,
+            ty,
+            pat,
+            init,
+            els,
+            span,
+            source,
+            is_super: matches!(l.kind, LocalKind::Super(..)),
+        })
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {

@@ -43,7 +43,7 @@ pub(super) struct Declaration<'a> {
 
 impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
     fn from(local: &'a hir::Local<'a>) -> Self {
-        let hir::Local { hir_id, pat, ty, span, init, els, source: _ } = *local;
+        let hir::Local { hir_id, pat, ty, span, init, els, source: _, is_super: _ } = *local;
         Declaration { hir_id, pat, ty, span, init, origin: DeclOrigin::LocalDecl { els } }
     }
 }

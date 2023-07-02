@@ -57,7 +57,13 @@ pub(super) fn check<'tcx>(
                 if let Some(indexed_extent) = indexed_extent {
                     let parent_def_id = cx.tcx.hir().get_parent_item(expr.hir_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
-                    let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
+                    let var_scope = if cx.tcx.sess.at_least_rust_2024() && cx.tcx.features().new_temp_lifetime {
+                        let scope_map = cx.tcx.body_scope_map(parent_def_id);
+                        scope_map.var_scope_new(pat.hir_id.local_id)
+                    } else {
+                        region_scope_tree.var_scope(pat.hir_id.local_id)
+                    };
+                    let pat_extent = var_scope.unwrap();
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
@@ -256,12 +262,13 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             match res {
                 Res::Local(hir_id) => {
                     let parent_def_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
-                    let extent = self
-                        .cx
-                        .tcx
-                        .region_scope_tree(parent_def_id)
-                        .var_scope(hir_id.local_id)
-                        .unwrap();
+                    let region_scope_tree = self.cx.tcx.region_scope_tree(parent_def_id);
+                    let extent = if self.cx.tcx.sess.at_least_rust_2024() && self.cx.tcx.features().new_temp_lifetime {
+                        self.cx.tcx.body_scope_map(parent_def_id).var_scope_new(hir_id.local_id)
+                    } else {
+                        region_scope_tree.var_scope(hir_id.local_id)
+                    }
+                    .unwrap();
                     if index_used_directly {
                         self.indexed_directly.insert(
                             seqvar.segments[0].ident.name,

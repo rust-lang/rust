@@ -1232,6 +1232,7 @@ pub struct Local<'hir> {
     /// Else block for a `let...else` binding.
     pub els: Option<&'hir Block<'hir>>,
     pub hir_id: HirId,
+    pub is_super: bool,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
     /// desugaring. Otherwise will be `Normal`.
