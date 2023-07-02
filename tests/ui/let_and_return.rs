@@ -1,6 +1,8 @@
 #![allow(unused)]
 #![warn(clippy::let_and_return)]
 
+use std::cell::RefCell;
+
 fn test() -> i32 {
     let _y = 0; // no warning
     let x = 5;
@@ -65,45 +67,46 @@ macro_rules! tuple_encode {
     );
 }
 
+fn issue_3792() -> String {
+    use std::io::{self, BufRead, Stdin};
+
+    let stdin = io::stdin();
+    // `Stdin::lock` returns `StdinLock<'static>` so `line` doesn't borrow from `stdin`
+    // https://github.com/rust-lang/rust/pull/93965
+    let line = stdin.lock().lines().next().unwrap().unwrap();
+    line
+}
+
 tuple_encode!(T0, T1, T2, T3, T4, T5, T6, T7);
 
 mod no_lint_if_stmt_borrows {
-    mod issue_3792 {
-        use std::io::{self, BufRead, Stdin};
+    use std::cell::RefCell;
+    use std::rc::{Rc, Weak};
+    struct Bar;
 
-        fn read_line() -> String {
-            let stdin = io::stdin();
-            let line = stdin.lock().lines().next().unwrap().unwrap();
-            line
+    impl Bar {
+        fn new() -> Self {
+            Bar {}
+        }
+        fn baz(&self) -> u32 {
+            0
         }
     }
 
-    mod issue_3324 {
-        use std::cell::RefCell;
-        use std::rc::{Rc, Weak};
+    fn issue_3324(value: Weak<RefCell<Bar>>) -> u32 {
+        let value = value.upgrade().unwrap();
+        let ret = value.borrow().baz();
+        ret
+    }
 
-        fn test(value: Weak<RefCell<Bar>>) -> u32 {
-            let value = value.upgrade().unwrap();
-            let ret = value.borrow().baz();
-            ret
+    fn borrows_in_closure(value: Weak<RefCell<Bar>>) -> u32 {
+        fn f(mut x: impl FnMut() -> u32) -> impl FnMut() -> u32 {
+            x
         }
 
-        struct Bar;
-
-        impl Bar {
-            fn new() -> Self {
-                Bar {}
-            }
-            fn baz(&self) -> u32 {
-                0
-            }
-        }
-
-        fn main() {
-            let a = Rc::new(RefCell::new(Bar::new()));
-            let b = Rc::downgrade(&a);
-            test(b);
-        }
+        let value = value.upgrade().unwrap();
+        let ret = f(|| value.borrow().baz())();
+        ret
     }
 
     mod free_function {
