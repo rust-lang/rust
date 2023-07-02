@@ -279,8 +279,8 @@ Coverage instrumentation in the MIR is validated by a `mir-opt` test:
 
 More complete testing of end-to-end coverage instrumentation and reports are
 done in the `run-make-fulldeps` tests, with sample Rust programs (to be
-instrumented) in the [`coverage`][coverage-test-samples] directory, and the
-actual tests and expected results in [`coverage-reports`].
+instrumented) in the [`tests/run-coverage`] directory,
+together with the actual tests and expected results.
 
 Finally, the [`coverage-llvmir`] test compares compiles a simple Rust program
 with `-C instrument-coverage` and compares the compiled program's LLVM IR to
@@ -297,8 +297,7 @@ $ ./x test tests/run-make-fulldeps/coverage --bless
 ```
 
 [mir-opt-test]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/instrument_coverage.rs
-[coverage-test-samples]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage
-[`coverage-reports`]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage-reports
+[`tests/run-coverage`]: https://github.com/rust-lang/rust/tree/master/tests/run-coverage
 [spanview-debugging]: compiler-debugging.md#viewing-spanview-output
 [`coverage-llvmir`]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage-llvmir
 
