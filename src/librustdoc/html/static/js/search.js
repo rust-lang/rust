@@ -290,7 +290,7 @@ function initSearch(rawSearchIndex) {
     }
 
     function isStopCharacter(c) {
-        return isWhitespace(c) || isEndCharacter(c);
+        return isEndCharacter(c);
     }
 
     function isErrorCharacter(c) {
@@ -386,18 +386,69 @@ function initSearch(rawSearchIndex) {
      * @return {boolean}
      */
     function isSeparatorCharacter(c) {
-        return c === "," || isWhitespaceCharacter(c);
+        return c === ",";
     }
 
-    /**
-     * Returns `true` if the given `c` character is a whitespace.
+/**
+     * Returns `true` if the given `c` character is a path separator. For example
+     * `:` in `a::b` or a whitespace in `a b`.
      *
      * @param {string} c
      *
      * @return {boolean}
      */
-    function isWhitespaceCharacter(c) {
-        return c === " " || c === "\t";
+    function isPathSeparator(c) {
+        return c === ":" || isWhitespace(c);
+    }
+
+    /**
+     * Returns `true` if the previous character is `lookingFor`.
+     *
+     * @param {ParserState} parserState
+     * @param {String} lookingFor
+     *
+     * @return {boolean}
+     */
+    function prevIs(parserState, lookingFor) {
+        let pos = parserState.pos;
+        while (pos > 0) {
+            const c = parserState.userQuery[pos - 1];
+            if (c === lookingFor) {
+                return true;
+            } else if (!isWhitespace(c)) {
+                break;
+            }
+            pos -= 1;
+        }
+        return false;
+    }
+
+    /**
+     * Returns `true` if the last element in the `elems` argument has generics.
+     *
+     * @param {Array<QueryElement>} elems
+     * @param {ParserState} parserState
+     *
+     * @return {boolean}
+     */
+    function isLastElemGeneric(elems, parserState) {
+        return (elems.length > 0 && elems[elems.length - 1].generics.length > 0) ||
+            prevIs(parserState, ">");
+    }
+
+    /**
+     * Increase current parser position until it doesn't find a whitespace anymore.
+     *
+     * @param {ParserState} parserState
+     */
+    function skipWhitespace(parserState) {
+        while (parserState.pos < parserState.userQuery.length) {
+            const c = parserState.userQuery[parserState.pos];
+            if (!isWhitespace(c)) {
+                break;
+            }
+            parserState.pos += 1;
+        }
     }
 
     /**
@@ -409,11 +460,14 @@ function initSearch(rawSearchIndex) {
      * @return {QueryElement}                - The newly created `QueryElement`.
      */
     function createQueryElement(query, parserState, name, generics, isInGenerics) {
-        if (name === "*" || (name.length === 0 && generics.length === 0)) {
-            return;
+        const path = name.trim();
+        if (path.length === 0 && generics.length === 0) {
+            throw ["Unexpected ", parserState.userQuery[parserState.pos]];
+        } else if (path === "*") {
+            throw ["Unexpected ", "*"];
         }
         if (query.literalSearch && parserState.totalElems - parserState.genericsElems > 0) {
-            throw ["You cannot have more than one element if you use quotes"];
+            throw ["Cannot have more than one element if you use quotes"];
         }
         const typeFilter = parserState.typeFilter;
         parserState.typeFilter = null;
@@ -444,38 +498,40 @@ function initSearch(rawSearchIndex) {
                 typeFilter: "primitive",
             };
         }
-        const pathSegments = name.split("::");
-        if (pathSegments.length > 1) {
-            for (let i = 0, len = pathSegments.length; i < len; ++i) {
-                const pathSegment = pathSegments[i];
-
-                if (pathSegment.length === 0) {
-                    if (i === 0) {
-                        throw ["Paths cannot start with ", "::"];
-                    } else if (i + 1 === len) {
-                        throw ["Paths cannot end with ", "::"];
-                    }
-                    throw ["Unexpected ", "::::"];
-                }
-
-                if (pathSegment === "!") {
-                    pathSegments[i] = "never";
-                    if (i !== 0) {
-                        throw ["Never type ", "!", " is not associated item"];
-                    }
-                }
-            }
+        if (path.startsWith("::")) {
+            throw ["Paths cannot start with ", "::"];
+        } else if (path.endsWith("::")) {
+            throw ["Paths cannot end with ", "::"];
+        } else if (path.includes("::::")) {
+            throw ["Unexpected ", "::::"];
+        } else if (path.includes(" ::")) {
+            throw ["Unexpected ", " ::"];
+        } else if (path.includes(":: ")) {
+            throw ["Unexpected ", ":: "];
         }
+        const pathSegments = path.split(/::|\s+/);
         // In case we only have something like `<p>`, there is no name.
         if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === "")) {
-            throw ["Found generics without a path"];
+            if (generics.length > 0 || prevIs(parserState, ">")) {
+                throw ["Found generics without a path"];
+            } else {
+                throw ["Unexpected ", parserState.userQuery[parserState.pos]];
+            }
+        }
+        for (const [i, pathSegment] of pathSegments.entries()) {
+            if (pathSegment === "!") {
+                if (i !== 0) {
+                    throw ["Never type ", "!", " is not associated item"];
+                }
+                pathSegments[i] = "never";
+            }
         }
         parserState.totalElems += 1;
         if (isInGenerics) {
             parserState.genericsElems += 1;
         }
         return {
-            name: name,
+            name: name.trim(),
             id: -1,
             fullPath: pathSegments,
             pathWithoutLast: pathSegments.slice(0, pathSegments.length - 1),
@@ -511,15 +567,21 @@ function initSearch(rawSearchIndex) {
                     foundExclamation = parserState.pos;
                 } else if (isErrorCharacter(c)) {
                     throw ["Unexpected ", c];
-                } else if (
-                    isStopCharacter(c) ||
-                    isSpecialStartCharacter(c) ||
-                    isSeparatorCharacter(c)
-                ) {
-                    break;
-                } else if (c === ":") { // If we allow paths ("str::string" for example).
-                    if (!isPathStart(parserState)) {
-                        break;
+                } else if (isPathSeparator(c)) {
+                    if (c === ":") {
+                        if (!isPathStart(parserState)) {
+                            break;
+                        }
+                        // Skip current ":".
+                        parserState.pos += 1;
+                    } else {
+                        while (parserState.pos + 1 < parserState.length) {
+                            const next_c = parserState.userQuery[parserState.pos + 1];
+                            if (!isWhitespace(next_c)) {
+                                break;
+                            }
+                            parserState.pos += 1;
+                        }
                     }
                     if (foundExclamation !== -1) {
                         if (foundExclamation !== start &&
@@ -532,8 +594,13 @@ function initSearch(rawSearchIndex) {
                             foundExclamation = -1;
                         }
                     }
-                    // Skip current ":".
-                    parserState.pos += 1;
+                } else if (
+                    c === "[" ||
+                    isStopCharacter(c) ||
+                    isSpecialStartCharacter(c) ||
+                    isSeparatorCharacter(c)
+                ) {
+                    break;
                 } else {
                     throw ["Unexpected ", c];
                 }
@@ -571,6 +638,7 @@ function initSearch(rawSearchIndex) {
     function getNextElem(query, parserState, elems, isInGenerics) {
         const generics = [];
 
+        skipWhitespace(parserState);
         let start = parserState.pos;
         let end;
         if (parserState.userQuery[parserState.pos] === "[") {
@@ -601,8 +669,9 @@ function initSearch(rawSearchIndex) {
                 typeFilter: "primitive",
             });
         } else {
+            const isStringElem = parserState.userQuery[start] === "\"";
             // We handle the strings on their own mostly to make code easier to follow.
-            if (parserState.userQuery[parserState.pos] === "\"") {
+            if (isStringElem) {
                 start += 1;
                 getStringElem(query, parserState, isInGenerics);
                 end = parserState.pos - 1;
@@ -617,6 +686,9 @@ function initSearch(rawSearchIndex) {
                 }
                 parserState.pos += 1;
                 getItemsBefore(query, parserState, generics, ">");
+            }
+            if (isStringElem) {
+                skipWhitespace(parserState);
             }
             if (start >= end && generics.length === 0) {
                 return;
@@ -682,7 +754,7 @@ function initSearch(rawSearchIndex) {
                 if (elems.length === 0) {
                     throw ["Expected type filter before ", ":"];
                 } else if (query.literalSearch) {
-                    throw ["You cannot use quotes on type filter"];
+                    throw ["Cannot use quotes on type filter"];
                 }
                 // The type filter doesn't count as an element since it's a modifier.
                 const typeFilterElem = elems.pop();
@@ -697,23 +769,27 @@ function initSearch(rawSearchIndex) {
                 throw ["Unexpected ", c, " after ", extra];
             }
             if (!foundStopChar) {
+                let extra = [];
+                if (isLastElemGeneric(query.elems, parserState)) {
+                    extra = [" after ", ">"];
+                } else if (prevIs(parserState, "\"")) {
+                    throw ["Cannot have more than one element if you use quotes"];
+                }
                 if (endChar !== "") {
                     throw [
                         "Expected ",
-                        ",", // comma
-                        ", ",
-                        "&nbsp;", // whitespace
+                        ",",
                         " or ",
                         endChar,
+                        ...extra,
                         ", found ",
                         c,
                     ];
                 }
                 throw [
                     "Expected ",
-                    ",", // comma
-                    " or ",
-                    "&nbsp;", // whitespace
+                    ",",
+                    ...extra,
                     ", found ",
                     c,
                 ];
@@ -749,11 +825,17 @@ function initSearch(rawSearchIndex) {
      * @param {ParserState} parserState
      */
     function checkExtraTypeFilterCharacters(start, parserState) {
-        const query = parserState.userQuery;
+        const query = parserState.userQuery.slice(start, parserState.pos).trim();
 
-        for (let pos = start; pos < parserState.pos; ++pos) {
-            if (!isIdentCharacter(query[pos]) && !isWhitespaceCharacter(query[pos])) {
-                throw ["Unexpected ", query[pos], " in type filter"];
+        for (const c in query) {
+            if (!isIdentCharacter(query[c])) {
+                throw [
+                    "Unexpected ",
+                    query[c],
+                    " in type filter (before ",
+                    ":",
+                    ")",
+                ];
             }
         }
     }
@@ -785,12 +867,17 @@ function initSearch(rawSearchIndex) {
                 throw ["Unexpected ", c];
             } else if (c === ":" && !isPathStart(parserState)) {
                 if (parserState.typeFilter !== null) {
-                    throw ["Unexpected ", ":"];
-                }
-                if (query.elems.length === 0) {
+                    throw [
+                        "Unexpected ",
+                        ":",
+                        " (expected path after type filter ",
+                        parserState.typeFilter + ":",
+                        ")",
+                    ];
+                } else if (query.elems.length === 0) {
                     throw ["Expected type filter before ", ":"];
                 } else if (query.literalSearch) {
-                    throw ["You cannot use quotes on type filter"];
+                    throw ["Cannot use quotes on type filter"];
                 }
                 // The type filter doesn't count as an element since it's a modifier.
                 const typeFilterElem = query.elems.pop();
@@ -801,29 +888,36 @@ function initSearch(rawSearchIndex) {
                 query.literalSearch = false;
                 foundStopChar = true;
                 continue;
+            } else if (isWhitespace(c)) {
+                skipWhitespace(parserState);
+                continue;
             }
             if (!foundStopChar) {
+                let extra = "";
+                if (isLastElemGeneric(query.elems, parserState)) {
+                    extra = [" after ", ">"];
+                } else if (prevIs(parserState, "\"")) {
+                    throw ["Cannot have more than one element if you use quotes"];
+                }
                 if (parserState.typeFilter !== null) {
                     throw [
                         "Expected ",
-                        ",", // comma
-                        ", ",
-                        "&nbsp;", // whitespace
+                        ",",
                         " or ",
-                        "->", // arrow
+                        "->",
+                        ...extra,
                         ", found ",
                         c,
                     ];
                 }
                 throw [
                     "Expected ",
-                    ",", // comma
+                    ",",
                     ", ",
-                    "&nbsp;", // whitespace
-                    ", ",
-                    ":", // colon
+                    ":",
                     " or ",
-                    "->", // arrow
+                    "->",
+                    ...extra,
                     ", found ",
                     c,
                 ];
@@ -838,11 +932,18 @@ function initSearch(rawSearchIndex) {
             foundStopChar = false;
         }
         if (parserState.typeFilter !== null) {
-            throw ["Unexpected ", ":", " (expected path after type filter)"];
+            throw [
+                "Unexpected ",
+                ":",
+                " (expected path after type filter ",
+                parserState.typeFilter + ":",
+                ")",
+            ];
         }
         while (parserState.pos < parserState.length) {
             if (isReturnArrow(parserState)) {
                 parserState.pos += 2;
+                skipWhitespace(parserState);
                 // Get returned elements.
                 getItemsBefore(query, parserState, query.returned, "");
                 // Nothing can come afterward!
@@ -917,10 +1018,10 @@ function initSearch(rawSearchIndex) {
      * The supported syntax by this parser is as follow:
      *
      * ident = *(ALPHA / DIGIT / "_")
-     * path = ident *(DOUBLE-COLON ident) [!]
+     * path = ident *(DOUBLE-COLON/{WS} ident) [!]
      * slice = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
      * arg = [type-filter *WS COLON *WS] (path [generics] / slice)
-     * type-sep = COMMA/WS *(COMMA/WS)
+     * type-sep = *WS COMMA *(COMMA)
      * nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep)
      * generics = OPEN-ANGLE-BRACKET [ nonempty-arg-list ] *(type-sep)
      *            CLOSE-ANGLE-BRACKET
@@ -2140,7 +2241,7 @@ function initSearch(rawSearchIndex) {
             error.forEach((value, index) => {
                 value = value.split("<").join("&lt;").split(">").join("&gt;");
                 if (index % 2 !== 0) {
-                    error[index] = `<code>${value}</code>`;
+                    error[index] = `<code>${value.replaceAll(" ", "&nbsp;")}</code>`;
                 } else {
                     error[index] = value;
                 }

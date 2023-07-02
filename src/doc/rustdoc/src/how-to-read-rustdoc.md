@@ -110,6 +110,11 @@ Function signature searches also support arrays and slices. The explicit name
 or array of bytes, while square brackets `[u8]` will match either one. Empty
 square brackets, `[]`, will match any slice regardless of what it contains.
 
+Paths are supported as well, you can look for `Vec::new` or `Option::Some` or
+even `module::module_child::another_child::struct::field`. Whitespace characters
+are considered the same as `::`, so if you write `Vec    new`, it will be
+considered the same as `Vec::new`.
+
 ### Shortcuts
 
 Pressing `S` while focused elsewhere on the page will move focus to the
