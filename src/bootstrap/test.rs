@@ -379,7 +379,9 @@ impl Step for RustAnalyzer {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::RustAnalyzer { compiler, target: self.host }).expect("in-tree tool");
+        // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
+        // but we do need the standard library to be present.
+        builder.ensure(compile::Std::new(compiler, host));
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
