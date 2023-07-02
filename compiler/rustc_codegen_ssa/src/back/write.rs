@@ -35,6 +35,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
+use crate::errors::ErrorCreatingRemarkDir;
 use std::any::Any;
 use std::borrow::Cow;
 use std::fs;
@@ -345,6 +346,9 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub diag_emitter: SharedEmitter,
     /// LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
+    /// Directory into which should the LLVM optimization remarks be written.
+    /// If `None`, they will be written to stderr.
+    pub remark_dir: Option<PathBuf>,
     /// Worker thread number
     pub worker: usize,
     /// The incremental compilation session directory, or None if we are not
@@ -1062,6 +1066,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
             tcx.backend_optimization_level(())
         };
     let backend_features = tcx.global_backend_features(());
+
+    let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
+        let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
+        match result {
+            Ok(dir) => Some(dir),
+            Err(error) => sess.emit_fatal(ErrorCreatingRemarkDir { error }),
+        }
+    } else {
+        None
+    };
+
     let cgcx = CodegenContext::<B> {
         crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
@@ -1073,6 +1088,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         prof: sess.prof.clone(),
         exported_symbols,
         remark: sess.opts.cg.remark.clone(),
+        remark_dir,
         worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
