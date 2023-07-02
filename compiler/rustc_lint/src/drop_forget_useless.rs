@@ -194,7 +194,7 @@ fn is_single_call_in_arm<'tcx>(
     arg: &'tcx Expr<'_>,
     drop_expr: &'tcx Expr<'_>,
 ) -> bool {
-    if matches!(arg.kind, ExprKind::Call(..) | ExprKind::MethodCall(..)) {
+    if arg.can_have_side_effects() {
         let parent_node = cx.tcx.hir().find_parent(drop_expr.hir_id);
         if let Some(Node::Arm(Arm { body, .. })) = &parent_node {
             return body.hir_id == drop_expr.hir_id;
