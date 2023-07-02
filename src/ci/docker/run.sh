@@ -266,6 +266,7 @@ docker \
   --env BASE_COMMIT="$BASE_COMMIT" \
   --env DIST_TRY_BUILD \
   --env PR_CI_JOB \
+  --env OBJDIR_ON_HOST="$objdir" \
   --init \
   --rm \
   rust-ci \
