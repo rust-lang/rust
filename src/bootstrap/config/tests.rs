@@ -178,3 +178,18 @@ fn profile_user_dist() {
     }
     Config::parse_inner(&["check".to_owned()], get_toml);
 }
+
+#[test]
+fn rust_optimize() {
+    assert_eq!(parse("").rust_optimize.is_release(), true);
+    assert_eq!(parse("rust.optimize = false").rust_optimize.is_release(), false);
+    assert_eq!(parse("rust.optimize = true").rust_optimize.is_release(), true);
+    assert_eq!(parse("rust.optimize = \"1\"").rust_optimize.get_opt_level(), Some("1".to_string()));
+    assert_eq!(parse("rust.optimize = \"s\"").rust_optimize.get_opt_level(), Some("s".to_string()));
+}
+
+#[test]
+#[should_panic]
+fn invalid_rust_optimize() {
+    parse("rust.optimize = \"a\"");
+}
