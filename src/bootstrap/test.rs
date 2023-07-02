@@ -379,7 +379,9 @@ impl Step for RustAnalyzer {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::RustAnalyzer { compiler, target: self.host }).expect("in-tree tool");
+        // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
+        // but we do need the standard library to be present.
+        builder.ensure(compile::Std::new(compiler, host));
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -2682,8 +2684,9 @@ impl Step for Bootstrap {
             .args(["-m", "unittest", "bootstrap_test.py"])
             .env("BUILD_DIR", &builder.out)
             .env("BUILD_PLATFORM", &builder.build.build.triple)
-            .current_dir(builder.src.join("src/bootstrap/"))
-            .args(builder.config.test_args());
+            .current_dir(builder.src.join("src/bootstrap/"));
+        // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
+        // Use `python -m unittest` manually if you want to pass arguments.
         try_run(builder, &mut check_bootstrap).unwrap();
 
         let host = builder.config.build;

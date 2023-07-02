@@ -1,6 +1,6 @@
 """Bootstrap tests
 
-Run these with `x test bootstrap`, or `python -m unittest bootstrap_test.py`."""
+Run these with `x test bootstrap`, or `python -m unittest src/bootstrap/bootstrap_test.py`."""
 
 from __future__ import absolute_import, division, print_function
 import os
@@ -12,6 +12,10 @@ import sys
 
 from shutil import rmtree
 
+# Allow running this from the top-level directory.
+bootstrap_dir = os.path.dirname(os.path.abspath(__file__))
+# For the import below, have Python search in src/bootstrap first.
+sys.path.insert(0, bootstrap_dir)
 import bootstrap
 import configure
 
@@ -131,8 +135,13 @@ class BuildBootstrap(unittest.TestCase):
 
         parsed = bootstrap.parse_args(args)
         build = serialize_and_parse(configure_args, parsed)
-        build.build_dir = os.environ["BUILD_DIR"]
-        build.build = os.environ["BUILD_PLATFORM"]
+        # Make these optional so that `python -m unittest` works when run manually.
+        build_dir = os.environ.get("BUILD_DIR")
+        if build_dir is not None:
+            build.build_dir = build_dir
+        build_platform = os.environ.get("BUILD_PLATFORM")
+        if build_platform is not None:
+            build.build = build_platform
         return build.build_bootstrap_cmd(env), env
 
     def test_cargoflags(self):
