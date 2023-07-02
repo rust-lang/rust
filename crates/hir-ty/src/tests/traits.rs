@@ -4410,35 +4410,3 @@ fn test(v: S<i32>) {
 "#,
     );
 }
-
-#[test]
-fn rustc_coinductive() {
-    // Taken from rust-lang/rust#108033 with modification.
-    check_types(
-        r#"
-#[rustc_coinductive]
-trait Trait { type Assoc; }
-
-impl<T, U> Trait for (T, U)
-where
-    (U, T): Trait,
-    (): ConstrainToU32<T>,
-{
-    type Assoc = i32;
-}
-
-trait ConstrainToU32<T> {}
-impl ConstrainToU32<u32> for () {}
-
-fn impls_trait<T, U, R>() -> R
-where
-    (T, U): Trait<Assoc = R>,
-{ loop {} }
-
-fn main() {
-    let _ = impls_trait::<_, _, _>();
-      //^ i32
-}
-"#,
-    );
-}

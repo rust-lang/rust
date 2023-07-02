@@ -550,10 +550,6 @@ pub(crate) fn trait_datum_query(
     debug!("trait_datum {:?}", trait_id);
     let trait_ = from_chalk_trait_id(trait_id);
     let trait_data = db.trait_data(trait_);
-
-    let coinductive =
-        trait_data.is_auto || db.attrs(trait_.into()).by_key("rustc_coinductive").exists();
-
     debug!("trait {:?} = {:?}", trait_id, trait_data.name);
     let generic_params = generics(db.upcast(), trait_.into());
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
@@ -561,7 +557,7 @@ pub(crate) fn trait_datum_query(
         auto: trait_data.is_auto,
         upstream: trait_.lookup(db.upcast()).container.krate() != krate,
         non_enumerable: true,
-        coinductive,
+        coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
         marker: false,
         fundamental: false,
@@ -643,7 +639,7 @@ pub(crate) fn struct_datum_query(
         fundamental: false,
         phantom_data: false,
     };
-    // FIXME provide enum variants properly (for auto traits and `Sized`)
+    // FIXME provide enum variants properly (for auto traits)
     let variant = rust_ir::AdtVariantDatum {
         fields: Vec::new(), // FIXME add fields (only relevant for auto traits),
     };
