@@ -499,6 +499,55 @@ fn layout_of_uncached<'tcx>(
                 return Err(error(cx, LayoutError::SizeOverflow(ty)));
             };
 
+            // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
+            if cfg!(debug_assertions)
+                && maybe_unsized
+                && def
+                    .non_enum_variant()
+                    .fields
+                    .raw
+                    .last()
+                    .unwrap()
+                    .ty(tcx, substs)
+                    .is_sized(tcx, cx.param_env)
+            {
+                let mut variants = variants;
+                let tail_replacement = cx.layout_of(Ty::new_slice(tcx, tcx.types.u8)).unwrap();
+                *variants[FIRST_VARIANT].raw.last_mut().unwrap() = tail_replacement.layout;
+
+                let Some(unsized_layout) = cx.layout_of_struct_or_enum(
+                    &def.repr(),
+                    &variants,
+                    def.is_enum(),
+                    def.is_unsafe_cell(),
+                    tcx.layout_scalar_valid_range(def.did()),
+                    get_discriminant_type,
+                    discriminants_iter(),
+                    dont_niche_optimize_enum,
+                    !maybe_unsized,
+                ) else {
+                    bug!("failed to compute unsized layout of {ty:?}");
+                };
+
+                let FieldsShape::Arbitrary { offsets: sized_offsets, .. } = &layout.fields else {
+                    bug!("unexpected FieldsShape for sized layout of {ty:?}: {:?}", layout.fields);
+                };
+                let FieldsShape::Arbitrary { offsets: unsized_offsets, .. } = &unsized_layout.fields else {
+                    bug!("unexpected FieldsShape for unsized layout of {ty:?}: {:?}", unsized_layout.fields);
+                };
+
+                let (sized_tail, sized_fields) = sized_offsets.raw.split_last().unwrap();
+                let (unsized_tail, unsized_fields) = unsized_offsets.raw.split_last().unwrap();
+
+                if sized_fields != unsized_fields {
+                    bug!("unsizing {ty:?} changed field order!\n{layout:?}\n{unsized_layout:?}");
+                }
+
+                if sized_tail < unsized_tail {
+                    bug!("unsizing {ty:?} moved tail backwards!\n{layout:?}\n{unsized_layout:?}");
+                }
+            }
+
             tcx.mk_layout(layout)
         }
 
