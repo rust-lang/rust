@@ -788,27 +788,15 @@ impl Step for Clippy {
         cargo.add_rustc_lib_path(builder, compiler);
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
 
+        // propagate --bless
+        if builder.config.cmd.bless() {
+            cargo.env("BLESS", "Gesundheit");
+        }
+
         if builder.try_run(&mut cargo).is_ok() {
             // The tests succeeded; nothing to do.
             return;
         }
-
-        if !builder.config.cmd.bless() {
-            crate::detail_exit_macro!(1);
-        }
-
-        let mut cargo = builder.cargo(compiler, Mode::ToolRustc, SourceType::InTree, host, "run");
-        cargo.arg("-p").arg("clippy_dev");
-        // clippy_dev gets confused if it can't find `clippy/Cargo.toml`
-        cargo.current_dir(&builder.src.join("src").join("tools").join("clippy"));
-        if builder.config.rust_optimize.is_release() {
-            cargo.env("PROFILE", "release");
-        } else {
-            cargo.env("PROFILE", "debug");
-        }
-        cargo.arg("--");
-        cargo.arg("bless");
-        builder.run(&mut cargo.into());
     }
 }
 

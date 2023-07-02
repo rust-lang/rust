@@ -9,6 +9,7 @@ members = [
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/clippy/clippy_dev",
+  "src/tools/clippy/clippy_test_deps",
   "src/tools/compiletest",
   "src/tools/error_index_generator",
   "src/tools/linkchecker",
