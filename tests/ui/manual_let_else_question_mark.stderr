@@ -45,5 +45,11 @@ LL | |             _ => return None,
 LL | |         };
    | |__________^ help: consider writing: `let Some(v) = g() else { return None };`
 
-error: aborting due to 5 previous errors
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else_question_mark.rs:64:9
+   |
+LL |         let v = if let Some(v_some) = g() { v_some } else { return None };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return None };`
+
+error: aborting due to 6 previous errors
 

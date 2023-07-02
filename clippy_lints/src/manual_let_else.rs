@@ -1,12 +1,10 @@
-use crate::question_mark::{pat_and_expr_can_be_question_mark, QuestionMark};
+use crate::question_mark::{pat_and_expr_can_be_question_mark, QuestionMark, QUESTION_MARK};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
-use clippy_utils::msrvs;
-use clippy_utils::peel_blocks;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{Descend, Visitable};
-use if_chain::if_chain;
+use clippy_utils::{is_lint_allowed, msrvs, peel_blocks};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -65,12 +63,14 @@ impl<'tcx> QuestionMark {
             let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
         {
             match if_let_or_match {
-                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => if_chain! {
-                    if let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then);
-                    if let Some(if_else) = if_else;
-                    if expr_diverges(cx, if_else);
-                    if pat_and_expr_can_be_question_mark(cx, let_pat, if_else).is_none();
-                    then {
+                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => {
+                    if
+                        let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then) &&
+                        let Some(if_else) = if_else &&
+                        expr_diverges(cx, if_else) &&
+                        let qm_allowed = is_lint_allowed(cx, QUESTION_MARK, stmt.hir_id) &&
+                        (qm_allowed || pat_and_expr_can_be_question_mark(cx, let_pat, if_else).is_none())
+                    {
                         emit_manual_let_else(cx, stmt.span, if_let_expr, &ident_map, let_pat, if_else);
                     }
                 },

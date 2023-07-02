@@ -57,5 +57,12 @@ fn foo() -> Option<()> {
         };
     }
 
+    // This is a copy of the case above where we'd fire the question_mark lint, but here we have allowed
+    // it. Make sure that manual_let_else is fired as the fallback.
+    #[allow(clippy::question_mark)]
+    {
+        let v = if let Some(v_some) = g() { v_some } else { return None };
+    }
+
     Some(())
 }
