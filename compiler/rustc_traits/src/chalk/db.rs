@@ -572,6 +572,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             DiscriminantKind => lang_items.discriminant_kind_trait(),
             DispatchFromDyn => lang_items.dispatch_from_dyn_trait(),
             Tuple => lang_items.tuple_trait(),
+            Pointee => lang_items.pointee_trait(),
+            FnPtr => lang_items.fn_ptr_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
