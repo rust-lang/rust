@@ -95,11 +95,15 @@ impl<'tcx> TyCtxt<'tcx> {
                     // used generic parameters is a bug of evaluation, so checking for it
                     // here does feel somewhat sensible.
                     if !self.features().generic_const_exprs && ct.substs.has_non_region_param() {
-                        assert!(matches!(
-                            self.def_kind(ct.def),
-                            DefKind::InlineConst | DefKind::AnonConst
-                        ));
-                        let mir_body = self.mir_for_ctfe(ct.def);
+                        let def_kind = self.def_kind(instance.def_id());
+                        assert!(
+                            matches!(
+                                def_kind,
+                                DefKind::InlineConst | DefKind::AnonConst | DefKind::AssocConst
+                            ),
+                            "{cid:?} is {def_kind:?}",
+                        );
+                        let mir_body = self.mir_for_ctfe(instance.def_id());
                         if mir_body.is_polymorphic {
                             let Some(local_def_id) = ct.def.as_local() else { return };
                             self.struct_span_lint_hir(
@@ -237,17 +241,5 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         let param_env = ty::ParamEnv::reveal_all().with_const();
         trace!("eval_to_allocation: Need to compute {:?}", gid);
         self.eval_to_allocation_raw(param_env.and(gid))
-    }
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    /// Destructure a mir constant ADT or array into its variant index and its field values.
-    /// Panics if the destructuring fails, use `try_destructure_mir_constant` for fallible version.
-    pub fn destructure_mir_constant(
-        self,
-        param_env: ty::ParamEnv<'tcx>,
-        constant: mir::ConstantKind<'tcx>,
-    ) -> mir::DestructuredConstant<'tcx> {
-        self.try_destructure_mir_constant(param_env.and(constant)).unwrap()
     }
 }
