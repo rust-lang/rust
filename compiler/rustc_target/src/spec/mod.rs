@@ -161,13 +161,47 @@ pub enum LinkerFlavor {
 /// linker flavors (`LinkerFlavor`).
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavorCli {
+    // New (unstable) flavors, with direct counterparts in `LinkerFlavor`.
+    Gnu(Cc, Lld),
+    Darwin(Cc, Lld),
+    WasmLld(Cc),
+    Unix(Cc),
+    // Note: `Msvc(Lld::No)` is also a stable value.
+    Msvc(Lld),
+    EmCc,
+    Bpf,
+    Ptx,
+
+    // Below: the legacy stable values.
     Gcc,
     Ld,
     Lld(LldFlavor),
-    Msvc,
     Em,
     BpfLinker,
     PtxLinker,
+}
+
+impl LinkerFlavorCli {
+    /// Returns whether this `-C linker-flavor` option is one of the unstable values.
+    pub fn is_unstable(&self) -> bool {
+        match self {
+            LinkerFlavorCli::Gnu(..)
+            | LinkerFlavorCli::Darwin(..)
+            | LinkerFlavorCli::WasmLld(..)
+            | LinkerFlavorCli::Unix(..)
+            | LinkerFlavorCli::Msvc(Lld::Yes)
+            | LinkerFlavorCli::EmCc
+            | LinkerFlavorCli::Bpf
+            | LinkerFlavorCli::Ptx
+            | LinkerFlavorCli::BpfLinker
+            | LinkerFlavorCli::PtxLinker => true,
+            LinkerFlavorCli::Gcc
+            | LinkerFlavorCli::Ld
+            | LinkerFlavorCli::Lld(..)
+            | LinkerFlavorCli::Msvc(Lld::No)
+            | LinkerFlavorCli::Em => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -212,6 +246,16 @@ impl LinkerFlavor {
     /// of truth, other flags are used in case of ambiguities.
     fn from_cli_json(cli: LinkerFlavorCli, lld_flavor: LldFlavor, is_gnu: bool) -> LinkerFlavor {
         match cli {
+            LinkerFlavorCli::Gnu(cc, lld) => LinkerFlavor::Gnu(cc, lld),
+            LinkerFlavorCli::Darwin(cc, lld) => LinkerFlavor::Darwin(cc, lld),
+            LinkerFlavorCli::WasmLld(cc) => LinkerFlavor::WasmLld(cc),
+            LinkerFlavorCli::Unix(cc) => LinkerFlavor::Unix(cc),
+            LinkerFlavorCli::Msvc(lld) => LinkerFlavor::Msvc(lld),
+            LinkerFlavorCli::EmCc => LinkerFlavor::EmCc,
+            LinkerFlavorCli::Bpf => LinkerFlavor::Bpf,
+            LinkerFlavorCli::Ptx => LinkerFlavor::Ptx,
+
+            // Below: legacy stable values
             LinkerFlavorCli::Gcc => match lld_flavor {
                 LldFlavor::Ld if is_gnu => LinkerFlavor::Gnu(Cc::Yes, Lld::No),
                 LldFlavor::Ld64 => LinkerFlavor::Darwin(Cc::Yes, Lld::No),
@@ -227,7 +271,6 @@ impl LinkerFlavor {
             LinkerFlavorCli::Lld(LldFlavor::Ld64) => LinkerFlavor::Darwin(Cc::No, Lld::Yes),
             LinkerFlavorCli::Lld(LldFlavor::Wasm) => LinkerFlavor::WasmLld(Cc::No),
             LinkerFlavorCli::Lld(LldFlavor::Link) => LinkerFlavor::Msvc(Lld::Yes),
-            LinkerFlavorCli::Msvc => LinkerFlavor::Msvc(Lld::No),
             LinkerFlavorCli::Em => LinkerFlavor::EmCc,
             LinkerFlavorCli::BpfLinker => LinkerFlavor::Bpf,
             LinkerFlavorCli::PtxLinker => LinkerFlavor::Ptx,
@@ -247,7 +290,7 @@ impl LinkerFlavor {
                 LinkerFlavorCli::Ld
             }
             LinkerFlavor::Msvc(Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Link),
-            LinkerFlavor::Msvc(..) => LinkerFlavorCli::Msvc,
+            LinkerFlavor::Msvc(..) => LinkerFlavorCli::Msvc(Lld::No),
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
             LinkerFlavor::Bpf => LinkerFlavorCli::BpfLinker,
             LinkerFlavor::Ptx => LinkerFlavorCli::PtxLinker,
@@ -256,9 +299,20 @@ impl LinkerFlavor {
 
     fn infer_cli_hints(cli: LinkerFlavorCli) -> (Option<Cc>, Option<Lld>) {
         match cli {
-            LinkerFlavorCli::Gcc | LinkerFlavorCli::Em => (Some(Cc::Yes), None),
+            LinkerFlavorCli::Gnu(cc, lld) | LinkerFlavorCli::Darwin(cc, lld) => {
+                (Some(cc), Some(lld))
+            }
+            LinkerFlavorCli::WasmLld(cc) => (Some(cc), Some(Lld::Yes)),
+            LinkerFlavorCli::Unix(cc) => (Some(cc), None),
+            LinkerFlavorCli::Msvc(lld) => (Some(Cc::No), Some(lld)),
+            LinkerFlavorCli::EmCc => (Some(Cc::Yes), Some(Lld::Yes)),
+            LinkerFlavorCli::Bpf | LinkerFlavorCli::Ptx => (None, None),
+
+            // Below: legacy stable values
+            LinkerFlavorCli::Gcc => (Some(Cc::Yes), None),
+            LinkerFlavorCli::Ld => (Some(Cc::No), Some(Lld::No)),
             LinkerFlavorCli::Lld(_) => (Some(Cc::No), Some(Lld::Yes)),
-            LinkerFlavorCli::Ld | LinkerFlavorCli::Msvc => (Some(Cc::No), Some(Lld::No)),
+            LinkerFlavorCli::Em => (Some(Cc::Yes), Some(Lld::Yes)),
             LinkerFlavorCli::BpfLinker | LinkerFlavorCli::PtxLinker => (None, None),
         }
     }
@@ -321,8 +375,24 @@ impl LinkerFlavor {
     }
 
     pub fn check_compatibility(self, cli: LinkerFlavorCli) -> Option<String> {
-        // The CLI flavor should be compatible with the target if it survives this roundtrip.
-        let compatible = |cli| cli == self.with_cli_hints(cli).to_cli();
+        let compatible = |cli| {
+            // The CLI flavor should be compatible with the target if:
+            // 1. they are counterparts: they have the same principal flavor.
+            match (self, cli) {
+                (LinkerFlavor::Gnu(..), LinkerFlavorCli::Gnu(..))
+                | (LinkerFlavor::Darwin(..), LinkerFlavorCli::Darwin(..))
+                | (LinkerFlavor::WasmLld(..), LinkerFlavorCli::WasmLld(..))
+                | (LinkerFlavor::Unix(..), LinkerFlavorCli::Unix(..))
+                | (LinkerFlavor::Msvc(..), LinkerFlavorCli::Msvc(..))
+                | (LinkerFlavor::EmCc, LinkerFlavorCli::EmCc)
+                | (LinkerFlavor::Bpf, LinkerFlavorCli::Bpf)
+                | (LinkerFlavor::Ptx, LinkerFlavorCli::Ptx) => return true,
+                _ => {}
+            }
+
+            // 2. or, the flavor is legacy and survives this roundtrip.
+            cli == self.with_cli_hints(cli).to_cli()
+        };
         (!compatible(cli)).then(|| {
             LinkerFlavorCli::all()
                 .iter()
@@ -348,6 +418,43 @@ impl LinkerFlavor {
 
     pub fn is_gnu(self) -> bool {
         matches!(self, LinkerFlavor::Gnu(..))
+    }
+
+    /// Returns whether the flavor uses the `lld` linker.
+    pub fn uses_lld(self) -> bool {
+        // Exhaustive match in case new flavors are added in the future.
+        match self {
+            LinkerFlavor::Gnu(_, Lld::Yes)
+            | LinkerFlavor::Darwin(_, Lld::Yes)
+            | LinkerFlavor::WasmLld(..)
+            | LinkerFlavor::EmCc
+            | LinkerFlavor::Msvc(Lld::Yes) => true,
+            LinkerFlavor::Gnu(..)
+            | LinkerFlavor::Darwin(..)
+            | LinkerFlavor::Msvc(_)
+            | LinkerFlavor::Unix(_)
+            | LinkerFlavor::Bpf
+            | LinkerFlavor::Ptx => false,
+        }
+    }
+
+    /// Returns whether the flavor calls the linker via a C/C++ compiler.
+    pub fn uses_cc(self) -> bool {
+        // Exhaustive match in case new flavors are added in the future.
+        match self {
+            LinkerFlavor::Gnu(Cc::Yes, _)
+            | LinkerFlavor::Darwin(Cc::Yes, _)
+            | LinkerFlavor::WasmLld(Cc::Yes)
+            | LinkerFlavor::Unix(Cc::Yes)
+            | LinkerFlavor::EmCc => true,
+            LinkerFlavor::Gnu(..)
+            | LinkerFlavor::Darwin(..)
+            | LinkerFlavor::WasmLld(_)
+            | LinkerFlavor::Msvc(_)
+            | LinkerFlavor::Unix(_)
+            | LinkerFlavor::Bpf
+            | LinkerFlavor::Ptx => false,
+        }
     }
 }
 
@@ -379,13 +486,31 @@ macro_rules! linker_flavor_cli_impls {
 }
 
 linker_flavor_cli_impls! {
+    (LinkerFlavorCli::Gnu(Cc::No, Lld::No)) "gnu"
+    (LinkerFlavorCli::Gnu(Cc::No, Lld::Yes)) "gnu-lld"
+    (LinkerFlavorCli::Gnu(Cc::Yes, Lld::No)) "gnu-cc"
+    (LinkerFlavorCli::Gnu(Cc::Yes, Lld::Yes)) "gnu-lld-cc"
+    (LinkerFlavorCli::Darwin(Cc::No, Lld::No)) "darwin"
+    (LinkerFlavorCli::Darwin(Cc::No, Lld::Yes)) "darwin-lld"
+    (LinkerFlavorCli::Darwin(Cc::Yes, Lld::No)) "darwin-cc"
+    (LinkerFlavorCli::Darwin(Cc::Yes, Lld::Yes)) "darwin-lld-cc"
+    (LinkerFlavorCli::WasmLld(Cc::No)) "wasm-lld"
+    (LinkerFlavorCli::WasmLld(Cc::Yes)) "wasm-lld-cc"
+    (LinkerFlavorCli::Unix(Cc::No)) "unix"
+    (LinkerFlavorCli::Unix(Cc::Yes)) "unix-cc"
+    (LinkerFlavorCli::Msvc(Lld::Yes)) "msvc-lld"
+    (LinkerFlavorCli::Msvc(Lld::No)) "msvc"
+    (LinkerFlavorCli::EmCc) "em-cc"
+    (LinkerFlavorCli::Bpf) "bpf"
+    (LinkerFlavorCli::Ptx) "ptx"
+
+    // Below: legacy stable values
     (LinkerFlavorCli::Gcc) "gcc"
     (LinkerFlavorCli::Ld) "ld"
     (LinkerFlavorCli::Lld(LldFlavor::Ld)) "ld.lld"
     (LinkerFlavorCli::Lld(LldFlavor::Ld64)) "ld64.lld"
     (LinkerFlavorCli::Lld(LldFlavor::Link)) "lld-link"
     (LinkerFlavorCli::Lld(LldFlavor::Wasm)) "wasm-ld"
-    (LinkerFlavorCli::Msvc) "msvc"
     (LinkerFlavorCli::Em) "em"
     (LinkerFlavorCli::BpfLinker) "bpf-linker"
     (LinkerFlavorCli::PtxLinker) "ptx-linker"
