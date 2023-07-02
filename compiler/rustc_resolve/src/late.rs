@@ -3503,7 +3503,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
                 let (err, candidates) =
-                    this.smart_resolve_report_errors(path, path, path_span, source, res);
+                    this.smart_resolve_report_errors(path, None, path_span, source, res);
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
@@ -3555,14 +3555,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // Before we start looking for candidates, we have to get our hands
             // on the type user is trying to perform invocation on; basically:
             // we're transforming `HashMap::new` into just `HashMap`.
-            let prefix_path = match path.split_last() {
-                Some((_, path)) if !path.is_empty() => path,
+            let (following_seg, prefix_path) = match path.split_last() {
+                Some((last, path)) if !path.is_empty() => (Some(last), path),
                 _ => return Some(parent_err),
             };
 
             let (mut err, candidates) = this.smart_resolve_report_errors(
                 prefix_path,
-                path,
+                following_seg,
                 path_span,
                 PathSource::Type,
                 None,
