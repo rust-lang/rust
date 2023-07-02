@@ -150,9 +150,14 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 {
                     if let Some(parent) = get_parent_expr(cx, e) {
                         let parent_fn = match parent.kind {
-                            ExprKind::Call(recv, args) if let ExprKind::Path(ref qpath) = recv.kind => {
-                                cx.qpath_res(qpath, recv.hir_id).opt_def_id()
-                                    .map(|did| (did, args, MethodOrFunction::Function))
+                            ExprKind::Call(recv, args)
+                                if let ExprKind::Path(ref qpath) = recv.kind
+                                    && let Some(did) = cx.qpath_res(qpath, recv.hir_id).opt_def_id()
+                                    // make sure that the path indeed points to a fn-like item, so that
+                                    // `fn_sig` does not ICE. (see #11065)
+                                    && cx.tcx.opt_def_kind(did).is_some_and(|k| k.is_fn_like()) =>
+                            {
+                                    Some((did, args, MethodOrFunction::Function))
                             }
                             ExprKind::MethodCall(.., args, _) => {
                                 cx.typeck_results().type_dependent_def_id(parent.hir_id)
