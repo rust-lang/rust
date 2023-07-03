@@ -588,21 +588,22 @@ impl TestProps {
     }
 }
 
+/// Extract a `(Option<line_config>, directive)` directive from a line if comment is present.
 pub fn line_directive<'line>(
     comment: &str,
     ln: &'line str,
 ) -> Option<(Option<&'line str>, &'line str)> {
+    let ln = ln.trim_start();
     if ln.starts_with(comment) {
         let ln = ln[comment.len()..].trim_start();
         if ln.starts_with('[') {
             // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let lncfg = &ln[1..close_brace];
+            let Some(close_brace) = ln.find(']') else {
+                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln);
+            };
 
-                Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
-            } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
-            }
+            let lncfg = &ln[1..close_brace];
+            Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
         } else {
             Some((None, ln))
         }
