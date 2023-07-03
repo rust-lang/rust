@@ -155,6 +155,8 @@ impl Default for ExprFillDefaultMode {
 
 #[derive(Debug, Clone)]
 pub struct DiagnosticsConfig {
+    /// Whether native diagnostics are enabled.
+    pub enabled: bool,
     pub proc_macros_enabled: bool,
     pub proc_attr_macros_enabled: bool,
     pub disable_experimental: bool,
@@ -171,6 +173,7 @@ impl DiagnosticsConfig {
         use ide_db::imports::insert_use::ImportGranularity;
 
         Self {
+            enabled: true,
             proc_macros_enabled: Default::default(),
             proc_attr_macros_enabled: Default::default(),
             disable_experimental: Default::default(),
