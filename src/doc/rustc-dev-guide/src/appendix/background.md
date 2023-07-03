@@ -300,7 +300,7 @@ does not.
 
 > Thanks to `mem`, `scottmcm`, and `Levi` on the official Discord for the
 > recommendations, and to `tinaun` for posting a link to a [twitter thread from
-> Graydon Hoare](https://twitter.com/graydon_pub/status/1039615569132118016)
+> Graydon Hoare](https://web.archive.org/web/20181230012554/https://twitter.com/graydon_pub/status/1039615569132118016)
 > which had some more recommendations!
 >
 > Other sources: https://gcc.gnu.org/wiki/ListOfCompilerBooks
