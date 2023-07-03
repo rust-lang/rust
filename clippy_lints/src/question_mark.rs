@@ -4,8 +4,8 @@ use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    eq_expr_value, get_parent_node, in_constant, is_else_clause, is_refutable, is_res_lang_ctor, path_to_local,
-    path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    eq_expr_value, get_parent_node, in_constant, is_else_clause, is_res_lang_ctor, pat_and_expr_can_be_question_mark,
+    path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
 };
 use clippy_utils::{higher, is_path_lang_item};
 use if_chain::if_chain;
@@ -13,7 +13,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
-    BindingAnnotation, Block, ByRef, Expr, ExprKind, Local, Node, Pat, PatKind, PathSegment, QPath, Stmt, StmtKind,
+    BindingAnnotation, Block, ByRef, Expr, ExprKind, Local, Node, PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
@@ -93,50 +93,6 @@ enum IfBlockType<'hir> {
         &'hir Expr<'hir>,
         Option<&'hir Expr<'hir>>,
     ),
-}
-
-/// Returns whether the given let pattern and else body can be turned into a question mark
-///
-/// For this example:
-/// ```ignore
-/// let FooBar { a, b } = if let Some(a) = ex { a } else { return None };
-/// ```
-/// We get as parameters:
-/// ```ignore
-/// pat: Some(a)
-/// else_body: return None
-/// ```
-
-/// And for this example:
-/// ```ignore
-/// let Some(FooBar { a, b }) = ex else { return None };
-/// ```
-/// We get as parameters:
-/// ```ignore
-/// pat: Some(FooBar { a, b })
-/// else_body: return None
-/// ```
-
-/// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
-/// the question mark operator is applicable here. Callers have to check whether we are in a
-/// constant or not.
-pub(crate) fn pat_and_expr_can_be_question_mark<'a, 'hir>(
-    cx: &LateContext<'_>,
-    pat: &'a Pat<'hir>,
-    else_body: &Expr<'_>,
-) -> Option<&'a Pat<'hir>> {
-    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind &&
-        is_res_lang_ctor(cx, cx.qpath_res(&pat_path, pat.hir_id), OptionSome) &&
-        !is_refutable(cx, inner_pat) &&
-        let else_body = peel_blocks(else_body) &&
-        let ExprKind::Ret(Some(ret_val)) = else_body.kind &&
-        let ExprKind::Path(ret_path) = ret_val.kind &&
-        is_res_lang_ctor(cx, cx.qpath_res(&ret_path, ret_val.hir_id), OptionNone)
-    {
-        Some(inner_pat)
-    } else {
-        None
-    }
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
