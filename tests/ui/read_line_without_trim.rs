@@ -16,4 +16,21 @@ fn main() {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
     let _x = input.parse::<i32>().unwrap();
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    let _x = input.parse::<u32>().unwrap();
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    let _x = input.parse::<f32>().unwrap();
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    let _x = input.parse::<bool>().unwrap();
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).unwrap();
+    // this is actually ok, so don't lint here
+    let _x = input.parse::<String>().unwrap();
 }
