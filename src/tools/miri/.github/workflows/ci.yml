@@ -135,7 +135,6 @@ jobs:
   # workflow is successful listening to webhooks only.
   #
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
-  # (`fmt` is deliberately not listed, we want bors to ignore it.)
   end-success:
     name: bors build finished
     runs-on: ubuntu-latest
