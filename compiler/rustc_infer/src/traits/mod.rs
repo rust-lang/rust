@@ -62,7 +62,7 @@ impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
-pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
+pub type PolyTraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 impl<'tcx> PredicateObligation<'tcx> {
     /// Flips the polarity of the inner predicate.
@@ -86,7 +86,7 @@ impl<'tcx> PredicateObligation<'tcx> {
     }
 }
 
-impl<'tcx> TraitObligation<'tcx> {
+impl<'tcx> PolyTraitObligation<'tcx> {
     /// Returns `true` if the trait predicate is considered `const` in its ParamEnv.
     pub fn is_const(&self) -> bool {
         matches!(
@@ -193,7 +193,7 @@ impl<'tcx> FulfillmentError<'tcx> {
     }
 }
 
-impl<'tcx> TraitObligation<'tcx> {
+impl<'tcx> PolyTraitObligation<'tcx> {
     pub fn polarity(&self) -> ty::ImplPolarity {
         self.predicate.skip_binder().polarity
     }

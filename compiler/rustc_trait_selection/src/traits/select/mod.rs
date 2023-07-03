@@ -16,7 +16,7 @@ use super::wf;
 use super::{
     ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
     ObligationCause, ObligationCauseCode, Overflow, PredicateObligation, Selection, SelectionError,
-    SelectionResult, TraitObligation, TraitQueryMode,
+    SelectionResult, PolyTraitObligation, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -122,7 +122,7 @@ pub struct SelectionContext<'cx, 'tcx> {
 
 // A stack that walks back up the stack frame.
 struct TraitObligationStack<'prev, 'tcx> {
-    obligation: &'prev TraitObligation<'tcx>,
+    obligation: &'prev PolyTraitObligation<'tcx>,
 
     /// The trait predicate from `obligation` but "freshened" with the
     /// selection-context's freshener. Used to check for recursion.
@@ -261,7 +261,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn select(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         if self.infcx.next_trait_solver() {
             return self.infcx.select_in_new_trait_solver(obligation);
@@ -295,7 +295,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn select_from_obligation(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         debug_assert!(!obligation.predicate.has_escaping_bound_vars());
 
@@ -612,7 +612,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         debug_assert!(!self.infcx.next_trait_solver());
-        // `previous_stack` stores a `TraitObligation`, while `obligation` is
+        // `previous_stack` stores a `PolyTraitObligation`, while `obligation` is
         // a `PredicateObligation`. These are distinct types, so we can't
         // use any `Option` combinator method that would force them to be
         // the same.
@@ -973,7 +973,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_trait_predicate_recursively<'o>(
         &mut self,
         previous_stack: TraitObligationStackList<'o, 'tcx>,
-        mut obligation: TraitObligation<'tcx>,
+        mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         if !self.is_intercrate()
             && obligation.is_global()
@@ -1379,7 +1379,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn filter_impls(
         &mut self,
         candidates: Vec<SelectionCandidate<'tcx>>,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
         trace!("{candidates:#?}");
         let tcx = self.tcx();
@@ -1442,7 +1442,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn filter_reservation_impls(
         &mut self,
         candidate: SelectionCandidate<'tcx>,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
         // Treat reservation impls as ambiguity.
@@ -1471,7 +1471,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(Some(candidate))
     }
 
-    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
+    fn is_knowable<'o>(&mut self, stack: &PolyTraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         debug!("is_knowable(intercrate={:?})", self.is_intercrate());
 
         if !self.is_intercrate() || stack.obligation.polarity() == ty::ImplPolarity::Negative {
@@ -1614,7 +1614,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> smallvec::SmallVec<[(usize, ty::BoundConstness); 2]> {
         let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
@@ -1677,7 +1677,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// variables or placeholders, the normalized bound is returned.
     fn match_normalize_trait_ref(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
         placeholder_trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<Option<ty::PolyTraitRef<'tcx>>, ()> {
@@ -2078,7 +2078,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 impl<'tcx> SelectionContext<'_, 'tcx> {
     fn sized_conditions(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> BuiltinImplConditions<'tcx> {
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
@@ -2138,7 +2138,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
     fn copy_clone_conditions(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> BuiltinImplConditions<'tcx> {
         // NOTE: binder moved to (*)
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
@@ -2414,7 +2414,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn rematch_impl(
         &mut self,
         impl_def_id: DefId,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> Normalized<'tcx, SubstsRef<'tcx>> {
         let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
         match self.match_impl(impl_def_id, impl_trait_ref, obligation) {
@@ -2452,7 +2452,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         impl_trait_ref: EarlyBinder<ty::TraitRef<'tcx>>,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
         let placeholder_obligation =
             self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
@@ -2510,7 +2510,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     /// result from the normalization.
     fn match_where_clause_trait_ref(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
         where_clause_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
         self.match_poly_trait_ref(obligation, where_clause_trait_ref)
@@ -2521,7 +2521,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn match_poly_trait_ref(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
         self.infcx
@@ -2547,7 +2547,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn push_stack<'o>(
         &mut self,
         previous_stack: TraitObligationStackList<'o, 'tcx>,
-        obligation: &'o TraitObligation<'tcx>,
+        obligation: &'o PolyTraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
         let fresh_trait_pred = obligation.predicate.fold_with(&mut self.freshener);
 
@@ -2566,7 +2566,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn closure_trait_ref_unnormalized(
         &mut self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
         let closure_sig = substs.as_closure().sig();
@@ -2929,9 +2929,9 @@ struct TraitObligationStackList<'o, 'tcx> {
     head: Option<&'o TraitObligationStack<'o, 'tcx>>,
 }
 
-impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
-    fn empty(cache: &'o ProvisionalEvaluationCache<'tcx>) -> TraitObligationStackList<'o, 'tcx> {
-        TraitObligationStackList { cache, head: None }
+impl<'o, 'tcx> PolyTraitObligationStackList<'o, 'tcx> {
+    fn empty(cache: &'o ProvisionalEvaluationCache<'tcx>) -> PolyTraitObligationStackList<'o, 'tcx> {
+        PolyTraitObligationStackList { cache, head: None }
     }
 
     fn with(r: &'o TraitObligationStack<'o, 'tcx>) -> TraitObligationStackList<'o, 'tcx> {
