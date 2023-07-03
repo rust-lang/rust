@@ -1,8 +1,6 @@
 use std::fmt::{self, Write};
 use std::num::NonZeroU64;
 
-use log::trace;
-
 use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Level};
 use rustc_span::{SpanData, Symbol, DUMMY_SP};
 use rustc_target::abi::{Align, Size};

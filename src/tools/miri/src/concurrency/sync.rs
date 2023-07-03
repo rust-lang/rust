@@ -2,8 +2,6 @@ use std::collections::{hash_map::Entry, VecDeque};
 use std::num::NonZeroU32;
 use std::ops::Not;
 
-use log::trace;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::layout::TyAndLayout;

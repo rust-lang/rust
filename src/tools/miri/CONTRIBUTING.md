@@ -78,6 +78,8 @@ custom target file, you might have to set `MIRI_NO_STD=1`.
 base directory, e.g. `./miri test fail` will run all compile-fail tests). These filters are passed
 to `cargo test`, so for multiple filers you need to use `./miri test -- FILTER1 FILTER2`.
 
+#### Fine grained logging
+
 You can get a trace of which MIR statements are being executed by setting the
 `MIRI_LOG` environment variable.  For example:
 
@@ -94,8 +96,15 @@ stacked borrows implementation:
 MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/vec.rs
 ```
 
-In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
+Note that you will only get `info`, `warn` or `error` messages if you use a prebuilt compiler.
+In order to get `debug` and `trace` level messages, you need to build miri with a locally built
+compiler that has `debug=true` set in `config.toml`.
+
+#### Debugging error messages
+
+You can set `MIRI_BACKTRACE=1` to get a backtrace of where an
 evaluation error was originally raised.
+
 
 ### UI testing
 
