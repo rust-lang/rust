@@ -9,6 +9,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
 use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
+use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
 use parking_lot::{Mutex, RwLock};
@@ -27,7 +28,7 @@ use crate::{
     main_loop::Task,
     mem_docs::MemDocs,
     op_queue::OpQueue,
-    reload::{self, SourceRootConfig},
+    reload,
     task_pool::TaskPool,
     to_proto::url_from_abs_path,
 };

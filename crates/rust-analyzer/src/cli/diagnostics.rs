@@ -7,11 +7,9 @@ use rustc_hash::FxHashSet;
 use hir::{db::HirDatabase, Crate, Module};
 use ide::{AssistResolveStrategy, DiagnosticsConfig, Severity};
 use ide_db::base_db::SourceDatabaseExt;
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
-use crate::cli::{
-    flags,
-    load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice},
-};
+use crate::cli::flags;
 
 impl flags::Diagnostics {
     pub fn run(self) -> anyhow::Result<()> {

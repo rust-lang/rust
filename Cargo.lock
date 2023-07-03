@@ -963,6 +963,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "load-cargo"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "crossbeam-channel",
+ "ide",
+ "ide-db",
+ "itertools",
+ "proc-macro-api",
+ "project-model",
+ "tracing",
+ "tt",
+ "vfs",
+ "vfs-notify",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1535,6 +1552,7 @@ dependencies = [
  "ide-db",
  "ide-ssr",
  "itertools",
+ "load-cargo",
  "lsp-server 0.7.1",
  "lsp-types",
  "mbe",
@@ -1564,7 +1582,6 @@ dependencies = [
  "tracing-subscriber",
  "tracing-tree",
  "triomphe",
- "tt",
  "vfs",
  "vfs-notify",
  "winapi",

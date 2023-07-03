@@ -2,12 +2,10 @@
 
 use anyhow::Context;
 use ide_ssr::MatchFinder;
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use project_model::{CargoConfig, RustLibSource};
 
-use crate::cli::{
-    flags,
-    load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice},
-};
+use crate::cli::flags;
 
 impl flags::Ssr {
     pub fn run(self) -> anyhow::Result<()> {

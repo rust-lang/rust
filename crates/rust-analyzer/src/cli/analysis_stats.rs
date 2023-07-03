@@ -24,6 +24,7 @@ use ide_db::{
     LineIndexDatabase,
 };
 use itertools::Itertools;
+use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
@@ -34,9 +35,7 @@ use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
     flags::{self, OutputFormat},
-    full_name_of_item,
-    load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice},
-    print_memory_usage,
+    full_name_of_item, print_memory_usage,
     progress_report::ProgressReport,
     report_metric, Verbosity,
 };

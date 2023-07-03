@@ -7,12 +7,9 @@ use profile::StopWatch;
 use project_model::{CargoConfig, RustLibSource};
 use syntax::TextRange;
 
-use crate::cli::{
-    flags, full_name_of_item,
-    load_cargo::load_workspace_at,
-    load_cargo::{LoadCargoConfig, ProcMacroServerChoice},
-    Result,
-};
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+
+use crate::cli::{flags, full_name_of_item, Result};
 
 impl flags::RunTests {
     pub fn run(self) -> Result<()> {
