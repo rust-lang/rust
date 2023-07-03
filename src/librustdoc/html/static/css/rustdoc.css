@@ -971,6 +971,8 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: flex;
 	padding: 3px;
 	margin-bottom: 5px;
+	align-items: center;
+	vertical-align: text-bottom;
 }
 .item-name .stab {
 	margin-left: 0.3125em;
@@ -982,11 +984,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--main-color);
 	background-color: var(--stab-background-color);
 	width: fit-content;
-	align-items: center;
 	white-space: pre-wrap;
 	border-radius: 3px;
-	display: inline-flex;
-	vertical-align: text-bottom;
+	display: inline;
 }
 
 .stab.portability > code {
