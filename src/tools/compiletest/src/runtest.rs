@@ -41,7 +41,7 @@ use crate::extract_gdb_version;
 use crate::is_android_gdb_target;
 
 mod debugger;
-use debugger::{check_debugger_output, DebuggerCommands};
+use debugger::DebuggerCommands;
 
 #[cfg(test)]
 mod tests;
@@ -997,16 +997,13 @@ impl<'test> TestCx<'test> {
         };
 
         // Parse debugger commands etc from test files
-        let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            match DebuggerCommands::parse_from(
-                &self.testpaths.file,
-                self.config,
-                prefixes,
-                self.revision,
-            ) {
-                Ok(cmds) => cmds,
-                Err(e) => self.fatal(&e),
-            };
+        let dbg_cmds = DebuggerCommands::parse_from(
+            &self.testpaths.file,
+            self.config,
+            prefixes,
+            self.revision,
+        )
+        .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
         let mut script_str = String::with_capacity(2048);
@@ -1023,12 +1020,12 @@ impl<'test> TestCx<'test> {
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
-        for line in &breakpoint_lines {
+        for line in &dbg_cmds.breakpoint_lines {
             script_str.push_str(&format!("bp `{}:{}`\n", source_file_name, line));
         }
 
         // Append the other `cdb-command:`s
-        for line in &commands {
+        for line in &dbg_cmds.commands {
             script_str.push_str(line);
             script_str.push_str("\n");
         }
@@ -1058,7 +1055,7 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("Error while running CDB", &debugger_run_result);
         }
 
-        if let Err(e) = check_debugger_output(&debugger_run_result, &check_lines) {
+        if let Err(e) = dbg_cmds.check_output(&debugger_run_result) {
             self.fatal_proc_rec(&e, &debugger_run_result);
         }
     }
@@ -1088,17 +1085,14 @@ impl<'test> TestCx<'test> {
             PREFIXES
         };
 
-        let DebuggerCommands { commands, check_lines, breakpoint_lines } =
-            match DebuggerCommands::parse_from(
-                &self.testpaths.file,
-                self.config,
-                prefixes,
-                self.revision,
-            ) {
-                Ok(cmds) => cmds,
-                Err(e) => self.fatal(&e),
-            };
-        let mut cmds = commands.join("\n");
+        let dbg_cmds = DebuggerCommands::parse_from(
+            &self.testpaths.file,
+            self.config,
+            prefixes,
+            self.revision,
+        )
+        .unwrap_or_else(|e| self.fatal(&e));
+        let mut cmds = dbg_cmds.commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
@@ -1132,13 +1126,14 @@ impl<'test> TestCx<'test> {
                  ./{}/stage2/lib/rustlib/{}/lib/\n",
                 self.config.host, self.config.target
             ));
-            for line in &breakpoint_lines {
+            for line in &dbg_cmds.breakpoint_lines {
                 script_str.push_str(
-                    &format!(
+                    format!(
                         "break {:?}:{}\n",
                         self.testpaths.file.file_name().unwrap().to_string_lossy(),
                         *line
-                    )[..],
+                    )
+                    .as_str(),
                 );
             }
             script_str.push_str(&cmds);
@@ -1279,7 +1274,7 @@ impl<'test> TestCx<'test> {
             }
 
             // Add line breakpoints
-            for line in &breakpoint_lines {
+            for line in &dbg_cmds.breakpoint_lines {
                 script_str.push_str(&format!(
                     "break '{}':{}\n",
                     self.testpaths.file.file_name().unwrap().to_string_lossy(),
@@ -1315,7 +1310,7 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("gdb failed to execute", &debugger_run_result);
         }
 
-        if let Err(e) = check_debugger_output(&debugger_run_result, &check_lines) {
+        if let Err(e) = dbg_cmds.check_output(&debugger_run_result) {
             self.fatal_proc_rec(&e, &debugger_run_result);
         }
     }
@@ -1372,16 +1367,13 @@ impl<'test> TestCx<'test> {
         };
 
         // Parse debugger commands etc from test files
-        let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            match DebuggerCommands::parse_from(
-                &self.testpaths.file,
-                self.config,
-                prefixes,
-                self.revision,
-            ) {
-                Ok(cmds) => cmds,
-                Err(e) => self.fatal(&e),
-            };
+        let dbg_cmds = DebuggerCommands::parse_from(
+            &self.testpaths.file,
+            self.config,
+            prefixes,
+            self.revision,
+        )
+        .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running
@@ -1430,7 +1422,7 @@ impl<'test> TestCx<'test> {
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
-        for line in &breakpoint_lines {
+        for line in &dbg_cmds.breakpoint_lines {
             script_str.push_str(&format!(
                 "breakpoint set --file '{}' --line {}\n",
                 source_file_name, line
@@ -1438,7 +1430,7 @@ impl<'test> TestCx<'test> {
         }
 
         // Append the other commands
-        for line in &commands {
+        for line in &dbg_cmds.commands {
             script_str.push_str(line);
             script_str.push_str("\n");
         }
@@ -1458,7 +1450,7 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("Error while running LLDB", &debugger_run_result);
         }
 
-        if let Err(e) = check_debugger_output(&debugger_run_result, &check_lines) {
+        if let Err(e) = dbg_cmds.check_output(&debugger_run_result) {
             self.fatal_proc_rec(&e, &debugger_run_result);
         }
     }
