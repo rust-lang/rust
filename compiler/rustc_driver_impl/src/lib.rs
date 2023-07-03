@@ -313,6 +313,7 @@ fn run_compiler(
         override_queries: None,
         make_codegen_backend,
         registry: diagnostics_registry(),
+        expanded_args: args,
     };
 
     match make_input(&early_error_handler, &matches.free) {

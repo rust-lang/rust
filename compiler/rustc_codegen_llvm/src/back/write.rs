@@ -216,6 +216,24 @@ pub fn target_machine_factory(
 
     let force_emulated_tls = sess.target.force_emulated_tls;
 
+    // copy the exe path, followed by path all into one buffer
+    // null terminating them so we can use them as null terminated strings
+    let args_cstr_buff = {
+        let mut args_cstr_buff: Vec<u8> = Vec::new();
+        let exe_path = std::env::current_exe().unwrap_or_default();
+        let exe_path_str = exe_path.into_os_string().into_string().unwrap_or_default();
+
+        args_cstr_buff.extend_from_slice(exe_path_str.as_bytes());
+        args_cstr_buff.push(0);
+
+        for arg in sess.expanded_args.iter() {
+            args_cstr_buff.extend_from_slice(arg.as_bytes());
+            args_cstr_buff.push(0);
+        }
+
+        args_cstr_buff
+    };
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let split_dwarf_file =
             path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
@@ -242,6 +260,8 @@ pub fn target_machine_factory(
                 use_init_array,
                 split_dwarf_file.as_ptr(),
                 force_emulated_tls,
+                args_cstr_buff.as_ptr() as *const c_char,
+                args_cstr_buff.len(),
             )
         };
 

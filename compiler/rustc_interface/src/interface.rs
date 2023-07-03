@@ -279,6 +279,12 @@ pub struct Config {
 
     /// Registry of diagnostics codes.
     pub registry: Registry,
+
+    /// All commandline args used to invoke the compiler, with @file args fully expanded.
+    /// This will only be used within debug info, e.g. in the pdb file on windows
+    /// This is mainly useful for other tools that reads that debuginfo to figure out
+    /// how to call the compiler with the same arguments.
+    pub expanded_args: Vec<String>,
 }
 
 // JUSTIFICATION: before session exists, only config
@@ -317,6 +323,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.make_codegen_backend,
                 registry.clone(),
                 config.ice_file,
+                config.expanded_args,
             );
 
             if let Some(parse_sess_created) = config.parse_sess_created {

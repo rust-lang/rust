@@ -2132,7 +2132,10 @@ extern "C" {
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
         ForceEmulatedTls: bool,
+        ArgsCstrBuff: *const c_char,
+        ArgsCstrBuffLen: usize,
     ) -> Option<&'static mut TargetMachine>;
+
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
