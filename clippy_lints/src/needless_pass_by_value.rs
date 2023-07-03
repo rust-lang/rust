@@ -10,9 +10,9 @@ use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
+    BindingAnnotation, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind,
+    QPath, TyKind,
 };
-use rustc_hir::{HirIdSet, LangItem};
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};

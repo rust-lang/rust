@@ -1,5 +1,4 @@
-use rustc_ast::ast;
-use rustc_ast::attr;
+use rustc_ast::{ast, attr};
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::sym;

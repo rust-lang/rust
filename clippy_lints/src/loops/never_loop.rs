@@ -1,9 +1,9 @@
 use super::utils::make_iterator_snippet;
 use super::NEVER_LOOP;
-use clippy_utils::consts::constant;
+use clippy_utils::consts::{constant, Constant};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::source::snippet;
-use clippy_utils::{consts::Constant, diagnostics::span_lint_and_then};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind};
 use rustc_lint::LateContext;

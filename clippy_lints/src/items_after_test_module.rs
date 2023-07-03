@@ -1,4 +1,5 @@
-use clippy_utils::{diagnostics::span_lint_and_help, is_from_proc_macro, is_in_cfg_test};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{is_from_proc_macro, is_in_cfg_test};
 use rustc_hir::{HirId, ItemId, ItemKind, Mod};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;

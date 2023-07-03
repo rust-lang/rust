@@ -2,13 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_hir::ExprKind;
-use rustc_hir::PatKind;
-use rustc_hir::RangeEnd;
-use rustc_hir::UnOp;
-use rustc_lint::LintContext;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{Expr, ExprKind, PatKind, RangeEnd, UnOp};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 

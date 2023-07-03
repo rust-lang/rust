@@ -1,18 +1,18 @@
 use super::WHILE_LET_ON_ITERATOR;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{
-    get_enclosing_loop_or_multi_call_closure, is_refutable, is_res_lang_ctor, is_trait_method, visitors::is_res_used,
-};
+use clippy_utils::visitors::is_res_used;
+use clippy_utils::{get_enclosing_loop_or_multi_call_closure, higher, is_refutable, is_res_lang_ctor, is_trait_method};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def::Res, Closure, Expr, ExprKind, HirId, LangItem, Local, Mutability, PatKind, UnOp};
+use rustc_hir::{Closure, Expr, ExprKind, HirId, LangItem, Local, Mutability, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::{symbol::sym, Symbol};
+use rustc_span::symbol::sym;
+use rustc_span::Symbol;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     let (scrutinee_expr, iter_expr_struct, iter_expr, some_pat, loop_expr) = if_chain! {

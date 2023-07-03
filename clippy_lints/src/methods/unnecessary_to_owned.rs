@@ -7,7 +7,8 @@ use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_mid
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, Node};
 use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
@@ -16,7 +17,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ClauseKind, EarlyBinder, ParamTy, ProjectionPredicate, TraitPredicate, Ty};
 use rustc_span::{sym, Symbol};
-use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
 use super::UNNECESSARY_TO_OWNED;
 

@@ -7,7 +7,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{source_map::Spanned, sym};
+use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does

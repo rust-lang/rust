@@ -1,10 +1,10 @@
-use std::{iter::once, ops::ControlFlow};
+use std::iter::once;
+use std::ops::ControlFlow;
 
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet};
-use rustc_ast::{
-    ast::{Expr, ExprKind},
-    token::LitKind,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use rustc_ast::ast::{Expr, ExprKind};
+use rustc_ast::token::LitKind;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;

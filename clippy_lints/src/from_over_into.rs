@@ -10,7 +10,8 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::{hir::nested_filter::OnlyBodies, ty};
+use rustc_middle::hir::nested_filter::OnlyBodies;
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, Symbol};

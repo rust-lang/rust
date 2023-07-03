@@ -12,12 +12,11 @@ use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::iterate::{CycleDetector, TriColorDepthFirstSearch};
 use rustc_errors::Applicability;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir,
-    def_id::{DefId, LocalDefId},
-    BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId,
+    ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
     TraitItemKind, TyKind, UnOp,
 };
 use rustc_index::bit_set::BitSet;
@@ -30,9 +29,11 @@ use rustc_middle::ty::{
     ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::VecDeque;
 
 declare_clippy_lint! {

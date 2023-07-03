@@ -1,13 +1,13 @@
 use std::ops::ControlFlow;
 
-use clippy_utils::{
-    diagnostics::span_lint_and_then, get_parent_expr, match_def_path, source::snippet, ty::is_type_diagnostic_item,
-    visitors::for_each_local_use_after_expr,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::visitors::for_each_local_use_after_expr;
+use clippy_utils::{get_parent_expr, match_def_path};
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_hir::QPath;
-use rustc_hir::{def::Res, ExprKind};
+use rustc_hir::def::Res;
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;

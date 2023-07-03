@@ -1,5 +1,5 @@
 error: usage of `Box<&T>`
-  --> $DIR/redundant_allocation_fixable.rs:26:30
+  --> $DIR/redundant_allocation_fixable.rs:24:30
    |
 LL |     pub fn box_test1<T>(foo: Box<&T>) {}
    |                              ^^^^^^^ help: try: `&T`
@@ -8,7 +8,7 @@ LL |     pub fn box_test1<T>(foo: Box<&T>) {}
    = note: `-D clippy::redundant-allocation` implied by `-D warnings`
 
 error: usage of `Box<&MyStruct>`
-  --> $DIR/redundant_allocation_fixable.rs:28:27
+  --> $DIR/redundant_allocation_fixable.rs:26:27
    |
 LL |     pub fn box_test2(foo: Box<&MyStruct>) {}
    |                           ^^^^^^^^^^^^^^ help: try: `&MyStruct`
@@ -16,7 +16,7 @@ LL |     pub fn box_test2(foo: Box<&MyStruct>) {}
    = note: `&MyStruct` is already a pointer, `Box<&MyStruct>` allocates a pointer on the heap
 
 error: usage of `Box<&MyEnum>`
-  --> $DIR/redundant_allocation_fixable.rs:30:27
+  --> $DIR/redundant_allocation_fixable.rs:28:27
    |
 LL |     pub fn box_test3(foo: Box<&MyEnum>) {}
    |                           ^^^^^^^^^^^^ help: try: `&MyEnum`
@@ -24,7 +24,7 @@ LL |     pub fn box_test3(foo: Box<&MyEnum>) {}
    = note: `&MyEnum` is already a pointer, `Box<&MyEnum>` allocates a pointer on the heap
 
 error: usage of `Box<Box<T>>`
-  --> $DIR/redundant_allocation_fixable.rs:34:30
+  --> $DIR/redundant_allocation_fixable.rs:32:30
    |
 LL |     pub fn box_test5<T>(foo: Box<Box<T>>) {}
    |                              ^^^^^^^^^^^ help: try: `Box<T>`
@@ -32,7 +32,7 @@ LL |     pub fn box_test5<T>(foo: Box<Box<T>>) {}
    = note: `Box<T>` is already on the heap, `Box<Box<T>>` makes an extra allocation
 
 error: usage of `Rc<&T>`
-  --> $DIR/redundant_allocation_fixable.rs:45:29
+  --> $DIR/redundant_allocation_fixable.rs:41:29
    |
 LL |     pub fn rc_test1<T>(foo: Rc<&T>) {}
    |                             ^^^^^^ help: try: `&T`
@@ -40,7 +40,7 @@ LL |     pub fn rc_test1<T>(foo: Rc<&T>) {}
    = note: `&T` is already a pointer, `Rc<&T>` allocates a pointer on the heap
 
 error: usage of `Rc<&MyStruct>`
-  --> $DIR/redundant_allocation_fixable.rs:47:26
+  --> $DIR/redundant_allocation_fixable.rs:43:26
    |
 LL |     pub fn rc_test2(foo: Rc<&MyStruct>) {}
    |                          ^^^^^^^^^^^^^ help: try: `&MyStruct`
@@ -48,7 +48,7 @@ LL |     pub fn rc_test2(foo: Rc<&MyStruct>) {}
    = note: `&MyStruct` is already a pointer, `Rc<&MyStruct>` allocates a pointer on the heap
 
 error: usage of `Rc<&MyEnum>`
-  --> $DIR/redundant_allocation_fixable.rs:49:26
+  --> $DIR/redundant_allocation_fixable.rs:45:26
    |
 LL |     pub fn rc_test3(foo: Rc<&MyEnum>) {}
    |                          ^^^^^^^^^^^ help: try: `&MyEnum`
@@ -56,7 +56,7 @@ LL |     pub fn rc_test3(foo: Rc<&MyEnum>) {}
    = note: `&MyEnum` is already a pointer, `Rc<&MyEnum>` allocates a pointer on the heap
 
 error: usage of `Rc<Rc<bool>>`
-  --> $DIR/redundant_allocation_fixable.rs:53:24
+  --> $DIR/redundant_allocation_fixable.rs:49:24
    |
 LL |     pub fn rc_test6(a: Rc<Rc<bool>>) {}
    |                        ^^^^^^^^^^^^ help: try: `Rc<bool>`
@@ -64,7 +64,7 @@ LL |     pub fn rc_test6(a: Rc<Rc<bool>>) {}
    = note: `Rc<bool>` is already on the heap, `Rc<Rc<bool>>` makes an extra allocation
 
 error: usage of `Arc<&T>`
-  --> $DIR/redundant_allocation_fixable.rs:64:30
+  --> $DIR/redundant_allocation_fixable.rs:58:30
    |
 LL |     pub fn arc_test1<T>(foo: Arc<&T>) {}
    |                              ^^^^^^^ help: try: `&T`
@@ -72,7 +72,7 @@ LL |     pub fn arc_test1<T>(foo: Arc<&T>) {}
    = note: `&T` is already a pointer, `Arc<&T>` allocates a pointer on the heap
 
 error: usage of `Arc<&MyStruct>`
-  --> $DIR/redundant_allocation_fixable.rs:66:27
+  --> $DIR/redundant_allocation_fixable.rs:60:27
    |
 LL |     pub fn arc_test2(foo: Arc<&MyStruct>) {}
    |                           ^^^^^^^^^^^^^^ help: try: `&MyStruct`
@@ -80,7 +80,7 @@ LL |     pub fn arc_test2(foo: Arc<&MyStruct>) {}
    = note: `&MyStruct` is already a pointer, `Arc<&MyStruct>` allocates a pointer on the heap
 
 error: usage of `Arc<&MyEnum>`
-  --> $DIR/redundant_allocation_fixable.rs:68:27
+  --> $DIR/redundant_allocation_fixable.rs:62:27
    |
 LL |     pub fn arc_test3(foo: Arc<&MyEnum>) {}
    |                           ^^^^^^^^^^^^ help: try: `&MyEnum`
@@ -88,7 +88,7 @@ LL |     pub fn arc_test3(foo: Arc<&MyEnum>) {}
    = note: `&MyEnum` is already a pointer, `Arc<&MyEnum>` allocates a pointer on the heap
 
 error: usage of `Arc<Arc<bool>>`
-  --> $DIR/redundant_allocation_fixable.rs:72:25
+  --> $DIR/redundant_allocation_fixable.rs:66:25
    |
 LL |     pub fn arc_test7(a: Arc<Arc<bool>>) {}
    |                         ^^^^^^^^^^^^^^ help: try: `Arc<bool>`

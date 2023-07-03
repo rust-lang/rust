@@ -1,9 +1,8 @@
-use clippy_utils::{diagnostics::span_lint_and_help, source::snippet};
-use rustc_ast::{
-    node_id::NodeSet,
-    visit::{walk_block, walk_item, Visitor},
-    Block, Crate, Inline, Item, ItemKind, ModKind, NodeId,
-};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::snippet;
+use rustc_ast::node_id::NodeSet;
+use rustc_ast::visit::{walk_block, walk_item, Visitor};
+use rustc_ast::{Block, Crate, Inline, Item, ItemKind, ModKind, NodeId};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};

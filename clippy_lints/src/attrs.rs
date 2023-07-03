@@ -1,12 +1,10 @@
 //! checks for attributes
 
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::macros::{is_panic, macro_backtrace};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
-use clippy_utils::{
-    diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then},
-    is_from_proc_macro,
-};
 use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_errors::Applicability;

@@ -1,8 +1,11 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet_opt};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_opt;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_hir::{def::Res, def_id::DefId, Item, ItemKind, UseKind};
+use rustc_hir::def::Res;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;

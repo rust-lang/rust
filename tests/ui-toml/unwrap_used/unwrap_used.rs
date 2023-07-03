@@ -9,9 +9,7 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::get_unwrap)]
 
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 struct GetFalsePositive {
     arr: [u32; 3],

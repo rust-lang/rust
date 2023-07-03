@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::get_parent_expr;
-use clippy_utils::higher;
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::{get_parent_expr, higher};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

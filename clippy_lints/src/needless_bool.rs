@@ -6,9 +6,9 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    get_parent_node, is_else_clause, is_expn_of, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
+    get_parent_node, higher, is_else_clause, is_expn_of, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
+    SpanlessEq,
 };
-use clippy_utils::{higher, SpanlessEq};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Node, UnOp};

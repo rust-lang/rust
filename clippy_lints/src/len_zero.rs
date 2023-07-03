@@ -1,22 +1,23 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators, sugg::Sugg};
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    def::Res, def_id::DefId, lang_items::LangItem, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg,
-    GenericBound, ImplItem, ImplItemKind, ImplicitSelfKind, Item, ItemKind, Mutability, Node, PathSegment, PrimTy,
-    QPath, TraitItemRef, TyKind, TypeBindingKind,
+    AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
+    ImplicitSelfKind, Item, ItemKind, Mutability, Node, PathSegment, PrimTy, QPath, TraitItemRef, TyKind,
+    TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{
-    source_map::{Span, Spanned, Symbol},
-    symbol::sym,
-};
+use rustc_span::source_map::{Span, Spanned, Symbol};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -31,9 +31,8 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{BytePos, FilePathMapping, SourceMap, Span};
 use rustc_span::{sym, FileName, Pos};
-use std::io;
 use std::ops::Range;
-use std::thread;
+use std::{io, thread};
 use url::Url;
 
 declare_clippy_lint! {
