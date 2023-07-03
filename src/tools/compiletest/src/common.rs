@@ -107,7 +107,6 @@ string_enum! {
     #[derive(Clone, Debug, PartialEq)]
     pub enum CompareMode {
         Polonius => "polonius",
-        Chalk => "chalk",
         NextSolver => "next-solver",
         NextSolverCoherence => "next-solver-coherence",
         SplitDwarf => "split-dwarf",

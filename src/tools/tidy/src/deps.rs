@@ -122,10 +122,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
-    "chalk-derive",
-    "chalk-engine",
-    "chalk-ir",
-    "chalk-solve",
     "compiler_builtins",
     "convert_case", // dependency of derive_more
     "cpufeatures",

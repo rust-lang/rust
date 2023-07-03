@@ -2435,9 +2435,6 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::Polonius) => {
                 rustc.args(&["-Zpolonius"]);
             }
-            Some(CompareMode::Chalk) => {
-                rustc.args(&["-Ztrait-solver=chalk"]);
-            }
             Some(CompareMode::NextSolver) => {
                 rustc.args(&["-Ztrait-solver=next"]);
             }
