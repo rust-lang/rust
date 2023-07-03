@@ -61,7 +61,9 @@ impl CommentBlock {
         let mut blocks = CommentBlock::extract_untagged(text);
         blocks.retain_mut(|block| {
             let first = block.contents.remove(0);
-            let Some(id) = first.strip_prefix(&tag) else { return false; };
+            let Some(id) = first.strip_prefix(&tag) else {
+                return false;
+            };
 
             if block.is_doc {
                 panic!("Use plain (non-doc) comments with tags like {tag}:\n    {first}");

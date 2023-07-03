@@ -271,7 +271,10 @@ fn ever_initialized_map(
             }
         }
         let Some(terminator) = &block.terminator else {
-            never!("Terminator should be none only in construction.\nThe body:\n{}", body.pretty_print(db));
+            never!(
+                "Terminator should be none only in construction.\nThe body:\n{}",
+                body.pretty_print(db)
+            );
             return;
         };
         let targets = match &terminator.kind {

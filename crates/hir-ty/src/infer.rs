@@ -1232,7 +1232,9 @@ impl<'a> InferenceContext<'a> {
             .as_function()?
             .lookup(self.db.upcast())
             .container
-        else { return None };
+        else {
+            return None;
+        };
         self.resolve_output_on(trait_)
     }
 

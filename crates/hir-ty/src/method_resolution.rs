@@ -689,7 +689,7 @@ pub fn lookup_impl_method(
     fn_subst: Substitution,
 ) -> (FunctionId, Substitution) {
     let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
-        return (func, fn_subst)
+        return (func, fn_subst);
     };
     let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
     let fn_params = fn_subst.len(Interner) - trait_params;
@@ -699,8 +699,8 @@ pub fn lookup_impl_method(
     };
 
     let name = &db.function_data(func).name;
-    let Some((impl_fn, impl_subst)) = lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
-        .and_then(|assoc| {
+    let Some((impl_fn, impl_subst)) =
+        lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name).and_then(|assoc| {
             if let (AssocItemId::FunctionId(id), subst) = assoc {
                 Some((id, subst))
             } else {

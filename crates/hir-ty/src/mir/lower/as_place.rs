@@ -18,7 +18,9 @@ impl MirLowerCtx<'_> {
     ) -> Result<Option<(Place, BasicBlockId)>> {
         let ty = self.expr_ty_without_adjust(expr_id);
         let place = self.temp(ty, prev_block, expr_id.into())?;
-        let Some(current) = self.lower_expr_to_place_without_adjust(expr_id, place.into(), prev_block)? else {
+        let Some(current) =
+            self.lower_expr_to_place_without_adjust(expr_id, place.into(), prev_block)?
+        else {
             return Ok(None);
         };
         Ok(Some((place.into(), current)))
@@ -35,7 +37,9 @@ impl MirLowerCtx<'_> {
             .map(|x| x.target.clone())
             .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id));
         let place = self.temp(ty, prev_block, expr_id.into())?;
-        let Some(current) = self.lower_expr_to_place_with_adjust(expr_id, place.into(), prev_block, adjustments)? else {
+        let Some(current) =
+            self.lower_expr_to_place_with_adjust(expr_id, place.into(), prev_block, adjustments)?
+        else {
             return Ok(None);
         };
         Ok(Some((place.into(), current)))
@@ -62,7 +66,8 @@ impl MirLowerCtx<'_> {
                         expr_id,
                         upgrade_rvalue,
                         rest,
-                    )? else {
+                    )?
+                    else {
                         return Ok(None);
                     };
                     x.0 = x.0.project(ProjectionElem::Deref);
@@ -74,7 +79,8 @@ impl MirLowerCtx<'_> {
                         expr_id,
                         upgrade_rvalue,
                         rest,
-                    )? else {
+                    )?
+                    else {
                         return Ok(None);
                     };
                     self.lower_overloaded_deref(
@@ -165,7 +171,8 @@ impl MirLowerCtx<'_> {
                         _ => false,
                     };
                     if !is_builtin {
-                        let Some((p, current)) = self.lower_expr_as_place(current, *expr, true)? else {
+                        let Some((p, current)) = self.lower_expr_as_place(current, *expr, true)?
+                        else {
                             return Ok(None);
                         };
                         return self.lower_overloaded_deref(
@@ -192,7 +199,8 @@ impl MirLowerCtx<'_> {
                             },
                         );
                     }
-                    let Some((mut r, current)) = self.lower_expr_as_place(current, *expr, true)? else {
+                    let Some((mut r, current)) = self.lower_expr_as_place(current, *expr, true)?
+                    else {
                         return Ok(None);
                     };
                     r = r.project(ProjectionElem::Deref);
@@ -217,12 +225,18 @@ impl MirLowerCtx<'_> {
                     )
                 {
                     let Some(index_fn) = self.infer.method_resolution(expr_id) else {
-                        return Err(MirLowerError::UnresolvedMethod("[overloaded index]".to_string()));
+                        return Err(MirLowerError::UnresolvedMethod(
+                            "[overloaded index]".to_string(),
+                        ));
                     };
-                    let Some((base_place, current)) = self.lower_expr_as_place(current, *base, true)? else {
+                    let Some((base_place, current)) =
+                        self.lower_expr_as_place(current, *base, true)?
+                    else {
                         return Ok(None);
                     };
-                    let Some((index_operand, current)) = self.lower_expr_to_some_operand(*index, current)? else {
+                    let Some((index_operand, current)) =
+                        self.lower_expr_to_some_operand(*index, current)?
+                    else {
                         return Ok(None);
                     };
                     return self.lower_overloaded_index(
@@ -249,7 +263,8 @@ impl MirLowerCtx<'_> {
                 };
                 let l_index =
                     self.temp(self.expr_ty_after_adjustments(*index), current, expr_id.into())?;
-                let Some(current) = self.lower_expr_to_place(*index, l_index.into(), current)? else {
+                let Some(current) = self.lower_expr_to_place(*index, l_index.into(), current)?
+                else {
                     return Ok(None);
                 };
                 p_base = p_base.project(ProjectionElem::Index(l_index));
@@ -282,7 +297,15 @@ impl MirLowerCtx<'_> {
             )
             .intern(Interner),
         );
-        let Some(current) = self.lower_call(index_fn_op, Box::new([Operand::Copy(place), index_operand]), result.clone(), current, false, span)? else {
+        let Some(current) = self.lower_call(
+            index_fn_op,
+            Box::new([Operand::Copy(place), index_operand]),
+            result.clone(),
+            current,
+            false,
+            span,
+        )?
+        else {
             return Ok(None);
         };
         result = result.project(ProjectionElem::Deref);
@@ -329,7 +352,15 @@ impl MirLowerCtx<'_> {
             .intern(Interner),
         );
         let mut result: Place = self.temp(target_ty_ref, current, span)?.into();
-        let Some(current) = self.lower_call(deref_fn_op, Box::new([Operand::Copy(ref_place)]), result.clone(), current, false, span)? else {
+        let Some(current) = self.lower_call(
+            deref_fn_op,
+            Box::new([Operand::Copy(ref_place)]),
+            result.clone(),
+            current,
+            false,
+            span,
+        )?
+        else {
             return Ok(None);
         };
         result = result.project(ProjectionElem::Deref);

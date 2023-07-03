@@ -327,7 +327,9 @@ impl Evaluator<'_> {
             }
             "pthread_getspecific" => {
                 let Some(arg0) = args.get(0) else {
-                    return Err(MirEvalError::TypeError("pthread_getspecific arg0 is not provided"));
+                    return Err(MirEvalError::TypeError(
+                        "pthread_getspecific arg0 is not provided",
+                    ));
                 };
                 let key = from_bytes!(usize, &pad16(arg0.get(self)?, false)[0..8]);
                 let value = self.thread_local_storage.get_key(key)?;
@@ -336,11 +338,15 @@ impl Evaluator<'_> {
             }
             "pthread_setspecific" => {
                 let Some(arg0) = args.get(0) else {
-                    return Err(MirEvalError::TypeError("pthread_setspecific arg0 is not provided"));
+                    return Err(MirEvalError::TypeError(
+                        "pthread_setspecific arg0 is not provided",
+                    ));
                 };
                 let key = from_bytes!(usize, &pad16(arg0.get(self)?, false)[0..8]);
                 let Some(arg1) = args.get(1) else {
-                    return Err(MirEvalError::TypeError("pthread_setspecific arg1 is not provided"));
+                    return Err(MirEvalError::TypeError(
+                        "pthread_setspecific arg1 is not provided",
+                    ));
                 };
                 let value = from_bytes!(u128, pad16(arg1.get(self)?, false));
                 self.thread_local_storage.set_key(key, value)?;
@@ -390,7 +396,9 @@ impl Evaluator<'_> {
                 "sqrt" | "sin" | "cos" | "exp" | "exp2" | "log" | "log10" | "log2" | "fabs"
                 | "floor" | "ceil" | "trunc" | "rint" | "nearbyint" | "round" | "roundeven" => {
                     let [arg] = args else {
-                        return Err(MirEvalError::TypeError("f64 intrinsic signature doesn't match fn (f64) -> f64"));
+                        return Err(MirEvalError::TypeError(
+                            "f64 intrinsic signature doesn't match fn (f64) -> f64",
+                        ));
                     };
                     let arg = from_bytes!(f64, arg.get(self)?);
                     match name {
@@ -416,7 +424,9 @@ impl Evaluator<'_> {
                 }
                 "pow" | "minnum" | "maxnum" | "copysign" => {
                     let [arg1, arg2] = args else {
-                        return Err(MirEvalError::TypeError("f64 intrinsic signature doesn't match fn (f64, f64) -> f64"));
+                        return Err(MirEvalError::TypeError(
+                            "f64 intrinsic signature doesn't match fn (f64, f64) -> f64",
+                        ));
                     };
                     let arg1 = from_bytes!(f64, arg1.get(self)?);
                     let arg2 = from_bytes!(f64, arg2.get(self)?);
@@ -430,7 +440,9 @@ impl Evaluator<'_> {
                 }
                 "powi" => {
                     let [arg1, arg2] = args else {
-                        return Err(MirEvalError::TypeError("powif64 signature doesn't match fn (f64, i32) -> f64"));
+                        return Err(MirEvalError::TypeError(
+                            "powif64 signature doesn't match fn (f64, i32) -> f64",
+                        ));
                     };
                     let arg1 = from_bytes!(f64, arg1.get(self)?);
                     let arg2 = from_bytes!(i32, arg2.get(self)?);
@@ -438,7 +450,9 @@ impl Evaluator<'_> {
                 }
                 "fma" => {
                     let [arg1, arg2, arg3] = args else {
-                        return Err(MirEvalError::TypeError("fmaf64 signature doesn't match fn (f64, f64, f64) -> f64"));
+                        return Err(MirEvalError::TypeError(
+                            "fmaf64 signature doesn't match fn (f64, f64, f64) -> f64",
+                        ));
                     };
                     let arg1 = from_bytes!(f64, arg1.get(self)?);
                     let arg2 = from_bytes!(f64, arg2.get(self)?);
@@ -454,7 +468,9 @@ impl Evaluator<'_> {
                 "sqrt" | "sin" | "cos" | "exp" | "exp2" | "log" | "log10" | "log2" | "fabs"
                 | "floor" | "ceil" | "trunc" | "rint" | "nearbyint" | "round" | "roundeven" => {
                     let [arg] = args else {
-                        return Err(MirEvalError::TypeError("f32 intrinsic signature doesn't match fn (f32) -> f32"));
+                        return Err(MirEvalError::TypeError(
+                            "f32 intrinsic signature doesn't match fn (f32) -> f32",
+                        ));
                     };
                     let arg = from_bytes!(f32, arg.get(self)?);
                     match name {
@@ -480,7 +496,9 @@ impl Evaluator<'_> {
                 }
                 "pow" | "minnum" | "maxnum" | "copysign" => {
                     let [arg1, arg2] = args else {
-                        return Err(MirEvalError::TypeError("f32 intrinsic signature doesn't match fn (f32, f32) -> f32"));
+                        return Err(MirEvalError::TypeError(
+                            "f32 intrinsic signature doesn't match fn (f32, f32) -> f32",
+                        ));
                     };
                     let arg1 = from_bytes!(f32, arg1.get(self)?);
                     let arg2 = from_bytes!(f32, arg2.get(self)?);
@@ -494,7 +512,9 @@ impl Evaluator<'_> {
                 }
                 "powi" => {
                     let [arg1, arg2] = args else {
-                        return Err(MirEvalError::TypeError("powif32 signature doesn't match fn (f32, i32) -> f32"));
+                        return Err(MirEvalError::TypeError(
+                            "powif32 signature doesn't match fn (f32, i32) -> f32",
+                        ));
                     };
                     let arg1 = from_bytes!(f32, arg1.get(self)?);
                     let arg2 = from_bytes!(i32, arg2.get(self)?);
@@ -502,7 +522,9 @@ impl Evaluator<'_> {
                 }
                 "fma" => {
                     let [arg1, arg2, arg3] = args else {
-                        return Err(MirEvalError::TypeError("fmaf32 signature doesn't match fn (f32, f32, f32) -> f32"));
+                        return Err(MirEvalError::TypeError(
+                            "fmaf32 signature doesn't match fn (f32, f32, f32) -> f32",
+                        ));
                     };
                     let arg1 = from_bytes!(f32, arg1.get(self)?);
                     let arg2 = from_bytes!(f32, arg2.get(self)?);
@@ -515,14 +537,16 @@ impl Evaluator<'_> {
         }
         match name {
             "size_of" => {
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
+                else {
                     return Err(MirEvalError::TypeError("size_of generic arg is not provided"));
                 };
                 let size = self.size_of_sized(ty, locals, "size_of arg")?;
                 destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
             }
             "size_of_val" => {
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
+                else {
                     return Err(MirEvalError::TypeError("size_of_val generic arg is not provided"));
                 };
                 let [arg] = args else {
@@ -549,14 +573,16 @@ impl Evaluator<'_> {
                 destination.write_from_bytes(self, &size.to_le_bytes())
             }
             "min_align_of" | "pref_align_of" => {
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
+                else {
                     return Err(MirEvalError::TypeError("align_of generic arg is not provided"));
                 };
                 let align = self.layout(ty)?.align.abi.bytes();
                 destination.write_from_bytes(self, &align.to_le_bytes()[0..destination.size])
             }
             "needs_drop" => {
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
+                else {
                     return Err(MirEvalError::TypeError("size_of generic arg is not provided"));
                 };
                 let result = !ty.clone().is_copy(self.db, locals.body.owner);
@@ -697,10 +723,15 @@ impl Evaluator<'_> {
             }
             "copy" | "copy_nonoverlapping" => {
                 let [src, dst, offset] = args else {
-                    return Err(MirEvalError::TypeError("copy_nonoverlapping args are not provided"));
+                    return Err(MirEvalError::TypeError(
+                        "copy_nonoverlapping args are not provided",
+                    ));
                 };
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
-                    return Err(MirEvalError::TypeError("copy_nonoverlapping generic arg is not provided"));
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
+                else {
+                    return Err(MirEvalError::TypeError(
+                        "copy_nonoverlapping generic arg is not provided",
+                    ));
                 };
                 let src = Address::from_bytes(src.get(self)?)?;
                 let dst = Address::from_bytes(dst.get(self)?)?;
@@ -715,7 +746,8 @@ impl Evaluator<'_> {
                 let [ptr, offset] = args else {
                     return Err(MirEvalError::TypeError("offset args are not provided"));
                 };
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
+                else {
                     return Err(MirEvalError::TypeError("offset generic arg is not provided"));
                 };
                 let ptr = u128::from_le_bytes(pad16(ptr.get(self)?, false));
@@ -824,8 +856,11 @@ impl Evaluator<'_> {
                 let [arg] = args else {
                     return Err(MirEvalError::TypeError("discriminant_value arg is not provided"));
                 };
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
-                    return Err(MirEvalError::TypeError("discriminant_value generic arg is not provided"));
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
+                else {
+                    return Err(MirEvalError::TypeError(
+                        "discriminant_value generic arg is not provided",
+                    ));
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
                 let size = self.size_of_sized(ty, locals, "discriminant_value ptr type")?;

@@ -42,10 +42,9 @@ pub fn expand_eager_macro_input(
     let token_tree = macro_call.value.token_tree();
 
     let Some(token_tree) = token_tree else {
-        return Ok(ExpandResult { value: None, err:
-            Some(ExpandError::other(
-                "invalid token tree"
-            )),
+        return Ok(ExpandResult {
+            value: None,
+            err: Some(ExpandError::other("invalid token tree")),
         });
     };
     let (parsed_args, arg_token_map) = mbe::syntax_node_to_token_tree(token_tree.syntax());
@@ -85,7 +84,7 @@ pub fn expand_eager_macro_input(
         resolver,
     )?;
     let Some(expanded_eager_input) = expanded_eager_input else {
-        return Ok(ExpandResult { value: None, err })
+        return Ok(ExpandResult { value: None, err });
     };
     let (mut subtree, token_map) = mbe::syntax_node_to_token_tree(&expanded_eager_input);
     subtree.delimiter = crate::tt::Delimiter::unspecified();

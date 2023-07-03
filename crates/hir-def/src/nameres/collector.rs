@@ -2235,8 +2235,12 @@ impl ModCollector<'_, '_> {
     }
 
     fn import_all_legacy_macros(&mut self, module_id: LocalModuleId) {
-        let Some((source, target)) = Self::borrow_modules(self.def_collector.def_map.modules.as_mut(), module_id, self.module_id) else {
-            return
+        let Some((source, target)) = Self::borrow_modules(
+            self.def_collector.def_map.modules.as_mut(),
+            module_id,
+            self.module_id,
+        ) else {
+            return;
         };
 
         for (name, macs) in source.scope.legacy_macros() {

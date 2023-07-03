@@ -636,7 +636,8 @@ fn render_const_scalar(
                 }
                 hir_def::AdtId::EnumId(e) => {
                     let Some((var_id, var_layout)) =
-                            detect_variant_from_bytes(&layout, f.db, krate, b, e) else {
+                        detect_variant_from_bytes(&layout, f.db, krate, b, e)
+                    else {
                         return f.write_str("<failed-to-detect-variant>");
                     };
                     let data = &f.db.enum_data(e).variants[var_id];

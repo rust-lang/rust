@@ -137,13 +137,16 @@ impl Attrs {
 
                 let cfg_options = &crate_graph[krate].cfg_options;
 
-                let Some(variant) = enum_.variants.clone().filter(|variant| {
-                    let attrs = item_tree.attrs(db, krate, (*variant).into());
-                    attrs.is_cfg_enabled(cfg_options)
-                })
-                .zip(0u32..)
-                .find(|(_variant, idx)| it.local_id == Idx::from_raw(RawIdx::from(*idx)))
-                .map(|(variant, _idx)| variant)
+                let Some(variant) = enum_
+                    .variants
+                    .clone()
+                    .filter(|variant| {
+                        let attrs = item_tree.attrs(db, krate, (*variant).into());
+                        attrs.is_cfg_enabled(cfg_options)
+                    })
+                    .zip(0u32..)
+                    .find(|(_variant, idx)| it.local_id == Idx::from_raw(RawIdx::from(*idx)))
+                    .map(|(variant, _idx)| variant)
                 else {
                     return Arc::new(res);
                 };

@@ -471,17 +471,13 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
     };
     let Some(macro_arg) = db.macro_arg(id) else {
         return ExpandResult {
-            value: Arc::new(
-                tt::Subtree {
-                    delimiter: tt::Delimiter::UNSPECIFIED,
-                    token_trees: Vec::new(),
-                },
-            ),
+            value: Arc::new(tt::Subtree {
+                delimiter: tt::Delimiter::UNSPECIFIED,
+                token_trees: Vec::new(),
+            }),
             // FIXME: We should make sure to enforce an invariant that invalid macro
             // calls do not reach this call path!
-            err: Some(ExpandError::other(
-                "invalid token tree"
-            )),
+            err: Some(ExpandError::other("invalid token tree")),
         };
     };
     let (arg_tt, arg_tm, undo_info) = &*macro_arg;
@@ -510,9 +506,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
                 delimiter: tt::Delimiter::UNSPECIFIED,
                 token_trees: Vec::new(),
             }),
-            err: Some(ExpandError::other(
-                "invalid token tree"
-            )),
+            err: Some(ExpandError::other("invalid token tree")),
         };
     };
     let (arg_tt, arg_tm, undo_info) = &*macro_arg;

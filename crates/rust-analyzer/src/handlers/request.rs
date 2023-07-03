@@ -1331,7 +1331,9 @@ pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
 ) -> anyhow::Result<CodeLens> {
-    let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else { return Ok(code_lens) };
+    let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else {
+        return Ok(code_lens);
+    };
     let annotation = snap.analysis.resolve_annotation(annotation)?;
 
     let mut acc = Vec::new();
@@ -1632,9 +1634,9 @@ pub(crate) fn handle_open_docs(
     let Ok(remote_urls) = snap.analysis.external_docs(position, target_dir, sysroot) else {
         return if snap.config.local_docs() {
             Ok(ExternalDocsResponse::WithLocal(Default::default()))
-            } else {
+        } else {
             Ok(ExternalDocsResponse::Simple(None))
-            }
+        };
     };
 
     let web = remote_urls.web_url.and_then(|it| Url::parse(&it).ok());
