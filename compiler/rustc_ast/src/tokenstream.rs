@@ -417,16 +417,10 @@ impl TokenStream {
         mut self,
         mut f: impl FnMut(usize, TokenTree) -> TokenTree,
     ) -> TokenStream {
-        if let Some(inner) = Lrc::get_mut(&mut self.0) {
-            // optimization: perform the map in-place if self's reference count is 1
-            let owned = mem::take(inner);
-            *inner = owned.into_iter().enumerate().map(|(i, tree)| f(i, tree)).collect();
-            self
-        } else {
-            TokenStream(Lrc::new(
-                self.0.iter().enumerate().map(|(i, tree)| f(i, tree.clone())).collect(),
-            ))
-        }
+        let owned = Lrc::make_mut(&mut self.0); // clone if necessary
+        // rely on vec's in-place optimizations to avoid another allocation
+        *owned = mem::take(owned).into_iter().enumerate().map(|(i, tree)| f(i, tree)).collect();
+        self
     }
 
     /// Create a token stream containing a single token with alone spacing.
