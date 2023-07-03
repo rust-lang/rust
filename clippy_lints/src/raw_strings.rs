@@ -95,7 +95,7 @@ impl EarlyLintPass for RawStrings {
                 // `once` so a raw string ending in hashes is still checked
                 let num = str.as_bytes().iter().chain(once(&0)).try_fold(0u8, |acc, &b| {
                     match b {
-                        b'"' => (following_quote, req) = (true, 1),
+                        b'"' if !following_quote => (following_quote, req) = (true, 1),
                         // I'm a bit surprised the compiler didn't optimize this out, there's no
                         // branch but it still ends up doing an unnecessary comparison, it's:
                         // - cmp r9b,1h
