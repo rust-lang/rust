@@ -143,6 +143,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "elsa",
     "ena",
     "equivalent",
+    "errno",
+    "errno-dragonfly",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
