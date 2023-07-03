@@ -34,7 +34,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         let param_env = tcx.param_env(def_id);
-        let (_, move_data) = MoveData::gather_moves(body, tcx, param_env).unwrap();
+        let move_data = MoveData::gather_moves(body, tcx, param_env).unwrap();
         let mdpe = MoveDataParamEnv { move_data, param_env };
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
