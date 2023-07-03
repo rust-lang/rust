@@ -374,18 +374,6 @@ jobs:
           - name: dist-loongarch64-linux
             <<: *job-linux-8c
 
-          - name: dist-mips-linux
-            <<: *job-linux-8c
-
-          - name: dist-mips64-linux
-            <<: *job-linux-8c
-
-          - name: dist-mips64el-linux
-            <<: *job-linux-8c
-
-          - name: dist-mipsel-linux
-            <<: *job-linux-8c
-
           - name: dist-powerpc-linux
             <<: *job-linux-8c
 
