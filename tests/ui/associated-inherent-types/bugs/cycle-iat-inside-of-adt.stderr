@@ -1,49 +1,43 @@
-error[E0601]: `main` function not found in crate `cycle_iat_inside_of_adt`
-  --> $DIR/cycle-iat-inside-of-adt.rs:10:2
-   |
-LL | }
-   |  ^ consider adding a `main` function to `$DIR/cycle-iat-inside-of-adt.rs`
-
 error[E0391]: cycle detected when computing predicates of `Foo`
-  --> $DIR/cycle-iat-inside-of-adt.rs:5:1
+  --> $DIR/cycle-iat-inside-of-adt.rs:7:1
    |
 LL | struct Foo {
    | ^^^^^^^^^^
    |
 note: ...which requires computing predicates of `Foo`...
-  --> $DIR/cycle-iat-inside-of-adt.rs:5:1
+  --> $DIR/cycle-iat-inside-of-adt.rs:7:1
    |
 LL | struct Foo {
    | ^^^^^^^^^^
 note: ...which requires computing inferred outlives predicates of `Foo`...
-  --> $DIR/cycle-iat-inside-of-adt.rs:5:1
+  --> $DIR/cycle-iat-inside-of-adt.rs:7:1
    |
 LL | struct Foo {
    | ^^^^^^^^^^
    = note: ...which requires computing the inferred outlives predicates for items in this crate...
 note: ...which requires computing type of `Foo::bar`...
-  --> $DIR/cycle-iat-inside-of-adt.rs:6:5
+  --> $DIR/cycle-iat-inside-of-adt.rs:8:5
    |
 LL |     bar: Self::Bar,
    |     ^^^^^^^^^^^^^^
 note: ...which requires computing normalized predicates of `Foo`...
-  --> $DIR/cycle-iat-inside-of-adt.rs:5:1
+  --> $DIR/cycle-iat-inside-of-adt.rs:7:1
    |
 LL | struct Foo {
    | ^^^^^^^^^^
    = note: ...which again requires computing predicates of `Foo`, completing the cycle
 note: cycle used when collecting item types in top-level module
-  --> $DIR/cycle-iat-inside-of-adt.rs:5:1
+  --> $DIR/cycle-iat-inside-of-adt.rs:3:1
    |
-LL | / struct Foo {
-LL | |     bar: Self::Bar,
-LL | | }
-LL | | impl Foo {
-LL | |     pub type Bar = usize;
-LL | | }
-   | |_^
+LL | / #![feature(inherent_associated_types)]
+LL | | #![allow(incomplete_features)]
+LL | | // FIXME(inherent_associated_types): This should pass.
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0391, E0601.
-For more information about an error, try `rustc --explain E0391`.
+For more information about this error, try `rustc --explain E0391`.

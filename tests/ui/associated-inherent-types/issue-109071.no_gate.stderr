@@ -29,7 +29,13 @@ LL |     type Item = &[T];
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109071.rs:15:22
+   |
+LL |     fn T() -> Option<Self::Item> {}
+   |                      ^^^^^^^^^^ help: use the fully-qualified path: `<Windows<T> as IntoIterator>::Item`
 
-Some errors have detailed explanations: E0107, E0637, E0658.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0223, E0637, E0658.
 For more information about an error, try `rustc --explain E0107`.

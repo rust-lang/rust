@@ -13,6 +13,7 @@ impl<T> Windows { //~ ERROR: missing generics for struct `Windows`
 
 impl<T> Windows<T> {
     fn T() -> Option<Self::Item> {}
+    //[no_gate]~^ ERROR: ambiguous associated type
 }
 
 fn main() {}
