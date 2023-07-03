@@ -151,6 +151,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         definition,
         runnable.label,
         args,
+        config.problemMatcher,
         config.cargoRunner,
         true
     );
