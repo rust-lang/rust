@@ -380,7 +380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut oprnd_t = self.check_expr_with_expectation(&oprnd, expected_inner);
 
         if !oprnd_t.references_error() {
-            oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
+            oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
             match unop {
                 hir::UnOp::Deref => {
                     if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
@@ -1266,13 +1266,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let rcvr_t = self.check_expr(&rcvr);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(rcvr.span, rcvr_t);
+        let rcvr_t = self.structurally_resolve_type(rcvr.span, rcvr_t);
         let span = segment.ident.span;
 
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr, args) {
             Ok(method) => {
                 // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
-                // trigger this codepath causing `structurally_resolved_type` to emit an error.
+                // trigger this codepath causing `structurally_resolve_type` to emit an error.
 
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)
@@ -2252,7 +2252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         debug!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
         let base_ty = self.check_expr(base);
-        let base_ty = self.structurally_resolved_type(base.span, base_ty);
+        let base_ty = self.structurally_resolve_type(base.span, base_ty);
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, base_ty);
         while let Some((deref_base_ty, _)) = autoderef.next() {
@@ -2300,7 +2300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {}
             }
         }
-        self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
+        self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
 
         if let Some((adjustments, did)) = private_candidate {
             // (#90483) apply adjustments to avoid ExprUseVisitor from
@@ -2857,7 +2857,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if idx_t.references_error() {
             idx_t
         } else {
-            let base_t = self.structurally_resolved_type(base.span, base_t);
+            let base_t = self.structurally_resolve_type(base.span, base_t);
             match self.lookup_indexing(expr, base, base_t, idx, idx_t) {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
@@ -3084,7 +3084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // allows them to be inferred based on how they are used later in the
         // function.
         if is_input {
-            let ty = self.structurally_resolved_type(expr.span, ty);
+            let ty = self.structurally_resolve_type(expr.span, ty);
             match *ty.kind() {
                 ty::FnDef(..) => {
                     let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));
@@ -3142,7 +3142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut current_container = container;
 
         for &field in fields {
-            let container = self.structurally_resolved_type(expr.span, current_container);
+            let container = self.structurally_resolve_type(expr.span, current_container);
 
             match container.kind() {
                 ty::Adt(container_def, substs) if !container_def.is_enum() => {

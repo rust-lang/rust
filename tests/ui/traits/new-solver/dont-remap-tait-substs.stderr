@@ -1,0 +1,99 @@
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/dont-remap-tait-substs.rs:10:24
+   |
+LL | type Foo<T: Send, U> = impl NeedsSend<T>;
+   |                        ^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires borrow-checking `define`...
+  --> $DIR/dont-remap-tait-substs.rs:15:1
+   |
+LL | fn define<A, B: Send>(a: A, b: B) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/dont-remap-tait-substs.rs:8:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | type Foo<T: Send, U> = impl NeedsSend<T>;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/dont-remap-tait-substs.rs:10:24
+   |
+LL | type Foo<T: Send, U> = impl NeedsSend<T>;
+   |                        ^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires borrow-checking `define`...
+  --> $DIR/dont-remap-tait-substs.rs:15:1
+   |
+LL | fn define<A, B: Send>(a: A, b: B) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/dont-remap-tait-substs.rs:8:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | type Foo<T: Send, U> = impl NeedsSend<T>;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/dont-remap-tait-substs.rs:10:24
+   |
+LL | type Foo<T: Send, U> = impl NeedsSend<T>;
+   |                        ^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires borrow-checking `define`...
+  --> $DIR/dont-remap-tait-substs.rs:15:1
+   |
+LL | fn define<A, B: Send>(a: A, b: B) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/dont-remap-tait-substs.rs:8:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | type Foo<T: Send, U> = impl NeedsSend<T>;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/dont-remap-tait-substs.rs:10:24
+   |
+LL | type Foo<T: Send, U> = impl NeedsSend<T>;
+   |                        ^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires borrow-checking `define`...
+  --> $DIR/dont-remap-tait-substs.rs:15:1
+   |
+LL | fn define<A, B: Send>(a: A, b: B) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/dont-remap-tait-substs.rs:8:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | type Foo<T: Send, U> = impl NeedsSend<T>;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

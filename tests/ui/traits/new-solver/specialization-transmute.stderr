@@ -8,24 +8,14 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0284]: type annotations needed: cannot satisfy `T <: <T as Default>::Id`
-  --> $DIR/specialization-transmute.rs:16:9
+error[E0284]: type annotations needed
+  --> $DIR/specialization-transmute.rs:15:23
    |
-LL |         self
-   |         ^^^^ cannot satisfy `T <: <T as Default>::Id`
+LL |     fn intu(&self) -> &Self::Id {
+   |                       ^^^^^^^^^ cannot infer type
+   |
+   = note: cannot satisfy `<T as Default>::Id == _`
 
-error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>`
-  --> $DIR/specialization-transmute.rs:27:13
-   |
-LL |     let s = transmute::<u8, Option<NonZeroU8>>(0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>`
-   |
-note: required by a bound in `transmute`
-  --> $DIR/specialization-transmute.rs:21:25
-   |
-LL | fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
-   |                         ^^^^^^ required by this bound in `transmute`
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0284`.

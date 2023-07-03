@@ -40,6 +40,8 @@ use rustc_span::Span;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
 
+pub(crate) use self::project::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
+
 pub use self::FulfillmentErrorCode::*;
 pub use self::ImplSource::*;
 pub use self::ObligationCauseCode::*;
@@ -407,7 +409,12 @@ pub fn normalize_param_env_or_error<'tcx>(
     )
 }
 
-/// Normalize a type and process all resulting obligations, returning any errors
+/// Normalize a type and process all resulting obligations, returning any errors.
+///
+/// FIXME(-Ztrait-solver=next): This should be replaced by `At::deeply_normalize`
+/// which has the same behavior with the new solver. Because using a separate
+/// fulfillment context worsens caching in the old solver, `At::deeply_normalize`
+/// is still lazy with the old solver as it otherwise negatively impacts perf.
 #[instrument(skip_all)]
 pub fn fully_normalize<'tcx, T>(
     infcx: &InferCtxt<'tcx>,

@@ -28,7 +28,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::traits::FulfillmentError;
 use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
@@ -53,14 +55,55 @@ pub trait NormalizeExt<'tcx> {
     /// This normalization should be used when the type contains inference variables or the
     /// projection may be fallible.
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> InferOk<'tcx, T>;
+
+    /// Deeply normalizes `value`, replacing all aliases which can by normalized in
+    /// the current environment. In the new solver this errors in case normalization
+    /// fails or is ambiguous. This only normalizes opaque types with `Reveal::All`.
+    ///
+    /// In the old solver this simply uses `normalizes` and adds the nested obligations
+    /// to the `fulfill_cx`. This is necessary as we otherwise end up recomputing the
+    /// same goals in both a temporary and the shared context which negatively impacts
+    /// performance as these don't share caching.
+    ///
+    /// FIXME(-Ztrait-solver=next): This has the same behavior as `traits::fully_normalize`
+    /// in the new solver, but because of performance reasons, we currently reuse an
+    /// existing fulfillment context in the old solver. Once we also eagerly prove goals with
+    /// the old solver or have removed the old solver, remove `traits::fully_normalize` and
+    /// rename this function to `At::fully_normalize`.
+    fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        self,
+        value: T,
+        fulfill_cx: &mut dyn TraitEngine<'tcx>,
+    ) -> Result<T, Vec<FulfillmentError<'tcx>>>;
 }
 
 impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
-        let mut selcx = SelectionContext::new(self.infcx);
-        let Normalized { value, obligations } =
-            normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
-        InferOk { value, obligations }
+        if self.infcx.next_trait_solver() {
+            InferOk { value, obligations: Vec::new() }
+        } else {
+            let mut selcx = SelectionContext::new(self.infcx);
+            let Normalized { value, obligations } =
+                normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
+            InferOk { value, obligations }
+        }
+    }
+
+    fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        self,
+        value: T,
+        fulfill_cx: &mut dyn TraitEngine<'tcx>,
+    ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+        if self.infcx.next_trait_solver() {
+            crate::solve::deeply_normalize(self, value)
+        } else {
+            let value = self
+                .normalize(value)
+                .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
+            let errors = fulfill_cx.select_where_possible(self.infcx);
+            let value = self.infcx.resolve_vars_if_possible(value);
+            if errors.is_empty() { Ok(value) } else { Err(errors) }
+        }
     }
 }
 

@@ -393,7 +393,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // They can denote both statically and dynamically-sized byte arrays.
         let mut pat_ty = ty;
         if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(..), .. }) = lt.kind {
-            let expected = self.structurally_resolved_type(span, expected);
+            let expected = self.structurally_resolve_type(span, expected);
             if let ty::Ref(_, inner_ty, _) = expected.kind()
                 && matches!(inner_ty.kind(), ty::Slice(_))
             {
@@ -501,7 +501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This check is needed if both sides are inference variables.
         // We require types to be resolved here so that we emit inference failure
         // rather than "_ is not a char or numeric".
-        let ty = self.structurally_resolved_type(span, expected);
+        let ty = self.structurally_resolve_type(span, expected);
         if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {
             if let Some((ref mut fail, _, _)) = lhs {
                 *fail = true;
@@ -1289,7 +1289,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expected_len = elements.len();
         if ddpos.as_opt_usize().is_some() {
             // Require known type only when `..` is present.
-            if let ty::Tuple(tys) = self.structurally_resolved_type(span, expected).kind() {
+            if let ty::Tuple(tys) = self.structurally_resolve_type(span, expected).kind() {
                 expected_len = tys.len();
             }
         }
@@ -2042,7 +2042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let expected = self.structurally_resolved_type(span, expected);
+        let expected = self.structurally_resolve_type(span, expected);
         let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {

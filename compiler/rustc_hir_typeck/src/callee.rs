@@ -89,7 +89,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.check_expr(callee_expr),
         };
 
-        let expr_ty = self.structurally_resolved_type(call_expr.span, original_callee_ty);
+        let expr_ty = self.structurally_resolve_type(call_expr.span, original_callee_ty);
 
         let mut autoderef = self.autoderef(callee_expr.span, expr_ty);
         let mut result = None;
@@ -138,7 +138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
         let adjusted_ty =
-            self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
+            self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
 
         // If the callee is a bare function or a closure, then we're all set.
         match *adjusted_ty.kind() {
