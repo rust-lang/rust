@@ -114,6 +114,10 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         if let Some(attr) = inline_attr(cx, inline) {
             func.add_attribute(attr);
         }
+
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
+            func.add_attribute(FnAttribute::Cold);
+        }
     }
 
     let function_features =
