@@ -6,22 +6,19 @@ use std::{
     time::Instant,
 };
 
-use crate::{
-    cli::load_cargo::ProcMacroServerChoice,
-    line_index::{LineEndings, LineIndex, PositionEncoding},
-};
 use ide::{
     LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
     TokenStaticData,
 };
 use ide_db::LineIndexDatabase;
+use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use scip::types as scip_types;
 use std::env;
 
-use crate::cli::{
-    flags,
-    load_cargo::{load_workspace, LoadCargoConfig},
+use crate::{
+    cli::flags,
+    line_index::{LineEndings, LineIndex, PositionEncoding},
 };
 
 impl flags::Scip {
@@ -275,7 +272,7 @@ mod test {
         let change_fixture = ChangeFixture::parse(ra_fixture);
         host.raw_database_mut().apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
-            change_fixture.file_position.expect("expected a marker ($0)");
+            change_fixture.file_position.expect("expected a marker ()");
         let offset = range_or_offset.expect_offset();
         (host, FilePosition { file_id, offset })
     }

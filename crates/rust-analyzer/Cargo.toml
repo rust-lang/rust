@@ -62,13 +62,13 @@ ide-db.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
 ide.workspace = true
+load-cargo.workspace = true
 proc-macro-api.workspace = true
 profile.workspace = true
 project-model.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 toolchain.workspace = true
-tt.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
 

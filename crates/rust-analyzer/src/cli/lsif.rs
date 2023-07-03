@@ -8,22 +8,22 @@ use ide::{
     Analysis, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase, StaticIndex,
     StaticIndexedFile, TokenId, TokenStaticData,
 };
-use ide_db::LineIndexDatabase;
-
-use ide_db::base_db::salsa::{self, ParallelDatabase};
-use ide_db::line_index::WideEncoding;
+use ide_db::{
+    base_db::salsa::{self, ParallelDatabase},
+    line_index::WideEncoding,
+    LineIndexDatabase,
+};
+use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use lsp_types::{self, lsif};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use vfs::{AbsPathBuf, Vfs};
 
-use crate::cli::load_cargo::ProcMacroServerChoice;
-use crate::cli::{
-    flags,
-    load_cargo::{load_workspace, LoadCargoConfig},
+use crate::{
+    cli::flags,
+    line_index::{LineEndings, LineIndex, PositionEncoding},
+    to_proto,
+    version::version,
 };
-use crate::line_index::{LineEndings, LineIndex, PositionEncoding};
-use crate::to_proto;
-use crate::version::version;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
