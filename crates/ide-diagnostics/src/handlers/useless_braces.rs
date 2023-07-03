@@ -3,7 +3,7 @@ use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, Severity};
+use crate::{fix, Diagnostic, DiagnosticCode};
 
 // Diagnostic: unnecessary-braces
 //
@@ -32,11 +32,10 @@ pub(crate) fn useless_braces(
 
         acc.push(
             Diagnostic::new(
-                "unnecessary-braces",
+                DiagnosticCode::RustcLint("unused_braces"),
                 "Unnecessary braces in use statement".to_string(),
                 use_range,
             )
-            .severity(Severity::WeakWarning)
             .with_fixes(Some(vec![fix(
                 "remove_braces",
                 "Remove unnecessary braces",

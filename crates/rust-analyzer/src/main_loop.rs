@@ -842,11 +842,7 @@ impl GlobalState {
                                     d.code.as_str().to_string(),
                                 )),
                                 code_description: Some(lsp_types::CodeDescription {
-                                    href: lsp_types::Url::parse(&format!(
-                                        "https://rust-analyzer.github.io/manual.html#{}",
-                                        d.code.as_str()
-                                    ))
-                                    .unwrap(),
+                                    href: lsp_types::Url::parse(&d.code.url()).unwrap(),
                                 }),
                                 source: Some("rust-analyzer".to_string()),
                                 message: d.message,

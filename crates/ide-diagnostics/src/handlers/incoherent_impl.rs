@@ -1,17 +1,17 @@
 use hir::InFile;
 
-use crate::{Diagnostic, DiagnosticsContext, Severity};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: incoherent-impl
 //
 // This diagnostic is triggered if the targe type of an impl is from a foreign crate.
 pub(crate) fn incoherent_impl(ctx: &DiagnosticsContext<'_>, d: &hir::IncoherentImpl) -> Diagnostic {
-    Diagnostic::new(
-        "incoherent-impl",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0210"),
         format!("cannot define inherent `impl` for foreign type"),
-        ctx.sema.diagnostics_display_range(InFile::new(d.file_id, d.impl_.clone().into())).range,
+        InFile::new(d.file_id, d.impl_.clone().into()),
     )
-    .severity(Severity::Error)
 }
 
 #[cfg(test)]

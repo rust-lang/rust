@@ -14,7 +14,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Assist, Diagnostic, DiagnosticsContext, Severity};
+use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
 // Diagnostic: unlinked-file
 //
@@ -46,8 +46,7 @@ pub(crate) fn unlinked_file(
         .unwrap_or(range);
 
     acc.push(
-        Diagnostic::new("unlinked-file", message, range)
-            .severity(Severity::WeakWarning)
+        Diagnostic::new(DiagnosticCode::Ra("unlinked-file", Severity::WeakWarning), message, range)
             .with_fixes(fixes),
     );
 }
