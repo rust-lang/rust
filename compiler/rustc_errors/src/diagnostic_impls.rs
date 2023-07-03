@@ -1,15 +1,18 @@
-use crate::{fluent_generated as fluent, AddToDiagnostic};
+use crate::diagnostic::DiagnosticLocation;
+use crate::{fluent_generated as fluent, AddToDiagnostic, Diagnostic};
 use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
+use rustc_error_messages::SubdiagnosticMessage;
 use rustc_hir as hir;
-use rustc_lint_defs::Level;
+use rustc_lint_defs::{Applicability, Level};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use rustc_type_ir as type_ir;
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::fmt;
 use std::num::ParseIntError;
@@ -310,4 +313,74 @@ pub enum LabelKind {
     Note,
     Label,
     Help,
+}
+
+#[derive(Subdiagnostic)]
+#[label(errors_expected_lifetime_parameter)]
+pub struct ExpectedLifetimeParameter {
+    #[primary_span]
+    pub span: Span,
+    pub count: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[note(errors_delayed_at_with_newline)]
+pub struct DelayedAtWithNewline {
+    #[primary_span]
+    pub span: Span,
+    pub emitted_at: DiagnosticLocation,
+    pub note: Backtrace,
+}
+#[derive(Subdiagnostic)]
+#[note(errors_delayed_at_without_newline)]
+pub struct DelayedAtWithoutNewline {
+    #[primary_span]
+    pub span: Span,
+    pub emitted_at: DiagnosticLocation,
+    pub note: Backtrace,
+}
+
+impl IntoDiagnosticArg for DiagnosticLocation {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for Backtrace {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[note(errors_invalid_flushed_delayed_diagnostic_level)]
+pub struct InvalidFlushedDelayedDiagnosticLevel {
+    #[primary_span]
+    pub span: Span,
+    pub level: rustc_errors::Level,
+}
+impl IntoDiagnosticArg for rustc_errors::Level {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+pub struct IndicateAnonymousLifetime {
+    pub span: Span,
+    pub count: usize,
+    pub suggestion: String,
+}
+
+impl AddToDiagnostic for IndicateAnonymousLifetime {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.span_suggestion_verbose(
+            self.span,
+            fluent::errors_indicate_anonymous_lifetime,
+            self.suggestion,
+            Applicability::MachineApplicable,
+        );
+    }
 }
