@@ -2962,7 +2962,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         self.commit_if_ok(|_| {
-            let ocx = ObligationCtxt::new_in_snapshot(self);
+            let ocx = ObligationCtxt::new(self);
             let impl_substs = self.fresh_substs_for_item(base_expr.span, impl_def_id);
             let impl_trait_ref =
                 self.tcx.impl_trait_ref(impl_def_id).unwrap().subst(self.tcx, impl_substs);

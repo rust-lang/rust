@@ -7,7 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
-use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
+use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::OperandRef;
@@ -452,6 +452,8 @@ fn try_intrinsic<'ll>(
         bx.store(bx.const_i32(0), dest, ret_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, try_func, data, catch_func, dest);
+    } else if wants_wasm_eh(bx.sess()) {
+        codegen_wasm_try(bx, try_func, data, catch_func, dest);
     } else if bx.sess().target.os == "emscripten" {
         codegen_emcc_try(bx, try_func, data, catch_func, dest);
     } else {
@@ -597,6 +599,80 @@ fn codegen_msvc_try<'ll>(
         let null = bx.const_null(bx.type_i8p());
         let funclet = bx.catch_pad(cs, &[null, flags, null]);
         bx.call(catch_ty, None, None, catch_func, &[data, null], Some(&funclet));
+        bx.catch_ret(&funclet, caught);
+
+        bx.switch_to_block(caught);
+        bx.ret(bx.const_i32(1));
+    });
+
+    // Note that no invoke is used here because by definition this function
+    // can't panic (that's what it's catching).
+    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None);
+    let i32_align = bx.tcx().data_layout.i32_align.abi;
+    bx.store(ret, dest, i32_align);
+}
+
+// WASM's definition of the `rust_try` function.
+fn codegen_wasm_try<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
+    try_func: &'ll Value,
+    data: &'ll Value,
+    catch_func: &'ll Value,
+    dest: &'ll Value,
+) {
+    let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
+        bx.set_personality_fn(bx.eh_personality());
+
+        let normal = bx.append_sibling_block("normal");
+        let catchswitch = bx.append_sibling_block("catchswitch");
+        let catchpad = bx.append_sibling_block("catchpad");
+        let caught = bx.append_sibling_block("caught");
+
+        let try_func = llvm::get_param(bx.llfn(), 0);
+        let data = llvm::get_param(bx.llfn(), 1);
+        let catch_func = llvm::get_param(bx.llfn(), 2);
+
+        // We're generating an IR snippet that looks like:
+        //
+        //   declare i32 @rust_try(%try_func, %data, %catch_func) {
+        //      %slot = alloca i8*
+        //      invoke %try_func(%data) to label %normal unwind label %catchswitch
+        //
+        //   normal:
+        //      ret i32 0
+        //
+        //   catchswitch:
+        //      %cs = catchswitch within none [%catchpad] unwind to caller
+        //
+        //   catchpad:
+        //      %tok = catchpad within %cs [null]
+        //      %ptr = call @llvm.wasm.get.exception(token %tok)
+        //      %sel = call @llvm.wasm.get.ehselector(token %tok)
+        //      call %catch_func(%data, %ptr)
+        //      catchret from %tok to label %caught
+        //
+        //   caught:
+        //      ret i32 1
+        //   }
+        //
+        let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
+        bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None);
+
+        bx.switch_to_block(normal);
+        bx.ret(bx.const_i32(0));
+
+        bx.switch_to_block(catchswitch);
+        let cs = bx.catch_switch(None, None, &[catchpad]);
+
+        bx.switch_to_block(catchpad);
+        let null = bx.const_null(bx.type_i8p());
+        let funclet = bx.catch_pad(cs, &[null]);
+
+        let ptr = bx.call_intrinsic("llvm.wasm.get.exception", &[funclet.cleanuppad()]);
+        let _sel = bx.call_intrinsic("llvm.wasm.get.ehselector", &[funclet.cleanuppad()]);
+
+        let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
+        bx.call(catch_ty, None, None, catch_func, &[data, ptr], Some(&funclet));
         bx.catch_ret(&funclet, caught);
 
         bx.switch_to_block(caught);

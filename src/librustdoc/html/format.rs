@@ -1459,7 +1459,7 @@ impl clean::FnDecl {
         Ok(())
     }
 
-    pub(crate) fn print_output<'a, 'tcx: 'a>(
+    fn print_output<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {

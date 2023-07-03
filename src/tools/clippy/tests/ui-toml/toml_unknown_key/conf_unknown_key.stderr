@@ -1,9 +1,14 @@
 error: error reading Clippy's configuration file: unknown field `foobar`, expected one of
+           accept-comment-above-attributes
+           accept-comment-above-statement
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
+           allow-one-hash-in-raw-strings
            allow-print-in-tests
+           allow-private-module-inception
            allow-unwrap-in-tests
+           allowed-idents-below-min-chars
            allowed-scripts
            arithmetic-side-effects-allowed
            arithmetic-side-effects-allowed-binary
@@ -24,6 +29,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
@@ -34,12 +40,14 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-ident-chars-threshold
            missing-docs-in-crate-items
            msrv
            pass-by-value-size-limit
            semicolon-inside-block-ignore-singleline
            semicolon-outside-block-ignore-multiline
            single-char-binding-names-threshold
+           stack-size-threshold
            standard-macro-braces
            suppress-restriction-lint-in-const
            third-party
@@ -54,17 +62,22 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            vec-box-size-threshold
            verbose-bit-mask-threshold
            warn-on-all-wildcard-imports
-  --> $DIR/clippy.toml:2:1
+  --> $DIR/$DIR/clippy.toml:2:1
    |
 LL | foobar = 42
    | ^^^^^^
 
 error: error reading Clippy's configuration file: unknown field `barfoo`, expected one of
+           accept-comment-above-attributes
+           accept-comment-above-statement
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
+           allow-one-hash-in-raw-strings
            allow-print-in-tests
+           allow-private-module-inception
            allow-unwrap-in-tests
+           allowed-idents-below-min-chars
            allowed-scripts
            arithmetic-side-effects-allowed
            arithmetic-side-effects-allowed-binary
@@ -85,6 +98,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
@@ -95,12 +109,14 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           min-ident-chars-threshold
            missing-docs-in-crate-items
            msrv
            pass-by-value-size-limit
            semicolon-inside-block-ignore-singleline
            semicolon-outside-block-ignore-multiline
            single-char-binding-names-threshold
+           stack-size-threshold
            standard-macro-braces
            suppress-restriction-lint-in-const
            third-party
@@ -115,7 +131,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            vec-box-size-threshold
            verbose-bit-mask-threshold
            warn-on-all-wildcard-imports
-  --> $DIR/clippy.toml:4:1
+  --> $DIR/$DIR/clippy.toml:4:1
    |
 LL | barfoo = 53
    | ^^^^^^

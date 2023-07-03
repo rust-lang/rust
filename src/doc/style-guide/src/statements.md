@@ -159,8 +159,8 @@ before the `else`.
 
 If the initializer expression is multi-line, the `else` keyword and opening
 brace of the block (i.e. `else {`) should be put on the same line as the end of
-the initializer expression, with a space between them, if all the following are
-true:
+the initializer expression, with a space between them, if and only if all the
+following are true:
 
 * The initializer expression ends with one or more closing
   parentheses, square brackets, and/or braces
@@ -207,6 +207,28 @@ fn main() {
     let Some(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) =
         bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
     else {
+        return;
+    };
+
+    let LongStructName(AnotherStruct {
+        multi,
+        line,
+        pattern,
+    }) = slice.as_ref()
+    else {
+        return;
+    };
+
+    let LongStructName(AnotherStruct {
+        multi,
+        line,
+        pattern,
+    }) = multi_line_function_call(
+        arg1,
+        arg2,
+        arg3,
+        arg4,
+    ) else {
         return;
     };
 }

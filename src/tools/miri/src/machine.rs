@@ -311,7 +311,7 @@ pub struct PrimitiveLayouts<'tcx> {
 }
 
 impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
-    fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, LayoutError<'tcx>> {
+    fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, &'tcx LayoutError<'tcx>> {
         let tcx = layout_cx.tcx;
         let mut_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
         let const_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });

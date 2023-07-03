@@ -80,7 +80,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         if self.next_trait_solver() {
             self.probe(|snapshot| {
-                let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
+                let mut fulfill_cx = crate::solve::FulfillmentCtxt::new(self);
                 fulfill_cx.register_predicate_obligation(self, obligation.clone());
                 // True errors
                 // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?

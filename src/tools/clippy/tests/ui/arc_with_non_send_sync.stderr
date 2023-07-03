@@ -1,0 +1,11 @@
+error: usage of `Arc<T>` where `T` is not `Send` or `Sync`
+  --> $DIR/arc_with_non_send_sync.rs:16:13
+   |
+LL |     let b = Arc::new(RefCell::new(42));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<T>` instead or wrapping `T` in a std::sync type like `Mutex<T>`
+   = note: `-D clippy::arc-with-non-send-sync` implied by `-D warnings`
+
+error: aborting due to previous error
+

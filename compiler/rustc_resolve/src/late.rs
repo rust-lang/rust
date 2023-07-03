@@ -1632,9 +1632,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 ..
                             } = &rib.kind
                             {
-                                diag.span_help(
-                                    *span,
-                                    "consider introducing a higher-ranked lifetime here with `for<'a>`",
+                                diag.multipart_suggestion(
+                                    "consider introducing a higher-ranked lifetime here",
+                                    vec![
+                                        (span.shrink_to_lo(), "for<'a> ".into()),
+                                        (lifetime.ident.span.shrink_to_hi(), "'a ".into()),
+                                    ],
+                                    Applicability::MachineApplicable,
                                 );
                                 break;
                             }

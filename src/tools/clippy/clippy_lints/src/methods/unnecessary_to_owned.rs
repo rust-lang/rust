@@ -144,6 +144,11 @@ fn check_addr_of_expr(
                 if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref);
                 if implements_trait(cx, receiver_ty, deref_trait_id, &[]);
                 if cx.get_associated_type(receiver_ty, deref_trait_id, "Target") == Some(target_ty);
+                // Make sure that it's actually calling the right `.to_string()`, (#10033)
+                // *or* this is a `Cow::into_owned()` call (which would be the wrong into_owned receiver (str != Cow)
+                // but that's ok for Cow::into_owned specifically)
+                if cx.typeck_results().expr_ty_adjusted(receiver).peel_refs() == target_ty
+                    || is_cow_into_owned(cx, method_name, method_def_id);
                 then {
                     if n_receiver_refs > 0 {
                         span_lint_and_sugg(

@@ -14,8 +14,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, BoundConstness, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv,
-    ToPredicate, TraitPredicate, Ty, TyCtxt,
+    self, BoundConstness, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate,
+    TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
@@ -520,7 +520,8 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
                     trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
                     constness: BoundConstness::NotConst,
                     polarity: ImplPolarity::Positive,
-                }).to_predicate(tcx)
+                })
+                .to_predicate(tcx)
             }),
         )),
         Reveal::UserFacing,

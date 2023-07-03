@@ -340,12 +340,6 @@ fn associated_type_for_impl_trait_in_trait(
         }
     });
 
-    // There are no predicates for the synthesized associated type.
-    trait_assoc_ty.explicit_predicates_of(ty::GenericPredicates {
-        parent: Some(trait_def_id.to_def_id()),
-        predicates: &[],
-    });
-
     // There are no inferred outlives for the synthesized associated type.
     trait_assoc_ty.inferred_outlives_of(&[]);
 
@@ -422,12 +416,6 @@ fn associated_type_for_impl_trait_in_impl(
             has_self: false,
             has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,
         }
-    });
-
-    // There are no predicates for the synthesized associated type.
-    impl_assoc_ty.explicit_predicates_of(ty::GenericPredicates {
-        parent: Some(impl_local_def_id.to_def_id()),
-        predicates: &[],
     });
 
     // There are no inferred outlives for the synthesized associated type.

@@ -1,0 +1,164 @@
+$DIR/auxiliary/used_inline_crate.rs:
+    1|       |#![allow(unused_assignments, unused_variables)]
+    2|       |
+    3|       |// compile-flags: -C opt-level=3
+    4|       |// ^^ validates coverage now works with optimizations
+    5|       |use std::fmt::Debug;
+    6|       |
+    7|      1|pub fn used_function() {
+    8|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+    9|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   10|      1|    // dependent conditions.
+   11|      1|    let is_true = std::env::args().len() == 1;
+   12|      1|    let mut countdown = 0;
+   13|      1|    if is_true {
+   14|      1|        countdown = 10;
+   15|      1|    }
+                   ^0
+   16|      1|    use_this_lib_crate();
+   17|      1|}
+   18|       |
+   19|       |#[inline(always)]
+   20|      1|pub fn used_inline_function() {
+   21|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   22|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   23|      1|    // dependent conditions.
+   24|      1|    let is_true = std::env::args().len() == 1;
+   25|      1|    let mut countdown = 0;
+   26|      1|    if is_true {
+   27|      1|        countdown = 10;
+   28|      1|    }
+                   ^0
+   29|      1|    use_this_lib_crate();
+   30|      1|}
+   31|       |
+   32|       |
+   33|       |
+   34|       |
+   35|       |
+   36|       |
+   37|       |
+   38|       |#[inline(always)]
+   39|      2|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
+   40|      2|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
+   41|      2|}
+  ------------------
+  | Unexecuted instantiation: used_inline_crate::used_only_from_bin_crate_generic_function::<_>
+  ------------------
+  | used_inline_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>:
+  |   39|      1|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
+  |   40|      1|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
+  |   41|      1|}
+  ------------------
+  | used_inline_crate::used_only_from_bin_crate_generic_function::<&str>:
+  |   39|      1|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
+  |   40|      1|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
+  |   41|      1|}
+  ------------------
+   42|       |// Expect for above function: `Unexecuted instantiation` (see notes in `used_crate.rs`)
+   43|       |
+   44|       |#[inline(always)]
+   45|      4|pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
+   46|      4|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
+   47|      4|}
+  ------------------
+  | used_inline_crate::used_only_from_this_lib_crate_generic_function::<&str>:
+  |   45|      2|pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
+  |   46|      2|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
+  |   47|      2|}
+  ------------------
+  | used_inline_crate::used_only_from_this_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
+  |   45|      2|pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
+  |   46|      2|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
+  |   47|      2|}
+  ------------------
+   48|       |
+   49|       |#[inline(always)]
+   50|      3|pub fn used_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
+   51|      3|    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+   52|      3|}
+  ------------------
+  | used_inline_crate::used_from_bin_crate_and_lib_crate_generic_function::<&str>:
+  |   50|      2|pub fn used_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
+  |   51|      2|    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+  |   52|      2|}
+  ------------------
+  | used_inline_crate::used_from_bin_crate_and_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
+  |   50|      1|pub fn used_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
+  |   51|      1|    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+  |   52|      1|}
+  ------------------
+   53|       |
+   54|       |#[inline(always)]
+   55|      3|pub fn used_with_same_type_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
+   56|      3|    println!("used_with_same_type_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+   57|      3|}
+  ------------------
+  | used_inline_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function::<&str>:
+  |   55|      1|pub fn used_with_same_type_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
+  |   56|      1|    println!("used_with_same_type_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+  |   57|      1|}
+  ------------------
+  | used_inline_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function::<&str>:
+  |   55|      2|pub fn used_with_same_type_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
+  |   56|      2|    println!("used_with_same_type_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+  |   57|      2|}
+  ------------------
+   58|       |
+   59|       |#[inline(always)]
+   60|      0|pub fn unused_generic_function<T: Debug>(arg: T) {
+   61|      0|    println!("unused_generic_function with {:?}", arg);
+   62|      0|}
+   63|       |
+   64|       |#[inline(always)]
+   65|      0|pub fn unused_function() {
+   66|      0|    let is_true = std::env::args().len() == 1;
+   67|      0|    let mut countdown = 2;
+   68|      0|    if !is_true {
+   69|      0|        countdown = 20;
+   70|      0|    }
+   71|      0|}
+   72|       |
+   73|       |#[inline(always)]
+   74|      0|fn unused_private_function() {
+   75|      0|    let is_true = std::env::args().len() == 1;
+   76|      0|    let mut countdown = 2;
+   77|      0|    if !is_true {
+   78|      0|        countdown = 20;
+   79|      0|    }
+   80|      0|}
+   81|       |
+   82|      2|fn use_this_lib_crate() {
+   83|      2|    used_from_bin_crate_and_lib_crate_generic_function("used from library used_crate.rs");
+   84|      2|    used_with_same_type_from_bin_crate_and_lib_crate_generic_function(
+   85|      2|        "used from library used_crate.rs",
+   86|      2|    );
+   87|      2|    let some_vec = vec![5, 6, 7, 8];
+   88|      2|    used_only_from_this_lib_crate_generic_function(some_vec);
+   89|      2|    used_only_from_this_lib_crate_generic_function("used ONLY from library used_crate.rs");
+   90|      2|}
+
+$DIR/uses_inline_crate.rs:
+    1|       |// FIXME #110395
+    2|       |// ignore-linux
+    3|       |
+    4|       |// Validates coverage now works with optimizations
+    5|       |// compile-flags: -C opt-level=3
+    6|       |
+    7|       |#![allow(unused_assignments, unused_variables)]
+    8|       |
+    9|       |// aux-build:used_inline_crate.rs
+   10|       |extern crate used_inline_crate;
+   11|       |
+   12|      1|fn main() {
+   13|      1|    used_inline_crate::used_function();
+   14|      1|    used_inline_crate::used_inline_function();
+   15|      1|    let some_vec = vec![1, 2, 3, 4];
+   16|      1|    used_inline_crate::used_only_from_bin_crate_generic_function(&some_vec);
+   17|      1|    used_inline_crate::used_only_from_bin_crate_generic_function("used from bin uses_crate.rs");
+   18|      1|    used_inline_crate::used_from_bin_crate_and_lib_crate_generic_function(some_vec);
+   19|      1|    used_inline_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function(
+   20|      1|        "interesting?",
+   21|      1|    );
+   22|      1|}
+

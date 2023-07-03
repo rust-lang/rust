@@ -1,5 +1,5 @@
 error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
-  --> $DIR/blocks_in_if_conditions_closure.rs:18:17
+  --> $DIR/blocks_in_if_conditions_closure.rs:23:17
    |
 LL |               |x| {
    |  _________________^
@@ -11,7 +11,7 @@ LL | |             },
    = note: `-D clippy::blocks-in-if-conditions` implied by `-D warnings`
 
 error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
-  --> $DIR/blocks_in_if_conditions_closure.rs:27:13
+  --> $DIR/blocks_in_if_conditions_closure.rs:32:13
    |
 LL |           |x| {
    |  _____________^

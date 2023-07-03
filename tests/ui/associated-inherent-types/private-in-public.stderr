@@ -13,14 +13,13 @@ LL | #![deny(private_in_public)]
    |         ^^^^^^^^^^^^^^^^^
 
 warning: associated type `PubTy::PrivAssocTy` is more private than the item `PubAlias0`
-   |
-note: type alias `PubAlias0` is reachable at visibility `pub`
   --> $DIR/private-in-public.rs:12:1
    |
 LL | pub type PubAlias0 = PubTy::PrivAssocTy;
-   | ^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^ type alias `PubAlias0` is reachable at visibility `pub`
+   |
 note: but associated type `PubTy::PrivAssocTy` is only usable at visibility `pub(crate)`
-  --> $DIR/private-in-public.rs:24:5
+  --> $DIR/private-in-public.rs:27:5
    |
 LL |     type PrivAssocTy = ();
    |     ^^^^^^^^^^^^^^^^
@@ -31,7 +30,7 @@ LL | #![warn(private_interfaces)]
    |         ^^^^^^^^^^^^^^^^^^
 
 error: private type `PrivTy` in public interface (error E0446)
-  --> $DIR/private-in-public.rs:15:1
+  --> $DIR/private-in-public.rs:16:1
    |
 LL | pub type PubAlias1 = PrivTy::PubAssocTy;
    | ^^^^^^^^^^^^^^^^^^
@@ -40,20 +39,19 @@ LL | pub type PubAlias1 = PrivTy::PubAssocTy;
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 warning: type `PrivTy` is more private than the item `PubAlias1`
-   |
-note: type alias `PubAlias1` is reachable at visibility `pub`
-  --> $DIR/private-in-public.rs:15:1
+  --> $DIR/private-in-public.rs:16:1
    |
 LL | pub type PubAlias1 = PrivTy::PubAssocTy;
-   | ^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^ type alias `PubAlias1` is reachable at visibility `pub`
+   |
 note: but type `PrivTy` is only usable at visibility `pub(crate)`
-  --> $DIR/private-in-public.rs:28:1
+  --> $DIR/private-in-public.rs:31:1
    |
 LL | struct PrivTy;
    | ^^^^^^^^^^^^^
 
 error: private type `PrivTy` in public interface (error E0446)
-  --> $DIR/private-in-public.rs:18:1
+  --> $DIR/private-in-public.rs:20:1
    |
 LL | pub type PubAlias2 = PubTy::PubAssocTy<PrivTy>;
    | ^^^^^^^^^^^^^^^^^^
@@ -62,14 +60,13 @@ LL | pub type PubAlias2 = PubTy::PubAssocTy<PrivTy>;
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 warning: type `PrivTy` is more private than the item `PubAlias2`
-   |
-note: type alias `PubAlias2` is reachable at visibility `pub`
-  --> $DIR/private-in-public.rs:18:1
+  --> $DIR/private-in-public.rs:20:1
    |
 LL | pub type PubAlias2 = PubTy::PubAssocTy<PrivTy>;
-   | ^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^ type alias `PubAlias2` is reachable at visibility `pub`
+   |
 note: but type `PrivTy` is only usable at visibility `pub(crate)`
-  --> $DIR/private-in-public.rs:28:1
+  --> $DIR/private-in-public.rs:31:1
    |
 LL | struct PrivTy;
    | ^^^^^^^^^^^^^

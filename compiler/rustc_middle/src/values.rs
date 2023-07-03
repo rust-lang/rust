@@ -106,9 +106,12 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::EarlyBinder<ty::Binder<'_, ty::F
     }
 }
 
-impl<'tcx, T> Value<TyCtxt<'tcx>, DepKind> for Result<T, ty::layout::LayoutError<'_>> {
+impl<'tcx, T> Value<TyCtxt<'tcx>, DepKind> for Result<T, &'_ ty::layout::LayoutError<'_>> {
     fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo<DepKind>]) -> Self {
-        Err(ty::layout::LayoutError::Cycle)
+        // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
+        // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
+        // tcx.arena.alloc is pretty much equal to leaking).
+        Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle)))
     }
 }
 

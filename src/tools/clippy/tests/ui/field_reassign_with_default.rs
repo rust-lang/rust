@@ -1,5 +1,5 @@
-//@aux-build:proc_macro_derive.rs
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macro_derive.rs:proc-macro
+//@aux-build:proc_macros.rs:proc-macro
 
 #![warn(clippy::field_reassign_with_default)]
 

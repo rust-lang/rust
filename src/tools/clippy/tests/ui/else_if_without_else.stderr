@@ -3,7 +3,7 @@ error: `if` expression with an `else if`, but without a final `else`
    |
 LL |       } else if bla2() {
    |  ____________^
-LL | |         //~ ERROR else if without else
+LL | |
 LL | |         println!("else if");
 LL | |     }
    | |_____^
@@ -16,7 +16,7 @@ error: `if` expression with an `else if`, but without a final `else`
    |
 LL |       } else if bla3() {
    |  ____________^
-LL | |         //~ ERROR else if without else
+LL | |
 LL | |         println!("else if 2");
 LL | |     }
    | |_____^

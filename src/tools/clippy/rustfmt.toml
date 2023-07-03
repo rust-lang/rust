@@ -5,3 +5,4 @@ wrap_comments = true
 edition = "2021"
 error_on_line_overflow = true
 version = "Two"
+ignore = ["tests/ui/crashes/ice-10912.rs"]

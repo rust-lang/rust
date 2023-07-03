@@ -289,7 +289,7 @@ fn parse_iter_usage<'tcx>(
 ) -> Option<IterUsage> {
     let (kind, span) = match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
-            let ExprKind::MethodCall(name, _, [args @ ..], _) = e.kind else {
+            let ExprKind::MethodCall(name, _, args, _) = e.kind else {
                 return None;
             };
             let did = cx.typeck_results().type_dependent_def_id(e.hir_id)?;

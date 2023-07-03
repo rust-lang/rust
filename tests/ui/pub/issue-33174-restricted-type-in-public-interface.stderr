@@ -1,5 +1,5 @@
 error[E0446]: private type `Snail` in public interface
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:27:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:28:1
    |
 LL | pub(crate) struct Snail;
    | ----------------------- `Snail` declared as private
@@ -8,25 +8,24 @@ LL | pub type Helix_pomatia = Shell<Snail>;
    | ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 warning: type `Snail` is more private than the item `Helix_pomatia`
-   |
-note: type alias `Helix_pomatia` is reachable at visibility `pub`
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:27:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:28:1
    |
 LL | pub type Helix_pomatia = Shell<Snail>;
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^ type alias `Helix_pomatia` is reachable at visibility `pub`
+   |
 note: but type `Snail` is only usable at visibility `pub(crate)`
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:9:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:10:1
    |
 LL | pub(crate) struct Snail;
    | ^^^^^^^^^^^^^^^^^^^^^^^
 note: the lint level is defined here
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:2:9
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:3:9
    |
 LL | #![warn(private_interfaces)]
    |         ^^^^^^^^^^^^^^^^^^
 
 error[E0446]: crate-private type `Turtle` in public interface
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:31:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:33:1
    |
 LL |     pub(super) struct Turtle;
    |     ------------------------ `Turtle` declared as crate-private
@@ -35,20 +34,19 @@ LL | pub type Dermochelys_coriacea = Shell<sea::Turtle>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak crate-private type
 
 warning: type `Turtle` is more private than the item `Dermochelys_coriacea`
-   |
-note: type alias `Dermochelys_coriacea` is reachable at visibility `pub`
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:31:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:33:1
    |
 LL | pub type Dermochelys_coriacea = Shell<sea::Turtle>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type alias `Dermochelys_coriacea` is reachable at visibility `pub`
+   |
 note: but type `Turtle` is only usable at visibility `pub(crate)`
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:14:5
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:15:5
    |
 LL |     pub(super) struct Turtle;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0446]: private type `Tortoise` in public interface
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:35:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:38:1
    |
 LL | struct Tortoise;
    | --------------- `Tortoise` declared as private
@@ -57,14 +55,13 @@ LL | pub type Testudo_graeca = Shell<Tortoise>;
    | ^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 warning: type `Tortoise` is more private than the item `Testudo_graeca`
-   |
-note: type alias `Testudo_graeca` is reachable at visibility `pub`
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:35:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:38:1
    |
 LL | pub type Testudo_graeca = Shell<Tortoise>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^ type alias `Testudo_graeca` is reachable at visibility `pub`
+   |
 note: but type `Tortoise` is only usable at visibility `pub(crate)`
-  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:19:1
+  --> $DIR/issue-33174-restricted-type-in-public-interface.rs:20:1
    |
 LL | struct Tortoise;
    | ^^^^^^^^^^^^^^^

@@ -8,12 +8,11 @@ LL | pub struct S
    | ^^^^^^^^^^^^ can't leak private trait
 
 warning: trait `PrivTr` is more private than the item `S`
-   |
-note: struct `S` is reachable at visibility `pub`
   --> $DIR/where-pub-type-impls-priv-trait.rs:24:1
    |
 LL | pub struct S
-   | ^^^^^^^^^^^^
+   | ^^^^^^^^^^^^ struct `S` is reachable at visibility `pub`
+   |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
   --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
    |
@@ -26,7 +25,7 @@ LL | #![warn(private_bounds)]
    |         ^^^^^^^^^^^^^^
 
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:31:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:32:1
    |
 LL | trait PrivTr {}
    | ------------ `PrivTr` declared as private
@@ -35,12 +34,11 @@ LL | pub enum E
    | ^^^^^^^^^^ can't leak private trait
 
 warning: trait `PrivTr` is more private than the item `E`
-   |
-note: enum `E` is reachable at visibility `pub`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:31:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:32:1
    |
 LL | pub enum E
-   | ^^^^^^^^^^
+   | ^^^^^^^^^^ enum `E` is reachable at visibility `pub`
+   |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
   --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
    |
@@ -48,27 +46,28 @@ LL | trait PrivTr {}
    | ^^^^^^^^^^^^
 
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:38:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:40:1
    |
 LL |   trait PrivTr {}
    |   ------------ `PrivTr` declared as private
 ...
 LL | / pub fn f()
 LL | |
+LL | |
 LL | | where
 LL | |     PubTy: PrivTr
    | |_________________^ can't leak private trait
 
 warning: trait `PrivTr` is more private than the item `f`
-   |
-note: function `f` is reachable at visibility `pub`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:38:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:40:1
    |
 LL | / pub fn f()
 LL | |
+LL | |
 LL | | where
 LL | |     PubTy: PrivTr
-   | |_________________^
+   | |_________________^ function `f` is reachable at visibility `pub`
+   |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
   --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
    |
@@ -76,7 +75,7 @@ LL | trait PrivTr {}
    | ^^^^^^^^^^^^
 
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:45:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:48:1
    |
 LL | trait PrivTr {}
    | ------------ `PrivTr` declared as private
@@ -85,12 +84,11 @@ LL | impl S
    | ^^^^^^ can't leak private trait
 
 warning: trait `PrivTr` is more private than the item `S`
-   |
-note: implementation `S` is reachable at visibility `pub`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:45:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:48:1
    |
 LL | impl S
-   | ^^^^^^
+   | ^^^^^^ implementation `S` is reachable at visibility `pub`
+   |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
   --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
    |
@@ -98,27 +96,28 @@ LL | trait PrivTr {}
    | ^^^^^^^^^^^^
 
 error[E0445]: private trait `PrivTr` in public interface
-  --> $DIR/where-pub-type-impls-priv-trait.rs:50:5
+  --> $DIR/where-pub-type-impls-priv-trait.rs:54:5
    |
 LL |   trait PrivTr {}
    |   ------------ `PrivTr` declared as private
 ...
 LL | /     pub fn f()
 LL | |
+LL | |
 LL | |     where
 LL | |         PubTy: PrivTr
    | |_____________________^ can't leak private trait
 
 warning: trait `PrivTr` is more private than the item `S::f`
-   |
-note: associated function `S::f` is reachable at visibility `pub`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:50:5
+  --> $DIR/where-pub-type-impls-priv-trait.rs:54:5
    |
 LL | /     pub fn f()
 LL | |
+LL | |
 LL | |     where
 LL | |         PubTy: PrivTr
-   | |_____________________^
+   | |_____________________^ associated function `S::f` is reachable at visibility `pub`
+   |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
   --> $DIR/where-pub-type-impls-priv-trait.rs:14:1
    |

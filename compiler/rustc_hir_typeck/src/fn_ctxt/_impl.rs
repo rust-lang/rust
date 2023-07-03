@@ -2,7 +2,7 @@ use crate::callee::{self, DeferredCallResolution};
 use crate::errors::CtorIsPrivate;
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, RawTy};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, RawTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         format!("{:p}", self)
     }
 
-    pub fn local_ty(&self, span: Span, nid: hir::HirId) -> LocalTy<'tcx> {
+    pub fn local_ty(&self, span: Span, nid: hir::HirId) -> Ty<'tcx> {
         self.locals.borrow().get(&nid).cloned().unwrap_or_else(|| {
             span_bug!(span, "no type for local variable {}", self.tcx.hir().node_to_string(nid))
         })
@@ -746,7 +746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expect_args = self
             .fudge_inference_if_ok(|| {
-                let ocx = ObligationCtxt::new_in_snapshot(self);
+                let ocx = ObligationCtxt::new(self);
 
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function
@@ -1152,7 +1152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if let Res::Local(hid) = res {
-            let ty = self.local_ty(span, hid).decl_ty;
+            let ty = self.local_ty(span, hid);
             let ty = self.normalize(span, ty);
             self.write_ty(hir_id, ty);
             return (ty, res);

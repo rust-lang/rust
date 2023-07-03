@@ -7,7 +7,7 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, CrateVariancesMap, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, CrateVariancesMap, ImplTraitInTraitData, SubstsRef, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
 use std::ops::ControlFlow;
 
@@ -51,20 +51,26 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Variant
-        | DefKind::Ctor(..) => {}
+        | DefKind::Ctor(..) => {
+            // These are inferred.
+            let crate_map = tcx.crate_variances(());
+            return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
+        }
         DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder => {
             return variance_of_opaque(tcx, item_def_id);
         }
-        _ => {
-            // Variance not relevant.
-            span_bug!(tcx.def_span(item_def_id), "asked to compute variance for wrong kind of item")
+        DefKind::AssocTy => {
+            if let Some(ImplTraitInTraitData::Trait { .. }) =
+                tcx.opt_rpitit_info(item_def_id.to_def_id())
+            {
+                return variance_of_opaque(tcx, item_def_id);
+            }
         }
+        _ => {}
     }
 
-    // Everything else must be inferred.
-
-    let crate_map = tcx.crate_variances(());
-    crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
+    // Variance not relevant.
+    span_bug!(tcx.def_span(item_def_id), "asked to compute variance for wrong kind of item");
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]

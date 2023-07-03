@@ -144,7 +144,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             Some(tcx.typeck_root_def_id(def_id.to_def_id()))
         }
         Node::Item(item) => match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy {
+            ItemKind::OpaqueTy(&hir::OpaqueTy {
                 origin:
                     hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
                 in_trait,

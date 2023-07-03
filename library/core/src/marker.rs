@@ -575,59 +575,59 @@ impl<T: ?Sized> Copy for &T {}
 #[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
-        _Self = "std::cell::OnceCell<T>",
+        any(_Self = "core::cell:OnceCell<T>", _Self = "std::cell::OnceCell<T>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::OnceLock` instead"
     ),
     on(
-        _Self = "std::cell::Cell<u8>",
+        any(_Self = "core::cell::Cell<u8>", _Self = "std::cell::Cell<u8>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU8` instead",
     ),
     on(
-        _Self = "std::cell::Cell<u16>",
+        any(_Self = "core::cell::Cell<u16>", _Self = "std::cell::Cell<u16>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU16` instead",
     ),
     on(
-        _Self = "std::cell::Cell<u32>",
+        any(_Self = "core::cell::Cell<u32>", _Self = "std::cell::Cell<u32>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU32` instead",
     ),
     on(
-        _Self = "std::cell::Cell<u64>",
+        any(_Self = "core::cell::Cell<u64>", _Self = "std::cell::Cell<u64>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU64` instead",
     ),
     on(
-        _Self = "std::cell::Cell<usize>",
+        any(_Self = "core::cell::Cell<usize>", _Self = "std::cell::Cell<usize>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicUsize` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i8>",
+        any(_Self = "core::cell::Cell<i8>", _Self = "std::cell::Cell<i8>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI8` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i16>",
+        any(_Self = "core::cell::Cell<i16>", _Self = "std::cell::Cell<i16>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI16` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i32>",
+        any(_Self = "core::cell::Cell<i32>", _Self = "std::cell::Cell<i32>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead",
     ),
     on(
-        _Self = "std::cell::Cell<i64>",
+        any(_Self = "core::cell::Cell<i64>", _Self = "std::cell::Cell<i64>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI64` instead",
     ),
     on(
-        _Self = "std::cell::Cell<isize>",
+        any(_Self = "core::cell::Cell<isize>", _Self = "std::cell::Cell<isize>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicIsize` instead",
     ),
     on(
-        _Self = "std::cell::Cell<bool>",
+        any(_Self = "core::cell::Cell<bool>", _Self = "std::cell::Cell<bool>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicBool` instead",
     ),
     on(
-        _Self = "std::cell::Cell<T>",
+        any(_Self = "core::cell::Cell<T>", _Self = "std::cell::Cell<T>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`",
     ),
     on(
-        _Self = "std::cell::RefCell<T>",
+        any(_Self = "core::cell::RefCell<T>", _Self = "std::cell::RefCell<T>"),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead",
     ),
     message = "`{Self}` cannot be shared between threads safely",

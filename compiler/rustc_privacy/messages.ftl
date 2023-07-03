@@ -18,7 +18,7 @@ privacy_private_in_public_lint =
     })
 
 privacy_private_interface_or_bounds_lint = {$ty_kind} `{$ty_descr}` is more private than the item `{$item_descr}`
-    .item_note = {$item_kind} `{$item_descr}` is reachable at visibility `{$item_vis_descr}`
+    .item_label = {$item_kind} `{$item_descr}` is reachable at visibility `{$item_vis_descr}`
     .ty_note = but {$ty_kind} `{$ty_descr}` is only usable at visibility `{$ty_vis_descr}`
 
 privacy_report_effective_visibility = {$descr}

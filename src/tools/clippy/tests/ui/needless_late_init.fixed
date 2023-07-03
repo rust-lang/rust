@@ -1,5 +1,5 @@
 //@run-rustfix
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![feature(let_chains)]
 #![allow(unused)]
 #![allow(
@@ -8,7 +8,8 @@
     clippy::let_and_return,
     clippy::let_unit_value,
     clippy::nonminimal_bool,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::useless_vec
 )]
 
 extern crate proc_macros;

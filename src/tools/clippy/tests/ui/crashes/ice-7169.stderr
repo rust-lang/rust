@@ -1,5 +1,5 @@
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/ice-7169.rs:8:12
+  --> $DIR/ice-7169.rs:10:12
    |
 LL |     if let Ok(_) = Ok::<_, ()>(A::<String>::default()) {}
    |     -------^^^^^-------------------------------------- help: try this: `if Ok::<_, ()>(A::<String>::default()).is_ok()`

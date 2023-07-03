@@ -1,0 +1,33 @@
+error[E0499]: cannot borrow `chars` as mutable more than once at a time
+  --> $DIR/issue-102972.rs:4:9
+   |
+LL |     for _c in chars.by_ref() {
+   |               --------------
+   |               |
+   |               first mutable borrow occurs here
+   |               first borrow later used here
+LL |         chars.next();
+   |         ^^^^^^^^^^^^ second mutable borrow occurs here
+   |
+   = note: a for loop advances the iterator for you, the result is stored in `_c`.
+   = help: if you want to call `next` on a iterator within the loop, consider using `while let`.
+
+error[E0382]: borrow of moved value: `iter`
+  --> $DIR/issue-102972.rs:12:9
+   |
+LL |     let mut iter = v.iter();
+   |         -------- move occurs because `iter` has type `std::slice::Iter<'_, i32>`, which does not implement the `Copy` trait
+LL |     for _i in iter {
+   |               ---- `iter` moved due to this implicit call to `.into_iter()`
+LL |         iter.next();
+   |         ^^^^^^^^^^^ value borrowed here after move
+   |
+   = note: a for loop advances the iterator for you, the result is stored in `_i`.
+   = help: if you want to call `next` on a iterator within the loop, consider using `while let`.
+note: `into_iter` takes ownership of the receiver `self`, which moves `iter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0499.
+For more information about an error, try `rustc --explain E0382`.

@@ -6,5 +6,13 @@ LL |     let _fail1 = 100_200_300.123456789;
    |
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
-error: aborting due to previous error
+error: long literal lacking separators
+  --> $DIR/test.rs:22:18
+   |
+LL |     let _fail2 = 100200300.300200100;
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider: `100_200_300.300_200_100`
+   |
+   = note: `-D clippy::unreadable-literal` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
 

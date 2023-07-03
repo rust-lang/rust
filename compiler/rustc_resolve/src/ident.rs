@@ -88,7 +88,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let rust_2015 = ctxt.edition().is_rust_2015();
         let (ns, macro_kind, is_absolute_path) = match scope_set {
-            ScopeSet::All(ns, _) => (ns, None, false),
+            ScopeSet::All(ns) => (ns, None, false),
             ScopeSet::AbsolutePath(ns) => (ns, None, true),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
             ScopeSet::Late(ns, ..) => (ns, None, false),
@@ -370,7 +370,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// expansion and import resolution (perhaps they can be merged in the future).
     /// The function is used for resolving initial segments of macro paths (e.g., `foo` in
     /// `foo::bar!();` or `foo!();`) and also for import paths on 2018 edition.
-    #[instrument(level = "debug", skip(self, scope_set))]
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
@@ -397,11 +397,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return Err(Determinacy::Determined);
         }
 
-        let (ns, macro_kind, is_import) = match scope_set {
-            ScopeSet::All(ns, is_import) => (ns, None, is_import),
-            ScopeSet::AbsolutePath(ns) => (ns, None, false),
-            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
-            ScopeSet::Late(ns, ..) => (ns, None, false),
+        let (ns, macro_kind) = match scope_set {
+            ScopeSet::All(ns) => (ns, None),
+            ScopeSet::AbsolutePath(ns) => (ns, None),
+            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
+            ScopeSet::Late(ns, ..) => (ns, None),
         };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -631,9 +631,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 let derive_helper_compat =
                                     Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
 
-                                let ambiguity_error_kind = if is_import {
-                                    Some(AmbiguityKind::Import)
-                                } else if is_builtin(innermost_res) || is_builtin(res) {
+                                let ambiguity_error_kind = if is_builtin(innermost_res)
+                                    || is_builtin(res)
+                                {
                                     Some(AmbiguityKind::BuiltinAttr)
                                 } else if innermost_res == derive_helper_compat
                                     || res == derive_helper_compat && innermost_res != derive_helper
@@ -853,10 +853,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                let scopes = ScopeSet::All(ns, true);
                 let binding = self.early_resolve_ident_in_lexical_scope(
                     ident,
-                    scopes,
+                    ScopeSet::All(ns),
                     parent_scope,
                     finalize,
                     finalize.is_some(),
@@ -1497,7 +1496,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 self.early_resolve_ident_in_lexical_scope(
                     ident,
-                    ScopeSet::All(ns, opt_ns.is_none()),
+                    ScopeSet::All(ns),
                     parent_scope,
                     finalize,
                     finalize.is_some(),

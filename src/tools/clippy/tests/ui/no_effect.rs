@@ -5,7 +5,8 @@
     clippy::deref_addrof,
     clippy::redundant_field_names,
     clippy::uninlined_format_args,
-    clippy::unnecessary_struct_initialization
+    clippy::unnecessary_struct_initialization,
+    clippy::useless_vec
 )]
 
 struct Unit;

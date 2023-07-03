@@ -7,7 +7,12 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsARM.h"
+#include "llvm/IR/LLVMRemarkStreamer.h"
 #include "llvm/IR/Mangler.h"
+#include "llvm/Remarks/RemarkStreamer.h"
+#include "llvm/Remarks/RemarkSerializer.h"
+#include "llvm/Remarks/RemarkFormat.h"
+#include "llvm/Support/ToolOutputFile.h"
 #if LLVM_VERSION_GE(16, 0)
 #include "llvm/Support/ModRef.h"
 #endif
@@ -1855,23 +1860,44 @@ using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
 // When RemarkAllPasses is true, remarks are enabled for all passes. Otherwise
 // the RemarkPasses array specifies individual passes for which remarks will be
 // enabled.
+//
+// If RemarkFilePath is not NULL, optimization remarks will be streamed directly into this file,
+// bypassing the diagnostics handler.
 extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     LLVMContextRef C, LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
     void *DiagnosticHandlerContext, bool RemarkAllPasses,
-    const char * const * RemarkPasses, size_t RemarkPassesLen) {
+    const char * const * RemarkPasses, size_t RemarkPassesLen,
+    const char * RemarkFilePath
+) {
 
   class RustDiagnosticHandler final : public DiagnosticHandler {
   public:
-    RustDiagnosticHandler(LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
-                          void *DiagnosticHandlerContext,
-                          bool RemarkAllPasses,
-                          std::vector<std::string> RemarkPasses)
+    RustDiagnosticHandler(
+      LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
+      void *DiagnosticHandlerContext,
+      bool RemarkAllPasses,
+      std::vector<std::string> RemarkPasses,
+      std::unique_ptr<ToolOutputFile> RemarksFile,
+      std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer,
+      std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer
+    )
         : DiagnosticHandlerCallback(DiagnosticHandlerCallback),
           DiagnosticHandlerContext(DiagnosticHandlerContext),
           RemarkAllPasses(RemarkAllPasses),
-          RemarkPasses(RemarkPasses) {}
+          RemarkPasses(std::move(RemarkPasses)),
+          RemarksFile(std::move(RemarksFile)),
+          RemarkStreamer(std::move(RemarkStreamer)),
+          LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)) {}
 
     virtual bool handleDiagnostics(const DiagnosticInfo &DI) override {
+      if (this->LlvmRemarkStreamer) {
+        if (auto *OptDiagBase = dyn_cast<DiagnosticInfoOptimizationBase>(&DI)) {
+          if (OptDiagBase->isEnabled()) {
+            this->LlvmRemarkStreamer->emit(*OptDiagBase);
+            return true;
+          }
+        }
+      }
       if (DiagnosticHandlerCallback) {
         DiagnosticHandlerCallback(DI, DiagnosticHandlerContext);
         return true;
@@ -1912,14 +1938,64 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
 
     bool RemarkAllPasses = false;
     std::vector<std::string> RemarkPasses;
+
+    // Since LlvmRemarkStreamer contains a pointer to RemarkStreamer, the ordering of the three
+    // members below is important.
+    std::unique_ptr<ToolOutputFile> RemarksFile;
+    std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer;
+    std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer;
   };
 
   std::vector<std::string> Passes;
   for (size_t I = 0; I != RemarkPassesLen; ++I)
+  {
     Passes.push_back(RemarkPasses[I]);
+  }
+
+  // We need to hold onto both the streamers and the opened file
+  std::unique_ptr<ToolOutputFile> RemarkFile;
+  std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer;
+  std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer;
+
+  if (RemarkFilePath != nullptr) {
+    std::error_code EC;
+    RemarkFile = std::make_unique<ToolOutputFile>(
+      RemarkFilePath,
+      EC,
+      llvm::sys::fs::OF_TextWithCRLF
+    );
+    if (EC) {
+      std::string Error = std::string("Cannot create remark file: ") +
+              toString(errorCodeToError(EC));
+      report_fatal_error(Twine(Error));
+    }
+
+    // Do not delete the file after we gather remarks
+    RemarkFile->keep();
+
+    auto RemarkSerializer = remarks::createRemarkSerializer(
+      llvm::remarks::Format::YAML,
+      remarks::SerializerMode::Separate,
+      RemarkFile->os()
+    );
+    if (Error E = RemarkSerializer.takeError())
+    {
+      std::string Error = std::string("Cannot create remark serializer: ") + toString(std::move(E));
+      report_fatal_error(Twine(Error));
+    }
+    RemarkStreamer = std::make_unique<llvm::remarks::RemarkStreamer>(std::move(*RemarkSerializer));
+    LlvmRemarkStreamer = std::make_unique<LLVMRemarkStreamer>(*RemarkStreamer);
+  }
 
   unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
-      DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses, Passes));
+    DiagnosticHandlerCallback,
+    DiagnosticHandlerContext,
+    RemarkAllPasses,
+    Passes,
+    std::move(RemarkFile),
+    std::move(RemarkStreamer),
+    std::move(LlvmRemarkStreamer)
+  ));
 }
 
 extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {

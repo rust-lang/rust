@@ -9,10 +9,9 @@ use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
-use rustc_target::spec::{LinkerFlavorCli, PanicStrategy, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
 use crate::parse::{CrateCheckConfig, CrateConfig};
@@ -201,6 +200,128 @@ pub enum LinkerPluginLto {
     Disabled,
 }
 
+impl LinkerPluginLto {
+    pub fn enabled(&self) -> bool {
+        match *self {
+            LinkerPluginLto::LinkerPlugin(_) | LinkerPluginLto::LinkerPluginAuto => true,
+            LinkerPluginLto::Disabled => false,
+        }
+    }
+}
+
+/// The different values `-C link-self-contained` can take: a list of individually enabled or
+/// disabled components used during linking, coming from the rustc distribution, instead of being
+/// found somewhere on the host system.
+///
+/// They can be set in bulk via `-C link-self-contained=yes|y|on` or `-C
+/// link-self-contained=no|n|off`, and those boolean values are the historical defaults.
+///
+/// But each component is fine-grained, and can be unstably targeted, to use:
+/// - some CRT objects
+/// - the libc static library
+/// - libgcc/libunwind libraries
+/// - a linker we distribute
+/// - some sanitizer runtime libraries
+/// - all other MinGW libraries and Windows import libs
+///
+#[derive(Default, Clone, PartialEq, Debug)]
+pub struct LinkSelfContained {
+    /// Whether the user explicitly set `-C link-self-contained` on or off, the historical values.
+    /// Used for compatibility with the existing opt-in and target inference.
+    pub explicitly_set: Option<bool>,
+
+    /// The components that are enabled.
+    components: LinkSelfContainedComponents,
+}
+
+bitflags::bitflags! {
+    #[derive(Default)]
+    /// The `-C link-self-contained` components that can individually be enabled or disabled.
+    pub struct LinkSelfContainedComponents: u8 {
+        /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
+        const CRT_OBJECTS = 1 << 0;
+        /// libc static library (e.g. on `musl`, `wasi` targets)
+        const LIBC        = 1 << 1;
+        /// libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
+        const UNWIND      = 1 << 2;
+        /// Linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
+        const LINKER      = 1 << 3;
+        /// Sanitizer runtime libraries
+        const SANITIZERS  = 1 << 4;
+        /// Other MinGW libs and Windows import libs
+        const MINGW       = 1 << 5;
+    }
+}
+
+impl FromStr for LinkSelfContainedComponents {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
+            "libc" => LinkSelfContainedComponents::LIBC,
+            "unwind" => LinkSelfContainedComponents::UNWIND,
+            "linker" => LinkSelfContainedComponents::LINKER,
+            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
+            "mingw" => LinkSelfContainedComponents::MINGW,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl LinkSelfContained {
+    /// Incorporates an enabled or disabled component as specified on the CLI, if possible.
+    /// For example: `+linker`, and `-crto`.
+    pub(crate) fn handle_cli_component(&mut self, component: &str) -> Result<(), ()> {
+        // Note that for example `-Cself-contained=y -Cself-contained=-linker` is not an explicit
+        // set of all values like `y` or `n` used to be. Therefore, if this flag had previously been
+        // set in bulk with its historical values, then manually setting a component clears that
+        // `explicitly_set` state.
+        if let Some(component_to_enable) = component.strip_prefix("+") {
+            self.explicitly_set = None;
+            self.components.insert(component_to_enable.parse()?);
+            Ok(())
+        } else if let Some(component_to_disable) = component.strip_prefix("-") {
+            self.explicitly_set = None;
+            self.components.remove(component_to_disable.parse()?);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    /// Turns all components on or off and records that this was done explicitly for compatibility
+    /// purposes.
+    pub(crate) fn set_all_explicitly(&mut self, enabled: bool) {
+        self.explicitly_set = Some(enabled);
+        self.components = if enabled {
+            LinkSelfContainedComponents::all()
+        } else {
+            LinkSelfContainedComponents::empty()
+        };
+    }
+
+    /// Helper creating a fully enabled `LinkSelfContained` instance. Used in tests.
+    pub fn on() -> Self {
+        let mut on = LinkSelfContained::default();
+        on.set_all_explicitly(true);
+        on
+    }
+
+    /// To help checking CLI usage while some of the values are unstable: returns whether one of the
+    /// components was set individually. This would also require the `-Zunstable-options` flag, to
+    /// be allowed.
+    fn are_unstable_variants_set(&self) -> bool {
+        let any_component_set = !self.components.is_empty();
+        self.explicitly_set.is_none() && any_component_set
+    }
+
+    /// Returns whether the self-contained linker component is enabled.
+    pub fn linker(&self) -> bool {
+        self.components.contains(LinkSelfContainedComponents::LINKER)
+    }
+}
+
 /// Used with `-Z assert-incr-state`.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum IncrementalStateAssertion {
@@ -211,15 +332,6 @@ pub enum IncrementalStateAssertion {
     Loaded,
     /// Did not load an existing session directory.
     NotLoaded,
-}
-
-impl LinkerPluginLto {
-    pub fn enabled(&self) -> bool {
-        match *self {
-            LinkerPluginLto::LinkerPlugin(_) | LinkerPluginLto::LinkerPluginAuto => true,
-            LinkerPluginLto::Disabled => false,
-        }
-    }
 }
 
 /// The different settings that can be enabled via the `-Z location-detail` flag.
@@ -2544,16 +2656,28 @@ pub fn build_session_options(
         }
     }
 
-    if let Some(flavor) = cg.linker_flavor {
-        if matches!(flavor, LinkerFlavorCli::BpfLinker | LinkerFlavorCli::PtxLinker)
-            && !nightly_options::is_unstable_enabled(matches)
-        {
-            let msg = format!(
-                "linker flavor `{}` is unstable, `-Z unstable-options` \
-                 flag must also be passed to explicitly use it",
-                flavor.desc()
+    // For testing purposes, until we have more feedback about these options: ensure `-Z
+    // unstable-options` is required when using the unstable `-C link-self-contained` options, like
+    // `-C link-self-contained=+linker`, and when using the unstable `-C linker-flavor` options, like
+    // `-C linker-flavor=gnu-lld-cc`.
+    if !nightly_options::is_unstable_enabled(matches) {
+        let uses_unstable_self_contained_option =
+            cg.link_self_contained.are_unstable_variants_set();
+        if uses_unstable_self_contained_option {
+            handler.early_error(
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off` are stable, \
+                the `-Z unstable-options` flag must also be passed to use the unstable values",
             );
-            handler.early_error(msg);
+        }
+
+        if let Some(flavor) = cg.linker_flavor {
+            if flavor.is_unstable() {
+                handler.early_error(format!(
+                    "the linker flavor `{}` is unstable, the `-Z unstable-options` \
+                        flag must also be passed to use the unstable values",
+                    flavor.desc()
+                ));
+            }
         }
     }
 
@@ -2581,6 +2705,10 @@ pub fn build_session_options(
 
     if !cg.remark.is_empty() && debuginfo == DebugInfo::None {
         handler.early_warn("-C remark requires \"-C debuginfo=n\" to show source locations");
+    }
+
+    if cg.remark.is_empty() && unstable_opts.remark_dir.is_some() {
+        handler.early_warn("using -Z remark-dir without enabling remarks using e.g. -C remark=all");
     }
 
     let externs = parse_externs(handler, matches, &unstable_opts);

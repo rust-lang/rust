@@ -1,5 +1,5 @@
 error: trivial regex
-  --> $DIR/regex.rs:13:45
+  --> $DIR/regex.rs:18:45
    |
 LL |     let pipe_in_wrong_position = Regex::new("|");
    |                                             ^^^
@@ -8,7 +8,7 @@ LL |     let pipe_in_wrong_position = Regex::new("|");
    = note: `-D clippy::trivial-regex` implied by `-D warnings`
 
 error: trivial regex
-  --> $DIR/regex.rs:14:60
+  --> $DIR/regex.rs:19:60
    |
 LL |     let pipe_in_wrong_position_builder = RegexBuilder::new("|");
    |                                                            ^^^
@@ -16,7 +16,7 @@ LL |     let pipe_in_wrong_position_builder = RegexBuilder::new("|");
    = help: the regex is unlikely to be useful as it is
 
 error: regex syntax error: invalid character class range, the start must be <= the end
-  --> $DIR/regex.rs:15:42
+  --> $DIR/regex.rs:20:42
    |
 LL |     let wrong_char_ranice = Regex::new("[z-a]");
    |                                          ^^^
@@ -24,7 +24,7 @@ LL |     let wrong_char_ranice = Regex::new("[z-a]");
    = note: `-D clippy::invalid-regex` implied by `-D warnings`
 
 error: regex syntax error: invalid character class range, the start must be <= the end
-  --> $DIR/regex.rs:16:37
+  --> $DIR/regex.rs:21:37
    |
 LL |     let some_unicode = Regex::new("[é-è]");
    |                                     ^^^
@@ -33,13 +33,13 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> $DIR/regex.rs:18:33
+  --> $DIR/regex.rs:23:33
    |
 LL |     let some_regex = Regex::new(OPENING_PAREN);
    |                                 ^^^^^^^^^^^^^
 
 error: trivial regex
-  --> $DIR/regex.rs:20:53
+  --> $DIR/regex.rs:25:53
    |
 LL |     let binary_pipe_in_wrong_position = BRegex::new("|");
    |                                                     ^^^
@@ -50,7 +50,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> $DIR/regex.rs:21:41
+  --> $DIR/regex.rs:26:41
    |
 LL |     let some_binary_regex = BRegex::new(OPENING_PAREN);
    |                                         ^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> $DIR/regex.rs:22:56
+  --> $DIR/regex.rs:27:56
    |
 LL |     let some_binary_regex_builder = BRegexBuilder::new(OPENING_PAREN);
    |                                                        ^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> $DIR/regex.rs:34:37
+  --> $DIR/regex.rs:39:37
    |
 LL |     let set_error = RegexSet::new(&[OPENING_PAREN, r"[a-z]+/.(com|org|net)"]);
    |                                     ^^^^^^^^^^^^^
@@ -77,7 +77,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> $DIR/regex.rs:35:39
+  --> $DIR/regex.rs:40:39
    |
 LL |     let bset_error = BRegexSet::new(&[OPENING_PAREN, r"[a-z]+/.(com|org|net)"]);
    |                                       ^^^^^^^^^^^^^
@@ -86,27 +86,27 @@ error: regex parse error:
            /b/c
              ^^
        error: unrecognized escape sequence
-  --> $DIR/regex.rs:42:42
+  --> $DIR/regex.rs:47:42
    |
-LL |     let escaped_string_span = Regex::new("/b/c");
+LL |     let escaped_string_span = Regex::new("//b//c");
    |                                          ^^^^^^^^
    |
    = help: consider using a raw string literal: `r".."`
 
 error: regex syntax error: duplicate flag
-  --> $DIR/regex.rs:44:34
+  --> $DIR/regex.rs:49:34
    |
 LL |     let aux_span = Regex::new("(?ixi)");
    |                                  ^ ^
 
 error: regex syntax error: pattern can match invalid UTF-8
-  --> $DIR/regex.rs:49:53
+  --> $DIR/regex.rs:54:53
    |
 LL |     let invalid_utf8_should_lint = Regex::new("(?-u).");
    |                                                     ^
 
 error: trivial regex
-  --> $DIR/regex.rs:53:33
+  --> $DIR/regex.rs:58:33
    |
 LL |     let trivial_eq = Regex::new("^foobar$");
    |                                 ^^^^^^^^^^
@@ -114,7 +114,7 @@ LL |     let trivial_eq = Regex::new("^foobar$");
    = help: consider using `==` on `str`s
 
 error: trivial regex
-  --> $DIR/regex.rs:55:48
+  --> $DIR/regex.rs:60:48
    |
 LL |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
    |                                                ^^^^^^^^^^
@@ -122,7 +122,7 @@ LL |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
    = help: consider using `==` on `str`s
 
 error: trivial regex
-  --> $DIR/regex.rs:57:42
+  --> $DIR/regex.rs:62:42
    |
 LL |     let trivial_starts_with = Regex::new("^foobar");
    |                                          ^^^^^^^^^
@@ -130,7 +130,7 @@ LL |     let trivial_starts_with = Regex::new("^foobar");
    = help: consider using `str::starts_with`
 
 error: trivial regex
-  --> $DIR/regex.rs:59:40
+  --> $DIR/regex.rs:64:40
    |
 LL |     let trivial_ends_with = Regex::new("foobar$");
    |                                        ^^^^^^^^^
@@ -138,7 +138,7 @@ LL |     let trivial_ends_with = Regex::new("foobar$");
    = help: consider using `str::ends_with`
 
 error: trivial regex
-  --> $DIR/regex.rs:61:39
+  --> $DIR/regex.rs:66:39
    |
 LL |     let trivial_contains = Regex::new("foobar");
    |                                       ^^^^^^^^
@@ -146,7 +146,7 @@ LL |     let trivial_contains = Regex::new("foobar");
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:63:39
+  --> $DIR/regex.rs:68:39
    |
 LL |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
    |                                       ^^^^^^^^^^^^^^^^
@@ -154,15 +154,15 @@ LL |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:65:40
+  --> $DIR/regex.rs:70:40
    |
-LL |     let trivial_backslash = Regex::new("a/.b");
+LL |     let trivial_backslash = Regex::new("a//.b");
    |                                        ^^^^^^^
    |
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:68:36
+  --> $DIR/regex.rs:73:36
    |
 LL |     let trivial_empty = Regex::new("");
    |                                    ^^
@@ -170,7 +170,7 @@ LL |     let trivial_empty = Regex::new("");
    = help: the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> $DIR/regex.rs:70:36
+  --> $DIR/regex.rs:75:36
    |
 LL |     let trivial_empty = Regex::new("^");
    |                                    ^^^
@@ -178,7 +178,7 @@ LL |     let trivial_empty = Regex::new("^");
    = help: the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> $DIR/regex.rs:72:36
+  --> $DIR/regex.rs:77:36
    |
 LL |     let trivial_empty = Regex::new("^$");
    |                                    ^^^^
@@ -186,7 +186,7 @@ LL |     let trivial_empty = Regex::new("^$");
    = help: consider using `str::is_empty`
 
 error: trivial regex
-  --> $DIR/regex.rs:74:44
+  --> $DIR/regex.rs:79:44
    |
 LL |     let binary_trivial_empty = BRegex::new("^$");
    |                                            ^^^^

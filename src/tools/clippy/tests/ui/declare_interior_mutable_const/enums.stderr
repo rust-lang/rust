@@ -1,7 +1,7 @@
 error: a `const` item should never be interior mutable
   --> $DIR/enums.rs:12:1
    |
-LL | const UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(true)); //~ ERROR interior mutable
+LL | const UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(true));
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | make this a static item (maybe with lazy_static)
@@ -11,7 +11,7 @@ LL | const UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(tru
 error: a `const` item should never be interior mutable
   --> $DIR/enums.rs:23:1
    |
-LL | const UNFROZEN_VARIANT_FROM_FN: OptionalCell = unfrozen_variant(); //~ ERROR interior mutable
+LL | const UNFROZEN_VARIANT_FROM_FN: OptionalCell = unfrozen_variant();
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | make this a static item (maybe with lazy_static)
@@ -24,65 +24,66 @@ LL |   const NESTED_UNFROZEN_VARIANT: NestedOutermost = NestedOutermost {
    |   |
    |  _make this a static item (maybe with lazy_static)
    | |
+LL | |
 LL | |     outer: NestedOuter::NestedInner(NestedInner {
 LL | |         inner: NestedInnermost::Unfrozen(AtomicUsize::new(2)),
 LL | |     }),
-LL | | }; //~ ERROR interior mutable
+LL | | };
    | |__^
-
-error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:59:5
-   |
-LL |     const TO_BE_UNFROZEN_VARIANT: OptionalCell; //~ ERROR interior mutable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
   --> $DIR/enums.rs:60:5
    |
-LL |     const TO_BE_FROZEN_VARIANT: OptionalCell; //~ ERROR interior mutable
+LL |     const TO_BE_UNFROZEN_VARIANT: OptionalCell;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/enums.rs:61:5
+   |
+LL |     const TO_BE_FROZEN_VARIANT: OptionalCell;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:63:5
+  --> $DIR/enums.rs:64:5
    |
-LL |     const DEFAULTED_ON_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false)); //~ ERROR interior mutable
+LL |     const DEFAULTED_ON_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:89:5
+  --> $DIR/enums.rs:90:5
    |
-LL |     const TO_BE_UNFROZEN_VARIANT: Option<Self::ToBeUnfrozen> = Some(Self::ToBeUnfrozen::new(4)); //~ ERROR interior mutable
+LL |     const TO_BE_UNFROZEN_VARIANT: Option<Self::ToBeUnfrozen> = Some(Self::ToBeUnfrozen::new(4));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:101:5
+  --> $DIR/enums.rs:102:5
    |
-LL |     const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null())); //~ ERROR interior mut...
+LL |     const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:104:5
+  --> $DIR/enums.rs:105:5
    |
-LL |     const GENERIC_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Generic(std::ptr::null()); //~ ERROR interior mutable
+LL |     const GENERIC_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Generic(std::ptr::null());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:110:5
+  --> $DIR/enums.rs:111:5
    |
-LL |     const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null()); //~ ERROR interior mutable
+LL |     const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:117:5
+  --> $DIR/enums.rs:118:5
    |
 LL | /     const UNFROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> =
-LL | |         BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null())); //~ ERROR interior mutable
+LL | |         BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
    | |____________________________________________________________________^
 
 error: a `const` item should never be interior mutable
-  --> $DIR/enums.rs:119:5
+  --> $DIR/enums.rs:120:5
    |
-LL |     const GENERIC_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Generic(std::ptr::null()); //~ ERROR interior mu...
+LL |     const GENERIC_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Generic(std::ptr::null());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors

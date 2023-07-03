@@ -35,6 +35,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
+use crate::errors::ErrorCreatingRemarkDir;
 use std::any::Any;
 use std::borrow::Cow;
 use std::fs;
@@ -345,6 +346,9 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub diag_emitter: SharedEmitter,
     /// LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
+    /// Directory into which should the LLVM optimization remarks be written.
+    /// If `None`, they will be written to stderr.
+    pub remark_dir: Option<PathBuf>,
     /// Worker thread number
     pub worker: usize,
     /// The incremental compilation session directory, or None if we are not
@@ -698,28 +702,49 @@ impl<B: WriteBackendMethods> WorkItem<B> {
 
     /// Generate a short description of this work item suitable for use as a thread name.
     fn short_description(&self) -> String {
-        // `pthread_setname()` on *nix is limited to 15 characters and longer names are ignored.
-        // Use very short descriptions in this case to maximize the space available for the module name.
-        // Windows does not have that limitation so use slightly more descriptive names there.
+        // `pthread_setname()` on *nix ignores anything beyond the first 15
+        // bytes. Use short descriptions to maximize the space available for
+        // the module name.
+        #[cfg(not(windows))]
+        fn desc(short: &str, _long: &str, name: &str) -> String {
+            // The short label is three bytes, and is followed by a space. That
+            // leaves 11 bytes for the CGU name. How we obtain those 11 bytes
+            // depends on the the CGU name form.
+            //
+            // - Non-incremental, e.g. `regex.f10ba03eb5ec7975-cgu.0`: the part
+            //   before the `-cgu.0` is the same for every CGU, so use the
+            //   `cgu.0` part. The number suffix will be different for each
+            //   CGU.
+            //
+            // - Incremental (normal), e.g. `2i52vvl2hco29us0`: use the whole
+            //   name because each CGU will have a unique ASCII hash, and the
+            //   first 11 bytes will be enough to identify it.
+            //
+            // - Incremental (with `-Zhuman-readable-cgu-names`), e.g.
+            //   `regex.f10ba03eb5ec7975-re_builder.volatile`: use the whole
+            //   name. The first 11 bytes won't be enough to uniquely identify
+            //   it, but no obvious substring will, and this is a rarely used
+            //   option so it doesn't matter much.
+            //
+            assert_eq!(short.len(), 3);
+            let name = if let Some(index) = name.find("-cgu.") {
+                &name[index + 1..] // +1 skips the leading '-'.
+            } else {
+                name
+            };
+            format!("{short} {name}")
+        }
+
+        // Windows has no thread name length limit, so use more descriptive names.
+        #[cfg(windows)]
+        fn desc(_short: &str, long: &str, name: &str) -> String {
+            format!("{long} {name}")
+        }
+
         match self {
-            WorkItem::Optimize(m) => {
-                #[cfg(windows)]
-                return format!("optimize module {}", m.name);
-                #[cfg(not(windows))]
-                return format!("opt {}", m.name);
-            }
-            WorkItem::CopyPostLtoArtifacts(m) => {
-                #[cfg(windows)]
-                return format!("copy LTO artifacts for {}", m.name);
-                #[cfg(not(windows))]
-                return format!("copy {}", m.name);
-            }
-            WorkItem::LTO(m) => {
-                #[cfg(windows)]
-                return format!("LTO module {}", m.name());
-                #[cfg(not(windows))]
-                return format!("LTO {}", m.name());
-            }
+            WorkItem::Optimize(m) => desc("opt", "optimize module {}", &m.name),
+            WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for {}", &m.name),
+            WorkItem::LTO(m) => desc("lto", "LTO module {}", m.name()),
         }
     }
 }
@@ -1041,6 +1066,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
             tcx.backend_optimization_level(())
         };
     let backend_features = tcx.global_backend_features(());
+
+    let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
+        let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
+        match result {
+            Ok(dir) => Some(dir),
+            Err(error) => sess.emit_fatal(ErrorCreatingRemarkDir { error }),
+        }
+    } else {
+        None
+    };
+
     let cgcx = CodegenContext::<B> {
         crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
@@ -1052,6 +1088,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         prof: sess.prof.clone(),
         exported_symbols,
         remark: sess.opts.cg.remark.clone(),
+        remark_dir,
         worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),

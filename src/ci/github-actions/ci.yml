@@ -299,9 +299,10 @@ defaults:
     shell: bash
 
 concurrency:
-  # For a given workflow, if we push to the same PR, cancel all previous builds on that PR.
-  # If the push is not attached to a PR, we will cancel all builds related to the same commit SHA.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
+  # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
+  # are all triggered on the same branch, but which should be able to run concurrently.
+  group: ${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
   cancel-in-progress: true
 
 jobs:

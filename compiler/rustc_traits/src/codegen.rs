@@ -5,7 +5,7 @@
 
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{FulfillmentErrorCode, TraitEngineExt as _};
-use rustc_middle::traits::{CodegenObligationError, DefiningAnchor};
+use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{
@@ -29,13 +29,7 @@ pub fn codegen_select_candidate<'tcx>(
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let infcx = tcx
-        .infer_ctxt()
-        .ignoring_regions()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
-        .build();
-    //~^ HACK `Bubble` is required for
-    // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
     let mut selcx = SelectionContext::new(&infcx);
 
     let obligation_cause = ObligationCause::dummy();
@@ -78,11 +72,6 @@ pub fn codegen_select_candidate<'tcx>(
 
     let impl_source = infcx.resolve_vars_if_possible(impl_source);
     let impl_source = infcx.tcx.erase_regions(impl_source);
-
-    // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
-    // as they will get constrained elsewhere, too.
-    // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
-    let _ = infcx.take_opaque_types();
 
     Ok(&*tcx.arena.alloc(impl_source))
 }

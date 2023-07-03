@@ -81,7 +81,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
 /// Finds function return type by examining return expressions in match arms.
 fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> Option<Ty<'tcx>> {
     if let ExprKind::Match(_, arms, MatchSource::TryDesugar) = expr {
-        for arm in arms.iter() {
+        for arm in *arms {
             if let ExprKind::Ret(Some(ret)) = arm.body.kind {
                 return Some(cx.typeck_results().expr_ty(ret));
             }

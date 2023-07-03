@@ -1,0 +1,19 @@
+error: non-standard lint formulation
+  --> $DIR/check_formulation.rs:23:5
+   |
+LL |     /// Check for lint formulations that are correct
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try using `Checks for` instead
+   = note: `-D clippy::almost-standard-lint-formulation` implied by `-D warnings`
+
+error: non-standard lint formulation
+  --> $DIR/check_formulation.rs:33:5
+   |
+LL |     /// Detects uses of incorrect formulations
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try using `Checks for` instead
+
+error: aborting due to 2 previous errors
+

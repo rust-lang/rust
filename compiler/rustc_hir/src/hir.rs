@@ -2664,6 +2664,10 @@ pub struct OpaqueTy<'hir> {
     pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
     pub origin: OpaqueTyOrigin,
+    // Opaques have duplicated lifetimes, this mapping connects the original lifetime with the copy
+    // so we can later generate bidirectional outlives predicates to enforce that these lifetimes
+    // stay in sync.
+    pub lifetime_mapping: &'hir [(Lifetime, LocalDefId)],
     pub in_trait: bool,
 }
 
@@ -3315,7 +3319,7 @@ pub enum ItemKind<'hir> {
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
-    OpaqueTy(OpaqueTy<'hir>),
+    OpaqueTy(&'hir OpaqueTy<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
     Enum(EnumDef<'hir>, &'hir Generics<'hir>),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.

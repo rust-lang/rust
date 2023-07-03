@@ -686,6 +686,7 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::RunPassValgrind,
+                test::RunCoverage,
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
@@ -694,6 +695,7 @@ impl<'a> Builder<'a> {
                 test::Debuginfo,
                 test::UiFullDeps,
                 test::Rustdoc,
+                test::RunCoverageRustdoc,
                 test::Pretty,
                 test::Crate,
                 test::CrateLibrustc,
@@ -1205,7 +1207,7 @@ impl<'a> Builder<'a> {
             assert_eq!(target, compiler.host);
         }
 
-        if self.config.rust_optimize {
+        if self.config.rust_optimize.is_release() {
             // FIXME: cargo bench/install do not accept `--release`
             if cmd != "bench" && cmd != "install" {
                 cargo.arg("--release");
@@ -1261,7 +1263,7 @@ impl<'a> Builder<'a> {
         }
 
         let profile_var = |name: &str| {
-            let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
+            let profile = if self.config.rust_optimize.is_release() { "RELEASE" } else { "DEV" };
             format!("CARGO_PROFILE_{}_{}", profile, name)
         };
 
@@ -1650,6 +1652,9 @@ impl<'a> Builder<'a> {
             }
         };
         cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
+        if let Some(opt_level) = &self.config.rust_optimize.get_opt_level() {
+            cargo.env(profile_var("OPT_LEVEL"), opt_level);
+        }
         if !self.config.dry_run() && self.cc.borrow()[&target].args().iter().any(|arg| arg == "-gz")
         {
             rustflags.arg("-Clink-arg=-gz");

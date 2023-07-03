@@ -1,5 +1,5 @@
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:7:5
+  --> $DIR/question_mark.rs:8:5
    |
 LL | /     if a.is_none() {
 LL | |         return None;
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:52:9
+  --> $DIR/question_mark.rs:53:9
    |
 LL | /         if (self.opt).is_none() {
 LL | |             return None;
@@ -17,7 +17,7 @@ LL | |         }
    | |_________^ help: replace it with: `(self.opt)?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:56:9
+  --> $DIR/question_mark.rs:57:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None
@@ -25,7 +25,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:60:17
+  --> $DIR/question_mark.rs:61:17
    |
 LL |           let _ = if self.opt.is_none() {
    |  _________________^
@@ -36,7 +36,7 @@ LL | |         };
    | |_________^ help: replace it with: `Some(self.opt?)`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:66:17
+  --> $DIR/question_mark.rs:67:17
    |
 LL |           let _ = if let Some(x) = self.opt {
    |  _________________^
@@ -47,7 +47,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:83:9
+  --> $DIR/question_mark.rs:84:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None;
@@ -55,7 +55,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:91:9
+  --> $DIR/question_mark.rs:92:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None;
@@ -63,7 +63,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:99:9
+  --> $DIR/question_mark.rs:100:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None;
@@ -71,7 +71,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:106:26
+  --> $DIR/question_mark.rs:107:26
    |
 LL |           let v: &Vec<_> = if let Some(ref v) = self.opt {
    |  __________________________^
@@ -82,7 +82,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt.as_ref()?`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:116:17
+  --> $DIR/question_mark.rs:117:17
    |
 LL |           let v = if let Some(v) = self.opt {
    |  _________________^
@@ -93,7 +93,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:131:5
+  --> $DIR/question_mark.rs:132:5
    |
 LL | /     if f().is_none() {
 LL | |         return None;
@@ -101,13 +101,13 @@ LL | |     }
    | |_____^ help: replace it with: `f()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:143:13
+  --> $DIR/question_mark.rs:144:13
    |
 LL |     let _ = if let Ok(x) = x { x } else { return x };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x?`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:145:5
+  --> $DIR/question_mark.rs:146:5
    |
 LL | /     if x.is_err() {
 LL | |         return x;
@@ -115,7 +115,7 @@ LL | |     }
    | |_____^ help: replace it with: `x?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:196:5
+  --> $DIR/question_mark.rs:197:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
@@ -123,12 +123,22 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:203:5
+  --> $DIR/question_mark.rs:204:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
 LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
-error: aborting due to 15 previous errors
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:281:13
+   |
+LL | /             if a.is_none() {
+LL | |                 return None;
+LL | |                 // do lint here, the outer `try` is not relevant here
+LL | |                 // https://github.com/rust-lang/rust-clippy/pull/11001#issuecomment-1610636867
+LL | |             }
+   | |_____________^ help: replace it with: `a?;`
+
+error: aborting due to 16 previous errors
 

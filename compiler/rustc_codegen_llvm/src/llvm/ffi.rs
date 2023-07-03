@@ -1071,6 +1071,7 @@ extern "C" {
 
     // Operations on other types
     pub fn LLVMVoidTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMTokenTypeInContext(C: &Context) -> &Type;
     pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
@@ -1301,7 +1302,7 @@ extern "C" {
         NumArgs: c_uint,
         Then: &'a BasicBlock,
         Catch: &'a BasicBlock,
-        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        OpBundles: *const &OperandBundleDef<'a>,
         NumOpBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
@@ -1673,7 +1674,7 @@ extern "C" {
         Fn: &'a Value,
         Args: *const &'a Value,
         NumArgs: c_uint,
-        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        OpBundles: *const &OperandBundleDef<'a>,
         NumOpBundles: c_uint,
     ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy<'a>(
@@ -2512,6 +2513,7 @@ extern "C" {
         remark_all_passes: bool,
         remark_passes: *const *const c_char,
         remark_passes_len: usize,
+        remark_file: *const c_char,
     );
 
     #[allow(improper_ctypes)]

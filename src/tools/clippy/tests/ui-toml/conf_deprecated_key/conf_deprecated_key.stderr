@@ -1,11 +1,11 @@
 warning: error reading Clippy's configuration file: deprecated field `cyclomatic-complexity-threshold`. Please use `cognitive-complexity-threshold` instead
-  --> $DIR/clippy.toml:2:1
+  --> $DIR/$DIR/clippy.toml:2:1
    |
 LL | cyclomatic-complexity-threshold = 2
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: error reading Clippy's configuration file: deprecated field `blacklisted-names`. Please use `disallowed-names` instead
-  --> $DIR/clippy.toml:3:1
+  --> $DIR/$DIR/clippy.toml:3:1
    |
 LL | blacklisted-names = [ "..", "wibble" ]
    | ^^^^^^^^^^^^^^^^^

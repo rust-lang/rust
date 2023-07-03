@@ -1,0 +1,12 @@
+error: a `const` item should never be interior mutable
+  --> $DIR/ice-9445.rs:1:1
+   |
+LL | const UNINIT: core::mem::MaybeUninit<core::cell::Cell<&'static ()>> = core::mem::MaybeUninit::uninit();
+   | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | make this a static item (maybe with lazy_static)
+   |
+   = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
+
+error: aborting due to previous error
+

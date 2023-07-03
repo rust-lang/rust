@@ -14,3 +14,8 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
+
+[dependencies.object]
+version = "0.31.1"
+default-features = false
+features = ["elf"]

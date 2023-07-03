@@ -1558,6 +1558,7 @@ symbols! {
         type_length_limit,
         type_macros,
         type_name,
+        type_privacy_lints,
         u128,
         u16,
         u32,

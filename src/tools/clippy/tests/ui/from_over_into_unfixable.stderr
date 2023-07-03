@@ -25,5 +25,13 @@ LL | impl Into<u8> for ContainsVal {
            https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
    = help: replace the `Into` implementation with `From<ContainsVal>`
 
-error: aborting due to 3 previous errors
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into_unfixable.rs:39:1
+   |
+LL | impl<T> Into<Rval<Self>> for Lval<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace the `Into` implementation with `From<Lval<T>>`
+
+error: aborting due to 4 previous errors
 

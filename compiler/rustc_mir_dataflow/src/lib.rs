@@ -43,7 +43,6 @@ pub mod impls;
 pub mod move_paths;
 pub mod rustc_peek;
 pub mod storage;
-pub mod un_derefer;
 pub mod value_analysis;
 
 fluent_messages! { "../messages.ftl" }

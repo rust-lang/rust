@@ -161,7 +161,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                         let fields_def = &variant.fields;
 
                         // Push field type then visit each field expr.
-                        for field in fields.iter() {
+                        for field in *fields {
                             let bound =
                                 fields_def
                                     .iter()

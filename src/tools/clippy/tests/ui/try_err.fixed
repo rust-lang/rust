@@ -1,5 +1,5 @@
 //@run-rustfix
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 
 #![deny(clippy::try_err)]
 #![allow(clippy::unnecessary_wraps, clippy::needless_question_mark)]

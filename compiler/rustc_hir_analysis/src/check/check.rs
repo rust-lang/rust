@@ -299,7 +299,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         }
     }
 
-    if let ItemKind::OpaqueTy(hir::OpaqueTy {
+    if let ItemKind::OpaqueTy(&hir::OpaqueTy {
         origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
         in_trait,
         ..
