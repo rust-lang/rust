@@ -316,7 +316,7 @@ impl InferenceContext<'_> {
             }
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone());
+                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false);
                 let (res, derefed_callee) = 'b: {
                     // manual loop to be able to access `derefs.table`
                     while let Some((callee_deref_ty, _)) = derefs.next() {
@@ -1385,7 +1385,7 @@ impl InferenceContext<'_> {
         receiver_ty: &Ty,
         name: &Name,
     ) -> Option<(Ty, Option<FieldId>, Vec<Adjustment>, bool)> {
-        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone());
+        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false);
         let mut private_field = None;
         let res = autoderef.by_ref().find_map(|(derefed_ty, _)| {
             let (field_id, parameters) = match derefed_ty.kind(Interner) {

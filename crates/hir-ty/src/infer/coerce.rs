@@ -377,7 +377,7 @@ impl InferenceTable<'_> {
 
         let snapshot = self.snapshot();
 
-        let mut autoderef = Autoderef::new(self, from_ty.clone());
+        let mut autoderef = Autoderef::new(self, from_ty.clone(), false);
         let mut first_error = None;
         let mut found = None;
 

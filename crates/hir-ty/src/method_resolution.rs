@@ -534,7 +534,7 @@ impl ReceiverAdjustments {
         let mut ty = table.resolve_ty_shallow(&ty);
         let mut adjust = Vec::new();
         for _ in 0..self.autoderefs {
-            match autoderef::autoderef_step(table, ty.clone()) {
+            match autoderef::autoderef_step(table, ty.clone(), true) {
                 None => {
                     never!("autoderef not possible for {:?}", ty);
                     ty = TyKind::Error.intern(Interner);
@@ -1012,8 +1012,8 @@ fn iterate_method_candidates_by_receiver(
     let snapshot = table.snapshot();
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
-    // that.
-    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone());
+    // that, including raw derefs.
+    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone(), true);
     while let Some((self_ty, _)) = autoderef.next() {
         iterate_inherent_methods(
             &self_ty,
@@ -1028,7 +1028,7 @@ fn iterate_method_candidates_by_receiver(
 
     table.rollback_to(snapshot);
 
-    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone());
+    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone(), true);
     while let Some((self_ty, _)) = autoderef.next() {
         iterate_trait_method_candidates(
             &self_ty,
@@ -1504,7 +1504,7 @@ fn autoderef_method_receiver(
     ty: Ty,
 ) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
     let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new(table, ty);
+    let mut autoderef = autoderef::Autoderef::new(table, ty, true);
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty).value,
