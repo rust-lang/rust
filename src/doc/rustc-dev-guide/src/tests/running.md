@@ -133,6 +133,15 @@ Under the hood, the test runner invokes the standard Rust test runner
 filtering for tests that include "issue-1234" in the name. (Thus
 `--test-args` is a good way to run a collection of related tests.)
 
+## Passing arguments to `rustc` when running tests
+
+It can sometimes be useful to run some tests with specific compiler arguments,
+without using `RUSTFLAGS` (during development of unstable features, with `-Z`
+flags, for example).
+
+This can be done with `./x test`'s `--rustc-args` option, to pass additional
+arguments to the compiler when building the tests.
+
 ## Editing and updating the reference files
 
 If you have changed the compiler's output intentionally, or you are
