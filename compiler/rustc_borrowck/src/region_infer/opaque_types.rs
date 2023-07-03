@@ -293,7 +293,8 @@ fn check_opaque_type_well_formed<'tcx>(
         return Ok(definition_ty);
     };
     let param_env = tcx.param_env(def_id);
-    // HACK This bubble is required for this tests to pass:
+    // HACK We use the function's anchor, instead of the TAIT's `DefId`, because the
+    // `TAIT` may not be in the defining scope of the other (nested) TAITs.
     // nested-return-type2-tait2.rs
     // nested-return-type2-tait3.rs
     // FIXME(-Ztrait-solver=next): We probably should use `DefiningAnchor::Error`
@@ -302,11 +303,7 @@ fn check_opaque_type_well_formed<'tcx>(
     let infcx = tcx
         .infer_ctxt()
         .with_next_trait_solver(next_trait_solver)
-        .with_opaque_type_inference(if next_trait_solver {
-            DefiningAnchor::Bind(def_id)
-        } else {
-            DefiningAnchor::Bubble
-        })
+        .with_opaque_type_inference(DefiningAnchor::Bind(def_id))
         .build();
     let ocx = ObligationCtxt::new(&infcx);
     let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);

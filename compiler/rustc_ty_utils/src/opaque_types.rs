@@ -50,15 +50,24 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     }
 
     fn parent(&self) -> Option<LocalDefId> {
-        match self.tcx.def_kind(self.item) {
+        let mut item = self.item;
+        let mut kind;
+        loop {
+            kind = self.tcx.def_kind(item);
+            match kind {
+                DefKind::OpaqueTy => item = self.tcx.local_parent(item),
+                DefKind::TyAlias => return None,
+                _ => break,
+            }
+        }
+        match kind {
             DefKind::Fn => None,
             DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
-                Some(self.tcx.local_parent(self.item))
+                Some(self.tcx.local_parent(item))
             }
-            other => span_bug!(
-                self.tcx.def_span(self.item),
-                "unhandled item with opaque types: {other:?}"
-            ),
+            other => {
+                span_bug!(self.tcx.def_span(item), "unhandled item with opaque types: {other:?}")
+            }
         }
     }
 }
@@ -216,6 +225,18 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
             }
             tcx.arena.alloc_from_iter(collector.opaques)
         }
+        DefKind::OpaqueTy => {
+            let mut collector = OpaqueTypeCollector::new(tcx, item);
+            let span = match tcx.hir().get_by_def_id(item).ty() {
+                Some(ty) => ty.span,
+                _ => tcx.def_span(item),
+            };
+            collector.visit_spanned(
+                span,
+                tcx.mk_opaque(item.to_def_id(), ty::InternalSubsts::identity_for_item(tcx, item)),
+            );
+            tcx.arena.alloc_from_iter(collector.opaques)
+        }
         DefKind::Mod
         | DefKind::Struct
         | DefKind::Union
@@ -236,7 +257,6 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::ForeignMod
         | DefKind::AnonConst
         | DefKind::InlineConst
-        | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam

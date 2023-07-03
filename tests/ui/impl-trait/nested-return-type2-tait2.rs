@@ -17,6 +17,7 @@ impl<R: Duh, F: FnMut() -> R> Trait for F {
 
 type Sendable = impl Send;
 type Traitable = impl Trait<Assoc = Sendable>;
+//~^ ERROR opaque type `Traitable` does not satisfy its associated type bounds
 
 // The `impl Send` here is then later compared against the inference var
 // created, causing the inference var to be set to `impl Send` instead of
@@ -25,8 +26,6 @@ type Traitable = impl Trait<Assoc = Sendable>;
 // type does not implement `Duh`, even if its hidden type does. So we error out.
 fn foo() -> Traitable {
     || 42
-    //~^ ERROR `Sendable: Duh` is not satisfied
 }
 
-fn main() {
-}
+fn main() {}

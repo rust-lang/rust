@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{
     self, fold::BottomUpFolder, print::TraitPredPrintModifiersAndPath, Ty, TypeFoldable,
 };
@@ -140,23 +140,49 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         }),
                         _ => None,
                     };
-                    cx.emit_spanned_lint(
-                        OPAQUE_HIDDEN_INFERRED_BOUND,
-                        pred_span,
-                        OpaqueHiddenInferredBoundLint {
-                            ty: cx.tcx.mk_opaque(
-                                def_id,
-                                ty::InternalSubsts::identity_for_item(cx.tcx, def_id),
-                            ),
-                            proj_ty: proj_term,
-                            assoc_pred_span,
-                            add_bound,
-                        },
-                    );
+                    let ty = cx
+                        .tcx
+                        .mk_opaque(def_id, ty::InternalSubsts::identity_for_item(cx.tcx, def_id));
+                    match opaque.origin {
+                        hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
+                            cx.emit_spanned_lint(
+                                OPAQUE_HIDDEN_INFERRED_BOUND,
+                                pred_span,
+                                OpaqueHiddenInferredBoundLint {
+                                    ty,
+                                    proj_ty: proj_term,
+                                    assoc_pred_span,
+                                    add_bound,
+                                },
+                            );
+                        }
+                        hir::OpaqueTyOrigin::TyAlias { .. } => {
+                            cx.tcx.sess.emit_err(OpaqueHiddenInferredBoundErr {
+                                pred_span,
+                                ty,
+                                proj_ty: proj_term,
+                                assoc_pred_span,
+                                add_bound,
+                            });
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(lint_opaque_hidden_inferred_bound)]
+struct OpaqueHiddenInferredBoundErr<'tcx> {
+    #[primary_span]
+    pred_span: Span,
+    ty: Ty<'tcx>,
+    proj_ty: Ty<'tcx>,
+    #[label(lint_specifically)]
+    assoc_pred_span: Span,
+    #[subdiagnostic]
+    add_bound: Option<AddBound<'tcx>>,
 }
 
 #[derive(LintDiagnostic)]

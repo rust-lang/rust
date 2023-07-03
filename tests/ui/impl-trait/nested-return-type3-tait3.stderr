@@ -1,5 +1,5 @@
-warning: opaque type `Traitable` does not satisfy its associated type bounds
-  --> $DIR/nested-return-type3-tait3.rs:17:29
+error: opaque type `Traitable` does not satisfy its associated type bounds
+  --> $DIR/nested-return-type3-tait3.rs:15:29
    |
 LL |     type Assoc: Duh;
    |                 --- this associated type bound is unsatisfied for `impl Send`
@@ -7,11 +7,10 @@ LL |     type Assoc: Duh;
 LL | type Traitable = impl Trait<Assoc = impl Send>;
    |                             ^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(opaque_hidden_inferred_bound)]` on by default
 help: add this bound
    |
 LL | type Traitable = impl Trait<Assoc = impl Send + Duh>;
    |                                               +++++
 
-warning: 1 warning emitted
+error: aborting due to previous error
 

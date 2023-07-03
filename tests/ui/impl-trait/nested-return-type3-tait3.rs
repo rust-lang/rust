@@ -1,5 +1,3 @@
-// check-pass
-
 #![feature(type_alias_impl_trait)]
 
 trait Duh {}
@@ -15,7 +13,7 @@ impl<F: Duh> Trait for F {
 }
 
 type Traitable = impl Trait<Assoc = impl Send>;
-//~^ WARN opaque type `Traitable` does not satisfy its associated type bounds
+//~^ ERROR opaque type `Traitable` does not satisfy its associated type bounds
 
 fn foo() -> Traitable {
     42
