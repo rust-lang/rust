@@ -87,6 +87,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
+use rustc_hir::LangItem::OptionSome;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
@@ -2541,6 +2542,50 @@ pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
     sm.span_take_while(span, |&ch| ch == ' ' || ch == ';')
+}
+
+/// Returns whether the given let pattern and else body can be turned into a question mark
+///
+/// For this example:
+/// ```ignore
+/// let FooBar { a, b } = if let Some(a) = ex { a } else { return None };
+/// ```
+/// We get as parameters:
+/// ```ignore
+/// pat: Some(a)
+/// else_body: return None
+/// ```
+
+/// And for this example:
+/// ```ignore
+/// let Some(FooBar { a, b }) = ex else { return None };
+/// ```
+/// We get as parameters:
+/// ```ignore
+/// pat: Some(FooBar { a, b })
+/// else_body: return None
+/// ```
+
+/// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
+/// the question mark operator is applicable here. Callers have to check whether we are in a
+/// constant or not.
+pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
+    cx: &LateContext<'_>,
+    pat: &'a Pat<'hir>,
+    else_body: &Expr<'_>,
+) -> Option<&'a Pat<'hir>> {
+    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind &&
+        is_res_lang_ctor(cx, cx.qpath_res(&pat_path, pat.hir_id), OptionSome) &&
+        !is_refutable(cx, inner_pat) &&
+        let else_body = peel_blocks(else_body) &&
+        let ExprKind::Ret(Some(ret_val)) = else_body.kind &&
+        let ExprKind::Path(ret_path) = ret_val.kind &&
+        is_res_lang_ctor(cx, cx.qpath_res(&ret_path, ret_val.hir_id), OptionNone)
+    {
+        Some(inner_pat)
+    } else {
+        None
+    }
 }
 
 macro_rules! op_utils {
