@@ -15,7 +15,7 @@ use hir_def::{
     hir::{ExprId, PatId},
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
-use ide::{LineCol, RootDatabase};
+use ide::{Analysis, AnnotationConfig, DiagnosticsConfig, InlayHintsConfig, LineCol, RootDatabase};
 use ide_db::{
     base_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
@@ -30,7 +30,7 @@ use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSourc
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxNode};
-use vfs::{AbsPathBuf, Vfs, VfsPath};
+use vfs::{AbsPathBuf, FileId, Vfs, VfsPath};
 
 use crate::cli::{
     flags::{self, OutputFormat},
@@ -149,8 +149,10 @@ impl flags::AnalysisStats {
         let mut bodies = Vec::new();
         let mut adts = Vec::new();
         let mut consts = Vec::new();
+        let mut file_ids = Vec::new();
         while let Some(module) = visit_queue.pop() {
             if visited_modules.insert(module) {
+                file_ids.extend(module.as_source_file_id(db));
                 visit_queue.extend(module.children(db));
 
                 for decl in module.declarations(db) {
@@ -222,6 +224,10 @@ impl flags::AnalysisStats {
 
         if !self.skip_const_eval {
             self.run_const_eval(db, &consts, verbosity);
+        }
+
+        if self.run_all_ide_things {
+            self.run_ide_things(host.analysis(), file_ids);
         }
 
         let total_span = analysis_sw.elapsed();
@@ -727,6 +733,83 @@ impl flags::AnalysisStats {
         let body_lowering_time = sw.elapsed();
         eprintln!("{:<20} {}", "Body lowering:", body_lowering_time);
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
+    }
+
+    fn run_ide_things(&self, analysis: Analysis, mut file_ids: Vec<FileId>) {
+        file_ids.sort();
+        file_ids.dedup();
+        let mut sw = self.stop_watch();
+
+        for &file_id in &file_ids {
+            _ = analysis.diagnostics(
+                &DiagnosticsConfig {
+                    enabled: true,
+                    proc_macros_enabled: true,
+                    proc_attr_macros_enabled: true,
+                    disable_experimental: false,
+                    disabled: Default::default(),
+                    expr_fill_default: Default::default(),
+                    insert_use: ide_db::imports::insert_use::InsertUseConfig {
+                        granularity: ide_db::imports::insert_use::ImportGranularity::Crate,
+                        enforce_granularity: true,
+                        prefix_kind: hir::PrefixKind::ByCrate,
+                        group: true,
+                        skip_glob_imports: true,
+                    },
+                    prefer_no_std: Default::default(),
+                },
+                ide::AssistResolveStrategy::All,
+                file_id,
+            );
+        }
+        for &file_id in &file_ids {
+            _ = analysis.inlay_hints(
+                &InlayHintsConfig {
+                    render_colons: false,
+                    type_hints: true,
+                    discriminant_hints: ide::DiscriminantHints::Always,
+                    parameter_hints: true,
+                    chaining_hints: true,
+                    adjustment_hints: ide::AdjustmentHints::Always,
+                    adjustment_hints_mode: ide::AdjustmentHintsMode::Postfix,
+                    adjustment_hints_hide_outside_unsafe: false,
+                    closure_return_type_hints: ide::ClosureReturnTypeHints::Always,
+                    closure_capture_hints: true,
+                    binding_mode_hints: true,
+                    lifetime_elision_hints: ide::LifetimeElisionHints::Always,
+                    param_names_for_lifetime_elision_hints: true,
+                    hide_named_constructor_hints: false,
+                    hide_closure_initialization_hints: false,
+                    closure_style: hir::ClosureStyle::ImplFn,
+                    max_length: Some(25),
+                    closing_brace_hints_min_lines: Some(20),
+                },
+                file_id,
+                None,
+            );
+        }
+        for &file_id in &file_ids {
+            analysis
+                .annotations(
+                    &AnnotationConfig {
+                        binary_target: true,
+                        annotate_runnables: true,
+                        annotate_impls: true,
+                        annotate_references: false,
+                        annotate_method_references: false,
+                        annotate_enum_variant_references: false,
+                        location: ide::AnnotationLocation::AboveName,
+                    },
+                    file_id,
+                )
+                .unwrap()
+                .into_iter()
+                .for_each(|annotation| {
+                    _ = analysis.resolve_annotation(annotation);
+                });
+        }
+        let ide_time = sw.elapsed();
+        eprintln!("{:<20} {} ({} files)", "IDE:", ide_time, file_ids.len());
     }
 
     fn stop_watch(&self) -> StopWatch {
