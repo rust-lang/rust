@@ -404,6 +404,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::SUSPICIOUS_MAP_INFO,
     crate::methods::SUSPICIOUS_SPLITN_INFO,
     crate::methods::SUSPICIOUS_TO_OWNED_INFO,
+    crate::methods::TYPE_ID_ON_BOX_INFO,
     crate::methods::UNINIT_ASSUMED_INIT_INFO,
     crate::methods::UNIT_HASH_INFO,
     crate::methods::UNNECESSARY_FILTER_MAP_INFO,

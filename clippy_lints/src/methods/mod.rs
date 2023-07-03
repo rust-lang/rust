@@ -88,6 +88,7 @@ mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
+mod type_id_on_box;
 mod uninit_assumed_init;
 mod unit_hash;
 mod unnecessary_filter_map;
@@ -2927,6 +2928,37 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Looks for calls to `<Box<dyn Any> as Any>::type_id`.
+    ///
+    /// ### Why is this bad?
+    /// This most certainly does not do what the user expects and is very easy to miss.
+    /// Calling `type_id` on a `Box<dyn Any>` calls `type_id` on the `Box<..>` itself,
+    /// so this will return the `TypeId` of the `Box<dyn Any>` type (not the type id
+    /// of the value referenced by the box!).
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// use std::any::{Any, TypeId};
+    ///
+    /// let any_box: Box<dyn Any> = Box::new(42_i32);
+    /// assert_eq!(any_box.type_id(), TypeId::of::<i32>()); // ⚠️ this fails!
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::any::{Any, TypeId};
+    ///
+    /// let any_box: Box<dyn Any> = Box::new(42_i32);
+    /// assert_eq!((*any_box).type_id(), TypeId::of::<i32>());
+    /// //          ^ dereference first, to call `type_id` on `dyn Any`
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub TYPE_ID_ON_BOX,
+    suspicious,
+    "calling `.type_id()` on `Box<dyn Any>`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Detects `().hash(_)`.
     ///
     /// ### Why is this bad?
@@ -3389,6 +3421,7 @@ impl_lint_pass!(Methods => [
     STRING_EXTEND_CHARS,
     ITER_CLONED_COLLECT,
     ITER_WITH_DRAIN,
+    TYPE_ID_ON_BOX,
     USELESS_ASREF,
     UNNECESSARY_FOLD,
     UNNECESSARY_FILTER_MAP,
@@ -3914,6 +3947,9 @@ impl Methods {
                 ("to_os_string" | "to_path_buf" | "to_vec", []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
+                ("type_id", []) => {
+                    type_id_on_box::check(cx, recv, expr.span);
+                }
                 ("unwrap", []) => {
                     match method_call(recv) {
                         Some(("get", recv, [get_arg], _, _)) => {
