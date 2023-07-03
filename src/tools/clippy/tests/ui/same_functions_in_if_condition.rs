@@ -37,33 +37,33 @@ fn ifs_same_cond_fn() {
 
     if function() {
     } else if function() {
-        //~ ERROR ifs same condition
+        //~^ ERROR: `if` has the same function call as a previous `if`
     }
 
     if fn_arg(a) {
     } else if fn_arg(a) {
-        //~ ERROR ifs same condition
+        //~^ ERROR: `if` has the same function call as a previous `if`
     }
 
     if obj.method() {
     } else if obj.method() {
-        //~ ERROR ifs same condition
+        //~^ ERROR: `if` has the same function call as a previous `if`
     }
 
     if obj.method_arg(a) {
     } else if obj.method_arg(a) {
-        //~ ERROR ifs same condition
+        //~^ ERROR: `if` has the same function call as a previous `if`
     }
 
     let mut v = vec![1];
     if v.pop().is_none() {
-        //~ ERROR ifs same condition
     } else if v.pop().is_none() {
+        //~^ ERROR: `if` has the same function call as a previous `if`
     }
 
     if v.len() == 42 {
-        //~ ERROR ifs same condition
     } else if v.len() == 42 {
+        //~^ ERROR: `if` has the same function call as a previous `if`
     }
 
     if v.len() == 1 {

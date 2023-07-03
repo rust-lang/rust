@@ -1,3 +1,4 @@
+#![feature(type_privacy_lints)]
 #![allow(non_camel_case_types)] // genus is always capitalized
 #![warn(private_interfaces)]
 //~^ NOTE the lint level is defined here
@@ -26,14 +27,17 @@ pub struct Shell<T> {
 
 pub type Helix_pomatia = Shell<Snail>;
 //~^ ERROR private type `Snail` in public interface
+//~| WARNING type `Snail` is more private than the item `Helix_pomatia`
 //~| NOTE can't leak private type
 //~| NOTE type alias `Helix_pomatia` is reachable at visibility `pub`
 pub type Dermochelys_coriacea = Shell<sea::Turtle>;
 //~^ ERROR crate-private type `Turtle` in public interface
+//~| WARNING type `Turtle` is more private than the item `Dermochelys_coriacea`
 //~| NOTE can't leak crate-private type
 //~| NOTE type alias `Dermochelys_coriacea` is reachable at visibility `pub`
 pub type Testudo_graeca = Shell<Tortoise>;
 //~^ ERROR private type `Tortoise` in public interface
+//~| WARNING type `Tortoise` is more private than the item `Testudo_graeca`
 //~| NOTE can't leak private type
 //~| NOTE type alias `Testudo_graeca` is reachable at visibility `pub`
 

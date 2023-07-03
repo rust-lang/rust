@@ -22,7 +22,7 @@ error[E0659]: `issue_56125` is ambiguous
 LL |     use issue_56125::last_segment::*;
    |         ^^^^^^^^^^^ ambiguous name
    |
-   = note: ambiguous because of multiple potential import sources
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
    = note: `issue_56125` could refer to a crate passed with `--extern`
    = help: use `::issue_56125` to refer to this crate unambiguously
 note: `issue_56125` could also refer to the module imported here
@@ -30,7 +30,8 @@ note: `issue_56125` could also refer to the module imported here
    |
 LL |     use issue_56125::last_segment::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `self::issue_56125` to refer to this module unambiguously
+   = help: consider adding an explicit import of `issue_56125` to disambiguate
+   = help: or use `self::issue_56125` to refer to this module unambiguously
 
 error[E0659]: `issue_56125` is ambiguous
   --> $DIR/issue-56125.rs:11:9
@@ -38,7 +39,7 @@ error[E0659]: `issue_56125` is ambiguous
 LL |     use issue_56125::non_last_segment::non_last_segment::*;
    |         ^^^^^^^^^^^ ambiguous name
    |
-   = note: ambiguous because of multiple potential import sources
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
    = note: `issue_56125` could refer to a crate passed with `--extern`
    = help: use `::issue_56125` to refer to this crate unambiguously
 note: `issue_56125` could also refer to the module imported here
@@ -46,7 +47,8 @@ note: `issue_56125` could also refer to the module imported here
    |
 LL |     use issue_56125::non_last_segment::non_last_segment::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `self::issue_56125` to refer to this module unambiguously
+   = help: consider adding an explicit import of `issue_56125` to disambiguate
+   = help: or use `self::issue_56125` to refer to this module unambiguously
 
 error[E0659]: `issue_56125` is ambiguous
   --> $DIR/issue-56125.rs:18:9
@@ -54,7 +56,7 @@ error[E0659]: `issue_56125` is ambiguous
 LL |     use issue_56125::*;
    |         ^^^^^^^^^^^ ambiguous name
    |
-   = note: ambiguous because of multiple potential import sources
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
    = note: `issue_56125` could refer to a crate passed with `--extern`
    = help: use `::issue_56125` to refer to this crate unambiguously
 note: `issue_56125` could also refer to the module imported here
@@ -62,7 +64,8 @@ note: `issue_56125` could also refer to the module imported here
    |
 LL |     use issue_56125::*;
    |         ^^^^^^^^^^^^^^
-   = help: use `self::issue_56125` to refer to this module unambiguously
+   = help: consider adding an explicit import of `issue_56125` to disambiguate
+   = help: or use `self::issue_56125` to refer to this module unambiguously
 
 error: aborting due to 4 previous errors
 

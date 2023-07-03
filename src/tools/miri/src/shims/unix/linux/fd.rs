@@ -181,6 +181,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// `EFD_SEMAPHORE` - miri does not support semaphore-like semantics.
     ///
     /// <https://linux.die.net/man/2/eventfd>
+    #[expect(clippy::needless_if)]
     fn eventfd(
         &mut self,
         val: &OpTy<'tcx, Provenance>,

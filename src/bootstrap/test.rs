@@ -379,7 +379,9 @@ impl Step for RustAnalyzer {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::RustAnalyzer { compiler, target: self.host }).expect("in-tree tool");
+        // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
+        // but we do need the standard library to be present.
+        builder.ensure(compile::Std::new(compiler, host));
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -788,27 +790,15 @@ impl Step for Clippy {
         cargo.add_rustc_lib_path(builder, compiler);
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
 
+        // propagate --bless
+        if builder.config.cmd.bless() {
+            cargo.env("BLESS", "Gesundheit");
+        }
+
         if builder.try_run(&mut cargo).is_ok() {
             // The tests succeeded; nothing to do.
             return;
         }
-
-        if !builder.config.cmd.bless() {
-            crate::detail_exit_macro!(1);
-        }
-
-        let mut cargo = builder.cargo(compiler, Mode::ToolRustc, SourceType::InTree, host, "run");
-        cargo.arg("-p").arg("clippy_dev");
-        // clippy_dev gets confused if it can't find `clippy/Cargo.toml`
-        cargo.current_dir(&builder.src.join("src").join("tools").join("clippy"));
-        if builder.config.rust_optimize {
-            cargo.env("PROFILE", "release");
-        } else {
-            cargo.env("PROFILE", "debug");
-        }
-        cargo.arg("--");
-        cargo.arg("bless");
-        builder.run(&mut cargo.into());
     }
 }
 
@@ -1319,6 +1309,13 @@ host_test!(RunMakeFullDeps {
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
+host_test!(RunCoverage { path: "tests/run-coverage", mode: "run-coverage", suite: "run-coverage" });
+host_test!(RunCoverageRustdoc {
+    path: "tests/run-coverage-rustdoc",
+    mode: "run-coverage",
+    suite: "run-coverage-rustdoc"
+});
+
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct MirOpt {
@@ -1503,6 +1500,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
+            || suite == "run-coverage-rustdoc"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
@@ -1516,7 +1514,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
         }
 
-        if mode == "run-make" {
+        if mode == "run-make" || mode == "run-coverage" {
             let rust_demangler = builder
                 .ensure(tool::RustDemangler {
                     compiler,
@@ -1703,17 +1701,21 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
-            // Only pass correct values for these flags for the `run-make` suite as it
-            // requires that a C++ compiler was configured which isn't always the case.
-            if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
+            if !builder.config.dry_run()
+                && (matches!(suite, "run-make" | "run-make-fulldeps") || mode == "run-coverage")
+            {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
+                // (The run-coverage tests also need these tools to process
+                // coverage reports.)
                 let llvm_bin_path = llvm_config
                     .parent()
                     .expect("Expected llvm-config to be contained in directory");
                 assert!(llvm_bin_path.is_dir());
                 cmd.arg("--llvm-bin-dir").arg(llvm_bin_path);
+            }
 
+            if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
                 // If LLD is available, add it to the PATH
                 if builder.config.lld_enabled {
                     let lld_install_root =
@@ -2670,8 +2672,9 @@ impl Step for Bootstrap {
             .args(["-m", "unittest", "bootstrap_test.py"])
             .env("BUILD_DIR", &builder.out)
             .env("BUILD_PLATFORM", &builder.build.build.triple)
-            .current_dir(builder.src.join("src/bootstrap/"))
-            .args(builder.config.test_args());
+            .current_dir(builder.src.join("src/bootstrap/"));
+        // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
+        // Use `python -m unittest` manually if you want to pass arguments.
         try_run(builder, &mut check_bootstrap).unwrap();
 
         let host = builder.config.build;

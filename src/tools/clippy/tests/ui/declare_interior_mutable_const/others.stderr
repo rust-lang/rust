@@ -1,7 +1,7 @@
 error: a `const` item should never be interior mutable
   --> $DIR/others.rs:9:1
    |
-LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR interior mutable
+LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5);
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | make this a static item (maybe with lazy_static)
@@ -11,7 +11,7 @@ LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR interior mutable
 error: a `const` item should never be interior mutable
   --> $DIR/others.rs:10:1
    |
-LL | const CELL: Cell<usize> = Cell::new(6); //~ ERROR interior mutable
+LL | const CELL: Cell<usize> = Cell::new(6);
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | make this a static item (maybe with lazy_static)
@@ -30,7 +30,7 @@ error: a `const` item should never be interior mutable
 LL |         const $name: $ty = $e;
    |         ^^^^^^^^^^^^^^^^^^^^^^
 ...
-LL | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
+LL | declare_const!(_ONCE: Once = Once::new());
    | ----------------------------------------- in this macro invocation
    |
    = note: this error originates in the macro `declare_const` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -38,7 +38,7 @@ LL | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
 error: a `const` item should never be interior mutable
   --> $DIR/others.rs:43:13
    |
-LL |             const _BAZ: Cell<usize> = Cell::new(0); //~ ERROR interior mutable
+LL |             const _BAZ: Cell<usize> = Cell::new(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     issue_8493!();

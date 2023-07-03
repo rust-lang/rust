@@ -645,7 +645,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
         } else {
-            let scope_set = kind.map_or(ScopeSet::All(MacroNS, false), ScopeSet::Macro);
+            let scope_set = kind.map_or(ScopeSet::All(MacroNS), ScopeSet::Macro);
             let binding = self.early_resolve_ident_in_lexical_scope(
                 path[0].ident,
                 scope_set,

@@ -23,7 +23,7 @@ macro_rules! gen_helper_use {
 struct S {
     #[empty_helper] // OK, no ambiguity, derive helpers have highest priority
     field: [u8; {
-        use empty_helper; //~ ERROR `empty_helper` is ambiguous
+        use empty_helper; // OK, no ambiguity, derive helpers have highest priority
 
         #[empty_helper] // OK, no ambiguity, derive helpers have highest priority
         struct U;

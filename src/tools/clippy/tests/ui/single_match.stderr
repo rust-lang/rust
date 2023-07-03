@@ -1,5 +1,5 @@
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:9:5
+  --> $DIR/single_match.rs:14:5
    |
 LL | /     match x {
 LL | |         Some(y) => {
@@ -18,7 +18,7 @@ LL ~     };
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:17:5
+  --> $DIR/single_match.rs:22:5
    |
 LL | /     match x {
 LL | |         // Note the missing block braces.
@@ -30,7 +30,7 @@ LL | |     }
    | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y) }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:26:5
+  --> $DIR/single_match.rs:31:5
    |
 LL | /     match z {
 LL | |         (2..=3, 7..=9) => dummy(),
@@ -39,7 +39,7 @@ LL | |     };
    | |_____^ help: try this: `if let (2..=3, 7..=9) = z { dummy() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:55:5
+  --> $DIR/single_match.rs:60:5
    |
 LL | /     match x {
 LL | |         Some(y) => dummy(),
@@ -48,7 +48,7 @@ LL | |     };
    | |_____^ help: try this: `if let Some(y) = x { dummy() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:60:5
+  --> $DIR/single_match.rs:65:5
    |
 LL | /     match y {
 LL | |         Ok(y) => dummy(),
@@ -57,7 +57,7 @@ LL | |     };
    | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:67:5
+  --> $DIR/single_match.rs:72:5
    |
 LL | /     match c {
 LL | |         Cow::Borrowed(..) => dummy(),
@@ -66,7 +66,7 @@ LL | |     };
    | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
-  --> $DIR/single_match.rs:88:5
+  --> $DIR/single_match.rs:93:5
    |
 LL | /     match x {
 LL | |         "test" => println!(),
@@ -75,7 +75,7 @@ LL | |     }
    | |_____^ help: try this: `if x == "test" { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
-  --> $DIR/single_match.rs:101:5
+  --> $DIR/single_match.rs:106:5
    |
 LL | /     match x {
 LL | |         Foo::A => println!(),
@@ -84,7 +84,7 @@ LL | |     }
    | |_____^ help: try this: `if x == Foo::A { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
-  --> $DIR/single_match.rs:107:5
+  --> $DIR/single_match.rs:112:5
    |
 LL | /     match x {
 LL | |         FOO_C => println!(),
@@ -93,7 +93,7 @@ LL | |     }
    | |_____^ help: try this: `if x == FOO_C { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
-  --> $DIR/single_match.rs:112:5
+  --> $DIR/single_match.rs:117:5
    |
 LL | /     match &&x {
 LL | |         Foo::A => println!(),
@@ -102,7 +102,7 @@ LL | |     }
    | |_____^ help: try this: `if x == Foo::A { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
-  --> $DIR/single_match.rs:118:5
+  --> $DIR/single_match.rs:123:5
    |
 LL | /     match &x {
 LL | |         Foo::A => println!(),
@@ -111,7 +111,7 @@ LL | |     }
    | |_____^ help: try this: `if x == &Foo::A { println!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:135:5
+  --> $DIR/single_match.rs:140:5
    |
 LL | /     match x {
 LL | |         Bar::A => println!(),
@@ -120,7 +120,7 @@ LL | |     }
    | |_____^ help: try this: `if let Bar::A = x { println!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:143:5
+  --> $DIR/single_match.rs:148:5
    |
 LL | /     match x {
 LL | |         None => println!(),
@@ -129,7 +129,7 @@ LL | |     };
    | |_____^ help: try this: `if let None = x { println!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:165:5
+  --> $DIR/single_match.rs:170:5
    |
 LL | /     match x {
 LL | |         (Some(_), _) => {},
@@ -138,7 +138,7 @@ LL | |     }
    | |_____^ help: try this: `if let (Some(_), _) = x {}`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:171:5
+  --> $DIR/single_match.rs:176:5
    |
 LL | /     match x {
 LL | |         (Some(E::V), _) => todo!(),
@@ -147,7 +147,7 @@ LL | |     }
    | |_____^ help: try this: `if let (Some(E::V), _) = x { todo!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:177:5
+  --> $DIR/single_match.rs:182:5
    |
 LL | /     match (Some(42), Some(E::V), Some(42)) {
 LL | |         (.., Some(E::V), _) => {},
@@ -156,7 +156,7 @@ LL | |     }
    | |_____^ help: try this: `if let (.., Some(E::V), _) = (Some(42), Some(E::V), Some(42)) {}`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:249:5
+  --> $DIR/single_match.rs:254:5
    |
 LL | /     match bar {
 LL | |         Some(v) => unsafe {
@@ -176,7 +176,7 @@ LL +     } }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:257:5
+  --> $DIR/single_match.rs:262:5
    |
 LL | /     match bar {
 LL | |         #[rustfmt::skip]

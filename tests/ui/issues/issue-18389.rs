@@ -1,3 +1,4 @@
+#![feature(type_privacy_lints)]
 #![warn(private_bounds)]
 
 // In this test both old and new private-in-public diagnostic were emitted.
@@ -12,6 +13,7 @@ trait Private<P, R> {
 }
 pub trait Public: Private<
 //~^ ERROR private trait `Private<<Self as Public>::P, <Self as Public>::R>` in public interface
+//~| WARNING trait `Private<<Self as Public>::P, <Self as Public>::R>` is more private than the item `Public`
     <Self as Public>::P,
     <Self as Public>::R
 > {

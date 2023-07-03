@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 // Checks that the search results have the expected width.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-window-size: (900, 1000)
@@ -7,15 +8,41 @@ press-key: 'Enter'
 wait-for: "#crate-search"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
-assert-size: (".search-results div.desc", {"width": 310})
+assert-size: (".search-results div.desc", {"width": 248})
+store-size: (".search-results .result-name .typename", {"width": width})
 set-window-size: (600, 100)
 // As counter-intuitive as it may seem, in this width, the width is "100%", which is why
 // when computed it's larger.
 assert-size: (".search-results div.desc", {"width": 566})
 
 // The result set is all on one line.
-assert-css: (".search-results .result-name > span:not(.typename)", {"display": "inline"})
-assert-css: (".search-results .result-name > span.typename", {"display": "inline-block"})
+compare-elements-position-near: (
+    ".search-results .result-name .typename",
+    ".search-results .result-name .path",
+    {"y": 2},
+)
+compare-elements-position-near-false: (
+    ".search-results .result-name .typename",
+    ".search-results .result-name .path",
+    {"x": 5},
+)
+// The width of the "typename" isn't fixed anymore in this display mode.
+store-size: (".search-results .result-name .typename", {"width": new_width})
+assert: |new_width| < |width| - 10
+
+// Check that if the search is too long on mobile, it'll go under the "typename".
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName"
+wait-for: "#crate-search"
+compare-elements-position-near: (
+    ".search-results .result-name .typename",
+    ".search-results .result-name .path",
+    {"y": 2, "x": 0},
+)
+compare-elements-size-near: (
+    ".search-results .result-name",
+    ".search-results .result-name .path",
+    {"width": 8, "height": 8},
+)
 
 // Check that the crate filter `<select>` is correctly handled when it goes to next line.
 // To do so we need to update the length of one of its `<option>`.

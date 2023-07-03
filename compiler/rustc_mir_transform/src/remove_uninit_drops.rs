@@ -22,7 +22,7 @@ pub struct RemoveUninitDrops;
 impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
-        let Ok((_,move_data)) = MoveData::gather_moves(body, tcx, param_env) else {
+        let Ok(move_data) = MoveData::gather_moves(body, tcx, param_env) else {
             // We could continue if there are move errors, but there's not much point since our
             // init data isn't complete.
             return;

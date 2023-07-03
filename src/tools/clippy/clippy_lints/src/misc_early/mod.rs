@@ -2,6 +2,7 @@ mod builtin_type_shadow;
 mod double_neg;
 mod literal_suffix;
 mod mixed_case_hex_literals;
+mod redundant_at_rest_pattern;
 mod redundant_pattern;
 mod unneeded_field_pattern;
 mod unneeded_wildcard_pattern;
@@ -318,6 +319,36 @@ declare_clippy_lint! {
     "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `[all @ ..]` patterns.
+    ///
+    /// ### Why is this bad?
+    /// In all cases, `all` works fine and can often make code simpler, as you possibly won't need
+    /// to convert from say a `Vec` to a slice by dereferencing.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// if let [all @ ..] = &*v {
+    ///     // NOTE: Type is a slice here
+    ///     println!("all elements: {all:#?}");
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// if let all = v {
+    ///     // NOTE: Type is a `Vec` here
+    ///     println!("all elements: {all:#?}");
+    /// }
+    /// // or
+    /// println!("all elements: {v:#?}");
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub REDUNDANT_AT_REST_PATTERN,
+    complexity,
+    "checks for `[all @ ..]` where `all` would suffice"
+}
+
 declare_lint_pass!(MiscEarlyLints => [
     UNNEEDED_FIELD_PATTERN,
     DUPLICATE_UNDERSCORE_ARGUMENT,
@@ -329,6 +360,7 @@ declare_lint_pass!(MiscEarlyLints => [
     BUILTIN_TYPE_SHADOW,
     REDUNDANT_PATTERN,
     UNNEEDED_WILDCARD_PATTERN,
+    REDUNDANT_AT_REST_PATTERN,
 ]);
 
 impl EarlyLintPass for MiscEarlyLints {
@@ -339,8 +371,13 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
+        if in_external_macro(cx.sess(), pat.span) {
+            return;
+        }
+
         unneeded_field_pattern::check(cx, pat);
         redundant_pattern::check(cx, pat);
+        redundant_at_rest_pattern::check(cx, pat);
         unneeded_wildcard_pattern::check(cx, pat);
     }
 

@@ -61,7 +61,7 @@ assert-css: (
     {"color": "#c5c5c5"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#0096cf"},
 )
 
@@ -138,7 +138,7 @@ call-function: (
 move-cursor-to: ".search-input"
 focus: ".search-input" // To ensure the `<a>` container isnt focus or hover.
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#0096cf", "background-color": "transparent"},
     ALL,
 )
@@ -146,11 +146,11 @@ assert-css: (
 // Checking color and background on hover.
 move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#fff"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#fff", "background-color": "rgb(60, 60, 60)"},
 )
 
@@ -173,7 +173,7 @@ assert-css: (
     {"color": "#ddd"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#ddd"},
 )
 
@@ -250,7 +250,7 @@ call-function: (
 move-cursor-to: ".search-input"
 focus: ".search-input" // To ensure the `<a>` container isnt focus or hover.
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#ddd", "background-color": "transparent"},
 )
 
@@ -270,7 +270,7 @@ assert-css: (
     {"color": "#000"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#000"},
 )
 
@@ -347,7 +347,7 @@ call-function: (
 move-cursor-to: ".search-input"
 focus: ".search-input" // To ensure the `<a>` container isnt focus or hover.
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#000", "background-color": "transparent"},
 )
 

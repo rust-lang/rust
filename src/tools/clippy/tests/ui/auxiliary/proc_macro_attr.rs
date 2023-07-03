@@ -1,7 +1,3 @@
-//@compile-flags: --emit=link
-//@no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_hygiene, proc_macro_quote, box_patterns)]
 #![allow(incomplete_features)]
 #![allow(clippy::useless_conversion, clippy::uninlined_format_args)]

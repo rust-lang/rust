@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
-use clippy_utils::{SpanlessEq, SpanlessHash};
+use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use if_chain::if_chain;
 use itertools::Itertools;
@@ -9,7 +10,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericArg, GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath,
+    GenericArg, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
     TraitBoundModifier, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -86,15 +87,16 @@ declare_clippy_lint! {
     "check if the same trait bounds are specified more than once during a generic declaration"
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct TraitBounds {
     max_trait_bounds: u64,
+    msrv: Msrv,
 }
 
 impl TraitBounds {
     #[must_use]
-    pub fn new(max_trait_bounds: u64) -> Self {
-        Self { max_trait_bounds }
+    pub fn new(max_trait_bounds: u64, msrv: Msrv) -> Self {
+        Self { max_trait_bounds, msrv }
     }
 }
 
@@ -139,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     ) = cx.tcx.hir().get_if_local(*def_id);
                 then {
                     if self_bounds_map.is_empty() {
-                        for bound in self_bounds.iter() {
+                        for bound in *self_bounds {
                             let Some((self_res, self_segments, _)) = get_trait_info_from_bound(bound) else { continue };
                             self_bounds_map.insert(self_res, self_segments);
                         }
@@ -184,7 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
                 // Iterate the bounds and add them to our seen hash
                 // If we haven't yet seen it, add it to the fixed traits
-                for bound in bounds.iter() {
+                for bound in bounds {
                     let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
 
                     let new_trait = seen_def_ids.insert(def_id);
@@ -222,10 +224,24 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 impl TraitBounds {
-    fn check_type_repetition<'tcx>(self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
+    /// Is the given bound a `?Sized` bound, and is combining it (i.e. `T: X + ?Sized`) an error on
+    /// this MSRV? See <https://github.com/rust-lang/rust-clippy/issues/8772> for details.
+    fn cannot_combine_maybe_bound(&self, cx: &LateContext<'_>, bound: &GenericBound<'_>) -> bool {
+        if !self.msrv.meets(msrvs::MAYBE_BOUND_IN_WHERE)
+            && let GenericBound::Trait(tr, TraitBoundModifier::Maybe) = bound
+        {
+            cx.tcx.lang_items().get(LangItem::Sized) == tr.trait_ref.path.res.opt_def_id()
+        } else {
+            false
+        }
+    }
+
+    fn check_type_repetition<'tcx>(&self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         struct SpanlessTy<'cx, 'tcx> {
             ty: &'tcx Ty<'tcx>,
             cx: &'cx LateContext<'tcx>,
@@ -256,11 +272,10 @@ impl TraitBounds {
                 if p.origin != PredicateOrigin::ImplTrait;
                 if p.bounds.len() as u64 <= self.max_trait_bounds;
                 if !p.span.from_expansion();
-                if let Some(ref v) = map.insert(
-                    SpanlessTy { ty: p.bounded_ty, cx },
-                    p.bounds.iter().collect::<Vec<_>>()
-                );
-
+                let bounds = p.bounds.iter().filter(|b| !self.cannot_combine_maybe_bound(cx, b)).collect::<Vec<_>>();
+                if !bounds.is_empty();
+                if let Some(ref v) = map.insert(SpanlessTy { ty: p.bounded_ty, cx }, bounds);
+                if !is_from_proc_macro(cx, p.bounded_ty);
                 then {
                     let trait_bounds = v
                         .iter()
@@ -342,7 +357,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                             "this trait bound is already specified in the where clause",
                             None,
                             "consider removing this trait bound",
-                            );
+                        );
                     }
                 }
             }

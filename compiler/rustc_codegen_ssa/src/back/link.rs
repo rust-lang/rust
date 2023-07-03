@@ -12,7 +12,7 @@ use rustc_metadata::fs::{copy_to_stdout, emit_wrapper_file, METADATA_FILENAME};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
+use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -1688,7 +1688,7 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
 fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
-    if let Some(self_contained) = sess.opts.cg.link_self_contained {
+    if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
         if sess.target.link_self_contained == LinkSelfContainedDefault::False {
             sess.emit_err(errors::UnsupportedLinkSelfContained);
         }
@@ -2246,7 +2246,8 @@ fn add_order_independent_options(
     out_filename: &Path,
     tmpdir: &Path,
 ) {
-    add_gcc_ld_path(cmd, sess, flavor);
+    // Take care of the flavors and CLI options requesting the `lld` linker.
+    add_lld_args(cmd, sess, flavor);
 
     add_apple_sdk(cmd, sess, flavor);
 
@@ -2948,55 +2949,66 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootErro
     }
 }
 
-fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
-    if let Some(ld_impl) = sess.opts.unstable_opts.gcc_ld {
-        if let LinkerFlavor::Gnu(Cc::Yes, _)
-        | LinkerFlavor::Darwin(Cc::Yes, _)
-        | LinkerFlavor::WasmLld(Cc::Yes) = flavor
-        {
-            match ld_impl {
-                LdImpl::Lld => {
-                    // Implement the "self-contained" part of -Zgcc-ld
-                    // by adding rustc distribution directories to the tool search path.
-                    for path in sess.get_tools_search_paths(false) {
-                        cmd.arg({
-                            let mut arg = OsString::from("-B");
-                            arg.push(path.join("gcc-ld"));
-                            arg
-                        });
-                    }
-                    // Implement the "linker flavor" part of -Zgcc-ld
-                    // by asking cc to use some kind of lld.
-                    cmd.arg("-fuse-ld=lld");
+/// When using the linker flavors opting in to `lld`, or the unstable `-Zgcc-ld=lld` flag, add the
+/// necessary paths and arguments to invoke it:
+/// - when the self-contained linker flag is active: the build of `lld` distributed with rustc,
+/// - or any `lld` available to `cc`.
+fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    let unstable_use_lld = sess.opts.unstable_opts.gcc_ld.is_some();
+    debug!("add_lld_args requested, flavor: '{flavor:?}', `-Zgcc-ld=lld`: {unstable_use_lld}");
 
-                    if !flavor.is_gnu() {
-                        // Tell clang to use a non-default LLD flavor.
-                        // Gcc doesn't understand the target option, but we currently assume
-                        // that gcc is not used for Apple and Wasm targets (#97402).
-                        //
-                        // Note that we don't want to do that by default on macOS: e.g. passing a
-                        // 10.7 target to LLVM works, but not to recent versions of clang/macOS, as
-                        // shown in issue #101653 and the discussion in PR #101792.
-                        //
-                        // It could be required in some cases of cross-compiling with
-                        // `-Zgcc-ld=lld`, but this is generally unspecified, and we don't know
-                        // which specific versions of clang, macOS SDK, host and target OS
-                        // combinations impact us here.
-                        //
-                        // So we do a simple first-approximation until we know more of what the
-                        // Apple targets require (and which would be handled prior to hitting this
-                        // `-Zgcc-ld=lld` codepath anyway), but the expectation is that until then
-                        // this should be manually passed if needed. We specify the target when
-                        // targeting a different linker flavor on macOS, and that's also always
-                        // the case when targeting WASM.
-                        if sess.target.linker_flavor != sess.host.linker_flavor {
-                            cmd.arg(format!("--target={}", sess.target.llvm_target));
-                        }
-                    }
-                }
-            }
-        } else {
-            sess.emit_fatal(errors::OptionGccOnly);
+    // Sanity check: using the old unstable `-Zgcc-ld=lld` option requires a `cc`-using flavor.
+    let flavor_uses_cc = flavor.uses_cc();
+    if unstable_use_lld && !flavor_uses_cc {
+        sess.emit_fatal(errors::OptionGccOnly);
+    }
+
+    // If the flavor doesn't use a C/C++ compiler to invoke the linker, or doesn't opt in to `lld`,
+    // we don't need to do anything.
+    let use_lld = flavor.uses_lld() || unstable_use_lld;
+    if !flavor_uses_cc || !use_lld {
+        return;
+    }
+
+    // 1. Implement the "self-contained" part of this feature by adding rustc distribution
+    //    directories to the tool's search path.
+    let self_contained_linker = sess.opts.cg.link_self_contained.linker() || unstable_use_lld;
+    if self_contained_linker {
+        for path in sess.get_tools_search_paths(false) {
+            cmd.arg({
+                let mut arg = OsString::from("-B");
+                arg.push(path.join("gcc-ld"));
+                arg
+            });
+        }
+    }
+
+    // 2. Implement the "linker flavor" part of this feature by asking `cc` to use some kind of
+    //    `lld` as the linker.
+    cmd.arg("-fuse-ld=lld");
+
+    if !flavor.is_gnu() {
+        // Tell clang to use a non-default LLD flavor.
+        // Gcc doesn't understand the target option, but we currently assume
+        // that gcc is not used for Apple and Wasm targets (#97402).
+        //
+        // Note that we don't want to do that by default on macOS: e.g. passing a
+        // 10.7 target to LLVM works, but not to recent versions of clang/macOS, as
+        // shown in issue #101653 and the discussion in PR #101792.
+        //
+        // It could be required in some cases of cross-compiling with
+        // `-Zgcc-ld=lld`, but this is generally unspecified, and we don't know
+        // which specific versions of clang, macOS SDK, host and target OS
+        // combinations impact us here.
+        //
+        // So we do a simple first-approximation until we know more of what the
+        // Apple targets require (and which would be handled prior to hitting this
+        // `-Zgcc-ld=lld` codepath anyway), but the expectation is that until then
+        // this should be manually passed if needed. We specify the target when
+        // targeting a different linker flavor on macOS, and that's also always
+        // the case when targeting WASM.
+        if sess.target.linker_flavor != sess.host.linker_flavor {
+            cmd.arg(format!("--target={}", sess.target.llvm_target));
         }
     }
 }

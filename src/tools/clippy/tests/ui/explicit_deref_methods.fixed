@@ -1,12 +1,14 @@
 //@run-rustfix
 #![warn(clippy::explicit_deref_methods)]
-#![allow(unused_variables)]
+#![allow(unused_variables, unused_must_use)]
 #![allow(
     clippy::borrow_deref_ref,
     suspicious_double_ref_op,
     clippy::explicit_auto_deref,
     clippy::needless_borrow,
-    clippy::uninlined_format_args
+    clippy::no_effect,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_literal_unwrap
 )]
 
 use std::ops::{Deref, DerefMut};
@@ -25,6 +27,22 @@ impl Deref for CustomVec {
 
     fn deref(&self) -> &Vec<u8> {
         &self.0
+    }
+}
+
+struct Aaa;
+
+impl Deref for Aaa {
+    type Target = ();
+
+    fn deref(&self) -> &Self::Target {
+        todo!();
+    }
+}
+
+impl DerefMut for Aaa {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        todo!();
     }
 }
 
@@ -57,6 +75,17 @@ fn main() {
 
     let opt_a = Some(a.clone());
     let b = &*opt_a.unwrap();
+
+    // make sure `Aaa::deref` instead of `aaa.deref()` is not linted, as well as fully qualified
+    // syntax
+
+    Aaa::deref(&Aaa);
+    Aaa::deref_mut(&mut Aaa);
+    <Aaa as Deref>::deref(&Aaa);
+    <Aaa as DerefMut>::deref_mut(&mut Aaa);
+    let mut aaa = Aaa;
+    Aaa::deref(&aaa);
+    Aaa::deref_mut(&mut aaa);
 
     // following should not require linting
 

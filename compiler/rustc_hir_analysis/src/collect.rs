@@ -1328,7 +1328,7 @@ fn suggest_impl_trait<'tcx>(
         {
             continue;
         }
-        let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+        let ocx = ObligationCtxt::new(&infcx);
         let item_ty = ocx.normalize(
             &ObligationCause::misc(span, def_id),
             param_env,

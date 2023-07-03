@@ -1,48 +1,48 @@
 error: this `if` has the same condition as a previous `if`
-  --> $DIR/ifs_same_cond.rs:9:15
+  --> $DIR/ifs_same_cond.rs:14:15
    |
 LL |     } else if b {
    |               ^
    |
 note: same as this
-  --> $DIR/ifs_same_cond.rs:8:8
+  --> $DIR/ifs_same_cond.rs:13:8
    |
 LL |     if b {
    |        ^
    = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
 
 error: this `if` has the same condition as a previous `if`
-  --> $DIR/ifs_same_cond.rs:14:15
+  --> $DIR/ifs_same_cond.rs:19:15
    |
 LL |     } else if a == 1 {
    |               ^^^^^^
    |
 note: same as this
-  --> $DIR/ifs_same_cond.rs:13:8
+  --> $DIR/ifs_same_cond.rs:18:8
    |
 LL |     if a == 1 {
    |        ^^^^^^
 
 error: this `if` has the same condition as a previous `if`
-  --> $DIR/ifs_same_cond.rs:20:15
+  --> $DIR/ifs_same_cond.rs:25:15
    |
 LL |     } else if 2 * a == 1 {
    |               ^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/ifs_same_cond.rs:18:8
+  --> $DIR/ifs_same_cond.rs:23:8
    |
 LL |     if 2 * a == 1 {
    |        ^^^^^^^^^^
 
 error: this `if` has the same condition as a previous `if`
-  --> $DIR/ifs_same_cond.rs:49:15
+  --> $DIR/ifs_same_cond.rs:54:15
    |
 LL |     } else if a.contains("ah") {
    |               ^^^^^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/ifs_same_cond.rs:48:8
+  --> $DIR/ifs_same_cond.rs:53:8
    |
 LL |     if a.contains("ah") {
    |        ^^^^^^^^^^^^^^^^

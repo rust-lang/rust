@@ -94,6 +94,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
         Err(layout_error) => {
             tcx.sess.emit_fatal(Spanned {
                 node: layout_error.into_diagnostic(),
+
                 span: tcx.def_span(item_def_id.to_def_id()),
             });
         }

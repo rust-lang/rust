@@ -1,9 +1,3 @@
-error[E0601]: `main` function not found in crate `ice_6251`
-  --> $DIR/ice-6251.rs:6:2
-   |
-LL | }
-   |  ^ consider adding a `main` function to `$DIR/ice-6251.rs`
-
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/ice-6251.rs:4:45
    |
@@ -35,7 +29,7 @@ LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    = note: expected type `usize`
            found closure `[closure@$DIR/ice-6251.rs:4:44: 4:53]`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0308, E0601.
+Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

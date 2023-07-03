@@ -161,7 +161,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // the we do no inference in the process of checking this obligation.
         let goal = infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
         infcx.probe(|_| {
-            let ocx = ObligationCtxt::new_in_snapshot(infcx);
+            let ocx = ObligationCtxt::new(infcx);
             ocx.register_obligation(obligation);
 
             let errors = ocx.select_all_or_error();

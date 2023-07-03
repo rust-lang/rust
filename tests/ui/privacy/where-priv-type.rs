@@ -3,8 +3,8 @@
 
 #![crate_type = "lib"]
 #![feature(generic_const_exprs)]
+#![feature(type_privacy_lints)]
 #![allow(incomplete_features)]
-
 #![warn(private_bounds)]
 #![warn(private_interfaces)]
 
@@ -25,6 +25,7 @@ impl PubTrWithAssocTy for PrivTy { type AssocTy = PrivTy; }
 pub struct S
 //~^ WARNING private type `PrivTy` in public interface
 //~| WARNING hard error
+//~| WARNING type `PrivTy` is more private than the item `S`
 where
     PrivTy:
 {}
@@ -33,6 +34,7 @@ where
 pub enum E
 //~^ WARNING private type `PrivTy` in public interface
 //~| WARNING hard error
+//~| WARNING type `PrivTy` is more private than the item `E`
 where
     PrivTy:
 {}
@@ -41,6 +43,7 @@ where
 pub fn f()
 //~^ WARNING private type `PrivTy` in public interface
 //~| WARNING hard error
+//~| WARNING type `PrivTy` is more private than the item `f`
 where
     PrivTy:
 {}
@@ -48,12 +51,14 @@ where
 
 impl S
 //~^ ERROR private type `PrivTy` in public interface
+//~| WARNING type `PrivTy` is more private than the item `S`
 where
     PrivTy:
 {
     pub fn f()
     //~^ WARNING private type `PrivTy` in public interface
     //~| WARNING hard error
+    //~| WARNING type `PrivTy` is more private than the item `S::f`
     where
         PrivTy:
     {}
@@ -85,6 +90,7 @@ where
 {
     type AssocTy = Const<{ my_const_fn(U) }>;
     //~^ ERROR private type
+    //~| WARNING type `fn(u8) -> u8 {my_const_fn}` is more private than the item `<Const<U> as Trait>::AssocTy`
     fn assoc_fn() -> Self::AssocTy {
         Const
     }

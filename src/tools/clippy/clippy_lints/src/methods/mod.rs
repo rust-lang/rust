@@ -14,6 +14,7 @@ mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
 mod collapsible_str_replace;
+mod drain_collect;
 mod err_expect;
 mod expect_fun_call;
 mod expect_used;
@@ -49,6 +50,7 @@ mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
+mod manual_try_fold;
 mod map_clone;
 mod map_collect_result_unit;
 mod map_err_ignore;
@@ -93,6 +95,7 @@ mod unnecessary_fold;
 mod unnecessary_iter_cloned;
 mod unnecessary_join;
 mod unnecessary_lazy_eval;
+mod unnecessary_literal_unwrap;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
 mod unwrap_or_else_default;
@@ -271,6 +274,32 @@ declare_clippy_lint! {
     pub UNWRAP_USED,
     restriction,
     "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.unwrap()` related calls on `Result`s and `Option`s that are constructed.
+    ///
+    /// ### Why is this bad?
+    /// It is better to write the value directly without the indirection.
+    ///
+    /// ### Examples
+    /// ```rust
+    /// let val1 = Some(1).unwrap();
+    /// let val2 = Ok::<_, ()>(1).unwrap();
+    /// let val3 = Err::<(), _>(1).unwrap_err();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let val1 = 1;
+    /// let val2 = 1;
+    /// let val3 = 1;
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub UNNECESSARY_LITERAL_UNWRAP,
+    complexity,
+    "using `unwrap()` related calls on `Result` and `Option` constructors"
 }
 
 declare_clippy_lint! {
@@ -485,6 +514,7 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map(|a| a + 1).unwrap_or(0);
+    /// option.map(|a| a > 10).unwrap_or(false);
     /// result.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     ///
@@ -494,6 +524,7 @@ declare_clippy_lint! {
     /// # let result: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map_or(0, |a| a + 1);
+    /// option.is_some_and(|a| a > 10);
     /// result.map_or_else(some_function, |a| a + 1);
     /// ```
     #[clippy::version = "1.45.0"]
@@ -3220,6 +3251,71 @@ declare_clippy_lint! {
     "manual reverse iteration of `DoubleEndedIterator`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `.drain()` that clear the collection, immediately followed by a call to `.collect()`.
+    ///
+    /// > "Collection" in this context refers to any type with a `drain` method:
+    /// > `Vec`, `VecDeque`, `BinaryHeap`, `HashSet`,`HashMap`, `String`
+    ///
+    /// ### Why is this bad?
+    /// Using `mem::take` is faster as it avoids the allocation.
+    /// When using `mem::take`, the old collection is replaced with an empty one and ownership of
+    /// the old collection is returned.
+    ///
+    /// ### Known issues
+    /// `mem::take(&mut vec)` is almost equivalent to `vec.drain(..).collect()`, except that
+    /// it also moves the **capacity**. The user might have explicitly written it this way
+    /// to keep the capacity on the original `Vec`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
+    ///     v.drain(..).collect()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::mem;
+    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
+    ///     mem::take(v)
+    /// }
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub DRAIN_COLLECT,
+    perf,
+    "calling `.drain(..).collect()` to move all elements into a new collection"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `Iterator::fold` with a type that implements `Try`.
+    ///
+    /// ### Why is this bad?
+    /// The code should use `try_fold` instead, which short-circuits on failure, thus opening the
+    /// door for additional optimizations not possible with `fold` as rustc can guarantee the
+    /// function is never called on `None`, `Err`, etc., alleviating otherwise necessary checks. It's
+    /// also slightly more idiomatic.
+    ///
+    /// ### Known issues
+    /// This lint doesn't take into account whether a function does something on the failure case,
+    /// i.e., whether short-circuiting will affect behavior. Refactoring to `try_fold` is not
+    /// desirable in those cases.
+    ///
+    /// ### Example
+    /// ```rust
+    /// vec![1, 2, 3].iter().fold(Some(0i32), |sum, i| sum?.checked_add(*i));
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// vec![1, 2, 3].iter().try_fold(0i32, |sum, i| sum.checked_add(*i));
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub MANUAL_TRY_FOLD,
+    perf,
+    "checks for usage of `Iterator::fold` with a type that implements `Try`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3349,6 +3445,9 @@ impl_lint_pass!(Methods => [
     SUSPICIOUS_COMMAND_ARG_SPACE,
     CLEAR_WITH_DRAIN,
     MANUAL_NEXT_BACK,
+    UNNECESSARY_LITERAL_UNWRAP,
+    DRAIN_COLLECT,
+    MANUAL_TRY_FOLD,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3578,6 +3677,9 @@ impl Methods {
                                 manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
                             }
                         },
+                        Some(("drain", recv, args, ..)) => {
+                            drain_collect::check(cx, args, expr, recv);
+                        }
                         _ => {},
                     }
                 },
@@ -3606,12 +3708,18 @@ impl Methods {
                         case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
                     }
                 },
-                ("expect", [_]) => match method_call(recv) {
-                    Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
-                    Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
-                    _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                ("expect", [_]) => {
+                    match method_call(recv) {
+                        Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
+                        Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
+                        _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("expect_err", [_]) => expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests),
+                ("expect_err", [_]) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                    expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests);
+                },
                 ("extend", [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
                     extend_with_drain::check(cx, expr, recv, arg);
@@ -3632,7 +3740,10 @@ impl Methods {
                     Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, true),
                     _ => {},
                 },
-                ("fold", [init, acc]) => unnecessary_fold::check(cx, expr, init, acc, span),
+                ("fold", [init, acc]) => {
+                    manual_try_fold::check(cx, expr, init, acc, call_span, &self.msrv);
+                    unnecessary_fold::check(cx, expr, init, acc, span);
+                },
                 ("for_each", [_]) => {
                     if let Some(("inspect", _, [_], span2, _)) = method_call(recv) {
                         inspect_for_each::check(cx, expr, span2);
@@ -3816,28 +3927,41 @@ impl Methods {
                         },
                         _ => {},
                     }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                     unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
                 },
-                ("unwrap_err", []) => unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests),
-                ("unwrap_or", [u_arg]) => match method_call(recv) {
-                    Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {
-                        manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
-                    },
-                    Some(("map", m_recv, [m_arg], span, _)) => {
-                        option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
-                    },
-                    Some(("then_some", t_recv, [t_arg], _, _)) => {
-                        obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
-                    },
-                    _ => {},
+                ("unwrap_err", []) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                    unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests);
                 },
-                ("unwrap_or_else", [u_arg]) => match method_call(recv) {
-                    Some(("map", recv, [map_arg], _, _))
-                        if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
-                    _ => {
-                        unwrap_or_else_default::check(cx, expr, recv, u_arg);
-                        unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
-                    },
+                ("unwrap_or", [u_arg]) => {
+                    match method_call(recv) {
+                        Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {
+                            manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
+                        },
+                        Some(("map", m_recv, [m_arg], span, _)) => {
+                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
+                        },
+                        Some(("then_some", t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
+                        },
+                        _ => {},
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                },
+                ("unwrap_or_default", []) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                }
+                ("unwrap_or_else", [u_arg]) => {
+                    match method_call(recv) {
+                        Some(("map", recv, [map_arg], _, _))
+                            if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
+                        _ => {
+                            unwrap_or_else_default::check(cx, expr, recv, u_arg);
+                            unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
+                        },
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("zip", [arg]) => {
                     if let ExprKind::MethodCall(name, iter_recv, [], _) = recv.kind

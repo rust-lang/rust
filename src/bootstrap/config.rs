@@ -202,7 +202,7 @@ pub struct Config {
     pub llvm_use_libcxx: bool,
 
     // rust codegen options
-    pub rust_optimize: bool,
+    pub rust_optimize: RustOptimize,
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
     pub rust_debug_assertions: bool,
@@ -875,17 +875,55 @@ impl Default for StringOrBool {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum RustOptimize {
+    #[serde(deserialize_with = "deserialize_and_validate_opt_level")]
+    String(String),
+    Bool(bool),
+}
+
+impl Default for RustOptimize {
+    fn default() -> RustOptimize {
+        RustOptimize::Bool(false)
+    }
+}
+
+fn deserialize_and_validate_opt_level<'de, D>(d: D) -> Result<String, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    let v = String::deserialize(d)?;
+    if ["0", "1", "2", "3", "s", "z"].iter().find(|x| **x == v).is_some() {
+        Ok(v)
+    } else {
+        Err(format!(r#"unrecognized option for rust optimize: "{}", expected one of "0", "1", "2", "3", "s", "z""#, v)).map_err(serde::de::Error::custom)
+    }
+}
+
+impl RustOptimize {
+    pub(crate) fn is_release(&self) -> bool {
+        if let RustOptimize::Bool(true) | RustOptimize::String(_) = &self { true } else { false }
+    }
+
+    pub(crate) fn get_opt_level(&self) -> Option<String> {
+        match &self {
+            RustOptimize::String(s) => Some(s.clone()),
+            RustOptimize::Bool(_) => None,
+        }
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum StringOrInt<'a> {
     String(&'a str),
     Int(i64),
 }
-
 define_config! {
     /// TOML representation of how the Rust build is configured.
     struct Rust {
-        optimize: Option<bool> = "optimize",
+        optimize: Option<RustOptimize> = "optimize",
         debug: Option<bool> = "debug",
         codegen_units: Option<u32> = "codegen-units",
         codegen_units_std: Option<u32> = "codegen-units-std",
@@ -971,7 +1009,7 @@ impl Config {
         config.ninja_in_file = true;
         config.llvm_static_stdcpp = false;
         config.backtrace = true;
-        config.rust_optimize = true;
+        config.rust_optimize = RustOptimize::Bool(true);
         config.rust_optimize_tests = true;
         config.submodules = None;
         config.docs = true;
@@ -1546,7 +1584,7 @@ impl Config {
         config.llvm_assertions = llvm_assertions.unwrap_or(false);
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
-        config.rust_optimize = optimize.unwrap_or(true);
+        config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);

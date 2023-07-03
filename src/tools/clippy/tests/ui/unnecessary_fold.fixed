@@ -49,4 +49,28 @@ fn unnecessary_fold_over_multiple_lines() {
         .any(|x| x > 2);
 }
 
+fn issue10000() {
+    use std::collections::HashMap;
+    use std::hash::BuildHasher;
+
+    fn anything<T>(_: T) {}
+    fn num(_: i32) {}
+    fn smoketest_map<S: BuildHasher>(mut map: HashMap<i32, i32, S>) {
+        map.insert(0, 0);
+        assert_eq!(map.values().sum::<i32>(), 0);
+
+        // more cases:
+        let _ = map.values().sum::<i32>();
+        let _ = map.values().product::<i32>();
+        let _: i32 = map.values().sum();
+        let _: i32 = map.values().product();
+        anything(map.values().sum::<i32>());
+        anything(map.values().product::<i32>());
+        num(map.values().sum());
+        num(map.values().product());
+    }
+
+    smoketest_map(HashMap::new());
+}
+
 fn main() {}

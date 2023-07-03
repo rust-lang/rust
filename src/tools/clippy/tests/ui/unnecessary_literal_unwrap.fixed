@@ -1,0 +1,78 @@
+//@run-rustfix
+#![warn(clippy::unnecessary_literal_unwrap)]
+#![allow(unreachable_code)]
+#![allow(
+    clippy::unnecessary_lazy_evaluations,
+    clippy::diverging_sub_expression,
+    clippy::let_unit_value,
+    clippy::no_effect
+)]
+
+fn unwrap_option_some() {
+    let _val = 1;
+    let _val = 1;
+
+    1;
+    1;
+}
+
+fn unwrap_option_none() {
+    let _val = panic!();
+    let _val = panic!("this always happens");
+
+    panic!();
+    panic!("this always happens");
+}
+
+fn unwrap_result_ok() {
+    let _val = 1;
+    let _val = 1;
+    let _val = panic!("{:?}", 1);
+    let _val = panic!("{1}: {:?}", 1, "this always happens");
+
+    1;
+    1;
+    panic!("{:?}", 1);
+    panic!("{1}: {:?}", 1, "this always happens");
+}
+
+fn unwrap_result_err() {
+    let _val = 1;
+    let _val = 1;
+    let _val = panic!("{:?}", 1);
+    let _val = panic!("{1}: {:?}", 1, "this always happens");
+
+    1;
+    1;
+    panic!("{:?}", 1);
+    panic!("{1}: {:?}", 1, "this always happens");
+}
+
+fn unwrap_methods_option() {
+    let _val = 1;
+    let _val = 1;
+    let _val = 1;
+
+    1;
+    1;
+    1;
+}
+
+fn unwrap_methods_result() {
+    let _val = 1;
+    let _val = 1;
+    let _val = 1;
+
+    1;
+    1;
+    1;
+}
+
+fn main() {
+    unwrap_option_some();
+    unwrap_option_none();
+    unwrap_result_ok();
+    unwrap_result_err();
+    unwrap_methods_option();
+    unwrap_methods_result();
+}

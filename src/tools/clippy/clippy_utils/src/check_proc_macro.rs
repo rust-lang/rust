@@ -12,25 +12,33 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
-use rustc_ast::ast::{IntTy, LitIntType, LitKind, StrStyle, UintTy};
+use rustc_ast::{
+    ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, UintTy},
+    token::CommentKind,
+    AttrStyle,
+};
 use rustc_hir::{
     intravisit::FnKind, Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId,
-    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, Node, QPath, TraitItem,
-    TraitItemKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
+    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem,
+    TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{Span, Symbol};
+use rustc_span::{symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 /// The search pattern to look for. Used by `span_matches_pat`
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Pat {
     /// A single string.
     Str(&'static str),
+    /// A single string.
+    OwnedStr(String),
     /// Any of the given strings.
     MultiStr(&'static [&'static str]),
+    /// Any of the given strings.
+    OwnedMultiStr(Vec<String>),
     /// The string representation of the symbol.
     Sym(Symbol),
     /// Any decimal or hexadecimal digit depending on the location.
@@ -51,12 +59,16 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
         let end_str = s.trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ',');
         (match start_pat {
             Pat::Str(text) => start_str.starts_with(text),
+            Pat::OwnedStr(text) => start_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
             Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
+            Pat::OwnedStr(text) => end_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.ends_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
             Pat::Num => end_str.as_bytes().last().map_or(false, u8::is_ascii_hexdigit),
         })
@@ -271,14 +283,79 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
     (start_pat, end_pat)
 }
 
-pub trait WithSearchPat {
+fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
+    match attr.kind {
+        AttrKind::Normal(..) => {
+            let mut pat = if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("#["), Pat::Str("]"))
+            } else {
+                (Pat::Str("#!["), Pat::Str("]"))
+            };
+
+            if let Some(ident) = attr.ident() && let Pat::Str(old_pat) = pat.0 {
+                // TODO: I feel like it's likely we can use `Cow` instead but this will require quite a bit of
+                // refactoring
+                // NOTE: This will likely have false positives, like `allow = 1`
+                pat.0 = Pat::OwnedMultiStr(vec![ident.to_string(), old_pat.to_owned()]);
+                pat.1 = Pat::Str("");
+            }
+
+            pat
+        },
+        AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
+            if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("///"), Pat::Str(""))
+            } else {
+                (Pat::Str("//!"), Pat::Str(""))
+            }
+        },
+        AttrKind::DocComment(_kind @ CommentKind::Block, ..) => {
+            if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("/**"), Pat::Str("*/"))
+            } else {
+                (Pat::Str("/*!"), Pat::Str("*/"))
+            }
+        },
+    }
+}
+
+fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
+    match ty.kind {
+        TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
+        TyKind::Ptr(MutTy { mutbl, ty }) => (
+            if mutbl.is_mut() {
+                Pat::Str("*const")
+            } else {
+                Pat::Str("*mut")
+            },
+            ty_search_pat(ty).1,
+        ),
+        TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
+        TyKind::BareFn(bare_fn) => (
+            Pat::OwnedStr(format!("{}{} fn", bare_fn.unsafety.prefix_str(), bare_fn.abi.name())),
+            ty_search_pat(ty).1,
+        ),
+        TyKind::Never => (Pat::Str("!"), Pat::Str("")),
+        TyKind::Tup(..) => (Pat::Str("("), Pat::Str(")")),
+        TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
+        TyKind::Path(qpath) => qpath_search_pat(&qpath),
+        // NOTE: This is missing `TraitObject`. It always return true then.
+        _ => (Pat::Str(""), Pat::Str("")),
+    }
+}
+
+fn ident_search_pat(ident: Ident) -> (Pat, Pat) {
+    (Pat::OwnedStr(ident.name.as_str().to_owned()), Pat::Str(""))
+}
+
+pub trait WithSearchPat<'cx> {
     type Context: LintContext;
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
     fn span(&self) -> Span;
 }
 macro_rules! impl_with_search_pat {
     ($cx:ident: $ty:ident with $fn:ident $(($tcx:ident))?) => {
-        impl<'cx> WithSearchPat for $ty<'cx> {
+        impl<'cx> WithSearchPat<'cx> for $ty<'cx> {
             type Context = $cx<'cx>;
             #[allow(unused_variables)]
             fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat) {
@@ -297,8 +374,9 @@ impl_with_search_pat!(LateContext: TraitItem with trait_item_search_pat);
 impl_with_search_pat!(LateContext: ImplItem with impl_item_search_pat);
 impl_with_search_pat!(LateContext: FieldDef with field_def_search_pat);
 impl_with_search_pat!(LateContext: Variant with variant_search_pat);
+impl_with_search_pat!(LateContext: Ty with ty_search_pat);
 
-impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
+impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;
 
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat) {
@@ -310,11 +388,37 @@ impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     }
 }
 
+// `Attribute` does not have the `hir` associated lifetime, so we cannot use the macro
+impl<'cx> WithSearchPat<'cx> for &'cx Attribute {
+    type Context = LateContext<'cx>;
+
+    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
+        attr_search_pat(self)
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+// `Ident` does not have the `hir` associated lifetime, so we cannot use the macro
+impl<'cx> WithSearchPat<'cx> for Ident {
+    type Context = LateContext<'cx>;
+
+    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
+        ident_search_pat(*self)
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 /// Checks if the item likely came from a proc-macro.
 ///
 /// This should be called after `in_external_macro` and the initial pattern matching of the ast as
 /// it is significantly slower than both of those.
-pub fn is_from_proc_macro<T: WithSearchPat>(cx: &T::Context, item: &T) -> bool {
+pub fn is_from_proc_macro<'cx, T: WithSearchPat<'cx>>(cx: &T::Context, item: &T) -> bool {
     let (start_pat, end_pat) = item.search_pat(cx);
     !span_matches_pat(cx.sess(), item.span(), start_pat, end_pat)
 }

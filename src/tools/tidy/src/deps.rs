@@ -111,7 +111,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
-    "ansi_term",
     "ar_archive_writer",
     "arrayvec",
     "atty",
@@ -143,6 +142,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "either",
     "elsa",
     "ena",
+    "equivalent",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
@@ -187,10 +187,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "memmap2",
     "memoffset",
     "miniz_oxide",
+    "nu-ansi-term",
     "num_cpus",
     "object",
     "odht",
     "once_cell",
+    "overload",
     "parking_lot",
     "parking_lot_core",
     "pathdiff",

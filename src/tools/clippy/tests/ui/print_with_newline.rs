@@ -47,7 +47,7 @@ fn main() {
     // Don't warn on CRLF (#4208)
     print!("\r\n");
     print!("foo\r\n");
-    print!("\\r\n"); //~ ERROR
+    print!("\\r\n"); // should fail
     print!("foo\rbar\n");
 
     // Ignore expanded format strings

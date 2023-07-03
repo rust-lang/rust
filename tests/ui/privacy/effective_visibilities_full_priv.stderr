@@ -1,4 +1,4 @@
-error: Direct: pub(self), Reexported: pub(self), Reachable: pub(crate), ReachableThroughImplTrait: pub(crate)
+error: not in the table
   --> $DIR/effective_visibilities_full_priv.rs:8:5
    |
 LL |     struct Priv;

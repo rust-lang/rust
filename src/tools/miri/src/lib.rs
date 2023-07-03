@@ -9,6 +9,7 @@
 #![feature(local_key_cell_methods)]
 #![feature(round_ties_even)]
 #![feature(os_str_bytes)]
+#![feature(lint_reasons)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,

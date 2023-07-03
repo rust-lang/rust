@@ -66,6 +66,7 @@ string_enum! {
         JsDocTest => "js-doc-test",
         MirOpt => "mir-opt",
         Assembly => "assembly",
+        RunCoverage => "run-coverage",
     }
 }
 
@@ -438,7 +439,7 @@ pub struct TargetCfgs {
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        let targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
+        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
             config,
             &["--print=all-target-specs-json", "-Zunstable-options"],
         ))
@@ -452,6 +453,18 @@ impl TargetCfgs {
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
+
+        // Handle custom target specs, which are not included in `--print=all-target-specs-json`.
+        if config.target.ends_with(".json") {
+            targets.insert(
+                config.target.clone(),
+                serde_json::from_str(&rustc_output(
+                    config,
+                    &["--print=target-spec-json", "-Zunstable-options", "--target", &config.target],
+                ))
+                .unwrap(),
+            );
+        }
 
         for (target, cfg) in targets.iter() {
             all_archs.insert(cfg.arch.clone());
@@ -626,6 +639,7 @@ pub const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR_64,
     UI_STDERR_32,
     UI_STDERR_16,
+    UI_COVERAGE,
 ];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
@@ -635,6 +649,7 @@ pub const UI_RUN_STDOUT: &str = "run.stdout";
 pub const UI_STDERR_64: &str = "64bit.stderr";
 pub const UI_STDERR_32: &str = "32bit.stderr";
 pub const UI_STDERR_16: &str = "16bit.stderr";
+pub const UI_COVERAGE: &str = "coverage";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:

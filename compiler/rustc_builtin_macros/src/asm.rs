@@ -371,11 +371,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        let err = p.sess.span_diagnostic.struct_span_err(
-            p.token.span,
-            "at least one abi must be provided as an argument to `clobber_abi`",
-        );
-        return Err(err);
+        return Err(p.sess.span_diagnostic.create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
@@ -428,9 +424,9 @@ fn parse_reg<'a>(
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }
         _ => {
-            return Err(
-                p.struct_span_err(p.token.span, "expected register class or explicit register")
-            );
+            return Err(p.sess.create_err(errors::ExpectedRegisterClassOrExplicitRegister {
+                span: p.token.span,
+            }));
         }
     };
     p.bump();

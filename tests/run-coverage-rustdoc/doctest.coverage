@@ -1,0 +1,115 @@
+$DIR/auxiliary/doctest_crate.rs:
+    1|       |/// A function run only from within doctests
+    2|      3|pub fn fn_run_in_doctests(conditional: usize) {
+    3|      3|    match conditional {
+    4|      1|        1 => assert_eq!(1, 1), // this is run,
+    5|      1|        2 => assert_eq!(1, 1), // this,
+    6|      1|        3 => assert_eq!(1, 1), // and this too
+    7|      0|        _ => assert_eq!(1, 2), // however this is not
+    8|       |    }
+    9|      3|}
+
+$DIR/doctest.rs:
+    1|       |//! This test ensures that code from doctests is properly re-mapped.
+    2|       |//! See <https://github.com/rust-lang/rust/issues/79417> for more info.
+    3|       |//!
+    4|       |//! Just some random code:
+    5|      1|//! ```
+    6|      1|//! if true {
+    7|       |//!     // this is executed!
+    8|      1|//!     assert_eq!(1, 1);
+    9|       |//! } else {
+   10|       |//!     // this is not!
+   11|      0|//!     assert_eq!(1, 2);
+   12|       |//! }
+   13|      1|//! ```
+   14|       |//!
+   15|       |//! doctest testing external code:
+   16|       |//! ```
+   17|      1|//! extern crate doctest_crate;
+   18|      1|//! doctest_crate::fn_run_in_doctests(1);
+   19|      1|//! ```
+   20|       |//!
+   21|       |//! doctest returning a result:
+   22|      1|//! ```
+   23|      2|//! #[derive(Debug, PartialEq)]
+                       ^1
+   24|      1|//! struct SomeError {
+   25|      1|//!     msg: String,
+   26|      1|//! }
+   27|      1|//! let mut res = Err(SomeError { msg: String::from("a message") });
+   28|      1|//! if res.is_ok() {
+   29|      0|//!     res?;
+   30|       |//! } else {
+   31|      1|//!     if *res.as_ref().unwrap_err() == *res.as_ref().unwrap_err() {
+   32|      1|//!         println!("{:?}", res);
+   33|      1|//!     }
+                   ^0
+   34|      1|//!     if *res.as_ref().unwrap_err() == *res.as_ref().unwrap_err() {
+   35|      1|//!         res = Ok(1);
+   36|      1|//!     }
+                   ^0
+   37|      1|//!     res = Ok(0);
+   38|       |//! }
+   39|       |//! // need to be explicit because rustdoc cant infer the return type
+   40|      1|//! Ok::<(), SomeError>(())
+   41|      1|//! ```
+   42|       |//!
+   43|       |//! doctest with custom main:
+   44|       |//! ```
+   45|      1|//! fn some_func() {
+   46|      1|//!     println!("called some_func()");
+   47|      1|//! }
+   48|       |//!
+   49|      0|//! #[derive(Debug)]
+   50|       |//! struct SomeError;
+   51|       |//!
+   52|       |//! extern crate doctest_crate;
+   53|       |//!
+   54|      1|//! fn doctest_main() -> Result<(), SomeError> {
+   55|      1|//!     some_func();
+   56|      1|//!     doctest_crate::fn_run_in_doctests(2);
+   57|      1|//!     Ok(())
+   58|      1|//! }
+   59|       |//!
+   60|       |//! // this `main` is not shown as covered, as it clashes with all the other
+   61|       |//! // `main` functions that were automatically generated for doctests
+   62|       |//! fn main() -> Result<(), SomeError> {
+   63|       |//!     doctest_main()
+   64|       |//! }
+   65|       |//! ```
+   66|       |// aux-build:doctest_crate.rs
+   67|       |/// doctest attached to fn testing external code:
+   68|       |/// ```
+   69|      1|/// extern crate doctest_crate;
+   70|      1|/// doctest_crate::fn_run_in_doctests(3);
+   71|      1|/// ```
+   72|       |///
+   73|      1|fn main() {
+   74|      1|    if true {
+   75|      1|        assert_eq!(1, 1);
+   76|       |    } else {
+   77|      0|        assert_eq!(1, 2);
+   78|       |    }
+   79|      1|}
+   80|       |
+   81|       |// FIXME(Swatinem): Fix known issue that coverage code region columns need to be offset by the
+   82|       |// doc comment line prefix (`///` or `//!`) and any additional indent (before or after the doc
+   83|       |// comment characters). This test produces `llvm-cov show` results demonstrating the problem.
+   84|       |//
+   85|       |// One of the above tests now includes: `derive(Debug, PartialEq)`, producing an `llvm-cov show`
+   86|       |// result with a distinct count for `Debug`, denoted by `^1`, but the caret points to the wrong
+   87|       |// column. Similarly, the `if` blocks without `else` blocks show `^0`, which should point at, or
+   88|       |// one character past, the `if` block's closing brace. In both cases, these are most likely off
+   89|       |// by the number of characters stripped from the beginning of each doc comment line: indent
+   90|       |// whitespace, if any, doc comment prefix (`//!` in this case) and (I assume) one space character
+   91|       |// (?). Note, when viewing `llvm-cov show` results in `--color` mode, the column offset errors are
+   92|       |// more pronounced, and show up in more places, with background color used to show some distinct
+   93|       |// code regions with different coverage counts.
+   94|       |//
+   95|       |// NOTE: Since the doc comment line prefix may vary, one possible solution is to replace each
+   96|       |// character stripped from the beginning of doc comment lines with a space. This will give coverage
+   97|       |// results the correct column offsets, and I think it should compile correctly, but I don't know
+   98|       |// what affect it might have on diagnostic messages from the compiler, and whether anyone would care
+   99|       |// if the indentation changed. I don't know if there is a more viable solution.
+

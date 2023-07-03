@@ -256,7 +256,9 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             ptr_size.bytes()
         );
 
-        let Some(new_perm) = new_perm else { return Ok(Some((alloc_id, orig_tag))); };
+        let Some(new_perm) = new_perm else {
+            return Ok(Some((alloc_id, orig_tag)));
+        };
 
         if let Some(protect) = new_perm.protector {
             // We register the protection in two different places.

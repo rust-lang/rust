@@ -17,7 +17,7 @@ use crate::html::render::Context;
 #[template(path = "type_layout.html")]
 struct TypeLayout<'cx> {
     variants: Vec<(Symbol, TypeLayoutSize)>,
-    type_layout_size: Result<TypeLayoutSize, LayoutError<'cx>>,
+    type_layout_size: Result<TypeLayoutSize, &'cx LayoutError<'cx>>,
 }
 
 #[derive(Template)]

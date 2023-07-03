@@ -92,6 +92,7 @@ use time::TestExecTime;
 const ERROR_EXIT_CODE: i32 = 101;
 
 const SECONDARY_TEST_INVOKER_VAR: &str = "__RUST_TEST_INVOKE";
+const SECONDARY_TEST_BENCH_BENCHMARKS_VAR: &str = "__RUST_TEST_BENCH_BENCHMARKS";
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
@@ -171,18 +172,32 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
         env::remove_var(SECONDARY_TEST_INVOKER_VAR);
+
+        // Convert benchmarks to tests if we're not benchmarking.
+        let mut tests = tests.iter().map(make_owned_test).collect::<Vec<_>>();
+        if env::var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR).is_ok() {
+            env::remove_var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR);
+        } else {
+            tests = convert_benchmarks_to_tests(tests);
+        };
+
         let test = tests
-            .iter()
+            .into_iter()
             .filter(|test| test.desc.name.as_slice() == name)
-            .map(make_owned_test)
             .next()
             .unwrap_or_else(|| panic!("couldn't find a test with the provided name '{name}'"));
         let TestDescAndFn { desc, testfn } = test;
-        let testfn = match testfn {
-            StaticTestFn(f) => f,
-            _ => panic!("only static tests are supported"),
-        };
-        run_test_in_spawned_subprocess(desc, Box::new(testfn));
+        match testfn.into_runnable() {
+            Runnable::Test(runnable_test) => {
+                if runnable_test.is_dynamic() {
+                    panic!("only static tests are supported");
+                }
+                run_test_in_spawned_subprocess(desc, runnable_test);
+            }
+            Runnable::Bench(_) => {
+                panic!("benchmarks should not be executed into child processes")
+            }
+        }
     }
 
     let args = env::args().collect::<Vec<_>>();
@@ -233,16 +248,6 @@ impl FilteredTests {
         let test = TestDescAndFn { desc, testfn };
         self.tests.push((TestId(self.next_id), test));
         self.next_id += 1;
-    }
-    fn add_bench_as_test(
-        &mut self,
-        desc: TestDesc,
-        benchfn: impl Fn(&mut Bencher) -> Result<(), String> + Send + 'static,
-    ) {
-        let testfn = DynTestFn(Box::new(move || {
-            bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
-        }));
-        self.add_test(desc, testfn);
     }
     fn total_len(&self) -> usize {
         self.tests.len() + self.benches.len()
@@ -301,14 +306,14 @@ where
                 if opts.bench_benchmarks {
                     filtered.add_bench(desc, DynBenchFn(benchfn));
                 } else {
-                    filtered.add_bench_as_test(desc, benchfn);
+                    filtered.add_test(desc, DynBenchAsTestFn(benchfn));
                 }
             }
             StaticBenchFn(benchfn) => {
                 if opts.bench_benchmarks {
                     filtered.add_bench(desc, StaticBenchFn(benchfn));
                 } else {
-                    filtered.add_bench_as_test(desc, benchfn);
+                    filtered.add_test(desc, StaticBenchAsTestFn(benchfn));
                 }
             }
             testfn => {
@@ -519,12 +524,8 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         .into_iter()
         .map(|x| {
             let testfn = match x.testfn {
-                DynBenchFn(benchfn) => DynTestFn(Box::new(move || {
-                    bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
-                })),
-                StaticBenchFn(benchfn) => DynTestFn(Box::new(move || {
-                    bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
-                })),
+                DynBenchFn(benchfn) => DynBenchAsTestFn(benchfn),
+                StaticBenchFn(benchfn) => StaticBenchAsTestFn(benchfn),
                 f => f,
             };
             TestDescAndFn { desc: x.desc, testfn }
@@ -553,99 +554,69 @@ pub fn run_test(
         return None;
     }
 
-    struct TestRunOpts {
-        pub strategy: RunStrategy,
-        pub nocapture: bool,
-        pub time: Option<time::TestTimeOptions>,
-    }
-
-    fn run_test_inner(
-        id: TestId,
-        desc: TestDesc,
-        monitor_ch: Sender<CompletedTest>,
-        testfn: Box<dyn FnOnce() -> Result<(), String> + Send>,
-        opts: TestRunOpts,
-    ) -> Option<thread::JoinHandle<()>> {
-        let name = desc.name.clone();
-
-        let runtest = move || match opts.strategy {
-            RunStrategy::InProcess => run_test_in_process(
-                id,
-                desc,
-                opts.nocapture,
-                opts.time.is_some(),
-                testfn,
-                monitor_ch,
-                opts.time,
-            ),
-            RunStrategy::SpawnPrimary => spawn_test_subprocess(
-                id,
-                desc,
-                opts.nocapture,
-                opts.time.is_some(),
-                monitor_ch,
-                opts.time,
-            ),
-        };
-
-        // If the platform is single-threaded we're just going to run
-        // the test synchronously, regardless of the concurrency
-        // level.
-        let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
-        if supports_threads {
-            let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            let mut runtest = Arc::new(Mutex::new(Some(runtest)));
-            let runtest2 = runtest.clone();
-            match cfg.spawn(move || runtest2.lock().unwrap().take().unwrap()()) {
-                Ok(handle) => Some(handle),
-                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    // `ErrorKind::WouldBlock` means hitting the thread limit on some
-                    // platforms, so run the test synchronously here instead.
-                    Arc::get_mut(&mut runtest).unwrap().get_mut().unwrap().take().unwrap()();
-                    None
-                }
-                Err(e) => panic!("failed to spawn thread to run test: {e}"),
+    match testfn.into_runnable() {
+        Runnable::Test(runnable_test) => {
+            if runnable_test.is_dynamic() {
+                match strategy {
+                    RunStrategy::InProcess => (),
+                    _ => panic!("Cannot run dynamic test fn out-of-process"),
+                };
             }
-        } else {
-            runtest();
-            None
-        }
-    }
 
-    let test_run_opts =
-        TestRunOpts { strategy, nocapture: opts.nocapture, time: opts.time_options };
+            let name = desc.name.clone();
+            let nocapture = opts.nocapture;
+            let time_options = opts.time_options;
+            let bench_benchmarks = opts.bench_benchmarks;
 
-    match testfn {
-        DynBenchFn(benchfn) => {
-            // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(id, desc, monitor_ch, opts.nocapture, benchfn);
-            None
-        }
-        StaticBenchFn(benchfn) => {
-            // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(id, desc, monitor_ch, opts.nocapture, benchfn);
-            None
-        }
-        DynTestFn(f) => {
-            match strategy {
-                RunStrategy::InProcess => (),
-                _ => panic!("Cannot run dynamic test fn out-of-process"),
+            let runtest = move || match strategy {
+                RunStrategy::InProcess => run_test_in_process(
+                    id,
+                    desc,
+                    nocapture,
+                    time_options.is_some(),
+                    runnable_test,
+                    monitor_ch,
+                    time_options,
+                ),
+                RunStrategy::SpawnPrimary => spawn_test_subprocess(
+                    id,
+                    desc,
+                    nocapture,
+                    time_options.is_some(),
+                    monitor_ch,
+                    time_options,
+                    bench_benchmarks,
+                ),
             };
-            run_test_inner(
-                id,
-                desc,
-                monitor_ch,
-                Box::new(move || __rust_begin_short_backtrace(f)),
-                test_run_opts,
-            )
+
+            // If the platform is single-threaded we're just going to run
+            // the test synchronously, regardless of the concurrency
+            // level.
+            let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
+            if supports_threads {
+                let cfg = thread::Builder::new().name(name.as_slice().to_owned());
+                let mut runtest = Arc::new(Mutex::new(Some(runtest)));
+                let runtest2 = runtest.clone();
+                match cfg.spawn(move || runtest2.lock().unwrap().take().unwrap()()) {
+                    Ok(handle) => Some(handle),
+                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        // `ErrorKind::WouldBlock` means hitting the thread limit on some
+                        // platforms, so run the test synchronously here instead.
+                        Arc::get_mut(&mut runtest).unwrap().get_mut().unwrap().take().unwrap()();
+                        None
+                    }
+                    Err(e) => panic!("failed to spawn thread to run test: {e}"),
+                }
+            } else {
+                runtest();
+                None
+            }
         }
-        StaticTestFn(f) => run_test_inner(
-            id,
-            desc,
-            monitor_ch,
-            Box::new(move || __rust_begin_short_backtrace(f)),
-            test_run_opts,
-        ),
+        Runnable::Bench(runnable_bench) => {
+            // Benchmarks aren't expected to panic, so we run them all in-process.
+            runnable_bench.run(id, &desc, &monitor_ch, opts.nocapture);
+            None
+        }
     }
 }
 
@@ -663,7 +634,7 @@ fn run_test_in_process(
     desc: TestDesc,
     nocapture: bool,
     report_time: bool,
-    testfn: Box<dyn FnOnce() -> Result<(), String> + Send>,
+    runnable_test: RunnableTest,
     monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
 ) {
@@ -675,7 +646,7 @@ fn run_test_in_process(
     }
 
     let start = report_time.then(Instant::now);
-    let result = fold_err(catch_unwind(AssertUnwindSafe(testfn)));
+    let result = fold_err(catch_unwind(AssertUnwindSafe(|| runnable_test.run())));
     let exec_time = start.map(|start| {
         let duration = start.elapsed();
         TestExecTime(duration)
@@ -712,6 +683,7 @@ fn spawn_test_subprocess(
     report_time: bool,
     monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
+    bench_benchmarks: bool,
 ) {
     let (result, test_output, exec_time) = (|| {
         let args = env::args().collect::<Vec<_>>();
@@ -719,6 +691,9 @@ fn spawn_test_subprocess(
 
         let mut command = Command::new(current_exe);
         command.env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice());
+        if bench_benchmarks {
+            command.env(SECONDARY_TEST_BENCH_BENCHMARKS_VAR, "1");
+        }
         if nocapture {
             command.stdout(process::Stdio::inherit());
             command.stderr(process::Stdio::inherit());
@@ -760,10 +735,7 @@ fn spawn_test_subprocess(
     monitor_ch.send(message).unwrap();
 }
 
-fn run_test_in_spawned_subprocess(
-    desc: TestDesc,
-    testfn: Box<dyn FnOnce() -> Result<(), String> + Send>,
-) -> ! {
+fn run_test_in_spawned_subprocess(desc: TestDesc, runnable_test: RunnableTest) -> ! {
     let builtin_panic_hook = panic::take_hook();
     let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
         let test_result = match panic_info {
@@ -789,7 +761,7 @@ fn run_test_in_spawned_subprocess(
     });
     let record_result2 = record_result.clone();
     panic::set_hook(Box::new(move |info| record_result2(Some(info))));
-    if let Err(message) = testfn() {
+    if let Err(message) = runnable_test.run() {
         panic!("{}", message);
     }
     record_result(None);

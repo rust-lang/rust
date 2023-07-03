@@ -13,16 +13,19 @@ use rustc_middle::ty::TypeVisitableExt;
 pub struct FulfillmentContext<'tcx> {
     obligations: FxIndexSet<PredicateObligation<'tcx>>,
 
-    usable_in_snapshot: bool,
+    /// The snapshot in which this context was created. Using the context
+    /// outside of this snapshot leads to subtle bugs if the snapshot
+    /// gets rolled back. Because of this we explicitly check that we only
+    /// use the context in exactly this snapshot.
+    usable_in_snapshot: usize,
 }
 
-impl FulfillmentContext<'_> {
-    pub(super) fn new() -> Self {
-        FulfillmentContext { obligations: FxIndexSet::default(), usable_in_snapshot: false }
-    }
-
-    pub(crate) fn new_in_snapshot() -> Self {
-        FulfillmentContext { usable_in_snapshot: true, ..Self::new() }
+impl<'tcx> FulfillmentContext<'tcx> {
+    pub(super) fn new(infcx: &InferCtxt<'tcx>) -> Self {
+        FulfillmentContext {
+            obligations: FxIndexSet::default(),
+            usable_in_snapshot: infcx.num_open_snapshots(),
+        }
     }
 }
 
@@ -32,9 +35,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         obligation: PredicateObligation<'tcx>,
     ) {
-        if !self.usable_in_snapshot {
-            assert!(!infcx.is_in_snapshot());
-        }
+        assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let obligation = infcx.resolve_vars_if_possible(obligation);
 
         self.obligations.insert(obligation);
@@ -58,9 +59,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        if !self.usable_in_snapshot {
-            assert!(!infcx.is_in_snapshot());
-        }
+        assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
 
         let mut errors = Vec::new();
         let mut next_round = FxIndexSet::default();
@@ -94,12 +93,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                 &orig_values,
                                 &response,
                             ) {
-                                Ok(infer_ok) => next_round.extend(
-                                    infer_ok.obligations.into_iter().map(|obligation| {
-                                        assert!(!infcx.is_in_snapshot());
-                                        infcx.resolve_vars_if_possible(obligation)
-                                    }),
-                                ),
+                                Ok(infer_ok) => {
+                                    next_round.extend(infer_ok.obligations.into_iter().map(
+                                        |obligation| infcx.resolve_vars_if_possible(obligation),
+                                    ))
+                                }
 
                                 Err(_err) => errors.push(FulfillmentError {
                                     obligation: obligation.clone(),

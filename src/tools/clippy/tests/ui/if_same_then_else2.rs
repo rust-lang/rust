@@ -5,6 +5,7 @@
     clippy::equatable_if_let,
     clippy::collapsible_if,
     clippy::ifs_same_cond,
+    clippy::needless_if,
     clippy::needless_return,
     clippy::single_element_loop,
     clippy::branches_sharing_code
@@ -12,6 +13,7 @@
 
 fn if_same_then_else2() -> Result<&'static str, ()> {
     if true {
+        //~^ ERROR: this `if` has identical blocks
         for _ in &[42] {
             let foo: &Option<_> = &Some::<u8>(42);
             if foo.is_some() {
@@ -21,7 +23,6 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
             }
         }
     } else {
-        //~ ERROR same body as `if` block
         for _ in &[42] {
             let bar: &Option<_> = &Some::<u8>(42);
             if bar.is_some() {
@@ -33,16 +34,16 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
     }
 
     if true {
+        //~^ ERROR: this `if` has identical blocks
         if let Some(a) = Some(42) {}
     } else {
-        //~ ERROR same body as `if` block
         if let Some(a) = Some(42) {}
     }
 
     if true {
+        //~^ ERROR: this `if` has identical blocks
         if let (1, .., 3) = (1, 2, 3) {}
     } else {
-        //~ ERROR same body as `if` block
         if let (1, .., 3) = (1, 2, 3) {}
     }
 
@@ -90,16 +91,16 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
 
     // Same NaNs
     let _ = if true {
+        //~^ ERROR: this `if` has identical blocks
         f32::NAN
     } else {
-        //~ ERROR same body as `if` block
         f32::NAN
     };
 
     if true {
+        //~^ ERROR: this `if` has identical blocks
         Ok("foo")?;
     } else {
-        //~ ERROR same body as `if` block
         Ok("foo")?;
     }
 
@@ -121,6 +122,7 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
         let foo = "bar";
         return Ok(&foo[0..]);
     } else if true {
+        //~^ ERROR: this `if` has identical blocks
         let foo = "";
         return Ok(&foo[0..]);
     } else {

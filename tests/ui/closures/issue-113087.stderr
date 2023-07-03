@@ -1,0 +1,16 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/issue-113087.rs:7:17
+   |
+LL |     for a in [1] {
+   |         - binding `a` declared here
+LL |         some_fn(&a, |c| {
+   |                 ^^ borrowed value does not live long enough
+LL |             some_closure(c);
+   |             ------------ borrow later captured here by closure
+LL |         });
+LL |     }
+   |     - `a` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

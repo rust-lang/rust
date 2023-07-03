@@ -1,6 +1,8 @@
 //@compile-flags: --crate-name conf_disallowed_methods
 
+#![allow(clippy::needless_raw_strings)]
 #![warn(clippy::disallowed_methods)]
+#![allow(clippy::useless_vec)]
 
 extern crate futures;
 extern crate regex;

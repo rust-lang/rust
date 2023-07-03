@@ -1,7 +1,7 @@
 //@run-rustfix
 
 #![allow(clippy::needless_borrow, clippy::ptr_arg)]
-#![warn(clippy::unnecessary_to_owned)]
+#![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
@@ -472,5 +472,38 @@ mod issue_10021 {
     pub fn parse_w3c_rdf_test_file(url: &str) -> Result<(), ()> {
         let base_iri = Iri::parse(url.to_owned())?;
         Ok(())
+    }
+}
+
+mod issue_10033 {
+    #![allow(dead_code)]
+    use std::{fmt::Display, ops::Deref};
+
+    fn _main() {
+        let f = Foo;
+
+        // Not actually unnecessary - this calls `Foo`'s `Display` impl, not `str`'s (even though `Foo` does
+        // deref to `str`)
+        foo(&f.to_string());
+    }
+
+    fn foo(s: &str) {
+        println!("{}", s);
+    }
+
+    struct Foo;
+
+    impl Deref for Foo {
+        type Target = str;
+
+        fn deref(&self) -> &Self::Target {
+            "str"
+        }
+    }
+
+    impl Display for Foo {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "Foo")
+        }
     }
 }

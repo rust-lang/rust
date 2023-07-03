@@ -82,7 +82,7 @@ pub enum MiriCommand {
 pub fn escape_for_toml(s: &str) -> String {
     // We want to surround this string in quotes `"`. So we first escape all quotes,
     // and also all backslashes (that are used to escape quotes).
-    let s = s.replace('\\', r#"\\"#).replace('"', r#"\""#);
+    let s = s.replace('\\', r"\\").replace('"', r#"\""#);
     format!("\"{s}\"")
 }
 
@@ -130,7 +130,7 @@ pub fn exec(mut cmd: Command) -> ! {
     {
         use std::os::unix::process::CommandExt;
         let error = cmd.exec();
-        Err(error).expect("failed to run command")
+        panic!("failed to run command: {error}")
     }
 }
 

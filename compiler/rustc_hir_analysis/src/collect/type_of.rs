@@ -435,7 +435,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                     ..
                 }) => opaque::find_opaque_ty_constraints_for_tait(tcx, def_id),
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(OpaqueTy {
+                ItemKind::OpaqueTy(&OpaqueTy {
                     origin:
                         hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner),
                     in_trait,

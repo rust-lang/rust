@@ -7,13 +7,12 @@ use clippy_utils::ty::{
 use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
 };
-use rustc_hir::{HirIdMap, HirIdSet, LangItem};
+use rustc_hir::{HirIdSet, LangItem};
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
@@ -126,9 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             .filter_map(|pred| {
                 // Note that we do not want to deal with qualified predicates here.
                 match pred.kind().no_bound_vars() {
-                    Some(ty::ClauseKind::Trait(pred)) if pred.def_id() != sized_trait => {
-                        Some(pred)
-                    },
+                    Some(ty::ClauseKind::Trait(pred)) if pred.def_id() != sized_trait => Some(pred),
                     _ => None,
                 }
             })
@@ -136,11 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         // Collect moved variables and spans which will need dereferencings from the
         // function body.
-        let MovedVariablesCtxt {
-            moved_vars,
-            spans_need_deref,
-            ..
-        } = {
+        let MovedVariablesCtxt { moved_vars } = {
             let mut ctx = MovedVariablesCtxt::default();
             let infcx = cx.tcx.infer_ctxt().build();
             euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
@@ -211,7 +204,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             }
                         }
 
-                        let deref_span = spans_need_deref.get(&canonical_id);
                         if_chain! {
                             if is_type_diagnostic_item(cx, ty, sym::Vec);
                             if let Some(clone_spans) =
@@ -247,7 +239,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 }
 
                                 // cannot be destructured, no need for `*` suggestion
-                                assert!(deref_span.is_none());
                                 return;
                             }
                         }
@@ -275,23 +266,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                     );
                                 }
 
-                                assert!(deref_span.is_none());
                                 return;
                             }
                         }
 
-                        let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
+                        let spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
 
-                        // Suggests adding `*` to dereference the added reference.
-                        if let Some(deref_span) = deref_span {
-                            spans.extend(
-                                deref_span
-                                    .iter()
-                                    .copied()
-                                    .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))),
-                            );
-                            spans.sort_by_key(|&(span, _)| span);
-                        }
                         multispan_sugg(diag, "consider taking a reference instead", spans);
                     };
 
@@ -320,9 +300,6 @@ fn requires_exact_signature(attrs: &[Attribute]) -> bool {
 #[derive(Default)]
 struct MovedVariablesCtxt {
     moved_vars: HirIdSet,
-    /// Spans which need to be prefixed with `*` for dereferencing the
-    /// suggested additional reference.
-    spans_need_deref: HirIdMap<FxHashSet<Span>>,
 }
 
 impl MovedVariablesCtxt {

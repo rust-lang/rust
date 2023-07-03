@@ -16,9 +16,9 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_interface::interface;
-use rustc_session::EarlyErrorHandler;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::parse::ParseSess;
+use rustc_session::EarlyErrorHandler;
 use rustc_span::symbol::Symbol;
 
 use std::env;

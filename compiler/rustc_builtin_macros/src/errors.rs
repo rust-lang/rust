@@ -88,6 +88,83 @@ pub(crate) struct ConcatBytestr {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_concat_c_str_lit)]
+pub(crate) struct ConcatCStrLit {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_export_macro_rules)]
+pub(crate) struct ExportMacroRules {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro)]
+pub(crate) struct ProcMacro {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_invalid_crate_attribute)]
+pub(crate) struct InvalidCrateAttr {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_non_abi)]
+pub(crate) struct NonABI {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_trace_macros)]
+pub(crate) struct TraceMacros {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_bench_sig)]
+pub(crate) struct BenchSig {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_arg_non_lifetime)]
+pub(crate) struct TestArgNonLifetime {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_should_panic)]
+pub(crate) struct ShouldPanic {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_args)]
+pub(crate) struct TestArgs {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_alloc_must_statics)]
+pub(crate) struct AllocMustStatics {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
 pub(crate) struct ConcatBytesInvalid {
     #[primary_span]
@@ -200,6 +277,10 @@ pub(crate) struct BadDeriveTarget {
     #[label(builtin_macros_label2)]
     pub(crate) item: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_tests_not_support)]
+pub(crate) struct TestsNotSupport {}
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_unexpected_lit, code = "E0777")]
@@ -729,6 +810,13 @@ pub(crate) struct TestRunnerInvalid {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_runner_nargs)]
 pub(crate) struct TestRunnerNargs {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_expected_register_class_or_explicit_register)]
+pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
 }

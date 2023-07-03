@@ -310,7 +310,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
+    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
 
         // First try computing a static layout.
@@ -353,13 +353,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
                             let size = s
                                 .bytes()
                                 .checked_mul(c)
-                                .ok_or_else(|| LayoutError::SizeOverflow(ty))?;
+                                .ok_or_else(|| &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)))?;
                             return Ok(SizeSkeleton::Known(Size::from_bytes(size)));
                         }
                         let len = tcx.expand_abstract_consts(len);
                         let prev = ty::Const::from_target_usize(tcx, s.bytes());
                         let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, prev) else {
-                            return Err(LayoutError::SizeOverflow(ty));
+                            return Err(tcx.arena.alloc(LayoutError::SizeOverflow(ty)));
                         };
                         Ok(SizeSkeleton::Generic(gen_size))
                     }
@@ -367,7 +367,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     SizeSkeleton::Generic(g) => {
                         let len = tcx.expand_abstract_consts(len);
                         let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, g) else {
-                            return Err(LayoutError::SizeOverflow(ty));
+                            return Err(tcx.arena.alloc(LayoutError::SizeOverflow(ty)));
                         };
                         Ok(SizeSkeleton::Generic(gen_size))
                     }
@@ -672,7 +672,7 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 
         MaybeResult::from(
             tcx.layout_of(self.param_env().and(ty))
-                .map_err(|err| self.handle_layout_err(err, span, ty)),
+                .map_err(|err| self.handle_layout_err(*err, span, ty)),
         )
     }
 }
@@ -680,16 +680,21 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
 impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
 
     #[inline]
-    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
-        err
+    fn handle_layout_err(
+        &self,
+        err: LayoutError<'tcx>,
+        _: Span,
+        _: Ty<'tcx>,
+    ) -> &'tcx LayoutError<'tcx> {
+        self.tcx.arena.alloc(err)
     }
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxtAt<'tcx>> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
 
     #[inline]
     fn layout_tcx_at_span(&self) -> Span {
@@ -697,8 +702,13 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxtAt<'tcx>> {
     }
 
     #[inline]
-    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
-        err
+    fn handle_layout_err(
+        &self,
+        err: LayoutError<'tcx>,
+        _: Span,
+        _: Ty<'tcx>,
+    ) -> &'tcx LayoutError<'tcx> {
+        self.tcx.arena.alloc(err)
     }
 }
 
@@ -1250,18 +1260,6 @@ pub enum FnAbiError<'tcx> {
     AdjustForForeignAbi(call::AdjustForForeignAbiError),
 }
 
-impl<'tcx> From<LayoutError<'tcx>> for FnAbiError<'tcx> {
-    fn from(err: LayoutError<'tcx>) -> Self {
-        Self::Layout(err)
-    }
-}
-
-impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
-    fn from(err: call::AdjustForForeignAbiError) -> Self {
-        Self::AdjustForForeignAbi(err)
-    }
-}
-
 impl<'a, 'b> IntoDiagnostic<'a, !> for FnAbiError<'b> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
         match self {
@@ -1321,7 +1319,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
         let tcx = self.tcx().at(span);
 
         MaybeResult::from(tcx.fn_abi_of_fn_ptr(self.param_env().and((sig, extra_args))).map_err(
-            |err| self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
+            |err| self.handle_fn_abi_err(*err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
         ))
     }
 
@@ -1348,7 +1346,11 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
                 // However, we don't do this early in order to avoid calling
                 // `def_span` unconditionally (which may have a perf penalty).
                 let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
-                self.handle_fn_abi_err(err, span, FnAbiRequest::OfInstance { instance, extra_args })
+                self.handle_fn_abi_err(
+                    *err,
+                    span,
+                    FnAbiRequest::OfInstance { instance, extra_args },
+                )
             }),
         )
     }

@@ -1,5 +1,6 @@
 use crate::util::check_builtin_macro_attribute;
 
+use crate::errors;
 use rustc_ast::expand::allocator::{
     global_fn_name, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
 };
@@ -34,7 +35,7 @@ pub fn expand(
         {
             (item, true, ecx.with_def_site_ctxt(ty.span))
         } else {
-            ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
+            ecx.sess.parse_sess.span_diagnostic.emit_err(errors::AllocMustStatics{span: item.span()});
             return vec![orig_item];
         };
 
