@@ -31,7 +31,9 @@ pub fn layout_of_adt_query(
     subst: Substitution,
     krate: CrateId,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
+    let Some(target) = db.target_data_layout(krate) else {
+        return Err(LayoutError::TargetLayoutNotAvailable);
+    };
     let cx = LayoutCx { krate, target: &target };
     let dl = cx.current_data_layout();
     let handle_variant = |def: VariantId, var: &VariantData| {

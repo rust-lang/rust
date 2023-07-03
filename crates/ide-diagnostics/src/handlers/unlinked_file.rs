@@ -119,10 +119,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
     stack.pop();
     'crates: for &krate in ctx.sema.db.relevant_crates(parent_id).iter() {
         let crate_def_map = ctx.sema.db.crate_def_map(krate);
-        let Some((_, module)) =
-            crate_def_map.modules()
-            .find(|(_, module)| module.origin.file_id() == Some(parent_id) && !module.origin.is_inline())
-        else { continue };
+        let Some((_, module)) = crate_def_map.modules().find(|(_, module)| {
+            module.origin.file_id() == Some(parent_id) && !module.origin.is_inline()
+        }) else {
+            continue;
+        };
 
         if stack.is_empty() {
             return make_fixes(

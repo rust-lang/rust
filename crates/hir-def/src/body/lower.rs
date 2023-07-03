@@ -1451,9 +1451,7 @@ impl ExprCollector<'_> {
         &self,
         lifetime: Option<ast::Lifetime>,
     ) -> Result<Option<LabelId>, BodyDiagnostic> {
-        let Some(lifetime) = lifetime else {
-            return Ok(None)
-        };
+        let Some(lifetime) = lifetime else { return Ok(None) };
         let name = Name::new_lifetime(&lifetime);
 
         for (rib_idx, rib) in self.label_ribs.iter().enumerate().rev() {

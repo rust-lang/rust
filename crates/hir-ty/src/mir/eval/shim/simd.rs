@@ -23,7 +23,8 @@ impl Evaluator<'_> {
     fn detect_simd_ty(&self, ty: &Ty) -> Result<usize> {
         match ty.kind(Interner) {
             TyKind::Adt(_, subst) => {
-                let Some(len) = subst.as_slice(Interner).get(1).and_then(|x| x.constant(Interner)) else {
+                let Some(len) = subst.as_slice(Interner).get(1).and_then(|x| x.constant(Interner))
+                else {
                     return Err(MirEvalError::TypeError("simd type without len param"));
                 };
                 match try_const_usize(self.db, len) {
@@ -89,7 +90,9 @@ impl Evaluator<'_> {
                     return Err(MirEvalError::TypeError("simd_shuffle args are not provided"));
                 };
                 let TyKind::Array(_, index_len) = index.ty.kind(Interner) else {
-                    return Err(MirEvalError::TypeError("simd_shuffle index argument has non-array type"));
+                    return Err(MirEvalError::TypeError(
+                        "simd_shuffle index argument has non-array type",
+                    ));
                 };
                 let index_len = match try_const_usize(self.db, index_len) {
                     Some(x) => x as usize,

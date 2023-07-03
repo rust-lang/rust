@@ -88,7 +88,9 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         let adt = ast::Adt::Struct(strukt.clone());
         let name = name.display(ctx.db()).to_string();
         // if `find_struct_impl` returns None, that means that a function named `name` already exists.
-        let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else { continue; };
+        let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else {
+            continue;
+        };
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),

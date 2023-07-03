@@ -701,9 +701,9 @@ fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>
     let id = macro_id_to_def_id(db.upcast(), m.id);
     if let Err(e) = db.macro_def(id) {
         let Some(ast) = id.ast_id().left() else {
-                never!("MacroDefError for proc-macro: {:?}", e);
-                return;
-            };
+            never!("MacroDefError for proc-macro: {:?}", e);
+            return;
+        };
         emit_def_diagnostic_(
             db,
             acc,

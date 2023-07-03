@@ -268,10 +268,12 @@ impl flags::AnalysisStats {
                 continue;
             }
             all += 1;
-            let Err(e)
-                = db.layout_of_adt(hir_def::AdtId::from(a).into(), Substitution::empty(Interner), a.krate(db).into())
-            else {
-                continue
+            let Err(e) = db.layout_of_adt(
+                hir_def::AdtId::from(a).into(),
+                Substitution::empty(Interner),
+                a.krate(db).into(),
+            ) else {
+                continue;
             };
             if verbosity.is_spammy() {
                 let full_name = full_name_of_item(db, a.module(db), a.name(db));

@@ -135,10 +135,7 @@ impl Path {
 
     pub fn segments(&self) -> PathSegments<'_> {
         let Path::Normal { mod_path, generic_args, .. } = self else {
-            return PathSegments {
-                segments: &[],
-                generic_args: None,
-            };
+            return PathSegments { segments: &[], generic_args: None };
         };
         let s =
             PathSegments { segments: mod_path.segments(), generic_args: generic_args.as_deref() };

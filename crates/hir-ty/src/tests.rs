@@ -206,7 +206,9 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let Some(node) = (match expr_or_pat {
                 hir_def::hir::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
                 hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
-            }) else { continue; };
+            }) else {
+                continue;
+            };
             let range = node.as_ref().original_file_range(&db);
             let actual = format!(
                 "expected {}, got {}",

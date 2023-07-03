@@ -154,7 +154,9 @@ pub fn layout_of_ty_query(
     ty: Ty,
     krate: CrateId,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
+    let Some(target) = db.target_data_layout(krate) else {
+        return Err(LayoutError::TargetLayoutNotAvailable);
+    };
     let cx = LayoutCx { krate, target: &target };
     let dl = &*cx.current_data_layout();
     let trait_env = Arc::new(TraitEnvironment::empty(krate));

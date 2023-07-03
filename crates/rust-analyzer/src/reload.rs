@@ -334,7 +334,11 @@ impl GlobalState {
         let _p = profile::span("GlobalState::switch_workspaces");
         tracing::info!(%cause, "will switch workspaces");
 
-        let Some((workspaces, force_reload_crate_graph)) = self.fetch_workspaces_queue.last_op_result() else { return; };
+        let Some((workspaces, force_reload_crate_graph)) =
+            self.fetch_workspaces_queue.last_op_result()
+        else {
+            return;
+        };
 
         if let Err(_) = self.fetch_workspace_error() {
             if !self.workspaces.is_empty() {
@@ -525,7 +529,7 @@ impl GlobalState {
         let mut buf = String::new();
 
         let Some((last_op_result, _)) = self.fetch_workspaces_queue.last_op_result() else {
-            return Ok(())
+            return Ok(());
         };
         if last_op_result.is_empty() {
             stdx::format_to!(buf, "rust-analyzer failed to discover workspace");

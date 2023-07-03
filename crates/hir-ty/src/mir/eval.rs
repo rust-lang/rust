@@ -1226,8 +1226,8 @@ impl Evaluator<'_> {
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
                 let Some(target_data_layout) = self.db.target_data_layout(self.crate_id) else {
-                            not_supported!("missing target data layout");
-                        };
+                    not_supported!("missing target data layout");
+                };
                 let size = tag.size(&*target_data_layout).bytes_usize();
                 let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
                 match tag_encoding {
@@ -1344,7 +1344,9 @@ impl Evaluator<'_> {
                         AdtId::UnionId(_) => not_supported!("unsizing unions"),
                         AdtId::EnumId(_) => not_supported!("unsizing enums"),
                     };
-                    let Some((last_field, _)) = self.db.struct_data(id).variant_data.fields().iter().rev().next() else {
+                    let Some((last_field, _)) =
+                        self.db.struct_data(id).variant_data.fields().iter().rev().next()
+                    else {
                         not_supported!("unsizing struct without field");
                     };
                     let target_last_field = self.db.field_types(id.into())[last_field]
